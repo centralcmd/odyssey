@@ -19,10 +19,13 @@ namespace Odyssey.IntegrationTests;
 /// <remarks>
 /// None of this is observable on the fast tiers — the EF InMemory provider enforces no foreign keys at
 /// all, so a cascade there is whatever application code happens to do. The contract cascade has an
-/// application-code twin (<c>ContractService.Delete</c>'s <c>.Include(c =&gt; c.Events)</c>), which the
-/// fast tiers exercise; this is the other half, where the database does the work. The user-attribution
-/// key is additionally covered by name in <c>UserAttributionForeignKeyTests</c>, which reads
-/// <c>information_schema</c> over the whole set at once; here it is observed firing.
+/// application-code twin, <c>ContractService.Delete</c>'s <c>.Include(c =&gt; c.Events)</c>, guarded on
+/// that tier by
+/// <c>ContractEventsApiTests.DeleteContract_RemovesItsEventsAndLeavesAnotherContractsUntouched</c>;
+/// this is the other half, where the database does the work. The two are not redundant — either one
+/// alone leaves the other tier free to regress silently. The user-attribution key is additionally
+/// covered by name in <c>UserAttributionForeignKeyTests</c>, which reads <c>information_schema</c> over
+/// the whole set at once; here it is observed firing.
 /// </remarks>
 [Collection(MariaDbCollection.Name)]
 public class ContractEventRelationalTests(MariaDbFixture fixture)

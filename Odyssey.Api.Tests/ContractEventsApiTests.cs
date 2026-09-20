@@ -471,6 +471,40 @@ public class ContractEventsApiTests
         Assert.Single(await client.GetPagedItemsAsync<ExistingContractEvent>(Events(contractId)));
     }
 
+    // ── The delete cascade, InMemory half (AC 12) ────────────────────────────
+
+    /// <summary>
+    /// AC 12 on the tier the database does NOT do the work. The EF InMemory provider enforces no
+    /// cascade at all, so what removes the rows here is <c>ContractService.Delete</c>'s
+    /// <c>.Include(c =&gt; c.Events)</c> — and this is the assertion that fails if that line is lost.
+    /// </summary>
+    /// <remarks>
+    /// Its absence was a real hole, not a hypothetical one: with the <c>Include</c> commented out, all
+    /// 2204 tests in this project passed. The sibling guard for <c>Terms</c>
+    /// (<c>ContractTermsApiTests.DeleteContract_RemovesItsTermsAndLeavesAccountTermsUntouched</c>)
+    /// exists for exactly this reason and this is its counterpart. The database-enforced half lives in
+    /// <c>Odyssey.IntegrationTests</c>, where a real engine does the cascade.
+    /// </remarks>
+    [Fact]
+    public async Task DeleteContract_RemovesItsEventsAndLeavesAnotherContractsUntouched()
+    {
+        await using var factory = await NewFactoryAsync([.. ReadWrite, PermissionClaims.ContractsDelete]);
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+        var survivingContractId = await CreateContractAsync(client, name: "Survivor");
+
+        await PostEventAsync(client, contractId);
+        (await client.PostAsJsonAsync(Events(contractId), New(title: "A second entry"))).EnsureSuccessStatusCode();
+        await PostEventAsync(client, survivingContractId);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{Path}/{contractId}")).StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.Empty(await context.ContractEvents.Where(e => e.ContractId == contractId).ToListAsync());
+        Assert.Single(await context.ContractEvents.Where(e => e.ContractId == survivingContractId).ToListAsync());
+    }
+
     // ── Authorization (AC 7) ─────────────────────────────────────────────────
 
     [Fact]
