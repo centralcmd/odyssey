@@ -47,6 +47,10 @@ public class ScopedWriteRouteTests
         { "insurance renewal file",    $"/api/insurance-policies/{Parent}/renewals/{Child}/files/{Grandchild}", "DELETE" },
         { "contract party remove",     $"/api/contracts/{Parent}/parties/{Child}",                      "DELETE" },
         { "contract file detach",      $"/api/contracts/{Parent}/files/{Child}",                        "DELETE" },
+        { "contract event add",        $"/api/contracts/{Parent}/events",                               "POST" },
+        { "contract event update",     $"/api/contracts/{Parent}/events/{Child}",                       "PUT" },
+        { "contract event delete",     $"/api/contracts/{Parent}/events/{Child}",                       "DELETE" },
+        { "contract event list",       $"/api/contracts/{Parent}/events",                               "GET" },
         { "tax file attach",           $"/api/tax-statements/{Parent}/files",                           "POST" },
         { "tax file download",         $"/api/tax-statements/{Parent}/files/{Child}",                   "GET" },
         { "tax file detach",           $"/api/tax-statements/{Parent}/files/{Child}",                   "DELETE" },
@@ -73,6 +77,10 @@ public class ScopedWriteRouteTests
             "insurance renewal file" => insurance.DetachRenewalFileAsync(Parent, Child, Grandchild),
             "contract party remove" => contracts.RemovePartyAsync(Parent, Child),
             "contract file detach" => contracts.DetachFileAsync(Parent, Child),
+            "contract event add" => contracts.AddEventAsync(Parent, SampleEvent()),
+            "contract event update" => contracts.UpdateEventAsync(Parent, Child, SampleEventUpdate()),
+            "contract event delete" => contracts.DeleteEventAsync(Parent, Child),
+            "contract event list" => contracts.ListEventsAsync(Parent),
             "tax file attach" => tax.AttachFileAsync(Parent, new AttachTaxStatementFileRequest(Child)),
             "tax file download" => tax.DownloadFileAsync(Parent, Child),
             "tax file detach" => tax.DetachFileAsync(Parent, Child),
@@ -84,6 +92,20 @@ public class ScopedWriteRouteTests
         Assert.Equal(expectedPath, handler.LastRequest!.RequestUri!.AbsolutePath);
         Assert.Equal(method, handler.LastRequest.Method.Method);
     }
+
+    private static NewContractEvent SampleEvent() => new()
+    {
+        Type = ContractEventType.EmailSent,
+        Title = "Emailed landlord about the rent increase",
+        OccurredAt = new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
+    };
+
+    private static UpdateContractEvent SampleEventUpdate() => new()
+    {
+        Type = ContractEventType.Amended,
+        Title = "Pets permitted by amendment",
+        OccurredAt = new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
+    };
 
     private static UpdatePolicyRenewal SampleRenewalUpdate() => new()
     {

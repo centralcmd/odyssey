@@ -159,6 +159,7 @@ public sealed class DataExportService
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Contracts), ContractsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractParties), ContractPartiesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractFiles), ContractFilesQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractEvents), ContractEventsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Subscriptions), SubscriptionsQuery(), cancellationToken);
     }
 
@@ -638,6 +639,22 @@ public sealed class DataExportService
                 FileType = (FinanceDtos.ContractFileType)contractFile.FileType,
                 AttachedByUserId = contractFile.AttachedByUserId,
                 AttachedAtUtc = contractFile.AttachedAtUtc,
+            });
+
+    private IQueryable<ContractEventExport> ContractEventsQuery() =>
+        context.ContractEvents.AsNoTracking()
+            .OrderBy(contractEvent => contractEvent.ContractEventId)
+            .Select(contractEvent => new ContractEventExport
+            {
+                ContractEventId = contractEvent.ContractEventId,
+                ContractId = contractEvent.ContractId,
+                Type = (FinanceDtos.ContractEventType)contractEvent.Type,
+                Title = contractEvent.Title,
+                Description = contractEvent.Description,
+                Notes = contractEvent.Notes,
+                OccurredAt = contractEvent.OccurredAt,
+                CreatedByUserId = contractEvent.CreatedByUserId,
+                CreatedAtUtc = contractEvent.CreatedAtUtc,
             });
 
     private IQueryable<SubscriptionExport> SubscriptionsQuery() =>

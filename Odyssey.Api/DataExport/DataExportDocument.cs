@@ -134,6 +134,7 @@ public sealed class FinanceDatabaseExport
     public IReadOnlyList<ContractExport> Contracts { get; init; } = [];
     public IReadOnlyList<ContractPartyExport> ContractParties { get; init; } = [];
     public IReadOnlyList<ContractFileExport> ContractFiles { get; init; } = [];
+    public IReadOnlyList<ContractEventExport> ContractEvents { get; init; } = [];
     public IReadOnlyList<SubscriptionExport> Subscriptions { get; init; } = [];
 }
 
@@ -507,6 +508,31 @@ public sealed class ContractFileExport
     public ContractFileType FileType { get; init; }
     public string? AttachedByUserId { get; init; }
     public DateTime AttachedAtUtc { get; init; }
+}
+
+/// <summary>
+/// One entry in a contract's user-maintained event log (issue #138). <b>All three</b> free-text fields
+/// are exported, <see cref="Notes"/> included: the timeline does not display it, but that is a
+/// presentation rule and not an access one, and a field the subject typed that a subject-access
+/// response omitted would be the export's own silent hole (§7.10, §4.1).
+///
+/// <para>
+/// <see cref="CreatedByUserId"/> is exported as the raw column, matching every other attribution
+/// column in this document — the API's read path resolves a display label instead, but an export is a
+/// dump of the rows and the FK-column-only rule applies here as everywhere else.
+/// </para>
+/// </summary>
+public sealed class ContractEventExport
+{
+    public Guid ContractEventId { get; init; }
+    public Guid ContractId { get; init; }
+    public ContractEventType Type { get; init; }
+    public string Title { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public string? Notes { get; init; }
+    public DateTime OccurredAt { get; init; }
+    public string? CreatedByUserId { get; init; }
+    public DateTime CreatedAtUtc { get; init; }
 }
 
 /// <summary>

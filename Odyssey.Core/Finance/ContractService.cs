@@ -664,15 +664,17 @@ public class ContractService
 
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        // Hard delete: removes the contract and cascades its party + file link rows and its term
-        // history (issue #135). The underlying accounts/contacts/policies and FileMetadata/blobs are
-        // left intact. Children are loaded so the cascade also applies under the EF InMemory provider
-        // (used by tests), which does not enforce database-level cascade — without the Terms include
-        // a contract delete would orphan every term row on exactly the tier meant to catch it.
+        // Hard delete: removes the contract and cascades its party + file link rows, its term history
+        // (issue #135) and its event log (issue #138). The underlying accounts/contacts/policies and
+        // FileMetadata/blobs are left intact. Children are loaded so the cascade also applies under the
+        // EF InMemory provider (used by tests), which does not enforce database-level cascade — without
+        // the Terms/Events includes a contract delete would orphan every such row on exactly the tier
+        // meant to catch it.
         var contract = await context.Contracts
             .Include(c => c.Parties)
             .Include(c => c.Files)
             .Include(c => c.Terms)
+            .Include(c => c.Events)
             .FirstOrDefaultAsync(c => c.ContractId == id, cancellationToken);
         if (contract is null)
         {

@@ -46,6 +46,22 @@ public sealed class ContractsQueryParams : QueryParams<ContractSortBy>
     public ContractStatus[]? Statuses { get; set; }
 }
 
+/// <summary>
+/// Contract-event list query (issue #138 §5.1): filter by event type(s) and an <c>OccurredAt</c>
+/// window. Always contract-scoped — the contract is named by the route, never by a filter here.
+/// </summary>
+public sealed class ContractEventsQueryParams : QueryParams<ContractEventSortBy>
+{
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public ContractEventType[]? Types { get; set; }
+
+    /// <summary>Inclusive lower bound on <c>OccurredAt</c>.</summary>
+    public DateTime? From { get; set; }
+
+    /// <summary>Inclusive upper bound on <c>OccurredAt</c>.</summary>
+    public DateTime? To { get; set; }
+}
+
 /// <summary>Currencies list query: filter by archival status.</summary>
 public sealed class CurrenciesQueryParams : QueryParams<CurrencySortBy>
 {

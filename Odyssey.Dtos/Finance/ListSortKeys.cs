@@ -42,6 +42,20 @@ public enum ContractSortBy
     Status,
 }
 
+/// <summary>
+/// Sortable keys for a contract's event log (issue #138 §5.1). <c>Description</c> and <c>Notes</c> are
+/// deliberately absent: sorting a record by a paragraph of prose is not a use case, and every key
+/// costs an index decision.
+/// </summary>
+public enum ContractEventSortBy
+{
+    /// <summary>The default — newest first.</summary>
+    OccurredAt,
+    Title,
+    Type,
+    CreatedAtUtc,
+}
+
 /// <summary>Sortable keys for the currencies list.</summary>
 public enum CurrencySortBy
 {

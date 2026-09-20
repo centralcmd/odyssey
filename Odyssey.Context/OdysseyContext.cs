@@ -370,6 +370,18 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .HasConversion<int>();
         });
 
+        modelBuilder.Entity<ContractEvent>(entity =>
+        {
+            // Stored as the int ordinal issue #138 §4 pins. Other is both the catch-all member and the
+            // entity default, so the HasDefaultValue / HasSentinel pair matches Contract.Type: an
+            // omitted type binds to Other rather than failing, and EF leaves it out of the INSERT.
+            entity.Property(e => e.Type)
+                .IsRequired()
+                .HasDefaultValue(ContractEventType.Other)
+                .HasSentinel(ContractEventType.Other)
+                .HasConversion<int>();
+        });
+
         modelBuilder.Entity<Subscription>(entity =>
         {
             entity.Property(s => s.Interval)
@@ -1085,6 +1097,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<TaxStatementFile>(modelBuilder, nameof(TaxStatementFile.AttachedByUserId));
         DeclareUserAttribution<PolicyRenewalFile>(modelBuilder, nameof(PolicyRenewalFile.AttachedByUserId));
         DeclareUserAttribution<InsurancePolicyBeneficiary>(modelBuilder, nameof(InsurancePolicyBeneficiary.CreatedByUserId));
+        DeclareUserAttribution<ContractEvent>(modelBuilder, nameof(ContractEvent.CreatedByUserId));
 
         DeclareUserAttribution<FileMetadata>(modelBuilder, nameof(Odyssey.Context.FileMetadata.UploadedByUserId));
         DeclareUserAttribution<FileAnalysisJob>(modelBuilder, nameof(FileAnalysisJob.RequestedByUserId));
@@ -1315,6 +1328,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<Contract> Contracts { get; set; }
     public DbSet<ContractParty> ContractParties { get; set; }
     public DbSet<ContractFile> ContractFiles { get; set; }
+    public DbSet<ContractEvent> ContractEvents { get; set; }
     public DbSet<Subscription> Subscriptions { get; set; }
 
     // ── Journal, tasks, photos, calendars and contacts ────────────────────────────────────────
