@@ -327,13 +327,7 @@ html:not([data-theme='dark']) .mud-elevation-16{ box-shadow: 0 24px 60px rgba(14
 .chev { transition: transform var(--duration-base) var(--ease-standard); }
 .chev.open { transform: rotate(180deg); }
 
-/* Empty-state text line — used inside collapsibles and lists */
-.empty-line {
-  padding: 16px 14px;
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  color: var(--mud-palette-text-secondary);
-}
+/* .empty-line retired — the empty sentence is the <OdsEmptyLine> atom (.odc-empty.line). */
 
 /* The .collapsible* section chrome is now the <OdsCollapsible> component. */
 

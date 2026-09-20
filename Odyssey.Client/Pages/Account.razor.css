@@ -1,13 +1,13 @@
 /* ── User Account page (Odyssey Design System · account.css, p.25) ──────────
    Ported from the design system's account.css. Layout-only classes authored
    here; interactive controls are MudBlazor and the .alert / .material-icons /
-   .empty-line / .nomatch / .mono primitives are global (app.css). Tints use the
+   .nomatch / .mono primitives are global (app.css). Tints use the
    active theme's primary token so badges read correctly in light and dark. */
 
 /* ── User Account page (Odyssey Design System · account.css, p.25) ──────────
    Ported from the design system's account.css. Layout-only classes authored
    here; interactive controls are MudBlazor and the .alert / .material-icons /
-   .empty-line / .nomatch / .mono primitives are global (app.css). Tints use the
+   .nomatch / .mono primitives are global (app.css). Tints use the
    active theme's primary token so badges read correctly in light and dark. */
 
 /* Circular initials avatar — the PageHeader leading slot on this page. Defined

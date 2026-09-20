@@ -41,22 +41,32 @@ public class FileAnalysisRuntimeSwitchSourceTests
         File.ReadAllText(Path.Combine(
             ClientSource.Root, "Services", "FileAnalysisDisclosureCache.cs"));
 
-    // ── AC 53 — the affordance is disabled, with the reason in TEXT ──────────────────────────────
+    // ── AC 53 — with the switch off, the affordance is GONE ──────────────────────────────────────
 
     /// <summary>
-    /// The Analyze menu item is bound to the fetched <c>enabled</c> flag and carries a text
-    /// explanation. The explanation is the load-bearing half: a greyed-out item conveys its meaning by
-    /// colour alone, which is exactly what WCAG 1.4.1 forbids and what a keyboard or screen-reader user
-    /// gets nothing from.
+    /// The Analyze menu item is bound to the fetched <c>enabled</c> flag, and with the switch off it
+    /// is not rendered at all (Odyssey Design System · components/Menu): an action that cannot be
+    /// taken is absent from the menu rather than dimmed with an explanation, so the consent gate is
+    /// never opened for a transfer that cannot happen.
+    ///
+    /// <para>
+    /// The negative assertions are the load-bearing half. The binding alone would still pass if the
+    /// item re-acquired an explanatory note, which is the shape this deliberately moved away from —
+    /// a reason a reader can only reach by opening the menu is not where the reason belongs.
+    /// </para>
     /// </summary>
     [Fact]
-    public void TheAnalyzeMenuItem_IsDisabledFromTheLiveSwitch_WithAVisibleTextExplanation()
+    public void TheAnalyzeMenuItem_IsWithheldEntirely_WhenTheLiveSwitchIsOff()
     {
         var source = AccountFilesSection;
 
         Assert.Contains("Disabled = !_analysisEnabled", source, StringComparison.Ordinal);
-        Assert.Contains("Description = _analysisEnabled ? null :", source, StringComparison.Ordinal);
-        Assert.Contains("AI document analysis is turned off for this instance.", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("AI document analysis is turned off", source, StringComparison.Ordinal);
+
+        var items = System.Text.RegularExpressions.Regex.Matches(source, @"new OdsMenuItem\s*\{[^}]*\}");
+        Assert.NotEmpty(items);
+        Assert.All(items, match =>
+            Assert.DoesNotContain("Description", match.Value, StringComparison.Ordinal));
     }
 
     /// <summary>

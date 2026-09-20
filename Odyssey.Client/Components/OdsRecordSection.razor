@@ -1,0 +1,83 @@
+@*
+    OdsRecordSection — one band inside a record card body
+    (Odyssey Design System · components/RecordSection).
+
+    The section divider, an optional notice band, and the section's own view. The two behaviours
+    every section used to repeat by hand now live here: the empty line when there is nothing to
+    show, and the tinted notice that states why writing is refused — at the place the writing would
+    happen, rather than left to a dialog that saves and then fails.
+
+    The view stays custom: pass a table, a tile grid, a list, anything. Pass Empty and the section
+    renders EmptyText as the muted line instead, so a call site never re-decides what an empty
+    section looks like.
+
+    Notice tone: Warning for a REVERSIBLE state the reader can undo, Default for a cap or another
+    standing limit. The icon is decorative — the sentence carries the whole message, so the state
+    never rides on colour or a glyph alone (WCAG 1.4.1).
+*@
+
+<section class="odc-recordsection@(Class is null ? null : " " + Class)" id="@Id">
+    @if (Label is not null)
+    {
+        <OdsSectionDivider Label="@Label" Meta="@Meta" HeadingLevel="@HeadingLevel" />
+    }
+    @if (Notice is not null)
+    {
+        <div class="odc-recordsection-notice@(NoticeTone == OdsRecordSectionTone.Warning ? " warning" : null)" role="note">
+            <span class="material-icons" aria-hidden="true">@NoticeIcon</span>
+            <div class="odc-recordsection-notice-body">@Notice</div>
+        </div>
+    }
+    @if (Empty)
+    {
+        <OdsEmptyLine Align="EmptyAlign" Pad="EmptyPad">@EmptyText</OdsEmptyLine>
+    }
+    else
+    {
+        @ChildContent
+    }
+</section>
+
+@code {
+    /// <summary>The section name. Omit for a band that carries no divider.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Right-aligned mono note on the divider — a count, a date, "12 entries · limit 500".</summary>
+    [Parameter] public string? Meta { get; set; }
+
+    /// <summary>Heading level for the divider label. Forwarded to <see cref="OdsSectionDivider"/>.</summary>
+    [Parameter] public int HeadingLevel { get; set; } = 3;
+
+    /// <summary>The refused-write sentence, when there is one.</summary>
+    [Parameter] public RenderFragment? Notice { get; set; }
+
+    /// <summary>Warning for a reversible state; Default for a cap.</summary>
+    [Parameter] public OdsRecordSectionTone NoticeTone { get; set; } = OdsRecordSectionTone.Default;
+
+    /// <summary>Material Icons ligature for the notice. Defaults per tone.</summary>
+    [Parameter] public string? NoticeIconName { get; set; }
+
+    /// <summary>There is nothing to show — renders <see cref="EmptyText"/> as the muted line.</summary>
+    [Parameter] public bool Empty { get; set; }
+
+    /// <summary>The empty sentence.</summary>
+    [Parameter] public RenderFragment? EmptyText { get; set; }
+
+    /// <summary>Alignment of the empty line.</summary>
+    [Parameter] public OdsEmptyLineAlign EmptyAlign { get; set; } = OdsEmptyLineAlign.Start;
+
+    /// <summary>Padding step of the empty line.</summary>
+    [Parameter] public OdsSize EmptyPad { get; set; } = OdsSize.Md;
+
+    /// <summary>The section's own view.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>DOM id — a jump target for an in-body link.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    private string NoticeIcon =>
+        NoticeIconName ?? (NoticeTone == OdsRecordSectionTone.Warning ? "inventory_2" : "info");
+}

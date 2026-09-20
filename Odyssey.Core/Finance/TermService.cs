@@ -122,9 +122,6 @@ public class TermService
             // An amount term on an account defaults to the account's own currency, which is the
             // pre-#135 behaviour and stays unchanged.
             DefaultCurrencyCode: account.CurrencyCode,
-            // Accounts are deliberately NOT archive-guarded here: issue #135 introduced that rule for
-            // contracts and left the five account endpoints untouched, down to their status codes.
-            ArchivedAtUtc: null,
             // No cap on account terms — the pre-existing gap is not widened here and is left to its
             // own issue (Non-Goal 4).
             IsTermCapped: false);
@@ -150,7 +147,6 @@ public class TermService
             // A contract has no currency of its own, which is what makes an explicit code REQUIRED for
             // an amount term (issue #135 §8 rule 2) rather than merely recommended.
             DefaultCurrencyCode: null,
-            ArchivedAtUtc: contract.Archived,
             IsTermCapped: true);
     }
 
@@ -306,7 +302,6 @@ public class TermService
 
     private async Task<ExistingTerm> CreateFor(TermOwnerFacts owner, NewTerm newTerm, CancellationToken cancellationToken)
     {
-        EnsureWritable(owner, "adding terms");
 
         var term = new Term
         {
@@ -360,7 +355,6 @@ public class TermService
 
     private async Task<bool> UpdateFor(TermOwnerFacts owner, Guid termId, NewTerm putTerm, CancellationToken cancellationToken)
     {
-        EnsureWritable(owner, "changing terms");
 
         var term = await context.Terms
             .Where(OwnedBy(owner))
@@ -394,7 +388,6 @@ public class TermService
 
     private async Task<bool> DeleteFor(TermOwnerFacts owner, Guid termId, CancellationToken cancellationToken)
     {
-        EnsureWritable(owner, "removing terms");
 
         var term = await context.Terms
             .Where(OwnedBy(owner))
@@ -405,25 +398,6 @@ public class TermService
         context.Terms.Remove(term);
         await context.SaveChangesAsync(cancellationToken);
         return true;
-    }
-
-    /// <summary>
-    /// An archived owner is read-only for terms: its history stays readable, every write is refused
-    /// naming unarchiving as the route that works (issue #135 §8 rule 3). Only contracts can be
-    /// archived for this purpose — <see cref="ResolveAccountOwner"/> always reports an account as
-    /// unarchived, so the account surface is unchanged.
-    /// </summary>
-    /// <remarks>
-    /// This throws a <b>400</b>, per issue #135 §8/§9 and AC 11. Note the deliberate difference from
-    /// the sibling <c>ContractService.AddParty</c>, which refuses the same condition with a
-    /// <b>422</b>: the two were specified independently and harmonising them is a wire change to a
-    /// shipped endpoint, so it belongs in its own issue rather than being done silently here.
-    /// </remarks>
-    private static void EnsureWritable(TermOwnerFacts owner, string what)
-    {
-        if (owner.ArchivedAtUtc is not null)
-            throw new DomainValidationException(
-                $"This {owner.Noun} is archived; unarchive it before {what}.");
     }
 
     /// <summary>

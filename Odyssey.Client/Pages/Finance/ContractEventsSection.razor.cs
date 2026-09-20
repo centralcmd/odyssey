@@ -22,10 +22,10 @@ namespace Odyssey.Client.Pages.Finance;
 /// server still decides. Nothing here holds a cap.
 /// </para>
 /// <para>
-/// <b>The section takes no <c>Archived</c> parameter</b>, unlike <see cref="ContractTermsSection"/>.
-/// An archived contract still accepts every event write (§8.6), so there is no refusal to explain and
-/// no affordance to withdraw — adding the parameter "for symmetry" would invite a guard that
-/// contradicts the API.
+/// <b>The section takes no <c>Archived</c> parameter</b> — and neither does any other section of a
+/// contract record now. An archived contract accepts every write the API accepts on a live one, so
+/// there is no refusal to explain and no affordance to withdraw; adding the parameter "for symmetry"
+/// would invite a guard that contradicts the API.
 /// </para>
 /// </remarks>
 public partial class ContractEventsSection

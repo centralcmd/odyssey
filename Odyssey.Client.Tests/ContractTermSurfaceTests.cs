@@ -149,19 +149,28 @@ public class ContractTermSurfaceTests
         Assert.Contains("monthly", cut.Markup, StringComparison.OrdinalIgnoreCase);
     }
 
-    // ── The archive guard, drawn ─────────────────────────────────────────────
+    // ── The archive state changes nothing here ───────────────────────────────
 
+    /// <summary>
+    /// <b>Archiving does not lock a contract's terms.</b> The section keeps its rows, its per-row
+    /// Edit and Delete, and states no refusal — archival hides a contract from the default list, and
+    /// the final rent or the closing fee is exactly what gets recorded after an agreement has ended.
+    ///
+    /// <para>
+    /// The section no longer takes an archive flag at all, so this renders an archived contract and
+    /// asserts it is indistinguishable from a live one. The per-contract cap is the only thing that
+    /// refuses a term write, and it is enforced server-side.
+    /// </para>
+    /// </summary>
     [Fact]
-    public void An_archived_contract_states_the_refusal_and_keeps_its_history_readable()
+    public void An_archived_contract_still_records_and_edits_its_terms()
     {
         var cut = RenderSection(Lease(archived: Past(5)), [Fee("Monthly rent", 14500m, Past(100))], canWrite: true);
 
-        var notice = cut.Find(".con-trm-notice.archived");
-        Assert.Contains("restoring", notice.TextContent, StringComparison.OrdinalIgnoreCase);
-
-        // The rows stay; only the per-row write affordances go.
         Assert.Contains("Monthly rent", cut.Markup, StringComparison.Ordinal);
-        Assert.Empty(cut.FindAll("td.trm-cell-act"));
+        Assert.NotEmpty(cut.FindAll("td.trm-cell-act"));
+        Assert.DoesNotContain("restoring", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(cut.FindAll(".odc-recordsection-notice"));
     }
 
     [Fact]
@@ -336,7 +345,6 @@ public class ContractTermSurfaceTests
         var cut = ctx.Render<ContractTermsSection>(p => p
             .Add(s => s.Contract, contract)
             .Add(s => s.CanWrite, canWrite)
-            .Add(s => s.Archived, contract.Archived is not null)
             .Add(s => s.FormatMoney, (decimal value, string? currency) =>
                 value.ToString("#,##0.##", CultureInfo.InvariantCulture) + " " + (currency ?? "NOK")));
 

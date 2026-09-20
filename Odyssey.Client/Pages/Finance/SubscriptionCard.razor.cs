@@ -597,12 +597,13 @@ public partial class SubscriptionCard
                     Label = archived ? "Restore" : "Archive",
                     OnClick = EventCallback.Factory.Create(this, () => ToggleArchive(s)),
                 }
+                // A subscription that has not ended cannot be archived, so the item is simply absent
+                // (design system · components/Menu) rather than dimmed with a reason under it.
                 : new OdsMenuItem
                 {
                     Icon = "inventory_2",
                     Label = "Archive",
                     Disabled = true,
-                    Description = "End the subscription first.",
                 });
         }
 

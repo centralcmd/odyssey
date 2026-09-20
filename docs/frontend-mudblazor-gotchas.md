@@ -35,7 +35,7 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
 
 ## Project conventions
 
-- **Component library:** `Odyssey.Client/Components/` — 136 `Ods*.razor` atoms today. Shared model
+- **Component library:** `Odyssey.Client/Components/` — 141 `Ods*.razor` atoms today. Shared model
   types live in `OdsModels.cs`; enum icon/colour/label metadata belongs in `OdsTypeRegistries.cs`
   (and the `*Visuals` types beside it), never hardcoded at a call site.
 - **Foundation tokens:** `Odyssey.Client/wwwroot/css/app.css`. Global component CSS:
@@ -51,6 +51,18 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
   the expense colour.
 - **Deliberate exception:** the picker `oklch(...)` literals mirror the design system on purpose and
   are **not** tokenized. Don't "fix" them.
+- **An unavailable action is ABSENT from a menu, never dimmed.** `OdsMenuItem.Disabled` makes
+  `OdsMenu` skip the item entirely, along with any divider or header the omission orphans — there is
+  no `Description`/note property any more, and no disabled-item styling to reach for. Where the user
+  needs to know *why* a capability is missing, the surface says so in its own copy: an
+  `OdsRecordSection` notice band or a helper line, which is readable without opening anything.
+  `OdsMenuUnavailableItemTests` pins the filter and all four orphan shapes.
+- **An empty section or table frame is `<OdsEmptyLine>`, not a hand-rolled `<div>`.** The retired
+  `.empty-line` / `.con-empty-line` classes are gone; `Align="Center" Pad="Lg"` is the whole-list
+  form. `OdsEmptyState` still owns the panel shape (icon + title + one CTA) and reaches the line
+  through `Variant="OdsEmptyStateVariant.Line"` when a surface chooses between the two.
+  `OdsRecordSection` wraps a record band's divider, its optional refused-write notice and that empty
+  line, so a section stops re-deciding what "nothing here" looks like.
 
 ## Running the client while iterating
 

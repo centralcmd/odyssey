@@ -315,33 +315,37 @@ public class ContractFileValidityTests
             Guid.NewGuid(), Guid.NewGuid(), new UpdateContractFileRequest { FileType = ContractFileType.Other }));
     }
 
-    /// <summary>AC 12 — an archived contract refuses the edit, and succeeds once unarchived.</summary>
+    /// <summary>
+    /// <b>Archiving refuses no document write.</b> Attaching and editing a document both work on an
+    /// archived contract — archival hides it from the default list, it does not lock it, and the
+    /// closing invoice or the handover note is exactly what gets filed after an agreement ends.
+    /// Both writes are exercised here, because the guard that used to refuse them sat on each
+    /// endpoint separately and removing one while leaving the other would read as a partial fix.
+    /// </summary>
     [Fact]
-    public async Task UpdateFile_ArchivedContract_IsRefused_ThenSucceedsAfterUnarchiving()
+    public async Task AttachAndUpdateFile_OnAnArchivedContract_AreBothAllowed()
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
         var contract = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
-        await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId);
 
         var entity = await context.Contracts.SingleAsync(c => c.ContractId == contract.ContractId);
         entity.EndDate = FixedToday.AddDays(-1);
         entity.Archived = FixedToday;
         await context.SaveChangesAsync();
 
+        // Attached while archived, not before it.
+        Assert.NotNull(await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId));
+
         var request = new UpdateContractFileRequest { FileType = ContractFileType.Amendment };
-        var error = await Assert.ThrowsAsync<DomainValidationException>(
-            () => service.UpdateFile(contract.ContractId, fileId, request));
-        Assert.Equal(400, error.StatusCode);
+        Assert.True(await service.UpdateFile(contract.ContractId, fileId, request));
         Assert.Equal(
-            ContractFileType.Signed,
+            ContractFileType.Amendment,
             Assert.Single((await service.GetFiles(contract.ContractId))!).FileType);
 
-        entity.Archived = null;
-        await context.SaveChangesAsync();
-
-        Assert.True(await service.UpdateFile(contract.ContractId, fileId, request));
+        // And it is still archived — the writes did not quietly restore it.
+        Assert.NotNull((await context.Contracts.SingleAsync(c => c.ContractId == contract.ContractId)).Archived);
     }
 
     /// <summary>AC 15 — the cap gates row creation, not metadata edits, so a contract at its cap can

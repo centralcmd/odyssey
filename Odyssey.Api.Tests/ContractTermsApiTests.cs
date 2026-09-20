@@ -221,9 +221,13 @@ public class ContractTermsApiTests
             (await client.PostAsJsonAsync(Terms(contractId), Rent(450m, date, label: "Service charge"))).StatusCode);
     }
 
-    /// <summary>AC 11 — an archived contract refuses writes and still serves its history.</summary>
+    /// <summary>
+    /// <b>An archived contract still takes a term.</b> The closing fee on a lease that has ended is
+    /// exactly the entry written after the agreement is filed away, so archival — which hides the
+    /// contract from the default list — never refuses the write. The history reads either way.
+    /// </summary>
     [Fact]
-    public async Task Post_OnAnArchivedContract_Returns400WhileTheHistoryStillReads()
+    public async Task Post_OnAnArchivedContract_Succeeds_AndTheHistoryStillReads()
     {
         await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
@@ -234,13 +238,12 @@ public class ContractTermsApiTests
 
         await ArchiveAsync(client, contractId, start: FixedToday.AddDays(-30), end: FixedToday.AddDays(-1));
 
-        var refused = await client.PostAsJsonAsync(Terms(contractId), Rent(15000m, new DateTime(2026, 7, 1)));
-        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Contains("unarchive", await refused.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+        var added = await client.PostAsJsonAsync(Terms(contractId), Rent(15000m, new DateTime(2026, 7, 1)));
+        Assert.Equal(HttpStatusCode.Created, added.StatusCode);
 
         var history = await client.GetAsync(Terms(contractId));
         Assert.Equal(HttpStatusCode.OK, history.StatusCode);
-        Assert.Single((await history.Content.ReadFromJsonAsync<List<ExistingTerm>>())!);
+        Assert.Equal(2, (await history.Content.ReadFromJsonAsync<List<ExistingTerm>>())!.Count);
     }
 
     /// <summary>AC 12 — the cap refuses a create and never an update.</summary>

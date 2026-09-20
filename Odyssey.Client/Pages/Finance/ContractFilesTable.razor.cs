@@ -24,12 +24,6 @@ public partial class ContractFilesTable
 
     [Parameter] public bool CanDelete { get; set; }
 
-    /// <summary>
-    /// True when the contract is archived. Both document writes are refused with a <c>400</c> then,
-    /// so Edit and Delete are withheld rather than offered and then failed.
-    /// </summary>
-    [Parameter] public bool Archived { get; set; }
-
     /// <summary>Raised after a detach so the host re-fetches the contract.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
@@ -139,13 +133,12 @@ public partial class ContractFilesTable
     }
 
     private EventCallback<OdsRecordSaveEventArgs> SaveAction =>
-        CanUpdate && !Archived ? EventCallback.Factory.Create<OdsRecordSaveEventArgs>(this, HandleSaveAsync) : default;
+        CanUpdate ? EventCallback.Factory.Create<OdsRecordSaveEventArgs>(this, HandleSaveAsync) : default;
 
     /// <summary>
-    /// Detach stays live on an archived contract, deliberately unlike Edit. <c>ContractService</c>
-    /// guards <c>AttachFile</c> and <c>UpdateFile</c> on the archive state and does <b>not</b> guard
-    /// <c>DetachFile</c> — the same asymmetry <c>DeleteParty</c> has, on the same reasoning: detaching
-    /// a link needs only the link. Withholding it here would refuse something the API allows.
+    /// Both document writes stay live on an archived contract: archiving hides a contract from the
+    /// default list, it does not lock it, and the closing invoice or handover note is exactly what
+    /// gets attached after an agreement ends. Permission is the only gate.
     /// </summary>
     private EventCallback<OdsFilesRow> DeleteAction =>
         CanDelete ? EventCallback.Factory.Create<OdsFilesRow>(this, row => ConfirmDetachAsync(FileById(row.Id))) : default;

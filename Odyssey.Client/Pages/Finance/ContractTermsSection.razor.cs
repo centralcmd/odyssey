@@ -34,12 +34,6 @@ public partial class ContractTermsSection
     /// <summary>Gates every write affordance (<c>contracts.update</c>).</summary>
     [Parameter] public bool CanWrite { get; set; }
 
-    /// <summary>
-    /// Whether the contract is archived. Separate from <see cref="CanWrite"/> on purpose: one is
-    /// about the caller, the other about the record, and only the second is worth explaining.
-    /// </summary>
-    [Parameter] public bool Archived { get; set; }
-
     /// <summary>Formats a money-valued term in its own currency — supplied by the host.</summary>
     [Parameter, EditorRequired]
     public Func<decimal, string?, string> FormatMoney { get; set; } = (v, _) => v.ToString(CultureInfo.InvariantCulture);
@@ -73,7 +67,6 @@ public partial class ContractTermsSection
     /// contract refuses <c>PUT</c> and <c>DELETE</c> as surely as it refuses <c>POST</c>, so an
     /// affordance that could only fail is not rendered.
     /// </summary>
-    private bool CanEditRows => CanWrite && !Archived;
 
     /// <summary>
     /// A contract with no terms at all is a different state from one whose entries are all scheduled,

@@ -241,9 +241,8 @@
                            A record with a current state puts that band first, above the collections. *@
                         @if (InForceCount(account) is > 0 and var inForce)
                         {
-                            <div class="acct-section">
-                                <OdsSectionDivider Label="Current"
-                                                   Meta="@($"{inForce} {(inForce == 1 ? "value" : "values")} in force")" />
+                            <OdsRecordSection Class="acct-section" Label="Current"
+                                              Meta="@($"{inForce} {(inForce == 1 ? "value" : "values")} in force")">
                                 <OdsInfoTileGrid>
                                     @if (account.CurrentEstimatedValue is { } currentEstimate)
                                     {
@@ -276,16 +275,15 @@
                                         </OdsInfoTile>
                                     }
                                 </OdsInfoTileGrid>
-                            </div>
+                            </OdsRecordSection>
                         }
 
                         @* An OPTIONAL sub-collection is omitted entirely when empty, matching the
                            empty-field rule — the header only counts these when non-zero. *@
                         @if (_canReadEstimates && account.EstimateCount > 0)
                         {
-                            <div class="acct-section">
-                                <OdsSectionDivider Label="Estimates"
-                                                   Meta="@($"{account.EstimateCount} {(account.EstimateCount == 1 ? "estimate" : "estimates")}")" />
+                            <OdsRecordSection Class="acct-section" Label="Estimates"
+                                              Meta="@($"{account.EstimateCount} {(account.EstimateCount == 1 ? "estimate" : "estimates")}")">
                                 <AccountEstimatesSection @key="@($"estimates:{account.AccountId}:{_estimatesRefreshToken}")"
                                                          Account="account"
                                                          CanWrite="@_canWriteEstimates"
@@ -293,28 +291,26 @@
                                                          FormatMoney="FormatMoney"
                                                          CurrencySymbol="@CurrencySymbol(account.CurrencyCode)"
                                                          OnChanged="GetAccounts" />
-                            </div>
+                            </OdsRecordSection>
                         }
 
                         @if (_canReadTerms && account.TermCount > 0)
                         {
-                            <div class="acct-section">
-                                <OdsSectionDivider Label="Terms"
-                                                   Meta="@($"{account.TermCount} {(account.TermCount == 1 ? "entry" : "entries")}")" />
+                            <OdsRecordSection Class="acct-section" Label="Terms"
+                                              Meta="@($"{account.TermCount} {(account.TermCount == 1 ? "entry" : "entries")}")">
                                 <AccountTermsSection @key="@($"terms:{account.AccountId}:{_termsRefreshToken}")"
                                                      Account="account"
                                                      CanWrite="@_canWriteTerms"
                                                      Chrome="false" ShowCurrent="false" BareAction="false"
                                                      FormatMoney="FormatMoney"
                                                      OnChanged="GetAccounts" />
-                            </div>
+                            </OdsRecordSection>
                         }
 
                         @* Files and Transactions are INTRINSIC to an account, so they stay at zero:
                            the absence is a fact worth stating. *@
-                        <div class="acct-section">
-                            <OdsSectionDivider Label="Files"
-                                               Meta="@($"{account.FileCount} file{(account.FileCount == 1 ? "" : "s")}")" />
+                        <OdsRecordSection Class="acct-section" Label="Files"
+                                          Meta="@($"{account.FileCount} file{(account.FileCount == 1 ? "" : "s")}")">
                             <div class="acct-table-frame odc-scroll">
                                 <AccountFilesSection @key="@($"{account.AccountId}:{_filesRefreshToken}")"
                                                      AccountId="@account.AccountId"
@@ -326,36 +322,34 @@
                                                      CanEdit="@_canEditFiles"
                                                      CanAnalyze="@_canAnalyzeFiles" />
                             </div>
-                        </div>
+                        </OdsRecordSection>
 
                         @if (_canReadTransactions)
                         {
-                            <div class="acct-section">
-                                <OdsSectionDivider Label="Transactions"
-                                                   Meta="@($"{account.TransactionCount} transaction{(account.TransactionCount == 1 ? "" : "s")}")" />
+                            <OdsRecordSection Class="acct-section" Label="Transactions"
+                                              Meta="@($"{account.TransactionCount} transaction{(account.TransactionCount == 1 ? "" : "s")}")">
                                 <div class="acct-txn-table acct-table-frame odc-scroll">
                                     <AccountTransactionsSection @key="@($"txns:{account.AccountId}")"
                                                                 AccountId="@account.AccountId"
                                                                 Chrome="false"
                                                                 OnChanged="GetAccounts" />
                                 </div>
-                            </div>
+                            </OdsRecordSection>
                         }
 
                         @* Always rendered: this section is the only place a first smart tag can be
                            added, so it is an entry point rather than an optional collection. *@
                         @if (_canReadTransactions)
                         {
-                            <div class="acct-section">
-                                <OdsSectionDivider Label="Smart tags"
-                                                   Meta="@(account.SmartTagCount > 0 ? $"{account.SmartTagCount} watched" : "none watched")" />
+                            <OdsRecordSection Class="acct-section" Label="Smart tags"
+                                              Meta="@(account.SmartTagCount > 0 ? $"{account.SmartTagCount} watched" : "none watched")">
                                 <AccountSmartTagsSection @key="@($"smart-tags:{account.AccountId}")"
                                                          Account="account"
                                                          Chrome="false"
                                                          CanWrite="@_canUpdateAccounts"
                                                          FormatMoney="FormatMoney"
                                                          OnCountChanged="@(count => { account.SmartTagCount = count; })" />
-                            </div>
+                            </OdsRecordSection>
                         }
                     </Sections>
                 </OdsRecordCard>

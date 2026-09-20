@@ -366,10 +366,15 @@ public sealed class ContractFileValidityApiTests
         Assert.Empty((await client.GetFromJsonAsync<List<ExistingContractFile>>($"{Path}/{contractId}/files"))!);
     }
 
-    // ── AC 12: the archive guard ───────────────────────────────────────────────
+    // ── The archive state gates nothing ────────────────────────────────────────
 
+    /// <summary>
+    /// <b>A document edit is accepted on an archived contract.</b> Archival hides a contract from the
+    /// default list; it does not lock it, and correcting a filed document's dates is ordinary work on
+    /// a closed agreement. The stamp survives the write, so the edit did not quietly restore it.
+    /// </summary>
     [Fact]
-    public async Task Put_AgainstAnArchivedContract_ReturnsBadRequest_ThenSucceedsAfterUnarchiving()
+    public async Task Put_AgainstAnArchivedContract_Succeeds()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
         using var client = factory.CreateClient();
@@ -383,15 +388,13 @@ public sealed class ContractFileValidityApiTests
             ValidFrom = ValidFrom,
         };
 
-        var refused = await client.PutAsJsonAsync($"{Path}/{contractId}/files/{fileId}", request);
-        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        Assert.Null(Assert.Single(
-            (await client.GetFromJsonAsync<List<ExistingContractFile>>($"{Path}/{contractId}/files"))!).ValidFrom);
-
-        await SetArchivedAsync(factory, contractId, null);
-
         var accepted = await client.PutAsJsonAsync($"{Path}/{contractId}/files/{fileId}", request);
         Assert.Equal(HttpStatusCode.NoContent, accepted.StatusCode);
+
+        var file = Assert.Single(
+            (await client.GetFromJsonAsync<List<ExistingContractFile>>($"{Path}/{contractId}/files"))!);
+        Assert.Equal(ValidFrom, file.ValidFrom);
+        Assert.NotNull((await client.GetFromJsonAsync<ExistingContract>($"{Path}/{contractId}"))!.Archived);
     }
 
     // ── AC 16, 20: model validation ────────────────────────────────────────────
