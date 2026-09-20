@@ -75,7 +75,11 @@
     // contract twin of AddFileDialog's, with the same controls in the same order.
     private RenderFragment<OdsUploadFileExtraContext> ValidityEditor => ctx =>
     @<div>
+        @* aria-expanded, not the changing label alone: the label conveys the state visually, but a
+           disclosure control's state has to be programmatically determinable too (WCAG 2.2 SC 4.1.2).
+           Same shape as OdsCollapsible's own toggle. *@
         <button type="button" class="afm-meta-toggle @(_metaOpen.Contains(ctx.File.Uid) ? "on" : "")"
+                aria-expanded="@(_metaOpen.Contains(ctx.File.Uid) ? "true" : "false")"
                 @onclick="@(() => ToggleMeta(ctx.File))">
             <OdsMIcon Name="event" Size="14" />
             @(_metaOpen.Contains(ctx.File.Uid) ? "Hide validity" : "Add validity")

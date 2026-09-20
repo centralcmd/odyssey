@@ -298,6 +298,43 @@ public sealed class ContractFileValidityApiTests
         Assert.Equal(ActorUserId, listed.AttachedByUserId);
     }
 
+    /// <summary>
+    /// AC 8's other axis — the one the two tests above hold constant. The resolver withholds the
+    /// email from a caller without <c>users.read</c> and falls back to it for one that holds it, and
+    /// that gate is claim-conditional on the <b>caller</b>. Varying only the attacher's profile would
+    /// still pass if the gate were dropped for this endpoint, so the claim is varied here directly.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ListFiles_ResolvesTheAttacherUnderTheCallersOwnClaims(bool callerHoldsUsersRead)
+    {
+        string[] permissions = callerHoldsUsersRead
+            ? [.. ReadWriteWithFiles, PermissionClaims.UsersRead]
+            : ReadWriteWithFiles;
+
+        await using var factory = new ApiFactory(permissions);
+        using var client = factory.CreateClient();
+        // No profile at all, so the resolver's only remaining candidate is the email.
+        await SeedActorProfileAsync(factory, displayName: null);
+        var contractId = await CreateContractAsync(client);
+        await AttachAsync(factory, client, contractId);
+
+        var response = await client.GetAsync($"{Path}/{contractId}/files");
+        var body = await response.Content.ReadAsStringAsync();
+        var listed = Assert.Single((await response.Content.ReadFromJsonAsync<List<ExistingContractFile>>())!);
+
+        if (callerHoldsUsersRead)
+        {
+            Assert.Equal(ActorEmail, listed.AttachedByName);
+        }
+        else
+        {
+            Assert.Equal(UserDisplayNameResolver.UnknownUser, listed.AttachedByName);
+            Assert.DoesNotContain(ActorEmail, body, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     // ── AC 10: scalar ids only ─────────────────────────────────────────────────
 
     /// <summary>
@@ -460,7 +497,8 @@ public sealed class ContractFileValidityApiTests
     /// <summary>
     /// AC 18 — a row that already violates the ordering rule is still returned unchanged. The rule is
     /// applied on write only; making a read enforce a write rule would turn stale data into an outage.
-    /// Asserted on the contract surface, where the equivalent row can only be produced past the service.
+    /// The contract half of the pair; the ACCOUNT endpoint AC 18 actually names is asserted in
+    /// <c>AccountFileValidityApiTests</c>, because that is the surface with rows predating the rule.
     /// </summary>
     [Fact]
     public async Task ListFiles_APreExistingViolatingRow_IsStillReturnedUnchanged()
@@ -576,14 +614,15 @@ public sealed class ContractFileValidityApiTests
         return contact.ContactId;
     }
 
-    private static async Task SeedActorProfileAsync(OdysseyApiFactory factory)
+    private static async Task SeedActorProfileAsync(OdysseyApiFactory factory, string? displayName = DisplayName)
     {
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await db.Database.EnsureCreatedAsync();
 
         db.Users.Add(new ApplicationUser { Id = ActorUserId, UserName = ActorEmail, Email = ActorEmail });
-        db.UserProfiles.Add(new UserProfile { UserId = ActorUserId, DisplayName = DisplayName });
+        if (displayName is not null)
+            db.UserProfiles.Add(new UserProfile { UserId = ActorUserId, DisplayName = displayName });
         await db.SaveChangesAsync();
     }
 

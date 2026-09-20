@@ -328,4 +328,39 @@ public class SourceConventionTests
         Assert.True(violations.Count == 0,
             "Inline @code blocks that belong in a code-behind partial:\n" + string.Join('\n', violations));
     }
+
+    /// <summary>
+    /// A disclosure button — one that shows and hides a region — states its expanded state in
+    /// <c>aria-expanded</c>, not in its changing visible label alone (WCAG 2.2 SC 4.1.2). A label that
+    /// flips between "Add validity" and "Hide validity" reads correctly to a sighted user and tells a
+    /// screen-reader user nothing about what the control currently does.
+    /// </summary>
+    /// <remarks>
+    /// Scoped to the per-file validity toggle (<c>.afm-meta-toggle</c>), which the account and
+    /// contract upload dialogs each render. It is a lint rather than a render test because the rule's
+    /// subject is "every copy of this control", and the two copies were written months apart — the
+    /// contract one was carried forward from the account one, missing attribute included, which is
+    /// exactly how a third copy would acquire it.
+    /// </remarks>
+    [Fact]
+    public void Every_validity_disclosure_toggle_states_its_expanded_state()
+    {
+        var violations = new List<string>();
+
+        foreach (var file in ClientSource.RazorFiles())
+        {
+            var text = File.ReadAllText(file);
+            foreach (Match match in Regex.Matches(text, @"<button\b[^>]*\bafm-meta-toggle\b[^>]*>", RegexOptions.Singleline))
+            {
+                if (match.Value.Contains("aria-expanded", StringComparison.Ordinal))
+                    continue;
+
+                violations.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, match.Index)} — " +
+                               "the validity disclosure button needs aria-expanded; the changing label is not enough.");
+            }
+        }
+
+        Assert.True(violations.Count == 0,
+            "Disclosure buttons with no programmatically determinable state:\n" + string.Join('\n', violations));
+    }
 }

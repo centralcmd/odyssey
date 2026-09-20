@@ -1,9 +1,17 @@
+using System.Security.Claims;
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using MudBlazor;
 using MudBlazor.Services;
+using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
+using Odyssey.Client.Pages.Finance;
+using Odyssey.Client.Services;
+using Odyssey.Dtos.Finance;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -246,6 +254,95 @@ public class ContractDocumentValidityTests
 
         Assert.Null(harness.Submit());
         Assert.Contains("can’t be before", harness.Markup, StringComparison.Ordinal);
+    }
+
+    // ── The archive state (§9.3 — and what it does NOT cover) ────────────────
+
+    /// <summary>
+    /// An archived contract refuses <c>POST …/files</c> and <c>PUT …/files/{fileId}</c> with a
+    /// <c>400</c>, so <b>Edit</b> is withheld rather than offered and then failed.
+    /// </summary>
+    [Fact]
+    public async Task ArchivedContract_WithholdsEdit()
+    {
+        await using var ctx = NewTableContext();
+        var labels = OpenRowMenu(ctx, RenderTable(ctx, archived: true));
+
+        Assert.DoesNotContain("Edit", labels);
+    }
+
+    /// <summary>
+    /// <b>Detach stays live on an archived contract.</b> <c>ContractService.DetachFile</c> carries no
+    /// archive guard — the same asymmetry <c>DeleteParty</c> has, on the same reasoning: detaching a
+    /// link needs only the link. Withholding it would refuse something the API allows, and it is the
+    /// easiest thing to get wrong here, because the design system's own contract table bundles Edit
+    /// and Delete behind one read-only flag.
+    /// </summary>
+    [Fact]
+    public async Task ArchivedContract_KeepsDetach()
+    {
+        await using var ctx = NewTableContext();
+        var labels = OpenRowMenu(ctx, RenderTable(ctx, archived: true));
+
+        Assert.Contains("Delete", labels);
+    }
+
+    /// <summary>Both are offered on a live contract — so the assertions above fail for the right reason.</summary>
+    [Fact]
+    public async Task LiveContract_OffersBothEditAndDetach()
+    {
+        await using var ctx = NewTableContext();
+        var labels = OpenRowMenu(ctx, RenderTable(ctx, archived: false));
+
+        Assert.Contains("Edit", labels);
+        Assert.Contains("Delete", labels);
+    }
+
+    private static readonly ContractFileItem Attachment = new(
+        Guid.Parse("22222222-2222-2222-2222-222222222222"),
+        "maple-st-lease-signed.pdf",
+        "application/pdf",
+        25_800,
+        new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc),
+        ContractFileType.Signed);
+
+    private static BunitContext NewTableContext()
+    {
+        var ctx = NewContext();
+        ctx.Services.AddSingleton(Mock.Of<IContractsApiClient>());
+        ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
+        ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
+        ctx.Services.AddSingleton(Mock.Of<IContactQuickCreate>());
+        ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedOut());
+        return ctx;
+    }
+
+    private sealed class SignedOut : AuthenticationStateProvider
+    {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
+            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
+    }
+
+    private static IRenderedComponent<ContractFilesTable> RenderTable(BunitContext ctx, bool archived) =>
+        ctx.Render<ContractFilesTable>(p => p
+            .Add(t => t.ContractId, Guid.Parse("33333333-3333-3333-3333-333333333333"))
+            .Add(t => t.Files, new[] { Attachment })
+            .Add(t => t.CanDownload, true)
+            .Add(t => t.CanUpdate, true)
+            .Add(t => t.CanDelete, true)
+            .Add(t => t.Archived, archived));
+
+    /// <summary>
+    /// The labels on the row's open overflow menu. An item's TextContent also carries its leading
+    /// icon ligature, so the label is read off the body span — matching the whole item's text would
+    /// make an absence assertion pass for the wrong reason.
+    /// </summary>
+    private static IReadOnlyList<string> OpenRowMenu(BunitContext ctx, IRenderedComponent<ContractFilesTable> cut)
+    {
+        var popover = ctx.Render<MudPopoverProvider>();
+        cut.Find("button[aria-label='Row actions']").Click();
+        popover.WaitForElement("div.mud-menu-item");
+        return [.. popover.FindAll(".odc-menu-item-body > span:first-child").Select(e => e.TextContent.Trim())];
     }
 
     /// <summary>

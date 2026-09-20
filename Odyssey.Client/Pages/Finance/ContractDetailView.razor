@@ -88,13 +88,15 @@
                             OnFilesRefreshed="OnFilesRefreshed"
                             Empty="_emptyDocs" />
     </div>
-    @* An archived contract refuses every document write with a 400, so the reason is stated once
-       here rather than left to a dialog that saves and then fails. *@
+    @* An archived contract refuses attaching and editing a document with a 400, so the reason is
+       stated once here rather than left to a dialog that saves and then fails. Detaching is NOT
+       refused — the line says exactly what is unavailable, so it cannot describe a restriction the
+       server does not apply. *@
     @if (Archived && Contract.Files.Count > 0)
     {
         <div class="con-empty-line">
             <span class="material-icons" aria-hidden="true">lock</span>
-            <div style="flex:1;">This contract is archived. Restore it to edit or remove its documents.</div>
+            <div style="flex:1;">This contract is archived. Restore it to attach or edit its documents.</div>
         </div>
     }
 </div>

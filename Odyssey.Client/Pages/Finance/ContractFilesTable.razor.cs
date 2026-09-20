@@ -144,8 +144,14 @@ public partial class ContractFilesTable
     private EventCallback<OdsRecordSaveEventArgs> SaveAction =>
         CanUpdate && !Archived ? EventCallback.Factory.Create<OdsRecordSaveEventArgs>(this, HandleSaveAsync) : default;
 
+    /// <summary>
+    /// Detach stays live on an archived contract, deliberately unlike Edit. <c>ContractService</c>
+    /// guards <c>AttachFile</c> and <c>UpdateFile</c> on the archive state and does <b>not</b> guard
+    /// <c>DetachFile</c> — the same asymmetry <c>DeleteParty</c> has, on the same reasoning: detaching
+    /// a link needs only the link. Withholding it here would refuse something the API allows.
+    /// </summary>
     private EventCallback<OdsFilesRow> DeleteAction =>
-        CanDelete && !Archived ? EventCallback.Factory.Create<OdsFilesRow>(this, row => ConfirmDetachAsync(FileById(row.Id))) : default;
+        CanDelete ? EventCallback.Factory.Create<OdsFilesRow>(this, row => ConfirmDetachAsync(FileById(row.Id))) : default;
 
     /// <summary>
     /// <c>PUT …/files/{fileId}</c> — a <b>full replacement</b> of the link row's type and validity,
@@ -186,10 +192,8 @@ public partial class ContractFilesTable
             IssuedBy = issuedBy,
         });
 
-        if (!result.Toast(Snackbar, "Unable to update document"))
+        if (!result.Toast(Snackbar, "Unable to update document", "Document updated."))
             return;
-
-        Snackbar.Add("Document updated.", Severity.Success);
 
         // The targeted refresh. A failed re-read falls back to the whole-contract refetch rather
         // than leaving the table showing what the user typed as though it were what was stored.
