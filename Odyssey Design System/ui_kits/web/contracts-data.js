@@ -15,7 +15,7 @@
                         term (the contract's own extent), not an unset value,
                         exactly as an insurance party's term reads.
      • ContractFile   { id, fileMetadataId, fileType, attachedByUserId,
-                        attachedAtUtc } — a REFERENCE to an existing FileMetadata
+                        attachedAtUtc, validFrom, validTo, issuedAt, issuedBy } — a REFERENCE to an existing FileMetadata
                         record (rendered with the FilesTable shape
                         { id, name, kind, size, uploaded }, `kind` = a
                         ContractFileType key).
@@ -125,7 +125,7 @@
         { id: 'cp-emp-2', accountId: '1', role: 'Unspecified', fromDate: null, toDate: null },
       ],
       files: [
-        { id: 'cf-emp-1', fileMetadataId: 'fm-emp-offer', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2024-02-20T09:05:00Z' },
+        { id: 'cf-emp-1', fileMetadataId: 'fm-emp-offer', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2024-02-20T09:05:00Z', validFrom: '2024-03-01', validTo: null, issuedAt: '2024-02-18', issuedBy: 'c3' },
         { id: 'cf-emp-2', fileMetadataId: 'fm-emp-handbook', kind: 'Other', attachedByUserId: 'u-owner', attachedAtUtc: '2024-02-20T09:06:00Z' },
       ],
     },
@@ -141,9 +141,9 @@
         { id: 'cp-lease-2', contactId: 'c9', role: 'Other', fromDate: '2026-02-01', toDate: null },
       ],
       files: [
-        { id: 'cf-lease-1', fileMetadataId: 'fm-lease-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-08-14T10:02:00Z' },
-        { id: 'cf-lease-2', fileMetadataId: 'fm-lease-amend', kind: 'Amendment', attachedByUserId: 'u-owner', attachedAtUtc: '2026-01-08T14:00:00Z' },
-        { id: 'cf-lease-3', fileMetadataId: 'fm-lease-letter', kind: 'Correspondence', attachedByUserId: 'u-owner', attachedAtUtc: '2026-05-30T11:00:00Z' },
+        { id: 'cf-lease-1', fileMetadataId: 'fm-lease-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-08-14T10:02:00Z', validFrom: '2025-09-01', validTo: '2026-08-31', issuedAt: '2025-08-12', issuedBy: 'c9' },
+        { id: 'cf-lease-2', fileMetadataId: 'fm-lease-amend', kind: 'Amendment', attachedByUserId: 'u-owner', attachedAtUtc: '2026-01-08T14:00:00Z', validFrom: '2026-02-01', validTo: null, issuedAt: '2026-01-07', issuedBy: 'c9' },
+        { id: 'cf-lease-3', fileMetadataId: 'fm-lease-letter', kind: 'Correspondence', attachedByUserId: 'u-owner', attachedAtUtc: '2026-05-30T11:00:00Z', validFrom: null, validTo: null, issuedAt: '2026-05-29', issuedBy: 'c9' },
       ],
     },
     {
@@ -155,7 +155,7 @@
         { id: 'cp-house-2', contactId: 'c9', role: 'Seller', fromDate: null, toDate: null },
       ],
       files: [
-        { id: 'cf-house-1', fileMetadataId: 'fm-house-deed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2021-04-15T12:00:00Z' },
+        { id: 'cf-house-1', fileMetadataId: 'fm-house-deed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2021-04-15T12:00:00Z', validFrom: '2021-04-09', validTo: null, issuedAt: '2021-04-09', issuedBy: 'c9' },
       ],
     },
     {
@@ -166,7 +166,7 @@
         { id: 'cp-fiber-1', contactId: 'c3', role: 'ServiceProvider', fromDate: null, toDate: null },
       ],
       files: [
-        { id: 'cf-fiber-1', fileMetadataId: 'fm-fiber-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-01-22T09:03:00Z' },
+        { id: 'cf-fiber-1', fileMetadataId: 'fm-fiber-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-01-22T09:03:00Z', validFrom: '2025-02-01', validTo: '2027-01-31', issuedAt: '2025-01-20', issuedBy: 'c3' },
         { id: 'cf-fiber-2', fileMetadataId: 'fm-misc-1', kind: 'Correspondence', attachedByUserId: 'u-owner', attachedAtUtc: '2026-03-15T09:00:00Z' },
       ],
     },
@@ -228,7 +228,7 @@
         { id: 'cp-solar-1', accountId: '7', role: 'Other', fromDate: null, toDate: null },
       ],
       files: [
-        { id: 'cf-solar-1', fileMetadataId: 'fm-solar-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2023-05-28T09:04:00Z' },
+        { id: 'cf-solar-1', fileMetadataId: 'fm-solar-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2023-05-28T09:04:00Z', validFrom: '2023-06-01', validTo: '2033-05-31', issuedAt: '2023-05-24', issuedBy: 'c8' },
         { id: 'cf-solar-2', fileMetadataId: 'fm-solar-corr', kind: 'Correspondence', attachedByUserId: 'u-owner', attachedAtUtc: '2025-11-02T16:00:00Z' },
       ],
     },
@@ -498,6 +498,12 @@
       const meta = D.contractFileById[cf.fileMetadataId] || {};
       return { id: cf.id, fileMetadataId: cf.fileMetadataId, name: cf.name || meta.name || cf.fileMetadataId,
         kind: cf.kind, size: cf.size || meta.size || '—', uploaded: cf.uploaded || meta.uploaded || (cf.attachedAtUtc || '').slice(0, 10),
+        // The four validity fields ride on the LINK row, not the FileMetadata:
+        // the same stored file filed against two contracts can carry a
+        // different period on each. Null on every document attached before the
+        // feature existed — the table prints an em dash, never a guess.
+        validFrom: cf.validFrom || null, validTo: cf.validTo || null,
+        issuedAt: cf.issuedAt || null, issuedBy: cf.issuedBy || null,
         contentType: cf.contentType || meta.contentType };
     },
 

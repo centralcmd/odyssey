@@ -1,0 +1,66 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Contract document validity" subtitle="The Documents section of a contract — FilesTable in its contract configuration: the four validity columns (Valid from · Valid to · Issued · Issued by), and an Edit dialog with no rename (the name lives on the FileMetadata) and a required document type. Live — open a row's ⋯ menu." viewport="1280x620" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · Contract document validity</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="../ui_kits/web/kit.css" />
+<link rel="stylesheet" href="../ui_kits/web/admin.css" />
+<link rel="stylesheet" href="../ui_kits/web/contracts.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<script src="../ui_kits/web/data.js"></script>
+<script src="../ui_kits/web/insurance-data.js"></script>
+<script src="../ui_kits/web/contracts-data.js"></script>
+<style>
+html,body{margin:0;background:var(--mud-palette-background)}
+body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:26px 28px}
+.cap{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:0 0 12px}
+.cap code{font-family:var(--font-mono);text-transform:none;letter-spacing:0;color:var(--brand-text)}
+.surface{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);overflow-x:auto}
+.note{margin:14px 2px 0;font:var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);color:var(--mud-palette-text-secondary);max-width:96ch}
+.note b{color:var(--mud-palette-text-primary);font-weight:var(--fw-medium)}
+</style>
+</head>
+<body>
+<div class="cap">Contract documents <code>&lt;FilesTable validityColumns issuers renameable={false} requireType /&gt;</code></div>
+<div class="surface"><div id="root"></div></div>
+<p class="note">A contract document carries the same four validity fields an account document does — <b>Valid from</b> · <b>Valid to</b> · <b>Issued</b> · <b>Issued by</b> (a contact id, resolved to a name by <b>issuerFor</b>) — all optional, all nullable, so a document attached before the feature existed prints an em dash rather than a guess. Two things differ from the account table. <b>renameable={false}</b>: the update verb replaces the document's type and validity only, because the name belongs to the <b>FileMetadata</b> the link references — the dialog reads “Edit document” and offers no rename. <b>requireType</b>: the update is a full replacement and <b>Signed</b> is the enum's zero member, so the type carries the obligation <b>*</b> and an empty submit is refused, never defaulted into a claim that the file is the signed agreement. An omitted date <b>clears</b> the stored value; “Valid to” before “Valid from”, and a year outside the range the column can store, are refused inline on the field that holds the mistake. An archived contract refuses both writes, so the table drops Edit and Delete and the section says why.</p>
+<script type="text/babel" data-presets="env,react">
+const { FilesTable } = window.OdysseyDesignSystem_d5aa51;
+const D = window.OdysseyData, H = window.OdysseyHelpers;
+const contract = (D.contracts || []).find(c => c.id === 'ct-lease') || (D.contracts || [])[0];
+const issuers = (D.contacts || []).filter(c => !c.archived).map(c => {
+  const t = (D.contactTypeByKey || {})[c.type] || {};
+  return { value: c.id, label: c.name, icon: t.icon, iconColor: t.color };
+});
+function Demo() {
+  const [files, setFiles] = React.useState((contract.files || []).map(H.conFileRow));
+  return (
+    <FilesTable
+      files={files}
+      typeFor={(f) => H.contractFileTypeInfo(f.kind)}
+      kinds={D.contractFileTypes}
+      formatDate={H.conDate}
+      validityColumns
+      renameable={false}
+      requireType
+      issuers={issuers}
+      issuerFor={(f) => { const c = f.issuedBy && D.contactById[f.issuedBy]; return c ? c.name : null; }}
+      onSave={(id, patch) => setFiles(fs => fs.map(f => (f.id === id ? { ...f, ...patch } : f)))}
+      onDelete={(f) => setFiles(fs => fs.filter(x => x.id !== f.id))}
+      actions={(f) => [
+        { icon: 'download', label: 'Download', onClick: () => {} },
+        { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(f.id); } },
+      ]}
+      empty="No documents on this contract yet."
+    />
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

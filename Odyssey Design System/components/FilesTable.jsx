@@ -35,6 +35,21 @@
  *     `onSave` to enable; omit it for a read-only surface. `kinds` feeds the
  *     type picker (default: the canonical ACCOUNT_FILE_TYPES registry).
  *     `issuerFor(file)` resolves an `issuedBy` id to a display name.
+ *   • `renameable={false}` drops the File-name field from that dialog (and
+ *     `name` from the patch) on surfaces whose update verb doesn't accept a
+ *     name — a contract document's name lives on the FileMetadata it
+ *     references, and `PUT /api/contracts/{id}/files/{fileId}` carries the
+ *     document type and the four validity fields only. The dialog then reads
+ *     "Edit document".
+ *   • `requireType` marks the type picker with the obligation `*` and refuses
+ *     an empty submit — for a full-replacement update whose enum has no
+ *     "leave unchanged" value and whose zero member is meaningful
+ *     (`ContractFileType.Signed`), so an unsent type can never be defaulted
+ *     into a claim that a document is the signed copy.
+ *   • Each date is checked against the range its column can store (years
+ *     1000–9999) and rejected inline on the offending field — the client half
+ *     of the per-field 400 the service returns, so a fat-fingered year is
+ *     never a round-trip into an opaque 500.
  *   • `actions(file)` supplies the file-specific menu items — Preview /
  *     Download / Analyze / Copy ID — slotted between Edit and Delete per the
  *     menu convention. "Preview" opens the document (FileViewerModal).
@@ -70,13 +85,25 @@ const ftShortDate = (iso) => {
   return isNaN(d) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
 };
 
+/* The storable range of the `datetime` column the dates land in. A year
+   outside it is refused per-field, by the column's limit and not by any
+   judgement about plausible document dates. */
+const FT_YEAR_MIN = 1000;
+const FT_YEAR_MAX = 9999;
+const ftYearBad = (iso) => {
+  if (!iso) return false;
+  const y = Number(String(iso).slice(0, 4));
+  return !y || y < FT_YEAR_MIN || y > FT_YEAR_MAX;
+};
+const FT_YEAR_MSG = `Enter a year between ${FT_YEAR_MIN} and ${FT_YEAR_MAX}.`;
+
 const ftKindChip = (f, fi) => (
   <span className="odc-chip" style={{ background: fi.soft, color: fi.color }}>{fi.label || f.kind}</span>
 );
 
 /* ---- A labeled DatePicker, matching the kit's `.field` shape (the DS
    DatePicker itself carries no label). Used by the file-validity editor. ---- */
-function FTDateField({ label, value, onChange, min, max }) {
+function FTDateField({ label, value, onChange, min, max, error }) {
   const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
   const DatePicker = NS.DatePicker;
   if (!DatePicker) return null;
@@ -84,6 +111,7 @@ function FTDateField({ label, value, onChange, min, max }) {
     <div className="field">
       <div className="label">{label}</div>
       <DatePicker value={value || null} onChange={onChange} min={min} max={max} full />
+      {error ? <div className="helper" style={{ color: 'var(--mud-palette-error)' }}>{error}</div> : null}
     </div>
   );
 }
@@ -93,7 +121,7 @@ function FTDateField({ label, value, onChange, min, max }) {
    surfaces that track it — i.e. when `issuers` is supplied. File bytes are
    immutable; you replace a file by re-uploading. Uses the standard DS Modal so
    the surface matches every other create/edit dialog in the kit. ---- */
-function FTEditModal({ f, kinds, issuers, onCreateContact, onSave, onClose }) {
+function FTEditModal({ f, kinds, issuers, onCreateContact, onSave, onClose, renameable = true, requireType = false }) {
   const { useState } = React;
   const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
   const { Field, Button, Modal, TypeSelect, AccountFileTypeSelect, ContactSelect } = NS;
@@ -105,21 +133,25 @@ function FTEditModal({ f, kinds, issuers, onCreateContact, onSave, onClose }) {
   const [issuedBy, setIssuedBy] = useState(f.issuedBy || '');
   const [touched, setTouched] = useState(false);
   if (!Field || !Button || !Modal) return null;
-  const valid = name.trim().length > 0;
+  const valid = !renameable || name.trim().length > 0;
+  const typeMissing = requireType && !kind;
   const rangeBad = !!(validFrom && validTo && validTo < validFrom);
+  const yearBad = { validFrom: ftYearBad(validFrom), validTo: ftYearBad(validTo), issuedAt: ftYearBad(issuedAt) };
+  const anyYearBad = yearBad.validFrom || yearBad.validTo || yearBad.issuedAt;
   const showValidity = Array.isArray(issuers);
   const submit = () => {
     setTouched(true);
-    if (!valid || rangeBad) return;
+    if (!valid || typeMissing || rangeBad || anyYearBad) return;
+    const base = renameable ? { name: name.trim(), kind } : { kind };
     onSave(showValidity
-      ? { name: name.trim(), kind,
+      ? { ...base,
           validFrom: validFrom || null, validTo: validTo || null,
           issuedAt: issuedAt || null, issuedBy: issuedBy || null }
-      : { name: name.trim(), kind });
+      : base);
   };
   return (
     <Modal
-      title="Edit file"
+      title={renameable ? 'Edit file' : 'Edit document'}
       subtitle={f.name}
       icon="edit"
       onClose={onClose}
@@ -129,31 +161,37 @@ function FTEditModal({ f, kinds, issuers, onCreateContact, onSave, onClose }) {
           <Button variant="filled" color="primary" icon="check" onClick={submit}>Save changes</Button>
         </React.Fragment>
       }>
-      <Field label="File name" value={name} required autoFocus
-        onChange={(v) => { setName(v); setTouched(true); }}
-        error={touched && !valid ? 'File name is required.' : undefined} />
+      {renameable ? (
+        <Field label="File name" value={name} required autoFocus
+          onChange={(v) => { setName(v); setTouched(true); }}
+          error={touched && !valid ? 'File name is required.' : undefined} />
+      ) : null}
       {/* Vocabulary-driven: renders whatever `kinds` registry the surface
           supplies (transaction / account / policy / tax file types) through
           the same TypeSelect engine the upload picker uses, so the control is
           identical everywhere. Falls back to the account-typed wrapper only if
           no kinds were provided. */}
       {TypeSelect && kinds ? (
-        <TypeSelect label="Document type" value={kind} types={kinds}
-          placeholder="Select type…" onChange={(k) => setKind(k)} />
+        <TypeSelect label="Document type" value={kind} types={kinds} required={requireType}
+          placeholder="Select type…" onChange={(k) => setKind(k)}
+          error={touched && typeMissing ? 'Pick the document type.' : undefined} />
       ) : AccountFileTypeSelect ? (
-        <AccountFileTypeSelect label="Document type" value={kind} types={kinds}
+        <AccountFileTypeSelect label="Document type" value={kind} types={kinds} required={requireType}
           onChange={(k) => setKind(k)} />
       ) : null}
       {showValidity && (
         <React.Fragment>
-          <FTDateField label="Valid from" value={validFrom} onChange={setValidFrom} max={validTo || undefined} />
-          <FTDateField label="Valid to" value={validTo} onChange={setValidTo} min={validFrom || undefined} />
+          <FTDateField label="Valid from" value={validFrom} onChange={setValidFrom} max={validTo || undefined}
+            error={yearBad.validFrom ? FT_YEAR_MSG : undefined} />
+          <FTDateField label="Valid to" value={validTo} onChange={setValidTo} min={validFrom || undefined}
+            error={yearBad.validTo ? FT_YEAR_MSG : undefined} />
           {rangeBad && (
             <div className="helper" style={{ color: 'var(--mud-palette-error)' }}>
               “Valid to” can’t be before “Valid from”.
             </div>
           )}
-          <FTDateField label="Issued" value={issuedAt} onChange={setIssuedAt} />
+          <FTDateField label="Issued" value={issuedAt} onChange={setIssuedAt}
+            error={yearBad.issuedAt ? FT_YEAR_MSG : undefined} />
           {ContactSelect ? (
             <ContactSelect label="Issued by" optional value={issuedBy} onChange={setIssuedBy}
               options={issuers} placeholder="Search contacts…"
@@ -175,6 +213,8 @@ export function FilesTable({
   issuers,
   onCreateContact,
   onDelete,
+  renameable = true,
+  requireType = false,
   formatDate = ftDate,
   formatSize,
   validityColumns = false,
@@ -277,6 +317,8 @@ export function FilesTable({
         f={editFile}
         kinds={kinds}
         issuers={issuers}
+        renameable={renameable}
+        requireType={requireType}
         onCreateContact={onCreateContact}
         onClose={() => setEditFile(null)}
         onSave={(patch) => {

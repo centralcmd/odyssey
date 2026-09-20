@@ -70,14 +70,15 @@
   <div class="cpt-grid" id="tax-grid"></div>
 
   <div class="spec-doc">
-    <h2>Document validity metadata <span style="font:500 11px/1 var(--font-mono);color:var(--mud-palette-text-disabled);">— AccountFile</span></h2>
-    <p class="spec-lead">An account file carries four optional, nullable fields describing the <b>document's</b> validity (not the raw bytes). They surface in the Files-table detail well and the inline / upload editors; the <code>ValidFrom</code>–<code>ValidTo</code> pair drives future expiry alerts.</p>
+    <h2>Document validity metadata <span style="font:500 11px/1 var(--font-mono);color:var(--mud-palette-text-disabled);">— AccountFile · ContractFile</span></h2>
+    <p class="spec-lead">An account file and a contract document each carry the same four optional, nullable fields describing the <b>document's</b> validity (not the raw bytes). They ride on the <b>link</b> row, so the same stored file filed in two places can carry a different period in each. They surface in the Files-table validity columns and detail well, the inline edit dialog and the upload editors.</p>
     <dl class="cpt-meta" style="grid-template-columns:auto auto 1fr;border-top:none;padding-top:0;">
       <dt>ValidFrom</dt><dd>DateTime?</dd><dd style="font-family:var(--font-sans);">When the document takes effect — e.g. a policy start.</dd>
       <dt>ValidTo</dt><dd>DateTime?</dd><dd style="font-family:var(--font-sans);">When it expires — policy end, warranty expiry.</dd>
       <dt>IssuedAt</dt><dd>DateTime?</dd><dd style="font-family:var(--font-sans);">When the document was issued / signed.</dd>
       <dt>IssuedBy</dt><dd>Guid?</dd><dd style="font-family:var(--font-sans);">Issuing institution — FK to Contacts.</dd>
     </dl>
+    <p class="spec-lead" style="margin-top:14px;">One rule governs all four write paths (account attach / update, contract attach / update): each date is normalised to UTC and checked against the range its column can store (years 1000–9999), and <code>ValidTo</code> is never before <code>ValidFrom</code> — each failure a per-field <code>400</code> on the responsible control. Nothing derives a status from the pair: no expiry badge, no “expiring soon” roll-up, no filtering or sorting by validity. A contract document's update takes the type and these four only — the name belongs to the FileMetadata — and the type is <b>required</b>, because the enum's zero member is <code>Signed</code> and an unsent type must never be defaulted into a claim that the file is the signed agreement.</p>
   </div>
 
   <div class="spec-doc">
