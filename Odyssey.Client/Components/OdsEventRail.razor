@@ -18,7 +18,13 @@
     would claim otherwise.
 *@
 
-<div class="@RootClass" @attributes="UserAttributes">
+@* role="list" because that is what the rail IS — a log the reader steps through — and without it
+   AT announces a run of anonymous divs with no count and no per-entry boundary (WCAG 1.3.1). Every
+   direct child carries role="listitem", MARKERS INCLUDED: role="list" admits only listitem children,
+   and giving a marker role="separator" instead would make the list malformed, which some AT answers
+   by dropping the list semantics altogether — losing the thing this was added for. A year sitting on
+   the line is a point in the log, so reading it as one of its items is honest. *@
+<div class="@RootClass" role="list" @attributes="UserAttributes">
     @ChildContent
 </div>
 

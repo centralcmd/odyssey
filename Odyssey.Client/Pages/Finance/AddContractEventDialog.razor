@@ -54,13 +54,20 @@
                            Value="@_type.ToString()" ValueChanged="PickType"
                            Types="OdsTypeRegistries.ContractEventTypes" Help="@TypeHelp" />
 
-            <OdsFieldShell Label="When" Required="true" LabelId="cev-when-label"
-                           Error="@_errors.GetValueOrDefault("occurredAt")"
-                           Help="@(_errors.ContainsKey("occurredAt") ? null : "Date and time, in the past. A log, not a plan.")">
+            @* The helper and the error ride on the DATE PICKER, not on the shell. OdsFieldShell derives
+               its help/error element ids from HtmlFor, and a two-control group has no single control
+               to point HtmlFor at — so a shell-level Help or Error here would render text with no id
+               and nothing referencing it, leaving the group undescribed (WCAG 1.3.1). MudBlazor wires
+               its own aria-describedby for HelperText/ErrorText, and the date is the control the
+               future bound is actually about, so the message lands where the fix is. *@
+            <OdsFieldShell Label="When" Required="true" LabelId="cev-when-label">
                 <div class="cev-when" role="group" aria-labelledby="cev-when-label">
                     <OdsDatePicker Value="_date" ValueChanged="OnDateChanged"
                                    Label="Date" Required="true" Max="Today"
-                                   Placeholder="Pick a date" />
+                                   Placeholder="Pick a date"
+                                   Error="@_errors.ContainsKey("occurredAt")"
+                                   ErrorText="@_errors.GetValueOrDefault("occurredAt")"
+                                   HelperText="@(_errors.ContainsKey("occurredAt") ? null : "Date and time, in the past. A log, not a plan.")" />
                     <OdsTimeField Label="Time" Value="_time" ValueChanged="OnTimeChanged" />
                 </div>
             </OdsFieldShell>

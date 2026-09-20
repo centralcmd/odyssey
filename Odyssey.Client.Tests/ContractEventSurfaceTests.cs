@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Text.RegularExpressions;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -171,6 +172,107 @@ public class ContractEventSurfaceTests
 
         Assert.Contains("No events yet", cut.Markup, StringComparison.Ordinal);
         Assert.Empty(cut.FindAll(".odc-er-item"));
+    }
+
+    // ── Accessibility (from the #143 accessibility review) ───────────────────
+
+    /// <summary>
+    /// WCAG 1.3.1 — the rail is a LIST, and says so. Without the roles, AT announces a run of
+    /// anonymous divs with no count and no per-entry boundary.
+    /// </summary>
+    /// <remarks>
+    /// Markers carry <c>listitem</c> too, and that is the load-bearing half: <c>role="list"</c> admits
+    /// only <c>listitem</c> children, so giving a year marker <c>role="separator"</c> instead would
+    /// make the list malformed — which some AT answers by dropping the list semantics altogether,
+    /// losing the very thing the roles were added for.
+    /// </remarks>
+    [Fact]
+    public void The_rail_carries_list_semantics_and_every_direct_child_is_a_listitem()
+    {
+        var cut = RenderSection(Lease(),
+        [
+            Event(title: "Newer", occurredAt: new DateTime(2026, 3, 1, 10, 0, 0, DateTimeKind.Utc)),
+            Event(title: "Older", occurredAt: new DateTime(2025, 9, 1, 10, 0, 0, DateTimeKind.Utc)),
+        ]);
+
+        var rail = cut.Find(".odc-er");
+        Assert.Equal("list", rail.GetAttribute("role"));
+
+        var children = rail.Children;
+        Assert.NotEmpty(children);
+        Assert.All(children, child => Assert.Equal("listitem", child.GetAttribute("role")));
+
+        // Not vacuous: the children under test are both kinds, entries AND markers.
+        Assert.NotEmpty(cut.FindAll(".odc-er-item"));
+        Assert.NotEmpty(cut.FindAll(".odc-er-marker"));
+    }
+
+    /// <summary>
+    /// WCAG 2.1.1 — the provenance line reveals on hover or focus-within, and a read-only row contains
+    /// nothing focusable, so focus-within can never fire there. A caller holding <c>contracts.read</c>
+    /// without <c>contracts.update</c> — the seeded <b>User</b> role — sees every row that way, so a
+    /// keyboard-only User would otherwise never be able to see who recorded an event.
+    /// </summary>
+    [Fact]
+    public void A_row_with_no_actions_shows_its_provenance_without_needing_a_reveal()
+    {
+        var readOnly = RenderSection(Lease(), [Event()], canUpdate: false);
+
+        var row = readOnly.Find(".odc-er-item");
+        Assert.Contains("no-actions", row.ClassName, StringComparison.Ordinal);
+        // Nothing focusable in the row is exactly the premise — assert it rather than assume it.
+        Assert.Empty(readOnly.FindAll(".odc-er-item button"));
+
+        // ...and a writable row keeps the quiet, hover-revealed treatment, because there the reveal
+        // has a target: tabbing to the actions cluster fires :focus-within.
+        var writable = RenderSection(Lease(), [Event()], canUpdate: true);
+        Assert.DoesNotContain("no-actions", writable.Find(".odc-er-item").ClassName, StringComparison.Ordinal);
+        Assert.NotEmpty(writable.FindAll(".odc-er-item button"));
+    }
+
+    /// <summary>
+    /// WCAG 1.4.3 — the marker label must not be dimmed a second time. <c>text-secondary</c> is
+    /// already the muted token (~7:1 against the surface); the design system's own
+    /// <c>opacity: 0.75</c> on top of it drops an 11px label to ~3.95:1 light / ~4.45:1 dark, under
+    /// the 4.5:1 AA minimum. A source-lint because a computed style is not observable in bUnit — the
+    /// stylesheet is global, not scoped, so it is never attached to the rendered component.
+    /// </summary>
+    [Fact]
+    public void The_marker_label_is_not_dimmed_below_the_contrast_minimum()
+    {
+        var css = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css"));
+
+        var rule = Regex.Match(css, @"\.odc-er-marker > span \{[^}]*\}", RegexOptions.Singleline);
+        Assert.True(rule.Success, "the marker label rule still exists");
+        Assert.DoesNotContain("opacity", rule.Value, StringComparison.Ordinal);
+        Assert.Contains("--mud-palette-text-secondary", rule.Value, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// WCAG 1.3.1 — the "When" pair's helper and error text must be associated with a control.
+    /// <c>OdsFieldShell</c> derives those element ids from <c>HtmlFor</c>, which a two-control group
+    /// has nothing to point at, so shell-level <c>Help</c>/<c>Error</c> there would render text with
+    /// no id and nothing referencing it. They ride on the date picker instead, where MudBlazor wires
+    /// <c>aria-describedby</c> itself.
+    /// </summary>
+    [Fact]
+    public void The_when_fields_helper_and_error_are_associated_with_a_control()
+    {
+        var cut = RenderDialog(Lease());
+
+        // The group is named, and the shell renders no orphaned (id-less) help node of its own.
+        var group = cut.Find(".cev-when");
+        Assert.Equal("cev-when-label", group.GetAttribute("aria-labelledby"));
+        Assert.NotEmpty(cut.FindAll("#cev-when-label"));
+
+        // The helper text sits inside the picker's own field, which carries the describedby wiring.
+        var helper = cut.Find(".cev-when .mud-input-helper-text");
+        Assert.Contains("A log, not a plan", helper.TextContent, StringComparison.Ordinal);
+        Assert.All(
+            cut.FindAll(".odc-field-help"),
+            node => Assert.False(
+                string.IsNullOrEmpty(node.Id),
+                "a help node with no id is referenced by nothing"));
     }
 
     // ── Writes (§8.6, AC 7) ──────────────────────────────────────────────────

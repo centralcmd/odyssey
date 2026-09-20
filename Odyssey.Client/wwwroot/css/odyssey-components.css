@@ -1709,11 +1709,17 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-er-marker.has-meta .odc-er-meta { margin-top: 4px; }
 .odc-er-marker:hover .odc-er-meta, .odc-er-marker:focus-within .odc-er-meta { opacity: 1; }
 /* Direct child only: the marker's own label. A meta line has its own type, and its inner
-   spans must not inherit the mono uppercase treatment. */
+   spans must not inherit the mono uppercase treatment.
+
+   NO opacity here, deliberately — the design system's own rule carries `opacity: 0.75`, and
+   against THIS theme's tokens that is what breaks WCAG 1.4.3: text-secondary alone measures
+   ~7.35:1 light / ~6.9:1 dark, and three-quarter opacity drops an 11px label to ~3.95:1 / ~4.45:1,
+   under the 4.5:1 AA minimum for normal text. The token is already the muted one; muting it twice
+   is what over-shot. */
 .odc-er-marker > span {
     font: var(--fw-medium) var(--fs-overline)/1 var(--font-mono);
     letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--mud-palette-text-secondary); opacity: 0.75;
+    color: var(--mud-palette-text-secondary);
 }
 .odc-er-marker::before {
     content: ""; position: absolute; left: 16px; top: 50%; box-sizing: border-box;
@@ -1754,6 +1760,11 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-er-item:hover .odc-er-meta, .odc-er-item:focus-within .odc-er-meta { opacity: 1; }
 /* No hover on touch — the provenance must be readable there too. */
 @media (hover: none) { .odc-er-meta { opacity: 1; } }
+/* A row with no actions has nothing focusable in it, so :focus-within can never fire and a
+   keyboard-only user would have NO way to reach the provenance line (WCAG 2.1.1). That is not a
+   corner case: a caller holding contracts.read without contracts.update — the seeded User role —
+   sees every row this way. Where there is no reveal affordance, there is no reveal. */
+.odc-er-item.no-actions .odc-er-meta { opacity: 1; }
 
 /* ---------- Layout utilities ---------- */
 /* Hairline card/panel outline — replaces the inline

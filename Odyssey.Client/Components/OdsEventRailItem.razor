@@ -10,7 +10,7 @@
     reveal off. Same arrangement <OdsTimelineItem> uses.
 *@
 
-<div class="@RootClass" @attributes="UserAttributes">
+<div class="@RootClass" role="listitem" @attributes="UserAttributes">
     @* The glyph is the only thing naming the kind, so it needs an accessible name of its own —
        without IconLabel it is an unlabelled image and the kind is simply not conveyed (WCAG 1.1.1).
        With no label it stays aria-hidden decoration rather than becoming an anonymous img. *@
@@ -78,8 +78,16 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
+    /// <summary>
+    /// <c>no-actions</c> is load-bearing rather than cosmetic: anything in
+    /// <see cref="ChildContent"/> marked <c>.odc-er-meta</c> reveals on hover or focus-within, and a
+    /// row with no <see cref="Actions"/> contains nothing focusable — so focus-within can never fire
+    /// and a keyboard-only user has no way to reach it at all (WCAG 2.1.1). The class is what lets the
+    /// stylesheet show it unconditionally in exactly that case.
+    /// </summary>
     private string RootClass =>
         $"odc-er-item odc-rowactions-host{(Selected ? " sel" : string.Empty)}"
+        + (Actions is null ? " no-actions" : string.Empty)
         + (string.IsNullOrEmpty(Class) ? string.Empty : " " + Class);
 
     private string? NodeStyle => string.IsNullOrEmpty(Color) ? null : $"--odc-er-node-fg:{Color}";

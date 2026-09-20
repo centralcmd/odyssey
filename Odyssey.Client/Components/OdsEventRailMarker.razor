@@ -9,7 +9,8 @@
     endpoint with an author or a source worth naming.
 *@
 
-<div class="@RootClass" @attributes="UserAttributes">
+@* role="listitem" — see OdsEventRail for why a marker is an item of the list rather than a separator. *@
+<div class="@RootClass" role="listitem" @attributes="UserAttributes">
     <span>@ChildContent</span>
     @if (Meta is not null)
     {
