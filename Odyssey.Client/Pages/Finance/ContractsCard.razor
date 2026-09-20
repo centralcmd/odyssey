@@ -99,6 +99,10 @@
                            never reads as empty. *@
                         new OdsRecordCount("sell", c.TermCount.ToString(CultureInfo.CurrentCulture), "Terms"),
                         new OdsRecordCount("description", c.FileCount.ToString(CultureInfo.CurrentCulture), "Documents"),
+                        @* The event log's size, last — the same order the body's sections run in.
+                           Archival does not lock the log, so this count is live on an archived
+                           contract too. *@
+                        new OdsRecordCount("history", c.EventCount.ToString(CultureInfo.CurrentCulture), "Events"),
                     };
                 }
                 @* One accent per record, taken from the contract's TYPE — the header mark, every tile

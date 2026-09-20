@@ -40,6 +40,19 @@ public sealed record ContractListItem
     /// </summary>
     public int TermCount { get; set; }
 
+    /// <summary>
+    /// The number of entries in the contract's event log (issue #138). Counted the same way
+    /// <see cref="TermCount"/> is — one correlated subquery in the list read, never a second grouped
+    /// query — so a page of 50 costs the same as a page of 1.
+    ///
+    /// <para>
+    /// The collapsed card's counts strip is the body's table of contents, and the design system lists
+    /// four entries in it: Parties · Terms · Documents · Events. A section present in the body and
+    /// absent from the strip reads as a section that is empty.
+    /// </para>
+    /// </summary>
+    public int EventCount { get; set; }
+
     public DateTime? Archived { get; set; }
 
     /// <summary>

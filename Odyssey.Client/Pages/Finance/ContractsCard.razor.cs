@@ -969,7 +969,7 @@ public partial class ContractsCard
                     Icon = "sell",
                     Label = "New term",
                     Disabled = true,
-                    Description = "Restore the contract to change its terms.",
+                    Description = "The contract has to be restored first.",
                 }
                 : new OdsMenuItem
                 {

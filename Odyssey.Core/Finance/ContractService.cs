@@ -110,6 +110,10 @@ public class ContractService
                 // A correlated subquery in the one list query, exactly like the two counts above —
                 // never a second grouped read, so a page of 50 costs the same as a page of 1.
                 TermCount = c.Terms.Count,
+                // The event log's size, on the same terms: a correlated subquery in the one list
+                // query. The log itself is unbounded and has its own paged endpoint — nothing on this
+                // path loads its rows.
+                EventCount = c.Events.Count,
                 // Contact id of the first institution party (issue #325); its display name is resolved
                 // after materialisation via the contact lookup (Contact now lives in OdysseyContext).
                 InstitutionContactId = c.Parties
@@ -145,6 +149,7 @@ public class ContractService
             PartyCount = x.PartyCount,
             FileCount = x.FileCount,
             TermCount = x.TermCount,
+            EventCount = x.EventCount,
             Archived = x.Contract.Archived,
             Paused = x.Contract.Paused,
             Ready = x.Contract.Ready,

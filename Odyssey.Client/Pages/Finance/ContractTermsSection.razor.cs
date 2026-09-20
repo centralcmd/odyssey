@@ -77,7 +77,7 @@ public partial class ContractTermsSection
 
     /// <summary>
     /// A contract with no terms at all is a different state from one whose entries are all scheduled,
-    /// and the divider says which: "Terms · none recorded" for the first, "Current terms · none in
+    /// and the divider says which: "Terms · 0 entries" for the first, "Current terms · none in
     /// force" for the second.
     /// </summary>
     private bool HasNoTerms => !_isLoading && _terms.Count == 0;
@@ -85,7 +85,7 @@ public partial class ContractTermsSection
     private string CurrentLabel => HasNoTerms ? "Terms" : "Current terms";
 
     private string CurrentMeta => HasNoTerms
-        ? "none recorded"
+        ? "0 entries"
         : _current.Count == 0
             ? "none in force"
             : $"{_current.Count} {(_current.Count == 1 ? "value" : "values")} in force · {DateTime.UtcNow:MMM dd, yyyy}";

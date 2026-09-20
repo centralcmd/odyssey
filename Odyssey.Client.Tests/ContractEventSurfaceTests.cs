@@ -231,6 +231,39 @@ public class ContractEventSurfaceTests
     }
 
     /// <summary>
+    /// The collapsed card's counts strip is the record body's table of contents, and the design
+    /// system lists four entries in it: Parties · Terms · Documents · Events, in the order the
+    /// sections run. A section present in the body and absent from the strip reads as a section that
+    /// is empty, which is exactly wrong for a log someone has been keeping.
+    /// </summary>
+    /// <remarks>
+    /// A source-lint for the reason <see cref="ContractsCardRowActionTests"/> records: the rows this
+    /// strip renders on arrive through <c>OdsInfiniteList</c>, which materialises nothing in bUnit.
+    /// The count is asserted end to end over HTTP in <c>ContractEventsApiTests.List_CarriesTheEventCount</c>
+    /// — what is checked here is that the card actually spends it.
+    /// </remarks>
+    [Fact]
+    public void The_collapsed_card_counts_the_event_log()
+    {
+        var markup = File.ReadAllText(
+            Path.Combine(ClientSource.Root, "Pages", "Finance", "ContractsCard.razor"));
+
+        var strip = Regex.Match(markup, @"var counts = new\[\]\s*\{[\s\S]*?\};");
+        Assert.True(strip.Success, "the counts strip still exists");
+
+        // It reads the SERVER's count, never the loaded detail's collection: the strip renders on the
+        // collapsed row, where no detail has been fetched.
+        Assert.Matches(
+            new Regex(@"new OdsRecordCount\(""history"", c\.EventCount\.ToString\([^)]*\), ""Events""\)"),
+            strip.Value);
+
+        // …and it comes last, matching the order the body's sections run in.
+        var order = Regex.Matches(strip.Value, @"""(Parties|Terms|Documents|Events)""\)")
+            .Select(m => m.Groups[1].Value).ToArray();
+        Assert.Equal(["Parties", "Terms", "Documents", "Events"], order);
+    }
+
+    /// <summary>
     /// WCAG 1.4.3 — the marker label must not be dimmed a second time. <c>text-secondary</c> is
     /// already the muted token (~7:1 against the surface); the design system's own
     /// <c>opacity: 0.75</c> on top of it drops an 11px label to ~3.95:1 light / ~4.45:1 dark, under
