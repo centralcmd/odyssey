@@ -162,11 +162,6 @@ public class ContractSignatureSurfaceTests
     }
 
     /// <summary>
-    /// In edit mode the dialog SEEDS from the record, which is what makes the full-replacement write
-    /// safe: a field edit that reopened with empty date fields would clear both stamps on save and
-    /// flip a signed contract to Draft.
-    /// </summary>
-    /// <summary>
     /// <b>AC 23, the behavioural half.</b> Saving an unrelated field edit through the edit dialog
     /// leaves a signed contract's stamps intact.
     ///
@@ -221,6 +216,87 @@ public class ContractSignatureSurfaceTests
         client.Verify(
             c => c.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UpdateContract>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    /// <summary>
+    /// G2 — a signed date earlier than its own ready date is refused, and the refused body never
+    /// reaches the API client.
+    /// </summary>
+    [Fact]
+    public void The_dialog_refuses_a_signed_date_before_its_ready_date()
+    {
+        var contract = Contract(ready: null, signed: null);
+        var (dialog, client) = RenderDialog(contract);
+
+        SetDate(dialog, ReadyPickerIndex, new DateTime(2026, 3, 9, 0, 0, 0, DateTimeKind.Utc));
+        SetDate(dialog, SignedPickerIndex, new DateTime(2026, 3, 2, 0, 0, 0, DateTimeKind.Utc));
+        ClickFooter(dialog, "Save changes");
+
+        Assert.Contains(
+            "cannot be signed before it was ready for signature", dialog.Markup, StringComparison.Ordinal);
+        client.Verify(
+            c => c.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UpdateContract>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    /// <summary>
+    /// G3 — neither stamp may be dated in the future, and the message lands on whichever field
+    /// carries the offending value. Both fields are exercised because the server attributes them
+    /// separately, and a client that reported both on one control would send the reader to the wrong
+    /// input.
+    /// </summary>
+    [Theory]
+    [InlineData(ReadyPickerIndex)]
+    [InlineData(SignedPickerIndex)]
+    public void The_dialog_refuses_a_future_dated_stamp(int picker)
+    {
+        var contract = Contract(ready: null, signed: null);
+        var (dialog, client) = RenderDialog(contract);
+
+        // A ready date is needed alongside a future SIGNED date, or G1 would fire first and this
+        // would be testing the wrong guard.
+        if (picker == SignedPickerIndex)
+        {
+            SetDate(dialog, ReadyPickerIndex, DateTime.UtcNow.Date.AddDays(-1));
+        }
+
+        SetDate(dialog, picker, DateTime.UtcNow.Date.AddDays(3));
+        ClickFooter(dialog, "Save changes");
+
+        Assert.Contains(
+            "records something that has happened — it cannot be in the future",
+            dialog.Markup,
+            StringComparison.Ordinal);
+        client.Verify(
+            c => c.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UpdateContract>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    /// <summary>
+    /// The three client-side messages are the SERVER'S, verbatim. The client guard is a pre-check for
+    /// the message, not the rule — the server enforces all three regardless — so a body that slips
+    /// past the client must come back reading identically, or the same rejection would read as two
+    /// different rules depending on which side caught it.
+    /// </summary>
+    [Fact]
+    public void The_client_guard_messages_match_the_servers_verbatim()
+    {
+        var client = File.ReadAllText(
+            Path.Combine(ClientSource.Root, "Pages", "Finance", "CreateContractDialog.razor.cs"));
+        var server = File.ReadAllText(Path.Combine(
+            ClientSource.Root, "..", "Odyssey.Core", "Finance", "ContractService.cs"));
+
+        foreach (var message in new[]
+                 {
+                     "A ready date records something that has happened — it cannot be in the future.",
+                     "A signed date records something that has happened — it cannot be in the future.",
+                     "A signed contract needs a ready date too. Set when it was ready for signature, or clear the signed date.",
+                     "A contract cannot be signed before it was ready for signature.",
+                 })
+        {
+            Assert.Contains(message, client, StringComparison.Ordinal);
+            Assert.Contains(message, server, StringComparison.Ordinal);
+        }
     }
 
     // ── The page's branches ───────────────────────────────────────────────────
@@ -377,6 +453,9 @@ public class ContractSignatureSurfaceTests
     /// which control it is driving.
     /// </summary>
     private const int SignedPickerIndex = 3;
+
+    /// <summary>The "Ready for signature" picker's position, in the same document order.</summary>
+    private const int ReadyPickerIndex = 2;
 
     private static ExistingContract Contract(DateTime? ready, DateTime? signed) => new()
     {

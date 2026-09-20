@@ -95,13 +95,13 @@ public partial class CreateContractDialog
 
         if (_ready is { } ready && ready.Date > today)
         {
-            _readyError = "A ready date records something that has happened — it can't be in the future.";
+            _readyError = "A ready date records something that has happened — it cannot be in the future.";
             return;
         }
 
         if (_signed is { } signedInFuture && signedInFuture.Date > today)
         {
-            _signedError = "A signed date records something that has happened — it can't be in the future.";
+            _signedError = "A signed date records something that has happened — it cannot be in the future.";
             return;
         }
 
@@ -113,7 +113,7 @@ public partial class CreateContractDialog
 
         if (_signed is { } signed && _ready is { } readyOn && signed < readyOn)
         {
-            _signedError = "A contract can't be signed before it was ready for signature.";
+            _signedError = "A contract cannot be signed before it was ready for signature.";
         }
     }
 

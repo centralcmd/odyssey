@@ -23,7 +23,10 @@ namespace Odyssey.Client.Components;
 public sealed record OdsContractStatusMeta(
     string Label, string Tone, bool Dot, string Icon, string DotColor, bool Unknown = false);
 
-/// <summary>The canonical contract-status registry, in display order (Active first).</summary>
+/// <summary>
+/// The canonical contract-status registry, in lifecycle reading order (Draft first) — see
+/// <see cref="Order"/>.
+/// </summary>
 public static class OdsContractStatus
 {
     private static readonly IReadOnlyDictionary<ContractStatus, OdsContractStatusMeta> Registry =

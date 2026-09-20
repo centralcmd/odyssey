@@ -101,6 +101,57 @@ public class ContractSignatureApiTests
         Assert.Equal(ContractStatus.Active, row.Status);
     }
 
+    /// <summary>
+    /// <b>AC 4 over HTTP</b> — the signature layer outranks the date chain end to end, not only at the
+    /// service level. Issue #145 §12 asks for this at both tiers on purpose: the derivation runs in
+    /// three separate read paths (the create response, the detail <c>GET</c> and the list projection),
+    /// and a layer wired into one of them and not the others is exactly the defect a service-level
+    /// test cannot see.
+    ///
+    /// <para>
+    /// The two readings being refused are an unsigned contract with a FUTURE start reading
+    /// <c>Upcoming</c> — which would assert a commitment nobody has made and put it back into the
+    /// upcoming charges — and one whose end has PASSED reading <c>Expired</c>, which would describe a
+    /// stalled negotiation as an agreement that ran its course.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(5, 100, false, ContractStatus.Draft)]
+    [InlineData(5, 100, true, ContractStatus.Ready)]
+    [InlineData(-100, -1, false, ContractStatus.Draft)]
+    [InlineData(-100, -1, true, ContractStatus.Ready)]
+    public async Task AnUnsignedContract_OutranksTheDateChain_OnEveryReadPath(
+        int startOffset, int endOffset, bool markedReady, ContractStatus expected)
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        var post = await client.PostAsJsonAsync(Path, new NewContract
+        {
+            Name = "Agreement",
+            Type = ContractType.Service,
+            StartDate = FixedToday.Date.AddDays(startOffset),
+            EndDate = FixedToday.Date.AddDays(endOffset),
+            Ready = markedReady ? ReadyOn : null,
+        });
+
+        Assert.Equal(HttpStatusCode.Created, post.StatusCode);
+        var created = (await post.Content.ReadFromJsonAsync<ExistingContract>())!;
+
+        // All three read paths agree: the create response, the detail GET and the list row.
+        Assert.Equal(expected, created.Status);
+        Assert.Equal(
+            expected,
+            (await client.GetFromJsonAsync<ExistingContract>($"{Path}/{created.ContractId}"))!.Status);
+        Assert.Equal(
+            expected,
+            Assert.Single(await client.GetPagedItemsAsync<ContractListItem>(Path) ?? []).Status);
+
+        // And the two readings it is NOT: neither the commitment nobody made nor the term that never ran.
+        Assert.NotEqual(ContractStatus.Upcoming, created.Status);
+        Assert.NotEqual(ContractStatus.Expired, created.Status);
+    }
+
     // ── The guards over HTTP (AC 7) ──────────────────────────────────────────────
 
     /// <summary>

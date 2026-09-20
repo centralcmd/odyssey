@@ -527,6 +527,46 @@ Three new `RateLimiting:*` sections are shipped with defaults and stay in deploy
 a rejected read is invisible to the user (the avatar silently falls back to the monogram), so a tight
 limit produces a silent defect rather than an error anyone reports.
 
+### Release note: contract signature dates are backfilled, and the values are not evidence (issue #145)
+
+A contract now carries two signature stamps, **Ready** (marked ready for signature) and **Signed**
+(signed by all parties), and they fold into the derived contract status as two new states, **Draft**
+and **Ready**. An unsigned contract is on file but not in force: it is excluded from the contracts run
+rate, its by-type cost split and the upcoming charges. Three things an operator should know before
+upgrading.
+
+**The `AddContractSignatureDates` migration writes a FABRICATED signature timestamp onto every existing
+contract row, and no such value is a statement of fact.** A field that looks like evidence and is not
+is a provenance defect, so it is recorded here rather than left to be discovered: if you need to know
+when an agreement was really signed, the backfilled value does not tell you. The value is derived from
+each row's *own* dates — `LEAST(COALESCE(StartDate, CompletionDate, CreatedAtUtc), CreatedAtUtc)`, i.e.
+*signed no later than the day its term began, and no later than the day its row was created* — rather
+than one shared clock reading stamped across the table, so the residual is a per-row approximation
+instead of a table-wide assertion. The clamp is what keeps a contract whose term starts in the future
+from being stamped as signed in the future, which the write path refuses outright.
+
+**Leaving the columns null would not have been the safer alternative.** The derivation reads a null
+`Signed` as unsigned, so an un-backfilled upgrade would flip *every* contract in the database to
+`Draft` and empty the run rate and the upcoming charges overnight. Backfilling is what makes the change
+invisible until someone deliberately records a draft: no existing contract changes status across the
+upgrade, and the summary body is identical except that `countsByStatus` gains `draft: 0` and
+`ready: 0`.
+
+**No new permission claim and no new configuration.** The two fields ride the existing
+`contracts.read` / `.create` / `.update` claims, so **no sign-out/sign-in is required on deploy** —
+nothing baked into an existing auth cookie is affected. Neither column is indexed (the status is
+derived in memory after projection, so neither is ever a SQL predicate), and neither carries a
+user-attribution column: a `Ready`/`Signed` transition is recorded as one structured `Information` log
+line naming the contract, which stamp changed, whether it was set or cleared, and the acting user.
+`Down` drops both columns; the backfilled values are not recoverable, which is correct — they were
+fabricated on the way up.
+
+One behaviour change for anyone driving the API directly: **`GET /api/contracts?sortBy=Status` now
+orders by a lifecycle rank** (`Draft → Ready → Upcoming → Active → Paused → Expired → Archived`)
+rather than the enum ordinal, so `Expired` and `Archived` now sort *after* `Active`. The persisted and
+wire ordinals are unchanged — `Draft` and `Ready` are appended at 5 and 6 — and this affects display
+order only.
+
 ## Backups
 
 The only stateful pieces are two named volumes — back both up:

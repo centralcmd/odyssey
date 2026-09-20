@@ -6,6 +6,7 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Xunit;
 using DtoContractType = Odyssey.Dtos.Finance.ContractType;
+using DtoContractEventType = Odyssey.Dtos.Finance.ContractEventType;
 
 namespace Odyssey.Core.Tests;
 
@@ -587,7 +588,7 @@ public class ContractSignatureTests
     // ── Independence from the event log (AC 18) ──────────────────────────────────
 
     /// <summary>
-    /// AC 18 — <c>ContractEventType.Signed</c> stays independent in BOTH directions. Two writers onto
+    /// AC 18, first direction — setting the stamp creates no <c>ContractEvent</c>. Two writers onto
     /// one fact is a reconciliation problem this feature deliberately does not take on.
     /// </summary>
     [Fact]
@@ -600,5 +601,45 @@ public class ContractSignatureTests
             New(FixedToday.AddDays(-10), ready: ReadyOn, signed: SignedOn), userId: null);
 
         Assert.Empty(context.ContractEvents.Where(e => e.ContractId == created.ContractId));
+    }
+
+    /// <summary>
+    /// AC 18, the OTHER direction — creating a <c>Signed</c> event leaves <c>Contract.Signed</c> null,
+    /// and the contract still derives as <c>Draft</c>.
+    ///
+    /// <para>
+    /// Worth its own test rather than being assumed from the one above: the two are written by
+    /// different services against the same row, so "no coupling" is two independent claims. This is
+    /// also the direction a later change is most likely to break, since "the user logged a Signed
+    /// event, so the contract is signed" is a tempting convenience — and taking it would put two
+    /// writers on one fact, which is exactly what the non-goal forbids.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task CreatingASignedEvent_LeavesTheStampNull()
+    {
+        await using var context = TestContextFactory.Create();
+        var contracts = CreateService(context);
+        var events = new ContractEventService(context, new FixedTimeProvider(FixedToday));
+
+        var created = await contracts.Create(New(FixedToday.AddDays(-10)), userId: null);
+        Assert.Equal(ContractStatus.Draft, created.Status);
+
+        var logged = await events.CreateAsync(
+            created.ContractId,
+            new NewContractEvent
+            {
+                Title = "Countersigned copy returned",
+                Type = DtoContractEventType.Signed,
+                OccurredAt = FixedToday.AddDays(-1),
+            },
+            "user-jane");
+
+        Assert.NotNull(logged);
+
+        var reloaded = await contracts.Get(created.ContractId);
+        Assert.Null(reloaded!.Ready);
+        Assert.Null(reloaded.Signed);
+        Assert.Equal(ContractStatus.Draft, reloaded.Status);
     }
 }
