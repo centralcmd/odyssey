@@ -144,21 +144,38 @@ public class ContractSignatureSurfaceTests
     // ── The dialog ────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// The create dialog carries the pair as ordinary, OPTIONAL date fields — the path for a paper
-    /// contract signed last month. Neither is required; leaving both blank records a draft, which is
-    /// the normal case and is what the helper text says.
+    /// The pair is EDIT-ONLY (design-system update): a brand-new contract always starts as a Draft,
+    /// so create mode does not offer the two stamps at all and says where they are set instead. On
+    /// edit they are ordinary, OPTIONAL date fields — the path for a paper contract signed last
+    /// month — and neither is required.
+    ///
+    /// <para>
+    /// Asserted on the helper lines rather than on the word "Signed" alone, because the status copy
+    /// elsewhere in the surface uses that word too; "Ready for signature" and the two helper strings
+    /// belong to these fields and nothing else.
+    /// </para>
     /// </summary>
     [Fact]
-    public void The_dialog_offers_both_signature_dates_as_optional_fields()
+    public void The_signature_dates_are_offered_on_edit_and_withheld_on_create()
     {
-        var (dialog, _) = RenderDialog();
+        var (create, _) = RenderDialog();
 
-        Assert.Contains("Ready for signature", dialog.Markup, StringComparison.Ordinal);
-        Assert.Contains("Signed", dialog.Markup, StringComparison.Ordinal);
-        Assert.Contains("Leave blank while it is still being drafted.", dialog.Markup, StringComparison.Ordinal);
-        Assert.Contains("stays out of the run rate", dialog.Markup, StringComparison.Ordinal);
-        // The subtitle says what omitting them does, so the default is a choice rather than an accident.
-        Assert.Contains("record it as a draft", dialog.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Ready for signature", create.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Leave blank while it is still being drafted.", create.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("stays out of the run rate", create.Markup, StringComparison.Ordinal);
+        // The subtitle names where the stamps ARE set, so their absence reads as a route rather than
+        // an omission.
+        Assert.Contains(
+            "It starts as a draft; mark it ready and signed from the contract itself.",
+            create.Markup,
+            StringComparison.Ordinal);
+
+        var (edit, _) = RenderDialog(Contract(ready: null, signed: null));
+
+        Assert.Contains("Ready for signature", edit.Markup, StringComparison.Ordinal);
+        Assert.Contains("Signed", edit.Markup, StringComparison.Ordinal);
+        Assert.Contains("Leave blank while it is still being drafted.", edit.Markup, StringComparison.Ordinal);
+        Assert.Contains("stays out of the run rate", edit.Markup, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -448,9 +465,9 @@ public class ContractSignatureSurfaceTests
     }
 
     /// <summary>
-    /// The "Signed" picker's position among the dialog's date pickers, in document order:
+    /// The "Signed" picker's position among the EDIT dialog's date pickers, in document order:
     /// Starts · Ends · Ready for signature · Signed. Named rather than inlined so the guard test says
-    /// which control it is driving.
+    /// which control it is driving. Create mode renders only the first two.
     /// </summary>
     private const int SignedPickerIndex = 3;
 

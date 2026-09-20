@@ -136,7 +136,9 @@ public partial class CreateContractDialog
         }
 
         // The three signature guards, run identically on create and edit — one helper, the way the
-        // server shares one between POST and PUT. Clearing a stamp is never refused.
+        // server shares one between POST and PUT. Clearing a stamp is never refused. On create both
+        // stamps are null by construction (the fields are edit-only), so it is a no-op there; the
+        // call stays unconditional because the server runs the same guards on POST regardless.
         ValidateSignature();
 
         if (_nameError is not null || _typeError is not null || _endError is not null
@@ -186,9 +188,11 @@ public partial class CreateContractDialog
             StartDate = startDate,
             EndDate = endDate,
             CompletionDate = completionDate,
-            // Both null is the normal path — a new contract starts as a Draft.
-            Ready = _ready,
-            Signed = _signed,
+            // No signature stamps: a new contract ALWAYS starts as a Draft, which is why create mode
+            // does not render the two fields at all. They are set afterwards from the contract
+            // itself — the row menu's Mark ready / Mark signed, or this dialog in edit mode. Both
+            // properties are optional on NewContract, so omitting them is the null the server reads
+            // as "unsigned draft".
         };
 
         return (await Contracts.CreateAsync(contract)).Toast(Snackbar, "Unable to create contract", "Contract created.");
