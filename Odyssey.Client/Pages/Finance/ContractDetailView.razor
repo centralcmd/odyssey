@@ -79,15 +79,29 @@
 
 <div class="con-section">
     <OdsSectionDivider Label="Documents" Meta="@($"{Contract.Files.Count} file{(Contract.Files.Count == 1 ? "" : "s")}")" />
-    <div class="con-files con-tbl-frame">
-        <ContractFilesTable ContractId="Contract.ContractId"
-                            Files="@ContractFiles"
-                            CanDownload="CanDownload" CanUpdate="CanWrite" CanDelete="CanWrite"
-                            Archived="Archived"
-                            OnChanged="OnChanged"
-                            OnFilesRefreshed="OnFilesRefreshed"
-                            Empty="_emptyDocs" />
-    </div>
+    @* With no documents there is no table to head: the empty line stands on its own, exactly as it
+       does in Parties, Terms and Events. Keeping the table would head a single "none yet" cell with
+       four sortable column headers and a pager frame — chrome describing rows that do not exist,
+       and a set of controls a keyboard user tabs through before reaching the sentence that says
+       there is nothing to sort. *@
+    @if (Contract.Files.Count == 0)
+    {
+        <div class="con-empty-line">
+            <span class="material-icons" aria-hidden="true">folder_open</span>
+            <div style="flex:1;">No documents yet — upload the signed agreement, an amendment, or correspondence.</div>
+        </div>
+    }
+    else
+    {
+        <div class="con-files con-tbl-frame">
+            <ContractFilesTable ContractId="Contract.ContractId"
+                                Files="@ContractFiles"
+                                CanDownload="CanDownload" CanUpdate="CanWrite" CanDelete="CanWrite"
+                                Archived="Archived"
+                                OnChanged="OnChanged"
+                                OnFilesRefreshed="OnFilesRefreshed" />
+        </div>
+    }
     @* An archived contract refuses attaching and editing a document with a 400, so the reason is
        stated once here rather than left to a dialog that saves and then fails. Detaching is NOT
        refused — the line says exactly what is unavailable, so it cannot describe a restriction the
@@ -111,10 +125,8 @@
                        NewEventRequestToken="NewEventRequestToken" />
 
 @code {
-    // Razor syntax (@<div>), so these inline render fragments cannot live in the code-behind.
+    // Razor syntax (@<text>), so this inline render fragment cannot live in the code-behind.
     // Everything else does.
-    private readonly RenderFragment _emptyDocs =
-        @<div class="con-empty-line"><span class="material-icons" aria-hidden="true">folder_open</span><div style="flex:1;">No documents yet — upload the signed agreement, an amendment, or correspondence.</div></div>;
 
     /// <summary>
     /// The overline: the party's ROLE, the non-default term on its own line beneath, and the tile's

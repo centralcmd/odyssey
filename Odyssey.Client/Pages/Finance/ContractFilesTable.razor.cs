@@ -39,9 +39,6 @@ public partial class ContractFilesTable
     /// </summary>
     [Parameter] public EventCallback<List<ExistingContractFile>> OnFilesRefreshed { get; set; }
 
-    /// <summary>Full-width content shown when there are no rows.</summary>
-    [Parameter] public RenderFragment? Empty { get; set; }
-
     private IReadOnlyList<ExistingContact> _contacts = [];
     private IReadOnlyList<OdsOption> _issuerOptions = [];
     private bool _canCreateContact;
