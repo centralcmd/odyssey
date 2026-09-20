@@ -51,13 +51,31 @@ const ContractStatusChip = ({ status }) => {
   return <Chip tone={meta.tone} dot={meta.dot}>{meta.label}</Chip>;
 };
 
-/* ====================== Files table (contract-scoped) ====================== */
-const ContractFilesTable = ({ files, onDelete, empty }) => {
+/* ====================== Files table (contract-scoped) ======================
+   The DS FilesTable, in its contract configuration. Three things differ from
+   the account one:
+     • `renameable={false}` — a contract document's name lives on the
+       FileMetadata it references; PUT …/files/{fileId} carries the document
+       type and the four validity fields only, so the dialog offers no rename.
+     • `requireType` — the update is a full replacement and
+       ContractFileType.Signed is the zero member, so an unsent type must be
+       rejected rather than defaulted into "this is the signed agreement".
+     • `readOnly` — an archived contract refuses both writes (400), so the
+       table drops Edit and Delete rather than offering a doomed dialog; the
+       section states why in text.
+   `onSave` stands in for PUT …/files/{fileId} → 204, after which the real
+   client re-reads GET …/files (this contract's documents alone) instead of
+   refetching the whole contract. */
+const ContractFilesTable = ({ files, onDelete, onSave, empty, readOnly }) => {
   const DSFilesTable = (window.OdysseyDesignSystem_d5aa51 || {}).FilesTable;
   const { useState } = React;
   const [edits, setEdits] = useState({});
   const rows = files.map(f => (edits[f.id] ? { ...f, ...edits[f.id] } : f));
   if (!DSFilesTable) return empty || null;
+  const issuers = (CON_D.contacts || []).filter(c => !c.archived).map(c => {
+    const t = (CON_D.contactTypeByKey || {})[c.type] || {};
+    return { value: c.id, label: c.name, icon: t.icon, iconColor: t.color };
+  });
   return (
     <InlinePager items={rows}>
       {(pageRows) => (
@@ -67,8 +85,20 @@ const ContractFilesTable = ({ files, onDelete, empty }) => {
           kinds={CON_D.contractFileTypes}
           formatDate={CON_H.conDate}
           empty={empty}
-          onSave={(id, patch) => setEdits(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }))}
-          onDelete={onDelete}
+          validityColumns
+          issuers={readOnly ? undefined : issuers}
+          issuerFor={(f) => {
+            const c = f.issuedBy && (CON_D.contactById || {})[f.issuedBy];
+            return c ? c.name : null;
+          }}
+          onCreateContact={(name, kind) => CON_D.contactOption(CON_D.createContact(name, kind))}
+          renameable={false}
+          requireType
+          onSave={readOnly ? undefined : (id, patch) => {
+            setEdits(prev => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }));
+            onSave && onSave(id, patch);
+          }}
+          onDelete={readOnly ? undefined : onDelete}
           actions={(f) => [
             { icon: 'download', label: 'Download', onClick: () => CON_H.downloadFile && CON_H.downloadFile(f) },
             { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(f.id); } },
@@ -135,6 +165,13 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
 
   const detachParty = (party) => setContract(prev => ({ ...prev, parties: prev.parties.filter(p => p.id !== party.id) }));
   const removeFile = (row) => setContract(prev => ({ ...prev, files: prev.files.filter(f => f.id !== row.id) }));
+  /* PUT …/files/{fileId} — a full replacement of the link row's type and
+     validity, so an omitted date CLEARS the stored value. The patch is merged
+     onto the ContractFile, never onto the FileMetadata it references. */
+  const saveFile = (id, patch) => setContract(prev => ({
+    ...prev,
+    files: (prev.files || []).map(f => (f.id === id ? { ...f, ...patch } : f)),
+  }));
 
   const oneOff = !!contract.completionDate;
   const nowDate = today || CON_H.conToday();
@@ -238,8 +275,13 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
           <div className="con-empty-line"><MIcon name="folder_open" size={20} /><div style={{ flex: 1 }}>No documents yet — upload the signed agreement, an amendment, or correspondence.</div></div>
         ) : (
           <div className="con-files con-tbl-frame">
-            <ContractFilesTable files={fileRows} onDelete={removeFile} />
+            <ContractFilesTable files={fileRows} onDelete={removeFile} onSave={saveFile} readOnly={!!contract.archived} />
           </div>
+        )}
+        {/* An archived contract refuses every document write with a 400, so the
+            reason is stated once here rather than left to a failed dialog. */}
+        {contract.archived && fileRows.length > 0 && (
+          <div className="con-empty-line"><MIcon name="lock" size={20} /><div style={{ flex: 1 }}>This contract is archived. Restore it to edit or remove its documents.</div></div>
         )}
       </div>
 

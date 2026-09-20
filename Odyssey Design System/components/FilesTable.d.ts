@@ -72,9 +72,26 @@ export interface FilesTableProps {
    * item + the dialog (Save flashes "Saved" on the row). Omit for a read-only
    * surface.
    */
-  onSave?: (id: string, patch: { name: string; kind: string; validFrom?: string | null; validTo?: string | null; issuedAt?: string | null; issuedBy?: string | null }) => void;
+  onSave?: (id: string, patch: { name?: string; kind: string; validFrom?: string | null; validTo?: string | null; issuedAt?: string | null; issuedBy?: string | null }) => void;
   /** File-kind vocabulary for the dialog's Document type picker. Default: the canonical ACCOUNT_FILE_TYPES registry. */
   kinds?: AccountFileType[];
+  /**
+   * Whether the Edit dialog offers the File name field. Default `true`.
+   * Set `false` on surfaces whose update verb doesn't accept a name — a
+   * contract document's name belongs to the `FileMetadata` it references, and
+   * `PUT /api/contracts/{id}/files/{fileId}` carries the document type and the
+   * four validity fields only. The dialog then reads "Edit document" and the
+   * patch omits `name`.
+   */
+  renameable?: boolean;
+  /**
+   * Mark the Document type picker with the obligation `*` and refuse an empty
+   * submit. Default `false`. Set on a full-replacement update whose enum has
+   * no "leave unchanged" value and whose zero member is meaningful
+   * (`ContractFileType.Signed`), so an unsent type can never be defaulted into
+   * a claim that the document is the signed copy.
+   */
+  requireType?: boolean;
   /**
    * Create a contact from the Issued-by picker's inline create rows and return
    * the option to select: `(name, kind) => option`. Supplying it turns the

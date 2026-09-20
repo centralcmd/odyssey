@@ -155,8 +155,11 @@
 /* Archived: the history stays fully readable, the per-row writes go away. */
 .con-trm-readonly .trm-rowbtns { display: none; }
 
-/* Documents section wrapper (FilesTable lives inside) */
-.con-files { padding: 4px 4px 8px; }
+/* Documents section wrapper (FilesTable lives inside). With the four
+   validity columns the table is wider than a narrow record body, so the
+   documents frame scrolls sideways rather than clipping "Issued by" and the
+   row menu. */
+.con-files { padding: 4px 4px 8px; overflow-x: auto; }
 
 /* Upload dialog — the "already attached" reference list under the dropzone */
 .con-existing-files { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
