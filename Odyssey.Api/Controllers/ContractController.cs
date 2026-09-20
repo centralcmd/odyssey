@@ -454,10 +454,52 @@ public class ContractController : ControllerBase
             return Unauthorized();
         }
 
-        var created = await service.AttachFile(id, request.FileMetadataId, userId, request.FileType, cancellationToken);
+        var created = await service.AttachFile(id, request, userId, cancellationToken);
         return created is null
             ? this.NotFoundProblem($"Contract ID {id} not found.")
             : CreatedAtRoute("DownloadContractFile", new { id, fileId = request.FileMetadataId }, null);
+    }
+
+    [HttpGet("{id}/files", Name = "GetContractFiles")]
+    [Authorize(Policy = PermissionClaims.ContractsRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingContractFile>))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "List the documents attached to a contract.",
+        Description = "Unpaged and bounded by the per-contract file cap. A contract with no documents " +
+                      "returns an empty array, never a 404.")]
+    public async Task<IActionResult> GetFiles(
+        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
+    {
+        var files = await service.GetFiles(id, cancellationToken);
+        if (files is null)
+        {
+            return this.NotFoundProblem($"Contract ID {id} not found.");
+        }
+
+        await displayNames.EnrichFileAttributionAsync(User, files, cancellationToken);
+        return Ok(files);
+    }
+
+    [HttpPut("{id}/files/{fileId}", Name = "UpdateContractFile")]
+    [Authorize(Policy = PermissionClaims.ContractsUpdate)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Update an attached document's type and validity metadata.",
+        Description = "A full replacement: an omitted date or issuer clears the stored value. " +
+                      "fileType may not be omitted. files.read is deliberately not required — this " +
+                      "verb reads no file metadata and takes no file id the caller had not already " +
+                      "attached.")]
+    public async Task<IActionResult> UpdateFile(
+        [FromRoute(Name = "id")] Guid id,
+        [FromRoute(Name = "fileId")] Guid fileId,
+        [FromBody] UpdateContractFileRequest request, CancellationToken cancellationToken = default)
+    {
+        return await service.UpdateFile(id, fileId, request, cancellationToken)
+            ? NoContent()
+            : this.NotFoundProblem($"File ID {fileId} is not attached to contract ID {id}.");
     }
 
     [HttpGet("{id}/files/{fileId}", Name = "DownloadContractFile")]

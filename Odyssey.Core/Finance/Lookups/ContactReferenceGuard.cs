@@ -99,6 +99,10 @@ public sealed class ContactReferenceGuard(OdysseyContext context) : IContactRefe
             .Where(f => f.IssuedBy == contactId)
             .ExecuteUpdateAsync(s => s.SetProperty(f => f.IssuedBy, (Guid?)null), cancellationToken);
 
+        await context.ContractFiles
+            .Where(f => f.IssuedBy == contactId)
+            .ExecuteUpdateAsync(s => s.SetProperty(f => f.IssuedBy, (Guid?)null), cancellationToken);
+
         await context.FileAnalysisCandidateTransactions
             .Where(c => c.MatchedContactId == contactId)
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.MatchedContactId, (Guid?)null), cancellationToken);

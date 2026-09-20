@@ -46,6 +46,8 @@ public class ScopedWriteRouteTests
         { "insurance renewal delete",  $"/api/insurance-policies/{Parent}/renewals/{Child}",            "DELETE" },
         { "insurance renewal file",    $"/api/insurance-policies/{Parent}/renewals/{Child}/files/{Grandchild}", "DELETE" },
         { "contract party remove",     $"/api/contracts/{Parent}/parties/{Child}",                      "DELETE" },
+        { "contract file list",        $"/api/contracts/{Parent}/files",                                "GET" },
+        { "contract file update",      $"/api/contracts/{Parent}/files/{Child}",                        "PUT" },
         { "contract file detach",      $"/api/contracts/{Parent}/files/{Child}",                        "DELETE" },
         { "contract event add",        $"/api/contracts/{Parent}/events",                               "POST" },
         { "contract event update",     $"/api/contracts/{Parent}/events/{Child}",                       "PUT" },
@@ -76,6 +78,8 @@ public class ScopedWriteRouteTests
             "insurance renewal delete" => insurance.DeleteRenewalAsync(Parent, Child),
             "insurance renewal file" => insurance.DetachRenewalFileAsync(Parent, Child, Grandchild),
             "contract party remove" => contracts.RemovePartyAsync(Parent, Child),
+            "contract file list" => contracts.ListFilesAsync(Parent),
+            "contract file update" => contracts.UpdateFileAsync(Parent, Child, SampleFileUpdate()),
             "contract file detach" => contracts.DetachFileAsync(Parent, Child),
             "contract event add" => contracts.AddEventAsync(Parent, SampleEvent()),
             "contract event update" => contracts.UpdateEventAsync(Parent, Child, SampleEventUpdate()),
@@ -92,6 +96,11 @@ public class ScopedWriteRouteTests
         Assert.Equal(expectedPath, handler.LastRequest!.RequestUri!.AbsolutePath);
         Assert.Equal(method, handler.LastRequest.Method.Method);
     }
+
+    private static UpdateContractFileRequest SampleFileUpdate() => new()
+    {
+        FileType = ContractFileType.Amendment,
+    };
 
     private static NewContractEvent SampleEvent() => new()
     {

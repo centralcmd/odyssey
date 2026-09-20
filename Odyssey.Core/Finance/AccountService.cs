@@ -663,6 +663,8 @@ public class AccountService
             throw new DomainNotFoundException($"Account with ID {accountId} was not found.");
         }
 
+        var (validFrom, validTo, issuedAt) = DocumentValidity.Normalize(
+            validity?.ValidFrom, validity?.ValidTo, validity?.IssuedAt);
         await EnsureIssuerExists(validity?.IssuedBy, cancellationToken);
 
         var existingAssociation = await context.AccountFiles.FirstOrDefaultAsync(af =>
@@ -682,9 +684,9 @@ public class AccountService
             AttachedByUserId = userId,
             AttachedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
             FileType = fileType.Adapt<ContextAccountFileType>(),
-            ValidFrom = validity?.ValidFrom,
-            ValidTo = validity?.ValidTo,
-            IssuedAt = validity?.IssuedAt,
+            ValidFrom = validFrom,
+            ValidTo = validTo,
+            IssuedAt = issuedAt,
             IssuedBy = validity?.IssuedBy,
         };
 
@@ -704,12 +706,14 @@ public class AccountService
             return null;
         }
 
+        var (validFrom, validTo, issuedAt) = DocumentValidity.Normalize(
+            request.ValidFrom, request.ValidTo, request.IssuedAt);
         await EnsureIssuerExists(request.IssuedBy, cancellationToken);
 
         association.FileType = request.FileType.Adapt<ContextAccountFileType>();
-        association.ValidFrom = request.ValidFrom;
-        association.ValidTo = request.ValidTo;
-        association.IssuedAt = request.IssuedAt;
+        association.ValidFrom = validFrom;
+        association.ValidTo = validTo;
+        association.IssuedAt = issuedAt;
         association.IssuedBy = request.IssuedBy;
         await context.SaveChangesAsync(cancellationToken);
 

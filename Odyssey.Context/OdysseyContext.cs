@@ -695,6 +695,12 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(accountFile => accountFile.IssuedBy)
             .OnDelete(DeleteBehavior.SetNull);
 
+        modelBuilder.Entity<ContractFile>()
+            .HasOne<Contact>()
+            .WithMany()
+            .HasForeignKey(contractFile => contractFile.IssuedBy)
+            .OnDelete(DeleteBehavior.SetNull);
+
         modelBuilder.Entity<FileAnalysisCandidateTransaction>()
             .HasOne<Contact>()
             .WithMany()

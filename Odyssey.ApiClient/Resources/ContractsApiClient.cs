@@ -56,8 +56,24 @@ public interface IContractsApiClient
 
     Task<ApiResult> RemovePartyAsync(Guid contractId, Guid partyId, CancellationToken ct = default);
 
+    /// <summary>
+    /// The documents attached to the contract, with their validity metadata (issue #146). Unpaged and
+    /// bounded by the per-contract file cap. Serves a targeted refresh after a document write, where
+    /// <see cref="GetAsync"/> would refetch parties, terms and events too.
+    /// </summary>
+    Task<ApiResult<List<ExistingContractFile>>> ListFilesAsync(Guid contractId, CancellationToken ct = default);
+
     /// <summary>Attaches an already-uploaded file to the contract.</summary>
     Task<ApiResult> AttachFileAsync(Guid contractId, AttachContractFileRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates an attached document's type and validity metadata (issue #146). The body is a
+    /// <b>full replacement</b> — an omitted date or issuer <b>clears</b> it — and <c>fileType</c> may
+    /// not be omitted. <paramref name="fileId"/> is the file-metadata id, the same one the download
+    /// and detach routes take.
+    /// </summary>
+    Task<ApiResult> UpdateFileAsync(
+        Guid contractId, Guid fileId, UpdateContractFileRequest request, CancellationToken ct = default);
 
     Task<ApiResult> DetachFileAsync(Guid contractId, Guid fileId, CancellationToken ct = default);
 
@@ -177,8 +193,15 @@ public sealed class ContractsApiClient(IOdysseyApi api) : IContractsApiClient
     public Task<ApiResult> RemovePartyAsync(Guid contractId, Guid partyId, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Base}/{contractId}/parties/{partyId}", null, ct);
 
+    public Task<ApiResult<List<ExistingContractFile>>> ListFilesAsync(Guid contractId, CancellationToken ct = default) =>
+        api.GetAsync<List<ExistingContractFile>>($"{Base}/{contractId}/files", ct);
+
     public Task<ApiResult> AttachFileAsync(Guid contractId, AttachContractFileRequest request, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, $"{Base}/{contractId}/files", request, ct);
+
+    public Task<ApiResult> UpdateFileAsync(
+        Guid contractId, Guid fileId, UpdateContractFileRequest request, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Put, $"{Base}/{contractId}/files/{fileId}", request, ct);
 
     public Task<ApiResult> DetachFileAsync(Guid contractId, Guid fileId, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Base}/{contractId}/files/{fileId}", null, ct);

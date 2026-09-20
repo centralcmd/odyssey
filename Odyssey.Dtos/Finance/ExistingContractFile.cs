@@ -21,4 +21,21 @@ public sealed record ExistingContractFile : IAttributedFile
     public string? AttachedByName { get; set; }
 
     public required DateTime AttachedAtUtc { get; set; }
+
+    /// <summary>When the document takes effect (e.g. agreement start date). Optional.</summary>
+    public DateTime? ValidFrom { get; set; }
+
+    /// <summary>When the document expires (e.g. agreement end, warranty expiry). Optional.</summary>
+    public DateTime? ValidTo { get; set; }
+
+    /// <summary>Date the document was issued/signed. Optional.</summary>
+    public DateTime? IssuedAt { get; set; }
+
+    /// <summary>
+    /// Issuing contact id (e.g. bank, insurer). Optional. The id alone — the name is deliberately not
+    /// resolved server-side, unlike <see cref="AttachedByName"/>: resolving it would move a contact
+    /// attribute across the <c>contacts.read</c> boundary onto a <c>contracts.read</c> response
+    /// (issue #146 §7.3), matching <c>ExistingAccountFile.IssuedBy</c>.
+    /// </summary>
+    public Guid? IssuedBy { get; set; }
 }
