@@ -516,6 +516,8 @@ public class ContractsApiTests
             Name = "Property purchase",
             Type = ContractType.Other,
             CompletionDate = FixedToday.AddYears(-3),
+            Ready = ReadyOn,
+            Signed = SignedOn,
         });
         post.EnsureSuccessStatusCode();
         var id = (await post.Content.ReadFromJsonAsync<ExistingContract>())!.ContractId;
@@ -896,6 +898,7 @@ public class ContractsApiTests
         {
             Name = "Other contract", Type = ContractType.Other,
             StartDate = FixedToday.AddDays(-30), EndDate = Lapsed, IsArchived = true,
+            Ready = ReadyOn, Signed = SignedOn,
         })).EnsureSuccessStatusCode();
 
         var summary = (await client.GetFromJsonAsync<ContractSummary>($"{Path}/summary"))!;
@@ -1086,6 +1089,8 @@ public class ContractsApiTests
             Type = type,
             StartDate = start ?? FixedToday.AddDays(-30),
             EndDate = end,
+            Ready = ReadyOn,
+            Signed = SignedOn,
         });
         post.EnsureSuccessStatusCode();
         return (await post.Content.ReadFromJsonAsync<ExistingContract>())!.ContractId;
@@ -1297,9 +1302,11 @@ public class ContractsApiTests
         var pair = await client.GetPagedItemsAsync<ContractListItem>($"{Path}?statuses=Paused&statuses=Active");
         Assert.Equal(2, pair!.Count);
 
-        // Enum-ordinal order: Active (0) · Archived (3) · Paused (4).
+        // LIFECYCLE order (issue #145 §8): Active · Paused · Archived. Not the enum ordinal — Draft
+        // and Ready are appended members, so an ordinal sort would put the two earliest lifecycle
+        // states last. This reads Active · Archived · Paused before that change.
         var sorted = await client.GetPagedItemsAsync<ContractListItem>($"{Path}?sortBy=status&sortDir=asc");
-        Assert.Equal([active, archived, paused], sorted!.Select(c => c.ContractId).ToArray());
+        Assert.Equal([active, paused, archived], sorted!.Select(c => c.ContractId).ToArray());
     }
 
     /// <summary>
@@ -1355,6 +1362,10 @@ public class ContractsApiTests
             startDate = FixedToday.AddDays(-30),
             isArchived = false,
             isPaused = true,
+            // Carried forward: a body omitting these clears both stamps, which would make the
+            // contract a Draft and the pause a 400 — the very regression issue #145 §5.2 describes.
+            ready = ReadyOn,
+            signed = SignedOn,
             parties = new[] { new { accountId, role = ContractPartyRole.Employee } },
             files = new[] { new { fileMetadataId = Guid.NewGuid() } },
             currentTerms = new[] { new { value = 999m, currencyCode = "USD" } },
@@ -1389,6 +1400,11 @@ public class ContractsApiTests
             name = "Employment agreement",
             type = ContractType.Employment,
             startDate = FixedToday.AddDays(-30),
+            // The signature stamps carry the SAME full-replacement convention (issue #145), so they
+            // are restated here to keep this test about isPaused alone. Their own omission case is
+            // ContractSignatureApiTests' AC 15.
+            ready = ReadyOn,
+            signed = SignedOn,
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -1416,6 +1432,13 @@ public class ContractsApiTests
         Assert.Null((await GetAsync(client, id)).Paused);
     }
 
+    // SIGNED by default (issue #145). The signature layer sits ABOVE the date chain, so an unsigned
+    // contract derives as Draft/Ready whatever its dates say — everything the helpers below feed is a
+    // test of the date chain, the archive stamp or the pause stamp, so the fixture clears that layer
+    // first. The signature lifecycle has its own file, ContractSignatureApiTests.
+    private static readonly DateTime ReadyOn = FixedToday.AddDays(-200);
+    private static readonly DateTime SignedOn = FixedToday.AddDays(-199);
+
     private static NewContract NewContractRequest(DateTime? start = null, DateTime? end = null) => new()
     {
         Name = "Employment agreement",
@@ -1423,6 +1446,8 @@ public class ContractsApiTests
         Description = "Full-time role",
         StartDate = start ?? FixedToday.AddDays(-30),
         EndDate = end,
+        Ready = ReadyOn,
+        Signed = SignedOn,
     };
 
     private static NewContract NewContract() => NewContractRequest();
@@ -1437,6 +1462,12 @@ public class ContractsApiTests
         StartDate = FixedToday.AddDays(-30),
         EndDate = endDate,
         IsArchived = isArchived,
+        // Carried forward exactly as a real client must (issue #145): PUT is a full replacement, so
+        // omitting these would clear both stamps and flip the contract to Draft — which would also
+        // make the archive guard's "has to end first" refusal unreachable, since an unsigned contract
+        // is archivable under the widened rule.
+        Ready = ReadyOn,
+        Signed = SignedOn,
     };
 
     /// <summary>
@@ -1455,6 +1486,10 @@ public class ContractsApiTests
         CompletionDate = completionDate,
         IsArchived = isArchived,
         IsPaused = isPaused,
+        // Carried forward for the same reason (issue #145) — and additionally because an unsigned
+        // contract cannot be paused at all, so omitting these would make every pause below a 400.
+        Ready = ReadyOn,
+        Signed = SignedOn,
     };
 
     /// <summary>An end date already lapsed against the fixed clock — the shorthand for "archivable".</summary>

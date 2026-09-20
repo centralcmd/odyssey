@@ -44,4 +44,43 @@ public sealed record UpdateContract
     /// </para>
     /// </summary>
     public bool IsPaused { get; set; }
+
+    /// <summary>
+    /// Marked ready for signature on this date (issue #145), with <b>full-replacement</b> semantics: a
+    /// present value sets the stamp, <see langword="null"/> or omitted <b>clears</b> it.
+    ///
+    /// <para>
+    /// <b>This is not the "null means unchanged" shape, deliberately.</b> <c>PUT /api/contracts/{id}</c>
+    /// is a documented full replacement — <see cref="StartDate"/>, <see cref="EndDate"/> and
+    /// <see cref="CompletionDate"/> are already replaced wholesale, and an omitted
+    /// <see cref="IsArchived"/>/<see cref="IsPaused"/> already <i>unarchives</i> and <i>resumes</i>.
+    /// Giving these two fields alone the opposite convention would put two opposite meanings in one
+    /// DTO and, decisively, would make the rule "clearing <see cref="Signed"/> is always allowed"
+    /// inexpressible — there would be no value that means "clear it".
+    /// </para>
+    ///
+    /// <para>
+    /// The consequence is that <b>every</b> caller that rebuilds this DTO from a record it did not
+    /// fully author has to carry both stamps forward, exactly as it already carries
+    /// <see cref="IsArchived"/> and <see cref="IsPaused"/>: an omission on an Archive or Pause write
+    /// would clear them, flip a signed contract to <c>Draft</c> and drop it out of the run rate.
+    /// <c>ContractPauseSurfaceTests.Every_contract_write_carries_both_stamps_forward</c> is the
+    /// source-lint that keeps that a build failure rather than a thing to remember.
+    /// </para>
+    /// </summary>
+    public DateTime? Ready { get; set; }
+
+    /// <summary>
+    /// Signed by all parties on this date (issue #145), with the same full-replacement semantics as
+    /// <see cref="Ready"/>: a present value sets the stamp, null or omitted clears it.
+    ///
+    /// <para>
+    /// <b>Clearing is never refused</b>, on a contract in any state — a guard on the way out is how a
+    /// row gets stranded, which is the rule <c>EnsurePausable</c> already states. Setting it is
+    /// guarded: it requires <see cref="Ready"/> (<c>contract_signed_requires_ready</c>), cannot
+    /// precede it (<c>contract_signed_before_ready</c>), and neither stamp may be dated in the future
+    /// (<c>contract_signature_date_in_future</c>).
+    /// </para>
+    /// </summary>
+    public DateTime? Signed { get; set; }
 }

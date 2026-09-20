@@ -228,6 +228,71 @@ public class DemoDataSeederTests
     }
 
     /// <summary>
+    /// AC 20 (issue #145) — the demo set spans the signature lifecycle: a <c>Draft</c>, a
+    /// <c>Ready</c>, and signed contracts in a live state, deterministically under the fixed seed.
+    ///
+    /// <para>
+    /// Two properties beyond the headcount are what make the spread worth seeding. The draft carries
+    /// a fully priced in-force periodic fee, so the money exclusion is <b>visible</b> rather than
+    /// merely asserted — seeded with no price on file, a draft would leave the run rate and the
+    /// next-charges list looking identical either way, exactly as a priceless paused contract would.
+    /// And the ready one's term has already run out, which is the case the layer's PLACEMENT exists
+    /// for: it must read <c>Ready</c>, not <c>Expired</c>.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Seeds_a_spread_across_the_signature_lifecycle()
+    {
+        await using var provider = BuildProvider(out var seeder);
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+        // Idempotent: a second run must not duplicate a row or move a stamp.
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var contracts = await context.Contracts.AsNoTracking().ToListAsync();
+
+        var draft = Assert.Single(contracts, c => c.Ready == null && c.Signed == null);
+        var ready = Assert.Single(contracts, c => c.Ready != null && c.Signed == null);
+        var signedAndLive = contracts.Where(c => c.Signed != null && c.Archived == null).ToList();
+        Assert.NotEmpty(signedAndLive);
+
+        // The draft is a contract nobody has agreed to yet, priced anyway.
+        var quote = Assert.Single(await context.Terms.AsNoTracking()
+            .Where(t => t.ContractId == draft.ContractId
+                && t.TermKind == TermKind.Fee
+                && t.ValueUnit == TermValueUnit.Amount
+                && t.EffectiveFrom <= DateTime.UtcNow)
+            .ToListAsync());
+        Assert.NotNull(quote.Interval);
+        Assert.True(quote.Interval!.Value.IsPeriodic(), "the quoted fee has a cadence, so it has a rate to exclude");
+
+        // The ready one's term has already lapsed — the case that must read Ready, not Expired.
+        Assert.NotNull(ready.EndDate);
+        Assert.True(ready.EndDate < DateTime.UtcNow, "the ready contract's term has run out");
+        Assert.Null(ready.Archived);
+
+        // Every seeded stamp satisfies the write guards, so a demo row is editable without repair:
+        // Signed >= Ready (G2) and neither is in the future (G3).
+        Assert.All(contracts, c =>
+        {
+            Assert.True(c.Signed is null || c.Ready is not null, "a signed contract carries a ready date");
+            Assert.True(c.Signed is null || c.Signed >= c.Ready, "signed is not before ready");
+            Assert.True(c.Ready is null || c.Ready!.Value.Date <= DateTime.UtcNow.Date, "ready is not in the future");
+            Assert.True(c.Signed is null || c.Signed!.Value.Date <= DateTime.UtcNow.Date, "signed is not in the future");
+        });
+
+        // Deterministic: the freshly built set carries the same stamps the database holds.
+        var expected = DemoDataSet.Build().Contracts.ToDictionary(c => c.ContractId);
+        Assert.All(contracts, c =>
+        {
+            Assert.Equal(expected[c.ContractId].Ready, c.Ready);
+            Assert.Equal(expected[c.ContractId].Signed, c.Signed);
+        });
+    }
+
+    /// <summary>
     /// Issue #138 — the demo set carries contract event logs, and carries the states the surface has
     /// to draw differently. Without them the rail, the year markers and the "Unknown user" attribution
     /// would all be unreachable in the demo stack, so the feature would look absent rather than empty.

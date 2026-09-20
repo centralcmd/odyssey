@@ -29,6 +29,15 @@ namespace Odyssey.TestData.Generators;
 /// one is a <c>OneTime</c> fee, which carries no cadence and must therefore appear in neither figure.
 /// </para>
 ///
+/// <para>
+/// Since issue #145 it also covers the two <b>signature</b> states: one <b>Draft</b> (no stamps, a
+/// future start date, and a fully priced fee — so the money gate is visible rather than asserted) and
+/// one <b>Ready</b> (a ready stamp, never signed, with a term that has since run out, which reads
+/// Ready and not Expired). Every other contract is seeded SIGNED, because the signature layer sits
+/// above the whole date chain: leaving them unsigned would collapse every status this set exists to
+/// demonstrate into Draft.
+/// </para>
+///
 /// Since issue #121 every party also carries a <see cref="ContractPartyRole"/> and an optional term.
 /// The set covers all five named v1 roles (Employee, Employer, Buyer, Seller, ServiceProvider), leaves
 /// at least one party <see cref="ContractPartyRole.Unspecified"/> — the state the migration backfills
@@ -43,6 +52,24 @@ namespace Odyssey.TestData.Generators;
 public static class ContractGenerator
 {
     private enum PartyKind { Account, Contact }
+
+    /// <summary>
+    /// Where a seeded contract sits in the signature lifecycle (issue #145). Every pre-#145 spec is
+    /// <see cref="Signed"/> so its documented derived status is unchanged — the signature layer sits
+    /// ABOVE the whole date chain, so an unsigned contract would read Draft/Ready whatever its dates
+    /// say and every status this set was built to demonstrate would collapse into two.
+    /// </summary>
+    private enum SignatureState
+    {
+        /// <summary>Marked ready and signed — the date chain decides the status.</summary>
+        Signed,
+
+        /// <summary>Neither stamp — derives as <c>Draft</c>.</summary>
+        Draft,
+
+        /// <summary>A ready stamp and no signature — derives as <c>Ready</c>.</summary>
+        Ready,
+    }
 
     /// <param name="FromDate">Offset in months from the contract's own start; null is the default term.</param>
     /// <param name="ToDate">As above, for the end of the term.</param>
@@ -62,7 +89,9 @@ public static class ContractGenerator
         bool Archived,
         IReadOnlyList<PartySpec> Parties,
         /// <summary>Offset in months from the anchor at which this contract was paused; null is not paused.</summary>
-        int? PausedMonths = null);
+        int? PausedMonths = null,
+        /// <summary>Where this contract sits in the signature lifecycle (issue #145).</summary>
+        SignatureState Signature = SignatureState.Signed);
 
     /// <summary>
     /// One entry in a contract's event log (issue #138).
@@ -236,6 +265,35 @@ public static class ContractGenerator
                 ],
                 PausedMonths: -1),
 
+            // DRAFT (issue #145) — recorded while it is still being negotiated. Note the start date is
+            // in the FUTURE and the status is still Draft, not Upcoming: the dates describe a term
+            // nobody has agreed to, and reporting Upcoming would assert a commitment that does not
+            // exist. It carries a fully priced monthly fee (below), which is what makes the money gate
+            // legible in the demo rather than merely asserted — the price shows in the term history
+            // and in nothing else: not the run rate, not the by-type cost split, not the next charges.
+            new(
+                "Beacon Home Services — Cleaning", ContractType.Service,
+                "Fortnightly whole-house clean. Quote received; terms still under discussion — nothing has been marked ready for signature yet.",
+                anchor.AddMonths(2), anchor.AddYears(1).AddMonths(2), false,
+                [
+                    new(PartyKind.Contact, Catalog.Contacts.CityPowerWater, ContractPartyRole.ServiceProvider),
+                ],
+                Signature: SignatureState.Draft),
+
+            // READY (issue #145) — marked ready for signature and never signed, with a term that has
+            // since run out. It reads Ready, NOT Expired: a term cannot lapse before it begins, and
+            // the thing to act on is an abandoned negotiation rather than a retired agreement. It is
+            // archivable under the widened rule despite having an end date in the past, and it is the
+            // row the header's "Awaiting signature" group is built to surface.
+            new(
+                "Westbrook Tutoring — Weekly Sessions", ContractType.Service,
+                "Weekly maths tuition over the school year. Sent for signature and never returned — the term it describes has since run out.",
+                anchor.AddMonths(-12), anchor.AddMonths(-3), false,
+                [
+                    new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.ServiceProvider),
+                ],
+                Signature: SignatureState.Ready),
+
             // Archived — an expired prior service contract, retained for reference (hidden by default).
             new(
                 "Previous Broadband Contract", ContractType.Service,
@@ -255,6 +313,7 @@ public static class ContractGenerator
         foreach (var spec in specs)
         {
             var contractId = IdFor(spec.Name);
+            var (ready, signed) = SignatureStamps(spec, createdAt);
             contracts.Add(new Contract
             {
                 ContractId = contractId,
@@ -267,6 +326,8 @@ public static class ContractGenerator
                 // Derived from the anchor, never from the wall clock, so the seed stays deterministic
                 // and re-running it stays idempotent.
                 Paused = spec.PausedMonths is { } months ? anchor.AddMonths(months) : null,
+                Ready = ready,
+                Signed = signed,
                 CreatedAtUtc = createdAt,
             });
 
@@ -291,6 +352,29 @@ public static class ContractGenerator
         }
 
         return (contracts, parties, BuildTerms(anchor, contracts), BuildEvents(anchor, contracts));
+    }
+
+    /// <summary>
+    /// The two signature stamps for one spec (issue #145), derived from dates the spec already has so
+    /// the seed stays deterministic and never reads the wall clock.
+    ///
+    /// <para>
+    /// The signed moment is <c>min(StartDate, CreatedAtUtc)</c> — the same shape as the migration's
+    /// <c>LEAST(COALESCE(…), CreatedAtUtc)</c> clamp, and for the same reason: a contract that starts
+    /// in the future must not be stamped as signed in the future, which the server refuses outright
+    /// (<c>contract_signature_date_in_future</c>) and which would leave a seeded row no later write
+    /// could save. Ready sits a week earlier, so <c>Signed &gt;= Ready</c> holds by construction.
+    /// </para>
+    /// </summary>
+    private static (DateTime? Ready, DateTime? Signed) SignatureStamps(ContractSpec spec, DateTime createdAt)
+    {
+        var signedAt = spec.StartDate <= createdAt ? spec.StartDate : createdAt;
+        return spec.Signature switch
+        {
+            SignatureState.Draft => (null, null),
+            SignatureState.Ready => (signedAt.AddDays(-7), null),
+            _ => (signedAt.AddDays(-7), signedAt),
+        };
     }
 
     /// <summary>
@@ -348,6 +432,14 @@ public static class ContractGenerator
             // is what makes the exclusion legible in the demo rather than merely asserted.
             new("Meal Kit Delivery — Weekly Box", "Weekly box", 78.00m, Currencies.Usd,
                 Interval.Monthly, 1, -9, Note: "Suspended while the subscription is paused."),
+
+            // The DRAFT's fee (issue #145) — fully priced, in force by its own effective date, on a
+            // contract that is neither archived nor paused. The ONLY reason it is absent from the run
+            // rate, the by-type cost split and the next charges is that nobody has signed the
+            // agreement: a price nobody agreed to is a quote. Seeding a draft with no price on file
+            // would leave that exclusion invisible, exactly as it would for the paused one above.
+            new("Beacon Home Services — Cleaning", "Cleaning", 180.00m, Currencies.Usd,
+                Interval.Monthly, 1, 0, Note: "Quoted rate — not agreed until the contract is signed."),
 
             // An archived contract still carries its history; it must contribute to neither figure.
             new("Previous Broadband Contract", "Line rental", 45.00m, Currencies.Usd,

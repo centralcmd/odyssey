@@ -12,16 +12,31 @@ public sealed record ContractStatusCounts
     public int Archived { get; set; }
 
     /// <summary>
-    /// A real fifth bucket (issue #140), unlike <see cref="EndingSoon"/>: the five are mutually
-    /// exclusive derived statuses and still sum to <see cref="ContractSummary.TotalContracts"/>.
+    /// A real bucket (issue #140), unlike <see cref="EndingSoon"/>: the seven are mutually exclusive
+    /// derived statuses and still sum to <see cref="ContractSummary.TotalContracts"/>.
     /// </summary>
     public int Paused { get; set; }
 
     /// <summary>
-    /// A SLICE of <see cref="Active"/>, never a sixth status: the Active contracts whose end date
-    /// falls inside <see cref="ContractSummary.EndingWindowDays"/>. It is reported beside the five
+    /// Recorded, not yet marked ready for signature (issue #145). A real bucket like the five before
+    /// it: on file but not in force, so it is excluded from the run rate and the upcoming charges and
+    /// <b>included</b> in <see cref="ContractSummary.CountsByType"/> — that is a headcount of the
+    /// agreements on file, not a cost split, and a draft is still a contract of its type. The same
+    /// deliberate divergence <see cref="Paused"/> already has.
+    /// </summary>
+    public int Draft { get; set; }
+
+    /// <summary>
+    /// Marked ready for signature and not yet signed (issue #145). Counted and excluded on exactly
+    /// the same terms as <see cref="Draft"/>.
+    /// </summary>
+    public int Ready { get; set; }
+
+    /// <summary>
+    /// A SLICE of <see cref="Active"/>, never an eighth status: the Active contracts whose end date
+    /// falls inside <see cref="ContractSummary.EndingWindowDays"/>. It is reported beside the seven
     /// because the cliff is the thing a reader acts on, but it is already counted in
-    /// <see cref="Active"/> — adding it to the five would double-count the set.
+    /// <see cref="Active"/> — adding it to the seven would double-count the set.
     /// </summary>
     public int EndingSoon { get; set; }
 }
