@@ -13,18 +13,19 @@
     ONE-OFF — a required completionDate point-in-time agreement with no ongoing term. Parties and
     documents are never edited here; they are managed from the contract's detail (§6/§10).
 
-    The two SIGNATURE stamps (issue #145) are here as ordinary dates so a paper contract signed last
-    month can be entered in one go; the common path is the row menu's one-click Mark ready / Mark
-    signed. Both left blank creates a Draft, which is the normal case. Nothing constrains them
-    against the TERM dates — signing after cover has begun is ordinary, and signing before a term
-    starts is the normal case.
+    The two SIGNATURE stamps (issue #145) are EDIT-ONLY: a brand-new contract always starts as a
+    Draft, so create mode does not offer them at all and the stamps are set from the contract itself
+    — usually the row menu's one-click Mark ready / Mark signed, or this dialog in edit mode when a
+    paper contract signed last month is entered in one go. Nothing constrains them against the TERM
+    dates — signing after cover has begun is ordinary, and signing before a term starts is the
+    normal case.
 *@
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
                Icon="handshake" Title="@(IsEdit ? "Edit contract" : "New contract")"
                Subtitle="@(IsEdit
                    ? "Update the agreement's name, type, term and signature dates. Parties and documents are managed from the contract."
-                   : "Record the agreement's name, type and dates — a term or a one-off. Leave the signature dates blank to record it as a draft.")"
+                   : "Record the agreement's name, type and dates — a term or a one-off. It starts as a draft; mark it ready and signed from the contract itself.")"
                SubmitLabel="@(IsEdit ? "Save changes" : "Create contract")"
                SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SaveAsync">
@@ -66,21 +67,23 @@
         </OdsFormRow>
     }
 
-    @* SIGNATURE — its own labelled pair, below the term dates and above the description: these two
-       dates say whether the agreement BINDS, which the term dates alone never do. Neither is
-       required; leaving both empty records a draft. *@
-    <OdsFormRow>
-        <OdsDateField Label="Ready for signature" Value="_ready"
-                      ValueChanged="@(v => { _ready = v; _readyError = null; _signedError = null; })"
-                      Placeholder="Not yet ready"
-                      Error="@_readyError"
-                      Help="Leave blank while it is still being drafted." />
-        <OdsDateField Label="Signed" Value="_signed"
-                      ValueChanged="@(v => { _signed = v; _signedError = null; })"
-                      Placeholder="Not signed"
-                      Error="@_signedError"
-                      Help="Signed by all parties. Until this is set, the contract stays out of the run rate." />
-    </OdsFormRow>
+    @* SIGNATURE — edit only. A brand-new contract always starts as a Draft, so the two stamps are
+       set later from the contract itself; on edit they matter, and neither is required. *@
+    @if (IsEdit)
+    {
+        <OdsFormRow>
+            <OdsDateField Label="Ready for signature" Value="_ready"
+                          ValueChanged="@(v => { _ready = v; _readyError = null; _signedError = null; })"
+                          Placeholder="Not yet ready"
+                          Error="@_readyError"
+                          Help="Leave blank while it is still being drafted." />
+            <OdsDateField Label="Signed" Value="_signed"
+                          ValueChanged="@(v => { _signed = v; _signedError = null; })"
+                          Placeholder="Not signed"
+                          Error="@_signedError"
+                          Help="Signed by all parties. Until this is set, the contract stays out of the run rate." />
+        </OdsFormRow>
+    }
 
     <OdsNoteField Label="Description" MaxLength="1024" @bind-Value="_description"
                   Placeholder="What this agreement covers, term, notice period, key conditions…" />
