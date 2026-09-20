@@ -387,6 +387,7 @@ builder.Services.AddScoped<Odyssey.Context.Secrets.ISecretSettingsReader,
     Odyssey.Api.SystemSettings.SecretSettingsReader>();
 
 builder.Services.AddScoped<ContractService>();
+builder.Services.AddScoped<ContractEventService>();
 
 builder.Services.AddScoped<SubscriptionService>();
 

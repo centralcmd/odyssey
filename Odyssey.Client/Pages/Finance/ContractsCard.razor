@@ -248,6 +248,7 @@
                                                 CanWrite="_canUpdate"
                                                 FormatMoney="FormatMoney"
                                                 NewTermRequestToken="@NewTermRequestFor(c.ContractId)"
+                                                NewEventRequestToken="@NewEventRequestFor(c.ContractId)"
                                                 CanDownload="_canDownloadFiles"
                                                 Archived="@(c.Archived is not null)"
                                                 OnEditParty="@(p => EditParty(c.ContractId, p))"

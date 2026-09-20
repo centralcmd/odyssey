@@ -1674,11 +1674,127 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-tl-item.current .odc-tl-value { color: var(--finance-income); }
 
+/* ---------- Event rail (OdsEventRail / …Item / …Marker — DS components/EventRail) ----------
+   The CONTINUOUS-rail history list: one unbroken line the full height of the track, 32px icon
+   nodes sitting on it, and markers (years, endpoints) on the same line BETWEEN rows. The
+   Timeline above cannot do this — its rail restarts per item, so a marker between two rows
+   would break the line — which is why there are two components rather than a flag on one. */
+.odc-er { position: relative; display: flex; flex-direction: column; }
+.odc-er::before {
+    content: ""; position: absolute; left: 16px; top: 14px; bottom: 14px;
+    width: 2px; margin-left: -1px;
+    background: var(--mud-palette-divider); border-radius: 2px;
+}
+/* An uncapped end FADES: a mid-page rail genuinely continues, and a hard stop would say
+   otherwise. Both-uncapped needs its own rule because two mask-image declarations cannot
+   compose — the second would simply replace the first. */
+.odc-er:not(.capped-top)::before {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28px);
+    mask-image: linear-gradient(to bottom, transparent, #000 28px);
+}
+.odc-er:not(.capped-end)::before {
+    -webkit-mask-image: linear-gradient(to top, transparent, #000 28px);
+    mask-image: linear-gradient(to top, transparent, #000 28px);
+}
+.odc-er:not(.capped-top):not(.capped-end)::before {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+}
+
+.odc-er-marker { position: relative; display: flex; align-items: center; min-height: 26px; padding-left: 34px; }
+/* With a meta line the marker stacks, so the node aligns to the label row rather than the
+   block's centre. */
+.odc-er-marker.has-meta { display: block; padding-top: 5px; padding-bottom: 5px; }
+.odc-er-marker.has-meta::before { top: 16px; }
+.odc-er-marker.has-meta .odc-er-meta { margin-top: 4px; }
+.odc-er-marker:hover .odc-er-meta, .odc-er-marker:focus-within .odc-er-meta { opacity: 1; }
+/* Direct child only: the marker's own label. A meta line has its own type, and its inner
+   spans must not inherit the mono uppercase treatment.
+
+   NO opacity here, deliberately — the design system's own rule carries `opacity: 0.75`, and
+   against THIS theme's tokens that is what breaks WCAG 1.4.3: text-secondary alone measures
+   ~7.35:1 light / ~6.9:1 dark, and three-quarter opacity drops an 11px label to ~3.95:1 / ~4.45:1,
+   under the 4.5:1 AA minimum for normal text. The token is already the muted one; muting it twice
+   is what over-shot. */
+.odc-er-marker > span {
+    font: var(--fw-medium) var(--fs-overline)/1 var(--font-mono);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+.odc-er-marker::before {
+    content: ""; position: absolute; left: 16px; top: 50%; box-sizing: border-box;
+    border-radius: var(--radius-pill); outline: 3px solid var(--mud-palette-surface);
+}
+.odc-er-marker.tick::before { width: 10px; height: 10px; margin: -5px 0 0 -5px; background: var(--mud-palette-divider); }
+.odc-er-marker.open::before {
+    width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+    background: var(--mud-palette-surface); border: 2px solid var(--mud-palette-text-secondary);
+}
+.odc-er-marker.filled::before { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; background: var(--mud-palette-text-secondary); }
+
+.odc-er-item { position: relative; display: flex; gap: 14px; padding: 9px 4px 11px 0; border-radius: var(--radius-md); }
+.odc-er-item.sel { background: var(--mud-palette-action-default-hover); }
+.odc-er-node {
+    position: relative; z-index: 1; flex: none; width: 32px; height: 32px;
+    border-radius: var(--radius-pill); display: inline-flex; align-items: center; justify-content: center;
+    box-sizing: border-box; background: var(--mud-palette-surface);
+    border: 1.5px solid var(--mud-palette-divider); outline: 3px solid var(--mud-palette-surface);
+}
+.odc-er-node .material-icons { font-size: 17px; color: var(--odc-er-node-fg, var(--mud-palette-text-secondary)); }
+.odc-er-item.sel .odc-er-node { background: var(--mud-palette-action-default-hover); outline-color: var(--mud-palette-action-default-hover); }
+.odc-er-body { flex: 1; min-width: 0; padding-top: 4px; }
+.odc-er-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 28px; }
+.odc-er-title { font: var(--fw-medium) var(--fs-body2)/1.35 var(--font-mono); color: var(--tide-400); }
+.odc-er-date { font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+/* Two lines at most, so one long entry cannot push the rest off screen. */
+.odc-er-desc {
+    margin-top: 3px; font: italic var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+/* Provenance, not content: revealed by the same gesture as the row actions. */
+.odc-er-meta {
+    margin-top: 6px; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans);
+    color: var(--mud-palette-text-secondary); opacity: 0; transition: opacity var(--duration-base) var(--ease-standard);
+}
+.odc-er-item:hover .odc-er-meta, .odc-er-item:focus-within .odc-er-meta { opacity: 1; }
+/* No hover on touch — the provenance must be readable there too. */
+@media (hover: none) { .odc-er-meta { opacity: 1; } }
+/* A row with no actions has nothing focusable in it, so :focus-within can never fire and a
+   keyboard-only user would have NO way to reach the provenance line (WCAG 2.1.1). That is not a
+   corner case: a caller holding contracts.read without contracts.update — the seeded User role —
+   sees every row this way. Where there is no reveal affordance, there is no reveal. */
+.odc-er-item.no-actions .odc-er-meta { opacity: 1; }
+
 /* ---------- Layout utilities ---------- */
 /* Hairline card/panel outline — replaces the inline
    `border:1px solid var(--mud-palette-divider)` repeated across pages. */
 .ods-outline { border: 1px solid var(--mud-palette-divider); }
 
+
+/* =============================================================
+   Contract events — the "Events" section inside an expanded contract
+   record (issue #138). The rail itself is the DS event rail
+   (.odc-er-*, above); everything here is what is specific to CONTRACT
+   events: the section inset, the attribution wording and the
+   date/time pair in the dialog. Ported from the Odyssey Design
+   System (contract-events.css).
+   ============================================================= */
+
+/* The rail sits flush in the section — the divider above it is the heading, and v1 ships no
+   toolbar and no create button, because creating an event is an action on the CONTRACT
+   (its row menu) rather than on the section. */
+.cev-rail { padding-top: 2px; }
+
+/* The author's name reads as ink against the muted provenance line around it. An unresolved
+   author is italic and stays muted, so "Unknown user" is visibly a description rather than
+   somebody's name. */
+.cev-by-who { color: var(--mud-palette-text-primary); }
+.cev-by-unknown .cev-by-who { font-style: italic; color: inherit; }
+
+/* Date and time as one field: the pair answers one question, so it reads as one control with
+   one label rather than as two independent fields the user has to associate. */
+.cev-when { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--space-2); }
 
 /* =============================================================
    Account interest-rate & fee history — the "Rate & fees" section

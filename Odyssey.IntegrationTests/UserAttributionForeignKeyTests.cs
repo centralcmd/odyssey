@@ -20,7 +20,7 @@ namespace Odyssey.IntegrationTests;
 /// <para>
 /// EF InMemory enforces no foreign keys at all, so the fast tiers cannot see any of this — which is
 /// exactly why the rule is pinned here, against the real engine. The first test reads
-/// <c>information_schema</c> so a single mistyped <c>DeleteBehavior</c> among twenty-three is caught by
+/// <c>information_schema</c> so a single mistyped <c>DeleteBehavior</c> among twenty-four is caught by
 /// name; the second deletes a user and watches the columns actually null, so the set of constraints is
 /// backed by an observation of them firing.
 /// </para>
@@ -50,9 +50,13 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         // a beneficiary designation is the highest-consequence link the feature adds, and "who named
         // this person, and when" is the question a beneficiary dispute actually asks.
         ("InsurancePolicyBeneficiaries", "CreatedByUserId"),
+        // The contract event log (issue #138 §4). An event is the household's shared record of what
+        // happened to an agreement, not the author's personal data, so it must outlive their account
+        // with only the name dropped.
+        ("ContractEvents", "CreatedByUserId"),
         // The relocation ledger from issue #26. It is not an EF entity — it is an operational record
         // of what the migration did — but its attribution column follows the same rule as the other
-        // twenty-three, and for the same reason: the ledger must outlive the departure of whoever
+        // twenty-four, and for the same reason: the ledger must outlive the departure of whoever
         // attached the document it records.
         ("_InsurancePolicyFileRelocation", "AttachedByUserId"),
         ("FileMetadata", "UploadedByUserId"),

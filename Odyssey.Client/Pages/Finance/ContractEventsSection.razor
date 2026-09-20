@@ -1,0 +1,164 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject IDialogService DialogService
+@inject IContractsApiClient Contracts
+@inject ISnackbar Snackbar
+
+@*
+    ContractEventsSection — the "Events" section inside an expanded contract record (issue #138),
+    LAST, after Parties, Terms and Documents. Mirrors the design system's ContractEvents.
+
+    A contract records what an agreement IS; an event records what has HAPPENED to it. The section is
+    a user-maintained, chronological log drawn on the DS event rail: one unbroken line, a neutral icon
+    node per entry, year markers sitting on the line between rows, and both ends anchored to a real
+    date.
+
+    Four decisions it draws rather than assumes:
+
+    • THE RAIL SHOWS TITLE AND DESCRIPTION, NEVER NOTES (§4.1). That is the spec's own presentation
+      rule and ONLY a presentation rule: notes sit behind the same contracts.read claim, are searched
+      by the same term and are exported with everything else, so nothing here may imply they are
+      private. The dialog is where they are read and written, and its helper line states the audience.
+
+    • NOTHING IS AUTO-GENERATED. Pausing, archiving or renewing the contract writes no event (§7.6 /
+      Non-Goal 4), so there is no "system" badge, no lock and no two-tier list — every row is the
+      user's own and every row is editable and deletable by any contracts.update holder.
+
+    • THE LOG IS PAGED ON ITS OWN ENDPOINT. GET /api/contracts/{id} deliberately does not carry events
+      (§5): parties and files are bounded sets, a log is not. So the section reads GET …/events
+      itself, newest first, and pages SERVER-side — the pager's window is the query's offset/limit,
+      not a slice of a list already in memory. Search, the type filter, the date window and the sort
+      key exist on the query string and are deliberately not surfaced in v1.
+
+    • AN ARCHIVED CONTRACT STAYS WRITABLE HERE (§8.6), unlike Terms, which goes read-only. Archival
+      hides a contract; it does not lock its history. So this section takes no Archived parameter at
+      all — there is no state for it to explain.
+
+    No event affects ContractStatus (§4.2) — a Terminated event does not expire the contract — so
+    nothing here touches the status chip.
+*@
+
+<div class="con-section">
+    <OdsSectionDivider Label="Events" Meta="@Meta" />
+
+    @if (_isLoading)
+    {
+        <div role="status" aria-live="polite" aria-busy="true">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+            <span class="sr-only">Loading events…</span>
+        </div>
+    }
+    else if (_total == 0)
+    {
+        <div class="con-empty-line">
+            <span class="material-icons" aria-hidden="true">history</span>
+            <div style="flex:1;">
+                No events yet — record what has happened to this agreement: signed, renewed, notice
+                given, a price renegotiated, an email sent.
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="cev-rail">
+            <OdsEventRail CapTop="IsFirstPage" CapEnd="IsLastPage">
+                @foreach (var entry in Track)
+                {
+                    @* @key is load-bearing, not tidiness: a delete shrinks this list in place, and
+                       without an identity Blazor diffs the survivors POSITIONALLY — it would keep the
+                       focused row's DOM node and re-point it at the NEXT event's data, so a menu a
+                       keyboard user is sitting on silently starts describing a different entry under
+                       the same focus (WCAG 4.1.2). *@
+                    var item = entry;
+                    if (item.Event is { } ev)
+                    {
+                        var info = OdsTypeRegistries.ContractEventTypeOf(ev.Type);
+                        @* v1: the node is NEUTRAL — no Color passed. The glyph carries the type, and
+                           holding the hue back keeps nine colours from competing with the status
+                           vocabulary the record head already uses. *@
+                        <OdsEventRailItem @key="ev.ContractEventId"
+                                          Icon="@info.Icon" IconLabel="@info.Label"
+                                          Title="@RowTitle(ev)"
+                                          Date="@RowDate(ev)"
+                                          Desc="@RowDesc(ev)"
+                                          Actions="@RowActions(ev)">
+                            @RowAttribution(ev)
+                        </OdsEventRailItem>
+                    }
+                    else if (item.Kind == TrackKind.Now)
+                    {
+                        <OdsEventRailMarker @key="@("cap-now")" Tone="OdsEventRailTone.Open">
+                            Today · @FormatDate(Today)
+                        </OdsEventRailMarker>
+                    }
+                    else if (item.Kind == TrackKind.Origin)
+                    {
+                        @* The other anchor is WHEN THE RECORD WAS ADDED — not the contract's start
+                           date. The two are different facts and the start date is the wrong one: a
+                           contract can start in 2026 and still carry a Signed event from 2025, so
+                           pinning the foot of the rail to the start would put an event below its own
+                           origin. The record's creation is when the log became possible. *@
+                        <OdsEventRailMarker @key="@("cap-origin")" Tone="OdsEventRailTone.Filled">
+                            Contract added @FormatDate(Contract.CreatedAtUtc)
+                        </OdsEventRailMarker>
+                    }
+                    else
+                    {
+                        <OdsEventRailMarker @key="@($"y{item.Year}")">@item.Year</OdsEventRailMarker>
+                    }
+                }
+            </OdsEventRail>
+        </div>
+
+        @if (_total > PageSize)
+        {
+            <OdsPager Page="_page" PageChanged="GoToPageAsync"
+                      PageSize="PageSize" TotalCount="_total"
+                      ShowPageSize="false"
+                      Label="Event log pagination" />
+        }
+    }
+</div>
+
+@if (_dialogKey != Guid.Empty)
+{
+    <AddContractEventDialog @key="_dialogKey"
+                            @bind-Open="_dialogOpen"
+                            Contract="Contract"
+                            Event="_editingEvent"
+                            OnSaved="OnEventChangedAsync" />
+}
+
+@code {
+    // Razor syntax (@<text>), so these inline render fragments cannot live in the code-behind.
+    // Everything else does.
+
+    private RenderFragment RowTitle(ExistingContractEvent ev) => @<text>@ev.Title</text>;
+
+    private RenderFragment RowDate(ExistingContractEvent ev) => @<text>@FormatDateTime(ev.OccurredAt)</text>;
+
+    /// <summary>
+    /// The description, and NOT the notes: §4.1's presentation rule. Null when there is none, so the
+    /// rail renders no empty second line.
+    /// </summary>
+    private RenderFragment? RowDesc(ExistingContractEvent ev) =>
+        string.IsNullOrWhiteSpace(ev.Description) ? null : @<text>@ev.Description</text>;
+
+    /// <summary>
+    /// Attribution is a display LABEL resolved at the API edge — never a raw user id, which the
+    /// response does not carry at all. A deleted author reads back as "Unknown user", and is drawn
+    /// quieter so an absent name is not mistaken for someone called that.
+    /// </summary>
+    private RenderFragment RowAttribution(ExistingContractEvent ev) =>
+        @<div class="odc-er-meta@(IsKnownAuthor(ev) ? "" : " cev-by-unknown")">
+            Recorded by <span class="cev-by-who">@AuthorLabel(ev)</span> at @FormatDateTime(ev.CreatedAtUtc)
+        </div>;
+
+    private RenderFragment? RowActions(ExistingContractEvent ev) => CanUpdate
+        ? @<OdsRowActions Actions="@(new[]
+           {
+               new OdsRowAction { Icon = "edit", Label = $"Edit {ev.Title}", OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => OpenEdit(ev)) },
+               new OdsRowAction { Icon = "delete", Label = $"Delete {ev.Title}", Danger = true, OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => DeleteAsync(ev)) },
+           })" />
+        : null;
+}

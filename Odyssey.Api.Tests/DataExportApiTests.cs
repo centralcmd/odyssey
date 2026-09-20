@@ -530,6 +530,80 @@ public class DataExportApiTests
     }
 
     /// <summary>
+    /// Issue #138 AC 18's CONTENT half. <c>DataExportTableCoverageTests</c> is a reflection guard that
+    /// only proves the table is accounted for somewhere; it passes the moment a collection property
+    /// exists and says nothing about what the rows carry. This seeds an event and reads the exported
+    /// JSON.
+    /// </summary>
+    /// <remarks>
+    /// <b>All three free-text fields, <c>notes</c> included.</b> The timeline does not render notes,
+    /// but that is a presentation rule and not an access one (§4.1) — the field is behind the same
+    /// claim, searched by the same term and no more private than the other two. Omitting it here would
+    /// make a subject-access response silently incomplete, which is the exact defect this document's
+    /// coverage guard exists for (issue #33). The attribution is exported as the RAW column, unlike
+    /// the API's read path, matching every other attribution column in the document.
+    /// </remarks>
+    [Fact]
+    public async Task Export_IncludesContractEventsWithAllThreeFreeTextFields()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        var contractId = await AddContractEventAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var contractEvent = Assert.Single(finance.GetProperty("contractEvents").EnumerateArray());
+        Assert.Equal(contractId, contractEvent.GetProperty("contractId").GetGuid());
+        Assert.Equal("Emailed the landlord", contractEvent.GetProperty("title").GetString());
+        Assert.Equal("What was said, at more length.", contractEvent.GetProperty("description").GetString());
+        Assert.Equal("Chase this on the 21st.", contractEvent.GetProperty("notes").GetString());
+        Assert.Equal((int)Odyssey.Dtos.Finance.ContractEventType.EmailSent, contractEvent.GetProperty("type").GetInt32());
+        Assert.Equal("exporting-author", contractEvent.GetProperty("createdByUserId").GetString());
+
+        // The whole column set, so a field dropped from the projection fails here rather than going
+        // unnoticed — the assertion the three named above cannot make on their own.
+        Assert.Equal(
+            new[]
+            {
+                "contractEventId", "contractId", "type", "title", "description", "notes",
+                "occurredAt", "createdByUserId", "createdAtUtc",
+            }.Order(StringComparer.Ordinal),
+            contractEvent.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+    }
+
+    private static async Task<Guid> AddContractEventAsync(WebApplicationFactory<Program> factory)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        var contract = new Contract
+        {
+            Name = "Maple St lease",
+            Type = Odyssey.Context.ContractType.Rental,
+            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        context.ContractEvents.Add(new ContractEvent
+        {
+            ContractEventId = Guid.NewGuid(),
+            ContractId = contract.ContractId,
+            Type = Odyssey.Context.ContractEventType.EmailSent,
+            Title = "Emailed the landlord",
+            Description = "What was said, at more length.",
+            Notes = "Chase this on the 21st.",
+            OccurredAt = new DateTime(2026, 2, 1, 9, 0, 0, DateTimeKind.Utc),
+            CreatedByUserId = "exporting-author",
+            CreatedAtUtc = new DateTime(2026, 2, 1, 12, 0, 0, DateTimeKind.Utc),
+        });
+        await context.SaveChangesAsync();
+        return contract.ContractId;
+    }
+
+    /// <summary>
     /// Tax statements carry declared figures and an assessment — wholly user-authored financial
     /// data, and the strongest omission after insurance.
     /// </summary>

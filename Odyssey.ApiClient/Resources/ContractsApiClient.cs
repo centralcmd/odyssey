@@ -1,3 +1,4 @@
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.ApiClient.Resources;
@@ -76,6 +77,49 @@ public interface IContractsApiClient
     Task<ApiResult> UpdateTermAsync(Guid contractId, Guid termId, NewTerm term, CancellationToken ct = default);
 
     Task<ApiResult> DeleteTermAsync(Guid contractId, Guid termId, CancellationToken ct = default);
+
+    // ── Events (the contract's own log) ───────────────────────────────────────
+    //
+    // Contract-scoped exactly like the party, term and file routes above: an event is addressed as
+    // {contractId}/events/{eventId}, never by event id alone, so the owner is always named by the route.
+
+    /// <summary>
+    /// One page of the contract's event log. Newest first by default; the search term spans the title,
+    /// the description <b>and</b> the notes.
+    /// </summary>
+    /// <param name="page">1-based page number, paired with <paramref name="pageSize"/>.</param>
+    /// <param name="pageSize">Rows per page; <see cref="PagedQuery.SizeAll"/> requests the whole log.</param>
+    Task<ApiResult<PagedResult<ExistingContractEvent>>> ListEventsAsync(
+        Guid contractId,
+        string? search = null,
+        IReadOnlyCollection<string>? types = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = PagedQuery.SizeAll,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Records one event on the contract. <c>createdBy</c> and <c>createdAtUtc</c> are server-stamped
+    /// and ignored if present in the body, and <c>occurredAt</c> must not be in the future (a
+    /// 60-second forward tolerance allows for a client clock that runs slightly fast).
+    /// </summary>
+    Task<ApiResult> AddEventAsync(Guid contractId, NewContractEvent request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Replaces one event. The body is a <b>full replacement</b> — <c>null</c> means "clear this
+    /// field", <b>not</b> "leave unchanged", which is the opposite of <see cref="UpdateAsync"/>. A
+    /// caller that omits <c>description</c> or <c>notes</c> <b>clears</b> it, and one that omits
+    /// <c>type</c> resets it to <see cref="ContractEventType.Other"/>. <c>createdBy</c> and
+    /// <c>createdAtUtc</c> are never rewritten by an update.
+    /// </summary>
+    Task<ApiResult> UpdateEventAsync(
+        Guid contractId, Guid eventId, UpdateContractEvent request, CancellationToken ct = default);
+
+    /// <summary>Removes one event from the contract's log. The contract itself is untouched.</summary>
+    Task<ApiResult> DeleteEventAsync(Guid contractId, Guid eventId, CancellationToken ct = default);
 }
 
 /// <inheritdoc cref="IContractsApiClient" />
@@ -157,4 +201,42 @@ public sealed class ContractsApiClient(IOdysseyApi api) : IContractsApiClient
         api.SendAsync(HttpMethod.Delete, $"{Terms(contractId)}/{termId}", null, ct);
 
     private static string Terms(Guid contractId) => $"{Base}/{contractId}/terms";
+
+    // ── Events ───────────────────────────────────────────────────────────────
+
+    public Task<ApiResult<PagedResult<ExistingContractEvent>>> ListEventsAsync(
+        Guid contractId,
+        string? search = null,
+        IReadOnlyCollection<string>? types = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = PagedQuery.SizeAll,
+        CancellationToken ct = default) =>
+        api.GetPagedAsync<ExistingContractEvent>(
+            PagedQuery.For(Events(contractId))
+                .Window(page, pageSize)
+                .Add("search", search)
+                .AddMany("types", types)
+                .Add("from", from)
+                .Add("to", to)
+                .Add("sortBy", sortBy)
+                .Add("sortDir", sortDir)
+                .Build(),
+            ct);
+
+    public Task<ApiResult> AddEventAsync(
+        Guid contractId, NewContractEvent request, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Post, Events(contractId), request, ct);
+
+    public Task<ApiResult> UpdateEventAsync(
+        Guid contractId, Guid eventId, UpdateContractEvent request, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Put, $"{Events(contractId)}/{eventId}", request, ct);
+
+    public Task<ApiResult> DeleteEventAsync(Guid contractId, Guid eventId, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Delete, $"{Events(contractId)}/{eventId}", null, ct);
+
+    private static string Events(Guid contractId) => $"{Base}/{contractId}/events";
 }

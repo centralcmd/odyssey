@@ -34,6 +34,7 @@ public class OdsTypeRegistriesTests
         { nameof(OdsTypeRegistries.ContractTypes), typeof(ContractType) },
         { nameof(OdsTypeRegistries.ContractFileTypes), typeof(ContractFileType) },
         { nameof(OdsTypeRegistries.ContractPartyRoles), typeof(ContractPartyRole) },
+        { nameof(OdsTypeRegistries.ContractEventTypes), typeof(ContractEventType) },
         { nameof(OdsTypeRegistries.BillingIntervals), typeof(BillingInterval) },
         { nameof(OdsTypeRegistries.BudgetCategoryTypes), typeof(BudgetCategoryType) },
     };
@@ -123,6 +124,7 @@ public class OdsTypeRegistriesTests
         AssertResolvesEveryMember<BillingInterval>(OdsTypeRegistries.BillingIntervalOf);
         AssertResolvesEveryMember<ContractType>(OdsTypeRegistries.ContractTypeOf);
         AssertResolvesEveryMember<ContractFileType>(OdsTypeRegistries.ContractFileTypeOf);
+        AssertResolvesEveryMember<ContractEventType>(OdsTypeRegistries.ContractEventTypeOf);
         AssertResolvesEveryMember<PolicyFileType>(OdsTypeRegistries.PolicyFileTypeOf);
         AssertResolvesEveryMember<AccountFileType>(OdsTypeRegistries.AccountFileTypeOf);
         AssertResolvesEveryMember<TransactionFileType>(OdsTypeRegistries.TransactionFileTypeOf);
@@ -152,6 +154,7 @@ public class OdsTypeRegistriesTests
         Assert.Equal("Other", OdsTypeRegistries.InsurancePolicyTypeOf((InsurancePolicyType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.ContractTypeOf((ContractType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.ContractFileTypeOf((ContractFileType)99).Key);
+        Assert.Equal("Other", OdsTypeRegistries.ContractEventTypeOf((ContractEventType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.PolicyFileTypeOf((PolicyFileType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.AccountFileTypeOf((AccountFileType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.TransactionFileTypeOf((TransactionFileType)99).Key);

@@ -65,6 +65,22 @@ public static class ContractGenerator
         int? PausedMonths = null);
 
     /// <summary>
+    /// One entry in a contract's event log (issue #138).
+    /// <paramref name="OccurredMonths"/> is an offset from the anchor and is always negative: an
+    /// event records what has HAPPENED, and the server refuses a future one outright.
+    /// <paramref name="AuthorRole"/> null seeds an event whose author has since been deleted, which
+    /// is the <c>SET NULL</c> state the read path renders as "Unknown user".
+    /// </summary>
+    private sealed record ContractEventSpec(
+        string ContractName,
+        ContractEventType Type,
+        string Title,
+        string? Description,
+        string? Notes,
+        int OccurredMonths,
+        string? AuthorRole = "Owner");
+
+    /// <summary>
     /// One priced series on a contract. <paramref name="Interval"/> null is a fee with no cadence —
     /// a one-off — which is the case the run rate and the charge projection both exclude.
     /// </summary>
@@ -91,7 +107,14 @@ public static class ContractGenerator
     private static Guid PartyIdFor(string contractName, int index) =>
         DeterministicGuid.From($"contract-party::{contractName}#{index}");
 
-    public static (List<Contract> Contracts, List<ContractParty> Parties, List<Term> Terms) Build(DateTime anchor)
+    /// <summary>
+    /// The id of one seeded event. The title is part of the key because nothing else distinguishes two
+    /// entries — an event has no natural key and the same type may occur many times on one contract.
+    /// </summary>
+    public static Guid EventIdFor(string contractName, string title) =>
+        DeterministicGuid.From($"contract-event::{contractName}::{title}");
+
+    public static (List<Contract> Contracts, List<ContractParty> Parties, List<Term> Terms, List<ContractEvent> Events) Build(DateTime anchor)
     {
         var specs = new List<ContractSpec>
         {
@@ -267,7 +290,7 @@ public static class ContractGenerator
             }
         }
 
-        return (contracts, parties, BuildTerms(anchor, contracts));
+        return (contracts, parties, BuildTerms(anchor, contracts), BuildEvents(anchor, contracts));
     }
 
     /// <summary>
@@ -365,4 +388,101 @@ public static class ContractGenerator
 
         return terms;
     }
+
+    /// <summary>
+    /// The contracts' event logs (issue #138) — what has HAPPENED to each agreement, as opposed to
+    /// what it is. Three contracts carry one, so the demo shows the rail populated, the empty state on
+    /// the others, and the year markers that only appear once a log spans one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The set covers the states the surface has to draw differently: an entry with all three
+    /// free-text fields and one with a title alone (both are complete events — §8.2); an entry from a
+    /// deleted author, which reads "Unknown user" rather than a blank or an id; and a
+    /// <see cref="ContractEventType.Terminated"/> event on a contract that stays Active, which is
+    /// §4.2's rule made visible — an event never moves the derived status.
+    /// </para>
+    /// <para>
+    /// Every occurrence is in the past relative to the anchor, never to the wall clock, so the seed
+    /// stays deterministic and re-running it stays idempotent — and so no seeded row could ever be one
+    /// the API itself would refuse.
+    /// </para>
+    /// </remarks>
+    private static List<ContractEvent> BuildEvents(DateTime anchor, List<Contract> contracts)
+    {
+        var specs = new List<ContractEventSpec>
+        {
+            // The lease: the fullest log, spanning two calendar years so the rail draws a year marker.
+            new("Apartment Lease", ContractEventType.Signed,
+                "Tenancy agreement signed",
+                "Both counterparts signed at the letting office and the deposit was protected the same day.",
+                null, -6),
+            new("Apartment Lease", ContractEventType.EmailSent,
+                "Emailed the landlord about the damp",
+                "Photos of the back bedroom attached. Asked for a contractor visit inside two weeks.",
+                "Keep the photos — they are dated.", -4),
+            // An entry whose author has since left. SET NULL keeps the record and drops the name.
+            new("Apartment Lease", ContractEventType.Amended,
+                "Pets permitted by amendment",
+                "One cat. An extra deposit was agreed.",
+                null, -3, AuthorRole: null),
+            new("Apartment Lease", ContractEventType.PriceChanged,
+                "Rent renegotiated",
+                "Agreed by phone with the letting agent, then confirmed in writing.",
+                "Check last year's letter before the next review.", -2),
+            // A title alone — an ordinary, complete event (§8.2), and the case the rail must not
+            // render an empty second line for.
+            new("Apartment Lease", ContractEventType.NoticeGiven,
+                "Notice to leave served", null, null, -1),
+
+            // The employment contract: a short log by a different author, so the demo shows two names
+            // on one page of the same feature.
+            new("Employment Agreement — Globex", ContractEventType.Signed,
+                "Contract of employment signed", "Counter-signed by HR on the same day.", null, -24,
+                AuthorRole: "Admin"),
+            new("Employment Agreement — Globex", ContractEventType.Amended,
+                "Salary review applied",
+                "Annual review; the new figure takes effect from the next pay run.",
+                "Ask about the pension match at the next review.", -12, AuthorRole: "Admin"),
+
+            // §4.2 made visible: a Terminated event on a contract whose derived status stays Active.
+            // A reader who expects the event to expire the contract is meant to meet this and see that
+            // it does not — a free-form log entry is never authoritative over derived state.
+            new("Mortgage Insurance Mandate", ContractEventType.Terminated,
+                "Told the broker we intend to end the mandate",
+                "A note of the conversation only — the mandate itself still runs until its own dates say otherwise.",
+                null, -1),
+        };
+
+        var byName = contracts.ToDictionary(contract => contract.Name, contract => contract.ContractId, StringComparer.Ordinal);
+        var events = new List<ContractEvent>();
+
+        foreach (var spec in specs)
+        {
+            if (!byName.TryGetValue(spec.ContractName, out var contractId))
+            {
+                continue;
+            }
+
+            var occurredAt = anchor.AddMonths(spec.OccurredMonths);
+            events.Add(new ContractEvent
+            {
+                ContractEventId = EventIdFor(spec.ContractName, spec.Title),
+                ContractId = contractId,
+                Type = spec.Type,
+                Title = spec.Title,
+                Description = spec.Description,
+                Notes = spec.Notes,
+                OccurredAt = occurredAt,
+                CreatedByUserId = spec.AuthorRole is { } role ? UserId(role) : null,
+                // Recorded shortly after it happened, which is what a log looks like — and never the
+                // same instant, so the two dates on the row are visibly different facts.
+                CreatedAtUtc = occurredAt.AddHours(3),
+            });
+        }
+
+        return events;
+    }
+
+    private static string UserId(string role) => DemoUsers.All.First(user => user.Role == role).Id;
 }

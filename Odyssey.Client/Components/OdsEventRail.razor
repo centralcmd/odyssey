@@ -1,0 +1,52 @@
+@*
+    OdsEventRail — the continuous-rail history list (Odyssey Design System · components/EventRail).
+
+    ONE unbroken line running the full height of the track, with icon nodes sitting on it and markers
+    (years, endpoints) on the same line between rows. Distinct from <OdsTimeline>, and both are kept:
+
+      OdsTimeline  — a rail SEGMENT per item, a plain dot node, a figures column. For effective-dated
+                     record tables (terms, estimates), where each row is a value and the right-hand
+                     column carries it.
+      OdsEventRail — one line behind every row, a 32px circle carrying a glyph, markers between rows.
+                     For a LOG of things that happened, which the reader follows rather than compares.
+
+    A timeline cannot do this: its rail restarts per item, so a marker between two rows breaks the
+    line. Hence the second component rather than a flag on the first.
+
+    CapTop / CapEnd say whether THIS page holds the real start / end of the log. An uncapped end
+    FADES the line out instead of cutting it — a paged middle genuinely continues, and a hard stop
+    would claim otherwise.
+*@
+
+@* role="list" because that is what the rail IS — a log the reader steps through — and without it
+   AT announces a run of anonymous divs with no count and no per-entry boundary (WCAG 1.3.1). Every
+   direct child carries role="listitem", MARKERS INCLUDED: role="list" admits only listitem children,
+   and giving a marker role="separator" instead would make the list malformed, which some AT answers
+   by dropping the list semantics altogether — losing the thing this was added for. A year sitting on
+   the line is a point in the log, so reading it as one of its items is honest. *@
+<div class="@RootClass" role="list" @attributes="UserAttributes">
+    @ChildContent
+</div>
+
+@code {
+    /// <summary>
+    /// This page holds the newest end of the log — draw the line to a hard stop at the top.
+    /// </summary>
+    [Parameter] public bool CapTop { get; set; }
+
+    /// <summary>This page holds the oldest end — hard stop at the bottom.</summary>
+    [Parameter] public bool CapEnd { get; set; }
+
+    /// <summary><see cref="OdsEventRailItem"/> and <see cref="OdsEventRailMarker"/> children, in display order.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Extra CSS class(es) appended to the root.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string RootClass =>
+        $"odc-er{(CapTop ? " capped-top" : string.Empty)}{(CapEnd ? " capped-end" : string.Empty)}"
+        + (string.IsNullOrEmpty(Class) ? string.Empty : " " + Class);
+}

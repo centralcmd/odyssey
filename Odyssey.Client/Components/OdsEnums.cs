@@ -152,3 +152,19 @@ public enum OdsRecordFigureTone { Neutral, Income, Expense, Pending }
 /// muted. Distinct from the icon chip's accent, which follows the record's type.
 /// </summary>
 public enum OdsInfoTileTone { Default, Info, Pending, Income, Expense, Muted }
+
+/// <summary>
+/// The node an <see cref="OdsEventRailMarker"/> draws on the rail (mirrors the DS
+/// <c>EventRailMarkerProps.tone</c>).
+/// </summary>
+public enum OdsEventRailTone
+{
+    /// <summary>A small divider dot — a year boundary between entries.</summary>
+    Tick,
+
+    /// <summary>A hollow ring — the present, or an end that is still open.</summary>
+    Open,
+
+    /// <summary>A solid dot — a closed end, such as the day the record was added.</summary>
+    Filled,
+}

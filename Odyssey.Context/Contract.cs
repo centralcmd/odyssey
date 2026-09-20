@@ -76,4 +76,12 @@ public class Contract
     /// one list query, which is what keeps <c>TermCount</c> free of an extra round trip.
     /// </summary>
     public ICollection<Term> Terms { get; set; } = new List<Term>();
+
+    /// <summary>
+    /// The contract's user-maintained event log (issue #138). Load-bearing for the same reason
+    /// <see cref="Terms"/> is: <c>ContractService.Delete</c> includes it so the cascade also happens
+    /// under the EF InMemory provider the fast test tiers run on, which enforces no foreign keys at
+    /// all. Nothing on the read path loads it — the log is unbounded and has its own paged endpoint.
+    /// </summary>
+    public ICollection<ContractEvent> Events { get; set; } = new List<ContractEvent>();
 }
