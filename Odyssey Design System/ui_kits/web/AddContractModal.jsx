@@ -77,7 +77,7 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
       title={editing ? 'Edit contract' : 'New contract'}
       subtitle={editing
         ? 'Update the agreement’s name, type, term and signature dates. Parties and documents are managed from the contract.'
-        : 'Record the agreement’s name, type and dates — a term or a one-off. Leave the signature dates blank to record it as a draft.'}
+        : 'Record the agreement’s name, type and dates — a term or a one-off. It starts as a draft; mark it ready and signed from the contract itself.'}
       icon="handshake"
       onClose={onClose}
       footer={
@@ -122,10 +122,10 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
         </FormRow>
       )}
 
-      {/* SIGNATURE — its own labelled pair, below the term dates and above the
-          description: these two dates say whether the agreement binds, which
-          the term dates alone never do. Neither is required; leaving both
-          empty records a draft. */}
+      {/* SIGNATURE — edit only. A brand-new contract always starts as a
+          Draft, so the stamps are set later from the contract itself; on edit
+          they matter, and neither is required. */}
+      {editing ? (
       <FormRow>
         <div className="field">
           <Field type="date" label="Ready for signature" value={draft.ready} onChange={set('ready')} placeholder="Not yet ready" />
@@ -140,6 +140,7 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null }) => {
             : <div className="helper">Signed by all parties. Until this is set, the contract stays out of the run rate.</div>}
         </div>
       </FormRow>
+      ) : null}
 
       <NoteField label="Description" optional maxLength={1024} value={draft.description} onChange={set('description')}
         placeholder="What this agreement covers, term, notice period, key conditions…" />
