@@ -8,6 +8,7 @@ using Odyssey.Context;
 using Odyssey.Dtos.Journal;
 // Aliased rather than a plain using: Odyssey.Dtos.Finance also declares ArchivalStatus.
 using DetachedInsuranceLinks = Odyssey.Dtos.Finance.DetachedInsuranceLinks;
+using ContactDeleteBlockerClass = Odyssey.Dtos.Finance.ContactDeleteBlockerClass;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Core.Journal.Interop;
 using Odyssey.Core.Pagination;
@@ -326,15 +327,30 @@ public class ContactService
     ///
     /// <para>
     /// With <paramref name="detachInsuranceLinks"/> the contact's insurer, insured-contact and
-    /// beneficiary link rows are removed <b>in the same transaction</b> instead of blocking the delete
-    /// — the supported release valve for an erasure request (issue #27 §7 #6, §10 #5). Without it a
-    /// contact named on any policy is refused, which is the deliberate default: a beneficiary
+    /// beneficiary link rows — and, since issue #157, its <c>Beneficiary</c> contract-party rows — are
+    /// removed <b>in the same transaction</b> instead of blocking the delete: the supported release
+    /// valve for an erasure request (issue #27 §7 #6, §10 #5). Without it a contact named on any policy
+    /// or as a contract beneficiary is refused, which is the deliberate default: a beneficiary
     /// designation vanishing silently on contact deletion would lose it without trace.
     /// </para>
     /// </summary>
+    /// <param name="permittedDetachClasses">
+    /// Which classes of blocking link this caller has proved it may destroy (issue #157 §7.3).
+    /// <see langword="null"/> means "no claim check", which is what a non-HTTP caller with no
+    /// <c>ClaimsPrincipal</c> passes; the HTTP path always supplies a set. The check runs against the
+    /// <b>one snapshot</b> read inside the transaction, never a re-query, so a link inserted between
+    /// the determination and the destruction cannot be destroyed by a caller never asked to prove the
+    /// claim for it.
+    /// </param>
     /// <returns>What was detached, or null when nothing was (including when the contact did not exist).</returns>
+    /// <exception cref="DomainForbiddenException">
+    /// The detach was requested but <paramref name="permittedDetachClasses"/> does not cover a class
+    /// present in the snapshot. Nothing is written — never a silent downgrade to the refused delete.
+    /// </exception>
     public async Task<DetachedInsuranceLinks?> Delete(
-        Guid id, bool detachInsuranceLinks = false, CancellationToken cancellationToken = default)
+        Guid id, bool detachInsuranceLinks = false,
+        IReadOnlySet<ContactDeleteBlockerClass>? permittedDetachClasses = null,
+        CancellationToken cancellationToken = default)
     {
         var contact = await context.Contacts
             .FirstOrDefaultAsync(value => value.ContactId == id, cancellationToken);
@@ -361,19 +377,30 @@ public class ContactService
         {
             if (detachInsuranceLinks)
             {
+                // ONE snapshot, read inside this transaction, drives both decisions below (issue #157
+                // §7.3). Reading it here rather than pre-flighting in the controller is the whole
+                // point: the claims this valve demands are derived from which classes are present, so
+                // two snapshots would let a row inserted between them be destroyed by a caller never
+                // asked to prove the claim for it (CWE-367).
+                var plan = await referenceGuard.ReadLinkDetachPlanAsync(id, cancellationToken);
+
+                EnsureDetachPermitted(plan, permittedDetachClasses);
+
                 // Staged onto this context, not saved: the detach and the delete must commit together,
                 // or an interruption leaves the links gone and the contact still present. Tracked
                 // RemoveRange, never ExecuteDelete — that throws on the InMemory provider.
-                detached = await referenceGuard.StageInsuranceLinkDetachAsync(id, cancellationToken);
+                detached = referenceGuard.StageLinkDetach(plan);
             }
-            else if (await referenceGuard.IsReferencedByInsuranceAsync(id, cancellationToken))
+            else if (await referenceGuard.IsReferencedByRestrictedLinkAsync(id, cancellationToken))
             {
-                // Restrict: a contact named as an insurer, an insured contact or a beneficiary blocks
-                // the delete. The controller re-checks first and shapes a claim-conditional payload;
-                // this stays as defence-in-depth for direct (non-HTTP) callers.
+                // Restrict: a contact named as an insurer, an insured contact or a beneficiary on a
+                // policy — or as a Beneficiary party on a contract — blocks the delete. The controller
+                // re-checks first and shapes a claim-conditional payload; this stays as
+                // defence-in-depth for direct (non-HTTP) callers, and for the contract-beneficiary
+                // half it is the ONLY enforcement, since that FK stays CASCADE (issue #157 §5.5).
                 throw new DomainConflictException(
-                    "This contact is named on one or more insurance policies and cannot be deleted. "
-                    + "Detach its insurance links, or remove it from those policies first.");
+                    "This contact is named as a beneficiary or on one or more insurance policies and "
+                    + "cannot be deleted. Detach those links, or remove it from those records first.");
             }
 
             // Clear/cascade the Finance-side references (SetNull + contract-party Cascade), then delete
@@ -394,6 +421,43 @@ public class ContactService
         });
 
         return detached;
+    }
+
+    /// <summary>
+    /// Refuses the detach when the caller has not proved the claim for a blocker class the snapshot
+    /// actually contains (issue #157 §7.3). Per class present, never unconditionally: demanding
+    /// <c>contracts.update</c> of a caller whose contact has no contract links would de-authorize a
+    /// request that is legitimate today.
+    /// </summary>
+    /// <remarks>
+    /// Raised as a domain error rather than decided in the controller because the snapshot it reads
+    /// only exists inside the transaction. <see langword="null"/> is the non-HTTP caller, which has no
+    /// claims to check — the same posture every other service-layer rule takes toward a direct caller.
+    /// </remarks>
+    private static void EnsureDetachPermitted(
+        ContactLinkDetachPlan plan, IReadOnlySet<ContactDeleteBlockerClass>? permitted)
+    {
+        if (permitted is null)
+        {
+            return;
+        }
+
+        var missing = plan.Classes.Where(blocker => !permitted.Contains(blocker)).ToList();
+        if (missing.Count == 0)
+        {
+            return;
+        }
+
+        // Names the capability, not the rows: what the caller has to go and obtain.
+        var capabilities = missing.Select(blocker => blocker switch
+        {
+            ContactDeleteBlockerClass.InsuranceLink => "update insurance policies",
+            ContactDeleteBlockerClass.ContractBeneficiary => "update contracts",
+            _ => blocker.ToString(),
+        });
+
+        throw new DomainForbiddenException(
+            $"Detaching this contact's links requires permission to {string.Join(" and ", capabilities)}.");
     }
 
     /// <summary>

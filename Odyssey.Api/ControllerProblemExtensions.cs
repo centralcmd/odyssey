@@ -39,6 +39,16 @@ public static class ControllerProblemExtensions
     public static ObjectResult UnprocessableEntityProblem(this ControllerBase controller, string detail) =>
         Problem(StatusCodes.Status422UnprocessableEntity, detail);
 
+    /// <summary>
+    /// As above, carrying structured detail the client needs in order to recover — a refused contract
+    /// type change names each party the incoming type would orphan (issue #157 §9.1). Same shape as
+    /// the <c>409</c> overload, and for the same reason: a <c>DomainException</c> carries a message
+    /// and a <c>string -> string[]</c> dictionary, neither of which can express a list of objects.
+    /// </summary>
+    public static ObjectResult UnprocessableEntityProblem(
+        this ControllerBase controller, string detail, IDictionary<string, object?> extensions) =>
+        Problem(StatusCodes.Status422UnprocessableEntity, detail, extensions);
+
     public static ObjectResult LockedProblem(this ControllerBase controller, string detail) =>
         Problem(StatusCodes.Status423Locked, detail);
 

@@ -673,6 +673,12 @@ public class ContractService
             return null;
         }
 
+        // Before anything is written: a type change that would leave an existing party holding a role
+        // the INCOMING type rejects is refused outright (issue #157 §3.3). The controller pre-checks
+        // and shapes the structured body; this stays unconditional for direct (non-HTTP) callers, and
+        // running it here — ahead of every other guard — is what makes "nothing is written" true.
+        await EnsureTypeChangeKeepsPartiesLegalAsync(contract, request.Type, cancellationToken);
+
         var (startDate, endDate, completionDate) = NormalizeDates(request.StartDate, request.EndDate, request.CompletionDate);
         // PUT is a full replacement, so a present value SETS each stamp and an omitted one CLEARS it.
         // Guarded before anything is written back, so "stored" below still means "as of before this
@@ -770,7 +776,8 @@ public class ContractService
         EnsurePartyTargetXor(request);
 
         await EnsureTargetExists(request, cancellationToken);
-        var role = request.Role.Adapt<ContextContractPartyRole>();
+        var requestedRole = EnsureRoleLegalForType(contract, request);
+        var role = requestedRole.Adapt<ContextContractPartyRole>();
         var (fromDate, toDate) = NormalizePartyTerm(contract, request);
         await EnsureNotDuplicateParty(contractId, request, role, excludingPartyId: null, cancellationToken);
 
@@ -808,8 +815,8 @@ public class ContractService
     /// gone.
     /// </summary>
     /// <remarks>
-    /// The body is a <b>full replacement</b>, not a patch: an omitted <c>role</c> resets the role to
-    /// <c>Unspecified</c> and an omitted date clears it. That is why every write is logged (§7.7).
+    /// The body is a <b>full replacement</b>, not a patch: an omitted date clears it, and the role is
+    /// required (issue #157 §8.1) so it is always restated. That is why every write is logged (§7.7).
     /// The party cap is deliberately not re-checked — an in-place update is row-count-neutral, so it is
     /// never refused by a cap, including on a contract already at or above one a later edit lowered.
     /// </remarks>
@@ -844,7 +851,8 @@ public class ContractService
             await EnsureTargetExists(request, cancellationToken);
         }
 
-        var role = request.Role.Adapt<ContextContractPartyRole>();
+        var requestedRole = EnsureRoleLegalForType(contract, request);
+        var role = requestedRole.Adapt<ContextContractPartyRole>();
         var (fromDate, toDate) = NormalizePartyTerm(contract, request);
         await EnsureNotDuplicateParty(contractId, request, role, excludingPartyId: partyId, cancellationToken);
 
@@ -919,7 +927,9 @@ public class ContractService
             party.ContractId,
             party.ContractPartyId,
             targetId,
-            previousRole ?? ContextContractPartyRole.Unspecified,
+            // No fabricated "previous role" on an add. Unspecified is gone and substituting Other
+            // would assert a role the party never held, so the slot reads as genuinely absent.
+            previousRole?.ToString() ?? NoRole,
             roleAfter ?? party.Role.ToString(),
             userId ?? "(unknown)");
     }
@@ -931,6 +941,153 @@ public class ContractService
             ? await contactLookup.ResolveRefsAsync([contactId], cancellationToken)
             : new Dictionary<Guid, ContactRef>();
         return ToPartyDto(loaded, contacts);
+    }
+
+    /// <summary>
+    /// The matrix check for a party write (issue #157 §3.2 step 3, §8.2). Returns the requested role
+    /// once it is known legal on <paramref name="contract"/>'s type.
+    /// </summary>
+    /// <remarks>
+    /// A service-layer rule rather than a data annotation, deliberately: legality depends on the
+    /// <em>contract's</em> type, which model validation cannot see because the request body does not
+    /// carry it. This is the derived-bound case CLAUDE.md distinguishes from a compile-time one, so a
+    /// validator here is correct rather than decorative.
+    ///
+    /// <para>
+    /// Raises <see cref="DomainUnprocessableException"/> — a <c>422</c>, not the <c>400</c> a
+    /// <see cref="DomainValidationException"/> would give: the body is well-formed and every value in
+    /// it is a real member, so what fails is the combination. The field key is <c>role</c>, so the
+    /// message lands on the control the client rendered.
+    /// </para>
+    /// </remarks>
+    private static DtoContractPartyRole EnsureRoleLegalForType(Contract contract, ContractPartyRequest request)
+    {
+        // [Required] already refused a null role on the HTTP path; a direct caller gets the same
+        // rejection here rather than a NullReferenceException.
+        if (request.Role is not { } role)
+        {
+            throw new DomainValidationException(
+                "A party role is required.", code: null, field: nameof(ContractPartyRequest.Role));
+        }
+
+        var type = contract.Type.Adapt<DtoContractType>();
+        if (ContractPartyRoleMatrix.IsLegal(type, role))
+        {
+            return role;
+        }
+
+        throw new DomainUnprocessableException(
+            $"{role} is not a role a {type} contract can have. "
+            + $"The roles it can have are: {DescribeLegalRoles(type)}.",
+            nameof(ContractPartyRequest.Role));
+    }
+
+    /// <summary>
+    /// The legal roles for <paramref name="type"/> as a reading list, suggested ones first — the same
+    /// order the picker offers them in, so the message and the control agree.
+    /// </summary>
+    private static string DescribeLegalRoles(DtoContractType type) =>
+        string.Join(", ", ContractPartyRoleMatrix.LegalFor(type));
+
+    /// <summary>
+    /// Refuses a contract type change that would orphan an existing party (issue #157 §3.3). No-op
+    /// when the type is unchanged, so an ordinary edit costs nothing.
+    /// </summary>
+    private async Task EnsureTypeChangeKeepsPartiesLegalAsync(
+        Contract contract, DtoContractType requestedType, CancellationToken cancellationToken)
+    {
+        var offending = await FindPartiesRejectedByTypeAsync(contract, requestedType, cancellationToken);
+        if (offending.Count == 0)
+        {
+            return;
+        }
+
+        // The structured list is the controller's to shape; this message is what a non-HTTP caller
+        // gets, and it names the same two routes out.
+        throw new DomainUnprocessableException(
+            $"{offending.Count} part{(offending.Count == 1 ? "y" : "ies")} on this contract "
+            + $"hold{(offending.Count == 1 ? "s" : "")} a role a {requestedType} contract cannot have. "
+            + "Re-role or detach them first.",
+            nameof(UpdateContract.Type));
+    }
+
+    /// <summary>
+    /// The parties on <paramref name="contractId"/> whose role <paramref name="requestedType"/> would
+    /// reject, projected to what the <c>422</c> body names them by. Empty when the change is safe, and
+    /// when the contract does not exist.
+    /// </summary>
+    /// <remarks>
+    /// Public because <c>ContractController</c> pre-checks with it to build the claim-free structured
+    /// body, exactly as the contact-delete <c>409</c> pre-checks with <c>IContactReferenceGuard</c>:
+    /// a <c>DomainException</c> cannot carry a list of objects. Both callers therefore have to agree
+    /// on <em>when</em> the rule applies, which is why the "only on a type CHANGE" condition lives
+    /// here rather than at either call site.
+    /// </remarks>
+    public async Task<IReadOnlyList<BlockingContractParty>> FindPartiesRejectedByTypeAsync(
+        Guid contractId, DtoContractType requestedType, CancellationToken cancellationToken = default)
+    {
+        var contract = await context.Contracts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.ContractId == contractId, cancellationToken);
+        return contract is null
+            ? []
+            : await FindPartiesRejectedByTypeAsync(contract, requestedType, cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<BlockingContractParty>> FindPartiesRejectedByTypeAsync(
+        Contract contract, DtoContractType requestedType, CancellationToken cancellationToken)
+    {
+        // Only a type CHANGE is checked. A contract keeping its type is never refused, however
+        // illegal an existing party's role is: such a row is a legacy one the migration could not
+        // reach or one stranded by an earlier change, and freezing every other field on its contract
+        // would not help — the party endpoint is where it gets fixed. It also means an ordinary edit
+        // costs no query at all.
+        if (contract.Type.Adapt<DtoContractType>() == requestedType)
+        {
+            return [];
+        }
+
+        // One projection of this contract's own party rows — bounded by the parties on a single
+        // contract, so single digits in practice (§10).
+        var parties = await context.ContractParties
+            .AsNoTracking()
+            .Where(p => p.ContractId == contract.ContractId)
+            .Select(p => new
+            {
+                p.ContractPartyId,
+                p.Role,
+                p.ContactId,
+                AccountName = p.Account != null ? p.Account.Name : null,
+            })
+            .OrderBy(p => p.ContractPartyId)
+            .ToListAsync(cancellationToken);
+
+        var rejected = parties
+            .Where(p => !ContractPartyRoleMatrix.IsLegal(requestedType, p.Role.Adapt<DtoContractPartyRole>()))
+            .ToList();
+        if (rejected.Count == 0)
+        {
+            return [];
+        }
+
+        var contactIds = rejected.Where(p => p.ContactId is not null).Select(p => p.ContactId!.Value).Distinct().ToList();
+        IReadOnlyDictionary<Guid, ContactRef> contacts = contactIds.Count == 0
+            ? new Dictionary<Guid, ContactRef>()
+            : await contactLookup.ResolveRefsAsync(contactIds, cancellationToken);
+
+        return
+        [
+            .. rejected.Select(p => new BlockingContractParty
+            {
+                ContractPartyId = p.ContractPartyId,
+                Role = p.Role.Adapt<DtoContractPartyRole>(),
+                // An unresolvable target keeps its row and loses its name — the rule the insurance
+                // link collections already follow.
+                DisplayName = p.ContactId is { } contactId
+                    ? contacts.GetValueOrDefault(contactId)?.Name
+                    : p.AccountName,
+            }),
+        ];
     }
 
     // One-of-two (XOR): exactly one target id must be set.

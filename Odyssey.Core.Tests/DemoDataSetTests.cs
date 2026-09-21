@@ -1,8 +1,11 @@
 using AwesomeAssertions;
+using Mapster;
+using Odyssey.Dtos.Finance;
 using Odyssey.TestData;
 using Xunit;
 using AccountType = Odyssey.Context.AccountType;
 using ContractPartyRole = Odyssey.Context.ContractPartyRole;
+using ContractType = Odyssey.Context.ContractType;
 
 namespace Odyssey.Core.Tests;
 
@@ -137,22 +140,66 @@ public class DemoDataSetTests
     /// path unexercised by the demo stack, which is where it is actually looked at.
     /// </remarks>
     [Fact]
-    public void ContractParties_CoverEveryNamedRole_PlusUnspecifiedAndANonDefaultTerm()
+    public void ContractParties_CoverBothMatrixTiersAndANonDefaultTerm()
     {
         var parties = DemoDataSet.Build().ContractParties;
 
         var roles = parties.Select(party => party.Role).ToHashSet();
+
+        // Suggested roles across several type columns, including all four of Insurance's.
         roles.Should().Contain(
         [
             ContractPartyRole.Employee,
             ContractPartyRole.Employer,
             ContractPartyRole.Buyer,
             ContractPartyRole.Seller,
-            ContractPartyRole.ServiceProvider,
+            ContractPartyRole.Landlord,
+            ContractPartyRole.Insurer,
+            ContractPartyRole.Policyholder,
+            ContractPartyRole.Insured,
+            ContractPartyRole.Beneficiary,
+            ContractPartyRole.Lender,
+            ContractPartyRole.Borrower,
         ]);
-        roles.Should().Contain(ContractPartyRole.Unspecified);
+
+        // …and the ALLOWED-but-not-suggested tier, which a set covering only the suggested cells
+        // would never exercise (issue #157 §4.6).
+        roles.Should().Contain([ContractPartyRole.Guarantor, ContractPartyRole.Other]);
 
         parties.Should().Contain(party => party.FromDate != null || party.ToDate != null);
+    }
+
+    /// <summary>
+    /// Issue #157 AC 20 — the seeder produces ZERO matrix violations, walked rather than inspected: a
+    /// violation here would be demo data the API itself would refuse with a 422, which is the one
+    /// class of seed defect that makes the demo stack a liar about its own rules.
+    /// </summary>
+    [Fact]
+    public void ContractParties_AreAllLegalForTheirContractType()
+    {
+        var data = DemoDataSet.Build();
+        var typeOf = data.Contracts.ToDictionary(c => c.ContractId, c => c.Type);
+
+        var violations = data.ContractParties
+            .Where(party => !ContractPartyRoleMatrix.IsLegal(
+                typeOf[party.ContractId].Adapt<Odyssey.Dtos.Finance.ContractType>(),
+                party.Role.Adapt<Odyssey.Dtos.Finance.ContractPartyRole>()))
+            .Select(party => $"{typeOf[party.ContractId]} contract holds a {party.Role} party")
+            .ToList();
+
+        violations.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// The new <c>Loan</c> type is actually seeded (AC 19's demo half), so the reading order, the
+    /// registry entry and the type filter all have a row to show.
+    /// </summary>
+    [Fact]
+    public void Contracts_IncludeALoan()
+    {
+        var data = DemoDataSet.Build();
+
+        data.Contracts.Should().Contain(contract => contract.Type == ContractType.Loan);
     }
 
     /// <summary>

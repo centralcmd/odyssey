@@ -1,3 +1,5 @@
+@using Odyssey.Dtos.Finance
+
 @*
     OdsContractPartyRoleSelect — a single-select pre-wired to the ContractPartyRole vocabulary
     (Odyssey Design System · components/ContractPartyRoleSelect, issue #121): what a linked record
@@ -8,14 +10,25 @@
     OdsTypeSelect's accessible name, listbox semantics, keyboard model and error association rather
     than re-implementing any of them (#122 §6.1). Value is the enum key. Bind via @bind-Value.
 
-    A plain list rather than a card grid: seven members and growing is a list, and the role is the one
-    field a reader scans for. `Unspecified` is a real, selectable member — "nobody has said" — and is
-    NOT the same statement as `Other`, which is the deliberate none-of-these.
+    A plain list rather than a card grid: fifteen members is a list, and the role is the one field a
+    reader scans for.
+
+    Since issue #157 it is the ONLY picker in the system whose option list depends on ANOTHER field.
+    Pass `ContractType` and the control offers exactly the roles that type accepts — suggested ones
+    first, under their own group heading — read off the SHARED `ContractPartyRoleMatrix` in
+    Odyssey.Dtos, the same declaration the server's write-path validator consults. So the picker
+    cannot offer a role the API would answer with a 422, and the 422 becomes a backstop rather than
+    something the user is walked into. Omit `ContractType` and the full vocabulary is offered
+    ungrouped, which is what a surface with no contract in hand gets.
+
+    There is no default and no empty member: `Unspecified` was retired with the matrix, so the control
+    starts on its placeholder and the form's save stays disabled until a role is picked.
 *@
 
 <OdsTypeSelect Value="@Value"
                ValueChanged="ValueChanged"
-               Types="OdsTypeRegistries.ContractPartyRoles"
+               Types="Options"
+               Groups="Groups"
                Id="@Id"
                Label="@Label"
                Placeholder="@Placeholder"
@@ -29,6 +42,12 @@
 @code {
     /// <summary>Selected enum key. Bindable via @bind-Value.</summary>
     [Parameter] public string? Value { get; set; }
+
+    /// <summary>
+    /// The contract's type, which decides which roles are legal. Null offers the whole vocabulary
+    /// ungrouped — for a surface that has no contract in hand, never as a way to bypass the matrix.
+    /// </summary>
+    [Parameter] public ContractType? ContractType { get; set; }
 
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
 
@@ -51,4 +70,12 @@
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private IReadOnlyList<OdsTypeSelectGroup>? Groups =>
+        ContractType is { } type ? OdsTypeRegistries.ContractPartyRolesFor(type) : null;
+
+    // OdsTypeSelect renders Groups when present and Types otherwise; the flattened list is still
+    // passed so the selected option resolves its own label and glyph either way.
+    private IReadOnlyList<OdsTypeOption> Options =>
+        Groups is { } groups ? [.. groups.SelectMany(group => group.Items)] : OdsTypeRegistries.ContractPartyRoles;
 }

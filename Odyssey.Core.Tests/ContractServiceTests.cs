@@ -500,7 +500,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         var party = await service.AddParty(contract.ContractId,
-            new ContractPartyRequest { AccountId = accountId }, TestUserId);
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
 
         Assert.NotNull(party);
         Assert.Equal(ContractPartyKind.Account, party!.Kind);
@@ -517,7 +517,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = Guid.NewGuid() }, TestUserId));
+            service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = Guid.NewGuid(), Role = ContractPartyRole.Seller }, TestUserId));
     }
 
     [Fact]
@@ -528,7 +528,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            service.AddParty(contract.ContractId, new ContractPartyRequest { ContactId = Guid.NewGuid() }, TestUserId));
+            service.AddParty(contract.ContractId, new ContractPartyRequest { ContactId = Guid.NewGuid(), Role = ContractPartyRole.Seller }, TestUserId));
     }
 
     [Fact]
@@ -539,10 +539,10 @@ public class ContractServiceTests
         var (accountId, _, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
-        await service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId }, TestUserId);
+        await service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
 
         await Assert.ThrowsAsync<DomainConflictException>(() =>
-            service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId }, TestUserId));
+            service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId));
     }
 
     /// <summary>
@@ -568,7 +568,7 @@ public class ContractServiceTests
         }, userId: null);
 
         var party = await service.AddParty(
-            contract.ContractId, new ContractPartyRequest { AccountId = accountId }, TestUserId);
+            contract.ContractId, new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
 
         Assert.NotNull(party);
         Assert.Equal(accountId, party.Account?.AccountId);
@@ -632,23 +632,27 @@ public class ContractServiceTests
         log.Lines.Clear();
 
         var party = await service.AddParty(contract.ContractId,
-            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer }, TestUserId);
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer }, TestUserId);
 
         var added = Assert.Single(log.Lines);
         Assert.Contains(contract.ContractId.ToString(), added);
         Assert.Contains(party!.ContractPartyId.ToString(), added);
         Assert.Contains(accountId.ToString(), added);
         Assert.Contains(TestUserId, added);
-        Assert.Contains("Unspecified -> Employer", added);
+        // An ADD has no role before it, and must not borrow one to say so. Unspecified used to sit
+        // in that slot; it is retired, and substituting Other would assert a role the party never
+        // held (issue #157 §8.3).
+        Assert.Contains("(none) -> Buyer", added);
+        Assert.DoesNotContain("Unspecified", added);
 
         log.Lines.Clear();
 
-        // A full replacement that omits the role: Employer -> Unspecified, visible in the line.
+        // A full replacement changing the role: Buyer -> Seller, visible in the line.
         await service.UpdateParty(contract.ContractId, party.ContractPartyId,
-            new ContractPartyRequest { AccountId = accountId }, TestUserId);
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
 
         var updated = Assert.Single(log.Lines);
-        Assert.Contains("Employer -> Unspecified", updated);
+        Assert.Contains("Buyer -> Seller", updated);
         Assert.Contains(party.ContractPartyId.ToString(), updated);
 
         log.Lines.Clear();
@@ -660,12 +664,11 @@ public class ContractServiceTests
         Assert.Contains(party.ContractPartyId.ToString(), detached);
         Assert.Contains(TestUserId, detached);
 
-        // A detach has NO role after it, and must not borrow Unspecified to say so. Writing
-        // Unspecified there made this line byte-identical to the PUT two assertions above — the
-        // accidental downgrade this whole log exists to make visible — so the two differed only by
-        // the action word and a query for the downgrade matched every detach as well.
+        // A detach has NO role after it, and the "(none)" slot says exactly that — the same word the
+        // add's "before" slot uses, since both describe a role that does not exist rather than one
+        // nobody stated.
         Assert.Contains("-> (none)", detached);
-        Assert.DoesNotContain("-> Unspecified", detached);
+        Assert.DoesNotContain("Unspecified", detached);
     }
 
     /// <summary>
@@ -734,6 +737,7 @@ public class ContractServiceTests
         var party = await service.AddParty(contract.ContractId, new ContractPartyRequest
         {
             AccountId = accountId,
+            Role = ContractPartyRole.Seller,
             FromDate = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Unspecified),
         }, TestUserId);
 
@@ -755,7 +759,7 @@ public class ContractServiceTests
 
         var from = FixedToday.AddDays(-50);
         var party = await service.AddParty(contract.ContractId,
-            new ContractPartyRequest { AccountId = accountId, FromDate = from }, TestUserId);
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller, FromDate = from }, TestUserId);
 
         await service.Update(contract.ContractId, new UpdateContract
         {

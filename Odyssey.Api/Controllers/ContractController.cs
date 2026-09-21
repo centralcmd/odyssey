@@ -116,11 +116,37 @@ public class ContractController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingContract))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a contract's fields, including its archive and pause state (no dedicated archive or pause endpoint).")]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Update a contract's fields, including its archive and pause state (no dedicated archive or pause endpoint).",
+        Description = @"422 when the requested type would leave an existing party holding a role that type
+rejects (issue #157). The body names each offending party by id, role and display name, and nothing is
+written — re-role those parties or detach them first.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateContract request, CancellationToken cancellationToken = default)
     {
+        // The structured offending-party list is shaped HERE, not thrown from the service:
+        // DomainException carries a message, a code and a string -> string[] dictionary, none of which
+        // can express a list of objects. The service keeps its own unconditional refusal as
+        // defence-in-depth for non-HTTP callers, so a race that adds an illegal party between this
+        // pre-check and the write is still refused — just with the flat message rather than the list.
+        var orphaned = await service.FindPartiesRejectedByTypeAsync(id, request.Type, cancellationToken);
+        if (orphaned.Count > 0)
+        {
+            var payload = new ContractTypeChangeBlockers
+            {
+                RequestedType = request.Type,
+                Parties = [.. orphaned],
+                LegalRoles = [.. ContractPartyRoleMatrix.LegalFor(request.Type)],
+            };
+
+            return this.UnprocessableEntityProblem(
+                $"{orphaned.Count} part{(orphaned.Count == 1 ? "y" : "ies")} on this contract "
+                + $"hold{(orphaned.Count == 1 ? "s" : "")} a role a {request.Type} contract cannot have. "
+                + "Change the type after re-rolling them into a role this type allows, or detach them first.",
+                new Dictionary<string, object?> { ["typeChange"] = payload });
+        }
+
         var updated = await service.Update(
             id, request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
         if (updated is null)

@@ -563,17 +563,19 @@ public class InsurancePolicyLinkIntegrationTests(MariaDbFixture fixture)
     {
         private readonly ContactReferenceGuard inner = new(context);
 
-        public Task<InsuranceLinkBlockers> GetInsuranceLinkBlockersAsync(Guid contactId, CancellationToken cancellationToken = default) =>
-            inner.GetInsuranceLinkBlockersAsync(contactId, cancellationToken);
+        public Task<ContactDeleteBlockers> GetDeleteBlockersAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+            inner.GetDeleteBlockersAsync(contactId, cancellationToken);
 
-        public Task<bool> IsReferencedByInsuranceAsync(Guid contactId, CancellationToken cancellationToken = default) =>
-            inner.IsReferencedByInsuranceAsync(contactId, cancellationToken);
+        public Task<bool> IsReferencedByRestrictedLinkAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+            inner.IsReferencedByRestrictedLinkAsync(contactId, cancellationToken);
 
         public Task ClearAndCascadeReferencesAsync(Guid contactId, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Induced failure after the links were staged.");
 
-        public Task<DetachedInsuranceLinks> StageInsuranceLinkDetachAsync(Guid contactId, CancellationToken cancellationToken = default) =>
-            inner.StageInsuranceLinkDetachAsync(contactId, cancellationToken);
+        public Task<ContactLinkDetachPlan> ReadLinkDetachPlanAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+            inner.ReadLinkDetachPlanAsync(contactId, cancellationToken);
+
+        public DetachedInsuranceLinks StageLinkDetach(ContactLinkDetachPlan plan) => inner.StageLinkDetach(plan);
     }
 
     private static void AddLink(OdysseyContext context, string kind, Guid policyId, Guid contactId)

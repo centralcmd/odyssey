@@ -38,12 +38,14 @@ namespace Odyssey.TestData.Generators;
 /// demonstrate into Draft.
 /// </para>
 ///
-/// Since issue #121 every party also carries a <see cref="ContractPartyRole"/> and an optional term.
-/// The set covers all five named v1 roles (Employee, Employer, Buyer, Seller, ServiceProvider), leaves
-/// at least one party <see cref="ContractPartyRole.Unspecified"/> — the state the migration backfills
-/// every pre-#121 row to, and the one the tile's kind-word fallback renders — and gives at least one
-/// party a non-default term. Roles are deliberately unconstrained by party kind: an account may carry
-/// any role.
+/// Since issue #121 every party also carries a <see cref="ContractPartyRole"/> and an optional term,
+/// and since issue #157 the legal roles are decided by the contract's TYPE
+/// (<c>ContractPartyRoleMatrix</c>). <b>Every seeded party is a legal cell</b> — asserted by a seeder
+/// test rather than by inspection, because a violation here would be demo data the API itself would
+/// refuse. The set covers both tiers of the matrix: suggested roles on every type, plus the
+/// <c>Guarantor</c> and <c>Other</c> allowed-but-not-suggested cases, and at least one party carries a
+/// non-default term. Roles stay unconstrained by party KIND — an account may hold any role its type
+/// permits.
 ///
 /// Parties link to the existing accounts, contacts and insurance policies by their stable
 /// deterministic ids; no such record is created here. No files are attached — the demo dataset has no
@@ -166,7 +168,7 @@ public static class ContractGenerator
                 "12-month residential tenancy agreement.",
                 anchor.AddMonths(-6), anchor.AddMonths(6), false,
                 [
-                    new(PartyKind.Contact, Catalog.Contacts.Landlord, ContractPartyRole.Seller),
+                    new(PartyKind.Contact, Catalog.Contacts.Landlord, ContractPartyRole.Landlord),
                 ]),
 
             // Service — starts in the future → Upcoming. Party: the utility provider (contact).
@@ -175,7 +177,10 @@ public static class ContractGenerator
                 "Combined power and water supply agreement (starts next quarter).",
                 anchor.AddMonths(2), anchor.AddYears(1).AddMonths(2), false,
                 [
-                    new(PartyKind.Contact, Catalog.Contacts.CityPowerWater, ContractPartyRole.ServiceProvider),
+                    // Seller, not the retired ServiceProvider: its documented meaning — the party
+                    // disposing under this agreement — already covers supplying a service, which is
+                    // why the migration moved every such row here.
+                    new(PartyKind.Contact, Catalog.Contacts.CityPowerWater, ContractPartyRole.Seller),
                 ]),
 
             // Other — links the household's insurer to the mortgaged property account. Active
@@ -186,9 +191,10 @@ public static class ContractGenerator
                 anchor.AddYears(-1), null, false,
                 [
                     new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.Buyer),
-                    // Left Unspecified on purpose: the state every pre-#121 row was backfilled to, and
-                    // the one whose tile falls back to the kind word rather than rendering a sentinel.
-                    new(PartyKind.Account, Catalog.Accounts.HomeMortgage, ContractPartyRole.Unspecified),
+                    // A deliberate Other — the account is a party to the mandate but plays neither
+                    // side of it. Also the type's one SUGGESTED role: a contract filed as "none of the
+                    // above" has no domain vocabulary to offer.
+                    new(PartyKind.Account, Catalog.Accounts.HomeMortgage, ContractPartyRole.Other),
                 ]),
 
             // Rental, ending inside the 45-day window → the header signal's "Ending soon" group, and
@@ -198,7 +204,7 @@ public static class ContractGenerator
                 "Twelve-month parking licence on space 14. Renews only by a fresh agreement — give notice 30 days before the end date.",
                 anchor.AddMonths(-11).AddDays(-18), anchor.AddDays(30), false,
                 [
-                    new(PartyKind.Contact, Catalog.Contacts.CityPowerWater, ContractPartyRole.ServiceProvider),
+                    new(PartyKind.Contact, Catalog.Contacts.CityPowerWater, ContractPartyRole.Landlord),
                 ]),
 
             // Service, starting inside the same window → the mirror group, "Starting soon". Its fee is
@@ -208,7 +214,7 @@ public static class ContractGenerator
                 "Twelve-month fixed electricity tariff. The standing charge and unit rate are fixed for the term.",
                 anchor.AddDays(26), anchor.AddYears(1).AddDays(25), false,
                 [
-                    new(PartyKind.Contact, Catalog.Contacts.CityPowerWater, ContractPartyRole.ServiceProvider),
+                    new(PartyKind.Contact, Catalog.Contacts.CityPowerWater, ContractPartyRole.Seller),
                 ]),
 
             // Insurance — the policy held as an agreement in its own right. Active, open-ended.
@@ -217,7 +223,15 @@ public static class ContractGenerator
                 "The contract of insurance itself, kept alongside the policy record it prices.",
                 anchor.AddMonths(-8), null, false,
                 [
-                    new(PartyKind.Contact, Catalog.Contacts.StateFarm, ContractPartyRole.ServiceProvider),
+                    // The only type with four suggested roles, mirroring an insurance policy's four
+                    // link collections — and the only place the seed records who insures, who holds
+                    // the policy, what is covered and who receives, as four distinct facts.
+                    new(PartyKind.Contact, Catalog.Contacts.StateFarm, ContractPartyRole.Insurer),
+                    new(PartyKind.Contact, Catalog.Contacts.PolicyHolder, ContractPartyRole.Policyholder),
+                    new(PartyKind.Account, Catalog.Accounts.PrimaryResidence, ContractPartyRole.Insured),
+                    // The one role that BLOCKS deletion of its contact (issue #157 §7.4). Seeded so
+                    // the blocked delete and its detach valve have a real case in the demo data.
+                    new(PartyKind.Contact, Catalog.Contacts.Spouse, ContractPartyRole.Beneficiary),
                 ]),
 
             // Subscription — a recurring supply agreement, quarterly rather than monthly so the
@@ -227,7 +241,7 @@ public static class ContractGenerator
                 "Recurring storage and backup plan, billed quarterly.",
                 anchor.AddMonths(-14), anchor.AddMonths(10), false,
                 [
-                    new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.ServiceProvider),
+                    new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.Seller),
                 ]),
 
             // Purchase — a one-off recorded by its completion date, so it carries no term at all. Its
@@ -249,7 +263,9 @@ public static class ContractGenerator
                 "Annual gym membership at the new branch.",
                 anchor.AddMonths(-3), anchor.AddMonths(9), false,
                 [
-                    new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.ServiceProvider),
+                    // Membership is expressed as Buyer/Seller rather than a Member role — see the
+                    // roles considered and dropped in issue #157 §4.5.
+                    new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.Seller),
                 ]),
 
             // Paused (issue #140) — a live subscription frozen for the season. Active-shaped on its
@@ -261,7 +277,7 @@ public static class ContractGenerator
                 "Weekly recipe-box subscription, frozen over the summer. The price stays on file and comes back in force on resume.",
                 anchor.AddMonths(-9), anchor.AddMonths(15), false,
                 [
-                    new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.ServiceProvider),
+                    new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.Seller),
                 ],
                 PausedMonths: -1),
 
@@ -276,7 +292,7 @@ public static class ContractGenerator
                 "Fortnightly whole-house clean. Quote received; terms still under discussion — nothing has been marked ready for signature yet.",
                 anchor.AddMonths(2), anchor.AddYears(1).AddMonths(2), false,
                 [
-                    new(PartyKind.Contact, Catalog.Contacts.CityPowerWater, ContractPartyRole.ServiceProvider),
+                    new(PartyKind.Contact, Catalog.Contacts.CityPowerWater, ContractPartyRole.Seller),
                 ],
                 Signature: SignatureState.Draft),
 
@@ -290,9 +306,23 @@ public static class ContractGenerator
                 "Weekly maths tuition over the school year. Sent for signature and never returned — the term it describes has since run out.",
                 anchor.AddMonths(-12), anchor.AddMonths(-3), false,
                 [
-                    new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.ServiceProvider),
+                    new(PartyKind.Contact, Catalog.Contacts.Globex, ContractPartyRole.Seller),
                 ],
                 Signature: SignatureState.Ready),
+
+            // LOAN (issue #157) — the new contract type, and the reason it exists: before this member
+            // a car loan was filed as a Purchase with a Buyer and a Seller. Active, fixed term. Its
+            // three parties cover both tiers of the Loan column: the two suggested roles plus the
+            // allowed-but-not-suggested Guarantor.
+            new(
+                "Car Loan (Volvo XC60) — 60 Month", ContractType.Loan,
+                "Fixed-rate 60-month loan against the family car. Monthly repayment by direct debit; early settlement permitted without penalty.",
+                anchor.AddYears(-2), anchor.AddYears(3), false,
+                [
+                    new(PartyKind.Contact, Catalog.Contacts.FirstNationalBank, ContractPartyRole.Lender),
+                    new(PartyKind.Account, Catalog.Accounts.CarLoanVolvo, ContractPartyRole.Borrower),
+                    new(PartyKind.Contact, Catalog.Contacts.PolicyHolder, ContractPartyRole.Guarantor),
+                ]),
 
             // Archived — an expired prior service contract, retained for reference (hidden by default).
             new(
@@ -301,7 +331,7 @@ public static class ContractGenerator
                 anchor.AddYears(-3), anchor.AddYears(-1), true,
                 [
                     // A closed term: this provider left the role a year before the contract expired.
-                    new(PartyKind.Contact, Catalog.Contacts.CityPowerWater, ContractPartyRole.ServiceProvider,
+                    new(PartyKind.Contact, Catalog.Contacts.CityPowerWater, ContractPartyRole.Seller,
                         FromDate: 0, ToDate: 12),
                 ]),
         };

@@ -50,6 +50,54 @@ public partial class CreateContractDialog
     private string? _readyError;
     private string? _signedError;
 
+    /// <summary>
+    /// The parties the INCOMING type would orphan — the client half of the type-change <c>422</c>
+    /// (issue #157 §3.3). Read off the <b>shared</b> matrix, the same declaration the server
+    /// validates against, so this cannot disagree with the refusal it is predicting.
+    /// </summary>
+    /// <remarks>
+    /// Meaningful only on an edit, and only once the type actually differs: an ordinary field edit
+    /// that leaves the type alone is never blocked, however illegal an existing party's role is.
+    /// That mirrors the server, which runs the check only on a type CHANGE — a legacy party is the
+    /// party-edit dialog's problem to fix, not a reason to freeze every other field on the contract.
+    /// </remarks>
+    private IReadOnlyList<ExistingContractParty> OrphanedParties
+    {
+        get
+        {
+            if (Contract is not { } contract || !Enum.TryParse<ContractType>(_type, out var requested)
+                || requested == contract.Type)
+            {
+                return [];
+            }
+
+            return [.. contract.Parties.Where(p => !ContractPartyRoleMatrix.IsLegal(requested, p.Role))];
+        }
+    }
+
+    private bool BlockedByParties => OrphanedParties.Count > 0;
+
+    /// <summary>The roles the requested type DOES accept, as a reading list — the way out, named.</summary>
+    private string LegalRolesText
+    {
+        get
+        {
+            if (!Enum.TryParse<ContractType>(_type, out var requested))
+            {
+                return string.Empty;
+            }
+
+            var labels = ContractPartyRoleMatrix.LegalFor(requested).Select(PartyRoleLabel.For).ToList();
+            return labels.Count < 2
+                ? labels.FirstOrDefault() ?? string.Empty
+                : $"{string.Join(", ", labels[..^1])} or {labels[^1]}";
+        }
+    }
+
+    private string RequestedTypeLabel => Enum.TryParse<ContractType>(_type, out var requested)
+        ? OdsTypeRegistries.ContractTypeOf(requested).Label.ToLowerInvariant()
+        : "contract";
+
     protected override void OnInitialized()
     {
         if (Contract is not { } contract)
@@ -121,6 +169,16 @@ public partial class CreateContractDialog
     {
         _nameError = string.IsNullOrWhiteSpace(_name) ? "Give the contract a name." : null;
         _typeError = string.IsNullOrEmpty(_type) ? "Pick a contract type." : null;
+
+        // The type-change refusal (issue #157). Held here as well as on the disabled submit, because
+        // a form can be submitted by Enter: the server writes nothing either way, so refusing before
+        // the round trip and after it are the same outcome, just one of them sooner.
+        if (_typeError is null && BlockedByParties)
+        {
+            var count = OrphanedParties.Count;
+            _typeError = $"This type rejects {count} existing part{(count == 1 ? "y" : "ies")}.";
+        }
+
         _endError = null;
         _completionError = null;
         _readyError = null;

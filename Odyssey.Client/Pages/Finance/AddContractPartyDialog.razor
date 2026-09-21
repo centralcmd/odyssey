@@ -16,8 +16,11 @@
 
     The accessible picker, now three decisions deep:
       1. the party KIND — Account / Contact (the XOR target)
-      2. the ROLE the record plays in the agreement (ContractPartyRole; `Unspecified` is a real,
-         selectable member and the default)
+      2. the ROLE the record plays in the agreement — a FIXED PER-TYPE LIST read off the shared
+         ContractPartyRoleMatrix, suggested roles first. The picker offers no role the server would
+         refuse, so the 422 is a backstop rather than a thing the user is walked into. There is NO
+         DEFAULT: `Unspecified` was retired with the matrix, so the control starts empty and Save
+         stays disabled until a role is picked.
       3. the specific record. The Contact kind uses the canonical OdsContactSelect, create rows and
          all; the Account kind keeps the plain OdsCombobox over accounts. Either way the options are
          PRE-LOADED for the chosen kind (no in-widget async fetch).
@@ -29,14 +32,13 @@
 
     Duplicate guard (§8 rule 6): uniqueness is (contract, target, ROLE), so the picker hides only
     records already linked IN THE SELECTED ROLE, and the party being edited is excluded from its own
-    check. The same contact can therefore be Seller and Service provider on one contract. Note the
+    check. The same contact can therefore be Insurer in one party and Broker in another. Note the
     filter is on (kind, role), NOT on role alone as AddPolicyPartyDialog does: there the role IMPLIES
     the target type (four collections, each of one type), while a contract role implies nothing about
     the kind.
 
-    In edit mode the PUT is a FULL REPLACEMENT of the link, not a patch: an omitted role resets to
-    Unspecified and a cleared date clears. The dialog states that where the decision is made rather
-    than after the fact.
+    In edit mode the PUT is a FULL REPLACEMENT of the link, not a patch: a cleared date clears. The
+    dialog states that where the decision is made rather than after the fact.
 *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
@@ -50,11 +52,27 @@
                                Columns="2" MaxItemWidth="180" Center="true" Options="KindOptions" />
             </OdsFieldShell>
 
-            @* A plain registry select, not a card grid: seven members and growing is a list, and the
-               role is the one field a reader scans for. It is first in the tab order after the kind,
-               and OdsModal's own autofocus lands here. *@
-            <OdsContractPartyRoleSelect Id="con-party-role" Label="Role" Value="@_role.ToString()" ValueChanged="PickRole"
-                                        Help="@RoleHelp" />
+            @* A plain registry select, not a card grid: fifteen members is a list, and the role is
+               the one field a reader scans for. It is first in the tab order after the kind, and
+               OdsModal's own autofocus lands here.
+
+               The contract's TYPE is what decides the options — the same shared matrix the server
+               validates against, so this can neither offer a role the API refuses nor withhold one
+               it accepts. Help and Error are mutually exclusive, as on the record picker below. *@
+            <OdsContractPartyRoleSelect Id="con-party-role" Label="Role" Required="true"
+                                        ContractType="Contract.Type"
+                                        Value="@_role?.ToString()" ValueChanged="PickRole"
+                                        Help="@(_roleError is null ? RoleHelp : null)" Error="@_roleError" />
+
+            @if (RoleRejectedByType && _role is { } heldRole)
+            {
+                @* An EDIT of a party written before the matrix, or before this contract's type
+                   changed. Named rather than silently dropped: it is the party the dialog exists to
+                   correct, and the picker's list is already the way out. *@
+                <OdsAlert Severity="Severity.Warning">
+                    @($"This party's role is {PartyRoleLabel.For(heldRole).ToLowerInvariant()}, which a {TypeLabel} contract cannot have. Pick one of the roles offered above to save.")
+                </OdsAlert>
+            }
 
             @* OdsFieldShell owns the label association AND the helper/error ids; the hand-rolled
                .odc-field markup this replaced had neither, so a screen-reader user never heard the
@@ -110,7 +128,7 @@
            also reads as the opposite of Save, which is exactly where a mis-click hurts. *@
         <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
         <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")"
-                   Loading="_isSaving" OnClick="SubmitAsync">
+                   Loading="_isSaving" Disabled="@(!CanSave)" OnClick="SubmitAsync">
             @(IsEdit ? "Save changes" : "Create party")
         </OdsButton>
     </Footer>

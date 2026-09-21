@@ -2500,9 +2500,10 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-party-tile .odc-infotile-k { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; flex: 1; min-width: 0; padding-right: 26px; }
 .con-role { display: inline-flex; align-items: center; gap: 5px; min-width: 0; color: var(--mud-palette-text-primary); }
 .con-role > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Unspecified / unrecognised: an ABSENCE, not a category — quieter than a stated role, and never
-   confusable with the deliberate "Other". Still text, never colour alone: the word itself says
-   which state this is. The secondary token is AA-contrast, not the 0.38 disabled alpha. */
+/* A legacy row with no role, or a member this client is too old to name: an ABSENCE, not a category
+   — quieter than a stated role, and never confusable with the deliberate "Other". Still text, never
+   colour alone: the word itself says which state this is. The secondary token is AA-contrast, not
+   the 0.38 disabled alpha. */
 .con-role.unset { color: var(--mud-palette-text-secondary); font-style: italic; }
 .con-term {
   font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
@@ -2513,6 +2514,15 @@ tr:focus-within > .odc-rowactions.reveal,
    muted tone carries that too, so the strike-through is not the only cue. */
 .con-term.past { text-decoration: line-through; }
 .con-tile-menu { position: absolute; top: 6px; right: 6px; z-index: 1; }
+
+/* ---- The type-change refusal (422: TypeChangeOrphansParties, issue #157) ----
+   One row per party the INCOMING type would reject, named the way the server's problem body names
+   them — role, then display name. Not a toast and not a field error: the list IS the content of the
+   refusal, so it sits in the dialog beside the control that caused it. */
+.con-orphans { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 2px; padding: 0; list-style: none; }
+.con-orphan { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); min-width: 0; }
+.con-orphan-role { font: 500 11px/1 var(--font-mono); letter-spacing: 0.02em; text-transform: uppercase; color: var(--mud-palette-warning); white-space: nowrap; }
+.con-orphan-name { font-size: 12.5px; color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Empty sections use the DS EmptyLine (.odc-empty.line) — the same treatment an empty table frame
    gets on the account record, so a "nothing here yet" sentence reads identically everywhere. */

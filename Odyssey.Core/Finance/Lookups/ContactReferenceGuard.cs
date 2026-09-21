@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
+using ContextContractPartyRole = Odyssey.Context.ContractPartyRole;
 
 namespace Odyssey.Core.Finance;
 
@@ -10,14 +11,21 @@ namespace Odyssey.Core.Finance;
 /// than materialising rows.
 /// </summary>
 /// <remarks>
-/// The insurance-link detach is the deliberate exception: it uses tracked <c>RemoveRange</c>, because
+/// The link detach is the deliberate exception: it uses tracked <c>RemoveRange</c>, because
 /// <c>ExecuteDeleteAsync</c> lives in <c>EntityFrameworkCore.Relational</c> and <b>throws</b> on the
 /// InMemory provider — the tier the application-code cascade exists to serve — and because it has to
 /// compose into the caller's transaction rather than saving itself.
 /// </remarks>
 public sealed class ContactReferenceGuard(OdysseyContext context) : IContactReferenceGuard
 {
-    public async Task<InsuranceLinkBlockers> GetInsuranceLinkBlockersAsync(
+    /// <summary>
+    /// The one contract party role that blocks a contact delete. Named once so the blocker query, the
+    /// defence-in-depth probe, the cascade exclusion and the detach plan cannot drift apart — the four
+    /// places issue #157 §5.5 requires to agree.
+    /// </summary>
+    private const ContextContractPartyRole BlockingRole = ContextContractPartyRole.Beneficiary;
+
+    public async Task<ContactDeleteBlockers> GetDeleteBlockersAsync(
         Guid contactId, CancellationToken cancellationToken = default)
     {
         // Three probes over the (ContactId) indexes, projecting the policy id and its name in one pass
@@ -38,6 +46,13 @@ public sealed class ContactReferenceGuard(OdysseyContext context) : IContactRefe
             .Select(link => new { link.InsurancePolicyId, Name = link.InsurancePolicy!.Name })
             .ToListAsync(cancellationToken);
 
+        // The fourth probe, over (ContactId) filtered by the one blocking role. Every other role still
+        // cascades away silently, exactly as it did (issue #157 AC 14).
+        var contractBeneficiaries = await context.ContractParties
+            .Where(party => party.ContactId == contactId && party.Role == BlockingRole)
+            .Select(party => new { party.ContractId, Name = party.Contract!.Name })
+            .ToListAsync(cancellationToken);
+
         var kinds = new List<InsuranceLinkKindCount>();
         if (insurers.Count > 0)
             kinds.Add(new InsuranceLinkKindCount { Kind = InsuranceLinkKind.Insurer, Count = insurers.Count });
@@ -46,9 +61,9 @@ public sealed class ContactReferenceGuard(OdysseyContext context) : IContactRefe
         if (beneficiaries.Count > 0)
             kinds.Add(new InsuranceLinkKindCount { Kind = InsuranceLinkKind.Beneficiary, Count = beneficiaries.Count });
 
-        if (kinds.Count == 0)
+        if (kinds.Count == 0 && contractBeneficiaries.Count == 0)
         {
-            return InsuranceLinkBlockers.None;
+            return ContactDeleteBlockers.None;
         }
 
         var policies = new Dictionary<Guid, BlockingInsurancePolicy>();
@@ -70,15 +85,34 @@ public sealed class ContactReferenceGuard(OdysseyContext context) : IContactRefe
         foreach (var link in insuredContacts) Record(link.InsurancePolicyId, link.Name, InsuranceLinkKind.InsuredContact);
         foreach (var link in beneficiaries) Record(link.InsurancePolicyId, link.Name, InsuranceLinkKind.Beneficiary);
 
-        return new InsuranceLinkBlockers(
+        // Distinct CONTRACTS, while the count below stays a count of ROWS: a contract could name the
+        // same contact as a beneficiary twice over only via distinct targets, but the two numbers are
+        // deliberately different things and neither is derived from the other.
+        var contracts = contractBeneficiaries
+            .GroupBy(party => party.ContractId)
+            .Select(group => new BlockingContractBeneficiary
+            {
+                ContractId = group.Key,
+                ContractName = group.First().Name,
+            })
+            .OrderBy(entry => entry.ContractName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        return new ContactDeleteBlockers(
             kinds,
-            [.. policies.Values.OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase)]);
+            [.. policies.Values.OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase)],
+            contracts,
+            contractBeneficiaries.Count);
     }
 
-    public async Task<bool> IsReferencedByInsuranceAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+    public async Task<bool> IsReferencedByRestrictedLinkAsync(Guid contactId, CancellationToken cancellationToken = default) =>
         await context.InsurancePolicyInsurers.AnyAsync(link => link.ContactId == contactId, cancellationToken)
         || await context.InsurancePolicyInsuredContacts.AnyAsync(link => link.ContactId == contactId, cancellationToken)
-        || await context.InsurancePolicyBeneficiaries.AnyAsync(link => link.ContactId == contactId, cancellationToken);
+        || await context.InsurancePolicyBeneficiaries.AnyAsync(link => link.ContactId == contactId, cancellationToken)
+        // No FK backstop behind this one — the ContractParty -> Contact key stays CASCADE for every
+        // role — so a direct, non-HTTP caller is refused here or not at all (issue #157 §5.5).
+        || await context.ContractParties.AnyAsync(
+            party => party.ContactId == contactId && party.Role == BlockingRole, cancellationToken);
 
     public async Task ClearAndCascadeReferencesAsync(Guid contactId, CancellationToken cancellationToken = default)
     {
@@ -109,12 +143,18 @@ public sealed class ContactReferenceGuard(OdysseyContext context) : IContactRefe
 
         // Cascade link (previously ON DELETE CASCADE FK): remove the contract-party rows so the XOR
         // "exactly one target" check constraint stays satisfied.
+        //
+        // EXCLUDING the Beneficiary role (issue #157 §5.5). Those rows are a blocker, so either the
+        // delete was refused before reaching here, or the caller asked for the detach valve and
+        // StageLinkDetach has already staged the very same rows. Deleting them here as well puts a
+        // set-based DELETE and a tracked RemoveRange over one row inside one SaveChangesAsync, which
+        // EF answers with DbUpdateConcurrencyException — breaking the ORDINARY success path.
         await context.ContractParties
-            .Where(p => p.ContactId == contactId)
+            .Where(p => p.ContactId == contactId && p.Role != BlockingRole)
             .ExecuteDeleteAsync(cancellationToken);
     }
 
-    public async Task<DetachedInsuranceLinks> StageInsuranceLinkDetachAsync(
+    public async Task<ContactLinkDetachPlan> ReadLinkDetachPlanAsync(
         Guid contactId, CancellationToken cancellationToken = default)
     {
         var insurers = await context.InsurancePolicyInsurers
@@ -123,22 +163,37 @@ public sealed class ContactReferenceGuard(OdysseyContext context) : IContactRefe
             .Where(link => link.ContactId == contactId).ToListAsync(cancellationToken);
         var beneficiaries = await context.InsurancePolicyBeneficiaries
             .Where(link => link.ContactId == contactId).ToListAsync(cancellationToken);
+        var contractBeneficiaries = await context.ContractParties
+            .Where(party => party.ContactId == contactId && party.Role == BlockingRole)
+            .ToListAsync(cancellationToken);
 
-        context.InsurancePolicyInsurers.RemoveRange(insurers);
-        context.InsurancePolicyInsuredContacts.RemoveRange(insuredContacts);
-        context.InsurancePolicyBeneficiaries.RemoveRange(beneficiaries);
+        return new ContactLinkDetachPlan
+        {
+            Insurers = insurers,
+            InsuredContacts = insuredContacts,
+            Beneficiaries = beneficiaries,
+            ContractBeneficiaries = contractBeneficiaries,
+        };
+    }
+
+    public DetachedInsuranceLinks StageLinkDetach(ContactLinkDetachPlan plan)
+    {
+        context.InsurancePolicyInsurers.RemoveRange(plan.Insurers);
+        context.InsurancePolicyInsuredContacts.RemoveRange(plan.InsuredContacts);
+        context.InsurancePolicyBeneficiaries.RemoveRange(plan.Beneficiaries);
+        context.ContractParties.RemoveRange(plan.ContractBeneficiaries);
 
         var kinds = new List<InsuranceLinkKindCount>();
-        if (insurers.Count > 0)
-            kinds.Add(new InsuranceLinkKindCount { Kind = InsuranceLinkKind.Insurer, Count = insurers.Count });
-        if (insuredContacts.Count > 0)
-            kinds.Add(new InsuranceLinkKindCount { Kind = InsuranceLinkKind.InsuredContact, Count = insuredContacts.Count });
-        if (beneficiaries.Count > 0)
-            kinds.Add(new InsuranceLinkKindCount { Kind = InsuranceLinkKind.Beneficiary, Count = beneficiaries.Count });
+        if (plan.Insurers.Count > 0)
+            kinds.Add(new InsuranceLinkKindCount { Kind = InsuranceLinkKind.Insurer, Count = plan.Insurers.Count });
+        if (plan.InsuredContacts.Count > 0)
+            kinds.Add(new InsuranceLinkKindCount { Kind = InsuranceLinkKind.InsuredContact, Count = plan.InsuredContacts.Count });
+        if (plan.Beneficiaries.Count > 0)
+            kinds.Add(new InsuranceLinkKindCount { Kind = InsuranceLinkKind.Beneficiary, Count = plan.Beneficiaries.Count });
 
-        var affected = insurers.Select(l => l.InsurancePolicyId)
-            .Concat(insuredContacts.Select(l => l.InsurancePolicyId))
-            .Concat(beneficiaries.Select(l => l.InsurancePolicyId))
+        var affectedPolicies = plan.Insurers.Select(l => l.InsurancePolicyId)
+            .Concat(plan.InsuredContacts.Select(l => l.InsurancePolicyId))
+            .Concat(plan.Beneficiaries.Select(l => l.InsurancePolicyId))
             .Distinct()
             .OrderBy(id => id)
             .ToList();
@@ -146,8 +201,10 @@ public sealed class ContactReferenceGuard(OdysseyContext context) : IContactRefe
         return new DetachedInsuranceLinks
         {
             Kinds = kinds,
-            TotalLinks = insurers.Count + insuredContacts.Count + beneficiaries.Count,
-            AffectedPolicyIds = affected,
+            TotalLinks = plan.TotalInsuranceLinks,
+            AffectedPolicyIds = affectedPolicies,
+            ContractBeneficiaryLinks = plan.ContractBeneficiaries.Count,
+            AffectedContractIds = [.. plan.ContractBeneficiaries.Select(p => p.ContractId).Distinct().OrderBy(id => id)],
         };
     }
 }

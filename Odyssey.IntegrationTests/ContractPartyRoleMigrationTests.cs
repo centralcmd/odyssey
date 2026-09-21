@@ -35,16 +35,22 @@ public class ContractPartyRoleMigrationTests(MariaDbFixture fixture)
     private const string Subject = "_AddContractPartyRoleAndTerm";
 
     /// <summary>
-    /// AC 16 — the migration applies cleanly over pre-existing party rows, every one reads back as
-    /// <c>Unspecified</c> with the default term, and the CASCADE behaviour on all three relationship
-    /// columns is unchanged.
+    /// AC 16 — the migration applies cleanly over pre-existing party rows, every one reads back with
+    /// the default term, and the CASCADE behaviour on all three relationship columns is unchanged.
     /// </summary>
     /// <remarks>
     /// Both dates null is not a gap but the <b>default term</b> — the contract's own extent — so an
     /// upgrade leaves every existing party following its contract exactly as it did.
+    ///
+    /// <para>
+    /// The role reads back as <c>Other</c>, not <c>Unspecified</c>: this migrates to HEAD, and issue
+    /// #157 retired that member and remapped every row carrying it. The backfill itself is unchanged
+    /// — <c>AddContractPartyRoleAndTerm</c> still writes <c>0</c> — and what this now asserts is the
+    /// two migrations composing, which is what an upgrade from this baseline actually does.
+    /// </para>
     /// </remarks>
     [SkippableFact]
-    public async Task Existing_rows_backfill_to_Unspecified_and_keep_their_cascades()
+    public async Task Existing_rows_backfill_and_keep_their_cascades()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await RecreateAsync();
@@ -77,7 +83,7 @@ public class ContractPartyRoleMigrationTests(MariaDbFixture fixture)
                 Assert.Equal(2, parties.Count);
                 Assert.All(parties, party =>
                 {
-                    Assert.Equal(ContractPartyRole.Unspecified, party.Role);
+                    Assert.Equal(ContractPartyRole.Other, party.Role);
                     Assert.Null(party.FromDate);
                     Assert.Null(party.ToDate);
                 });

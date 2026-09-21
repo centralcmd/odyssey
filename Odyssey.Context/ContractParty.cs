@@ -57,10 +57,25 @@ public class ContractParty
     public Guid? ContactId { get; set; }
 
     /// <summary>
-    /// What the linked record does in the agreement (issue #121). Required, with
-    /// <see cref="ContractPartyRole.Unspecified"/> as the value every pre-#121 row was backfilled to
-    /// and every role-less write resolves to. Orthogonal to which target column is set.
+    /// What the linked record does in the agreement (issue #121). Required on the wire as well as in
+    /// the column since issue #157 §8.1: <c>Unspecified</c> — the value every pre-#121 row was
+    /// backfilled to, and what a role-less write used to resolve to — is retired, so there is nothing
+    /// left for an omitted role to mean.
     /// </summary>
+    /// <remarks>
+    /// Orthogonal to which target column is set, but <b>not</b> to the contract's <c>Type</c>: which
+    /// roles are legal is decided by <c>Odyssey.Dtos.Finance.ContractPartyRoleMatrix</c>, enforced in
+    /// <c>ContractService</c> on every party write and on a contract type change. The column itself
+    /// carries no such constraint — legality depends on a row in another table, which is a service
+    /// rule rather than a database one.
+    ///
+    /// <para>
+    /// <b>The <c>Beneficiary</c> role blocks deletion of its contact</b> (issue #157 §7.4). The
+    /// <c>Contact</c> FK below stays <c>CASCADE</c> for every role — the other fourteen should keep
+    /// cascading — so that one rule lives entirely in <c>IContactReferenceGuard</c> with no constraint
+    /// behind it.
+    /// </para>
+    /// </remarks>
     [Required]
     public ContractPartyRole Role { get; set; }
 

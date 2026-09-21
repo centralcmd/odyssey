@@ -52,17 +52,22 @@ public sealed class FakeImportExportLimitsLookup : IImportExportLimitsLookup
 /// </summary>
 public sealed class NoopContactReferenceGuard : IContactReferenceGuard
 {
-    public Task<InsuranceLinkBlockers> GetInsuranceLinkBlockersAsync(Guid contactId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(InsuranceLinkBlockers.None);
+    public Task<ContactDeleteBlockers> GetDeleteBlockersAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(ContactDeleteBlockers.None);
 
-    public Task<bool> IsReferencedByInsuranceAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+    public Task<bool> IsReferencedByRestrictedLinkAsync(Guid contactId, CancellationToken cancellationToken = default) =>
         Task.FromResult(false);
 
     public Task ClearAndCascadeReferencesAsync(Guid contactId, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
-    public Task<DetachedInsuranceLinks> StageInsuranceLinkDetachAsync(Guid contactId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new DetachedInsuranceLinks());
+    public Task<ContactLinkDetachPlan> ReadLinkDetachPlanAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new ContactLinkDetachPlan
+        {
+            Insurers = [], InsuredContacts = [], Beneficiaries = [], ContractBeneficiaries = [],
+        });
+
+    public DetachedInsuranceLinks StageLinkDetach(ContactLinkDetachPlan plan) => new();
 }
 
 public static class TestContextFactory
