@@ -2422,6 +2422,9 @@ public partial class Settings
             // an account without this would pre-validate against the old number for the rest of the
             // session.
             AccountLimits.Invalidate();
+            // And the contract cap (issue #166), which has its own key, its own cache entry and its
+            // own eviction on the server — so it needs its own invalidation here for the same reason.
+            ContractLimits.Invalidate();
             // The processor disclosure (issue #421 Wave 1, extended by #439). All three of the switch,
             // the model and the destination feed the consent gate — the switch decides whether the
             // Analyze affordance is offered at all — so an administrator toggling analysis off must see

@@ -17,6 +17,26 @@ public partial class ContractDetailView : IAsyncDisposable
     [Parameter] public bool CanWrite { get; set; }
     [Parameter] public bool CanDownload { get; set; }
 
+    /// <summary>
+    /// Gates the Smart tags section (issue #166), which resolves its watchlist through the
+    /// transactions endpoint. Without <c>transactions.read</c> the section could only show chips and
+    /// an error, so it is withheld rather than rendered broken.
+    /// </summary>
+    [Parameter] public bool CanReadTransactions { get; set; }
+
+    /// <summary>
+    /// The contract's watched-tag count, for the section divider's meta. It comes from the LIST row
+    /// (<c>ContractListItem.SmartTagCount</c>) rather than from <c>ExistingContract</c>, which carries
+    /// no counts — the same split every other section's meta uses.
+    /// </summary>
+    [Parameter] public int SmartTagCount { get; set; }
+
+    /// <summary>
+    /// Raised with the new count after an add or a remove, so the collapsed row's counts strip and
+    /// this section's own meta stay live without re-fetching the contracts list.
+    /// </summary>
+    [Parameter] public EventCallback<int> OnSmartTagCountChanged { get; set; }
+
     /// <summary>Raised with the party to edit; unset means no edit affordance is offered.</summary>
     [Parameter] public EventCallback<ExistingContractParty> OnEditParty { get; set; }
 
@@ -56,6 +76,15 @@ public partial class ContractDetailView : IAsyncDisposable
     /// ask arrives as data handed only to the record that made it.
     /// </summary>
     [Parameter] public Guid? NewEventRequestToken { get; set; }
+
+    /// <summary>
+    /// The contract host's empty-state sentence. It deliberately does NOT say "on this contract":
+    /// the match is by tag and spans every record watching that tag, so a scope claim here would be
+    /// false. It says what the watchlist is FOR instead.
+    /// </summary>
+    private string ContractSmartTagsEmptyDesc => CanWrite
+        ? "Pin the tags this agreement settles against, and what it actually costs reads here — no filter to rebuild on the Transactions page."
+        : "No tags are being watched on this contract.";
 
     private IReadOnlyList<ContractFileItem> ContractFiles => [.. Contract.Files.Select(ContractFileItem.From)];
 

@@ -73,6 +73,33 @@
                       NewTermRequestToken="NewTermRequestToken"
                       OnChanged="OnChanged" />
 
+@* Smart tags — what the agreement actually COST, straight after the Terms section that says what
+   it is contracted to cost (issue #166). Always rendered when the reader can see transactions at
+   all: this section is the only place a first smart tag can be added, so it is an entry point
+   rather than an optional collection. Writable on an archived contract, like every section above.
+
+   The match is BY TAG and carries no contract scope — no transaction holds a ContractId, so the
+   watchlist resolves through the transactions endpoint and surfaces every transaction carrying a
+   watched tag, wherever it lives. The copy says so rather than implying a scope the data has not
+   got. *@
+@if (CanReadTransactions)
+{
+    <div class="con-section">
+        <OdsSectionDivider Label="Smart tags"
+                           Meta="@(SmartTagCount > 0 ? $"{SmartTagCount} watched" : "none watched")" />
+        <AccountSmartTagsSection @key="@($"smart-tags:{Contract.ContractId}")"
+                                 Host="SmartTagHost.Contract"
+                                 SubjectId="Contract.ContractId"
+                                 Icon="local_offer"
+                                 Chrome="false"
+                                 CanWrite="CanWrite"
+                                 FormatMoney="FormatMoney"
+                                 EmptyDesc="@ContractSmartTagsEmptyDesc"
+                                 NoMatchDesc="No transactions carry the watched tags yet."
+                                 OnCountChanged="OnSmartTagCountChanged" />
+    </div>
+}
+
 <div class="con-section">
     <OdsSectionDivider Label="Documents" Meta="@($"{Contract.Files.Count} file{(Contract.Files.Count == 1 ? "" : "s")}")" />
     @* With no documents there is no table to head: the empty line stands on its own, exactly as it

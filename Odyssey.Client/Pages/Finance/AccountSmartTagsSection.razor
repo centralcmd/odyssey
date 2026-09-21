@@ -4,28 +4,37 @@
 @inject IReferenceDataCache ReferenceData
 @inject ITransactionsApiClient Transactions
 @inject IAccountsApiClient Accounts
+@inject IContractsApiClient Contracts
 @inject ISnackbar Snackbar
 @inject IAccountLimitsCache AccountLimits
+@inject IContractLimitsCache ContractLimits
 
 @*
-    AccountSmartTagsSection — the "Smart tags" disclosure inside an expanded account
-    record (Accounts → account detail), positioned below the Transactions section.
-    Pins a curated set of existing TransactionTags to the account as a saved filter,
-    then surfaces every transaction carrying any of those tags — across all accounts,
-    not just this one — a persistent watchlist (issue #184). Mirrors the design system's
-    AccountSmartTagsSection: an OdsCollapsible whose header counts the matching
-    transactions, a tag-management bar (removable chips + an Add-tag checklist), and
-    the NoSmartTags / Loading / NoTransactions / HasTransactions / error states.
-    Add/remove fire the per-tag POST/DELETE endpoints (write-gated).
+    AccountSmartTagsSection — the "Smart tags" disclosure inside an expanded record. ONE component,
+    TWO hosts (Odyssey Design System · components/AccountSmartTagsSection, subject="account" |
+    "contract"): the account record (issue #184) and the contract record (issue #166). It pins a
+    curated set of existing TransactionTags to the record as a saved filter, then surfaces every
+    transaction carrying any of those tags.
+
+    The match is BY TAG, never by record — a watched tag's transactions appear under every record
+    watching it. On the contract host that is not a limitation to hide but the stated semantics: no
+    Transaction carries a ContractId, so resolution is two existing endpoints composed, and the
+    section claims no contract scope in its copy.
+
+    Mirrors the design system's states: an OdsCollapsible whose header counts the matching
+    transactions, a tag-management bar (removable chips + an Add-tag checklist), the cap advisory and
+    a refused write read ON THE BAR rather than in the popover — which closes on the very click that
+    caused the refusal — and the NoSmartTags / Loading / NoTransactions / HasTransactions / error
+    states. Add/remove fire the per-tag POST/DELETE endpoints (write-gated).
 
     Chrome="false" renders the bare form — no disclosure shell, no header — for a host that
-    introduces the section itself with an OdsSectionDivider (an OdsRecordCard body, where
-    sections neither collapse nor act). This is also the only section that stays rendered at
-    zero: its adder is the sole entry point for a first smart tag, so hiding it when empty
-    would make the feature unreachable.
+    introduces the section itself with an OdsSectionDivider (an OdsRecordCard body, where sections
+    neither collapse nor act). This is also the only section that stays rendered at zero: its adder
+    is the sole entry point for a first smart tag, so hiding it when empty would make the feature
+    unreachable.
 *@
 
-<OdsCollapsible Chrome="Chrome" Class="odc-smarttags" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="sell" Count="@CountFragment">
+<OdsCollapsible Chrome="Chrome" Class="odc-smarttags" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="@Icon" Count="@CountFragment">
     <Title>Smart tags</Title>
     <ChildContent>
         @if (_hasTags)
@@ -55,7 +64,7 @@
                             <AccountSmartTagAdder Options="_options"
                                                   SelectedIds="_selectedIds"
                                                   AtCap="_atCap"
-                                                  Cap="_maxTags"
+                                                  FootNote="@CapNote"
                                                   OnAdd="AddTag"
                                                   OnRemove="RemoveTag" />
                         }
@@ -65,12 +74,32 @@
                 {
                     <div class="odc-smarttags-total @(_total < 0 ? "expense" : "income")">
                         <span class="odc-smarttags-total-lab">@_transactions.Count @(_transactions.Count == 1 ? "transaction" : "transactions")</span>
-                        @* Naive cross-currency sum (the app has no FX) shown with a generic symbol —
+                        @* Naive cross-currency sum (the app has no FX) shown with no currency code —
                            the watchlist can span accounts in different currencies. *@
                         <span class="odc-smarttags-total-val">@FormatMoney(_total, null)</span>
                     </div>
                 }
             </div>
+        }
+
+        @* A refused write, in the SERVER's own words — the 422 at the cap names the effective number,
+           and the archived-tag and already-linked refusals explain themselves. Kept on the bar rather
+           than in the popover, which closes on the click that caused it. *@
+        @if (_hasTags && _addError is not null)
+        {
+            <div class="odc-smarttags-refused" role="alert">
+                <span class="material-icons" aria-hidden="true">error_outline</span>
+                <span class="odc-smarttags-refused-txt">@_addError</span>
+                <button type="button" class="odc-smarttags-x" aria-label="Dismiss" @onclick="DismissAddError">
+                    <span class="material-icons" aria-hidden="true">close</span>
+                </button>
+            </div>
+        }
+        else if (_hasTags && CanWrite && CapNote is not null)
+        {
+            @* The cap advisory also reads outside the popover, so "why can I not add another" is
+               answerable without opening the control. *@
+            <div class="odc-smarttags-advisory">@CapNote</div>
         }
 
         @if (_error is not null)
@@ -88,18 +117,14 @@
                     <span class="material-icons" aria-hidden="true">sell</span>
                 </div>
                 <div class="odc-empty-ttl">No smart tags yet</div>
-                <div class="odc-empty-desc">
-                    @(CanWrite
-                        ? "Pin a tag to watch its transactions across every account without re-filtering the ledger."
-                        : "No tags are being watched on this account.")
-                </div>
+                <div class="odc-empty-desc">@EmptyDescription</div>
                 @if (CanWrite)
                 {
                     <div class="odc-empty-actions">
                         <AccountSmartTagAdder Options="_options"
                                               SelectedIds="_selectedIds"
                                               AtCap="_atCap"
-                                              Cap="_maxTags"
+                                              FootNote="@CapNote"
                                               OnAdd="AddTag"
                                               OnRemove="RemoveTag"
                                               Label="Add a tag" />
@@ -118,14 +143,14 @@
         {
             <OdsEmptyState Icon="search_off">
                 <Title>No matching transactions</Title>
-                <Description>No transactions carry the selected tags yet.</Description>
+                <Description>@NoMatchDescription</Description>
             </OdsEmptyState>
         }
         else
         {
             <div class="odc-smarttags-table">
-                @* Account column kept (the watchlist spans every account, not just this one). A row
-                   carries the SAME action menu it does on the Transactions page. *@
+                @* Account column kept (the watchlist spans every account, not just this record's). A
+                   row carries the SAME action menu it does on the Transactions page. *@
                 @* No host notification: this section's count is the number of WATCHED TAGS, which a
                    transaction write cannot change. *@
                 <TransactionListView Rows="_transactions" OnChanged="LoadTransactionsAsync" />

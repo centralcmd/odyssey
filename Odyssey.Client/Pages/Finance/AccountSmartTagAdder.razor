@@ -57,9 +57,9 @@
                         <div class="odc-smarttags-empty-opt">@EmptyText</div>
                     }
                 </div>
-                @if (AtCap)
+                @if (FootNote is not null)
                 {
-                    <div class="odc-smarttags-cap">Tag limit of @Cap reached — remove one to add another.</div>
+                    <div class="odc-smarttags-cap">@FootNote</div>
                 }
             </div>
         </ChildContent>
@@ -70,7 +70,7 @@
     /// <summary>Every selectable tag (the option pool).</summary>
     [Parameter, EditorRequired] public IReadOnlyList<OdsOption> Options { get; set; } = [];
 
-    /// <summary>The tag ids currently configured on the account.</summary>
+    /// <summary>The tag ids currently configured on the record.</summary>
     [Parameter] public IReadOnlyCollection<string> SelectedIds { get; set; } = [];
 
     /// <summary>Fires when a previously-unchecked tag is checked (→ POST add).</summary>
@@ -79,21 +79,22 @@
     /// <summary>Fires when a checked tag is unchecked (→ DELETE remove).</summary>
     [Parameter] public EventCallback<string> OnRemove { get; set; }
 
-    /// <summary>At the per-account smart-tag cap — unchecked rows can no longer be added.</summary>
+    /// <summary>At the per-record smart-tag cap — unchecked rows can no longer be added.</summary>
     [Parameter] public bool AtCap { get; set; }
 
     /// <summary>
-    /// The effective cap, interpolated into the at-cap message (issue #434 key 15).
+    /// The advisory line under the list — the at-cap sentence with the effective number interpolated
+    /// into it, or the degraded-limits sentence, or nothing at all while there is room left.
     ///
     /// <para>
-    /// A parameter rather than a constant, and the message is a new string rather than an edited one:
-    /// the cap is admin-editable now, and the old text named no number at all — so "remove one to add
-    /// another" left the user guessing what the limit was, and any literal put there would go stale the
-    /// moment an administrator changed it. The number arrives from
-    /// <c>/api/account-limits</c> via the parent's session cache.
+    /// The SENTENCE arrives ready-made rather than the number (issue #434 key 15, extended by #166):
+    /// the cap is admin-editable, so any literal here would go stale the moment an administrator
+    /// changed it — and there is now a second state, a degraded limits read, where there is no number
+    /// to name at all. Composing it in the parent keeps one copy of both sentences, shown identically
+    /// here and on the bar outside the popover.
     /// </para>
     /// </summary>
-    [Parameter] public int Cap { get; set; }
+    [Parameter] public string? FootNote { get; set; }
 
     [Parameter] public string Label { get; set; } = "Add tag";
 

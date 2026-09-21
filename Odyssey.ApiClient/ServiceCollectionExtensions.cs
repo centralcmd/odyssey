@@ -66,6 +66,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IImportLimitsApiClient, ImportLimitsApiClient>();
         services.AddScoped<IUploadLimitsApiClient, UploadLimitsApiClient>();
         services.AddScoped<IAccountLimitsApiClient, AccountLimitsApiClient>();
+        services.AddScoped<IContractLimitsApiClient, ContractLimitsApiClient>();
         services.AddScoped<IFileAnalysisDisclosureApiClient, FileAnalysisDisclosureApiClient>();
 
         return services;

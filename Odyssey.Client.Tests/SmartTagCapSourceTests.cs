@@ -91,6 +91,13 @@ public class SmartTagCapSourceTests
     /// satisfiable by simply not mentioning a number at all — which is the state the component shipped
     /// in, and the reason satisfying "interpolate the effective number" meant authoring a NEW string
     /// rather than editing an existing one.
+    ///
+    /// <para>
+    /// Issue #166 moved the composition up: the adder now renders a ready-made <c>FootNote</c>, because
+    /// there is a second advisory (a degraded limits read) with no number to name at all. So the
+    /// assertion follows it — the adder must still RENDER the sentence, and the section must still
+    /// build it from the live <c>_maxTags</c> rather than from a literal.
+    /// </para>
     /// </summary>
     [Fact]
     public void The_at_cap_message_interpolates_the_cap()
@@ -98,8 +105,49 @@ public class SmartTagCapSourceTests
         var adder = File.ReadAllText(
             Path.Combine(ClientSource.Root, "Pages", "Finance", "AccountSmartTagAdder.razor"));
 
-        Assert.Contains("@Cap", adder, StringComparison.Ordinal);
-        Assert.Contains("[Parameter] public int Cap", adder, StringComparison.Ordinal);
+        Assert.Contains("@FootNote", adder, StringComparison.Ordinal);
+        Assert.Contains("[Parameter] public string? FootNote", adder, StringComparison.Ordinal);
+
+        var section = File.ReadAllText(
+            Path.Combine(ClientSource.Root, "Pages", "Finance", "AccountSmartTagsSection.razor.cs"));
+
+        // The number in the sentence is the LIVE one. A literal here is the defect the whole file exists
+        // to prevent, and it would satisfy every other assertion in it.
+        Assert.Contains("{_maxTags}", section, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The contract host reads its own cap, from its own claim-free endpoint, through its own cache —
+    /// never the account one (issue #166). Sharing a cache would make an administrator's contract cap
+    /// pre-check against the account number and vice versa.
+    /// </summary>
+    [Fact]
+    public void The_contract_host_reads_the_contract_cap()
+    {
+        var section = File.ReadAllText(
+            Path.Combine(ClientSource.Root, "Pages", "Finance", "AccountSmartTagsSection.razor.cs"));
+
+        Assert.Contains("ContractLimits.GetAsync()", section, StringComparison.Ordinal);
+        Assert.Contains("MaxSmartTagsPerContract", section, StringComparison.Ordinal);
+        Assert.Equal(
+            SystemSettingsDefaults.ContractMaxSmartTagsPerContract,
+            ContractLimitsCache.FallbackMaxSmartTagsPerContract);
+    }
+
+    /// <summary>
+    /// A degraded limits read stops the client-side pre-check rather than guessing a ceiling
+    /// (issue #166). Without this the section would fall back to the shipped default and block adds an
+    /// administrator had raised the cap to allow — a guessed number presented as the configured one.
+    /// </summary>
+    [Fact]
+    public void A_degraded_limits_read_stops_the_pre_check_rather_than_guessing()
+    {
+        var section = File.ReadAllText(
+            Path.Combine(ClientSource.Root, "Pages", "Finance", "AccountSmartTagsSection.razor.cs"));
+
+        // The cap is only "known" while the read is healthy, and only a known cap can block an add.
+        Assert.Contains("_capKnown => !_limitsDegraded", section, StringComparison.Ordinal);
+        Assert.Contains("_atCap => _capKnown &&", section, StringComparison.Ordinal);
     }
 
     /// <summary>

@@ -91,6 +91,7 @@ builder.Services.AddScoped<Odyssey.Client.Services.IReferenceDataCache, Odyssey.
 builder.Services.AddScoped<Odyssey.Client.Services.IImportLimitsCache, Odyssey.Client.Services.ImportLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IUploadLimitsCache, Odyssey.Client.Services.UploadLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IAccountLimitsCache, Odyssey.Client.Services.AccountLimitsCache>();
+builder.Services.AddScoped<Odyssey.Client.Services.IContractLimitsCache, Odyssey.Client.Services.ContractLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IFileAnalysisDisclosureCache, Odyssey.Client.Services.FileAnalysisDisclosureCache>();
 // Transient: one creator per dialog — the temporary ids it hands out are only meaningful to the
 // surface holding them.

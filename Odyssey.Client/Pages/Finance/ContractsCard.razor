@@ -106,6 +106,12 @@
                            values" rule the insurance link counts follow, so a busy price history
                            never reads as empty. *@
                         new OdsRecordCount("sell", c.TermCount.ToString(CultureInfo.CurrentCulture), "Terms"),
+                        @* Watched tags (issue #166). `local_offer`, not `sell`: that glyph already
+                           denotes Terms on a contract, and one glyph meaning two things in a strip
+                           whose whole job is to index the body would be worse than two glyphs. It
+                           counts LINK ROWS, including a link whose tag has since been archived —
+                           the row is the configuration. *@
+                        new OdsRecordCount("local_offer", c.SmartTagCount.ToString(CultureInfo.CurrentCulture), "Smart tags"),
                         new OdsRecordCount("description", c.FileCount.ToString(CultureInfo.CurrentCulture), "Documents"),
                         @* The event log's size, last — the same order the body's sections run in.
                            Archival does not lock the log, so this count is live on an archived
@@ -287,6 +293,9 @@
                                of a record the reader just navigated away from. *@
                             <ContractDetailView Contract="detail"
                                                 CanWrite="_canUpdate"
+                                                CanReadTransactions="_canReadTransactions"
+                                                SmartTagCount="c.SmartTagCount"
+                                                OnSmartTagCountChanged="@(count => { c.SmartTagCount = count; })"
                                                 FormatMoney="FormatMoney"
                                                 NewTermRequestToken="@NewTermRequestFor(c.ContractId)"
                                                 NewEventRequestToken="@NewEventRequestFor(c.ContractId)"
