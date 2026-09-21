@@ -193,26 +193,7 @@ public class TransactionTagServiceTests
         await using var context = TestContextFactory.Create();
         var service = new TransactionTagService(context);
         var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
-
-        var budget = new Budget
-        {
-            Name = "2026",
-            Description = "Annual",
-            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
-            Archived = null,
-        };
-        context.Budgets.Add(budget);
-        await context.SaveChangesAsync();
-
-        context.BudgetItems.Add(new BudgetItem
-        {
-            BudgetId = budget.BudgetId,
-            CategoryType = Odyssey.Context.BudgetCategoryType.Expense,
-            PlannedAmount = 100m,
-            TransactionTagId = tag.TransactionTagId,
-        });
-        await context.SaveChangesAsync();
+        await SeedBudgetItem(context, tag.TransactionTagId);
 
         var conflict = await Assert.ThrowsAsync<DomainConflictException>(
             () => service.Delete(tag.TransactionTagId));
