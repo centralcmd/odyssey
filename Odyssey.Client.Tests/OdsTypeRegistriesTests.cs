@@ -449,6 +449,54 @@ public class OdsTypeRegistriesTests
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+    // ── The object-role flag (issue #169) ────────────────────────────────────
+
+    /// <summary>
+    /// Exactly three party roles name what the agreement is ABOUT rather than a side of it. The set
+    /// is pinned because both the tile's mark and the tile ORDER read it: a role that silently gained
+    /// or lost the flag would re-sort the parties section with nothing else changing.
+    /// </summary>
+    [Fact]
+    public void Exactly_the_three_object_roles_carry_the_object_flag()
+    {
+        Assert.Equal(
+            [nameof(ContractPartyRole.Object), nameof(ContractPartyRole.Property), nameof(ContractPartyRole.Collateral)],
+            OdsTypeRegistries.ContractPartyRoles.Where(r => r.IsObject).Select(r => r.Key).ToList());
+
+        Assert.All(
+            Enum.GetValues<ContractPartyRole>(),
+            role => Assert.Equal(
+                role is ContractPartyRole.Object or ContractPartyRole.Property or ContractPartyRole.Collateral,
+                OdsTypeRegistries.IsObjectRole(role)));
+    }
+
+    /// <summary>
+    /// A role this build cannot name is not an object role. The helper reads the registry, so an
+    /// ordinal newer than this client has no entry and must answer <see langword="false"/> rather
+    /// than throwing or being guessed into the group it would lead the section from.
+    /// </summary>
+    [Fact]
+    public void An_unknown_role_ordinal_is_not_an_object_role() =>
+        Assert.False(OdsTypeRegistries.IsObjectRole((ContractPartyRole)int.MaxValue));
+
+    /// <summary>
+    /// No OTHER registry sets the flag. It rides on the shared option type, so a copy-pasted row in an
+    /// unrelated registry would set it silently — and nothing in that registry's own surface would
+    /// show it.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(RegistryEnumPairs))]
+    public void Only_the_party_role_registry_flags_object_members(string registryName, Type enumType)
+    {
+        _ = enumType;
+        if (registryName == nameof(OdsTypeRegistries.ContractPartyRoles))
+        {
+            return;
+        }
+
+        Assert.DoesNotContain(Registry(registryName), option => option.IsObject);
+    }
+
     private static IReadOnlyList<OdsTypeOption> Registry(string name) =>
         (IReadOnlyList<OdsTypeOption>)typeof(OdsTypeRegistries).GetField(name)!.GetValue(null)!;
 

@@ -2601,6 +2601,12 @@ tr:focus-within > .odc-rowactions.reveal,
    colour alone: the word itself says which state this is. The secondary token is AA-contrast, not
    the 0.38 disabled alpha. */
 .con-role.unset { color: var(--mud-palette-text-secondary); font-style: italic; }
+/* An OBJECT party — the thing the agreement is about (issue #169). The overline gains a small
+   outward-arrow mark in the role's own colour; nothing else changes, so the tile stays the same
+   shape as a counterparty's and the mark is a grouping cue rather than a decoration. The role WORD
+   still carries the state, so the glyph is aria-hidden and colour is never the only difference. */
+.con-role.object { display: inline-flex; align-items: center; gap: 3px; }
+.con-role-mark { font-size: 13px; line-height: 1; opacity: .8; }
 .con-term {
   font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
   color: var(--mud-palette-text-secondary); white-space: nowrap; max-width: 100%;

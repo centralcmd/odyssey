@@ -40,11 +40,11 @@
                identity Blazor diffs the survivors POSITIONALLY — it would keep the focused tile's DOM
                node and re-point it at the NEXT party's data, so a menu a keyboard user is sitting on
                silently starts describing a different party under the same focus (WCAG 4.1.2). *@
-            @foreach (var party in Contract.Parties)
+            @foreach (var party in SortedParties)
             {
                 var p = party;
                 var r = Resolve(p);
-                <div class="con-party-tile" @key="p.ContractPartyId">
+                <div class="@TileClass(p.Role)" @key="p.ContractPartyId">
                     @* A referenced record is drawn in ITS OWN type icon and colour — the same mark it
                        carries on its own page — so it stays recognisable as that record rather than
                        as part of this one. *@
@@ -119,7 +119,15 @@
             @* `plain` is an ABSENCE, not a category: an unstated or unrecognised role is drawn
                quieter and never confusable with the deliberate "Other". Both are still TEXT — the
                state never rides on colour alone. *@
-            <span class="con-role@(PartyRoleLabel.IsNamed(party.Role) ? "" : " unset")">
+            @* An OBJECT role carries a small outward-arrow mark: what the agreement is ABOUT reads
+               apart from who stands on a side of it, without changing the tile's shape. The mark is
+               aria-hidden because the role WORD beside it already says which it is — the state never
+               rides on the glyph alone (WCAG 1.3.1 / 1.4.1). *@
+            <span class="@RoleClass(party.Role)">
+                @if (OdsTypeRegistries.IsObjectRole(party.Role))
+                {
+                    <span class="material-icons con-role-mark" aria-hidden="true">north_east</span>
+                }
                 <span>@PartyRoleLabel.For(party.Role)</span>
             </span>
             @if (PartyTerm.Format(party.FromDate, party.ToDate) is { } term)

@@ -39,6 +39,19 @@ public sealed record OdsTypeOption
     public required string Color { get; init; }
     /// <summary>Icon background tint (any CSS color).</summary>
     public required string Soft { get; init; }
+
+    /// <summary>
+    /// This member names the THING the record is about rather than a party to it — the DS registries'
+    /// <c>object: true</c> flag. Set only by <see cref="OdsTypeRegistries.ContractPartyRoles"/>
+    /// today, where it marks <c>Object</c>, <c>Property</c> and <c>Collateral</c> (issue #169).
+    /// </summary>
+    /// <remarks>
+    /// It rides on the registry ROW, exactly as the design system declares it, rather than living in
+    /// a second list beside the registry: a role added later declares what kind of member it is next
+    /// to its own glyph and colour, where the omission is visible, instead of in a list a reader has
+    /// no reason to open. Every other registry leaves it <see langword="false"/>.
+    /// </remarks>
+    public bool IsObject { get; init; }
 }
 
 /// <summary>A labelled section of <see cref="OdsTypeOption"/>s for a grouped
@@ -314,9 +327,9 @@ public static class OdsTypeRegistries
         // Values mirror the DS registry. The DS additionally flags them `object: true`, which its
         // party tile reads to draw them apart; that presentation belongs to the frontend counterpart
         // and is deliberately not implemented here.
-        new() { Key = "Object",       Label = "Object",       Icon = "category",           Color = "oklch(0.78 0.11 75)",  Soft = "oklch(0.78 0.11 75 / 0.16)" },
-        new() { Key = "Property",     Label = "Property",     Icon = "holiday_village",    Color = "oklch(0.78 0.11 45)",  Soft = "oklch(0.78 0.11 45 / 0.16)" },
-        new() { Key = "Collateral",   Label = "Collateral",   Icon = "lock",               Color = "oklch(0.78 0.11 105)", Soft = "oklch(0.78 0.11 105 / 0.16)" },
+        new() { Key = "Object",       Label = "Object",       Icon = "category",           Color = "oklch(0.78 0.11 75)",  Soft = "oklch(0.78 0.11 75 / 0.16)",  IsObject = true },
+        new() { Key = "Property",     Label = "Property",     Icon = "holiday_village",    Color = "oklch(0.78 0.11 45)",  Soft = "oklch(0.78 0.11 45 / 0.16)",  IsObject = true },
+        new() { Key = "Collateral",   Label = "Collateral",   Icon = "lock",               Color = "oklch(0.78 0.11 105)", Soft = "oklch(0.78 0.11 105 / 0.16)", IsObject = true },
     ];
 
     /// <summary>
@@ -520,6 +533,20 @@ public static class OdsTypeRegistries
     /// </remarks>
     public static OdsTypeOption? ContractPartyRoleOf(ContractPartyRole role) =>
         ContractPartyRoles.FirstOrDefault(t => t.Key == role.ToString());
+
+    /// <summary>
+    /// Whether <paramref name="role"/> names the THING the agreement concerns rather than a side of
+    /// it — <c>Object</c>, <c>Property</c> or <c>Collateral</c> (issue #169). Read off the registry's
+    /// own <see cref="OdsTypeOption.IsObject"/> flag, so the tile mark and the tile ORDER cannot
+    /// disagree about which roles they mean.
+    /// </summary>
+    /// <remarks>
+    /// An ordinal this build cannot name answers <see langword="false"/>: a version-skew role is
+    /// drawn as an unrecognised one, and guessing it into the object group would assert a
+    /// classification this build has no basis for.
+    /// </remarks>
+    public static bool IsObjectRole(ContractPartyRole role) =>
+        ContractPartyRoleOf(role) is { IsObject: true };
 
     /// <summary>The ContractEventType descriptor for an enum value (falls back to "Other").</summary>
     /// <remarks>
