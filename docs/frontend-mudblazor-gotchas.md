@@ -49,6 +49,18 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
 - **Brand colours are brand only.** Tide (teal) and Sea (cyan) never encode income or expense — mint
   and coral do. No emoji, no gradients in product chrome. Numbers tabular; negatives use `−` plus
   the expense colour.
+- **Money is the amount followed by its ISO 4217 code — `1,234.56 USD`, never `$1,234.56`** — and
+  every figure goes through `OdsMoney`, the one formatter. Several shipped currencies share a glyph
+  (`$` for USD and CAD, `kr` for NOK and SEK), so a symbol is ambiguous exactly where the figure
+  matters. Do not build a `NumberFormatInfo` with a `CurrencySymbol`: the currency's row supplies
+  only its decimals now (`OdsMoney.MinorUnitsOf`, so JPY renders none). `Format` marks a negative
+  and leaves a positive unpadded; `Signed` is for a figure whose direction is the point (a net, a
+  delta) and fills the same slot with a real `+` — never glue one onto a `Format` string, it lands
+  outside the slot and breaks the column. The lead is U+2212 then a **figure space** (U+2007), which
+  is digit-width and non-collapsing where an ordinary space is neither. A figure with no currency —
+  a naive cross-currency aggregate — carries **no code at all**, rather than a generic `$` asserting
+  a denomination it is not in. The one place a symbol still belongs is the Currency admin record,
+  where `Symbol` is a stored field being edited.
 - **Deliberate exception:** the picker `oklch(...)` literals mirror the design system on purpose and
   are **not** tokenized. Don't "fix" them.
 - **An unavailable action is ABSENT from a menu, never dimmed.** `OdsMenuItem.Disabled` makes
