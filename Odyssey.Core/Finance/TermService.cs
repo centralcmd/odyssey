@@ -601,8 +601,20 @@ public class TermService
     /// since a row written by an earlier build is outside this build's validator entirely.
     /// </para>
     /// </remarks>
-    private static string LogCurrency(string? code) =>
-        code is { Length: 3 } && code.All(char.IsAsciiLetter) ? code : NoTermValue;
+    private static string LogCurrency(string? code)
+    {
+        if (code is not { Length: 3 } || !code.All(char.IsAsciiLetter))
+            return NoTermValue;
+
+        // The shape check above already makes this a no-op — three ASCII letters contain no line
+        // break. It is here because it is the form CodeQL recognises as a barrier for
+        // `cs/log-forging`: a predicate that returns the original string is not one, however total,
+        // so the first cut of this guard left the alert standing. Stated plainly rather than dressed
+        // up as defence in depth: the security property comes from the check, the Replace comes from
+        // the analyzer, and removing either would be a regression in a different sense.
+        return code.Replace("\r", string.Empty, StringComparison.Ordinal)
+                   .Replace("\n", string.Empty, StringComparison.Ordinal);
+    }
 
     /// <summary>
     /// The single validation, normalization and supersession path both owners run through. Everything
