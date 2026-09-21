@@ -138,12 +138,20 @@
                     @* A percentage FEE is money too: it carries the same direction lead as an
                        amount, so the two units are one control with one unit swapped rather than two
                        differently-shaped questions. A rate gets no lead — see the refusal above. *@
-                    <OdsAmountField Size="lg" Required="true" AllowNegative="true" Suffix="%"
+                    @* AllowNegative follows the DIRECTION: where the lead carries which way the money
+                       moves, a typed minus would be a second and contradictory encoding of the same
+                       fact — the defect this feature exists to prevent. A rate keeps its sign, where
+                       a negative genuinely means something (negative-rate deposits and mortgages both
+                       exist). Note the consequence on EDIT: a pre-existing negative percentage FEE on
+                       a contract loses its minus on the next keystroke. That is a nudge toward the
+                       invariant rather than away from it, and the server still accepts the stored
+                       value untouched if nothing is typed. *@
+                    <OdsAmountField Size="lg" Required="true" AllowNegative="@(!DirectionApplies)" Suffix="%"
                                     Value="@_valueStr" ValueChanged="OnValueChanged"
                                     Direction="@DirectionValue"
                                     DirectionChanged="OnDirectionChanged"
                                     DirectionOptions="DirectionLead"
-                                    aria-label="Value"
+                                    AriaLabel="Value"
                                     Error="@(_errors.TryGetValue("value", out var pctErr) ? pctErr : null)">
                         <HelpContent>
                             @if (DirectionApplies)

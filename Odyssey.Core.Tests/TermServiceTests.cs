@@ -826,6 +826,67 @@ public class TermServiceTests
     }
 
     /// <summary>
+    /// V1 — direction is a FEE-only field. Tested directly against the service, not only over HTTP:
+    /// this file's convention is one unit test per eligibility rule (see the Interval-on-a-rate case),
+    /// and the API tier proves the STATUS CODE rather than that the rule lives in the service every
+    /// non-HTTP caller also goes through.
+    /// </summary>
+    [Fact]
+    public async Task Create_IncomingOnAContractRateKind_Throws()
+    {
+        await using var context = TestContextFactory.Create();
+        var contractId = await SeedContractAsync(context);
+        var service = new TermService(context);
+
+        var term = InterestRate(0.0325m, new DateTime(2026, 1, 1));
+        term.Direction = TermDirection.Incoming;
+
+        await Assert.ThrowsAsync<DomainValidationException>(
+            () => service.CreateForContract(contractId, term));
+        Assert.Empty(context.Terms);
+    }
+
+    /// <summary>
+    /// V4 — an account-owned term may not carry a non-default direction, whichever kind it is. No
+    /// account surface reads a direction, so accepting one would let a user record a fact the product
+    /// then contradicts.
+    /// </summary>
+    [Theory]
+    [InlineData(TermKind.Fee)]
+    [InlineData(TermKind.InterestRate)]
+    public async Task Create_IncomingOnAnAccountTerm_Throws(TermKind kind)
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context);
+        var service = new TermService(context);
+
+        var term = kind == TermKind.Fee
+            ? Fee("Interest received", 12m, new DateTime(2026, 1, 1))
+            : InterestRate(0.0325m, new DateTime(2026, 1, 1));
+        term.Direction = TermDirection.Incoming;
+
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, term));
+        Assert.Empty(context.Terms);
+    }
+
+    /// <summary>
+    /// The mirror of V4: omitting the direction on an account term is the ordinary path, and what it
+    /// stores is the default — so "not offered" and "refused" never become "silently rejected".
+    /// </summary>
+    [Fact]
+    public async Task Create_AnAccountTerm_StoresTheDefaultDirection()
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context);
+        var service = new TermService(context);
+
+        await service.Create(accountId, Fee("Card fee", 4m, new DateTime(2026, 1, 1)));
+
+        Assert.Equal(Odyssey.Context.TermDirection.Outgoing,
+            (await context.Terms.AsNoTracking().SingleAsync()).Direction);
+    }
+
+    /// <summary>
     /// V2 — direction is accepted on any FEE, including the ones the roll-up ignores. A one-off signing
     /// bonus is legitimate incoming record-keeping: the roll-up's exclusions are about having no rate
     /// to PROJECT, not about direction.

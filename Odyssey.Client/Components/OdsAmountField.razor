@@ -54,6 +54,7 @@
                disabled="@Disabled"
                autofocus="@AutoFocus"
                style="@(Align == "right" ? "text-align:right" : null)"
+               aria-label="@EffectiveAriaLabel"
                aria-required="@(Required ? "true" : null)"
                aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
                aria-describedby="@DescribedBy"
@@ -121,6 +122,14 @@
 
     [Parameter] public bool AutoFocus { get; set; }
 
+    /// <summary>
+    /// Accessible name for the input where no visible <see cref="Label"/> is set — a hero whose
+    /// caption is a separate heading, a dense cell. Without it such a field has NO programmatic name:
+    /// a nearby <c>&lt;div&gt;</c> is not a label. Mirrors <c>OdsMoneyField.AriaLabel</c>, so the two
+    /// halves of a value control are named the same way whichever unit is showing.
+    /// </summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
     [Parameter] public string? Class { get; set; }
 
     [Parameter] public string? Id { get; set; }
@@ -186,6 +195,10 @@
             string.IsNullOrEmpty(Error) ? null : "error",
             Disabled ? "disabled" : null,
         }.Where(value => !string.IsNullOrEmpty(value)));
+
+    // A visible label already names the input through OdsFieldShell's <label for>, so an aria-label
+    // would override it with a second, competing name.
+    private string? EffectiveAriaLabel => string.IsNullOrEmpty(Label) ? AriaLabel : null;
 
     private string? DescribedBy =>
         (string.IsNullOrEmpty(Error) && string.IsNullOrEmpty(Help) && HelpContent is null) ? null : $"{FieldId}-help";

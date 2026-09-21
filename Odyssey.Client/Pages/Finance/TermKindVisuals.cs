@@ -270,14 +270,21 @@ public static class TermKindVisuals
                 : null;
 
     /// <summary>
+    /// Whether this term brings money IN — direction applies here AND it is
+    /// <see cref="TermDirection.Incoming"/>. A predicate of its own rather than a null-test on
+    /// <see cref="DirectionColor"/>: a caller that wants the fact should ask for the fact, or a later
+    /// change to what the colour helper returns silently changes what the caller counts.
+    /// </summary>
+    public static bool IsIncoming(ExistingTerm term) =>
+        DirectionApplies(term) && term.Direction == TermDirection.Incoming;
+
+    /// <summary>
     /// Mint wherever an INCOMING term's own value is printed; <c>null</c> everywhere else, so every
     /// surface keeps the colour it already had and nothing that existed before this field changes
     /// appearance.
     /// </summary>
     public static string? DirectionColor(ExistingTerm term) =>
-        DirectionApplies(term) && term.Direction == TermDirection.Incoming
-            ? "var(--finance-income)"
-            : null;
+        IsIncoming(term) ? "var(--finance-income)" : null;
 }
 
 /// <summary>

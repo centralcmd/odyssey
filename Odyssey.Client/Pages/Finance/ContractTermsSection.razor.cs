@@ -82,7 +82,7 @@ public partial class ContractTermsSection
             if (HasNoTerms) return "0 entries";
             if (_current.Count == 0) return "none in force";
 
-            var incoming = _current.Count(t => TermKindVisuals.DirectionColor(t) is not null);
+            var incoming = _current.Count(TermKindVisuals.IsIncoming);
             // The split is stated only when there IS an incoming side: on a file that records costs
             // alone it would be a breakdown of one thing, which reads as noise on every contract.
             var split = incoming > 0
