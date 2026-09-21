@@ -19,12 +19,23 @@ namespace Odyssey.Api.Tests;
 /// <summary>
 /// The HTTP half of issue #157's write-path enforcement: the party-write matrix check (AC 1–4, 9),
 /// the contract type-change refusal (AC 7, 8), the mass-assignment regression (AC 10), the new
-/// <c>Loan</c> type (AC 19) and the status/field-key contract both refusals carry (AC 24).
+/// <c>Loan</c> type (AC 19), the status/field-key contract both refusals carry (AC 24), and the two
+/// contact-delete criteria that are decided before any relational statement runs — the claim-gated
+/// <c>409</c> payload (AC 23) and the composed detach gate's <c>403</c> (AC 13).
 /// </summary>
 /// <remarks>
-/// These run on the fast tier because none of them touches <c>ContactReferenceGuard</c>, whose
-/// statements are relational-only. The beneficiary-blocker criteria (11–15, 21–23) and the migration
-/// one (25) live in <c>Odyssey.IntegrationTests</c> for that reason.
+/// Everything here runs on the fast tier, and the dividing line is <b>not</b> "does it touch
+/// <c>ContactReferenceGuard</c>" — the last two do. It is whether the response is decided <em>before</em>
+/// that guard's relational-only <c>ExecuteUpdate</c>/<c>ExecuteDelete</c> cleanup, which throws on the
+/// InMemory provider. The <c>409</c> returns from <c>ContactController</c> without entering the service
+/// at all, and the <c>403</c> is raised by <c>EnsureDetachPermitted</c> ahead of <c>StageLinkDetach</c>,
+/// so both are reachable — and only here do they go through the real ASP.NET Core pipeline, which is
+/// what AC 13 actually asserts about a status no <c>DomainException</c> subtype had mapped to before.
+///
+/// <para>
+/// The remaining beneficiary-blocker criteria (11–14, 21–22) and the migration one (25) do reach that
+/// cleanup, so they live in <c>Odyssey.IntegrationTests</c> against real MariaDB.
+/// </para>
 /// </remarks>
 public class ContractPartyRoleMatrixApiTests
 {
