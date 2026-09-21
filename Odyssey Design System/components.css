@@ -2962,6 +2962,14 @@ tr:focus-within > .odc-rowactions.reveal,
   text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none;
 }
 .odc-sectiondivider-rule { flex: 1; height: 1px; background: var(--mud-palette-divider); }
+/* Only a divider given `headingId` is focusable, and only programmatically —
+   it is out of the tab order, so this ring appears after something in the
+   section moves focus here (a delete), never while tabbing through it. */
+.odc-sectiondivider-l[tabindex]:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+  outline-offset: var(--space-1);
+  border-radius: var(--radius-sm);
+}
 .odc-sectiondivider-meta { font: var(--fw-regular) 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); flex: none; }
 
 /* ---------- Picker shell — ONE search / list / row / footer treatment ----------

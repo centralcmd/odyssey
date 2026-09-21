@@ -635,8 +635,8 @@
         "message": "<SecretSettingField> state must be one of 'found' | 'not-set' | 'unreadable'."
       },
       {
-        "selector": "JSXOpeningElement[name.name='SectionDivider'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|meta|className|id|key|ref|className|style|children)$/]",
-        "message": "<SectionDivider> doesn't accept that prop. Declared props: label, meta, className, id."
+        "selector": "JSXOpeningElement[name.name='SectionDivider'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|meta|className|id|headingId|headingLevel|key|ref|className|style|children)$/]",
+        "message": "<SectionDivider> doesn't accept that prop. Declared props: label, meta, className, id, headingId, headingLevel."
       },
       {
         "selector": "JSXOpeningElement[name.name='SegmentedOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|icon|tone|disabled|key|ref|className|style|children)$/]",

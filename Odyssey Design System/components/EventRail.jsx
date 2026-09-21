@@ -56,6 +56,10 @@ export function EventRailMarker({ tone = 'tick', meta, className = '', children,
  * One entry. The node is neutral by default and carries the glyph for the
  * entry's kind; pass `color` only where the kind's hue is genuinely the
  * fastest read, since a column of nine hues competes with status colour.
+ *
+ * NOTE on provenance: `.odc-er-meta` (children) is HOVER-GATED. Anything that
+ * changes how the row should be READ — rather than merely who wrote it — does
+ * not belong there; give the item a persistent slot instead.
  */
 export function EventRailItem({
   icon,

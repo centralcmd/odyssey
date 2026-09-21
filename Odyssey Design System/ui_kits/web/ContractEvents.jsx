@@ -1,11 +1,11 @@
 /* ContractEvents — the "Events" section inside an expanded contract record
    (Contracts → contract detail), under Parties and Documents.
 
-   Tracks "Contract Events — Backend (Draft v6)".
+   Tracks "Contract Event Automation — Frontend (Draft v3)" / backend #154.
 
    A contract records what an agreement IS; an event records what has HAPPENED
-   to it. The section is a user-maintained, chronological log: a type, a
-   required title, an optional description, optional notes, and when.
+   to it. The section is a chronological log: a type, a required title, an
+   optional description, optional notes, and when.
 
    Four decisions this component draws, rather than assumes:
 
@@ -17,38 +17,74 @@
      contracts.read claim, are searched by the same term and are exported with
      everything else, so nothing here may imply they are private.
 
-   • NOTHING IS AUTO-GENERATED. Pausing, archiving, renewing or editing the
-     contract writes no event (backend §7.6 / Non-Goal 4). So there is no
-     "system" badge, no lock icon, no two-tier list — every row is the user's
-     own, and every row is editable and deletable by any contracts.update
-     holder. The empty state says so in as many words.
+   • THE LOG HAS TWO HALVES AND ONE CHRONOLOGY. Pausing, resuming, marking
+     ready, clearing a signed date, archiving, restoring, adding or removing a
+     party now each write their own row (#154 — this reverses Draft v6's
+     Non-Goal 4). Those rows are marked in the ATTRIBUTION LINE and nowhere
+     else — "Recorded by Jane Doe at … (automatically generated)":
+
+       – ORIGIN AND AUTHORSHIP ARE ONE SENTENCE, by product decision, which
+         overrides the frontend spec's §4 and AC 1/2/17. Those asked for a
+         persistent chip in the rail item's `tag` slot, on the argument that
+         `.odc-er-meta` is hover-gated and a system row (which keeps its ⋯
+         menu, so it is never `.no-actions`) would show nothing until hovered.
+         That is still true and is the accepted cost: on a pointer device a
+         recorded row is indistinguishable from a hand-written one until the
+         reader hovers it. It was taken because one sentence carrying who and
+         how beats a pill per row competing with the record head's status
+         vocabulary. If the marker is ever wanted back at a glance, the place
+         for it is a PERSISTENT slot — never a second hover-gated one.
+       – It is TEXT, in the same line as the author, so nothing is carried by
+         hue or glyph and the row reads the same in greyscale.
+       – NO read-only treatment. A system row carries the same two actions as
+         any other, is editable and is deletable (Non-Goal 1). Editing one
+         does not re-author it: `source` survives the save.
+       – NO two-tier list, no grouping, no roll-up (Non-Goal 2), and NO source
+         filter (Non-Goal 3).
+       – Attribution is the PERSON who acted, not a service account, and reads
+         "Unknown user" for a deleted author exactly as a hand-written row does.
+       – The dialog still says it where a screen reader cannot miss it: the
+         Title field's help text on a recorded row (§6.9), which is the one
+         place the fact is programmatically wired rather than hover-gated.
 
    • THE LOG IS PAGED, NOT INLINED. GET /api/contracts/{id} deliberately does
      not carry events (§5): parties and files are bounded, a log is not. So the
      section reads its own endpoint, newest first, and pages. Search, the type
-     filter, the date window and the sort key are not in v1 — the endpoint
-     carries them, the surface does not ask for them yet.
+     filter, the date window, the sort key and `?source=` are not in v1 — the
+     endpoint carries them all, the surface asks for none of them.
 
    • AN ARCHIVED CONTRACT STAYS WRITABLE HERE (§8.6) — as it does in every
-     other section. Archival hides a contract; it does not lock it.
+     other section. Archival hides a contract; it does not lock it. It does now
+     write an Archived event, which is a log entry, not a lock.
 
    No event affects ContractStatus (§4.2) — a Terminated event does not expire
-   the contract — so nothing in this section touches the status chip.
+   the contract, and a Paused EVENT does not pause anything; the contract's own
+   edit dialog is what moves it, and this section only reports the move — so
+   nothing here touches the status chip.
 
    Props:
      contract   — the contract record (the route's {contractId})
      events     — the page of rows (owned by the parent, as parties/files are)
      view       — 'rail' (default) | 'spine' — the spine adds the horizontal
                   overview strip ABOVE the rail; the rail always carries the log
-     canUpdate  — contracts.update; false = read-only, no per-row actions
+     canUpdate  — contracts.update; false = read-only, no per-row actions.
+                  PRESENTATION ONLY: the server's 403 on every write path is
+                  the enforcement, never the hidden control
      pageSize   — the list query's Limit
      onEdit / onDelete — write handlers. There is no onNew: CREATING an event is
                   the contract's own action, and lives in the contract record's
                   action menu beside Add party and Attach document — not as a
-                  button the section carries. */
+                  button the section carries.
+     onAnnounce — a sentence for the PAGE's single live region, raised after a
+                  delete. The section mounts no announcer of its own. */
 
 const CEV_H = window.OdysseyHelpers;
 const CEV_D = window.OdysseyData;
+
+/* The focus destination for a delete. It is an id rather than a ref because
+   the heading belongs to the DS divider, and the divider only becomes
+   focusable when it is given one. */
+const CEV_HEADING_ID = 'con-events-heading';
 
 /* The horizontal spine — the whole life of the contract in one strip. It is an
    OVERVIEW, never the log itself: it carries no title and no text at all,
@@ -140,7 +176,7 @@ const EventSpine = ({ events, selectedId, onSelect }) => {
   );
 };
 
-const ContractEvents = ({ contract, events = [], view = 'rail', canUpdate = true, pageSize = 25, onEdit, onDelete }) => {
+const ContractEvents = ({ contract, events = [], view = 'rail', canUpdate = true, pageSize = 25, onEdit, onDelete, onAnnounce }) => {
   const { useState, useMemo, useEffect } = React;
   const NS = window.OdysseyDesignSystem_d5aa51 || {};
   // Resolved off the bundle namespace rather than the kit's window globals:
@@ -165,13 +201,46 @@ const ContractEvents = ({ contract, events = [], view = 'rail', canUpdate = true
   const start = (page - 1) * pageSize;
   const rows = ordered.slice(start, start + pageSize);
 
+  /* A delete takes the focused node off the page, so focus and the
+     announcement are part of the operation, not a nicety after it.
+
+     Focus goes to the section heading: the row is gone, the next row is not
+     "the same place", and letting the browser drop focus to <body> loses a
+     keyboard user's position entirely. The heading can only receive it because
+     the divider is given a headingId below.
+
+     The sentence goes UP to the page's single live announcer (Non-Goal 8) —
+     this section mounts none of its own.
+
+     The focus move is DEFERRED PAST A MACROTASK, and that is not defensive
+     padding: the row's ⋯ menu restores focus to its own invoker as it closes,
+     on the microtask after this handler, and a synchronous focus() here is
+     silently overwritten by it — landing the user on the page's search field.
+     The node is looked up again inside the timeout because the delete
+     re-renders the section. Same pattern as SystemSettings'
+     `setTimeout(() => opener.focus(), 0)`. */
+  const removeEvent = (ev) => {
+    onDelete && onDelete(ev);
+    setTimeout(() => {
+      const heading = document.getElementById(CEV_HEADING_ID);
+      if (heading) heading.focus();
+    }, 0);
+    const left = Math.max(total - 1, 0);
+    onAnnounce && onAnnounce(`Event deleted. ${left} ${left === 1 ? 'entry' : 'entries'} in the log.`);
+  };
+
   if (events.length === 0) {
     return (
       <div className="con-section">
-        <SectionDivider label="Events" meta="0 entries" />
+        {/* The heading stays focusable even here: deleting the last row lands
+            on this state, and the focus target has to survive the transition. */}
+        <SectionDivider label="Events" headingId={CEV_HEADING_ID} meta="0 entries" />
+        {/* Both halves of the log, in that order — what Odyssey records, then
+            what the user can add. The old copy named only the second. */}
         <EmptyLine>
-          No events yet — record what has happened to this agreement: signed, renewed, notice given, a
-          price renegotiated, an email sent.
+          No events yet. Odyssey records what it does to this agreement — pausing it, signing it,
+          archiving it — and you can add anything else: notice given, a price renegotiated, an email
+          sent.
         </EmptyLine>
       </div>
     );
@@ -229,27 +298,36 @@ const ContractEvents = ({ contract, events = [], view = 'rail', canUpdate = true
      are read and written. */
   const item = (ev) => {
     const info = CEV_H.cevTypeInfo(ev.type);
+    const system = CEV_H.cevIsSystem(ev);
     return (
       /* v1: the node is neutral — no `color` passed. The glyph carries the
-         type, and holding the hue back keeps nine colours from competing with
-         the status vocabulary the record head already uses. The row actions
-         sit inline after the date rather than pinned to the card edge: they
-         belong to the entry being read. */
+         type, and holding the hue back keeps eighteen colours from competing
+         with the status vocabulary the record head already uses. The row
+         actions sit inline after the date rather than pinned to the card edge:
+         they belong to the entry being read. */
       <EventRailItem key={ev.id} icon={info.icon} iconLabel={info.label}
         selected={ev.id === selected}
         title={ev.title}
         date={CEV_H.cevDateTime(ev.occurredAt)}
         desc={ev.description || undefined}
         actions={canUpdate ? (
+          /* The same two actions on a system row as on any other (Non-Goal 1). */
           <DSRowActions actions={[
             { icon: 'edit', label: `Edit ${ev.title}`, onClick: () => onEdit && onEdit(ev) },
-            { icon: 'delete', label: `Delete ${ev.title}`, danger: true, onClick: () => onDelete && onDelete(ev) },
+            { icon: 'delete', label: `Delete ${ev.title}`, danger: true, onClick: () => removeEvent(ev) },
           ]} />
         ) : undefined}>
         {/* Attribution is a display LABEL from the claim-aware resolver —
-            never the raw CreatedByUserId. A deleted author reads Unknown. */}
+            never the raw CreatedByUserId. A deleted author reads Unknown.
+
+            ORIGIN RIDES THE SAME SENTENCE. On a recorded row the line closes
+            with "(automatically generated)" — text, in the author's own line,
+            so who and how are read together. It inherits this slot's
+            hover-reveal, which is the tradeoff the product decision accepted;
+            see the note at the top of this file. */}
         <div className={`odc-er-meta${ev.createdByUserId ? '' : ' cev-by-unknown'}`}>
           Recorded by <span className="cev-by-who">{CEV_H.cevCreatedBy(ev.createdByUserId)}</span> at {CEV_H.cevDateTime(ev.createdAtUtc)}
+          {system ? <span className="cev-auto-note"> (automatically generated)</span> : null}
         </div>
       </EventRailItem>
     );
@@ -257,7 +335,7 @@ const ContractEvents = ({ contract, events = [], view = 'rail', canUpdate = true
 
   return (
     <div className="con-section">
-      <SectionDivider label="Events"
+      <SectionDivider label="Events" headingId={CEV_HEADING_ID}
         meta={`${total} ${total === 1 ? 'entry' : 'entries'} · newest first`} />
 
       {view === 'spine' ? <EventSpine events={ordered} selectedId={selected} onSelect={setSelected} /> : null}

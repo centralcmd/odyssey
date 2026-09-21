@@ -159,7 +159,7 @@ const PartyTile = ({ party, today, onEdit, onDetach }) => {
 };
 
 /* ====================== Expanded detail ====================== */
-const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, onNewTerm, onEditTerm, onDeleteTerm, events, onEditEvent, onDeleteEvent }) => {
+const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, onNewTerm, onEditTerm, onDeleteTerm, events, onEditEvent, onDeleteEvent, onAnnounceEvent }) => {
   const typeInfo = CON_H.contractTypeInfo(contract.type);
   const parties = contract.parties || [];
   const files = contract.files || [];
@@ -290,6 +290,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         events={events || []}
         onEdit={onEditEvent}
         onDelete={onDeleteEvent}
+        onAnnounce={onAnnounceEvent}
       />
     </React.Fragment>
   );
@@ -363,7 +364,11 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
     }));
     setShowEdit(false);
   };
-  const addParty = (party) => { setC(prev => ({ ...prev, parties: [...(prev.parties || []), party] })); setModal(null); setOpen(true); };
+  const addParty = (party) => {
+    setC(prev => ({ ...prev, parties: [...(prev.parties || []), party] })); setModal(null); setOpen(true);
+    const who = CON_H.conResolveParty(party);
+    recordEvent('PartyAdded', `${(who && who.name) || 'A party'} added as a party`, 'Added to the agreement.');
+  };
   /* The edit is a FULL REPLACEMENT of the row — role, target and both dates —
      written in place, so `id` survives a role or target change and the party
      stays one party (spec §5: the response's contractPartyId equals the one in
@@ -378,10 +383,18 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
      the backend spec calls out: clicking Archive or Pause on a signed
      contract would clear them, flip it to Draft and empty it out of the run
      rate. Keep them on every write that touches this record. */
-  const toggleArchive = () => setC(prev => ({ ...prev, ready: prev.ready, signed: prev.signed, archived: prev.archived ? null : new Date().toISOString() }));
+  const toggleArchive = () => {
+    setC(prev => ({ ...prev, ready: prev.ready, signed: prev.signed, archived: prev.archived ? null : new Date().toISOString() }));
+    if (c.archived) recordEvent('Unarchived', 'Contract restored', 'Brought back out of the archive.');
+    else recordEvent('Archived', 'Contract archived', 'Archival hides a contract; it does not lock it.');
+  };
   /* Pause rides the same PUT as archive, and is idempotent the same way: a
      repeated pause keeps the ORIGINAL stamp, so "paused since" never resets. */
-  const togglePause = () => setC(prev => ({ ...prev, ready: prev.ready, signed: prev.signed, paused: prev.paused ? null : (prev.paused || new Date().toISOString()) }));
+  const togglePause = () => {
+    setC(prev => ({ ...prev, ready: prev.ready, signed: prev.signed, paused: prev.paused ? null : (prev.paused || new Date().toISOString()) }));
+    if (c.paused) recordEvent('Unpaused', 'Contract resumed', 'Taken off pause.');
+    else recordEvent('Paused', 'Contract paused', 'The agreement itself is unchanged — only its status.');
+  };
 
   /* The one-click signature path. Marking ready is idempotent the same way a
      pause is — a repeated mark keeps the ORIGINAL stamp, so "ready since"
@@ -389,12 +402,25 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
      server refuses a Signed without one (contract_signed_requires_ready) and
      a one-click action must not be able to compose an invalid write.
      Unsign clears BOTH, which is never refused in any state. */
-  const markReady = () => setC(prev => ({ ...prev, ready: prev.ready || new Date().toISOString() }));
-  const markSigned = () => setC(prev => {
-    const now = new Date().toISOString();
-    return { ...prev, ready: prev.ready || now, signed: prev.signed || now };
-  });
-  const unsign = () => setC(prev => ({ ...prev, ready: null, signed: null }));
+  const markReady = () => {
+    setC(prev => ({ ...prev, ready: prev.ready || new Date().toISOString() }));
+    if (!c.ready) recordEvent('Ready', 'Marked ready', 'The contract was marked ready for signature.');
+  };
+  const markSigned = () => {
+    setC(prev => {
+      const now = new Date().toISOString();
+      return { ...prev, ready: prev.ready || now, signed: prev.signed || now };
+    });
+    /* Two writes, two rows. Signing stamps Ready when it is missing, and a
+       log that reported only the signature would hide the second change. */
+    if (!c.ready) recordEvent('Ready', 'Marked ready', 'Stamped as part of marking the contract signed.');
+    if (!c.signed) recordEvent('Signed', 'Contract marked signed', 'The signed date was set on the record.');
+  };
+  const unsign = () => {
+    setC(prev => ({ ...prev, ready: null, signed: null }));
+    if (c.signed) recordEvent('Unsigned', 'Signed date cleared', 'The signed and ready dates were both removed.');
+    else if (c.ready) recordEvent('Unready', 'Ready withdrawn', 'The ready date was removed.');
+  };
 
   /* Create and edit are one write path, as they are on the server: the dialog
      posts a NewTerm and the route (this contract) is the only thing that names
@@ -418,6 +444,35 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
     setModal(null); setEditEvent(null);
   };
   const deleteEvent = (ev) => setEvents(prev => prev.filter(x => x.id !== ev.id));
+
+  /* ---- The automation half of the log (#154) -----------------------------
+     THIS is what the backend now does, drawn here so the surface can be seen
+     working rather than only seeded: every lifecycle write on this record also
+     writes its own event, `source: 'system'`, which the section then chips as
+     "Recorded automatically".
+
+     Two properties worth keeping if this is edited:
+     • The row is stamped with the PERSON who acted, not a service account —
+       "Recorded by Jane Doe", because she is who paused it.
+     • A REFUSED transition writes nothing. There is no call here on a path the
+       server would reject (a pause on a non-Active contract is not offered at
+       all), so no row can claim a change that did not happen. */
+  const recordEvent = (type, title, description) => {
+    const now = new Date().toISOString();
+    setEvents(prev => [{
+      id: `cev-auto-${Date.now()}-${type}`, contractId: c.id, source: 'system', type,
+      title, description, notes: null,
+      occurredAt: now, createdByUserId: 'u-jane', createdAtUtc: now,
+    }, ...prev]);
+  };
+
+  /* ONE live region for this record, and the Events section routes into it
+     rather than mounting a second (frontend Non-Goal 8). An aria-live region
+     will not re-read an identical string, so each message carries an invisible
+     nonce — deleting two events in a row has to be announced twice. */
+  const [announce, setAnnounce] = React.useState('');
+  const announceNonce = React.useRef(0);
+  const say = (msg) => { announceNonce.current += 1; setAnnounce(`${msg}${'\u200B'.repeat((announceNonce.current % 4) + 1)}`); };
 
   useEffect(() => {
     if (!highlight || !cardRef.current) return;
@@ -511,8 +566,11 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
           onAddParty={() => setModal('party')} onEditParty={(p) => setEditParty(p)} onAttach={() => setModal('file')}
           termCap={termCap}
           onNewTerm={() => setModal('term')} onEditTerm={(t) => setEditTerm(t)} onDeleteTerm={deleteTerm}
-          events={events} onEditEvent={(ev) => setEditEvent(ev)} onDeleteEvent={deleteEvent} />
+          events={events} onEditEvent={(ev) => setEditEvent(ev)} onDeleteEvent={deleteEvent} onAnnounceEvent={say} />
       </RecordCard>
+      {/* The record's single polite announcer. The Events section raises its
+          delete sentence up to here (Non-Goal 8) instead of mounting one. */}
+      <div className="odc-sr-only" role="status" aria-live="polite">{announce}</div>
       {showEdit && <AddContractModal contract={c} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
 
       {modal === 'party' && <AddContractPartyModal contract={c} onClose={() => setModal(null)} onAdd={addParty} />}

@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"d5ba618a6d65","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"c1c93cf0f490","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"548f677572e7","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"9400d3e9a309","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"4e05622352b7","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"aa97741b0573","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"8e5c6844d774","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"357f2b93d9e5","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"e9580b161e9b","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"dae784c8e0e1","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"92918d09c235","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"56d48a1d2f9b","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"821b336e8b33","ui_kits/web/Contacts.jsx":"8427bb81ea81","ui_kits/web/ContractEvents.jsx":"ab3a87eb420a","ui_kits/web/ContractTerms.jsx":"dec78e8f4c8d","ui_kits/web/Contracts.jsx":"a20cb0eb5662","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"8b406393c96e","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"15f82310f7e4","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"b030b9d491bb","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"ff97851adb5f","ui_kits/web/contracts-data.js":"873ca0836b5e","ui_kits/web/data.js":"e42243da1859","ui_kits/web/insurance-data.js":"829cf0f9cca2","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"b7ea6e530c60","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BillingIntervalChip","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"BillingIntervalMultiSelect","sourcePath":"components/BillingIntervalMultiSelect.jsx"},{"name":"BILLING_INTERVALS","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BillingIntervalSelect","sourcePath":"components/BillingIntervalSelect.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"COVERAGE_STATUSES","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CoverageStatusChip","sourcePath":"components/CoverageStatusChip.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"INSURANCE_POLICY_TYPES","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"InsurancePolicyTypeSelect","sourcePath":"components/InsurancePolicyTypeSelect.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"PolicyFileTypeMultiSelect","sourcePath":"components/PolicyFileTypeMultiSelect.jsx"},{"name":"POLICY_FILE_TYPES","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"PolicyFileTypeSelect","sourcePath":"components/PolicyFileTypeSelect.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"SUBSCRIPTION_STATES","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"SubscriptionStatusChip","sourcePath":"components/SubscriptionStatusChip.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"d5ba618a6d65","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BillingIntervalChip.jsx":"499d4d3a3eb6","components/BillingIntervalMultiSelect.jsx":"905dc224b245","components/BillingIntervalSelect.jsx":"dd31732138fe","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"c1c93cf0f490","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"548f677572e7","components/CoordinateField.jsx":"f5fed5385b20","components/CoverageStatusChip.jsx":"6da05b8a365a","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"4db5d43b6a9a","components/InsurancePolicyTypeSelect.jsx":"216ece8568b9","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/PolicyFileTypeMultiSelect.jsx":"1016626f8929","components/PolicyFileTypeSelect.jsx":"c5317e7c9e0e","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"97f1d248ce5e","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"f55d15c52c64","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"08382dd6f77d","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/SubscriptionStatusChip.jsx":"e129ad43c8cf","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"8df0df869a6b","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"b92972ba6b4d","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"aa97741b0573","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"8e5c6844d774","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"e9580b161e9b","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"dae784c8e0e1","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddInsurancePolicyModal.jsx":"2be3aa00988f","ui_kits/web/AddPolicyPartyModal.jsx":"a857ed97e872","ui_kits/web/AddRenewalModal.jsx":"d366ed145fbf","ui_kits/web/AddSubscriptionModal.jsx":"29ffbd967264","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"92918d09c235","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"8a4b6db7c943","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"56d48a1d2f9b","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"821b336e8b33","ui_kits/web/Contacts.jsx":"8427bb81ea81","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"dec78e8f4c8d","ui_kits/web/Contracts.jsx":"d3ba4bb5246a","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Insurance.jsx":"8b406393c96e","ui_kits/web/InsuranceUploadModal.jsx":"903bec255140","ui_kits/web/Journal.jsx":"15f82310f7e4","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/Subscriptions.jsx":"b030b9d491bb","ui_kits/web/SystemSettings.jsx":"80a648284510","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5466ff1ec3b4","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"21ba2912b3fd","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"f4d098849ff3","ui_kits/web/contracts-data.js":"873ca0836b5e","ui_kits/web/data.js":"e42243da1859","ui_kits/web/insurance-data.js":"829cf0f9cca2","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/subscriptions-data.js":"b7ea6e530c60","ui_kits/web/system-settings-data.js":"8729aff3b9ac","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"billingAnchorLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"billingIntervalLabel","sourcePath":"components/BillingIntervalChip.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -7071,6 +7071,10 @@ function EventRailMarker({
  * One entry. The node is neutral by default and carries the glyph for the
  * entry's kind; pass `color` only where the kind's hue is genuinely the
  * fastest read, since a column of nine hues competes with status colour.
+ *
+ * NOTE on provenance: `.odc-er-meta` (children) is HOVER-GATED. Anything that
+ * changes how the row should be READ — rather than merely who wrote it — does
+ * not belong there; give the item a persistent slot instead.
  */
 function EventRailItem({
   icon,
@@ -13479,18 +13483,31 @@ try { (() => {
  *
  * No icon by design — the label carries it, and the record's sections are
  * already named by the header's counts. Styled by .odc-sectiondivider.
+ *
+ * `headingId` makes the label a programmatic focus destination: it emits the
+ * id, `tabindex="-1"` (focusable, but out of the tab order) and heading
+ * semantics, so a section that deletes the row holding focus has somewhere
+ * honest to send it. Without it the label is a plain span and cannot receive
+ * focus at all — a `@key`-style identity guarantee on the rows is a different
+ * protection and does not substitute for this one.
  */
 function SectionDivider({
   label,
   meta,
   className = '',
-  id
+  id,
+  headingId,
+  headingLevel = 3
 }) {
   return /*#__PURE__*/React.createElement("div", {
     className: `odc-sectiondivider ${className}`.trim(),
     id: id
   }, /*#__PURE__*/React.createElement("span", {
-    className: "odc-sectiondivider-l"
+    className: "odc-sectiondivider-l",
+    id: headingId,
+    tabIndex: headingId ? -1 : undefined,
+    role: headingId ? 'heading' : undefined,
+    "aria-level": headingId ? headingLevel : undefined
   }, label), /*#__PURE__*/React.createElement("span", {
     className: "odc-sectiondivider-rule",
     "aria-hidden": "true"
@@ -24274,11 +24291,11 @@ try { (() => {
 /* AddContractEventModal — add OR edit one event on a contract
    (POST …/events and PUT …/events/{eventId}).
 
-   Tracks "Contract Events — Backend (Draft v6)".
+   Tracks "Contract Event Automation — Frontend (Draft v3)" / backend #154.
 
-   Four decisions the dialog has to carry, each of them a rule from the backend
-   spec that a user would otherwise meet as an error — or, in the third case,
-   never meet at all, which is worse:
+   Five decisions the dialog has to carry, each of them a rule from the spec
+   that a user would otherwise meet as an error — or, in the third and fifth
+   cases, never meet at all, which is worse:
 
    1. THREE FREE-TEXT FIELDS, THREE ROLES (§4.1). `Title` is required for every
       type — a predetermined type does not derive it and does not make it
@@ -24303,12 +24320,39 @@ try { (() => {
 
    4. THE PUT IS A FULL REPLACEMENT (§5.3), the opposite of UpdateContract. An
       omitted description or note clears it; an omitted type resets to Other.
-      The dialog says that where the decision is made.
+      The dialog says that where the decision is made. This now bites on system
+      rows too: clearing a generated description clears it for good, because
+      nothing regenerates it.
+
+   5. RECORDING AN EVENT DOES NOT CHANGE THE CONTRACT — newly load-bearing.
+      The type list now contains Paused, Archived, Signed and six more verbs
+      the application itself acts on, which invites exactly the assumption that
+      picking one DOES the thing. It does not: this dialog writes a log line.
+      That sentence is HELPER TEXT ON THE TYPE FIELD, not a caption, so it
+      lands in the field's aria-describedby and a screen-reader user meets it
+      too — a misconception a caption never reaches is a misconception kept.
+
+      Its sibling: when the row being edited was RECORDED AUTOMATICALLY, that
+      fact goes in the TITLE field's help text (§6.9). The modal subtitle
+      repeats it for sighted users, but `Subtitle` is a visual slot with no
+      aria-describedby wiring, and Title is the field that takes focus — so a
+      screen-reader user would otherwise land on Title and never hear it.
+
+   `source` IS NOT A FIELD. It appears nowhere here — not as a control, not as
+   a disabled one: a disabled input would imply it is ordinarily settable, when
+   in fact it is absent from both write DTOs (#154 §7.4) and cannot be set at
+   all. The row is chipped on the rail and described in this help text, and
+   that is the whole of its presence. It is carried through a save unchanged,
+   so editing a system row does not re-author it.
 
    No links: the four contact / account columns were removed in v5 (Non-Goal 5),
    so there is nothing to pick and no delete anywhere else to guard. */
 
 const ACE_TYPE_DEFAULT = 'Other';
+
+/* The one sentence that stops an eighteen-member list of lifecycle verbs from
+   reading like a control surface. */
+const ACE_NO_SIDE_EFFECTS = 'Recording an event does not change the contract. To pause the contract itself, use Edit on the record.';
 const AddContractEventModal = ({
   contract,
   event = null,
@@ -24331,6 +24375,11 @@ const AddContractEventModal = ({
   const [time, setTime] = useState(initialTime);
   const [errors, setErrors] = useState({});
   const typeInfo = H.cevTypeInfo(type);
+  const system = H.cevIsSystem(event);
+  /* The load-bearing copy for a recorded row — on the field that takes focus,
+     so it is in Title's aria-describedby (§6.9). Both halves matter: where the
+     row came from, and that editing it changes the LOG and nothing else. */
+  const systemTitleHelp = system ? `Recorded automatically when ${H.cevAutoClause(event.type)}. Editing changes this log line only; it does not change the contract.` : null;
   const submit = () => {
     const err = {};
     // Whitespace-only is rejected as empty, as the server does (§8.1).
@@ -24354,6 +24403,10 @@ const AddContractEventModal = ({
       description: description.trim() || null,
       notes: notes.trim() || null,
       occurredAt,
+      /* Read-only, and carried through untouched: editing a system row does
+         not re-author it, so the chip survives the save (#154 §4). A new row
+         is always hand-written — this dialog is the hand. */
+      source: editing ? event.source || 'user' : 'user',
       // Server-stamped on insert, never rewritten by an update (§5.3).
       createdByUserId: editing ? event.createdByUserId : 'u-jane',
       createdAtUtc: editing ? event.createdAtUtc : new Date().toISOString()
@@ -24361,7 +24414,10 @@ const AddContractEventModal = ({
   };
   return /*#__PURE__*/React.createElement(Modal, {
     title: editing ? 'Edit event' : 'New event',
-    subtitle: editing ? 'Change what this entry records. Who recorded it, and when, does not change.' : `Record something that has happened to ${contract.name}.`,
+    subtitle: editing ? system
+    /* Repeated from the Title field's help text, for sighted users. The
+       help text is what carries it programmatically — this line is not
+       wired to anything and must never be the only place it appears. */ ? 'Recorded automatically. Changing it changes this log line, not the contract.' : 'Change what this entry records. Who recorded it, and when, does not change.' : `Record something that has happened to ${contract.name}.`,
     icon: "history",
     onClose: onClose,
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
@@ -24377,7 +24433,7 @@ const AddContractEventModal = ({
     label: "Type",
     value: type,
     onChange: setType,
-    help: typeInfo.desc,
+    help: `${typeInfo.desc} ${ACE_NO_SIDE_EFFECTS}`,
     options: D.contractEventTypes.map(t => ({
       value: t.key,
       label: t.label,
@@ -24419,7 +24475,7 @@ const AddContractEventModal = ({
     "data-lpignore": "true",
     "data-bwignore": true,
     placeholder: "e.g. Emailed landlord about the rent increase",
-    help: "A short label. This is the line the timeline shows."
+    help: systemTitleHelp || 'A short label. This is the line the timeline shows.'
   }), /*#__PURE__*/React.createElement(NoteField, {
     label: "Description",
     maxLength: 1024,
@@ -24436,7 +24492,7 @@ const AddContractEventModal = ({
     help: "Your working notes. Kept off the timeline, but anyone who can see this contract can read them."
   }), editing ? /*#__PURE__*/React.createElement(Alert, {
     severity: "info"
-  }, "Saving replaces the whole event \u2014 type, title, description, notes and date. Text you clear is cleared on the contract, and a type you leave unset resets to ", /*#__PURE__*/React.createElement("strong", null, "Other"), ". Who recorded this event, and when, is never rewritten.") : null);
+  }, "Saving replaces the whole event \u2014 type, title, description, notes and date. Text you clear is cleared on the contract, and a type you leave unset resets to ", /*#__PURE__*/React.createElement("strong", null, "Other"), ". Who recorded this event, and when, is never rewritten.", system ? ' Nothing regenerates a description you clear on a recorded event.' : '') : null);
 };
 Object.assign(window, {
   AddContractEventModal
@@ -38323,11 +38379,11 @@ try { (() => {
 /* ContractEvents — the "Events" section inside an expanded contract record
    (Contracts → contract detail), under Parties and Documents.
 
-   Tracks "Contract Events — Backend (Draft v6)".
+   Tracks "Contract Event Automation — Frontend (Draft v3)" / backend #154.
 
    A contract records what an agreement IS; an event records what has HAPPENED
-   to it. The section is a user-maintained, chronological log: a type, a
-   required title, an optional description, optional notes, and when.
+   to it. The section is a chronological log: a type, a required title, an
+   optional description, optional notes, and when.
 
    Four decisions this component draws, rather than assumes:
 
@@ -38339,38 +38395,74 @@ try { (() => {
      contracts.read claim, are searched by the same term and are exported with
      everything else, so nothing here may imply they are private.
 
-   • NOTHING IS AUTO-GENERATED. Pausing, archiving, renewing or editing the
-     contract writes no event (backend §7.6 / Non-Goal 4). So there is no
-     "system" badge, no lock icon, no two-tier list — every row is the user's
-     own, and every row is editable and deletable by any contracts.update
-     holder. The empty state says so in as many words.
+   • THE LOG HAS TWO HALVES AND ONE CHRONOLOGY. Pausing, resuming, marking
+     ready, clearing a signed date, archiving, restoring, adding or removing a
+     party now each write their own row (#154 — this reverses Draft v6's
+     Non-Goal 4). Those rows are marked in the ATTRIBUTION LINE and nowhere
+     else — "Recorded by Jane Doe at … (automatically generated)":
+
+       – ORIGIN AND AUTHORSHIP ARE ONE SENTENCE, by product decision, which
+         overrides the frontend spec's §4 and AC 1/2/17. Those asked for a
+         persistent chip in the rail item's `tag` slot, on the argument that
+         `.odc-er-meta` is hover-gated and a system row (which keeps its ⋯
+         menu, so it is never `.no-actions`) would show nothing until hovered.
+         That is still true and is the accepted cost: on a pointer device a
+         recorded row is indistinguishable from a hand-written one until the
+         reader hovers it. It was taken because one sentence carrying who and
+         how beats a pill per row competing with the record head's status
+         vocabulary. If the marker is ever wanted back at a glance, the place
+         for it is a PERSISTENT slot — never a second hover-gated one.
+       – It is TEXT, in the same line as the author, so nothing is carried by
+         hue or glyph and the row reads the same in greyscale.
+       – NO read-only treatment. A system row carries the same two actions as
+         any other, is editable and is deletable (Non-Goal 1). Editing one
+         does not re-author it: `source` survives the save.
+       – NO two-tier list, no grouping, no roll-up (Non-Goal 2), and NO source
+         filter (Non-Goal 3).
+       – Attribution is the PERSON who acted, not a service account, and reads
+         "Unknown user" for a deleted author exactly as a hand-written row does.
+       – The dialog still says it where a screen reader cannot miss it: the
+         Title field's help text on a recorded row (§6.9), which is the one
+         place the fact is programmatically wired rather than hover-gated.
 
    • THE LOG IS PAGED, NOT INLINED. GET /api/contracts/{id} deliberately does
      not carry events (§5): parties and files are bounded, a log is not. So the
      section reads its own endpoint, newest first, and pages. Search, the type
-     filter, the date window and the sort key are not in v1 — the endpoint
-     carries them, the surface does not ask for them yet.
+     filter, the date window, the sort key and `?source=` are not in v1 — the
+     endpoint carries them all, the surface asks for none of them.
 
    • AN ARCHIVED CONTRACT STAYS WRITABLE HERE (§8.6) — as it does in every
-     other section. Archival hides a contract; it does not lock it.
+     other section. Archival hides a contract; it does not lock it. It does now
+     write an Archived event, which is a log entry, not a lock.
 
    No event affects ContractStatus (§4.2) — a Terminated event does not expire
-   the contract — so nothing in this section touches the status chip.
+   the contract, and a Paused EVENT does not pause anything; the contract's own
+   edit dialog is what moves it, and this section only reports the move — so
+   nothing here touches the status chip.
 
    Props:
      contract   — the contract record (the route's {contractId})
      events     — the page of rows (owned by the parent, as parties/files are)
      view       — 'rail' (default) | 'spine' — the spine adds the horizontal
                   overview strip ABOVE the rail; the rail always carries the log
-     canUpdate  — contracts.update; false = read-only, no per-row actions
+     canUpdate  — contracts.update; false = read-only, no per-row actions.
+                  PRESENTATION ONLY: the server's 403 on every write path is
+                  the enforcement, never the hidden control
      pageSize   — the list query's Limit
      onEdit / onDelete — write handlers. There is no onNew: CREATING an event is
                   the contract's own action, and lives in the contract record's
                   action menu beside Add party and Attach document — not as a
-                  button the section carries. */
+                  button the section carries.
+     onAnnounce — a sentence for the PAGE's single live region, raised after a
+                  delete. The section mounts no announcer of its own. */
 
 const CEV_H = window.OdysseyHelpers;
 const CEV_D = window.OdysseyData;
+
+/* The focus destination for a delete. It is an id rather than a ref because
+   the heading belongs to the DS divider, and the divider only becomes
+   focusable when it is given one. */
+const CEV_HEADING_ID = 'con-events-heading';
 
 /* The horizontal spine — the whole life of the contract in one strip. It is an
    OVERVIEW, never the log itself: it carries no title and no text at all,
@@ -38484,7 +38576,8 @@ const ContractEvents = ({
   canUpdate = true,
   pageSize = 25,
   onEdit,
-  onDelete
+  onDelete,
+  onAnnounce
 }) => {
   const {
     useState,
@@ -38516,13 +38609,39 @@ const ContractEvents = ({
   const total = ordered.length;
   const start = (page - 1) * pageSize;
   const rows = ordered.slice(start, start + pageSize);
+
+  /* A delete takes the focused node off the page, so focus and the
+     announcement are part of the operation, not a nicety after it.
+      Focus goes to the section heading: the row is gone, the next row is not
+     "the same place", and letting the browser drop focus to <body> loses a
+     keyboard user's position entirely. The heading can only receive it because
+     the divider is given a headingId below.
+      The sentence goes UP to the page's single live announcer (Non-Goal 8) —
+     this section mounts none of its own.
+      The focus move is DEFERRED PAST A MACROTASK, and that is not defensive
+     padding: the row's ⋯ menu restores focus to its own invoker as it closes,
+     on the microtask after this handler, and a synchronous focus() here is
+     silently overwritten by it — landing the user on the page's search field.
+     The node is looked up again inside the timeout because the delete
+     re-renders the section. Same pattern as SystemSettings'
+     `setTimeout(() => opener.focus(), 0)`. */
+  const removeEvent = ev => {
+    onDelete && onDelete(ev);
+    setTimeout(() => {
+      const heading = document.getElementById(CEV_HEADING_ID);
+      if (heading) heading.focus();
+    }, 0);
+    const left = Math.max(total - 1, 0);
+    onAnnounce && onAnnounce(`Event deleted. ${left} ${left === 1 ? 'entry' : 'entries'} in the log.`);
+  };
   if (events.length === 0) {
     return /*#__PURE__*/React.createElement("div", {
       className: "con-section"
     }, /*#__PURE__*/React.createElement(SectionDivider, {
       label: "Events",
+      headingId: CEV_HEADING_ID,
       meta: "0 entries"
-    }), /*#__PURE__*/React.createElement(EmptyLine, null, "No events yet \u2014 record what has happened to this agreement: signed, renewed, notice given, a price renegotiated, an email sent."));
+    }), /*#__PURE__*/React.createElement(EmptyLine, null, "No events yet. Odyssey records what it does to this agreement \u2014 pausing it, signing it, archiving it \u2014 and you can add anything else: notice given, a price renegotiated, an email sent."));
   }
 
   /* A flat track, not a stack of per-year lists: the line runs unbroken from
@@ -38582,13 +38701,14 @@ const ContractEvents = ({
      are read and written. */
   const item = ev => {
     const info = CEV_H.cevTypeInfo(ev.type);
+    const system = CEV_H.cevIsSystem(ev);
     return (
       /*#__PURE__*/
       /* v1: the node is neutral — no `color` passed. The glyph carries the
-         type, and holding the hue back keeps nine colours from competing with
-         the status vocabulary the record head already uses. The row actions
-         sit inline after the date rather than pinned to the card edge: they
-         belong to the entry being read. */
+         type, and holding the hue back keeps eighteen colours from competing
+         with the status vocabulary the record head already uses. The row
+         actions sit inline after the date rather than pinned to the card edge:
+         they belong to the entry being read. */
       React.createElement(EventRailItem, {
         key: ev.id,
         icon: info.icon,
@@ -38597,7 +38717,10 @@ const ContractEvents = ({
         title: ev.title,
         date: CEV_H.cevDateTime(ev.occurredAt),
         desc: ev.description || undefined,
-        actions: canUpdate ? /*#__PURE__*/React.createElement(DSRowActions, {
+        actions: canUpdate ?
+        /*#__PURE__*/
+        /* The same two actions on a system row as on any other (Non-Goal 1). */
+        React.createElement(DSRowActions, {
           actions: [{
             icon: 'edit',
             label: `Edit ${ev.title}`,
@@ -38606,20 +38729,23 @@ const ContractEvents = ({
             icon: 'delete',
             label: `Delete ${ev.title}`,
             danger: true,
-            onClick: () => onDelete && onDelete(ev)
+            onClick: () => removeEvent(ev)
           }]
         }) : undefined
       }, /*#__PURE__*/React.createElement("div", {
         className: `odc-er-meta${ev.createdByUserId ? '' : ' cev-by-unknown'}`
       }, "Recorded by ", /*#__PURE__*/React.createElement("span", {
         className: "cev-by-who"
-      }, CEV_H.cevCreatedBy(ev.createdByUserId)), " at ", CEV_H.cevDateTime(ev.createdAtUtc)))
+      }, CEV_H.cevCreatedBy(ev.createdByUserId)), " at ", CEV_H.cevDateTime(ev.createdAtUtc), system ? /*#__PURE__*/React.createElement("span", {
+        className: "cev-auto-note"
+      }, " (automatically generated)") : null))
     );
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "con-section"
   }, /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Events",
+    headingId: CEV_HEADING_ID,
     meta: `${total} ${total === 1 ? 'entry' : 'entries'} · newest first`
   }), view === 'spine' ? /*#__PURE__*/React.createElement(EventSpine, {
     events: ordered,
@@ -39044,7 +39170,8 @@ const ContractDetail = ({
   onDeleteTerm,
   events,
   onEditEvent,
-  onDeleteEvent
+  onDeleteEvent,
+  onAnnounceEvent
 }) => {
   const typeInfo = CON_H.contractTypeInfo(contract.type);
   const parties = contract.parties || [];
@@ -39182,7 +39309,8 @@ const ContractDetail = ({
     contract: contract,
     events: events || [],
     onEdit: onEditEvent,
-    onDelete: onDeleteEvent
+    onDelete: onDeleteEvent,
+    onAnnounce: onAnnounceEvent
   }));
 };
 
@@ -39275,6 +39403,8 @@ const ContractListItem = ({
     }));
     setModal(null);
     setOpen(true);
+    const who = CON_H.conResolveParty(party);
+    recordEvent('PartyAdded', `${who && who.name || 'A party'} added as a party`, 'Added to the agreement.');
   };
   /* The edit is a FULL REPLACEMENT of the row — role, target and both dates —
      written in place, so `id` survives a role or target change and the party
@@ -39304,20 +39434,26 @@ const ContractListItem = ({
      the backend spec calls out: clicking Archive or Pause on a signed
      contract would clear them, flip it to Draft and empty it out of the run
      rate. Keep them on every write that touches this record. */
-  const toggleArchive = () => setC(prev => ({
-    ...prev,
-    ready: prev.ready,
-    signed: prev.signed,
-    archived: prev.archived ? null : new Date().toISOString()
-  }));
+  const toggleArchive = () => {
+    setC(prev => ({
+      ...prev,
+      ready: prev.ready,
+      signed: prev.signed,
+      archived: prev.archived ? null : new Date().toISOString()
+    }));
+    if (c.archived) recordEvent('Unarchived', 'Contract restored', 'Brought back out of the archive.');else recordEvent('Archived', 'Contract archived', 'Archival hides a contract; it does not lock it.');
+  };
   /* Pause rides the same PUT as archive, and is idempotent the same way: a
      repeated pause keeps the ORIGINAL stamp, so "paused since" never resets. */
-  const togglePause = () => setC(prev => ({
-    ...prev,
-    ready: prev.ready,
-    signed: prev.signed,
-    paused: prev.paused ? null : prev.paused || new Date().toISOString()
-  }));
+  const togglePause = () => {
+    setC(prev => ({
+      ...prev,
+      ready: prev.ready,
+      signed: prev.signed,
+      paused: prev.paused ? null : prev.paused || new Date().toISOString()
+    }));
+    if (c.paused) recordEvent('Unpaused', 'Contract resumed', 'Taken off pause.');else recordEvent('Paused', 'Contract paused', 'The agreement itself is unchanged — only its status.');
+  };
 
   /* The one-click signature path. Marking ready is idempotent the same way a
      pause is — a repeated mark keeps the ORIGINAL stamp, so "ready since"
@@ -39325,23 +39461,35 @@ const ContractListItem = ({
      server refuses a Signed without one (contract_signed_requires_ready) and
      a one-click action must not be able to compose an invalid write.
      Unsign clears BOTH, which is never refused in any state. */
-  const markReady = () => setC(prev => ({
-    ...prev,
-    ready: prev.ready || new Date().toISOString()
-  }));
-  const markSigned = () => setC(prev => {
-    const now = new Date().toISOString();
-    return {
+  const markReady = () => {
+    setC(prev => ({
       ...prev,
-      ready: prev.ready || now,
-      signed: prev.signed || now
-    };
-  });
-  const unsign = () => setC(prev => ({
-    ...prev,
-    ready: null,
-    signed: null
-  }));
+      ready: prev.ready || new Date().toISOString()
+    }));
+    if (!c.ready) recordEvent('Ready', 'Marked ready', 'The contract was marked ready for signature.');
+  };
+  const markSigned = () => {
+    setC(prev => {
+      const now = new Date().toISOString();
+      return {
+        ...prev,
+        ready: prev.ready || now,
+        signed: prev.signed || now
+      };
+    });
+    /* Two writes, two rows. Signing stamps Ready when it is missing, and a
+       log that reported only the signature would hide the second change. */
+    if (!c.ready) recordEvent('Ready', 'Marked ready', 'Stamped as part of marking the contract signed.');
+    if (!c.signed) recordEvent('Signed', 'Contract marked signed', 'The signed date was set on the record.');
+  };
+  const unsign = () => {
+    setC(prev => ({
+      ...prev,
+      ready: null,
+      signed: null
+    }));
+    if (c.signed) recordEvent('Unsigned', 'Signed date cleared', 'The signed and ready dates were both removed.');else if (c.ready) recordEvent('Unready', 'Ready withdrawn', 'The ready date was removed.');
+  };
 
   /* Create and edit are one write path, as they are on the server: the dialog
      posts a NewTerm and the route (this contract) is the only thing that names
@@ -39375,6 +39523,44 @@ const ContractListItem = ({
     setEditEvent(null);
   };
   const deleteEvent = ev => setEvents(prev => prev.filter(x => x.id !== ev.id));
+
+  /* ---- The automation half of the log (#154) -----------------------------
+     THIS is what the backend now does, drawn here so the surface can be seen
+     working rather than only seeded: every lifecycle write on this record also
+     writes its own event, `source: 'system'`, which the section then chips as
+     "Recorded automatically".
+      Two properties worth keeping if this is edited:
+     • The row is stamped with the PERSON who acted, not a service account —
+       "Recorded by Jane Doe", because she is who paused it.
+     • A REFUSED transition writes nothing. There is no call here on a path the
+       server would reject (a pause on a non-Active contract is not offered at
+       all), so no row can claim a change that did not happen. */
+  const recordEvent = (type, title, description) => {
+    const now = new Date().toISOString();
+    setEvents(prev => [{
+      id: `cev-auto-${Date.now()}-${type}`,
+      contractId: c.id,
+      source: 'system',
+      type,
+      title,
+      description,
+      notes: null,
+      occurredAt: now,
+      createdByUserId: 'u-jane',
+      createdAtUtc: now
+    }, ...prev]);
+  };
+
+  /* ONE live region for this record, and the Events section routes into it
+     rather than mounting a second (frontend Non-Goal 8). An aria-live region
+     will not re-read an identical string, so each message carries an invisible
+     nonce — deleting two events in a row has to be announced twice. */
+  const [announce, setAnnounce] = React.useState('');
+  const announceNonce = React.useRef(0);
+  const say = msg => {
+    announceNonce.current += 1;
+    setAnnounce(`${msg}${'\u200B'.repeat(announceNonce.current % 4 + 1)}`);
+  };
   useEffect(() => {
     if (!highlight || !cardRef.current) return;
     if (!open) setOpen(true);
@@ -39565,8 +39751,13 @@ const ContractListItem = ({
     onDeleteTerm: deleteTerm,
     events: events,
     onEditEvent: ev => setEditEvent(ev),
-    onDeleteEvent: deleteEvent
-  })), showEdit && /*#__PURE__*/React.createElement(AddContractModal, {
+    onDeleteEvent: deleteEvent,
+    onAnnounceEvent: say
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "odc-sr-only",
+    role: "status",
+    "aria-live": "polite"
+  }, announce), showEdit && /*#__PURE__*/React.createElement(AddContractModal, {
     contract: c,
     onClose: () => setShowEdit(false),
     onSave: saveEdit
@@ -57524,29 +57715,64 @@ try { (() => {
 // ui_kits/web/contract-events-data.js
 try { (() => {
 /* contract-events-data.js — the ContractEvent registry, seed and helpers.
-   Tracks "Contract Events — Backend (Draft v6)".
-   ----------------------------------------------------------------------------
-   An event is a USER-MAINTAINED log entry on one contract: a type, a required
-   `title`, an optional `description`, optional `notes`, and when it happened.
+   Tracks "Contract Event Automation — Frontend (Draft v3)" / backend #154,
+   which supersedes "Contract Events — Backend (Draft v6)" on one point.
 
-   Two things this file deliberately does NOT have:
+   THE LOG HAS TWO HALVES NOW. Draft v6 said nothing here was system-generated
+   ("Pausing, archiving or renewing a contract writes no event", §7.6 /
+   Non-Goal 4). That is no longer true and the comment it sat in has been
+   removed rather than softened: the application now records what IT does to a
+   contract — pausing, resuming, marking ready, clearing a signed date,
+   archiving, restoring, adding or removing a party — and the user writes the
+   rest by hand. A row's half is its `source`:
 
-   • No link columns. v5 removed `PrimaryContactId` / `SecondaryContactId` /
-     `PrimaryAccountId` / `SecondaryAccountId` and everything they dragged with
-     them (Non-Goal 5). Contact and account deletes are untouched by this
-     feature, so there is no blocker probe and no detach helper here.
+     'user'   — hand-written through the dialog. No marker.
+     'system' — recorded by the application. Carries the persistent
+                "Recorded automatically" chip on the rail (frontend §4).
 
-   • Nothing system-generated. Pausing, archiving or renewing a contract writes
-     no event (§7.6 / Non-Goal 4), so no helper here is called from a contract
-     mutation.
+   `source` is READ-ONLY on this surface. It is absent from both write DTOs
+   (#154 §7.4) and appears nowhere in the dialog — not as a control, not as a
+   disabled one. A system row is otherwise an ordinary row: same `⋯` actions,
+   same edit, same delete (Non-Goal 1), and editing it does NOT re-author it.
 
-   Ordinals are a wire contract (§4) — persisted and present in request and
-   response bodies — so the enumValue column is fixed forever. */
+   Attribution is the PERSON who took the action, never a service account —
+   pausing a contract stamps the user who paused it.
+
+   Still deliberately absent: link columns. v5 removed `PrimaryContactId` /
+   `SecondaryContactId` / `PrimaryAccountId` / `SecondaryAccountId` and
+   everything they dragged with them (Non-Goal 5), so there is no blocker probe
+   and no detach helper here.
+
+   ORDINALS ARE A WIRE CONTRACT (§4) — persisted, and present in request and
+   response bodies — so the enumValue column is fixed forever. READING ORDER IS
+   THE REGISTRY'S, ORDINAL ORDER IS THE ENUM'S, AND THEY NOW DIFFER: `Other`
+   keeps ordinal 8 but stays the LAST entry in the array, because
+   `cevTypeInfo` falls back to the trailing entry for an ordinal this build
+   does not know. The nine new members take 9–17. */
 (function () {
   const D = window.OdysseyData;
   const H = window.OdysseyHelpers;
 
-  /* ---- ContractEventType (§4) — enum order, `Other` (the default) last ---- */
+  /* ---- ContractEventSource — the wire values behind `?source=` -------------
+     The endpoint serves the filter and the typed client exposes it; v1
+     surfaces NO control for it (frontend Non-Goal 3). Kept here so the two
+     halves have names, and so the deferred filter is a page change rather than
+     a data change. */
+  D.contractEventSources = [{
+    key: 'User',
+    label: 'Written by hand',
+    enumValue: 0
+  }, {
+    key: 'System',
+    label: 'Recorded automatically',
+    enumValue: 1
+  }];
+
+  /* ---- ContractEventType (§4) ---------------------------------------------
+     Reading order: the eight original members, the nine automation members,
+     then `Other` LAST. `auto` is the clause the dialog splices into a system
+     row's Title help text — "Recorded automatically when …" (frontend §6.9);
+     it is not shown on the rail. */
   D.contractEventTypes = [{
     key: 'Signed',
     label: 'Signed',
@@ -57554,6 +57780,7 @@ try { (() => {
     icon: 'history_edu',
     color: 'oklch(0.72 0.16 295)',
     soft: 'oklch(0.72 0.16 295 / 0.16)',
+    auto: 'the contract was marked signed',
     desc: 'The agreement was executed by the parties.'
   }, {
     key: 'Amended',
@@ -57602,6 +57829,7 @@ try { (() => {
     icon: 'price_change',
     color: 'oklch(0.76 0.14 320)',
     soft: 'oklch(0.76 0.14 320 / 0.16)',
+    auto: 'the agreement was re-priced',
     desc: 'What the agreement costs was renegotiated or re-set.'
   }, {
     key: 'EmailSent',
@@ -57611,14 +57839,101 @@ try { (() => {
     color: 'oklch(0.77 0.14 205)',
     soft: 'oklch(0.77 0.14 205 / 0.16)',
     desc: 'Correspondence you sent about the agreement. Name the recipient in the title or description.'
+  },
+  /* The nine automation members. Ordinals 9–17 — after `Other`'s 8, which is
+     exactly why reading order and ordinal order part company here. The verbs
+     are the ones a user would use: Resumed, not Unpaused; Restored, not
+     Unarchived. */
+  {
+    key: 'Paused',
+    label: 'Paused',
+    enumValue: 9,
+    icon: 'pause_circle',
+    color: 'oklch(0.79 0.12 70)',
+    soft: 'oklch(0.79 0.12 70 / 0.16)',
+    auto: 'the contract was paused',
+    desc: 'The contract was paused. Recording this by hand does not pause anything.'
   }, {
+    key: 'Unpaused',
+    label: 'Resumed',
+    enumValue: 10,
+    icon: 'play_circle',
+    color: 'oklch(0.79 0.14 155)',
+    soft: 'oklch(0.79 0.14 155 / 0.16)',
+    auto: 'the contract was resumed',
+    desc: 'A paused contract was taken off pause.'
+  }, {
+    key: 'Ready',
+    label: 'Marked ready',
+    enumValue: 11,
+    icon: 'rule',
+    color: 'oklch(0.76 0.13 260)',
+    soft: 'oklch(0.76 0.13 260 / 0.16)',
+    auto: 'the contract was marked ready',
+    desc: 'The contract was marked ready.'
+  }, {
+    key: 'Unready',
+    label: 'Ready withdrawn',
+    enumValue: 12,
+    icon: 'remove_done',
+    color: 'oklch(0.75 0.10 240)',
+    soft: 'oklch(0.75 0.10 240 / 0.16)',
+    auto: 'the ready mark was withdrawn',
+    desc: 'The ready mark was taken off the contract.'
+  }, {
+    key: 'Unsigned',
+    label: 'Signed date cleared',
+    enumValue: 13,
+    icon: 'history_toggle_off',
+    color: 'oklch(0.74 0.10 285)',
+    soft: 'oklch(0.74 0.10 285 / 0.16)',
+    auto: 'the signed date was cleared',
+    desc: 'The contract’s signed date was removed.'
+  }, {
+    key: 'Archived',
+    label: 'Archived',
+    enumValue: 14,
+    icon: 'inventory_2',
+    color: 'oklch(0.75 0.06 250)',
+    soft: 'oklch(0.75 0.06 250 / 0.16)',
+    auto: 'the contract was archived',
+    desc: 'The contract was archived. Archival hides a contract; it does not lock it.'
+  }, {
+    key: 'Unarchived',
+    label: 'Restored',
+    enumValue: 15,
+    icon: 'unarchive',
+    color: 'oklch(0.78 0.12 185)',
+    soft: 'oklch(0.78 0.12 185 / 0.16)',
+    auto: 'the contract was restored',
+    desc: 'An archived contract was brought back.'
+  }, {
+    key: 'PartyAdded',
+    label: 'Party added',
+    enumValue: 16,
+    icon: 'person_add',
+    color: 'oklch(0.79 0.13 130)',
+    soft: 'oklch(0.79 0.13 130 / 0.16)',
+    auto: 'a party was added to the agreement',
+    desc: 'Someone joined the agreement.'
+  }, {
+    key: 'PartyRemoved',
+    label: 'Party removed',
+    enumValue: 17,
+    icon: 'person_remove',
+    color: 'oklch(0.74 0.13 15)',
+    soft: 'oklch(0.74 0.13 15 / 0.16)',
+    auto: 'a party was removed from the agreement',
+    desc: 'Someone left the agreement.'
+  }, /* LAST, and it must stay last — the unknown-ordinal fallback is positional. */
+  {
     key: 'Other',
     label: 'Other',
     enumValue: 8,
     icon: 'more_horiz',
     color: 'oklch(0.74 0.02 250)',
     soft: 'oklch(0.74 0.02 250 / 0.16)',
-    desc: 'The entity default — anything the eight members do not name. The title carries it.'
+    desc: 'The entity default — anything the named members do not cover. The title carries it.'
   }];
   D.contractEventTypeByKey = Object.fromEntries(D.contractEventTypes.map(t => [t.key, t]));
 
@@ -57632,15 +57947,22 @@ try { (() => {
   /* ---- Seed ----------------------------------------------------------------
      `createdByUserId` stands in for what the server stamps; the read projection
      turns it into `createdBy`. A null id is an author who has since been
-     deleted — SET NULL on the column (§4), read back as "Unknown user".
+     deleted — SET NULL on the column (§4), read back as "Unknown user". This
+     applies to system rows identically: the person who paused the contract can
+     be deleted like anyone else.
       The three free-text fields are seeded with their three distinct roles
      (§4.1): `title` is the short label, `description` is the account of what
      happened, `notes` is the user's own working note — which the timeline does
-     not render, though every non-Guest user of the deployment can read it. */
+     not render, though every non-Guest user of the deployment can read it. A
+     system row has a server-authored title and description and no notes.
+      `source` is on every row. Rows marked 'system' are what the application
+     recorded; they mix freely into the same chronology as the hand-written
+     ones, which is the whole point. */
   D.contractEventSeed = {
     'ct-lease': [{
       id: 'cev-l1',
       contractId: 'ct-lease',
+      source: 'user',
       type: 'Signed',
       title: 'Tenancy agreement signed',
       description: 'Both counterparts signed at the letting office and the deposit was protected the same day.',
@@ -57651,6 +57973,7 @@ try { (() => {
     }, {
       id: 'cev-l2',
       contractId: 'ct-lease',
+      source: 'user',
       type: 'EmailSent',
       title: 'Emailed landlord about the damp',
       description: 'Photos of the back bedroom attached. Asked for a contractor visit inside two weeks.',
@@ -57661,6 +57984,7 @@ try { (() => {
     }, {
       id: 'cev-l3',
       contractId: 'ct-lease',
+      source: 'user',
       type: 'PriceChanged',
       title: 'Rent renegotiated to 2,250 USD',
       description: 'Agreed by phone with the letting agent, then confirmed in writing. A CPI basis was requested and refused; settled at 4.7%.',
@@ -57671,6 +57995,7 @@ try { (() => {
     }, {
       id: 'cev-l4',
       contractId: 'ct-lease',
+      source: 'user',
       type: 'Amended',
       title: 'Pets permitted by amendment',
       description: 'One cat. 250 USD added to the deposit.',
@@ -57678,9 +58003,24 @@ try { (() => {
       occurredAt: '2026-04-03T09:15:00Z',
       createdByUserId: null,
       createdAtUtc: '2026-04-03T09:40:00Z'
+    },
+    /* System — a party joining used to change the party tiles and leave the
+       log silent. Server-authored title and description. */
+    {
+      id: 'cev-l5s',
+      contractId: 'ct-lease',
+      source: 'system',
+      type: 'PartyAdded',
+      title: 'Northgate Lettings added as a party',
+      description: 'Added to the agreement as the managing agent.',
+      notes: null,
+      occurredAt: '2026-05-12T10:22:00Z',
+      createdByUserId: 'u-sam',
+      createdAtUtc: '2026-05-12T10:22:00Z'
     }, {
       id: 'cev-l5',
       contractId: 'ct-lease',
+      source: 'user',
       type: 'EmailSent',
       title: 'Emailed landlord about the rent increase',
       description: 'Asked for the CPI basis in writing and for the index date they are using.',
@@ -57691,6 +58031,7 @@ try { (() => {
     }, {
       id: 'cev-l6',
       contractId: 'ct-lease',
+      source: 'user',
       type: 'NoticeGiven',
       title: 'Two months notice served',
       description: 'Hand-delivered and emailed the same afternoon. The tenancy ends on 31 August.',
@@ -57701,6 +58042,7 @@ try { (() => {
     }, {
       id: 'cev-l7',
       contractId: 'ct-lease',
+      source: 'user',
       type: 'Other',
       title: 'Mid-term inspection',
       description: 'Walked the flat with the inventory clerk. Nothing flagged for deduction.',
@@ -57708,10 +58050,26 @@ try { (() => {
       occurredAt: '2026-08-05T13:00:00Z',
       createdByUserId: 'u-mira',
       createdAtUtc: '2026-08-05T18:02:00Z'
+    },
+    /* System, and the newest row on the rail — the "when did we pause this?"
+       question the frontend spec opens with. Edited by hand afterwards: the
+       chip stays, because editing does not re-author a row (#154 §4). */
+    {
+      id: 'cev-l8s',
+      contractId: 'ct-lease',
+      source: 'system',
+      type: 'Paused',
+      title: 'Contract paused',
+      description: 'Paused while the damp claim is open. The agreement itself is unchanged.',
+      notes: null,
+      occurredAt: '2026-09-02T15:41:00Z',
+      createdByUserId: 'u-jane',
+      createdAtUtc: '2026-09-02T15:41:00Z'
     }],
     'ct-fiber': [{
       id: 'cev-f1',
       contractId: 'ct-fiber',
+      source: 'user',
       type: 'Signed',
       title: 'Order confirmed online',
       description: null,
@@ -57722,6 +58080,7 @@ try { (() => {
     }, {
       id: 'cev-f2',
       contractId: 'ct-fiber',
+      source: 'user',
       type: 'PriceChanged',
       title: 'Monthly charge raised to $84',
       description: 'Annual CPI+3.9% uplift clause. No right to exit on the increase.',
@@ -57732,6 +58091,7 @@ try { (() => {
     }, {
       id: 'cev-f3',
       contractId: 'ct-fiber',
+      source: 'user',
       type: 'EmailSent',
       title: 'Complained about the February outage',
       description: 'Three days down. Asked for a pro-rata credit on the month.',
@@ -57739,10 +58099,36 @@ try { (() => {
       occurredAt: '2026-02-24T20:05:00Z',
       createdByUserId: 'u-jane',
       createdAtUtc: '2026-02-24T20:06:00Z'
+    }, {
+      id: 'cev-f4s',
+      contractId: 'ct-fiber',
+      source: 'system',
+      type: 'Ready',
+      title: 'Marked ready',
+      description: 'All required details are present, so the contract was marked ready.',
+      notes: null,
+      occurredAt: '2026-03-04T11:09:00Z',
+      createdByUserId: 'u-mira',
+      createdAtUtc: '2026-03-04T11:09:00Z'
+    },
+    /* An author since deleted, on a system row — reads "Unknown user", drawn
+       quieter by .cev-by-unknown, exactly as a hand-written row would. */
+    {
+      id: 'cev-f5s',
+      contractId: 'ct-fiber',
+      source: 'system',
+      type: 'Unready',
+      title: 'Ready withdrawn',
+      description: 'The ready mark was taken off the contract.',
+      notes: null,
+      occurredAt: '2026-05-19T08:30:00Z',
+      createdByUserId: null,
+      createdAtUtc: '2026-05-19T08:30:00Z'
     }],
     'ct-solar': [{
       id: 'cev-s1',
       contractId: 'ct-solar',
+      source: 'user',
       type: 'Signed',
       title: 'Twenty-year rooftop lease signed',
       description: null,
@@ -57756,6 +58142,7 @@ try { (() => {
     {
       id: 'cev-s2',
       contractId: 'ct-solar',
+      source: 'user',
       type: 'Terminated',
       title: 'Lease transferred with the property sale',
       description: 'Novated to the buyer at completion. Kept on the record for reference.',
@@ -57763,6 +58150,28 @@ try { (() => {
       occurredAt: '2025-10-31T12:00:00Z',
       createdByUserId: 'u-sam',
       createdAtUtc: '2025-11-05T11:58:00Z'
+    }, {
+      id: 'cev-s3s',
+      contractId: 'ct-solar',
+      source: 'system',
+      type: 'PartyRemoved',
+      title: 'Helen Voss removed as a party',
+      description: 'Removed from the agreement at completion.',
+      notes: null,
+      occurredAt: '2025-10-31T12:04:00Z',
+      createdByUserId: 'u-sam',
+      createdAtUtc: '2025-10-31T12:04:00Z'
+    }, {
+      id: 'cev-s4s',
+      contractId: 'ct-solar',
+      source: 'system',
+      type: 'Archived',
+      title: 'Contract archived',
+      description: 'Archived after the property sale completed.',
+      notes: null,
+      occurredAt: '2025-11-06T09:15:00Z',
+      createdByUserId: 'u-sam',
+      createdAtUtc: '2025-11-06T09:15:00Z'
     }]
     // ct-employment deliberately has none — it drives the empty state.
   };
@@ -57776,6 +58185,19 @@ try { (() => {
         soft: 'rgba(199,208,224,0.12)',
         unknown: true
       };
+    },
+    /* The one predicate the rail branches on. A row with no `source` at all —
+       an older payload — reads as hand-written, which is the safe default: it
+       withholds a claim rather than asserting a false one. */
+    cevIsSystem(ev) {
+      return !!ev && ev.source === 'system';
+    },
+    /* The clause the dialog splices into a system row's Title help text
+       (frontend §6.9). Falls back to a type-free phrasing, so a member this
+       build does not recognise still gets an honest sentence. */
+    cevAutoClause(typeKey) {
+      const info = D.contractEventTypeByKey[typeKey];
+      return info && info.auto || 'the application made this change';
     },
     cevFor(contractId) {
       return (D.contractEventSeed[contractId] || []).slice();
@@ -57809,8 +58231,10 @@ try { (() => {
     cevCreatedBy(userId) {
       return userId && D.cevUsers[userId] || 'Unknown user';
     },
-    /* A synthetic long log, for the "what does 200 entries look like" stage.
-       Deterministic, so the page renders the same on every load. */
+    /* A synthetic long log, for the "what does 200 entries look like" stage —
+       and now also for the question automation raises: what does a rail look
+       like when a third of its rows are chipped? Deterministic, so the page
+       renders the same on every load. */
     cevLongLog(contractId, n) {
       const types = D.contractEventTypes.map(t => t.key);
       const titles = ['Called about the standing charge', 'Meter reading submitted', 'Emailed the account manager', 'Tariff review letter received', 'Direct debit amount adjusted', 'Complaint escalated', 'Annual statement filed', 'Price uplift notified', 'Renewal quote requested', 'Service credit applied', 'Address details corrected', 'Paperless billing confirmed'];
@@ -57819,12 +58243,17 @@ try { (() => {
       for (let i = 0; i < n; i++) {
         const t = new Date(Date.UTC(2026, 8, 12) - i * 36e5 * 41);
         const iso = t.toISOString().slice(0, 19) + 'Z';
+        const type = types[i * 5 % types.length];
+        const info = D.contractEventTypeByKey[type];
+        // Only a type automation can actually produce is ever marked system.
+        const system = !!(info && info.auto) && i % 3 === 0;
         out.push({
           id: `cev-long-${i}`,
           contractId,
-          type: types[i * 5 % types.length],
-          title: titles[i * 7 % titles.length],
-          description: i % 3 === 0 ? 'Logged from the call notes the same afternoon.' : null,
+          type,
+          source: system ? 'system' : 'user',
+          title: system ? info.label : titles[i * 7 % titles.length],
+          description: system ? info.desc : i % 3 === 0 ? 'Logged from the call notes the same afternoon.' : null,
           notes: null,
           occurredAt: iso,
           createdByUserId: users[i % users.length],

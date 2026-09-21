@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Components" name="Event rail" subtitle="Continuous-rail event log — ONE unbroken line with icon nodes and markers (years, endpoints) sitting on it, for a history of things that happened. The counterpart to Timeline, whose rail restarts per item and which carries a figures column instead. Caps say whether this page holds the real end of the log; an uncapped end fades rather than cutting." viewport="900x600" -->
+<!-- @dsCard group="Components" name="Event rail" subtitle="Continuous-rail event log — ONE unbroken line with icon nodes and markers (years, endpoints) sitting on it, for a history of things that happened. The counterpart to Timeline, whose rail restarts per item and which carries a figures column instead. Caps say whether this page holds the real end of the log; an uncapped end fades rather than cutting." viewport="900x640" -->
 <html lang="en" data-theme="dark">
 <head>
 <title>Odyssey · Event rail</title>
@@ -20,6 +20,7 @@ p.lead{font:var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);color:var(--m
 <body>
 <h1>Event rail</h1>
 <p class="lead">Nodes are neutral by default — the glyph names the kind, and holding the hue back keeps a column of colours from competing with status. Row actions sit inline after the date; the provenance line (<code>.odc-er-meta</code>) reveals on the same hover — on an <b>item</b>, and on a <b>marker</b> given <code>meta</code>, as the closing endpoint here is.</p>
+<p class="lead">The provenance line is where a row says where it came from — who recorded it, and, on a row the application recorded itself, that it was <b>automatically generated</b>. It lives in <code>.odc-er-meta</code>, so it is revealed by the same hover as the row actions: nothing about origin is visible at rest.</p>
 <div id="root"></div>
 <script>
 (function(){
@@ -32,10 +33,14 @@ p.lead{font:var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);color:var(--m
     { icon:'delete', label:'Delete entry', danger:true, onClick:noop }
   ]});
   var rows = [
+    { icon:'pause_circle', kind:'Paused', title:'Contract paused', date:'2 Sept 2026 · 15:41',
+      desc:'Paused while the damp claim is open. The agreement itself is unchanged.', by:'Jane Doe', auto:true },
     { icon:'campaign', kind:'Notice given', title:'Two months notice served', date:'28 Jun 2026 · 16:10',
       desc:'Hand-delivered and emailed the same afternoon. The tenancy ends on 31 August.', by:'Jane Doe' },
     { icon:'outgoing_mail', kind:'Email sent', title:'Emailed landlord about the rent increase', date:'14 Jun 2026 · 09:31',
       desc:'Asked for the CPI basis in writing and for the index date they are using.', by:'Jane Doe' },
+    { icon:'person_add', kind:'Party added', title:'Northgate Lettings added as a party', date:'12 May 2026 · 10:22',
+      desc:'Added to the agreement as the managing agent.', by:'Sam Okafor', auto:true },
     { icon:'price_change', kind:'Price changed', title:'Rent renegotiated to $2,250', date:'19 Feb 2026 · 11:00',
       desc:'Agreed by phone, then confirmed in writing. A CPI basis was requested and refused; settled at 4.7%.', by:'Sam Okafor' },
     { year:2025 },
@@ -48,7 +53,9 @@ p.lead{font:var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);color:var(--m
     if (r.year) { kids.push(e(EventRailMarker,{key:'y'+r.year}, String(r.year))); return; }
     kids.push(e(EventRailItem,{
       key:i, icon:r.icon, iconLabel:r.kind, title:r.title, date:r.date, desc:r.desc, actions:acts
-    }, e('div',{className:'odc-er-meta'},'Recorded by ' + r.by + ' at ' + r.date)));
+    }, e('div',{className:'odc-er-meta'},
+         'Recorded by ' + r.by + ' at ' + r.date,
+         r.auto ? e('i',{key:'a'},' (automatically generated)') : null)));
   });
   kids.push(e(EventRailMarker,{key:'origin',tone:'filled',meta:'Added by Jane Doe at 14 Aug 2025 · 10:00'},'Contract added 14 Aug 2025'));
 

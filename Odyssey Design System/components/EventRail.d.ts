@@ -38,7 +38,7 @@ export interface EventRailItemProps {
   /** Highlights this entry — e.g. selected from an overview strip. */
   selected?: boolean;
   className?: string;
-  /** Extra body content under `desc`. Anything with `.odc-er-meta` reveals on hover. */
+  /** Extra body content under `desc`. Anything with `.odc-er-meta` reveals on hover — so nothing that changes how the row should be READ belongs there. */
   children?: React.ReactNode;
 }
 
