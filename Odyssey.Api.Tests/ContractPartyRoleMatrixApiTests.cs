@@ -354,16 +354,203 @@ public class ContractPartyRoleMatrixApiTests
         Assert.Equal("Everyday Checking", (await context.Accounts.FirstAsync()).Name);
     }
 
+    // ── The contact-delete blocker, over real HTTP (AC 13, AC 23) ────────────
+    //
+    // These live on the FAST tier deliberately, even though the rest of the beneficiary-blocker
+    // criteria are in Odyssey.IntegrationTests. What pushes those there is ContactReferenceGuard's
+    // relational-only ExecuteUpdate/ExecuteDelete cleanup — and BOTH refusals below fire strictly
+    // BEFORE it: the 409 returns from the controller without entering the service at all, and the 403
+    // is raised by EnsureDetachPermitted ahead of StageLinkDetach. So the controller's
+    // claim-conditional shaping and the exception-to-status wiring are reachable here, and only here
+    // do they go through the real ASP.NET Core pipeline.
+
+    /// <summary>
+    /// AC 23 — the <c>409</c> payload's contract NAMES are claim-gated. A caller holding
+    /// <c>contracts.read</c> is told which contracts block the delete.
+    /// </summary>
+    [Fact]
+    public async Task DeleteContact_NamedAsAContractBeneficiary_Returns409_NamingTheContract()
+    {
+        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.ContactsDelete]);
+        var (contactId, contractId) = await SeedBeneficiaryAsync(factory);
+        using var client = factory.CreateClient();
+
+        var delete = await client.DeleteAsync($"/api/contacts/{contactId}");
+
+        Assert.Equal(HttpStatusCode.Conflict, delete.StatusCode);
+
+        using var problem = JsonDocument.Parse(await delete.Content.ReadAsStringAsync());
+        var blockers = problem.RootElement.GetProperty("contractBeneficiaries");
+        Assert.Equal(1, blockers.GetProperty("totalLinks").GetInt32());
+        Assert.Equal(1, blockers.GetProperty("contractCount").GetInt32());
+
+        var named = Assert.Single(blockers.GetProperty("contracts").EnumerateArray().ToList());
+        Assert.Equal(contractId, named.GetProperty("contractId").GetGuid());
+        Assert.Equal("Whole-of-life cover", named.GetProperty("contractName").GetString());
+
+        // Refused, not partially applied.
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.True(await context.Contacts.AnyAsync(c => c.ContactId == contactId));
+    }
+
+    /// <summary>
+    /// AC 23, the other half — a caller holding <c>contacts.delete</c> but NOT <c>contracts.read</c>
+    /// gets the same COUNTS and an EMPTY array. The count is what makes the <c>409</c> actionable: it
+    /// says how many links must go, and the detach valve never asks the caller to name them.
+    /// </summary>
+    /// <remarks>
+    /// An empty array beside a non-zero count is precisely the "you may not see which" case, and it is
+    /// why the two are separate fields rather than one list whose length is the count.
+    /// </remarks>
+    [Fact]
+    public async Task DeleteContact_WithoutContractsRead_Returns409_WithCountsButNoNames()
+    {
+        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.ContactsDelete]);
+        var (contactId, _) = await SeedBeneficiaryAsync(factory);
+
+        await using var blindFactory = new ApiFactory([PermissionClaims.ContactsDelete], factory);
+        using var blind = blindFactory.CreateClient();
+
+        var delete = await blind.DeleteAsync($"/api/contacts/{contactId}");
+
+        Assert.Equal(HttpStatusCode.Conflict, delete.StatusCode);
+
+        var body = await delete.Content.ReadAsStringAsync();
+        using var problem = JsonDocument.Parse(body);
+        var blockers = problem.RootElement.GetProperty("contractBeneficiaries");
+
+        Assert.Equal(1, blockers.GetProperty("totalLinks").GetInt32());
+        Assert.Equal(1, blockers.GetProperty("contractCount").GetInt32());
+        Assert.Empty(blockers.GetProperty("contracts").EnumerateArray().ToList());
+
+        // The name is withheld from the whole document, not merely from that array.
+        Assert.DoesNotContain("Whole-of-life cover", body, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// AC 13 — the composed detach gate over real HTTP: <c>contacts.delete</c> without
+    /// <c>contracts.update</c> is a <c>403</c>, and the contact survives.
+    /// </summary>
+    /// <remarks>
+    /// This is the test issue #157 §7.3's "wiring consequence" asks for. <c>DomainForbiddenException</c>
+    /// is the first <c>DomainException</c> subtype to map to <c>403</c>, and asserting its
+    /// <c>StatusCode</c> property in a unit test would prove only that the constant is right — not that
+    /// <c>GlobalExceptionHandler</c> turns it into a <c>403</c> response. Only a request through the
+    /// real pipeline shows that, and a silent downgrade to the refused delete would show up here as a
+    /// <c>409</c>.
+    /// </remarks>
+    [Fact]
+    public async Task DeleteContact_WithDetach_WithoutContractsUpdate_Returns403_AndKeepsTheContact()
+    {
+        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.ContactsDelete]);
+        var (contactId, _) = await SeedBeneficiaryAsync(factory);
+
+        // contacts.delete alone: enough to ask, not enough to destroy a contract party.
+        await using var deleterFactory = new ApiFactory([PermissionClaims.ContactsDelete], factory);
+        using var deleter = deleterFactory.CreateClient();
+
+        var delete = await deleter.DeleteAsync($"/api/contacts/{contactId}?detachInsuranceLinks=true");
+
+        Assert.Equal(HttpStatusCode.Forbidden, delete.StatusCode);
+        Assert.Contains("update contracts", await delete.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.True(await context.Contacts.AnyAsync(c => c.ContactId == contactId));
+        Assert.Equal(1, await context.ContractParties.CountAsync(p => p.ContactId == contactId));
+    }
+
+    /// <summary>
+    /// The same request by a caller that DOES hold <c>contracts.update</c> is not refused — which is
+    /// what makes the test above a claim check rather than a blanket refusal of the detach flag.
+    /// </summary>
+    [Fact]
+    public async Task DeleteContact_WithDetach_WithContractsUpdate_IsNotForbidden()
+    {
+        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.ContactsDelete]);
+        var (contactId, _) = await SeedBeneficiaryAsync(factory);
+        using var client = factory.CreateClient();
+
+        var delete = await client.DeleteAsync($"/api/contacts/{contactId}?detachInsuranceLinks=true");
+
+        // NOT asserting success: the delete itself runs ContactReferenceGuard's relational-only
+        // cleanup, which throws on the InMemory provider — that half is covered against real MariaDB
+        // in ContractBeneficiaryBlockerIntegrationTests. What this pins is that the request gets PAST
+        // the claim gate, so the 403 above is attributable to the missing claim and nothing else.
+        Assert.NotEqual(HttpStatusCode.Forbidden, delete.StatusCode);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// A contact named as a <c>Beneficiary</c> on an Insurance contract — the one type that SUGGESTS
+    /// that role, so the fixture is a contract the API itself would have accepted.
+    /// </summary>
+    private static async Task<(Guid ContactId, Guid ContractId)> SeedBeneficiaryAsync(
+        WebApplicationFactory<Program> factory)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        await context.Database.EnsureCreatedAsync();
+
+        var contactId = Guid.NewGuid();
+        context.Contacts.Add(new Contact
+        {
+            ContactId = contactId,
+            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+            NormalizedName = "SAM RIVERA",
+            Type = Odyssey.Dtos.ContactType.Person,
+            PersonDetails = new() { ContactId = contactId, FirstName = "Sam", LastName = "Rivera" },
+        });
+
+        var contractId = Guid.NewGuid();
+        context.Contracts.Add(new Contract
+        {
+            ContractId = contractId,
+            Name = "Whole-of-life cover",
+            Type = Odyssey.Context.ContractType.Insurance,
+            CreatedAtUtc = FixedToday,
+        });
+
+        context.ContractParties.Add(new ContractParty
+        {
+            ContractPartyId = Guid.NewGuid(),
+            ContractId = contractId,
+            ContactId = contactId,
+            Role = Odyssey.Context.ContractPartyRole.Beneficiary,
+        });
+
+        await context.SaveChangesAsync();
+        return (contactId, contractId);
+    }
+
     /// <summary>The shared fixture, with the same fixed clock the sibling contract suite uses.</summary>
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions) : OdysseyApiFactory(
-        permissions, "contract-matrix-actor", configuration: null, configureServices: services =>
+    private sealed class ApiFactory : OdysseyApiFactory
+    {
+        private const string ActorUserId = "contract-matrix-actor";
+
+        public ApiFactory(IReadOnlyCollection<string>? permissions)
+            : base(permissions, ActorUserId, configuration: null, configureServices: Clock)
+        {
+        }
+
+        /// <summary>
+        /// A second principal over the SAME in-memory store, so a test can exercise one caller's write
+        /// against another caller's claims — the only way to reach the claim-conditional 409 and the
+        /// composed detach gate.
+        /// </summary>
+        public ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory sharing)
+            : base(permissions, ActorUserId, configuration: null, configureServices: Clock,
+                sharingStoreWith: sharing)
+        {
+        }
+
+        private static void Clock(IServiceCollection services)
         {
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(new FixedTimeProvider(FixedToday));
-        })
-    {
+        }
     }
 
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider

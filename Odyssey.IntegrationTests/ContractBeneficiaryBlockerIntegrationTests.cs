@@ -11,7 +11,7 @@ using ContextContractType = Odyssey.Context.ContractType;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// Issue #157's contact-delete half against the real engine (AC 11–14, 21–23): a contact named as a
+/// Issue #157's contact-delete half against the real engine (AC 11–14, 21–22): a contact named as a
 /// <c>Beneficiary</c> on a CONTRACT blocks its deletion exactly as a policy beneficiary does, the
 /// detach valve clears both classes in one transaction, and the per-class claim check refuses a
 /// caller that has not proved it may destroy a class actually present.
@@ -21,6 +21,15 @@ namespace Odyssey.IntegrationTests;
 /// <c>ExecuteUpdateAsync</c>/<c>ExecuteDeleteAsync</c>, which live in
 /// <c>EntityFrameworkCore.Relational</c> and throw on the InMemory provider, and the EF InMemory
 /// provider honours neither transactions nor the execution strategy.
+///
+/// <para>
+/// <b>AC 13 and AC 23 are NOT here</b>, despite being contact-delete criteria: both are decided in
+/// <c>ContactController</c> before the service reaches any relational-only statement, so they are
+/// reachable on the fast tier — and only there do they go through the real ASP.NET Core pipeline,
+/// which is what AC 13 actually asserts. They live in
+/// <c>Odyssey.Api.Tests/ContractPartyRoleMatrixApiTests</c>. What this file covers of the claim check
+/// is the service-level half: that the refusal happens at all, and that it names the capability.
+/// </para>
 ///
 /// <para>
 /// <b>There is no FK backstop for the contract half.</b> The <c>ContractParty → Contact</c> key stays
@@ -313,9 +322,17 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
     // ── The per-class claim check (AC 13) ────────────────────────────────────
 
     /// <summary>
-    /// AC 13 — a caller holding <c>contacts.delete</c> but not <c>contracts.update</c> is refused,
-    /// and the contact survives: never a silent downgrade to the refused delete.
+    /// The service half of AC 13 — a caller holding <c>contacts.delete</c> but not
+    /// <c>contracts.update</c> is refused, and the contact survives: never a silent downgrade to the
+    /// refused delete.
     /// </summary>
+    /// <remarks>
+    /// Asserting <c>DomainForbiddenException.StatusCode</c> here proves the constant is right, NOT
+    /// that the pipeline turns it into a <c>403</c> response — <c>DomainForbiddenException</c> is the
+    /// first subtype to map to that status, so the wiring is worth its own assertion. That one is
+    /// <c>DeleteContact_WithDetach_WithoutContractsUpdate_Returns403_AndKeepsTheContact</c> in
+    /// <c>Odyssey.Api.Tests</c>, over real HTTP.
+    /// </remarks>
     [SkippableFact]
     public async Task The_detach_valve_refuses_a_caller_missing_the_claim_for_a_class_present()
     {

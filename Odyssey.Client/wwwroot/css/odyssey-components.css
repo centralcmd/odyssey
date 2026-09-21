@@ -2521,7 +2521,12 @@ tr:focus-within > .odc-rowactions.reveal,
    refusal, so it sits in the dialog beside the control that caused it. */
 .con-orphans { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 2px; padding: 0; list-style: none; }
 .con-orphan { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); min-width: 0; }
-.con-orphan-role { font: 500 11px/1 var(--font-mono); letter-spacing: 0.02em; text-transform: uppercase; color: var(--mud-palette-warning); white-space: nowrap; }
+/* --warning-text, NOT --mud-palette-warning: this is 11px TEXT, and the raw warning token is the
+   >=3:1 graphics floor (it clears 4.5:1 on plain white but not on the tint this row sits on). Every
+   other warning-toned label in this stylesheet uses the same token; the raw one is reserved for
+   glyphs and borders. The design system's contracts.css uses the raw token here, but the client's
+   own split is the stricter of the two and wins. */
+.con-orphan-role { font: 500 11px/1 var(--font-mono); letter-spacing: 0.02em; text-transform: uppercase; color: var(--warning-text); white-space: nowrap; }
 .con-orphan-name { font-size: 12.5px; color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* The party id, right-aligned. A real GUID is 36 characters where the design system's fixture ids are
    short, so this ellipsises rather than pushing the name out of the row — the leading characters are
