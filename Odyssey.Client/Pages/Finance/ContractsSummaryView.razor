@@ -47,7 +47,7 @@
         @* "By type" sums the records on file, so it closes with a total. "By status" is given its
            total EXPLICITLY: its rows carry an "Ending soon" slice of Active, which an arithmetic sum
            would double-count. *@
-        <OdsBreakdownTile Label="By type" Rows="TypeRows" Total="true" Empty="No active contracts." />
+        <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No active contracts." />
         <OdsBreakdownTile Label="By status" Rows="StatusRows" TotalValue="Summary.TotalContracts" Empty="No contracts." />
         @* One tile per period carrying the NET per type — signed and coloured. Two figures per row
            said the same thing twice at half the density; what a reader wants per type is which way

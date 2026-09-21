@@ -17,6 +17,7 @@ using ContractType = Odyssey.Dtos.Finance.ContractType;
 using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using Interval = Odyssey.Dtos.Finance.Interval;
+using TermDirection = Odyssey.Dtos.Finance.TermDirection;
 
 namespace Odyssey.Api.Tests;
 
@@ -553,7 +554,111 @@ public class ContractTermsApiTests
             (await client.PostAsJsonAsync(Terms(readableId), Rent(1m, new DateTime(2026, 1, 1)))).StatusCode);
     }
 
+    // ── The list row's "money in" marker (issue #159) ────────────────────────
+
+    /// <summary>
+    /// A contract whose in-force fee is <c>Incoming</c> is marked on the LIST row, so "this file is
+    /// money in" is legible without expanding the record.
+    /// </summary>
+    [Fact]
+    public async Task List_MarksAContractWhoseInForceTermIsIncoming()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client, name: "Sublet income");
+
+        await PostTermAsync(client, contractId, Incoming(2250m, new DateTime(2026, 1, 1)));
+
+        Assert.True(await HasIncomingAsync(client, contractId));
+    }
+
+    /// <summary>An ordinary outgoing contract is not marked — the marker means something only if most rows lack it.</summary>
+    [Fact]
+    public async Task List_DoesNotMarkAnOutgoingOnlyContract()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+
+        await PostTermAsync(client, contractId, Rent(14500m, new DateTime(2026, 1, 1)));
+
+        Assert.False(await HasIncomingAsync(client, contractId));
+    }
+
+    /// <summary>
+    /// THE ONE THAT A CORRELATED <c>Any()</c> WOULD GET WRONG. An incoming entry superseded by a later
+    /// outgoing entry of the SAME series is no longer in force, so the row must not be marked: the flag
+    /// is read after the series collapse, exactly as the run rate and the record card read direction.
+    /// </summary>
+    [Fact]
+    public async Task List_DoesNotMarkAnIncomingTermThatHasBeenSuperseded()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+
+        // Same label, so both entries are one series; the later effective date wins.
+        await PostTermAsync(client, contractId, Incoming(2250m, new DateTime(2026, 1, 1), label: "Rent"));
+        await PostTermAsync(client, contractId, Rent(1800m, new DateTime(2026, 3, 1), label: "Rent"));
+
+        Assert.False(await HasIncomingAsync(client, contractId));
+    }
+
+    /// <summary>
+    /// A future-dated incoming term is SCHEDULED, not in force, so it does not mark the row yet —
+    /// the same <c>EffectiveFrom &lt;= today</c> narrowing every other current-value read applies.
+    /// </summary>
+    [Fact]
+    public async Task List_DoesNotMarkAnIncomingTermThatStartsLater()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+
+        await PostTermAsync(client, contractId, Incoming(2250m, FixedToday.AddDays(30)));
+
+        Assert.False(await HasIncomingAsync(client, contractId));
+    }
+
+    /// <summary>
+    /// A SEPARATE series keeps its own winner, so an outgoing fee beside an incoming one still marks
+    /// the row — the collapse is per series, never per contract.
+    /// </summary>
+    [Fact]
+    public async Task List_MarksAContractThatIsBothOutgoingAndIncoming()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+
+        await PostTermAsync(client, contractId, Rent(1800m, new DateTime(2026, 1, 1), label: "Service charge"));
+        await PostTermAsync(client, contractId, Incoming(2250m, new DateTime(2026, 1, 1), label: "Sublet"));
+
+        Assert.True(await HasIncomingAsync(client, contractId));
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private static NewTerm Incoming(decimal value, DateTime effectiveFrom, string? label = "Sublet") => new()
+    {
+        TermKind = TermKind.Fee,
+        Label = label,
+        ValueUnit = TermValueUnit.Amount,
+        Value = value,
+        CurrencyCode = "EUR",
+        Interval = Interval.Monthly,
+        Direction = TermDirection.Incoming,
+        EffectiveFrom = DateTime.SpecifyKind(effectiveFrom, DateTimeKind.Utc),
+    };
+
+    private static async Task<bool> HasIncomingAsync(HttpClient client, Guid contractId)
+    {
+        var response = await client.GetAsync(Path);
+        response.EnsureSuccessStatusCode();
+        var page = await response.Content.ReadFromJsonAsync<PagedResult<ContractListItem>>();
+        return page!.Items.Single(i => i.ContractId == contractId).HasIncomingTerm;
+    }
+
 
     /// <summary>
     /// A factory whose database has actually been created. The reference-data currencies are a

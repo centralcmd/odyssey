@@ -76,4 +76,17 @@ public sealed record ContractListItem
     /// rate or the upcoming charges.
     /// </summary>
     public DateTime? Signed { get; set; }
+
+    /// <summary>
+    /// Whether any term IN FORCE on this contract today is <c>Incoming</c> (issue #159). The collapsed
+    /// row marks it, because "this file is money in" changes how the whole row reads and would
+    /// otherwise only be visible once the record is expanded.
+    ///
+    /// <para>
+    /// Resolved through the SAME series collapse the record card and the run rate use, so a superseded
+    /// or future-dated incoming entry never marks a row that no longer takes money in. It is a flag
+    /// rather than a count: the row says which way, and the body says how much.
+    /// </para>
+    /// </summary>
+    public bool HasIncomingTerm { get; set; }
 }

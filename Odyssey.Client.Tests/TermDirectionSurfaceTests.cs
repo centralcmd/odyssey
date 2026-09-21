@@ -368,15 +368,34 @@ public class TermDirectionSurfaceTests
     }
 
     /// <summary>
-    /// The total is OPT-IN here, where the design system has it on by default — so the 21 tiles that
-    /// never asked for one are untouched by the parameter's arrival. Pinned because flipping the
-    /// default is a one-word change with an app-wide blast radius.
+    /// The total is ON by default, matching the design system: a distribution whose sum a reader has
+    /// to add up in their head is a table, not a summary. Pinned because the default is a one-word
+    /// change with an app-wide blast radius, in both directions.
+    /// </summary>
+    [Fact]
+    public void A_tile_that_says_nothing_about_a_total_renders_one()
+    {
+        using var ctx = NewContext();
+        var tile = ctx.Render<OdsBreakdownTile>(p => p
+            .Add(t => t.Rows,
+            [
+                new OdsBreakdownRow { Label = "Employment", Count = 2 },
+                new OdsBreakdownRow { Label = "Rental", Count = 3 },
+            ]));
+
+        Assert.Equal("5", tile.Find(".odc-breakdown-total .odc-breakdown-n").TextContent.Trim());
+    }
+
+    /// <summary>
+    /// Total="false" is the opt-out, for a distribution whose sum means nothing — overlapping
+    /// buckets, a slice of another row, or rows that omit a bucket the data can hold.
     /// </summary>
     [Fact]
     public void A_tile_that_asks_for_no_total_renders_none()
     {
         using var ctx = NewContext();
         var tile = ctx.Render<OdsBreakdownTile>(p => p
+            .Add(t => t.Total, false)
             .Add(t => t.Rows,
             [
                 new OdsBreakdownRow { Label = "Employment", Count = 2 },

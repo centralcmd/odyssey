@@ -10,19 +10,18 @@
     monospace; the icon tints to IconColor. When Rows is empty the Empty message
     shows instead. Styled by .odc-breakdown-*.
 
-    A TOTAL ROW closes the tile when Total is set: a distribution whose sum a reader has to
-    add up in their head is a table, not a summary. Total sums the rows' own counts when
-    every one is a number; a tile whose counts are NODES (money, a rendered figure) cannot
-    be summed safely, so nothing renders rather than a wrong figure — such a tile passes
-    TotalValue instead.
+    A TOTAL ROW closes the tile, and it is ON BY DEFAULT: a distribution whose sum a reader has
+    to add up in their head is a table, not a summary. Total sums the rows' own counts when every
+    one is a number; a tile whose counts are NODES (money, a rendered figure) cannot be summed
+    safely, so nothing renders rather than a wrong figure — such a tile passes TotalValue instead.
 
-    NOTE A DELIBERATE DIVERGENCE FROM THE DESIGN SYSTEM: there the total is on by DEFAULT.
-    Here it is opt-in, because flipping the default would add a row to all 21 tiles across
-    Photos, Journal, Insurance, Contacts, Accounts, Subscriptions, Currencies, Transactions,
-    Exchange rates, Files and Tags — an app-wide visual change that has nothing to do with
-    the feature that introduced this parameter (issue #159's contracts header). Each of those
-    tiles wants its own answer: "By status" rows that carry a SLICE of one another must not be
-    summed at all. Turning the default on, tile by tile, is its own change.
+    Total="false" is for a distribution whose sum MEANS nothing, and there are two shapes of that.
+    Rows that OVERLAP: a photo sits in several albums and carries several tags, so summing the
+    per-tag counts counts one photo many times. And rows that are a SLICE of one another: the
+    contracts "Ending soon" row is already inside Active, so an arithmetic sum double-counts it —
+    that tile passes the real figure as TotalValue instead. A tile whose rows silently omit a
+    bucket the data can hold is the third case: its rows are a partition of what it renders but
+    not of what exists, so a total would read as the record count and quietly disagree with it.
 *@
 
 <div class="odc-breakdown @Class">
@@ -77,18 +76,18 @@
     [Parameter] public string Empty { get; set; } = "Nothing to show.";
 
     /// <summary>
-    /// Whether to close the tile with a ruled total row. When true, the row shows the sum of every
-    /// <see cref="OdsBreakdownRow.Count"/> — but only when all of them are numbers — unless
-    /// <see cref="TotalValue"/> supplies the figure instead.
+    /// Whether to close the tile with a ruled total row. <b>On by default</b>, matching the design
+    /// system. The row shows the sum of every <see cref="OdsBreakdownRow.Count"/> — but only when all
+    /// of them are numbers — unless <see cref="TotalValue"/> supplies the figure instead.
     ///
     /// <para>
-    /// Opt-in here, where the design system has it on by default: see the note at the top of this
-    /// file. Leave it off for a distribution whose sum means nothing — overlapping buckets, or rows
-    /// carrying a slice of one another (the contracts status tile's "Ending soon" is a slice of
-    /// Active, so summing the rows would double-count it).
+    /// Pass <c>false</c> for a distribution whose sum means nothing: overlapping buckets (a photo is
+    /// in several albums), rows carrying a slice of one another (the contracts status tile's "Ending
+    /// soon" is inside Active, so summing would double-count it — that one passes a real
+    /// <see cref="TotalValue"/>), or a tile whose rows leave out a bucket the data can hold.
     /// </para>
     /// </summary>
-    [Parameter] public bool Total { get; set; }
+    [Parameter] public bool Total { get; set; } = true;
 
     /// <summary>
     /// An explicit total, for exactly the case the arithmetic cannot serve: a net, a figure the caller

@@ -1935,6 +1935,12 @@ tr:focus-within > .odc-rowactions.reveal,
   white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
 .trm-row-kind .trm-dir { margin-top: 3px; }
+/* On a COLLAPSED record row the same caption sits in the meta line beside the type and the contact,
+   so it keeps its own inline box there rather than claiming a line of its own — the treatment the
+   design system's .trm-tl-top gives it in the timeline. No hue: .trm-dir's whole point is that the
+   FIGURE carries the direction's colour and the word carries its meaning, so a marker standing in
+   for a figure that is not on the row stays the quiet caption. */
+.odc-record-metaitem .trm-dir { display: inline-block; margin-top: 0; }
 /* EVERY figure keeps its direction's hue at full strength. Dimming the superseded and scheduled
    ones was tried and reverted upstream: at 55% the coral composited below the 4.5:1 text floor, and
    it drew the SCHEDULED entry — the one that is next — as though it were already history. The

@@ -138,6 +138,9 @@ public class ContractService
             ? new Dictionary<Guid, ContactRef>()
             : await contactLookup.ResolveRefsAsync(institutionContactIds, cancellationToken);
 
+        var incomingIds = await LoadContractsWithIncomingTermAsync(
+            [.. projected.Select(x => x.Contract.ContractId)], today, cancellationToken);
+
         var items = projected.Select(x => new ContractListItem
         {
             ContractId = x.Contract.ContractId,
@@ -159,6 +162,7 @@ public class ContractService
             Paused = x.Contract.Paused,
             Ready = x.Contract.Ready,
             Signed = x.Contract.Signed,
+            HasIncomingTerm = incomingIds.Contains(x.Contract.ContractId),
         });
 
         if (statusFilter.Length > 0)
@@ -310,6 +314,49 @@ public class ContractService
             EndingWindowDays = windows.EndingWindowDays,
             ChargeWindowDays = windows.ChargeWindowDays,
         };
+    }
+
+    /// <summary>
+    /// The contracts on this PAGE whose in-force terms include an <c>Incoming</c> one (issue #159),
+    /// for the collapsed row's "Money in" marker.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// ONE query for the whole page, not one per row: the page's ids and <c>EffectiveFrom &lt;= today</c>
+    /// narrow it in SQL, then <see cref="TermSeries"/> collapses each contract's candidates in memory —
+    /// the same winner rule the record card, the <c>…/terms/current</c> endpoint and the run rate use,
+    /// so "in force" still cannot mean different things on the row and inside it. A correlated
+    /// <c>Any()</c> in the list projection could not do this: it would mark a contract whose incoming
+    /// term has been superseded by an outgoing one, which is precisely the row that must not be marked.
+    /// </para>
+    /// <para>
+    /// Direction is not part of the series key and is not a predicate before the collapse, so the
+    /// winner is chosen exactly as it is everywhere else and only then read for its direction. The
+    /// kind filter is not a narrowing of that rule: only a contract FEE can carry a direction at all
+    /// (the server refuses <c>Incoming</c> on a rate and on an account term), so a rate row could
+    /// never have qualified.
+    /// </para>
+    /// </remarks>
+    private async Task<HashSet<Guid>> LoadContractsWithIncomingTermAsync(
+        List<Guid> contractIds, DateTime today, CancellationToken cancellationToken)
+    {
+        if (contractIds.Count == 0)
+        {
+            return [];
+        }
+
+        var candidates = await context.Terms
+            .AsNoTracking()
+            .Where(t => t.ContractId != null
+                && contractIds.Contains(t.ContractId.Value)
+                && t.TermKind == ContextTermKind.Fee
+                && t.EffectiveFrom <= today)
+            .ToListAsync(cancellationToken);
+
+        return [.. candidates
+            .GroupBy(t => t.ContractId!.Value)
+            .Where(group => TermSeries.Current(group).Any(t => t.Direction == ContextTermDirection.Incoming))
+            .Select(group => group.Key)];
     }
 
     /// <summary>

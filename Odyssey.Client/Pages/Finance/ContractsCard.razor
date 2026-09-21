@@ -82,12 +82,20 @@
                     var headline = Headline(c);
                     var detail = _details.GetValueOrDefault(c.ContractId);
 
-                    @* The meta line: type · the contact this contract is with. *@
+                    @* The meta line: type · the contact this contract is with · "Money in" when any
+                       term in force today is incoming. That last one is on the COLLAPSED row on
+                       purpose: it changes how the whole row reads, and is otherwise visible only once
+                       the record is expanded. *@
                     var meta = new List<RenderFragment?>
                     {
                         OdsRecordMeta.Text(typeInfo.Label),
                         ContactMeta(string.IsNullOrWhiteSpace(c.InstitutionName) ? "No contact" : c.InstitutionName),
                     };
+
+                    @if (c.HasIncomingTerm)
+                    {
+                        meta.Add(IncomingMeta());
+                    }
 
                     @* The header counts are the body's table of contents: same glyphs, same order
                        as the sections below, kept live while the body edits them. *@
@@ -354,6 +362,13 @@
         @<span class="con-sub-inst">
             <span class="material-icons" aria-hidden="true">groups</span><span>@name</span>
         </span>;
+
+    // The "money in" marker on a collapsed row. A WORD in the income hue and no glyph, the same
+    // treatment .trm-dir gives a term's direction everywhere else: an arrow beside a figure reads as
+    // that figure rising or falling, which is not what direction means. The word is the carrier, so
+    // the row still reads in greyscale.
+    private RenderFragment IncomingMeta() =>
+        @<span class="trm-dir in">Money in</span>;
 
     // A derived next-movement row in the header signal panel — a charge or a receipt, one shape
     // either way. Razor syntax, so it lives here rather than in the code-behind that builds the rest

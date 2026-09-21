@@ -71,7 +71,11 @@
 </OdsDonutPair>
 
 <div class="odc-summary-grid">
-    <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No accounts." />
+    @* No total on By type: the rows cover AccountTypeVisuals.Selectable, which excludes
+       AccountType.Unknown — a real, persistable state the domain calls Unclassified and excludes
+       from its totals. So the rows partition what the tile renders but not what the file holds, and
+       a total would read as the account count while quietly disagreeing with it. *@
+    <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No accounts." Total="false" />
     <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No accounts." />
 </div>
 </MudStack>

@@ -49,7 +49,9 @@
                         <Foot>across shown entries</Foot>
                     </OdsInfoTile>
                 </div>
-                <OdsBreakdownTile Label="By tag" Rows="TagRows" Empty="No tagged entries." />
+                @* No total: an entry carries several tags, so summing the per-tag counts counts one
+                   entry once per tag on it. *@
+                <OdsBreakdownTile Label="By tag" Rows="TagRows" Empty="No tagged entries." Total="false" />
             </div>
         </OverviewContent>
 

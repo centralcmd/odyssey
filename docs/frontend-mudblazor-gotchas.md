@@ -65,12 +65,17 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
   the figure the wrong colour with nothing failing. Prefer `Short` to `Icon` for an in/out
   vocabulary: an arrow beside a figure reads as that figure rising or falling. Registries supply the
   pair (`TermDirectionVisuals.LeadOptions`); a call site never hand-rolls one.
-- **`OdsBreakdownTile`'s total row is OPT-IN here and default-ON in the design system.** The
-  divergence is deliberate and written down in the component: flipping the default adds a row to all
-  21 tiles across the app at once. Pass `Total="true"` for a summable distribution, `TotalValue` for
-  a figure the arithmetic cannot produce (a net, or rows whose counts are rendered nodes), and
-  neither for a distribution whose sum means nothing — rows that are a SLICE of one another must
-  never be summed.
+- **`OdsBreakdownTile`'s total row is ON by default**, as it is in the design system — the earlier
+  opt-in divergence is retired. A new tile therefore closes with a total unless you say otherwise.
+  Pass `TotalValue` for a figure the arithmetic cannot produce (a net, or rows whose counts are
+  rendered nodes — it wins over the sum and needs no `Total`), and `Total="false"` for a
+  distribution whose sum means nothing. There are three shapes of that, and all three are live in
+  the tree: rows that **overlap** (a photo sits in several albums and carries several tags, so
+  per-tag counts sum one photo many times — Photos, Journal); rows that are a **slice** of one
+  another (contracts' "Ending soon" is inside Active, so that tile passes the real
+  `Summary.TotalContracts` as `TotalValue`); and rows that **omit a bucket the data can hold**
+  (Accounts "By type" renders `AccountTypeVisuals.Selectable`, which excludes the persistable
+  `AccountType.Unknown`, so its rows partition what is drawn but not what exists).
 - **An empty section or table frame is `<OdsEmptyLine>`, not a hand-rolled `<div>`.** The retired
   `.empty-line` / `.con-empty-line` classes are gone; `Align="Center" Pad="Lg"` is the whole-list
   form. `OdsEmptyState` still owns the panel shape (icon + title + one CTA) and reaches the line
