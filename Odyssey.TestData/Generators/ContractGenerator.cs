@@ -52,8 +52,11 @@ namespace Odyssey.TestData.Generators;
 /// test rather than by inspection, because a violation here would be demo data the API itself would
 /// refuse. The set covers both tiers of the matrix: suggested roles on every type, plus the
 /// <c>Guarantor</c> and <c>Other</c> allowed-but-not-suggested cases, and at least one party carries a
-/// non-default term. Roles stay unconstrained by party KIND — an account may hold any role its type
-/// permits.
+/// non-default term. Since issue #169 it also seeds the two type-specific OBJECT roles —
+/// <c>Property</c> on the house purchase and <c>Collateral</c> on the car loan. That is not decoration:
+/// the browser and API E2E tiers read seeded data, so a role absent from this set is a role no
+/// full-stack test ever renders or round-trips. Roles stay unconstrained by party KIND — an account may
+/// hold any role its type permits.
 ///
 /// Parties link to the existing accounts, contacts and insurance policies by their stable
 /// deterministic ids; no such record is created here. No files are attached — the demo dataset has no
@@ -264,6 +267,9 @@ public static class ContractGenerator
                 [
                     new(PartyKind.Account, Catalog.Accounts.HomeMortgage, ContractPartyRole.Buyer),
                     new(PartyKind.Contact, Catalog.Contacts.FirstNationalBank, ContractPartyRole.Seller),
+                    // The thing bought, in the role that says so (issue #169). Before Property existed
+                    // this link had nowhere to go but the catch-all Other, which lost what it meant.
+                    new(PartyKind.Account, Catalog.Accounts.PrimaryResidence, ContractPartyRole.Property),
                 ]),
 
             // Membership — annual, and priced in a non-base currency so the run rate's conversion (and
@@ -332,6 +338,10 @@ public static class ContractGenerator
                     new(PartyKind.Contact, Catalog.Contacts.FirstNationalBank, ContractPartyRole.Lender),
                     new(PartyKind.Account, Catalog.Accounts.CarLoanVolvo, ContractPartyRole.Borrower),
                     new(PartyKind.Contact, Catalog.Contacts.PolicyHolder, ContractPartyRole.Guarantor),
+                    // The security pledged against the loan — Norwegian pant (issue #169). The car is
+                    // the asset; CarLoanVolvo above is the liability that finances it, which is why
+                    // the two are different accounts in different roles on one contract.
+                    new(PartyKind.Account, Catalog.Accounts.FamilyCar, ContractPartyRole.Collateral),
                 ]),
 
             // Archived — an expired prior service contract, retained for reference (hidden by default).

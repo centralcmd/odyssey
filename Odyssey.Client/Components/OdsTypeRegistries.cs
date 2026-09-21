@@ -277,7 +277,7 @@ public static class OdsTypeRegistries
     /// <summary>
     /// ContractPartyRole — what a linked record DOES in the agreement (issues #121, #157). Mirrors the
     /// DS <c>contractPartyRoles</c> registry and the C# <c>ContractPartyRole</c> enum, in ORDINAL
-    /// order. <b>Fifteen live members</b>; ordinals 0 (<c>Unspecified</c>) and 5
+    /// order. <b>Eighteen live members</b>; ordinals 0 (<c>Unspecified</c>) and 5
     /// (<c>ServiceProvider</c>) are retired holes and never reappear here.
     /// </summary>
     /// <remarks>
@@ -310,6 +310,14 @@ public static class OdsTypeRegistries
         new() { Key = "Borrower",     Label = "Borrower",     Icon = "request_quote",      Color = "oklch(0.78 0.13 165)", Soft = "oklch(0.78 0.13 165 / 0.16)" },
         new() { Key = "Guarantor",    Label = "Guarantor",    Icon = "verified_user",      Color = "oklch(0.76 0.13 330)", Soft = "oklch(0.76 0.13 330 / 0.16)" },
         new() { Key = "Broker",       Label = "Broker",       Icon = "handshake",          Color = "oklch(0.76 0.07 245)", Soft = "oklch(0.76 0.07 245 / 0.16)" },
+        // The three object roles (issue #169). Their PRESENTATION is provisional: the design system's
+        // contractPartyRoles registry has not been extended yet, and the frontend counterpart owns the
+        // final label, glyph and colour. What is not provisional is that an entry exists at all — a
+        // member with none renders as the "Other" fallback on every chip, which is a silently wrong
+        // screen rather than an error.
+        new() { Key = "Object",       Label = "Object",       Icon = "category",           Color = "oklch(0.77 0.12 200)", Soft = "oklch(0.77 0.12 200 / 0.16)" },
+        new() { Key = "Property",     Label = "Property",     Icon = "apartment",          Color = "oklch(0.79 0.13 70)",  Soft = "oklch(0.79 0.13 70 / 0.16)" },
+        new() { Key = "Collateral",   Label = "Collateral",   Icon = "lock",               Color = "oklch(0.77 0.13 350)", Soft = "oklch(0.77 0.13 350 / 0.16)" },
     ];
 
     /// <summary>

@@ -71,7 +71,7 @@ public class ContractParty
     ///
     /// <para>
     /// <b>The <c>Beneficiary</c> role blocks deletion of its contact</b> (issue #157 §7.4). The
-    /// <c>Contact</c> FK below stays <c>CASCADE</c> for every role — the other fourteen should keep
+    /// <c>Contact</c> FK below stays <c>CASCADE</c> for every role — the other seventeen should keep
     /// cascading — so that one rule lives entirely in <c>IContactReferenceGuard</c> with no constraint
     /// behind it.
     /// </para>

@@ -43,10 +43,10 @@ public class ContractPartyRoleGuardTests
     }
 
     /// <summary>
-    /// AC 16 — the fifteen live ordinals, pinned by LITERAL. They are a wire <em>and</em> persistence
-    /// contract — stored as <c>int</c> and serialized as <c>int</c> — so a later member appends and
-    /// none is renumbered. Pinning both declarations against literals rather than against each other
-    /// is what makes a symmetric "tidy-up" renumbering fail the build.
+    /// AC 16, and issue #169 AC 18 — the eighteen live ordinals, pinned by LITERAL. They are a wire
+    /// <em>and</em> persistence contract — stored as <c>int</c> and serialized as <c>int</c> — so a
+    /// later member appends and none is renumbered. Pinning both declarations against literals rather
+    /// than against each other is what makes a symmetric "tidy-up" renumbering fail the build.
     /// </summary>
     [Fact]
     public void LiveOrdinals_ArePinned()
@@ -66,10 +66,16 @@ public class ContractPartyRoleGuardTests
         Assert.Equal(14, (int)DtoRole.Borrower);
         Assert.Equal(15, (int)DtoRole.Guarantor);
         Assert.Equal(16, (int)DtoRole.Broker);
+        Assert.Equal(17, (int)DtoRole.Object);
+        Assert.Equal(18, (int)DtoRole.Property);
+        Assert.Equal(19, (int)DtoRole.Collateral);
 
         Assert.Equal(1, (int)ContextRole.Employee);
         Assert.Equal(6, (int)ContextRole.Other);
         Assert.Equal(16, (int)ContextRole.Broker);
+        Assert.Equal(17, (int)ContextRole.Object);
+        Assert.Equal(18, (int)ContextRole.Property);
+        Assert.Equal(19, (int)ContextRole.Collateral);
     }
 
     /// <summary>
@@ -130,17 +136,38 @@ public class ContractPartyRoleGuardTests
     }
 
     /// <summary>
-    /// AC 18 — <c>Other</c> and <c>Broker</c> are legal on EVERY type. Both are deliberately
-    /// universal: a deliberate none-of-these and an intermediary belong to no particular kind of
+    /// AC 18, widened by issue #169 AC 6 — <c>Other</c>, <c>Broker</c> and now <c>Guarantor</c> are
+    /// legal on EVERY type. All three are deliberately universal: a deliberate none-of-these, an
+    /// intermediary and a party standing behind another's obligation belong to no particular kind of
     /// agreement, and a type that rejected them would leave a real party unrecordable.
     /// </summary>
     [Theory]
     [InlineData(DtoRole.Other)]
     [InlineData(DtoRole.Broker)]
+    [InlineData(DtoRole.Guarantor)]
     public void UniversalRoles_AreLegalOnEveryType(DtoRole role)
     {
         Assert.All(Enum.GetValues<DtoType>(), type =>
             Assert.True(ContractPartyRoleMatrix.IsLegal(type, role), $"{role} must be legal on {type}."));
+    }
+
+    /// <summary>
+    /// Issue #169 AC 7 — the universal trio is <c>Allowed</c> on every type and <c>Suggested</c> on
+    /// none. Suggesting a universal role anywhere would push a type's own vocabulary down the picker
+    /// in favour of one that belongs to no type in particular.
+    /// </summary>
+    [Theory]
+    [InlineData(DtoRole.Other)]
+    [InlineData(DtoRole.Broker)]
+    [InlineData(DtoRole.Guarantor)]
+    public void UniversalRoles_AreAllowedButNeverSuggested(DtoRole role)
+    {
+        Assert.All(
+            // Other-the-type SUGGESTS Other-the-role, which is the one deliberate exception: it is
+            // that column's only domain vocabulary.
+            Enum.GetValues<DtoType>().Where(type => !(type is DtoType.Other && role is DtoRole.Other)),
+            type => Assert.Equal(
+                ContractPartyRoleLegality.Allowed, ContractPartyRoleMatrix.LegalityOf(type, role)));
     }
 
     /// <summary>
@@ -156,19 +183,83 @@ public class ContractPartyRoleGuardTests
     }
 
     /// <summary>
-    /// §4.7's headline count, pinned: <b>52 of the 135 cells are legal</b>. A single-cell change to
-    /// the matrix is a deliberate act, and this is what makes it visible in a diff.
+    /// Issue #169 AC 8 — the headline count, pinned: <b>69 of the 162 cells are legal</b>, up from 52
+    /// of 135. A single-cell change to the matrix is a deliberate act, and this is what makes it
+    /// visible in a diff.
     /// </summary>
+    /// <remarks>
+    /// The same fact is pinned a SECOND time, independently, in
+    /// <c>ContractPartyRoleMatrixApiTests.EveryMatrixCell_IsAcceptedOrRefusedExactlyAsDeclared</c>,
+    /// which counts the same cells over real HTTP. Nothing links the two, so a widening that updates
+    /// one and not the other is green here and red there.
+    /// </remarks>
     [Fact]
-    public void LegalCellCount_Is52Of135()
+    public void LegalCellCount_Is69Of162()
     {
         var types = Enum.GetValues<DtoType>();
         var roles = Enum.GetValues<DtoRole>();
 
         Assert.Equal(9, types.Length);
-        Assert.Equal(15, roles.Length);
-        Assert.Equal(52, types.Sum(type => roles.Count(role => ContractPartyRoleMatrix.IsLegal(type, role))));
+        Assert.Equal(18, roles.Length);
+        Assert.Equal(69, types.Sum(type => roles.Count(role => ContractPartyRoleMatrix.IsLegal(type, role))));
     }
+
+    /// <summary>
+    /// Issue #169 AC 8's second half — the PER-TYPE legal totals, so a widening that kept the headline
+    /// count right by moving a cell between two columns still fails.
+    /// </summary>
+    [Theory]
+    [InlineData(DtoType.Employment, 5)]
+    [InlineData(DtoType.Service, 6)]
+    [InlineData(DtoType.Rental, 7)]
+    [InlineData(DtoType.Insurance, 7)]
+    [InlineData(DtoType.Subscription, 6)]
+    [InlineData(DtoType.Purchase, 7)]
+    [InlineData(DtoType.Loan, 7)]
+    [InlineData(DtoType.Membership, 6)]
+    [InlineData(DtoType.Other, 18)]
+    public void PerTypeLegalCounts_MatchTheSpecTable(DtoType type, int legal)
+    {
+        Assert.Equal(legal, ContractPartyRoleMatrix.LegalFor(type).Count);
+        Assert.Equal(legal, Enum.GetValues<DtoRole>().Count(role => ContractPartyRoleMatrix.IsLegal(type, role)));
+    }
+
+    /// <summary>
+    /// Issue #169 §4.2 — where each new role reaches, pinned cell by cell. <c>Object</c> is the
+    /// general case and reaches seven types; <c>Property</c> and <c>Collateral</c> are type-specific
+    /// and must not leak outside their columns (AC 4).
+    /// </summary>
+    [Fact]
+    public void TheThreeObjectRoles_ReachExactlyTheDeclaredTypes()
+    {
+        // Ordinal order, which is what TypesTaking sorts by: Other is 3, so it lands mid-list.
+        Assert.Equal(
+            [DtoType.Service, DtoType.Rental, DtoType.Other, DtoType.Subscription, DtoType.Purchase,
+             DtoType.Membership, DtoType.Loan],
+            TypesTaking(DtoRole.Object));
+
+        Assert.Equal(
+            [DtoType.Rental, DtoType.Other, DtoType.Purchase],
+            TypesTaking(DtoRole.Property));
+
+        Assert.Equal(
+            [DtoType.Other, DtoType.Loan],
+            TypesTaking(DtoRole.Collateral));
+    }
+
+    /// <summary>
+    /// Issue #169 §4.3 — the two exclusions, stated so they are not "fixed" later. An employment
+    /// contract's object is the employee's labour, and an insurance contract's is already named by
+    /// <c>Insured</c>; a second name for one concept would split where the covered thing is recorded.
+    /// </summary>
+    [Theory]
+    [InlineData(DtoType.Employment)]
+    [InlineData(DtoType.Insurance)]
+    public void Object_IsNotLegalOnEmploymentOrInsurance(DtoType type) =>
+        Assert.False(ContractPartyRoleMatrix.IsLegal(type, DtoRole.Object));
+
+    private static List<DtoType> TypesTaking(DtoRole role) =>
+        [.. Enum.GetValues<DtoType>().Where(type => ContractPartyRoleMatrix.IsLegal(type, role)).Order()];
 
     /// <summary>
     /// The three readers agree by construction: <c>LegalFor</c> is exactly suggested-then-allowed,
@@ -194,19 +285,28 @@ public class ContractPartyRoleGuardTests
     }
 
     /// <summary>
-    /// Insurance carries FOUR suggested roles, mirroring an insurance policy's four link collections;
-    /// <c>Other</c>-the-type carries exactly one, and every other type exactly two (§4.7).
+    /// Issue #169 AC 10 — the suggested counts, re-pinned to the 4 / 3 / 2 / 1 shape. Insurance carries
+    /// FOUR, mirroring an insurance policy's four link collections; Rental, Purchase and Loan carry
+    /// THREE, their object role being as ordinary as their two counterparties; <c>Other</c>-the-type
+    /// carries exactly one; the rest carry two.
     /// </summary>
-    [Fact]
-    public void SuggestedCounts_MatchTheSpecTable()
-    {
-        Assert.Equal(4, ContractPartyRoleMatrix.SuggestedFor(DtoType.Insurance).Count);
-        Assert.Single(ContractPartyRoleMatrix.SuggestedFor(DtoType.Other));
-
-        Assert.All(
-            Enum.GetValues<DtoType>().Where(type => type is not (DtoType.Insurance or DtoType.Other)),
-            type => Assert.Equal(2, ContractPartyRoleMatrix.SuggestedFor(type).Count));
-    }
+    /// <remarks>
+    /// This REPLACES the retired "exactly two except Insurance and Other" invariant (issue #169 §4.4).
+    /// The count is re-pinned at a new shape rather than loosened: a rule that merely asserted "at
+    /// least one" would let a column quietly grow a fourth suggestion and bury its own vocabulary.
+    /// </remarks>
+    [Theory]
+    [InlineData(DtoType.Insurance, 4)]
+    [InlineData(DtoType.Rental, 3)]
+    [InlineData(DtoType.Purchase, 3)]
+    [InlineData(DtoType.Loan, 3)]
+    [InlineData(DtoType.Employment, 2)]
+    [InlineData(DtoType.Service, 2)]
+    [InlineData(DtoType.Subscription, 2)]
+    [InlineData(DtoType.Membership, 2)]
+    [InlineData(DtoType.Other, 1)]
+    public void SuggestedCounts_MatchTheSpecTable(DtoType type, int suggested) =>
+        Assert.Equal(suggested, ContractPartyRoleMatrix.SuggestedFor(type).Count);
 
     /// <summary>
     /// AC 19's matrix half — a <c>Loan</c> accepts <c>Lender</c>/<c>Borrower</c> and rejects
@@ -217,7 +317,7 @@ public class ContractPartyRoleGuardTests
     public void LoanColumn_TakesLenderAndBorrower_NotBuyerAndSeller()
     {
         Assert.Equal(
-            [DtoRole.Lender, DtoRole.Borrower],
+            [DtoRole.Lender, DtoRole.Borrower, DtoRole.Collateral],
             ContractPartyRoleMatrix.SuggestedFor(DtoType.Loan));
 
         Assert.False(ContractPartyRoleMatrix.IsLegal(DtoType.Loan, DtoRole.Buyer));
@@ -239,6 +339,19 @@ public class ContractPartyRoleGuardTests
         Assert.All(Enum.GetValues<DtoRole>(), role =>
             Assert.False(ContractPartyRoleMatrix.IsLegal(undeclared, role)));
     }
+
+    /// <summary>
+    /// Issue #169 AC 9's declaration half — a Rental's legal roles read
+    /// <c>Landlord, Tenant, Property, Object, Guarantor, Broker, Other</c>, in that order. This is the
+    /// order the picker offers and the order the <c>422</c> message lists, and it is what makes the
+    /// universal trio's new leading member visible rather than incidental.
+    /// </summary>
+    [Fact]
+    public void RentalLegalRoles_ReadSuggestedThenAllowed_InTheDeclaredOrder() =>
+        Assert.Equal(
+            [DtoRole.Landlord, DtoRole.Tenant, DtoRole.Property, DtoRole.Object, DtoRole.Guarantor,
+             DtoRole.Broker, DtoRole.Other],
+            ContractPartyRoleMatrix.LegalFor(DtoType.Rental));
 
     /// <summary>
     /// The three-state legality reading, which the picker's grouping depends on: a suggested cell

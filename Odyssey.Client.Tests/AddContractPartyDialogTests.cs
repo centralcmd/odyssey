@@ -313,8 +313,9 @@ public class AddContractPartyDialogTests
 
     /// <summary>
     /// The picker offers exactly the roles the contract's TYPE accepts, suggested first, read off the
-    /// shared declaration the server validates against. A Rental takes Landlord and Tenant, permits
-    /// Guarantor, Broker and Other, and offers nothing else — so the user is never walked into a 422.
+    /// shared declaration the server validates against. A Rental suggests Landlord, Tenant and
+    /// Property, permits Object, Guarantor, Broker and Other, and offers nothing else — so the user is
+    /// never walked into a 422.
     /// </summary>
     [Fact]
     public void The_role_picker_offers_only_the_roles_this_contract_type_accepts()
@@ -326,11 +327,13 @@ public class AddContractPartyDialogTests
 
         var groups = OdsTypeRegistries.ContractPartyRolesFor(ContractType.Rental);
         Assert.Equal(
-            [nameof(ContractPartyRole.Landlord), nameof(ContractPartyRole.Tenant)],
+            [nameof(ContractPartyRole.Landlord), nameof(ContractPartyRole.Tenant),
+             nameof(ContractPartyRole.Property)],
             groups[0].Items.Select(i => i.Key));
         Assert.Equal("Suggested for rental", groups[0].Label);
         Assert.Equal(
-            [nameof(ContractPartyRole.Guarantor), nameof(ContractPartyRole.Broker), nameof(ContractPartyRole.Other)],
+            [nameof(ContractPartyRole.Object), nameof(ContractPartyRole.Guarantor),
+             nameof(ContractPartyRole.Broker), nameof(ContractPartyRole.Other)],
             groups[1].Items.Select(i => i.Key));
 
         Assert.DoesNotContain(

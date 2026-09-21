@@ -22,6 +22,12 @@ namespace Odyssey.Api.Tests;
 /// <c>Loan</c> type (AC 19), the status/field-key contract both refusals carry (AC 24), and the two
 /// contact-delete criteria that are decided before any relational statement runs — the claim-gated
 /// <c>409</c> payload (AC 23) and the composed detach gate's <c>403</c> (AC 13).
+///
+/// <para>
+/// Issue #169 adds the same enforcement for the three object roles and the universal
+/// <c>Guarantor</c> (its AC 1–6, 9, 14–17) and for how the pre-existing per-contract party cap
+/// interacts with them (its AC 22–24).
+/// </para>
 /// </summary>
 /// <remarks>
 /// Everything here runs on the fast tier, and the dividing line is <b>not</b> "does it touch
@@ -139,10 +145,19 @@ public class ContractPartyRoleMatrixApiTests
     }
 
     /// <summary>
-    /// AC 9 — <b>every one of the 135 cells</b> is exercised against the live endpoint: the 52 legal
-    /// ones are accepted and the 83 rejected ones refused. Iterating the matrix rather than sampling
-    /// it is what makes a cell unable to disagree silently between the declaration and the validator.
+    /// AC 9, re-pinned by issue #169 AC 8 — <b>every one of the 162 cells</b> is exercised against the
+    /// live endpoint: the 69 legal ones are accepted and the 93 rejected ones refused. Iterating the
+    /// matrix rather than sampling it is what makes a cell unable to disagree silently between the
+    /// declaration and the validator.
     /// </summary>
+    /// <remarks>
+    /// These two figures are a SECOND, independent pin of the count
+    /// <c>ContractPartyRoleGuardTests.LegalCellCount_Is69Of162</c> asserts off the declaration alone.
+    /// Nothing links them, so a widening that updates one and not the other is green on one file and
+    /// red on the other. This one drives a real HTTP round trip per cell (162 of them since issue
+    /// #169, up from 135); if it ever outgrows its time budget, narrow it by type rather than dropping
+    /// the assertion.
+    /// </remarks>
     [Fact]
     public async Task EveryMatrixCell_IsAcceptedOrRefusedExactlyAsDeclared()
     {
@@ -182,8 +197,331 @@ public class ContractPartyRoleMatrixApiTests
             }
         }
 
-        Assert.Equal(52, legal);
-        Assert.Equal(83, rejected);
+        Assert.Equal(69, legal);
+        Assert.Equal(93, rejected);
+    }
+
+    // ── The three object roles and the universal Guarantor (issue #169) ──────
+
+    /// <summary>
+    /// Issue #169 AC 1 — every legal (type, object-role) pair is accepted and reads back as itself.
+    /// The cross-product test above already counts these cells; this one proves the role SURVIVES the
+    /// round trip rather than merely being accepted, which is what an ordinal appended to two
+    /// declarations can get wrong while every status code stays right.
+    /// </summary>
+    [Theory]
+    [InlineData(ContractType.Rental, ContractPartyRole.Property)]
+    [InlineData(ContractType.Purchase, ContractPartyRole.Property)]
+    [InlineData(ContractType.Loan, ContractPartyRole.Collateral)]
+    [InlineData(ContractType.Service, ContractPartyRole.Object)]
+    [InlineData(ContractType.Rental, ContractPartyRole.Object)]
+    [InlineData(ContractType.Subscription, ContractPartyRole.Object)]
+    [InlineData(ContractType.Purchase, ContractPartyRole.Object)]
+    [InlineData(ContractType.Loan, ContractPartyRole.Object)]
+    [InlineData(ContractType.Membership, ContractPartyRole.Object)]
+    [InlineData(ContractType.Other, ContractPartyRole.Object)]
+    public async Task AddParty_WithAnObjectRoleItsTypeTakes_Returns201AndPersistsIt(
+        ContractType type, ContractPartyRole role)
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var accountId = await SeedAccountAsync(factory);
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, type);
+        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { AccountId = accountId, Role = role });
+
+        Assert.Equal(HttpStatusCode.Created, add.StatusCode);
+        Assert.Equal(role, (await add.Content.ReadFromJsonAsync<ExistingContractParty>())!.Role);
+        Assert.Equal(role, Assert.Single((await GetAsync(client, id)).Parties).Role);
+    }
+
+    /// <summary>
+    /// Issue #169 AC 2, 3 and 4 — the exclusions hold over HTTP and nothing is written. The first two
+    /// are the deliberate §4.3 exclusions (an employment contract's object is the employee's labour;
+    /// an insurance contract's is already named by <c>Insured</c>); the last two are the type-specific
+    /// roles failing to leak outside their own columns.
+    /// </summary>
+    [Theory]
+    [InlineData(ContractType.Employment, ContractPartyRole.Object)]
+    [InlineData(ContractType.Insurance, ContractPartyRole.Object)]
+    [InlineData(ContractType.Rental, ContractPartyRole.Collateral)]
+    [InlineData(ContractType.Loan, ContractPartyRole.Property)]
+    public async Task AddParty_WithAnObjectRoleItsTypeRejects_Returns422_AndWritesNothing(
+        ContractType type, ContractPartyRole role)
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var accountId = await SeedAccountAsync(factory);
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, type);
+        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { AccountId = accountId, Role = role });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, add.StatusCode);
+        Assert.True(await HasErrorKeyAsync(add, nameof(ContractPartyRequest.Role)));
+        Assert.Empty((await GetAsync(client, id)).Parties);
+    }
+
+    /// <summary>
+    /// Issue #169 AC 5 — role stays ORTHOGONAL to the target kind. An object party is <em>expected</em>
+    /// to be an account, but a contact target is equally legal and neither is refused on grounds of
+    /// kind. The non-goal this pins is a constraint tying the two, which a later reader is likely to
+    /// add as a "missing" check.
+    /// </summary>
+    [Theory]
+    [InlineData(ContractType.Rental, ContractPartyRole.Object)]
+    [InlineData(ContractType.Rental, ContractPartyRole.Property)]
+    [InlineData(ContractType.Loan, ContractPartyRole.Collateral)]
+    public async Task AddParty_InANewRole_TakesEitherTargetKind(ContractType type, ContractPartyRole role)
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var accountId = await SeedAccountAsync(factory);
+        var contactId = await SeedContactAsync(factory);
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, type);
+
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { AccountId = accountId, Role = role })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { ContactId = contactId, Role = role })).StatusCode);
+
+        Assert.Equal(2, (await GetAsync(client, id)).Parties.Count(party => party.Role == role));
+    }
+
+    /// <summary>
+    /// Issue #169 AC 6 — <c>Guarantor</c> is accepted on ALL NINE types, including the five that
+    /// rejected it before this change. A party standing behind another's obligation belongs to no
+    /// particular kind of agreement.
+    /// </summary>
+    [Fact]
+    public async Task AddParty_WithGuarantor_Returns201_OnEveryContractType()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var accountId = await SeedAccountAsync(factory);
+        using var client = factory.CreateClient();
+
+        foreach (var type in Enum.GetValues<ContractType>())
+        {
+            var id = await CreateAsync(client, type);
+            var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
+                new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Guarantor });
+
+            Assert.Equal(HttpStatusCode.Created, add.StatusCode);
+        }
+    }
+
+    /// <summary>
+    /// Issue #169 AC 9 — the <c>422</c> message lists a Rental's legal roles VERBATIM, in
+    /// suggested-then-allowed order. The whole list is asserted rather than a member of it, because
+    /// what changed is the ORDER as much as the membership: <c>Guarantor</c> now leads the universal
+    /// trio on every type, and a new suggested role precedes it here.
+    /// </summary>
+    [Fact]
+    public async Task ARejectedRoleOnARental_NamesTheLegalRoles_InSuggestedThenAllowedOrder()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var accountId = await SeedAccountAsync(factory);
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, ContractType.Rental);
+        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employee });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, add.StatusCode);
+        Assert.Contains(
+            "The roles it can have are: Landlord, Tenant, Property, Object, Guarantor, Broker, Other.",
+            await add.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Issue #169 AC 15 and AC 16 — several parties may hold the SAME new role against DIFFERENT
+    /// targets (two purchased items, a car and a boat as collateral), while the same target twice in
+    /// one role is still the <c>409</c> the composite unique indexes describe.
+    /// </summary>
+    [Fact]
+    public async Task TwoObjectPartiesAgainstDifferentTargets_BothPersist_AndADuplicateIs409()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var accountId = await SeedAccountAsync(factory);
+        var secondAccountId = await SeedAccountAsync(factory, "Holiday Cabin");
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, ContractType.Purchase);
+
+        foreach (var target in new[] { accountId, secondAccountId })
+        {
+            Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync($"{Path}/{id}/parties",
+                new ContractPartyRequest { AccountId = target, Role = ContractPartyRole.Property })).StatusCode);
+        }
+
+        Assert.Equal(2, (await GetAsync(client, id)).Parties.Count);
+
+        var duplicate = await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Property });
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+    }
+
+    /// <summary>
+    /// Issue #169 AC 17 — an ordinal outside the enum is still a <c>400</c> from model validation,
+    /// before the service runs. The two retired holes are included: widening the enum by three must
+    /// not make <c>0</c> or <c>5</c> bindable again.
+    /// </summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(5)]
+    [InlineData(20)]
+    [InlineData(99)]
+    public async Task AddParty_WithAnUndefinedRoleOrdinal_Returns400(int ordinal)
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var accountId = await SeedAccountAsync(factory);
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, ContractType.Rental);
+        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new { accountId, role = ordinal });
+
+        Assert.Equal(HttpStatusCode.BadRequest, add.StatusCode);
+        Assert.Empty((await GetAsync(client, id)).Parties);
+    }
+
+    /// <summary>
+    /// Issue #169 AC 14 — the mass-assignment regression, re-asserted for a NEW role. The request
+    /// carries scalar ids only, so a nested account object rides along unbound whichever role names
+    /// the link.
+    /// </summary>
+    [Fact]
+    public async Task AddParty_InANewRole_WithANestedAccountObject_NeitherCreatesNorMutatesIt()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var accountId = await SeedAccountAsync(factory);
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, ContractType.Rental);
+        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new
+        {
+            accountId,
+            role = (int)ContractPartyRole.Property,
+            account = new { accountId, name = "HACKED", accountNumber = "EVIL" },
+        });
+        Assert.Equal(HttpStatusCode.Created, add.StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.Equal(1, await context.Accounts.CountAsync());
+        Assert.Equal("Everyday Checking", (await context.Accounts.FirstAsync()).Name);
+    }
+
+    // ── The party cap, against the new roles (issue #169 AC 22–24) ───────────
+
+    /// <summary>
+    /// Issue #169 AC 22 — the pre-existing per-contract cap is unchanged and counts across ALL roles,
+    /// so an object party on a full contract is refused like any other. The <c>422</c> is keyed on the
+    /// TARGET field rather than <c>role</c>: the role was fine, the contract was full, and keying it
+    /// on <c>role</c> would mark the one control that is not the problem.
+    /// </summary>
+    [Fact]
+    public async Task AddParty_InANewRole_OnAFullContract_Returns422KeyedOnTheTargetField()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.ContractMaxPartiesPerContract, "1");
+        var accountId = await SeedAccountAsync(factory);
+        var contactId = await SeedContactAsync(factory);
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, ContractType.Rental);
+        (await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Landlord }))
+            .EnsureSuccessStatusCode();
+
+        var overCap = await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Property });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, overCap.StatusCode);
+        Assert.True(await HasErrorKeyAsync(overCap, nameof(ContractPartyRequest.ContactId)));
+        Assert.False(await HasErrorKeyAsync(overCap, nameof(ContractPartyRequest.Role)));
+    }
+
+    /// <summary>
+    /// Issue #169 AC 23 — a contract that is BOTH full and given an illegal role answers the role
+    /// <c>422</c>, keyed on <c>role</c>. The legality check runs first, so the caller is told the
+    /// actionable thing: a legal role would still be refused by the cap, but an illegal one is refused
+    /// whatever the cap says.
+    /// </summary>
+    [Fact]
+    public async Task AddParty_OnAFullContract_WithAnIllegalRole_ReportsTheRole_NotTheCap()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.ContractMaxPartiesPerContract, "1");
+        var accountId = await SeedAccountAsync(factory);
+        var contactId = await SeedContactAsync(factory);
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, ContractType.Rental);
+        (await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Landlord }))
+            .EnsureSuccessStatusCode();
+
+        var refused = await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Collateral });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        Assert.True(await HasErrorKeyAsync(refused, nameof(ContractPartyRequest.Role)));
+        Assert.False(await HasErrorKeyAsync(refused, nameof(ContractPartyRequest.ContactId)));
+    }
+
+    /// <summary>
+    /// Issue #169 AC 24, the inverse of AC 22 — an EDIT on a contract already ABOVE the cap succeeds.
+    /// An in-place update is row-count-neutral, so the cap is deliberately not re-checked there; a
+    /// "consistency" change that re-checked it would strand every party on an over-cap contract as
+    /// uneditable, with no way back down.
+    /// </summary>
+    /// <remarks>
+    /// The over-cap state is produced the only way it occurs in life — by lowering the cap under a
+    /// contract that already holds more, here by writing the extra rows behind the API rather than
+    /// through it.
+    /// </remarks>
+    [Fact]
+    public async Task UpdateParty_OnAContractAboveItsCap_Returns200()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.ContractMaxPartiesPerContract, "1");
+        var accountId = await SeedAccountAsync(factory);
+        using var client = factory.CreateClient();
+
+        var id = await CreateAsync(client, ContractType.Rental);
+        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Landlord });
+        var party = await add.Content.ReadFromJsonAsync<ExistingContractParty>();
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            foreach (var role in new[]
+                     {
+                         Odyssey.Context.ContractPartyRole.Property,
+                         Odyssey.Context.ContractPartyRole.Object,
+                     })
+            {
+                context.ContractParties.Add(new ContractParty
+                {
+                    ContractPartyId = Guid.NewGuid(),
+                    ContractId = id,
+                    AccountId = accountId,
+                    Role = role,
+                });
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        var put = await client.PutAsJsonAsync($"{Path}/{id}/parties/{party!.ContractPartyId}",
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Tenant });
+
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        Assert.Equal(ContractPartyRole.Tenant, (await put.Content.ReadFromJsonAsync<ExistingContractParty>())!.Role);
     }
 
     // ── The contract type change (AC 7, 8, 24) ───────────────────────────────
@@ -584,7 +922,8 @@ public class ContractPartyRoleMatrixApiTests
     private static async Task<ExistingContract> GetAsync(HttpClient client, Guid id) =>
         (await client.GetFromJsonAsync<ExistingContract>($"{Path}/{id}"))!;
 
-    private static async Task<Guid> SeedAccountAsync(WebApplicationFactory<Program> factory)
+    private static async Task<Guid> SeedAccountAsync(
+        WebApplicationFactory<Program> factory, string name = "Everyday Checking")
     {
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -592,7 +931,7 @@ public class ContractPartyRoleMatrixApiTests
         var account = new Account
         {
             AccountId = Guid.NewGuid(),
-            Name = "Everyday Checking",
+            Name = name,
             Description = "Primary",
             Opened = FixedToday.AddYears(-1),
             AccountType = ContextAccountType.CheckingAccount,
@@ -601,6 +940,31 @@ public class ContractPartyRoleMatrixApiTests
         context.Accounts.Add(account);
         await context.SaveChangesAsync();
         return account.AccountId;
+    }
+
+    /// <summary>
+    /// A bare contact to link, for the cases that prove a role takes either target kind. Deliberately
+    /// not the beneficiary fixture: nothing here should be able to block a delete.
+    /// </summary>
+    private static async Task<Guid> SeedContactAsync(
+        WebApplicationFactory<Program> factory, string first = "Dana", string last = "Okafor")
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        await context.Database.EnsureCreatedAsync();
+
+        var contactId = Guid.NewGuid();
+        context.Contacts.Add(new Contact
+        {
+            ContactId = contactId,
+            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+            NormalizedName = $"{first.ToUpperInvariant()} {last.ToUpperInvariant()}",
+            Type = Odyssey.Dtos.ContactType.Person,
+            PersonDetails = new() { ContactId = contactId, FirstName = first, LastName = last },
+        });
+
+        await context.SaveChangesAsync();
+        return contactId;
     }
 
     private static async Task<bool> HasErrorKeyAsync(HttpResponseMessage response, string field)
