@@ -204,6 +204,102 @@ public class TransactionTagServiceTests
         Assert.Equal(1, context.TransactionTags.Count());
     }
 
+    /// <summary>
+    /// Both blocker classes at once (issue #166 §9.4). The clauses ACCUMULATE rather than reporting
+    /// the first match, so a tag blocked twice says so twice — and with one test per class, each
+    /// tripping only its own clause, the accumulation itself would be unexercised: a regression back
+    /// to a first-match throw would pass both of them.
+    /// </summary>
+    [Fact]
+    public async Task Delete_BlockedByBothABudgetItemAndAContract_NamesBothClauses()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Streaming", Description = null, Archived = false });
+
+        var budget = new Budget
+        {
+            Name = "2026",
+            Description = "Annual",
+            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
+            Archived = null,
+        };
+        context.Budgets.Add(budget);
+
+        var contract = new Contract
+        {
+            Name = "Maple St lease",
+            Type = Odyssey.Context.ContractType.Rental,
+            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        };
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        context.BudgetItems.Add(new BudgetItem
+        {
+            BudgetId = budget.BudgetId,
+            CategoryType = Odyssey.Context.BudgetCategoryType.Expense,
+            PlannedAmount = 100m,
+            TransactionTagId = tag.TransactionTagId,
+        });
+        context.ContractSmartTags.Add(new ContractSmartTag
+        {
+            ContractId = contract.ContractId,
+            TransactionTagId = tag.TransactionTagId,
+            AddedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        });
+        await context.SaveChangesAsync();
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("1 budget item", conflict.Message);
+        Assert.Contains("1 contract", conflict.Message);
+        // Counts on both sides, never the names — the same boundary each clause keeps on its own.
+        Assert.DoesNotContain("2026", conflict.Message);
+        Assert.DoesNotContain("Maple St lease", conflict.Message);
+        Assert.Equal(1, context.TransactionTags.Count());
+    }
+
+    /// <summary>
+    /// The contract clause on its own (issue #166 §9.4), so a tag blocked only by a smart-tag link is
+    /// refused here too — this tier enforces no foreign keys, so without the pre-check the delete
+    /// would succeed and orphan the link row.
+    /// </summary>
+    [Fact]
+    public async Task Delete_IsRefusedWhileAContractWatchesTheTag_AndNamesTheCount()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Streaming", Description = null, Archived = false });
+
+        var contract = new Contract
+        {
+            Name = "Maple St lease",
+            Type = Odyssey.Context.ContractType.Rental,
+            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        };
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        context.ContractSmartTags.Add(new ContractSmartTag
+        {
+            ContractId = contract.ContractId,
+            TransactionTagId = tag.TransactionTagId,
+            AddedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        });
+        await context.SaveChangesAsync();
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("1 contract", conflict.Message);
+        Assert.DoesNotContain("budget item", conflict.Message);
+        Assert.DoesNotContain("Maple St lease", conflict.Message);
+        Assert.Equal(1, context.TransactionTags.Count());
+    }
+
     [Fact]
     public async Task Delete_SucceedsWhenNoBudgetItemPlansForTheTag()
     {
