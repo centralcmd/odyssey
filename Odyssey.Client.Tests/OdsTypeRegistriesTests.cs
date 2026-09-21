@@ -447,8 +447,6 @@ public class OdsTypeRegistriesTests
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
     // ── The object-role flag (issue #169) ────────────────────────────────────
 
     /// <summary>
@@ -496,6 +494,8 @@ public class OdsTypeRegistriesTests
 
         Assert.DoesNotContain(Registry(registryName), option => option.IsObject);
     }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static IReadOnlyList<OdsTypeOption> Registry(string name) =>
         (IReadOnlyList<OdsTypeOption>)typeof(OdsTypeRegistries).GetField(name)!.GetValue(null)!;
