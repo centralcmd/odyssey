@@ -68,6 +68,10 @@
                     <li class="con-orphan">
                         <span class="con-orphan-role">@PartyRoleLabel.For(party.Role)</span>
                         <span class="con-orphan-name">@PartyDisplayName(party)</span>
+                        @* The party id, as the design system renders it and as the server's own 422
+                           body names it. It is what disambiguates two parties sharing a display name,
+                           and what lets a reader match a row here to the problem body. *@
+                        <span class="con-orphan-id">@party.ContractPartyId</span>
                     </li>
                 }
             </ul>
