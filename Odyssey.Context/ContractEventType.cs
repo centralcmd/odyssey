@@ -27,4 +27,42 @@ public enum ContractEventType
     /// </summary>
     EmailSent = 7,
     Other = 8,
+
+    // ── Appended by issue #154 at ordinals 9-17 ──────────────────────────────────
+    //
+    // Every existing ordinal above is untouched, Other included: a stored 8 must keep meaning Other.
+    // The consequence is that Other is no longer the LAST ordinal, so the enum's storage order and the
+    // UI's reading order diverge — the same split ContractType already carries. OdsTypeRegistries
+    // documents its TRAILING entry as the fallback for an unknown ordinal, so Other must stay last in
+    // that registry even though it no longer ends this enum.
+    //
+    // There is deliberately no new Signed member: ordinal 0 already is one, and the signing transition
+    // reuses it.
+
+    /// <summary>The contract was suspended.</summary>
+    Paused = 9,
+
+    /// <summary>The contract was resumed.</summary>
+    Unpaused = 10,
+
+    /// <summary>The contract was marked ready for signature.</summary>
+    Ready = 11,
+
+    /// <summary>The ready-for-signature mark was withdrawn.</summary>
+    Unready = 12,
+
+    /// <summary>The signed date was cleared.</summary>
+    Unsigned = 13,
+
+    /// <summary>The contract was archived.</summary>
+    Archived = 14,
+
+    /// <summary>The contract was restored from the archive.</summary>
+    Unarchived = 15,
+
+    /// <summary>A party was linked to the contract.</summary>
+    PartyAdded = 16,
+
+    /// <summary>A party was unlinked from the contract.</summary>
+    PartyRemoved = 17,
 }

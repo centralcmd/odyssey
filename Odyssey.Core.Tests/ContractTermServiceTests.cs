@@ -94,7 +94,7 @@ public class ContractTermServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
 
-        var created = await Terms(context).CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)));
+        var created = await Terms(context).CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
 
         Assert.Equal(contractId, created.ContractId);
         Assert.Null(created.AccountId);
@@ -129,7 +129,7 @@ public class ContractTermServiceTests
         await using var context = TestContextFactory.Create();
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            Terms(context).CreateForContract(Guid.NewGuid(), Rent(1m, new DateTime(2026, 1, 1))));
+            Terms(context).CreateForContract(Guid.NewGuid(), Rent(1m, new DateTime(2026, 1, 1)), userId: null));
     }
 
     /// <summary>
@@ -145,7 +145,7 @@ public class ContractTermServiceTests
         var service = Terms(context);
         var date = new DateTime(2026, 10, 1);
 
-        await service.CreateForContract(contractId, Rent(14500m, date));
+        await service.CreateForContract(contractId, Rent(14500m, date), userId: null);
         await service.Create(accountId, Rent(14500m, date));
 
         Assert.Equal(2, await context.Terms.CountAsync());
@@ -161,7 +161,7 @@ public class ContractTermServiceTests
         var accountId = await SeedAccountAsync(context);
         var service = Terms(context);
 
-        await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)));
+        await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
 
         Assert.Empty(await service.GetHistory(accountId) ?? []);
         Assert.Empty(await service.GetCurrent(accountId) ?? []);
@@ -180,8 +180,8 @@ public class ContractTermServiceTests
         var contractId = await SeedContractAsync(context, type);
         var service = Terms(context);
 
-        await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)));
-        await service.CreateForContract(contractId, InterestRate(0.0325m, new DateTime(2026, 10, 1)));
+        await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
+        await service.CreateForContract(contractId, InterestRate(0.0325m, new DateTime(2026, 10, 1)), userId: null);
 
         Assert.Equal(2, (await service.GetContractHistory(contractId))!.Count);
     }
@@ -199,7 +199,7 @@ public class ContractTermServiceTests
                 ValueUnit = TermValueUnit.Percentage,
                 Value = 0.07m,
                 EffectiveFrom = new DateTime(2026, 1, 1),
-            }));
+            }, userId: null));
 
         Assert.Contains("contracts", error.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -218,7 +218,7 @@ public class ContractTermServiceTests
                 Value = 1m,
                 CurrencyCode = "USD",
                 EffectiveFrom = new DateTime(2026, 1, 1),
-            }));
+            }, userId: null));
     }
 
     // ── Currency ─────────────────────────────────────────────────────────────
@@ -230,7 +230,7 @@ public class ContractTermServiceTests
         var contractId = await SeedContractAsync(context);
 
         var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
-            Terms(context).CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1), currency: null)));
+            Terms(context).CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1), currency: null), userId: null));
 
         Assert.NotNull(error.Errors);
         Assert.True(error.Errors!.ContainsKey(nameof(NewTerm.CurrencyCode)));
@@ -260,7 +260,7 @@ public class ContractTermServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
 
-        var created = await Terms(context).CreateForContract(contractId, InterestRate(0.0325m, new DateTime(2026, 1, 1)));
+        var created = await Terms(context).CreateForContract(contractId, InterestRate(0.0325m, new DateTime(2026, 1, 1)), userId: null);
 
         Assert.Null(created.CurrencyCode);
     }
@@ -280,7 +280,7 @@ public class ContractTermServiceTests
         var contractId = await SeedContractAsync(context, archived: true);
 
         var created = await Terms(context).CreateForContract(
-            contractId, Rent(14500m, new DateTime(2026, 10, 1)));
+            contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
 
         Assert.Equal(14500m, created.Value);
         Assert.NotNull((await context.Contracts.FirstAsync(c => c.ContractId == contractId)).Archived);
@@ -292,17 +292,17 @@ public class ContractTermServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
         var service = Terms(context);
-        var term = await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)));
+        var term = await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
 
         var contract = await context.Contracts.FirstAsync(c => c.ContractId == contractId);
         contract.Archived = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
         await context.SaveChangesAsync();
 
         Assert.True(await service.UpdateForContract(
-            contractId, term.TermId, Rent(15000m, new DateTime(2026, 11, 1))));
+            contractId, term.TermId, Rent(15000m, new DateTime(2026, 11, 1)), userId: null));
         Assert.Equal(15000m, (await context.Terms.SingleAsync()).Value);
 
-        Assert.True(await service.DeleteForContract(contractId, term.TermId));
+        Assert.True(await service.DeleteForContract(contractId, term.TermId, userId: null));
         Assert.Empty(await context.Terms.ToListAsync());
     }
 
@@ -312,7 +312,7 @@ public class ContractTermServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
         var service = Terms(context);
-        await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)));
+        await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
 
         var contract = await context.Contracts.FirstAsync(c => c.ContractId == contractId);
         contract.Archived = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -337,15 +337,15 @@ public class ContractTermServiceTests
         var contractId = await SeedContractAsync(context, settings: null);
         var service = Terms(context, settings);
 
-        var first = await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 1, 1)));
-        await service.CreateForContract(contractId, Rent(14800m, new DateTime(2026, 7, 1)));
+        var first = await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 1, 1)), userId: null);
+        await service.CreateForContract(contractId, Rent(14800m, new DateTime(2026, 7, 1)), userId: null);
 
         var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
-            service.CreateForContract(contractId, Rent(15000m, new DateTime(2027, 1, 1))));
+            service.CreateForContract(contractId, Rent(15000m, new DateTime(2027, 1, 1)), userId: null));
         Assert.Contains("2", error.Message);
 
         // An update replaces a row rather than adding one, so it is row-count-neutral and exempt.
-        Assert.True(await service.UpdateForContract(contractId, first.TermId, Rent(14600m, new DateTime(2026, 1, 1))));
+        Assert.True(await service.UpdateForContract(contractId, first.TermId, Rent(14600m, new DateTime(2026, 1, 1)), userId: null));
     }
 
     [Fact]
@@ -389,8 +389,8 @@ public class ContractTermServiceTests
             EffectiveFrom = new DateTime(2026, 1, 1),
         });
 
-        Assert.False(await service.UpdateForContract(contractId, accountTerm.TermId, Rent(99m, new DateTime(2026, 1, 1))));
-        Assert.False(await service.DeleteForContract(contractId, accountTerm.TermId));
+        Assert.False(await service.UpdateForContract(contractId, accountTerm.TermId, Rent(99m, new DateTime(2026, 1, 1)), userId: null));
+        Assert.False(await service.DeleteForContract(contractId, accountTerm.TermId, userId: null));
 
         var row = await context.Terms.SingleAsync(t => t.TermId == accountTerm.TermId);
         Assert.Equal(4m, row.Value);
@@ -405,10 +405,10 @@ public class ContractTermServiceTests
         var second = await SeedContractAsync(context);
         var service = Terms(context);
 
-        var term = await service.CreateForContract(first, Rent(14500m, new DateTime(2026, 10, 1)));
+        var term = await service.CreateForContract(first, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
 
-        Assert.False(await service.UpdateForContract(second, term.TermId, Rent(99m, new DateTime(2026, 10, 1))));
-        Assert.False(await service.DeleteForContract(second, term.TermId));
+        Assert.False(await service.UpdateForContract(second, term.TermId, Rent(99m, new DateTime(2026, 10, 1)), userId: null));
+        Assert.False(await service.DeleteForContract(second, term.TermId, userId: null));
         Assert.Equal(14500m, (await context.Terms.SingleAsync()).Value);
     }
 
@@ -420,7 +420,7 @@ public class ContractTermServiceTests
         var accountId = await SeedAccountAsync(context);
         var service = Terms(context);
 
-        var term = await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)));
+        var term = await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
 
         Assert.False(await service.Update(accountId, term.TermId, Rent(99m, new DateTime(2026, 10, 1))));
         Assert.False(await service.Delete(accountId, term.TermId));
@@ -436,10 +436,10 @@ public class ContractTermServiceTests
         var contractId = await SeedContractAsync(context);
         var service = Terms(context);
 
-        await service.CreateForContract(contractId, Rent(14000m, new DateTime(2024, 1, 1)));
-        await service.CreateForContract(contractId, Rent(14500m, new DateTime(2025, 1, 1)));
-        await service.CreateForContract(contractId, Rent(99999m, DateTime.UtcNow.Date.AddYears(5)));
-        await service.CreateForContract(contractId, Rent(450m, new DateTime(2025, 1, 1), label: "Service charge"));
+        await service.CreateForContract(contractId, Rent(14000m, new DateTime(2024, 1, 1)), userId: null);
+        await service.CreateForContract(contractId, Rent(14500m, new DateTime(2025, 1, 1)), userId: null);
+        await service.CreateForContract(contractId, Rent(99999m, DateTime.UtcNow.Date.AddYears(5)), userId: null);
+        await service.CreateForContract(contractId, Rent(450m, new DateTime(2025, 1, 1), label: "Service charge"), userId: null);
 
         var current = (await service.GetContractCurrent(contractId))!;
 
@@ -456,13 +456,13 @@ public class ContractTermServiceTests
         var service = Terms(context);
         var date = new DateTime(2026, 10, 1);
 
-        await service.CreateForContract(contractId, Rent(14500m, date));
+        await service.CreateForContract(contractId, Rent(14500m, date), userId: null);
 
         await Assert.ThrowsAsync<DomainConflictException>(() =>
-            service.CreateForContract(contractId, Rent(15000m, date, label: "  monthly   RENT  ")));
+            service.CreateForContract(contractId, Rent(15000m, date, label: "  monthly   RENT  "), userId: null));
 
         // A different label on the same date is a different series and is accepted.
-        await service.CreateForContract(contractId, Rent(450m, date, label: "Service charge"));
+        await service.CreateForContract(contractId, Rent(450m, date, label: "Service charge"), userId: null);
         Assert.Equal(2, (await service.GetContractHistory(contractId))!.Count);
     }
 
@@ -473,9 +473,9 @@ public class ContractTermServiceTests
         var contractId = await SeedContractAsync(context);
         var service = Terms(context);
 
-        await service.CreateForContract(contractId, Rent(14000m, new DateTime(2024, 1, 1)));
-        await service.CreateForContract(contractId, Rent(14500m, new DateTime(2025, 1, 1)));
-        await service.CreateForContract(contractId, InterestRate(0.05m, new DateTime(2026, 1, 1)));
+        await service.CreateForContract(contractId, Rent(14000m, new DateTime(2024, 1, 1)), userId: null);
+        await service.CreateForContract(contractId, Rent(14500m, new DateTime(2025, 1, 1)), userId: null);
+        await service.CreateForContract(contractId, InterestRate(0.05m, new DateTime(2026, 1, 1)), userId: null);
 
         var all = (await service.GetContractHistory(contractId))!;
         Assert.Equal([new DateTime(2026, 1, 1), new DateTime(2025, 1, 1), new DateTime(2024, 1, 1)],
@@ -520,7 +520,7 @@ public class ContractTermServiceTests
 
         // A fee requires a label.
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 1, 1), label: null)));
+            service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 1, 1), label: null), userId: null));
 
         // A rate refuses one.
         await Assert.ThrowsAsync<DomainValidationException>(() =>
@@ -531,7 +531,7 @@ public class ContractTermServiceTests
                 ValueUnit = TermValueUnit.Percentage,
                 Value = 0.05m,
                 EffectiveFrom = new DateTime(2026, 1, 1),
-            }));
+            }, userId: null));
     }
 
     [Fact]
@@ -543,11 +543,11 @@ public class ContractTermServiceTests
 
         // A percentage outside [-1, 1].
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.CreateForContract(contractId, InterestRate(1.5m, new DateTime(2026, 1, 1))));
+            service.CreateForContract(contractId, InterestRate(1.5m, new DateTime(2026, 1, 1)), userId: null));
 
         // A negative amount.
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.CreateForContract(contractId, Rent(-1m, new DateTime(2026, 1, 1))));
+            service.CreateForContract(contractId, Rent(-1m, new DateTime(2026, 1, 1)), userId: null));
 
         // An interval on a rate kind.
         await Assert.ThrowsAsync<DomainValidationException>(() =>
@@ -558,11 +558,11 @@ public class ContractTermServiceTests
                 Value = 0.05m,
                 Interval = Interval.Monthly,
                 EffectiveFrom = new DateTime(2026, 1, 1),
-            }));
+            }, userId: null));
 
         // An unsupported currency.
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.CreateForContract(contractId, Rent(1m, new DateTime(2026, 1, 1), currency: "XXX")));
+            service.CreateForContract(contractId, Rent(1m, new DateTime(2026, 1, 1), currency: "XXX"), userId: null));
     }
 
     [Fact]
@@ -571,7 +571,7 @@ public class ContractTermServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
 
-        var created = await Terms(context).CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)));
+        var created = await Terms(context).CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
 
         Assert.Equal(Interval.Monthly, created.Interval);
         Assert.Equal(TermIntervalCount.Min, created.IntervalCount);
@@ -583,9 +583,9 @@ public class ContractTermServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
         var service = Terms(context);
-        var term = await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)));
+        var term = await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
 
-        Assert.True(await service.UpdateForContract(contractId, term.TermId, Rent(15000m, new DateTime(2026, 10, 1))));
+        Assert.True(await service.UpdateForContract(contractId, term.TermId, Rent(15000m, new DateTime(2026, 10, 1)), userId: null));
 
         var row = await context.Terms.SingleAsync();
         Assert.Equal(term.TermId, row.TermId);
@@ -600,9 +600,9 @@ public class ContractTermServiceTests
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
         var service = Terms(context);
-        var term = await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)));
+        var term = await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
 
-        Assert.True(await service.DeleteForContract(contractId, term.TermId));
+        Assert.True(await service.DeleteForContract(contractId, term.TermId, userId: null));
 
         Assert.Empty(await context.Terms.ToListAsync());
         Assert.NotNull(await context.Contracts.FirstOrDefaultAsync(c => c.ContractId == contractId));

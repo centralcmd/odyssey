@@ -10,9 +10,13 @@ namespace Odyssey.Context;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Not an audit log.</b> Nothing writes an event automatically, no event is system-generated, and
-/// every event is editable and deletable by any <c>contracts.update</c> holder. Pausing, archiving or
-/// renewing a contract writes nothing here, and an event of type
+/// <b>Still not an audit log</b>, even though issue #154 made the server write some of these rows
+/// itself: every event is editable and deletable by any <c>contracts.update</c> holder, system-recorded
+/// ones included, so a row's presence is evidence that something happened and its absence is evidence
+/// of nothing. The non-editable record lives in the application log
+/// (<c>ContractService.LogStampWrite</c>, <c>LogPartyWrite</c>, <c>TermService.LogTermWrite</c>), which
+/// no endpoint can reach. <see cref="Source"/> is what tells the two kinds of row apart, and an event of
+/// type
 /// <see cref="ContractEventType.Terminated"/> does <b>not</b> move the contract's derived
 /// <c>ContractStatus</c> (issue #138 §4.2) — making a free-form log entry authoritative over derived
 /// state would let a typo change what the contract is.
@@ -45,6 +49,20 @@ public class ContractEvent
 
     [Required]
     public ContractEventType Type { get; set; } = ContractEventType.Other;
+
+    /// <summary>
+    /// How the row came into existence (issue #154): hand-written by a person, or recorded by the
+    /// server alongside a change it made. Defaults to <see cref="ContractEventSource.User"/>, which is
+    /// what every pre-#154 row is — nothing had ever written one automatically.
+    /// </summary>
+    /// <remarks>
+    /// Server-owned: no request DTO carries it, and <c>PUT …/events/{eventId}</c> leaves it alone,
+    /// exactly as it leaves <see cref="CreatedByUserId"/> and <see cref="CreatedAtUtc"/>. There is no
+    /// index — the <c>source</c> filter is applied inside the contract-scoped window the
+    /// <c>(ContractId, OccurredAt)</c> index already serves.
+    /// </remarks>
+    [Required]
+    public ContractEventSource Source { get; set; } = ContractEventSource.User;
 
     /// <summary>
     /// The short label — "Emailed landlord about the rent increase". Required for <b>every</b> type: a

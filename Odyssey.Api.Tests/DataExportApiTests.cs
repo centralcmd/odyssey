@@ -560,16 +560,74 @@ public class DataExportApiTests
         Assert.Equal("Chase this on the 21st.", contractEvent.GetProperty("notes").GetString());
         Assert.Equal((int)Odyssey.Dtos.Finance.ContractEventType.EmailSent, contractEvent.GetProperty("type").GetInt32());
         Assert.Equal("exporting-author", contractEvent.GetProperty("createdByUserId").GetString());
+        Assert.Equal(
+            (int)Odyssey.Dtos.Finance.ContractEventSource.User,
+            contractEvent.GetProperty("source").GetInt32());
 
         // The whole column set, so a field dropped from the projection fails here rather than going
         // unnoticed — the assertion the three named above cannot make on their own.
         Assert.Equal(
             new[]
             {
-                "contractEventId", "contractId", "type", "title", "description", "notes",
+                "contractEventId", "contractId", "type", "source", "title", "description", "notes",
                 "occurredAt", "createdByUserId", "createdAtUtc",
             }.Order(StringComparer.Ordinal),
             contractEvent.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Issue #154 AC 33 — a system-recorded event is <b>distinguishable</b> from a hand-written one in
+    /// the export.
+    /// </summary>
+    /// <remarks>
+    /// Its own test rather than an extra assertion above, because the property being pinned is the
+    /// <em>difference</em> between two rows, not the presence of one column. <c>ContractEventsQuery</c>
+    /// is a hand-written projection that enumerates every column explicitly, so a new column is omitted
+    /// by default rather than included by default, and <c>DataExportTableCoverageTests</c> reflects
+    /// over <c>DbSet</c>s rather than columns and would not catch it. The export would otherwise ship a
+    /// log in which the two kinds of line are indistinguishable — which is precisely the distinction
+    /// this feature exists to create.
+    /// </remarks>
+    [Fact]
+    public async Task Export_DistinguishesSystemRecordedContractEventsFromHandWrittenOnes()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        var contractId = await AddContractEventAsync(factory);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            context.ContractEvents.Add(new ContractEvent
+            {
+                ContractEventId = Guid.NewGuid(),
+                ContractId = contractId,
+                Type = Odyssey.Context.ContractEventType.Paused,
+                Source = Odyssey.Context.ContractEventSource.System,
+                Title = "Contract paused",
+                Description = "Suspended on 1 March 2026.",
+                OccurredAt = new DateTime(2026, 3, 1, 9, 0, 0, DateTimeKind.Utc),
+                CreatedByUserId = "exporting-author",
+                CreatedAtUtc = new DateTime(2026, 3, 1, 9, 0, 0, DateTimeKind.Utc),
+            });
+            await context.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+        using var document = await GetExportDocumentAsync(client);
+
+        var rows = document.RootElement
+            .GetProperty("databases").GetProperty("finance")
+            .GetProperty("contractEvents").EnumerateArray()
+            .ToDictionary(
+                row => (Odyssey.Dtos.Finance.ContractEventType)row.GetProperty("type").GetInt32(),
+                row => (Odyssey.Dtos.Finance.ContractEventSource)row.GetProperty("source").GetInt32());
+
+        Assert.Equal(
+            Odyssey.Dtos.Finance.ContractEventSource.User,
+            rows[Odyssey.Dtos.Finance.ContractEventType.EmailSent]);
+        Assert.Equal(
+            Odyssey.Dtos.Finance.ContractEventSource.System,
+            rows[Odyssey.Dtos.Finance.ContractEventType.Paused]);
     }
 
     private static async Task<Guid> AddContractEventAsync(WebApplicationFactory<Program> factory)

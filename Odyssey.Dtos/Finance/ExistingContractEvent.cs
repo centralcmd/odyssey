@@ -28,6 +28,14 @@ public sealed record ExistingContractEvent
 
     public ContractEventType Type { get; set; }
 
+    /// <summary>
+    /// How the row came into existence (issue #154): hand-written by a person, or recorded by the
+    /// server alongside a change it made. Read-only — there is no request DTO that carries it, so a
+    /// caller cannot forge a <see cref="ContractEventSource.System"/> row, and an edit does not change
+    /// it: a <c>System</c> row stays <c>System</c> after a <c>PUT</c>.
+    /// </summary>
+    public ContractEventSource Source { get; set; }
+
     public required string Title { get; set; }
 
     public string? Description { get; set; }

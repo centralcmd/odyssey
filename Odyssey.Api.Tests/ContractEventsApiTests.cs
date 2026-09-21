@@ -12,6 +12,7 @@ using Odyssey.Dtos.Finance;
 using Xunit;
 using ContextContractType = Odyssey.Context.ContractType;
 using ContractEventType = Odyssey.Dtos.Finance.ContractEventType;
+using ContractEventSource = Odyssey.Dtos.Finance.ContractEventSource;
 
 namespace Odyssey.Api.Tests;
 
@@ -619,6 +620,258 @@ public class ContractEventsApiTests
             .Select(p => p.Name)
             .ToList();
         Assert.Equal([nameof(ContractEvent.Contract)], navigations);
+    }
+
+
+    // ── Automation: the source field and the recorded rows (issue #154) ──────
+
+    /// <summary>
+    /// AC 21 — a body carrying <c>"source": 1</c> comes back <c>User</c>. The field is not bound and
+    /// cannot be over-posted, because <see cref="NewContractEvent"/> does not declare it at all —
+    /// forging a <c>System</c> row is a compile-time impossibility rather than a validation rule
+    /// (#154 §7.4). Asserted over HTTP because model binding is where an over-post would actually
+    /// happen.
+    /// </summary>
+    [Fact]
+    public async Task Post_WithASourceInTheBody_IgnoresIt_AndReturnsUser()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+
+        var response = await client.PostAsJsonAsync(Events(contractId), new
+        {
+            type = (int)ContractEventType.EmailSent,
+            title = "Hand-written",
+            occurredAt = new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
+            source = 1,
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<ExistingContractEvent>();
+        Assert.Equal(ContractEventSource.User, created!.Source);
+    }
+
+    /// <summary>
+    /// AC 22 — editing a system event replaces every editable field and leaves <c>source</c> alone.
+    /// <c>Source</c> records how the row came to exist, which an edit does not change; flipping it to
+    /// <c>User</c> would make the log's one provenance signal depend on whether anyone had since fixed
+    /// a typo, and would erase the fact that the transition really did occur.
+    /// </summary>
+    [Fact]
+    public async Task Put_OnASystemEvent_ReplacesTheBody_AndKeepsSourceSystem()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+        var recorded = await RecordASystemEventAsync(client, contractId);
+
+        var response = await client.PutAsJsonAsync(
+            $"{Events(contractId)}/{recorded.ContractEventId}", Update("Shortened by hand"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await response.Content.ReadFromJsonAsync<ExistingContractEvent>();
+        Assert.Equal(ContractEventSource.System, updated!.Source);
+        Assert.Equal("Shortened by hand", updated.Title);
+        Assert.Equal(ContractEventType.Amended, updated.Type);
+        // Full replacement: an omitted description and note CLEAR, on a system row exactly as on any
+        // other. Nothing regenerates the server's original prose.
+        Assert.Null(updated.Description);
+        Assert.Null(updated.Notes);
+    }
+
+    /// <summary>AC 23 — a system event is deletable like any other. It is not an audit record.</summary>
+    [Fact]
+    public async Task Delete_OnASystemEvent_Returns204AndRemovesIt()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+        var recorded = await RecordASystemEventAsync(client, contractId);
+
+        var response = await client.DeleteAsync($"{Events(contractId)}/{recorded.ContractEventId}");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var remaining = await client.GetFromJsonAsync<PagedResult<ExistingContractEvent>>(Events(contractId));
+        Assert.DoesNotContain(remaining!.Items, e => e.ContractEventId == recorded.ContractEventId);
+    }
+
+    /// <summary>AC 24 — the <c>source</c> filter, both values, omitted, and an unbindable one.</summary>
+    [Fact]
+    public async Task Get_WithASourceFilter_ReturnsOnlyThatKind_AndRejectsNonsense()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+        await RecordASystemEventAsync(client, contractId);
+        await PostEventAsync(client, contractId);
+
+        var both = await client.GetFromJsonAsync<PagedResult<ExistingContractEvent>>(Events(contractId));
+        Assert.Equal(2, both!.TotalCount);
+
+        var system = await client.GetFromJsonAsync<PagedResult<ExistingContractEvent>>(
+            $"{Events(contractId)}?source=System");
+        Assert.All(system!.Items, e => Assert.Equal(ContractEventSource.System, e.Source));
+        Assert.Single(system.Items);
+
+        var user = await client.GetFromJsonAsync<PagedResult<ExistingContractEvent>>(
+            $"{Events(contractId)}?source=User");
+        Assert.All(user!.Items, e => Assert.Equal(ContractEventSource.User, e.Source));
+        Assert.Single(user.Items);
+
+        // An unbindable value is a 400 from [ApiController] model validation, like every other enum
+        // filter on this surface — never a silently-ignored filter returning everything.
+        var rejected = await client.GetAsync($"{Events(contractId)}?source=Nonsense");
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+    }
+
+    /// <summary>
+    /// AC 17 — a <c>PriceChanged</c> event recorded by a term write is attributed to the CALLER, not
+    /// to a service identity. Without the §5.6 plumbing every one would read "Unknown user", which is
+    /// indistinguishable from a deleted author — so the defect would look like correct behaviour.
+    /// Asserted for all three verbs, over HTTP, because the claim is about the controller's plumbing.
+    /// </summary>
+    [Fact]
+    public async Task TermWrites_RecordEventsAttributedToTheCallingUser()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        await factory.SeedActorUserAsync(displayName: "Jane Doe");
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+
+        var termId = await CreateTermAsync(client, contractId, 14500m);
+        await AssertLatestPriceChangeAttributedAsync(client, contractId, "Jane Doe");
+
+        (await client.PutAsJsonAsync(
+            $"{Path}/{contractId}/terms/{termId}", NewTermBody(15000m))).EnsureSuccessStatusCode();
+        await AssertLatestPriceChangeAttributedAsync(client, contractId, "Jane Doe");
+
+        (await client.DeleteAsync($"{Path}/{contractId}/terms/{termId}")).EnsureSuccessStatusCode();
+        await AssertLatestPriceChangeAttributedAsync(client, contractId, "Jane Doe");
+    }
+
+    /// <summary>
+    /// AC 27 — the gating claims are unchanged. A caller holding every claim in the vocabulary
+    /// <em>except</em> <c>contracts.read</c> and <c>contracts.update</c> cannot read the log that now
+    /// contains recorded rows, and cannot write to it.
+    /// </summary>
+    [Fact]
+    public async Task SystemEvents_AreGatedByTheSameTwoClaimsAsEveryOtherRow()
+    {
+        await using var owner = await NewFactoryAsync(ReadWrite);
+        using var ownerClient = owner.CreateClient();
+        var contractId = await CreateContractAsync(ownerClient);
+        var recorded = await RecordASystemEventAsync(ownerClient, contractId);
+
+        await using var stranger = new ApiFactory(EverythingButContractReadAndUpdate, sharingStoreWith: owner);
+        using var strangerClient = stranger.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await strangerClient.GetAsync(Events(contractId))).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await strangerClient.PutAsJsonAsync(
+                $"{Events(contractId)}/{recorded.ContractEventId}", Update())).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await strangerClient.DeleteAsync($"{Events(contractId)}/{recorded.ContractEventId}")).StatusCode);
+    }
+
+    /// <summary>
+    /// AC 28 — a system event whose author has since been deleted still reads back, as "Unknown user".
+    /// <c>CreatedByUserId</c> is <c>SET NULL</c>, so the shared record survives its author's departure.
+    /// </summary>
+    [Fact]
+    public async Task ASystemEventWhoseAuthorIsGone_ReadsBackAsUnknownUser()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        await factory.SeedActorUserAsync(displayName: "Jane Doe");
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+        var recorded = await RecordASystemEventAsync(client, contractId);
+        Assert.Equal("Jane Doe", recorded.CreatedBy);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var row = await context.ContractEvents.FirstAsync(e => e.ContractEventId == recorded.ContractEventId);
+            row.CreatedByUserId = null;
+            await context.SaveChangesAsync();
+        }
+
+        var reread = await client.GetFromJsonAsync<PagedResult<ExistingContractEvent>>(Events(contractId));
+        var still = Assert.Single(reread!.Items, e => e.ContractEventId == recorded.ContractEventId);
+        Assert.Equal("Unknown user", still.CreatedBy);
+        Assert.Equal(ContractEventSource.System, still.Source);
+    }
+
+    // ── Automation helpers ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Makes the server record one event, by doing something to the contract rather than by inserting
+    /// a row: pausing it. That is what makes these tests exercise the feature rather than the fixture.
+    /// </summary>
+    private static async Task<ExistingContractEvent> RecordASystemEventAsync(HttpClient client, Guid contractId)
+    {
+        // Ready + Signed first, so the contract derives Active and EnsurePausable permits the pause.
+        // Those two writes record their own transitions, which is why the pause is issued last and the
+        // Paused row is the one selected below.
+        (await client.PutAsJsonAsync($"{Path}/{contractId}", ContractWrite(
+            ready: new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc),
+            signed: new DateTime(2026, 1, 3, 0, 0, 0, DateTimeKind.Utc)))).EnsureSuccessStatusCode();
+        (await client.PutAsJsonAsync($"{Path}/{contractId}", ContractWrite(
+            ready: new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc),
+            signed: new DateTime(2026, 1, 3, 0, 0, 0, DateTimeKind.Utc),
+            isPaused: true))).EnsureSuccessStatusCode();
+
+        // Then remove the other recorded rows, so a caller of this helper starts from exactly one.
+        var page = await client.GetFromJsonAsync<PagedResult<ExistingContractEvent>>(Events(contractId));
+        var paused = page!.Items.Single(e => e.Type == ContractEventType.Paused);
+        foreach (var other in page.Items.Where(e => e.ContractEventId != paused.ContractEventId))
+        {
+            (await client.DeleteAsync($"{Events(contractId)}/{other.ContractEventId}")).EnsureSuccessStatusCode();
+        }
+
+        Assert.Equal(ContractEventSource.System, paused.Source);
+        return paused;
+    }
+
+    private static UpdateContract ContractWrite(
+        DateTime? ready = null, DateTime? signed = null, bool isPaused = false) => new()
+    {
+        Name = "Maple St lease",
+        Type = Odyssey.Dtos.Finance.ContractType.Rental,
+        StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        IsPaused = isPaused,
+        Ready = ready,
+        Signed = signed,
+    };
+
+    private static NewTerm NewTermBody(decimal value) => new()
+    {
+        TermKind = Odyssey.Dtos.Finance.TermKind.Fee,
+        Label = "Monthly rent",
+        ValueUnit = Odyssey.Dtos.Finance.TermValueUnit.Amount,
+        Value = value,
+        CurrencyCode = "USD",
+        Interval = Odyssey.Dtos.Finance.Interval.Monthly,
+        EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+    };
+
+    private static async Task<Guid> CreateTermAsync(HttpClient client, Guid contractId, decimal value)
+    {
+        var response = await client.PostAsJsonAsync($"{Path}/{contractId}/terms", NewTermBody(value));
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<ExistingTerm>())!.TermId;
+    }
+
+    private static async Task AssertLatestPriceChangeAttributedAsync(
+        HttpClient client, Guid contractId, string expected)
+    {
+        var page = await client.GetFromJsonAsync<PagedResult<ExistingContractEvent>>(
+            $"{Events(contractId)}?types={(int)ContractEventType.PriceChanged}&sortBy=CreatedAtUtc&sortDir=desc");
+        var latest = page!.Items[0];
+        Assert.Equal(ContractEventSource.System, latest.Source);
+        Assert.Equal(expected, latest.CreatedBy);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

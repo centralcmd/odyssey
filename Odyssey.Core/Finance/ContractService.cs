@@ -63,6 +63,8 @@ public class ContractService
 
     private DateTime Today => timeProvider.GetUtcNow().UtcDateTime.Date;
 
+    private DateTime UtcNow => timeProvider.GetUtcNow().UtcDateTime;
+
     // ── Contracts ────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -733,9 +735,25 @@ public class ContractService
         };
 
         context.Contracts.Add(contract);
+
+        // The same detector PUT runs, fired against an all-null "before" (issue #154 §8.1). That is why
+        // Non-Goal 6 is scoped to the ACT of creating: a contract entered already-signed records its
+        // Ready and Signed TRANSITIONS here, while nothing records the creation itself. Staged before
+        // the save, so the contract and its events go out together and the log can neither miss a
+        // transition that happened nor claim one that did not (§8.6).
+        var nowUtc = UtcNow;
+        var stamps = new ContractStamps(contract.Paused, contract.Archived, ready, signed);
+        ContractEventRecorder.StageAll(
+            context,
+            contract.ContractId,
+            DetectStampTransitions(ContractStamps.None, stamps, nowUtc),
+            userId,
+            nowUtc);
+
         await context.SaveChangesAsync(cancellationToken);
 
-        LogSignatureWrites(contract.ContractId, previousReady: null, previousSigned: null, ready, signed, userId);
+        // After the save: a log line describes a committed fact (§8.6).
+        LogStampWrites(contract.ContractId, ContractStamps.None, stamps, userId);
 
         var loaded = await LoadWithDetails(contract.ContractId, cancellationToken);
         return await ToDto(loaded!, Today, cancellationToken);
@@ -765,8 +783,10 @@ public class ContractService
         // Guarded before anything is written back, so "stored" below still means "as of before this
         // call".
         var (ready, signed) = NormalizeSignature(request.Ready, request.Signed);
-        var previousReady = contract.Ready;
-        var previousSigned = contract.Signed;
+        // All four stamps as they stand, captured before anything is written back — the detector
+        // compares this against what the request leaves behind (issue #154 §8.1). The two that were
+        // already captured for the log line are simply the two the pattern started with.
+        var previousStamps = new ContractStamps(contract.Paused, contract.Archived, contract.Ready, contract.Signed);
 
         contract.Name = request.Name;
         contract.Type = request.Type.Adapt<ContextContractType>();
@@ -804,9 +824,16 @@ public class ContractService
         contract.Ready = ready;
         contract.Signed = signed;
 
+        var nowUtc = UtcNow;
+        var stamps = new ContractStamps(contract.Paused, contract.Archived, contract.Ready, contract.Signed);
+        // At most four extra INSERTs in the existing single save, and zero extra queries: the before
+        // values were read off the already-loaded tracked entity.
+        ContractEventRecorder.StageAll(
+            context, id, DetectStampTransitions(previousStamps, stamps, nowUtc), userId, nowUtc);
+
         await context.SaveChangesAsync(cancellationToken);
 
-        LogSignatureWrites(id, previousReady, previousSigned, ready, signed, userId);
+        LogStampWrites(id, previousStamps, stamps, userId);
 
         var reloaded = await LoadWithDetails(id, cancellationToken);
         return await ToDto(reloaded!, Today, cancellationToken);
@@ -882,6 +909,14 @@ public class ContractService
         };
 
         context.ContractParties.Add(party);
+
+        // The event carries no link to the row being inserted (issue #138 Non-Goal 5) — only the role —
+        // so there is nothing to wait for: it is staged in the same change tracker as the insert and
+        // both go out in one save. No second round trip and no post-save write.
+        var addedAt = UtcNow;
+        ContractEventRecorder.Stage(
+            context, contractId, ContractEventCatalogue.PartyAdded(role, addedAt), userId, addedAt);
+
         await context.SaveChangesAsync(cancellationToken);
 
         LogPartyWrite("added", party, previousRole: null, userId);
@@ -938,11 +973,29 @@ public class ContractService
         await EnsureNotDuplicateParty(contractId, request, role, excludingPartyId: partyId, cancellationToken);
 
         var previousRole = party.Role;
+        // Whether the link is being REPOINTED, judged before the row is overwritten. The row is updated
+        // in place and stays one party (issue #121), but from the agreement's point of view one party
+        // left and another joined — which is exactly the change a reader of the log needs to see, and
+        // which would otherwise let a party vanish from the tiles with a silent log (issue #154 §8.2).
+        var targetChanged = party.AccountId != request.AccountId || party.ContactId != request.ContactId;
+
         party.AccountId = request.AccountId;
         party.ContactId = request.ContactId;
         party.Role = role;
         party.FromDate = fromDate;
         party.ToDate = toDate;
+
+        if (targetChanged)
+        {
+            // Ordered removed-then-added so it reads in the order it happened. A write that changes only
+            // the role and/or the dates records NOTHING here: that describes HOW an existing party is
+            // described, not WHO is party to the agreement, and LogPartyWrite already covers it.
+            var changedAt = UtcNow;
+            ContractEventRecorder.Stage(
+                context, contractId, ContractEventCatalogue.PartyRemoved(previousRole, changedAt), userId, changedAt);
+            ContractEventRecorder.Stage(
+                context, contractId, ContractEventCatalogue.PartyAdded(role, changedAt), userId, changedAt);
+        }
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -961,6 +1014,11 @@ public class ContractService
         }
 
         context.ContractParties.Remove(party);
+
+        var removedAt = UtcNow;
+        ContractEventRecorder.Stage(
+            context, contractId, ContractEventCatalogue.PartyRemoved(party.Role, removedAt), userId, removedAt);
+
         await context.SaveChangesAsync(cancellationToken);
 
         // A detach has no role AFTER — the row is gone. Writing Unspecified there would make the line
@@ -1660,36 +1718,116 @@ public class ContractService
         return (readyUtc, signedUtc);
     }
 
+    // ── Stamp transitions: detection, recording and the log safety net (issue #154) ───
+
     /// <summary>
-    /// One structured <c>Information</c> line per <c>Ready</c>/<c>Signed</c> transition (issue #145
-    /// §7.7), mirroring <see cref="LogPartyWrite"/> and for the same reason: <c>PUT</c> is a full
-    /// replacement in which an omitted stamp silently clears, so the line is the record of who cleared
-    /// it. A write that changes neither stamp emits nothing.
+    /// A contract's four lifecycle stamps as one value, so "before" and "after" are one thing each
+    /// rather than eight loose locals threaded through three methods.
+    /// </summary>
+    private sealed record ContractStamps(DateTime? Paused, DateTime? Archived, DateTime? Ready, DateTime? Signed)
+    {
+        /// <summary>
+        /// The all-null "before" a <c>POST</c> is judged against — a contract that did not exist held
+        /// none of the four stamps.
+        /// </summary>
+        public static readonly ContractStamps None = new(null, null, null, null);
+    }
+
+    /// <summary>
+    /// Compares the four stamps as they stood against the four as the request leaves them and emits one
+    /// descriptor per changed stamp — at most four (issue #154 §8.1).
     /// </summary>
     /// <remarks>
-    /// Neither field carries a <c>MarkedReadyByUserId</c> / <c>SignedRecordedByUserId</c> attribution
-    /// COLUMN, deliberately: no contract field carries attribution today, and any holder of
+    /// <para>
+    /// <b>It fires on the CHANGE, never on the value</b>, and three failure modes follow from that.
+    /// A replayed or idempotent <c>PUT</c> writes nothing, because <c>Paused</c> and <c>Archived</c>
+    /// preserve their original stamp on a repeated write and so compare equal. A <b>re-date</b> —
+    /// non-null to a <em>different</em> non-null, which only the two caller-supplied stamps can
+    /// express — is a correction to the record rather than a signing, and writes nothing either.
+    /// And several transitions in one request each write their own event.
+    /// </para>
+    /// <para>
+    /// <b>The moment is resolved per transition</b> (§8.4). A server-generated stamp
+    /// (<c>Paused</c>, <c>Archived</c>) carries its own value, which <em>is</em> the server clock at
+    /// that write. A caller-supplied one (<c>Ready</c>, <c>Signed</c>) is clamped to
+    /// <c>min(stamp, now)</c>: the stamp is validated at <b>date</b> granularity, so a contract signed
+    /// "today" may carry an instant hours ahead of the server clock, and writing it raw would produce
+    /// an event that <c>ContractEventService</c>'s own instant-plus-tolerance bound would reject.
+    /// Taking <c>now</c> unconditionally is not the fix — a contract signed last March must date its
+    /// event last March. Every <b>cleared</b> stamp takes the server clock; there is no stamp left to
+    /// read.
+    /// </para>
+    /// </remarks>
+    private static IReadOnlyList<TransitionDescriptor> DetectStampTransitions(
+        ContractStamps before, ContractStamps after, DateTime nowUtc)
+    {
+        var descriptors = new List<TransitionDescriptor>(4);
+
+        Detect(ContractStamp.Paused, before.Paused, after.Paused);
+        Detect(ContractStamp.Archived, before.Archived, after.Archived);
+        Detect(ContractStamp.Ready, before.Ready, after.Ready);
+        Detect(ContractStamp.Signed, before.Signed, after.Signed);
+
+        return descriptors;
+
+        void Detect(ContractStamp stamp, DateTime? was, DateTime? now)
+        {
+            if (was is null && now is { } set)
+            {
+                descriptors.Add(ContractEventCatalogue.Stamp(stamp, set: true, OccurredAtForSet(stamp, set, nowUtc)));
+            }
+            else if (was is not null && now is null)
+            {
+                descriptors.Add(ContractEventCatalogue.Stamp(stamp, set: false, nowUtc));
+            }
+        }
+    }
+
+    private static DateTime OccurredAtForSet(ContractStamp stamp, DateTime stampValue, DateTime nowUtc) =>
+        stamp switch
+        {
+            ContractStamp.Paused or ContractStamp.Archived => stampValue,
+            _ => stampValue < nowUtc ? stampValue : nowUtc,
+        };
+
+    /// <summary>
+    /// One structured <c>Information</c> line per stamp transition (issue #145 §7.7, widened to all
+    /// four stamps by issue #154 §8.8). A write that changes no stamp emits nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the safety net under an editable log.</b> Every <c>ContractEvent</c> issue #154
+    /// records is editable and deletable by any <c>contracts.update</c> holder, so a row's presence is
+    /// evidence that something happened and its absence is evidence of nothing. These lines go to the
+    /// application log rather than the database, which no endpoint can edit or delete — so pausing a
+    /// contract and then deleting the event that recorded it still leaves a trace. Before #154 this
+    /// covered the two <em>signature</em> stamps only, which would have left exactly that hole under
+    /// <c>Paused</c> and <c>Archived</c>.
+    /// </para>
+    /// <para>
+    /// Neither signature field carries a <c>MarkedReadyByUserId</c> / <c>SignedRecordedByUserId</c>
+    /// attribution COLUMN, deliberately: no contract field carries attribution today, and any holder of
     /// <c>contracts.update</c> can already rewrite the name, counterparty, dates and price history
     /// unattributed. The trigger to revisit is stated in issue #145 §7.7 — if contract mutations
     /// become audited, or if <c>Signed</c> is ever treated as evidence of a legal fact rather than a
     /// record-keeping convenience, BOTH fields take <c>SET NULL</c> FK columns in the same change.
-    ///
+    /// </para>
     /// <para>
     /// Every value is an opaque id, a fixed literal or a timestamp — never a contract name, a party
     /// name or any free text — so the line names rows a reader would still need <c>contracts.read</c>
     /// to resolve, exactly as the party line's does, and carries nothing a forged log line could use.
     /// </para>
     /// </remarks>
-    private void LogSignatureWrites(
-        Guid contractId, DateTime? previousReady, DateTime? previousSigned,
-        DateTime? ready, DateTime? signed, string? userId)
+    private void LogStampWrites(Guid contractId, ContractStamps before, ContractStamps after, string? userId)
     {
-        LogSignatureWrite(contractId, nameof(Contract.Ready), previousReady, ready, userId);
-        LogSignatureWrite(contractId, nameof(Contract.Signed), previousSigned, signed, userId);
+        LogStampWrite(contractId, ContractStamp.Paused, before.Paused, after.Paused, userId);
+        LogStampWrite(contractId, ContractStamp.Archived, before.Archived, after.Archived, userId);
+        LogStampWrite(contractId, ContractStamp.Ready, before.Ready, after.Ready, userId);
+        LogStampWrite(contractId, ContractStamp.Signed, before.Signed, after.Signed, userId);
     }
 
-    private void LogSignatureWrite(
-        Guid contractId, string stamp, DateTime? before, DateTime? after, string? userId)
+    private void LogStampWrite(
+        Guid contractId, ContractStamp stamp, DateTime? before, DateTime? after, string? userId)
     {
         if (Nullable.Equals(before, after))
         {
@@ -1697,13 +1835,17 @@ public class ContractService
         }
 
         logger.LogInformation(
-            "Contract signature {Stamp} {Action}: contract {ContractId}, at {StampValue}, by user {UserId}.",
+            "Contract stamp {Stamp} {Action}: contract {ContractId}, {Before} -> {After}, by user {UserId}.",
             stamp,
             after is null ? "cleared" : "set",
             contractId,
-            after,
+            before?.ToString("O") ?? NoValue,
+            after?.ToString("O") ?? NoValue,
             userId ?? "(unknown)");
     }
+
+    /// <summary>What a log slot reads when the stamp is absent on that side of the write.</summary>
+    private const string NoValue = "(none)";
 
     // The two target 404s carry the field key of the id that was sent; the whole-request 404s (contract
     // gone, party not on this contract) deliberately carry none, which is how a client tells the three
