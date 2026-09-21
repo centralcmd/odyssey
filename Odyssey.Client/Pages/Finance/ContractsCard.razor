@@ -363,10 +363,17 @@
             <span class="material-icons" aria-hidden="true">groups</span><span>@name</span>
         </span>;
 
-    // The "money in" marker on a collapsed row. A WORD in the income hue and no glyph, the same
-    // treatment .trm-dir gives a term's direction everywhere else: an arrow beside a figure reads as
-    // that figure rising or falling, which is not what direction means. The word is the carrier, so
-    // the row still reads in greyscale.
+    // The "money in" marker on a collapsed row. A WORD and no glyph, in .trm-dir's quiet caption with
+    // NO hue — the treatment that class carries everywhere else, because an arrow beside a figure
+    // reads as that figure rising or falling, and because the FIGURE is what colours a direction
+    // while the word carries its meaning. There is no figure on a collapsed row, so the word is the
+    // whole carrier and the row reads the same in greyscale.
+    //
+    // The `in` class is inert: neither this stylesheet nor the design system's own defines a
+    // .trm-dir.in rule. It is carried because the design system's Contracts.jsx emits exactly this
+    // class list, so a later export that does give the modifier a rule lands without a markup change
+    // here. Stated rather than left to be discovered, so nobody "restores" a colour that was never
+    // meant to be there.
     private RenderFragment IncomingMeta() =>
         @<span class="trm-dir in">Money in</span>;
 

@@ -659,7 +659,6 @@ public class ContractTermsApiTests
         return page!.Items.Single(i => i.ContractId == contractId).HasIncomingTerm;
     }
 
-
     /// <summary>
     /// A factory whose database has actually been created. The reference-data currencies are a
     /// <c>HasData</c> seed on the model, and the InMemory provider materialises a seed only on

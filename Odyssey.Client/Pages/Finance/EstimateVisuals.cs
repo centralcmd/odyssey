@@ -1,5 +1,4 @@
 using Odyssey.Client.Components;
-using System.Globalization;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
