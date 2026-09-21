@@ -320,17 +320,22 @@ public class ContactAliasIntegrationTests(MariaDbFixture fixture)
     /// </summary>
     private sealed class NoopContactReferenceGuard : Core.Finance.IContactReferenceGuard
     {
-        public Task<Core.Finance.InsuranceLinkBlockers> GetInsuranceLinkBlockersAsync(Guid contactId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Core.Finance.InsuranceLinkBlockers.None);
+        public Task<Core.Finance.ContactDeleteBlockers> GetDeleteBlockersAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Core.Finance.ContactDeleteBlockers.None);
 
-        public Task<bool> IsReferencedByInsuranceAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+        public Task<bool> IsReferencedByRestrictedLinkAsync(Guid contactId, CancellationToken cancellationToken = default) =>
             Task.FromResult(false);
 
         public Task ClearAndCascadeReferencesAsync(Guid contactId, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 
-        public Task<Dtos.Finance.DetachedInsuranceLinks> StageInsuranceLinkDetachAsync(Guid contactId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new Dtos.Finance.DetachedInsuranceLinks());
+        public Task<Core.Finance.ContactLinkDetachPlan> ReadLinkDetachPlanAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Core.Finance.ContactLinkDetachPlan
+            {
+                Insurers = [], InsuredContacts = [], Beneficiaries = [], ContractBeneficiaries = [],
+            });
+
+        public Dtos.Finance.DetachedInsuranceLinks StageLinkDetach(Core.Finance.ContactLinkDetachPlan plan) => new();
     }
 
     private static async Task<Guid> SeedContactAsync(

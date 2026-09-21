@@ -246,8 +246,8 @@ public static class OdsTypeRegistries
     ];
 
     /// <summary>
-    /// ContractType — Employment · Service · Rental · Insurance · Subscription · Purchase ·
-    /// Membership · Other (issue #174). Mirrors the DS <c>contractTypes</c> registry and the C#
+    /// ContractType — Employment · Service · Rental · Insurance · Subscription · Purchase · Loan ·
+    /// Membership · Other (issues #174, #157). Mirrors the DS <c>contractTypes</c> registry and the C#
     /// <c>ContractType</c> enum.
     /// </summary>
     /// <remarks>
@@ -265,29 +265,91 @@ public static class OdsTypeRegistries
         new() { Key = "Insurance",    Label = "Insurance",    Icon = "shield",              Color = "oklch(0.75 0.14 290)", Soft = "oklch(0.75 0.14 290 / 0.16)" },
         new() { Key = "Subscription", Label = "Subscription", Icon = "autorenew",           Color = "oklch(0.76 0.14 320)", Soft = "oklch(0.76 0.14 320 / 0.16)" },
         new() { Key = "Purchase",     Label = "Purchase",     Icon = "shopping_bag",        Color = "oklch(0.78 0.14 140)", Soft = "oklch(0.78 0.14 140 / 0.16)" },
+        // Loan carries ordinal 8 and reads HERE, after Purchase — a mortgage was filed as a Purchase
+        // before this member existed. Its hue is the one wide gap left on the wheel, between Rental
+        // (60) and Purchase (140), clearing both by 40 degrees at the same lightness and chroma as its
+        // neighbours (the design system's contrast pass, not a value invented here).
+        new() { Key = "Loan",         Label = "Loan",         Icon = "account_balance",     Color = "oklch(0.77 0.13 100)", Soft = "oklch(0.77 0.13 100 / 0.16)" },
         new() { Key = "Membership",   Label = "Membership",   Icon = "card_membership",     Color = "oklch(0.77 0.13 20)",  Soft = "oklch(0.77 0.13 20 / 0.16)" },
         new() { Key = "Other",        Label = "Other",        Icon = "description",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
     /// <summary>
-    /// ContractPartyRole — what a linked record DOES in the agreement (issue #121). Mirrors the DS
-    /// <c>contractPartyRoles</c> registry and the C# <c>ContractPartyRole</c> enum, in ORDINAL order.
+    /// ContractPartyRole — what a linked record DOES in the agreement (issues #121, #157). Mirrors the
+    /// DS <c>contractPartyRoles</c> registry and the C# <c>ContractPartyRole</c> enum, in ORDINAL
+    /// order. <b>Fifteen live members</b>; ordinals 0 (<c>Unspecified</c>) and 5
+    /// (<c>ServiceProvider</c>) are retired holes and never reappear here.
     /// </summary>
     /// <remarks>
-    /// <c>Unspecified</c> stays neutral so an unstated role never reads as a category, and it is a
-    /// real, selectable member rather than a placeholder: "nobody has said" is a different statement
-    /// from <c>Other</c>'s "somebody looked and none of these fit".
+    /// <b>Which of these a picker may offer depends on the contract's TYPE</b> — see
+    /// <see cref="ContractPartyRolesFor"/>, which reads the shared
+    /// <c>Odyssey.Dtos.Finance.ContractPartyRoleMatrix</c>. This list is the full vocabulary, used for
+    /// rendering a role that already exists; it is not what the picker offers.
+    ///
+    /// <para>
+    /// <c>Broker</c> is deliberately low-chroma: it is legal on every type and should not read as a
+    /// category of its own. With <c>Unspecified</c> retired there is no "no role stated" member at all
+    /// — a role is required on every write, and the only remaining unset role is a legacy row, drawn
+    /// as an absence by <c>PartyRoleLabel</c>.
+    /// </para>
     /// </remarks>
     public static readonly IReadOnlyList<OdsTypeOption> ContractPartyRoles =
     [
-        new() { Key = "Unspecified",     Label = "Unspecified",      Icon = "help_outline",        Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-        new() { Key = "Employee",        Label = "Employee",         Icon = "badge",               Color = "oklch(0.76 0.13 265)", Soft = "oklch(0.76 0.13 265 / 0.16)" },
-        new() { Key = "Employer",        Label = "Employer",         Icon = "corporate_fare",      Color = "oklch(0.75 0.14 300)", Soft = "oklch(0.75 0.14 300 / 0.16)" },
-        new() { Key = "Buyer",           Label = "Buyer",            Icon = "shopping_bag",        Color = "oklch(0.79 0.14 145)", Soft = "oklch(0.79 0.14 145 / 0.16)" },
-        new() { Key = "Seller",          Label = "Seller",           Icon = "sell",                Color = "oklch(0.80 0.13 90)",  Soft = "oklch(0.80 0.13 90 / 0.16)" },
-        new() { Key = "ServiceProvider", Label = "Service provider", Icon = "home_repair_service", Color = "oklch(0.78 0.14 195)", Soft = "oklch(0.78 0.14 195 / 0.16)" },
-        new() { Key = "Other",           Label = "Other",            Icon = "more_horiz",          Color = "oklch(0.77 0.10 25)",  Soft = "oklch(0.77 0.10 25 / 0.16)" },
+        new() { Key = "Employee",     Label = "Employee",     Icon = "badge",              Color = "oklch(0.76 0.13 265)", Soft = "oklch(0.76 0.13 265 / 0.16)" },
+        new() { Key = "Employer",     Label = "Employer",     Icon = "corporate_fare",     Color = "oklch(0.75 0.14 300)", Soft = "oklch(0.75 0.14 300 / 0.16)" },
+        new() { Key = "Buyer",        Label = "Buyer",        Icon = "shopping_bag",       Color = "oklch(0.79 0.14 145)", Soft = "oklch(0.79 0.14 145 / 0.16)" },
+        new() { Key = "Seller",       Label = "Seller",       Icon = "sell",               Color = "oklch(0.80 0.13 90)",  Soft = "oklch(0.80 0.13 90 / 0.16)" },
+        new() { Key = "Other",        Label = "Other",        Icon = "more_horiz",         Color = "oklch(0.77 0.10 25)",  Soft = "oklch(0.77 0.10 25 / 0.16)" },
+        new() { Key = "Landlord",     Label = "Landlord",     Icon = "vpn_key",            Color = "oklch(0.79 0.13 55)",  Soft = "oklch(0.79 0.13 55 / 0.16)" },
+        new() { Key = "Tenant",       Label = "Tenant",       Icon = "home",               Color = "oklch(0.78 0.13 35)",  Soft = "oklch(0.78 0.13 35 / 0.16)" },
+        new() { Key = "Insurer",      Label = "Insurer",      Icon = "shield",             Color = "oklch(0.75 0.14 285)", Soft = "oklch(0.75 0.14 285 / 0.16)" },
+        new() { Key = "Policyholder", Label = "Policyholder", Icon = "assignment_ind",     Color = "oklch(0.76 0.13 255)", Soft = "oklch(0.76 0.13 255 / 0.16)" },
+        new() { Key = "Insured",      Label = "Insured",      Icon = "health_and_safety",  Color = "oklch(0.77 0.13 215)", Soft = "oklch(0.77 0.13 215 / 0.16)" },
+        new() { Key = "Beneficiary",  Label = "Beneficiary",  Icon = "volunteer_activism", Color = "oklch(0.78 0.13 185)", Soft = "oklch(0.78 0.13 185 / 0.16)" },
+        new() { Key = "Lender",       Label = "Lender",       Icon = "savings",            Color = "oklch(0.78 0.13 120)", Soft = "oklch(0.78 0.13 120 / 0.16)" },
+        new() { Key = "Borrower",     Label = "Borrower",     Icon = "request_quote",      Color = "oklch(0.78 0.13 165)", Soft = "oklch(0.78 0.13 165 / 0.16)" },
+        new() { Key = "Guarantor",    Label = "Guarantor",    Icon = "verified_user",      Color = "oklch(0.76 0.13 330)", Soft = "oklch(0.76 0.13 330 / 0.16)" },
+        new() { Key = "Broker",       Label = "Broker",       Icon = "handshake",          Color = "oklch(0.76 0.07 245)", Soft = "oklch(0.76 0.07 245 / 0.16)" },
     ];
+
+    /// <summary>
+    /// The roles a contract of <paramref name="type"/> may hold, as the picker's two groups —
+    /// suggested first, then the rest (issue #157 §4.6). Reads the <b>shared</b>
+    /// <c>ContractPartyRoleMatrix</c> in <c>Odyssey.Dtos</c>: the legality is the server's own
+    /// declaration, and only the presentation (label, glyph, colour, group heading) is client-side.
+    /// </summary>
+    /// <remarks>
+    /// This is deliberately <em>not</em> a client-side copy of a server rule — the defect CLAUDE.md
+    /// forbids. The client names the same symbol the write-path validator does, so the picker cannot
+    /// offer a role the server would answer with a <c>422</c>, nor withhold one it would accept.
+    ///
+    /// <para>
+    /// A role the registry cannot name is skipped rather than drawn unlabelled: an ordinal newer than
+    /// this build is a real version-skew state, and an unnamed option is unpickable in any case.
+    /// </para>
+    /// </remarks>
+    public static IReadOnlyList<OdsTypeSelectGroup> ContractPartyRolesFor(ContractType type)
+    {
+        var groups = new List<OdsTypeSelectGroup>();
+
+        var suggested = Options(ContractPartyRoleMatrix.SuggestedFor(type));
+        if (suggested.Count > 0)
+        {
+            groups.Add(new OdsTypeSelectGroup(
+                $"Suggested for {ContractTypeOf(type).Label.ToLowerInvariant()}", suggested));
+        }
+
+        var allowed = Options(ContractPartyRoleMatrix.AllowedFor(type));
+        if (allowed.Count > 0)
+        {
+            groups.Add(new OdsTypeSelectGroup("Also allowed", allowed));
+        }
+
+        return groups;
+
+        static List<OdsTypeOption> Options(IReadOnlyList<ContractPartyRole> roles) =>
+            [.. roles.Select(ContractPartyRoleOf).OfType<OdsTypeOption>()];
+    }
 
     /// <summary>
     /// ContractEventType — what kind of thing HAPPENED to an agreement (issue #138). Mirrors the DS

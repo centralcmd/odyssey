@@ -603,15 +603,18 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
     /// </summary>
     private sealed class ThrowingReferenceGuard : IContactReferenceGuard
     {
-        public Task<bool> IsReferencedByInsuranceAsync(Guid contactId, CancellationToken cancellationToken = default) =>
+        public Task<bool> IsReferencedByRestrictedLinkAsync(Guid contactId, CancellationToken cancellationToken = default) =>
             Task.FromResult(false);
 
-        public Task<InsuranceLinkBlockers> GetInsuranceLinkBlockersAsync(
+        public Task<ContactDeleteBlockers> GetDeleteBlockersAsync(
             Guid contactId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(InsuranceLinkBlockers.None);
+            Task.FromResult(ContactDeleteBlockers.None);
 
-        public Task<Odyssey.Dtos.Finance.DetachedInsuranceLinks> StageInsuranceLinkDetachAsync(
+        public Task<ContactLinkDetachPlan> ReadLinkDetachPlanAsync(
             Guid contactId, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Odyssey.Dtos.Finance.DetachedInsuranceLinks StageLinkDetach(ContactLinkDetachPlan plan) =>
             throw new NotSupportedException();
 
         public Task ClearAndCascadeReferencesAsync(Guid contactId, CancellationToken cancellationToken = default) =>

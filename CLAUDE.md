@@ -271,11 +271,56 @@ policy's own **New party** action and its party tiles.
 round now, through the policy's own party collections. `ContractPartyKind` keeps the surviving ordinals
 (`Account = 0`, `Institution = 1`), so no persisted or wire value shifted meaning.
 
+**Which party roles are legal is decided by the contract's TYPE, and the matrix is declared ONCE**
+(issue #157). `ContractPartyRoleMatrix` lives in `Odyssey.Dtos/Finance/`, which holds zero project
+references and is reachable from both the API and the WASM client, so the write-path validator and the
+party picker name **one** symbol — the same precedent `SettingItem.Rule` and `SystemSettingsBounds` set.
+A client-side *copy* of a server rule is the defect CLAUDE.md already forbids for caps; a shared
+declaration is what avoids it. 52 of the 135 cells are legal, and guard tests pin that count, the
+per-type suggested sets, and the universality of `Broker` and `Other`.
+
+Five rules around it are easy to get backwards:
+
+- **`Suggested` carries no server-side meaning.** The validator only ever asks whether a cell is legal;
+  the tier exists so the picker's ordering is declared beside the legality it must stay consistent
+  with, rather than being re-derived client-side where the two could drift.
+- **A rejected role is a `422`, never a `400`.** The body is well-formed and every value in it is a
+  real member — what fails is the *combination*, which is the derived-bound case CLAUDE.md
+  distinguishes from a compile-time one. So it is `DomainUnprocessableException`, keyed on `role`, and
+  the check lives in `ContractService` because legality depends on the *contract's* type, which model
+  validation cannot see.
+- **Only a type CHANGE is checked, and that condition lives in `ContractService`, not at either call
+  site.** A contract keeping its type is never refused however illegal an existing party's role is:
+  such a row is a legacy one, and freezing every other field on its contract would not help — the
+  party endpoint is where it gets fixed. Both the controller's structured pre-check and the service's
+  unconditional refusal read the same helper, so they cannot disagree about when the rule applies.
+- **`Unspecified` (0) and `ServiceProvider` (5) are retired and their ordinals are permanent holes.**
+  Reusing one would make an unmigrated row mean something new rather than nothing. With `Unspecified`
+  gone, `Role` is `[Required]` **and nullable** on `ContractPartyRequest`: left non-nullable an omitted
+  role binds to `0` and `[EnumDataType]` rejects it with an invalid-enum-value message, which
+  misdescribes what the caller did wrong.
+- **The `Beneficiary` role blocks deletion of its contact, with no FK behind it.** The
+  `ContractParty → Contact` key stays `CASCADE` because the other fourteen roles should keep cascading,
+  so `IContactReferenceGuard` is the *only* enforcement — which is why the rule has to reach
+  `IsReferencedByRestrictedLinkAsync` (the defence-in-depth probe) and not just the blocker query, and
+  why `ClearAndCascadeReferencesAsync` must **exclude** that role: otherwise the cascade and the staged
+  detach hit one row inside one `SaveChangesAsync` and EF raises `DbUpdateConcurrencyException` on the
+  *ordinary* success path.
+
+The transactional detach valve now destroys rows in two domains, so its claims are demanded **per
+blocker class actually present** — `insurance.update` and/or `contracts.update` — and the presence
+determination and the destruction read **one snapshot inside the delete's transaction**. A controller
+pre-flight would be a second snapshot, and a row inserted between the two would be destroyed by a
+caller never asked to prove the claim for it (CWE-367). That is what `DomainForbiddenException` exists
+for: the ordinary case is still an action-level `[Authorize]` policy or a controller pre-flight, and
+this is the one shape neither can serve.
+
 **`ContractType` reads in a different order from the one it is stored in.** The four members added
 after the original set carry ordinals **4–7** (`Insurance`, `Subscription`, `Purchase`, `Membership`)
-while `Other` keeps **3** — an ordinal is a wire and persistence contract and is never renumbered, so
-a stored `3` cannot be made to mean `Insurance`. Only the *reading* order pulls `Other` last, and it
-lives in one place: `OdsTypeRegistries.ContractTypes`. That matters beyond tidiness, because
+and `Loan` appends at **8**, while `Other` keeps **3** — an ordinal is a wire and persistence contract and is never renumbered, so
+a stored `3` cannot be made to mean `Insurance`. Only the *reading* order pulls `Other` last — and
+`Loan` in after `Purchase`, since a mortgage was filed as a `Purchase` before that member existed — and
+it lives in one place: `OdsTypeRegistries.ContractTypes`. That matters beyond tidiness, because
 `ContractTypeOf`'s documented fallback for an out-of-range value is the **trailing** entry — reorder
 the registry so something other than `Other` ends it and every stale row silently renders as that
 instead. `OdsTypeRegistriesTests` pins both halves.

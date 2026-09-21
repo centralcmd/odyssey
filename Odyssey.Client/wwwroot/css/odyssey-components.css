@@ -2500,9 +2500,10 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-party-tile .odc-infotile-k { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; flex: 1; min-width: 0; padding-right: 26px; }
 .con-role { display: inline-flex; align-items: center; gap: 5px; min-width: 0; color: var(--mud-palette-text-primary); }
 .con-role > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Unspecified / unrecognised: an ABSENCE, not a category — quieter than a stated role, and never
-   confusable with the deliberate "Other". Still text, never colour alone: the word itself says
-   which state this is. The secondary token is AA-contrast, not the 0.38 disabled alpha. */
+/* A legacy row with no role, or a member this client is too old to name: an ABSENCE, not a category
+   — quieter than a stated role, and never confusable with the deliberate "Other". Still text, never
+   colour alone: the word itself says which state this is. The secondary token is AA-contrast, not
+   the 0.38 disabled alpha. */
 .con-role.unset { color: var(--mud-palette-text-secondary); font-style: italic; }
 .con-term {
   font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
@@ -2513,6 +2514,25 @@ tr:focus-within > .odc-rowactions.reveal,
    muted tone carries that too, so the strike-through is not the only cue. */
 .con-term.past { text-decoration: line-through; }
 .con-tile-menu { position: absolute; top: 6px; right: 6px; z-index: 1; }
+
+/* ---- The type-change refusal (422: TypeChangeOrphansParties, issue #157) ----
+   One row per party the INCOMING type would reject, named the way the server's problem body names
+   them — role, then display name. Not a toast and not a field error: the list IS the content of the
+   refusal, so it sits in the dialog beside the control that caused it. */
+.con-orphans { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 2px; padding: 0; list-style: none; }
+.con-orphan { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); min-width: 0; }
+/* --warning-text, NOT --mud-palette-warning: this is 11px TEXT, and the raw warning token is the
+   >=3:1 graphics floor — 3.70:1 on this row's plain --mud-palette-surface, under 4.5:1 outright
+   rather than only once tinted. --warning-text resolves to 7.09:1 light / 8.06:1 dark on the same
+   surface. Every other warning-toned label in this stylesheet uses it; the raw one is reserved for
+   glyphs and borders. The design system's contracts.css uses the raw token here, but the client's
+   own split is the stricter of the two and wins. */
+.con-orphan-role { font: 500 11px/1 var(--font-mono); letter-spacing: 0.02em; text-transform: uppercase; color: var(--warning-text); white-space: nowrap; }
+.con-orphan-name { font-size: 12.5px; color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The party id, right-aligned. A real GUID is 36 characters where the design system's fixture ids are
+   short, so this ellipsises rather than pushing the name out of the row — the leading characters are
+   what a reader matches against the problem body. */
+.con-orphan-id { margin-left: auto; min-width: 0; font: 400 10.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Empty sections use the DS EmptyLine (.odc-empty.line) — the same treatment an empty table frame
    gets on the account record, so a "nothing here yet" sentence reads identically everywhere. */

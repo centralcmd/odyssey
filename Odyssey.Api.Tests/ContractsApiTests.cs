@@ -218,18 +218,20 @@ public class ContractsApiTests
 
         var id = await CreateAsync(client);
 
-        // Zero targets → 400.
-        var none = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest());
+        // Zero targets → 400. The role is supplied so this stays the XOR rejection: without it the
+        // body would fail model validation on Role first and prove nothing about the target rule.
+        var none = await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.BadRequest, none.StatusCode);
 
         // Two targets → 400.
         var two = await client.PostAsJsonAsync($"{Path}/{id}/parties",
-            new ContractPartyRequest { AccountId = accountId, ContactId = contactId });
+            new ContractPartyRequest { AccountId = accountId, ContactId = contactId, Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.BadRequest, two.StatusCode);
 
         // Exactly one → 201.
         var one = await client.PostAsJsonAsync($"{Path}/{id}/parties",
-            new ContractPartyRequest { AccountId = accountId });
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.Created, one.StatusCode);
         var party = await one.Content.ReadFromJsonAsync<ExistingContractParty>();
         Assert.Equal(ContractPartyKind.Account, party!.Kind);
@@ -246,12 +248,12 @@ public class ContractsApiTests
 
         // Contract exists, target does not → 404 (target not found).
         var missingTarget = await client.PostAsJsonAsync($"{Path}/{id}/parties",
-            new ContractPartyRequest { AccountId = Guid.NewGuid() });
+            new ContractPartyRequest { AccountId = Guid.NewGuid(), Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.NotFound, missingTarget.StatusCode);
 
         // Contract does not exist → 404 (contract not found).
         var missingContract = await client.PostAsJsonAsync($"{Path}/{Guid.NewGuid()}/parties",
-            new ContractPartyRequest { AccountId = Guid.NewGuid() });
+            new ContractPartyRequest { AccountId = Guid.NewGuid(), Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.NotFound, missingContract.StatusCode);
     }
 
@@ -263,10 +265,10 @@ public class ContractsApiTests
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
-        var first = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId });
+        var first = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
 
-        var duplicate = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId });
+        var duplicate = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
     }
 
@@ -284,9 +286,9 @@ public class ContractsApiTests
 
         var id = await CreateAsync(client);
         Assert.Equal(HttpStatusCode.Created,
-            (await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId })).StatusCode);
+            (await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer })).StatusCode);
 
-        var overCap = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { ContactId = contactId });
+        var overCap = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, overCap.StatusCode);
     }
 
@@ -306,7 +308,7 @@ public class ContractsApiTests
         (await client.PutAsJsonAsync($"{Path}/{id}", UpdateContract(isArchived: true, endDate: Lapsed)))
             .EnsureSuccessStatusCode();
 
-        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId });
+        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.Created, add.StatusCode);
 
         var contract = await GetAsync(client, id);
@@ -348,9 +350,18 @@ public class ContractsApiTests
         Assert.Equal(to.Date, onContract.ToDate!.Value.Date);
     }
 
-    /// <summary>AC 2 — a role-less write is valid and resolves to Unspecified, never rejected.</summary>
+    /// <summary>
+    /// Issue #157 AC 5 — a role-less write is now REFUSED with a <c>400</c> naming <c>Role</c> as
+    /// required. It used to be valid and resolve to <c>Unspecified</c>; that member is retired, so
+    /// there is nothing left for it to resolve to.
+    /// </summary>
+    /// <remarks>
+    /// The message matters as much as the status: <c>Role</c> is <c>ContractPartyRole?</c> precisely
+    /// so an omitted value reads as "required" rather than as an invalid enum value, which would
+    /// misdescribe what the caller did wrong (§8.1).
+    /// </remarks>
     [Fact]
-    public async Task AddParty_WithoutRole_DefaultsToUnspecified()
+    public async Task AddParty_WithoutRole_Returns400NamingRoleAsRequired()
     {
         await using var factory = new ApiFactory(ReadWrite);
         var (accountId, _, _) = await SeedTargetsAsync(factory);
@@ -358,12 +369,16 @@ public class ContractsApiTests
 
         var id = await CreateAsync(client);
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new { accountId });
-        Assert.Equal(HttpStatusCode.Created, add.StatusCode);
 
-        var created = await add.Content.ReadFromJsonAsync<ExistingContractParty>();
-        Assert.Equal(ContractPartyRole.Unspecified, created!.Role);
-        Assert.Null(created.FromDate);
-        Assert.Null(created.ToDate);
+        Assert.Equal(HttpStatusCode.BadRequest, add.StatusCode);
+        Assert.True(await HasErrorKeyAsync(add, nameof(ContractPartyRequest.Role)));
+
+        var body = await add.Content.ReadAsStringAsync();
+        Assert.Contains("required", body, StringComparison.OrdinalIgnoreCase);
+        // NOT the invalid-enum-value message, which is what a non-nullable Role would have produced.
+        Assert.DoesNotContain("is invalid", body, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Empty((await GetAsync(client, id)).Parties);
     }
 
     /// <summary>
@@ -383,17 +398,23 @@ public class ContractsApiTests
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
         var party = await add.Content.ReadFromJsonAsync<ExistingContractParty>();
 
+        // Both roles are legal on an Employment contract — the matrix decides which they can be,
+        // and this test is about the row's IDENTITY surviving a role change (issue #157).
         var put = await client.PutAsJsonAsync($"{Path}/{id}/parties/{party!.ContractPartyId}",
-            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller });
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employee });
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
 
         var updated = await put.Content.ReadFromJsonAsync<ExistingContractParty>();
         Assert.Equal(party.ContractPartyId, updated!.ContractPartyId);
-        Assert.Equal(ContractPartyRole.Seller, updated.Role);
+        Assert.Equal(ContractPartyRole.Employee, updated.Role);
         Assert.Single((await GetAsync(client, id)).Parties);
     }
 
-    /// <summary>AC 4 — the PUT is a full replacement: an omitted date CLEARS it, never "leave as is".</summary>
+    /// <summary>
+    /// AC 4 — the PUT is a full replacement: an omitted date CLEARS it, never "leave as is". The role
+    /// is no longer part of that demonstration, because issue #157 made it required — an omitted role
+    /// is now a <c>400</c> rather than a silent reset, which is its own test above.
+    /// </summary>
     [Fact]
     public async Task UpdateParty_OmittingToDate_ClearsIt()
     {
@@ -411,18 +432,19 @@ public class ContractsApiTests
         var party = await add.Content.ReadFromJsonAsync<ExistingContractParty>();
         Assert.NotNull(party!.ToDate);
 
-        // The body omits toDate AND role — both reset, which is exactly what §7.7 logs.
-        var put = await client.PutAsJsonAsync($"{Path}/{id}/parties/{party.ContractPartyId}", new { accountId });
+        // The body omits toDate — it clears, which is exactly what §7.7 logs.
+        var put = await client.PutAsJsonAsync($"{Path}/{id}/parties/{party.ContractPartyId}",
+            new { accountId, role = (int)ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
 
         var updated = await put.Content.ReadFromJsonAsync<ExistingContractParty>();
         Assert.Null(updated!.ToDate);
-        Assert.Equal(ContractPartyRole.Unspecified, updated.Role);
+        Assert.Equal(ContractPartyRole.Employer, updated.Role);
     }
 
     /// <summary>
-    /// AC 5 — uniqueness is (contract, target, ROLE). A contact that is both Seller and Service
-    /// provider is one contract with two parties, not two contracts.
+    /// AC 5 — uniqueness is (contract, target, ROLE). A contact that is both an Employer and a
+    /// Broker is one contract with two parties, not two contracts.
     /// </summary>
     [Fact]
     public async Task AddParty_SameTargetInTwoRoles_Succeeds_SameRoleTwiceConflicts()
@@ -433,16 +455,16 @@ public class ContractsApiTests
 
         var id = await CreateAsync(client);
 
-        var seller = await client.PostAsJsonAsync($"{Path}/{id}/parties",
-            new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Seller });
-        Assert.Equal(HttpStatusCode.Created, seller.StatusCode);
+        var employer = await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Employer });
+        Assert.Equal(HttpStatusCode.Created, employer.StatusCode);
 
-        var provider = await client.PostAsJsonAsync($"{Path}/{id}/parties",
-            new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.ServiceProvider });
-        Assert.Equal(HttpStatusCode.Created, provider.StatusCode);
+        var broker = await client.PostAsJsonAsync($"{Path}/{id}/parties",
+            new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Broker });
+        Assert.Equal(HttpStatusCode.Created, broker.StatusCode);
 
         var again = await client.PostAsJsonAsync($"{Path}/{id}/parties",
-            new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Seller });
+            new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
 
         // The 409 is keyed on the id the caller sent, so the record picker can mark it.
@@ -467,7 +489,7 @@ public class ContractsApiTests
         var party = await add.Content.ReadFromJsonAsync<ExistingContractParty>();
 
         var put = await client.PutAsJsonAsync($"{Path}/{other}/parties/{party!.ContractPartyId}",
-            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer });
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employee });
         Assert.Equal(HttpStatusCode.NotFound, put.StatusCode);
 
         var delete = await client.DeleteAsync($"{Path}/{other}/parties/{party.ContractPartyId}");
@@ -491,6 +513,7 @@ public class ContractsApiTests
         var outOfOrder = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest
         {
             AccountId = accountId,
+            Role = ContractPartyRole.Employer,
             FromDate = FixedToday,
             ToDate = FixedToday.AddDays(-1),
         });
@@ -500,6 +523,7 @@ public class ContractsApiTests
         var beforeStart = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest
         {
             AccountId = accountId,
+            Role = ContractPartyRole.Employer,
             FromDate = start.AddDays(-1),
         });
         Assert.Equal(HttpStatusCode.BadRequest, beforeStart.StatusCode);
@@ -531,7 +555,7 @@ public class ContractsApiTests
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest
         {
             AccountId = accountId,
-            Role = ContractPartyRole.Buyer,
+            Role = ContractPartyRole.Employee,
             FromDate = FixedToday.AddYears(-10),
         });
         Assert.Equal(HttpStatusCode.Created, add.StatusCode);
@@ -574,9 +598,9 @@ public class ContractsApiTests
             .EnsureSuccessStatusCode();
 
         var put = await client.PutAsJsonAsync($"{Path}/{id}/parties/{party!.ContractPartyId}",
-            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer });
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employee });
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
-        Assert.Equal(ContractPartyRole.Buyer, Assert.Single((await GetAsync(client, id)).Parties).Role);
+        Assert.Equal(ContractPartyRole.Employee, Assert.Single((await GetAsync(client, id)).Parties).Role);
 
         Assert.Equal(HttpStatusCode.NoContent,
             (await client.DeleteAsync($"{Path}/{id}/parties/{party.ContractPartyId}")).StatusCode);
@@ -597,23 +621,23 @@ public class ContractsApiTests
 
         // PartyTargetNotFound — keyed on whichever id was actually sent.
         var missingAccount = await client.PostAsJsonAsync($"{Path}/{id}/parties",
-            new ContractPartyRequest { AccountId = Guid.NewGuid() });
+            new ContractPartyRequest { AccountId = Guid.NewGuid(), Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.NotFound, missingAccount.StatusCode);
         Assert.True(await HasErrorKeyAsync(missingAccount, nameof(ContractPartyRequest.AccountId)));
 
         var missingContact = await client.PostAsJsonAsync($"{Path}/{id}/parties",
-            new ContractPartyRequest { ContactId = Guid.NewGuid() });
+            new ContractPartyRequest { ContactId = Guid.NewGuid(), Role = ContractPartyRole.Employer });
         Assert.True(await HasErrorKeyAsync(missingContact, nameof(ContractPartyRequest.ContactId)));
 
         // ContractNotFound — no field key at all.
         var noContract = await client.PutAsJsonAsync($"{Path}/{Guid.NewGuid()}/parties/{Guid.NewGuid()}",
-            new ContractPartyRequest { AccountId = accountId });
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.NotFound, noContract.StatusCode);
         Assert.False(await HasAnyErrorKeyAsync(noContract));
 
         // PartyNotOnContract — also no field key.
         var noParty = await client.PutAsJsonAsync($"{Path}/{id}/parties/{Guid.NewGuid()}",
-            new ContractPartyRequest { ContactId = contactId });
+            new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Employer });
         Assert.Equal(HttpStatusCode.NotFound, noParty.StatusCode);
         Assert.False(await HasAnyErrorKeyAsync(noParty));
     }
@@ -630,7 +654,7 @@ public class ContractsApiTests
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
-        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { ContactId = contactId });
+        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Employer });
         var party = await add.Content.ReadFromJsonAsync<ExistingContractParty>();
 
         var put = await client.PutAsJsonAsync($"{Path}/{id}/parties/{party!.ContractPartyId}", new
@@ -638,7 +662,7 @@ public class ContractsApiTests
             contactId,
             // The ordinal, not the name: the API serializes enums numerically, which is exactly why
             // issue #121 §4 pins the ORDINALS rather than the member names as the wire contract.
-            role = (int)ContractPartyRole.Seller,
+            role = (int)ContractPartyRole.Employee,
             institution = new { contactId, name = "HACKED", organizationNumber = "EVIL" },
         });
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
@@ -661,7 +685,7 @@ public class ContractsApiTests
         using var client = factory.CreateClient();
 
         var put = await client.PutAsJsonAsync($"{Path}/{Guid.NewGuid()}/parties/{Guid.NewGuid()}",
-            new ContractPartyRequest { AccountId = Guid.NewGuid() });
+            new ContractPartyRequest { AccountId = Guid.NewGuid(), Role = ContractPartyRole.Employer });
 
         Assert.Equal(HttpStatusCode.Forbidden, put.StatusCode);
     }
@@ -684,7 +708,7 @@ public class ContractsApiTests
         var party = await add.Content.ReadFromJsonAsync<ExistingContractParty>();
 
         var put = await client.PutAsJsonAsync($"{Path}/{id}/parties/{party!.ContractPartyId}",
-            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer });
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employee });
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
     }
 
@@ -735,13 +759,13 @@ public class ContractsApiTests
         var route = $"{Path}/{id}/parties/{party!.ContractPartyId}";
 
         var first = await client.PutAsJsonAsync(route,
-            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer });
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employee });
         var second = await client.PutAsJsonAsync(route,
-            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller });
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Broker });
 
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
-        Assert.Equal(ContractPartyRole.Seller, Assert.Single((await GetAsync(client, id)).Parties).Role);
+        Assert.Equal(ContractPartyRole.Broker, Assert.Single((await GetAsync(client, id)).Parties).Role);
     }
 
     // ── Over-posting blocked (criterion #4) ────────────────────────────────────
@@ -760,6 +784,7 @@ public class ContractsApiTests
         var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new
         {
             contactId,
+            role = (int)ContractPartyRole.Employer,
             contact = new { contactId, name = "HACKED", organizationNumber = "EVIL" },
         });
         Assert.Equal(HttpStatusCode.Created, add.StatusCode);
@@ -781,8 +806,8 @@ public class ContractsApiTests
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
-        await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId });
-        await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { ContactId = contactId });
+        await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
+        await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Employer });
 
         // Inspect the raw JSON: none of the cross-claim sensitive values should be present.
         var raw = await client.GetStringAsync($"{Path}/{id}");
@@ -851,7 +876,7 @@ public class ContractsApiTests
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
-        await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId });
+        await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
         await client.PostAsJsonAsync($"{Path}/{id}/files", AttachRequest(pdfId));
 
         var delete = await client.DeleteAsync($"{Path}/{id}");
@@ -876,7 +901,7 @@ public class ContractsApiTests
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
-        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId });
+        var add = await client.PostAsJsonAsync($"{Path}/{id}/parties", new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer });
         var party = await add.Content.ReadFromJsonAsync<ExistingContractParty>();
 
         var delete = await client.DeleteAsync($"{Path}/{id}/parties/{party!.ContractPartyId}");
@@ -1045,11 +1070,11 @@ public class ContractsApiTests
 
         var withInstitution = await CreateAsync(client);
         (await client.PostAsJsonAsync($"{Path}/{withInstitution}/parties",
-            new ContractPartyRequest { ContactId = contactId })).EnsureSuccessStatusCode();
+            new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Employer })).EnsureSuccessStatusCode();
 
         var accountOnly = await CreateAsync(client);
         (await client.PostAsJsonAsync($"{Path}/{accountOnly}/parties",
-            new ContractPartyRequest { AccountId = accountId })).EnsureSuccessStatusCode();
+            new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer })).EnsureSuccessStatusCode();
 
         var noParties = await CreateAsync(client);
 
@@ -1338,7 +1363,7 @@ public class ContractsApiTests
 
         Assert.Equal(HttpStatusCode.Created,
             (await client.PostAsJsonAsync($"{Path}/{id}/parties",
-                new ContractPartyRequest { AccountId = accountId })).StatusCode);
+                new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer })).StatusCode);
         Assert.Equal(HttpStatusCode.Created,
             (await client.PostAsJsonAsync($"{Path}/{id}/files", AttachRequest(fileId))).StatusCode);
         await AddMonthlyFeeAsync(client, id, 100m, "USD");
@@ -1352,7 +1377,7 @@ public class ContractsApiTests
         var archivedFileId = await SeedFileAsync(factory, "closing.pdf", "application/pdf");
         Assert.Equal(HttpStatusCode.Created,
             (await client.PostAsJsonAsync($"{Path}/{archived}/parties",
-                new ContractPartyRequest { AccountId = accountId })).StatusCode);
+                new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Employer })).StatusCode);
         Assert.Equal(HttpStatusCode.Created,
             (await client.PostAsJsonAsync($"{Path}/{archived}/files", AttachRequest(archivedFileId))).StatusCode);
         await AddMonthlyFeeAsync(client, archived, 100m, "USD");

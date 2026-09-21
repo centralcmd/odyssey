@@ -13,9 +13,15 @@ namespace Odyssey.Dtos.Finance;
 /// <b><c>null</c> means the default term here, not "unchanged".</b> This is the one place the contract
 /// API departs from <see cref="UpdateContract"/>. A <c>PUT</c> on a party is a <b>full replacement</b>
 /// of that link — role, target and both dates — exactly as <c>PUT …/parties/{role}/{targetId}</c> is
-/// for an insurance party. A client that omits <see cref="ToDate"/> on an edit <b>clears</b> it, and
-/// one that omits <see cref="Role"/> <b>resets it to</b> <see cref="ContractPartyRole.Unspecified"/>.
-/// That second case is why every party write is logged (issue #121 §7.7).
+/// for an insurance party. A client that omits <see cref="ToDate"/> on an edit <b>clears</b> it. Every
+/// party write is logged (issue #121 §7.7), which is what makes an accidental role change visible.
+///
+/// <para>
+/// <see cref="Role"/> is <b>required on every write</b> since issue #157 §8.1, and which roles are
+/// legal depends on the <em>contract's</em> type — a rule model validation cannot see, because the
+/// body does not carry the type. That check therefore lives in <c>ContractService</c> and answers with
+/// a <c>422</c>; see <see cref="ContractPartyRoleMatrix"/>.
+/// </para>
 ///
 /// <para>
 /// Renamed from <c>AddContractPartyRequest</c> with issue #121: the add and the edit take identical
@@ -30,13 +36,19 @@ public sealed record ContractPartyRequest
     public Guid? ContactId { get; set; }
 
     /// <summary>
-    /// What the linked record does in the agreement. Non-nullable, so an omitted <c>role</c> binds to
-    /// <see cref="ContractPartyRole.Unspecified"/> — the same shape <see cref="NewContract.Type"/>
-    /// uses. Deliberately <b>not</b> <c>[Required]</c>: that would make the role mandatory on the wire
-    /// and break the "a role-less write is valid" rule.
+    /// What the linked record does in the agreement. <b>Required</b> (issue #157 §8.1): with
+    /// <c>Unspecified</c> retired there is no longer a value meaning "nobody has said", so a role-less
+    /// write has nothing to resolve to.
     /// </summary>
+    /// <remarks>
+    /// <b>Nullable is load-bearing, not cosmetic.</b> Left non-nullable, an omitted <c>role</c> would
+    /// bind to <c>0</c> — now an undefined member — and <c>[EnumDataType]</c> would reject it with a
+    /// message about an invalid enum value, which misdescribes what the caller did wrong. Nullable
+    /// plus <c>[Required]</c> produces "The Role field is required."
+    /// </remarks>
+    [Required]
     [EnumDataType(typeof(ContractPartyRole))]
-    public ContractPartyRole Role { get; set; } = ContractPartyRole.Unspecified;
+    public ContractPartyRole? Role { get; set; }
 
     /// <summary>When the party enters the role. Null means the contract's own extent.</summary>
     public DateTime? FromDate { get; set; }

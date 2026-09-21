@@ -120,16 +120,18 @@ public class ContractPartyTileTests
     }
 
     /// <summary>
-    /// AC 2 — a party with no role and no term reads as a stated ABSENCE and carries no term line. The
-    /// literal sentinel is never rendered, and the state is in TEXT rather than colour alone.
+    /// AC 2 — a party whose role this build cannot name reads as a stated ABSENCE and carries no term
+    /// line. Since issue #157 that is the version-skew case alone: <c>Unspecified</c> is retired, so
+    /// the only unnameable ordinals are a retired one the migration missed and a member newer than
+    /// this client. Either way the state is in TEXT rather than colour alone.
     /// </summary>
     [Fact]
-    public void An_unspecified_role_reads_as_an_absence_and_shows_no_term_line()
+    public void An_unnameable_role_reads_as_an_absence_and_shows_no_term_line()
     {
-        var cut = Render(Party(ContractPartyRole.Unspecified));
+        var cut = Render(Party((ContractPartyRole)int.MaxValue));
 
         var role = cut.Find(".con-role");
-        Assert.Equal("No role set", role.TextContent.Trim());
+        Assert.Equal("Unrecognised role", role.TextContent.Trim());
         Assert.Contains("unset", role.ClassName, StringComparison.Ordinal);
         Assert.Empty(cut.FindAll(".con-term"));
     }
@@ -196,13 +198,15 @@ public class ContractPartyTileTests
     }
 
     /// <summary>
-    /// <c>Unspecified</c> is deliberately NOT withheld: it is a role the picker holds and can
-    /// round-trip perfectly, so every row the migration backfilled stays editable.
+    /// A role the type REJECTS is still editable — that party is precisely the one the edit dialog
+    /// exists to correct, and withholding the affordance would strand it. Only the unnameable case
+    /// (below) loses the edit, because a client that cannot name a role cannot round-trip it through
+    /// a full-replacement PUT without silently rewriting it.
     /// </summary>
     [Fact]
-    public void An_unspecified_role_is_still_editable()
+    public void A_role_the_contract_type_rejects_is_still_editable()
     {
-        var cut = Render(Party(ContractPartyRole.Unspecified));
+        var cut = Render(Party(ContractPartyRole.Landlord));
 
         Assert.Contains("Edit party", MenuLabels(cut));
     }
@@ -228,9 +232,9 @@ public class ContractPartyTileTests
     [Fact]
     public void The_menus_accessible_name_uses_the_same_role_words_the_tile_shows()
     {
-        var cut = Render(Party(ContractPartyRole.Unspecified));
+        var cut = Render(Party((ContractPartyRole)int.MaxValue));
 
-        Assert.Contains("Actions for No role set Everyday Checking", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("Actions for Unrecognised role Everyday Checking", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Unspecified", cut.Markup, StringComparison.Ordinal);
     }
 

@@ -13,6 +13,12 @@
     ONE-OFF — a required completionDate point-in-time agreement with no ongoing term. Parties and
     documents are never edited here; they are managed from the contract's detail (§6/§10).
 
+    On EDIT the type is the one field that can be refused by something OTHER than itself: changing
+    it to one whose column rejects an existing party's role is a 422 (issue #157), and the server
+    writes nothing. The dialog computes the same thing from the shared matrix, names each offending
+    party, and states the two routes that work — re-role them, or detach them — rather than letting
+    the user save into a refusal.
+
     The two SIGNATURE stamps (issue #145) are EDIT-ONLY: a brand-new contract always starts as a
     Draft, so create mode does not offer them at all and the stamps are set from the contract itself
     — usually the row menu's one-click Mark ready / Mark signed, or this dialog in edit mode when a
@@ -42,6 +48,35 @@
                                  AriaLabel="Contract term" Options="_modeOptions" />
         </OdsFieldShell>
     </OdsFormRow>
+
+    @if (BlockedByParties)
+    {
+        <OdsAlert Severity="Severity.Warning">
+            <strong>
+                A @RequestedTypeLabel contract can't hold
+                @(OrphanedParties.Count == 1 ? "this party" : "these parties").
+            </strong>
+            <p>
+                @(OrphanedParties.Count == 1 ? "One party holds" : $"{OrphanedParties.Count} parties hold")
+                a role a @RequestedTypeLabel contract does not accept. Re-role
+                @(OrphanedParties.Count == 1 ? "it" : "them") to @LegalRolesText, or detach
+                @(OrphanedParties.Count == 1 ? "it" : "them") — then change the type. Nothing is saved until then.
+            </p>
+            <ul class="con-orphans">
+                @foreach (var party in OrphanedParties)
+                {
+                    <li class="con-orphan">
+                        <span class="con-orphan-role">@PartyRoleLabel.For(party.Role)</span>
+                        <span class="con-orphan-name">@PartyDisplayName(party)</span>
+                        @* The party id, as the design system renders it and as the server's own 422
+                           body names it. It is what disambiguates two parties sharing a display name,
+                           and what lets a reader match a row here to the problem body. *@
+                        <span class="con-orphan-id">@party.ContractPartyId</span>
+                    </li>
+                }
+            </ul>
+        </OdsAlert>
+    }
 
     @if (_mode == TermMode)
     {
@@ -88,3 +123,13 @@
     <OdsNoteField Label="Description" MaxLength="1024" @bind-Value="_description"
                   Placeholder="What this agreement covers, term, notice period, key conditions…" />
 </OdsFormDialog>
+
+@code {
+    /// <summary>
+    /// A blocked party as the reader already sees it on the contract. An unresolvable target keeps
+    /// its row and loses its name — the same rule the read path follows, and the reason the server's
+    /// own payload allows a null display name.
+    /// </summary>
+    private static string PartyDisplayName(ExistingContractParty party) =>
+        party.Account?.Name ?? party.Institution?.Name ?? "Unnamed party";
+}

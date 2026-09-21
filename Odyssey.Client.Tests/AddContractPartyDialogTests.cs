@@ -40,10 +40,16 @@ public class AddContractPartyDialogTests
     /// <summary>The contract's own start — the only anchor the From rule has (issue #121 §8 rule 3).</summary>
     private static readonly DateTime ContractStart = new(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc);
 
-    private static ExistingContract Contract(ContractPartyRole linkedRole = ContractPartyRole.Unspecified) => new()
+    /// <summary>
+    /// A RENTAL contract, stated explicitly since issue #157: the legal roles now depend on the
+    /// type, so a fixture that leaned on the enum's default would be asserting against whichever
+    /// column happened to be ordinal 0.
+    /// </summary>
+    private static ExistingContract Contract(ContractPartyRole linkedRole = ContractPartyRole.Landlord) => new()
     {
         ContractId = ContractId,
         Name = "Apartment lease",
+        Type = ContractType.Rental,
         StartDate = ContractStart,
         CreatedAtUtc = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         Parties =
@@ -60,12 +66,12 @@ public class AddContractPartyDialogTests
     };
 
     /// <summary>The party the edit-mode cases open on: the one already on the contract.</summary>
-    private static ExistingContractParty LinkedParty(ContractPartyRole role = ContractPartyRole.Unspecified) =>
+    private static ExistingContractParty LinkedParty(ContractPartyRole role = ContractPartyRole.Landlord) =>
         Contract(role).Parties[0];
 
     private static (IRenderedComponent<DialogHost> Cut, Mock<IContractsApiClient> Contracts) Render(
         ExistingContractParty? party = null,
-        ContractPartyRole linkedRole = ContractPartyRole.Unspecified,
+        ContractPartyRole linkedRole = ContractPartyRole.Landlord,
         ApiResult? addResult = null,
         List<string>? announcements = null)
     {
@@ -106,10 +112,16 @@ public class AddContractPartyDialogTests
         Assert.Equal("true", Cards(cut)[0].GetAttribute("aria-checked"));
     }
 
+    /// <summary>
+    /// The (kind, role) filter, once a role is picked. Since issue #157 the dialog opens with NO
+    /// role — there is no longer a member meaning "nobody has said" to start on — so the filter has
+    /// nothing to filter by until the user chooses, which is why this picks one first.
+    /// </summary>
     [Fact]
-    public void An_already_linked_account_is_not_offered_and_the_arrow_key_switches_to_the_contact_picker()
+    public async Task An_already_linked_account_is_not_offered_and_the_arrow_key_switches_to_the_contact_picker()
     {
         var (cut, _) = Render();
+        await PickRoleAsync(cut, ContractPartyRole.Landlord);
 
         Assert.Contains(cut.FindAll(".odc-field-help"), h => h.TextContent.Contains("1 account available in this role", StringComparison.Ordinal));
         Assert.Empty(cut.FindComponents<OdsContactSelect>());
@@ -124,6 +136,7 @@ public class AddContractPartyDialogTests
     public async Task Saving_an_account_party_posts_the_account_id_and_no_contact_id()
     {
         var (cut, contracts) = Render();
+        await PickRoleAsync(cut, ContractPartyRole.Tenant);
 
         var combobox = cut.FindComponent<OdsCombobox>();
         await cut.InvokeAsync(() => combobox.Instance.ValueChanged.InvokeAsync(FreeAccountId.ToString()));
@@ -141,10 +154,11 @@ public class AddContractPartyDialogTests
     /// linked in ONE role is still offerable in ANOTHER, because uniqueness is per role.
     /// </summary>
     [Fact]
-    public void A_record_linked_in_another_role_is_still_offered()
+    public async Task A_record_linked_in_another_role_is_still_offered()
     {
-        // The existing party holds Employer; the dialog opens on Unspecified, so both accounts are free.
-        var (cut, _) = Render(linkedRole: ContractPartyRole.Employer);
+        // The existing party holds Landlord; this dialog is picking a Tenant, so both accounts are free.
+        var (cut, _) = Render(linkedRole: ContractPartyRole.Landlord);
+        await PickRoleAsync(cut, ContractPartyRole.Tenant);
 
         Assert.Contains(cut.FindAll(".odc-field-help"),
             h => h.TextContent.Contains("2 accounts available in this role", StringComparison.Ordinal));
@@ -159,17 +173,17 @@ public class AddContractPartyDialogTests
     public async Task Changing_the_role_discards_an_ineligible_selection_and_announces_it()
     {
         var announcements = new List<string>();
-        // The existing party holds Employer, so Everyday Checking is ineligible in that role only.
-        var (cut, _) = Render(linkedRole: ContractPartyRole.Employer, announcements: announcements);
+        // The existing party holds Landlord, so Everyday Checking is ineligible in that role only.
+        var (cut, _) = Render(linkedRole: ContractPartyRole.Landlord, announcements: announcements);
+        await PickRoleAsync(cut, ContractPartyRole.Tenant);
 
         var combobox = cut.FindComponent<OdsCombobox>();
         await cut.InvokeAsync(() => combobox.Instance.ValueChanged.InvokeAsync(LinkedAccountId.ToString()));
 
-        var role = cut.FindComponent<OdsContractPartyRoleSelect>();
-        await cut.InvokeAsync(() => role.Instance.ValueChanged.InvokeAsync(nameof(ContractPartyRole.Employer)));
+        await PickRoleAsync(cut, ContractPartyRole.Landlord);
 
         Assert.Contains(announcements, a => a.Contains("Everyday Checking cleared", StringComparison.Ordinal));
-        Assert.Contains(announcements, a => a.Contains("employer", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(announcements, a => a.Contains("landlord", StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
@@ -184,8 +198,7 @@ public class AddContractPartyDialogTests
         var combobox = cut.FindComponent<OdsCombobox>();
         await cut.InvokeAsync(() => combobox.Instance.ValueChanged.InvokeAsync(FreeAccountId.ToString()));
 
-        var role = cut.FindComponent<OdsContractPartyRoleSelect>();
-        await cut.InvokeAsync(() => role.Instance.ValueChanged.InvokeAsync(nameof(ContractPartyRole.Seller)));
+        await PickRoleAsync(cut, ContractPartyRole.Tenant);
 
         var pickers = cut.FindComponents<OdsDatePicker>();
         await cut.InvokeAsync(() => pickers[0].Instance.ValueChanged.InvokeAsync(ContractStart.AddMonths(1)));
@@ -195,7 +208,7 @@ public class AddContractPartyDialogTests
 
         cut.WaitForAssertion(() => contracts.Verify(c => c.AddPartyAsync(ContractId,
             It.Is<ContractPartyRequest>(r =>
-                r.Role == ContractPartyRole.Seller
+                r.Role == ContractPartyRole.Tenant
                 && r.FromDate == ContractStart.AddMonths(1)
                 && r.ToDate == ContractStart.AddMonths(6)),
             It.IsAny<CancellationToken>()), Times.Once));
@@ -209,6 +222,7 @@ public class AddContractPartyDialogTests
     public async Task A_from_date_before_the_contract_start_is_refused_inline_and_sends_nothing()
     {
         var (cut, contracts) = Render();
+        await PickRoleAsync(cut, ContractPartyRole.Tenant);
 
         var combobox = cut.FindComponent<OdsCombobox>();
         await cut.InvokeAsync(() => combobox.Instance.ValueChanged.InvokeAsync(FreeAccountId.ToString()));
@@ -227,6 +241,7 @@ public class AddContractPartyDialogTests
     public async Task A_to_date_before_the_from_date_is_refused_inline_and_sends_nothing()
     {
         var (cut, contracts) = Render();
+        await PickRoleAsync(cut, ContractPartyRole.Tenant);
 
         var combobox = cut.FindComponent<OdsCombobox>();
         await cut.InvokeAsync(() => combobox.Instance.ValueChanged.InvokeAsync(FreeAccountId.ToString()));
@@ -249,17 +264,17 @@ public class AddContractPartyDialogTests
     [Fact]
     public void With_a_party_the_dialog_edits_it()
     {
-        var party = LinkedParty(ContractPartyRole.Employer);
-        var (cut, contracts) = Render(party, linkedRole: ContractPartyRole.Employer);
+        var party = LinkedParty(ContractPartyRole.Landlord);
+        var (cut, contracts) = Render(party, linkedRole: ContractPartyRole.Landlord);
 
         Assert.Contains("Edit party", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("Change the role, the linked record, or the dates", cut.Markup, StringComparison.Ordinal);
-        Assert.Equal(nameof(ContractPartyRole.Employer), cut.FindComponent<OdsContractPartyRoleSelect>().Instance.Value);
+        Assert.Equal(nameof(ContractPartyRole.Landlord), cut.FindComponent<OdsContractPartyRoleSelect>().Instance.Value);
 
         cut.FindAll("button").Single(b => b.TextContent.Contains("Save changes", StringComparison.Ordinal)).Click();
 
         cut.WaitForAssertion(() => contracts.Verify(c => c.UpdatePartyAsync(ContractId, LinkedPartyId,
-            It.Is<ContractPartyRequest>(r => r.AccountId == LinkedAccountId && r.Role == ContractPartyRole.Employer),
+            It.Is<ContractPartyRequest>(r => r.AccountId == LinkedAccountId && r.Role == ContractPartyRole.Landlord),
             It.IsAny<CancellationToken>()), Times.Once));
     }
 
@@ -280,6 +295,7 @@ public class AddContractPartyDialogTests
             },
         });
         var (cut, _) = Render(addResult: conflict);
+        await PickRoleAsync(cut, ContractPartyRole.Tenant);
 
         var combobox = cut.FindComponent<OdsCombobox>();
         await cut.InvokeAsync(() => combobox.Instance.ValueChanged.InvokeAsync(FreeAccountId.ToString()));
@@ -291,6 +307,95 @@ public class AddContractPartyDialogTests
             cut.FindAll(".odc-field-help.error"),
             e => e.TextContent.Contains("already linked to the contract in that role", StringComparison.Ordinal)
                 && e.GetAttribute("role") == "alert"));
+    }
+
+    // ── The type x role matrix (issue #157) ──────────────────────────────────
+
+    /// <summary>
+    /// The picker offers exactly the roles the contract's TYPE accepts, suggested first, read off the
+    /// shared declaration the server validates against. A Rental takes Landlord and Tenant, permits
+    /// Guarantor, Broker and Other, and offers nothing else — so the user is never walked into a 422.
+    /// </summary>
+    [Fact]
+    public void The_role_picker_offers_only_the_roles_this_contract_type_accepts()
+    {
+        var (cut, _) = Render();
+
+        var select = cut.FindComponent<OdsContractPartyRoleSelect>();
+        Assert.Equal(ContractType.Rental, select.Instance.ContractType);
+
+        var groups = OdsTypeRegistries.ContractPartyRolesFor(ContractType.Rental);
+        Assert.Equal(
+            [nameof(ContractPartyRole.Landlord), nameof(ContractPartyRole.Tenant)],
+            groups[0].Items.Select(i => i.Key));
+        Assert.Equal("Suggested for rental", groups[0].Label);
+        Assert.Equal(
+            [nameof(ContractPartyRole.Guarantor), nameof(ContractPartyRole.Broker), nameof(ContractPartyRole.Other)],
+            groups[1].Items.Select(i => i.Key));
+
+        Assert.DoesNotContain(
+            nameof(ContractPartyRole.Employee),
+            groups.SelectMany(g => g.Items).Select(i => i.Key));
+    }
+
+    /// <summary>
+    /// There is NO default role and Save is held until one is picked — the client half of the
+    /// server's <c>[Required]</c> (issue #157 §8.1). Nothing is sent, so the user is not taught the
+    /// rule by a round trip.
+    /// </summary>
+    [Fact]
+    public async Task With_no_role_picked_the_save_is_held_and_nothing_is_sent()
+    {
+        var (cut, contracts) = Render();
+
+        Assert.Null(cut.FindComponent<OdsContractPartyRoleSelect>().Instance.Value);
+
+        var combobox = cut.FindComponent<OdsCombobox>();
+        await cut.InvokeAsync(() => combobox.Instance.ValueChanged.InvokeAsync(FreeAccountId.ToString()));
+
+        var save = cut.FindAll("button").Single(b => b.TextContent.Contains("Create party", StringComparison.Ordinal));
+        Assert.True(save.HasAttribute("disabled"));
+
+        save.Click();
+        contracts.Verify(
+            c => c.AddPartyAsync(It.IsAny<Guid>(), It.IsAny<ContractPartyRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    /// <summary>
+    /// Editing a party whose role the contract's type REJECTS — a row written before the matrix, or
+    /// before the type changed. The role is named rather than silently dropped, because it is exactly
+    /// the party this dialog exists to correct, and Save is held until a legal one is picked.
+    /// </summary>
+    [Fact]
+    public async Task Editing_a_party_whose_role_the_type_rejects_warns_and_holds_the_save()
+    {
+        // Employee is legal on no Rental cell at all — the migration would have moved such a row, so
+        // this is the type-changed-afterwards case.
+        var party = LinkedParty(ContractPartyRole.Employee);
+        var (cut, contracts) = Render(party, linkedRole: ContractPartyRole.Employee);
+
+        Assert.Contains("a rental contract cannot have", cut.Markup, StringComparison.OrdinalIgnoreCase);
+
+        var save = cut.FindAll("button").Single(b => b.TextContent.Contains("Save changes", StringComparison.Ordinal));
+        Assert.True(save.HasAttribute("disabled"));
+
+        save.Click();
+        contracts.Verify(
+            c => c.UpdatePartyAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ContractPartyRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        // Picking one of the offered roles is the whole way out.
+        await PickRoleAsync(cut, ContractPartyRole.Tenant);
+        cut.WaitForAssertion(() => Assert.False(
+            cut.FindAll("button").Single(b => b.TextContent.Contains("Save changes", StringComparison.Ordinal))
+                .HasAttribute("disabled")));
+    }
+
+    private static Task PickRoleAsync(IRenderedComponent<DialogHost> cut, ContractPartyRole role)
+    {
+        var select = cut.FindComponent<OdsContractPartyRoleSelect>();
+        return cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync(role.ToString()));
     }
 
     private sealed class SignedOut : AuthenticationStateProvider

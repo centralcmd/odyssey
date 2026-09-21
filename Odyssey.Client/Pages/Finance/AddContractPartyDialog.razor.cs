@@ -36,9 +36,14 @@ public partial class AddContractPartyDialog
     [Parameter] public EventCallback<string> OnAnnounce { get; set; }
 
     private ContractPartyKind _kind = ContractPartyKind.Account;
-    private ContractPartyRole _role = ContractPartyRole.Unspecified;
+
+    // No default (issue #157 §8.1). Unspecified was retired, so there is no member meaning "nobody
+    // has said" to start on — the control starts empty and Save stays disabled until a role is
+    // picked, which is the client half of the server's [Required].
+    private ContractPartyRole? _role;
     private string? _value;
     private string? _error;
+    private string? _roleError;
     private DateTime? _fromDate;
     private DateTime? _toDate;
     private readonly Dictionary<string, string> _errors = [];
@@ -102,15 +107,33 @@ public partial class AddContractPartyDialog
         : "Leave empty to follow the contract's own dates.";
 
     /// <summary>
-    /// What the chosen role means, so the field explains itself. <c>Unspecified</c> gets its own line
-    /// because "nobody has said" is a statement, not an empty value — and is not <c>Other</c>.
+    /// What the chosen role means, so the field explains itself — and, before one is chosen, that the
+    /// list is the ones this contract's type accepts rather than an arbitrary subset.
     /// </summary>
     private string RoleHelp => _role switch
     {
-        ContractPartyRole.Unspecified => "No role stated — leave this if the agreement does not give the record one.",
+        null => $"The roles a {TypeLabel} contract can have, the usual ones first.",
         ContractPartyRole.Other => "A deliberate role that is none of the listed ones.",
-        _ => $"What this record does in the agreement: {PartyRoleLabel.For(_role).ToLowerInvariant()}.",
+        { } role => $"What this record does in the agreement: {PartyRoleLabel.For(role).ToLowerInvariant()}.",
     };
+
+    private string TypeLabel => OdsTypeRegistries.ContractTypeOf(Contract.Type).Label.ToLowerInvariant();
+
+    /// <summary>
+    /// A role the contract's type does not accept, held by the party being edited. Only reachable on
+    /// an EDIT — of a party written before the matrix, or before the contract's type changed — and it
+    /// is exactly the party this dialog exists to correct, so the role is shown rather than silently
+    /// dropped. The picker still offers only legal roles, so choosing anything resolves it.
+    /// </summary>
+    private bool RoleRejectedByType =>
+        _role is { } role && !ContractPartyRoleMatrix.IsLegal(Contract.Type, role);
+
+    /// <summary>
+    /// Save is held until a role is picked (the server would answer <c>400</c>) and while the held
+    /// role is one this contract's type rejects (the server would answer <c>422</c>) — the dialog
+    /// refuses where the decision is made rather than after a round trip.
+    /// </summary>
+    private bool CanSave => _role is not null && !RoleRejectedByType;
 
     private IReadOnlyList<OdsOption> AllForKind => _kind switch
     {
@@ -163,9 +186,7 @@ public partial class AddContractPartyDialog
         }
     }
 
-    private string RoleNoun => _role == ContractPartyRole.Unspecified
-        ? "no role"
-        : PartyRoleLabel.For(_role).ToLowerInvariant();
+    private string RoleNoun => _role is { } role ? PartyRoleLabel.For(role).ToLowerInvariant() : "this role";
 
     // The picker hands its option back synchronously; the shared creator POSTs behind it and the temp
     // id is mapped at save. A failed create drops the option and the selection with it.
@@ -204,6 +225,7 @@ public partial class AddContractPartyDialog
         if (_role == next) return Task.CompletedTask;
         _role = next;
         _error = null;
+        _roleError = null;
         return DiscardSelectionUnlessStillEligible();
     }
 
@@ -258,7 +280,24 @@ public partial class AddContractPartyDialog
     {
         if (_isSaving) return;
         _error = null;
+        _roleError = null;
         _errors.Clear();
+
+        // Required on every write since issue #157 §8.1. Refused here with a message about the ROLE,
+        // rather than posting and taking the server's — which is the same message, but a round trip
+        // later and on a control the user has already left.
+        if (_role is not { } role)
+        {
+            _roleError = "Pick the role this record plays in the agreement.";
+            return;
+        }
+
+        if (RoleRejectedByType)
+        {
+            _roleError = $"A {TypeLabel} contract cannot have a {PartyRoleLabel.For(role).ToLowerInvariant()}. "
+                + "Pick one of the roles offered.";
+            return;
+        }
 
         // Let any in-flight inline contact create land, then map the staged id to the real one; a
         // create that failed resolves to null and reads as "nothing selected" rather than posting an
@@ -293,7 +332,7 @@ public partial class AddContractPartyDialog
         {
             AccountId = _kind == ContractPartyKind.Account ? id : null,
             ContactId = _kind == ContractPartyKind.Institution ? id : null,
-            Role = _role,
+            Role = role,
             FromDate = _fromDate is { } fd ? DateTime.SpecifyKind(fd.Date, DateTimeKind.Utc) : null,
             ToDate = _toDate is { } td ? DateTime.SpecifyKind(td.Date, DateTimeKind.Utc) : null,
         };
@@ -320,8 +359,8 @@ public partial class AddContractPartyDialog
             if (!ok) return;
 
             await OnAnnounce.InvokeAsync(IsEdit
-                ? $"{SelectedLabel} updated: {PartyRoleLabel.For(_role)}{TermSuffix}."
-                : $"{SelectedLabel} linked as {PartyRoleLabel.For(_role)}.");
+                ? $"{SelectedLabel} updated: {PartyRoleLabel.For(role)}{TermSuffix}."
+                : $"{SelectedLabel} linked as {PartyRoleLabel.For(role)}.");
 
             await OnSaved.InvokeAsync();
             await OpenChanged.InvokeAsync(false);

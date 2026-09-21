@@ -109,6 +109,34 @@ public sealed class DomainNotFoundException : DomainException
 }
 
 /// <summary>
+/// The caller is authenticated but lacks a capability this particular request needs. Maps to
+/// <c>403 Forbidden</c>.
+/// </summary>
+/// <remarks>
+/// <b>Exists for a capability that cannot be decided before the work starts</b> (issue #157 §7.3).
+/// The ordinary case is an action-level <c>[Authorize]</c> policy or a controller pre-flight, and
+/// those stay where they are — this is for the one shape neither can serve: the contact-delete detach
+/// valve, whose required claims are derived from <em>which classes of link the contact actually has</em>,
+/// a determination that has to be read inside the delete's own transaction so it cannot disagree with
+/// what the delete then destroys. A controller pre-flight there would be a second snapshot, and a row
+/// inserted between the two would be destroyed by a caller never asked to prove the claim for it.
+///
+/// <para>
+/// A service still has no <c>ClaimsPrincipal</c>: the caller passes in <em>what it may detach</em> and
+/// the service decides against the snapshot, raising this when the two disagree. It fails closed —
+/// nothing is written — and never silently downgrades to the refused delete.
+/// </para>
+/// </remarks>
+public sealed class DomainForbiddenException : DomainException
+{
+    public override int StatusCode => (int)HttpStatusCode.Forbidden;
+
+    public DomainForbiddenException(string message) : base(message)
+    {
+    }
+}
+
+/// <summary>
 /// A conflict with existing state — typically a duplicate of something that already exists. Maps to
 /// <c>409 Conflict</c>.
 /// </summary>

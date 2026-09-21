@@ -19,4 +19,14 @@ public sealed record DetachedInsuranceLinks
 
     /// <summary>The policies that lost at least one link.</summary>
     public List<Guid> AffectedPolicyIds { get; set; } = new();
+
+    /// <summary>
+    /// Contract-party rows in the <c>Beneficiary</c> role that the same transaction destroyed
+    /// (issue #157 §5.4). Those block a contact delete exactly as an insurance beneficiary designation
+    /// does, so the valve that clears one clears the other.
+    /// </summary>
+    public int ContractBeneficiaryLinks { get; set; }
+
+    /// <summary>The contracts that lost at least one beneficiary party. Ids only, for the same reason as above.</summary>
+    public List<Guid> AffectedContractIds { get; set; } = new();
 }
