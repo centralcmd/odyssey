@@ -317,8 +317,10 @@ public class TuningSystemSettingsApiTests
             "Samples per skip reason must be between");
         Both(nameof(SystemSettingsUpdate.EmailMaxTrackedRecipients),
             SystemSettingsDefaults.EmailMaxTrackedRecipients, 200_000, "can only be raised, not lowered");
-        Both(nameof(SystemSettingsUpdate.AccountMaxSmartTagsPerAccount), 1, 1_000,
-            "Smart tags per account must be between");
+        // The ceiling is ListDefaults.MaxFilterArrayLength, named rather than restated (issue #168) —
+        // a literal here is the drift this key's own bug was.
+        Both(nameof(SystemSettingsUpdate.AccountMaxSmartTagsPerAccount), 1,
+            ListDefaults.MaxFilterArrayLength, "Smart tags per account must be between");
 
         return data;
     }

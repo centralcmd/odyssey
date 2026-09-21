@@ -268,12 +268,12 @@ public class TuningLookupDegradationTests
         var dbName = Guid.NewGuid().ToString();
 
         var healthy = CreateContext(dbName);
-        await SeedAsync(healthy, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "500"));
+        await SeedAsync(healthy, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "40"));
         var live = await new AccountLimitsLookup(
             healthy, cache, NullLogger<AccountLimitsLookup>.Instance).GetAsync();
 
         Assert.False(live.IsDegraded);
-        Assert.Equal(500, live.MaxSmartTagsPerAccount);
+        Assert.Equal(40, live.MaxSmartTagsPerAccount);
 
         cache.Remove(AccountCacheKey);
         var broken = CreateContext(dbName);
@@ -287,6 +287,39 @@ public class TuningLookupDegradationTests
     }
 
     /// <summary>
+    /// Issue #168 — a row left ABOVE the ceiling resolves to the ceiling, and is not degraded.
+    ///
+    /// <para>
+    /// The <c>[Range]</c> runs on the HTTP path alone, so a value saved before the ceiling narrowed,
+    /// or written by a hand edit or a restore, reaches this lookup unchecked. Without the clamp it
+    /// would be served verbatim to both consumers — the section's pre-check and
+    /// <c>AccountSmartTagService</c>'s own enforcement — and the account could again hold more smart
+    /// tags than one <c>tagIds</c> filter can carry.
+    /// </para>
+    ///
+    /// <para>
+    /// <strong>Clamped, not degraded:</strong> the row parsed. Reporting it as degraded would make a
+    /// healthy database with a stale row look like a failed read, which is the distinction
+    /// <c>CLAUDE.md</c> draws between the two.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task AccountLimits_WhenTheStoredCapExceedsItsCeiling_ResolvesToTheCeiling()
+    {
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var context = CreateContext(Guid.NewGuid().ToString());
+        await SeedAsync(context, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "500"));
+
+        var limits = await new AccountLimitsLookup(
+            context, cache, NullLogger<AccountLimitsLookup>.Instance).GetAsync();
+
+        Assert.False(limits.IsDegraded);
+        Assert.Equal(
+            SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax, limits.MaxSmartTagsPerAccount);
+        Assert.Equal(ListDefaults.MaxFilterArrayLength, limits.MaxSmartTagsPerAccount);
+    }
+
+    /// <summary>
     /// The watermarks live in <see cref="IMemoryCache"/>, not <c>static</c> fields. Same lifetime in
     /// production (the cache is a singleton), but container-scoped — so a watermark cannot leak between
     /// test classes running in parallel, which is a bug this codebase has actually had.
@@ -296,7 +329,7 @@ public class TuningLookupDegradationTests
     {
         var dbName = Guid.NewGuid().ToString();
         var seeded = CreateContext(dbName);
-        await SeedAsync(seeded, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "500"));
+        await SeedAsync(seeded, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "40"));
 
         var firstCache = new MemoryCache(new MemoryCacheOptions());
         await new AccountLimitsLookup(seeded, firstCache, NullLogger<AccountLimitsLookup>.Instance).GetAsync();
