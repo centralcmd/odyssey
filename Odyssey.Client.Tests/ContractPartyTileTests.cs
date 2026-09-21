@@ -88,6 +88,145 @@ public class ContractPartyTileTests
             .Add(h => h.CanWrite, canWrite));
     }
 
+    /// <summary>The same fixture with SEVERAL parties, for the cases about tile order.</summary>
+    private static IRenderedComponent<DetailHost> RenderMany(List<ExistingContractParty> parties)
+    {
+        var ctx = new BunitContext();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddMudServices();
+        ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
+        ctx.Services.AddSingleton(Mock.Of<Odyssey.ApiClient.Resources.IContractsApiClient>());
+        ctx.Services.AddSingleton<TimeProvider>(new FixedTime(Today));
+        ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
+        ctx.Services.AddSingleton(Mock.Of<IContactQuickCreate>());
+        ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedOut());
+
+        return ctx.Render<DetailHost>(p => p
+            .Add(h => h.Party, parties[0])
+            .Add(h => h.Parties, parties)
+            .Add(h => h.CanWrite, true));
+    }
+
+    /// <summary>
+    /// The role WORDS in render order. Read off the word span rather than the overline's text
+    /// content, which also carries the object mark's ligature — the mark sits inside <c>.con-role</c>
+    /// so that it inherits the role's own colour.
+    /// </summary>
+    private static List<string> RoleWords(IRenderedComponent<DetailHost> cut) =>
+        [.. cut.FindAll(".con-role > span:not(.con-role-mark)").Select(r => r.TextContent.Trim())];
+
+    /// <summary>A party with its own id, so several can sit on one contract without colliding.</summary>
+    private static ExistingContractParty PartyWith(Guid id, ContractPartyRole role) => new()
+    {
+        ContractPartyId = id,
+        ContractId = ContractId,
+        Kind = ContractPartyKind.Account,
+        Account = new ContractAccountReference
+        {
+            AccountId = AccountId,
+            Name = "Everyday Checking",
+            Type = AccountType.CheckingAccount,
+        },
+        Role = role,
+    };
+
+    // ── Object parties (issue #169) ──────────────────────────────────────────
+
+    /// <summary>
+    /// An OBJECT role — the thing the agreement is about rather than a side of it — carries the
+    /// outward-arrow mark in its overline, and the tile and overline both take the <c>object</c>
+    /// class the grouping styles hang off.
+    /// </summary>
+    [Theory]
+    [InlineData(ContractPartyRole.Object)]
+    [InlineData(ContractPartyRole.Property)]
+    [InlineData(ContractPartyRole.Collateral)]
+    public void An_object_role_carries_the_outward_mark(ContractPartyRole role)
+    {
+        var cut = Render(Party(role));
+
+        Assert.Contains("object", cut.Find(".con-party-tile").ClassName, StringComparison.Ordinal);
+        Assert.Contains("object", cut.Find(".con-role").ClassName, StringComparison.Ordinal);
+        Assert.Equal("north_east", cut.Find(".con-role .con-role-mark").TextContent.Trim());
+    }
+
+    /// <summary>
+    /// The negative half, and the one that keeps the mark meaning something: a party that IS a side
+    /// of the agreement carries neither the class nor the glyph. Without this, a rule that marked
+    /// every tile would satisfy the case above while saying nothing.
+    /// </summary>
+    [Theory]
+    [InlineData(ContractPartyRole.Employer)]
+    [InlineData(ContractPartyRole.Guarantor)]
+    [InlineData(ContractPartyRole.Other)]
+    public void A_counterparty_role_carries_no_object_mark(ContractPartyRole role)
+    {
+        var cut = Render(Party(role));
+
+        Assert.DoesNotContain("object", cut.Find(".con-party-tile").ClassName, StringComparison.Ordinal);
+        Assert.DoesNotContain("object", cut.Find(".con-role").ClassName, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".con-role-mark"));
+    }
+
+    /// <summary>
+    /// The mark is DECORATION and is hidden from assistive technology: the role word beside it
+    /// already names which kind of party this is, so announcing the glyph would read a bare ligature
+    /// to a screen-reader user and the state would ride on something other than the text
+    /// (WCAG 1.3.1 / 1.4.1, both Level A).
+    /// </summary>
+    [Fact]
+    public void The_object_mark_is_hidden_from_assistive_technology_and_the_word_carries_the_state()
+    {
+        var cut = Render(Party(ContractPartyRole.Property));
+
+        Assert.Equal("true", cut.Find(".con-role-mark").GetAttribute("aria-hidden"));
+
+        // The accessible name of the overline is the ROLE, not the ligature riding beside it.
+        Assert.Equal("Property", cut.Find(".con-role > span:not(.con-role-mark)").TextContent.Trim());
+    }
+
+    /// <summary>
+    /// Object parties LEAD the section, and the counterparties keep the order the server sent. The
+    /// thing contracted over is what a reader scans a tenancy or a loan for, and it is the one tile
+    /// that is not a counterparty.
+    /// </summary>
+    [Fact]
+    public void Object_parties_lead_the_section_and_the_rest_keep_their_order()
+    {
+        var cut = RenderMany(
+        [
+            PartyWith(Guid.Parse("11111111-0000-0000-0000-000000000001"), ContractPartyRole.Landlord),
+            PartyWith(Guid.Parse("11111111-0000-0000-0000-000000000002"), ContractPartyRole.Tenant),
+            PartyWith(Guid.Parse("11111111-0000-0000-0000-000000000003"), ContractPartyRole.Property),
+            PartyWith(Guid.Parse("11111111-0000-0000-0000-000000000004"), ContractPartyRole.Broker),
+        ]);
+
+        Assert.Equal(
+            ["Property", "Landlord", "Tenant", "Broker"],
+            RoleWords(cut));
+    }
+
+    /// <summary>
+    /// A role this build cannot name is NOT guessed into the object group: it renders as an
+    /// unrecognised role and stays where it was. Classifying an ordinal newer than this client would
+    /// assert a grouping the client has no basis for, and would put an unnameable tile at the top of
+    /// the section.
+    /// </summary>
+    [Fact]
+    public void An_unrecognised_role_is_not_treated_as_an_object_party()
+    {
+        var cut = RenderMany(
+        [
+            PartyWith(Guid.Parse("22222222-0000-0000-0000-000000000001"), ContractPartyRole.Landlord),
+            PartyWith(Guid.Parse("22222222-0000-0000-0000-000000000002"), (ContractPartyRole)int.MaxValue),
+        ]);
+
+        Assert.Equal(
+            ["Landlord", "Unrecognised role"],
+            RoleWords(cut));
+        Assert.Empty(cut.FindAll(".con-role-mark"));
+    }
+
     /// <summary>AC 1 — a stated role is the overline; the record's own TYPE is the caption.</summary>
     /// <remarks>
     /// The caption states the type alone. The party KIND is already carried by the tile's icon and by
@@ -338,6 +477,12 @@ public class ContractPartyTileTests
     {
         [Parameter] public ExistingContractParty Party { get; set; } = default!;
 
+        /// <summary>
+        /// Several parties, for the cases about ORDER. Unset renders <see cref="Party"/> alone, which
+        /// is what every single-tile case wants.
+        /// </summary>
+        [Parameter] public List<ExistingContractParty>? Parties { get; set; }
+
         [Parameter] public bool CanWrite { get; set; }
 
         public List<ExistingContractParty> Edited { get; } = [];
@@ -352,7 +497,7 @@ public class ContractPartyTileTests
                 ContractId = ContractId,
                 Name = "Employment agreement",
                 CreatedAtUtc = Today.AddYears(-1),
-                Parties = [Party],
+                Parties = Parties ?? [Party],
             });
             builder.AddComponentParameter(3, nameof(ContractDetailView.CanWrite), CanWrite);
             if (CanWrite)

@@ -78,6 +78,37 @@ public enum ContractPartyRole
     /// <summary>A party standing behind another's obligation.</summary>
     Guarantor = 15,
 
-    /// <summary>An intermediary that arranged the agreement. Legal on every contract type.</summary>
+    /// <summary>
+    /// An intermediary that arranged the agreement. Legal on every contract type.
+    /// </summary>
     Broker = 16,
+
+    /// <summary>
+    /// The thing the agreement concerns, in the general case (issue #169 §4.1) — what a contract is
+    /// <em>about</em> rather than who stands on a side of it. Not legal on
+    /// <see cref="ContractType.Employment"/> (the object of an employment contract is the employee's
+    /// labour, and <see cref="Employee"/> already names them) nor on
+    /// <see cref="ContractType.Insurance"/>, where <see cref="Insured"/> already documents "the
+    /// person, account or thing covered".
+    /// </summary>
+    /// <remarks>
+    /// Like every other role this is <b>orthogonal to <see cref="ContractPartyKind"/></b>: an object
+    /// party is <em>expected</em> to be an account, but a contact target is equally legal and is not
+    /// checked. Do not add that constraint as a "missing" one.
+    /// </remarks>
+    Object = 17,
+
+    /// <summary>
+    /// Real property or goods — the let premises, the purchased asset (issue #169 §4.1). Suggested on
+    /// <see cref="ContractType.Rental"/> and <see cref="ContractType.Purchase"/>. Orthogonal to
+    /// <see cref="ContractPartyKind"/>, exactly as <see cref="Object"/> is.
+    /// </summary>
+    Property = 18,
+
+    /// <summary>
+    /// Security pledged against a loan — Norwegian <em>pant</em> (issue #169 §4.1). Suggested on
+    /// <see cref="ContractType.Loan"/>. Orthogonal to <see cref="ContractPartyKind"/>, exactly as
+    /// <see cref="Object"/> is.
+    /// </summary>
+    Collateral = 19,
 }

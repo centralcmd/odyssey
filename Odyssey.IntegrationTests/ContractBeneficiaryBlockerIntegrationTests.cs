@@ -94,17 +94,30 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
     }
 
     /// <summary>
-    /// AC 14 — the other fourteen roles are UNAFFECTED: the contact deletes without a blocker and the
-    /// party row still cascades away. The rule is one role wide, and a guard that widened it to every
-    /// contract party would make most contacts' counterparties undeletable.
+    /// AC 14, widened by issue #169 AC 12 — the other SEVENTEEN roles are UNAFFECTED: the contact
+    /// deletes without a blocker and the party row still cascades away. The rule is one role wide, and
+    /// a guard that widened it to every contract party would make most contacts' counterparties
+    /// undeletable.
     /// </summary>
+    /// <remarks>
+    /// The three object roles are the ones a reviewer is most likely to want added to
+    /// <c>ContactReferenceGuard.BlockingRole</c>, so they are pinned here as NON-blocking: a contact
+    /// linked as a contract's object is an ordinary link whose row should die with the contact, unlike
+    /// a named beneficiary, where erasing the row silently changes who receives (issue #169 §7.6).
+    /// Nothing in the guard enumerates roles — it tests <c>Role != BlockingRole</c> — so these three
+    /// fall into the cascade bucket with no code change, and that is exactly what this asserts.
+    /// </remarks>
     [SkippableTheory]
-    [InlineData(ContextContractPartyRole.Insurer)]
-    [InlineData(ContextContractPartyRole.Policyholder)]
-    [InlineData(ContextContractPartyRole.Broker)]
-    [InlineData(ContextContractPartyRole.Other)]
+    [InlineData(ContextContractPartyRole.Insurer, ContextContractType.Insurance)]
+    [InlineData(ContextContractPartyRole.Policyholder, ContextContractType.Insurance)]
+    [InlineData(ContextContractPartyRole.Broker, ContextContractType.Insurance)]
+    [InlineData(ContextContractPartyRole.Other, ContextContractType.Insurance)]
+    [InlineData(ContextContractPartyRole.Guarantor, ContextContractType.Insurance)]
+    [InlineData(ContextContractPartyRole.Object, ContextContractType.Rental)]
+    [InlineData(ContextContractPartyRole.Property, ContextContractType.Rental)]
+    [InlineData(ContextContractPartyRole.Collateral, ContextContractType.Loan)]
     public async Task A_contact_in_any_other_role_still_deletes_and_its_party_row_cascades(
-        ContextContractPartyRole role)
+        ContextContractPartyRole role, ContextContractType type)
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
 
@@ -117,7 +130,7 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
             await using (var context = New(connectionString))
             {
                 context.Contacts.Add(Organization(contactId, $"Contract {role}"));
-                context.Contracts.Add(Contract(contractId, "Buildings cover"));
+                context.Contracts.Add(Contract(contractId, $"{type} agreement", type));
                 await context.SaveChangesAsync();
                 AddParty(context, contractId, contactId, role);
                 await context.SaveChangesAsync();
@@ -451,13 +464,17 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
             Role = role,
         });
 
-    private static Contract Contract(Guid id, string name) => new()
+    /// <summary>
+    /// The fixture contract. <paramref name="type"/> defaults to Insurance — the one type that
+    /// SUGGESTS Beneficiary, so the fixture is a legal contract rather than one the API itself would
+    /// have refused — and a caller seeding a different role passes the type that makes ITS cell legal.
+    /// </summary>
+    private static Contract Contract(
+        Guid id, string name, ContextContractType type = ContextContractType.Insurance) => new()
     {
         ContractId = id,
         Name = name,
-        // Insurance is the one type that SUGGESTS Beneficiary, so the fixture is a legal contract
-        // rather than one the API itself would have refused.
-        Type = ContextContractType.Insurance,
+        Type = type,
         CreatedAtUtc = DateTime.UtcNow,
     };
 

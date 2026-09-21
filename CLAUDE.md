@@ -276,10 +276,28 @@ round now, through the policy's own party collections. `ContractPartyKind` keeps
 references and is reachable from both the API and the WASM client, so the write-path validator and the
 party picker name **one** symbol — the same precedent `SettingItem.Rule` and `SystemSettingsBounds` set.
 A client-side *copy* of a server rule is the defect CLAUDE.md already forbids for caps; a shared
-declaration is what avoids it. 52 of the 135 cells are legal, and guard tests pin that count, the
-per-type suggested sets, and the universality of `Broker` and `Other`.
+declaration is what avoids it. **69 of the 162 cells are legal** (issue #169 widened it from 52 of
+135), and guard tests pin that count, the per-type legal and suggested sets, and the universality of
+`Guarantor`, `Broker` and `Other`.
 
-Five rules around it are easy to get backwards:
+Three things about that widening are worth keeping straight:
+
+- **The universal set is a TRIO, not a pair.** `Guarantor` joined `Broker` and `Other` on every type —
+  a party standing behind another's obligation belongs to no particular kind of agreement. Because
+  `Cell` composes `allowedBeyondUniversal` with `UniversallyAllowed`, a role in **both** lists yields a
+  duplicated entry in `LegalFor`, which fails the distinctness guard on the ordinary path. Promoting a
+  role means deleting it from every column that named it.
+- **`Object` (17), `Property` (18) and `Collateral` (19) name what a contract is ABOUT**, not who
+  stands on a side of it. `Object` reaches seven types; `Property` is Rental, Purchase and Other;
+  `Collateral` is Loan and Other. The two exclusions are deliberate and stated so they are not "fixed"
+  later: Employment's object is the employee's labour, which `Employee` already names, and Insurance's
+  is already `Insured` — "the person, account or thing covered" — and a second name for one concept
+  would split where the covered thing is recorded.
+- **The "exactly two suggested roles" invariant is RETIRED, not loosened** (issue #169 §4.4). The shape
+  is now 4 / 3 / 2 / 1: four for Insurance, three for Rental, Purchase and Loan, two for the remaining
+  named types, one for `Other`. The count stays pinned, at a new number.
+
+Five further rules are easy to get backwards:
 
 - **`Suggested` carries no server-side meaning.** The validator only ever asks whether a cell is legal;
   the tier exists so the picker's ordering is declared beside the legality it must stay consistent
@@ -300,7 +318,7 @@ Five rules around it are easy to get backwards:
   role binds to `0` and `[EnumDataType]` rejects it with an invalid-enum-value message, which
   misdescribes what the caller did wrong.
 - **The `Beneficiary` role blocks deletion of its contact, with no FK behind it.** The
-  `ContractParty → Contact` key stays `CASCADE` because the other fourteen roles should keep cascading,
+  `ContractParty → Contact` key stays `CASCADE` because the other seventeen roles should keep cascading,
   so `IContactReferenceGuard` is the *only* enforcement — which is why the rule has to reach
   `IsReferencedByRestrictedLinkAsync` (the defence-in-depth probe) and not just the blocker query, and
   why `ClearAndCascadeReferencesAsync` must **exclude** that role: otherwise the cascade and the staged

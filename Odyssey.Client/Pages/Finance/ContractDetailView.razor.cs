@@ -67,7 +67,27 @@ public partial class ContractDetailView : IAsyncDisposable
 
     private static string PartyMenuIdFor(string key) => $"con-party-{key}";
 
-    private IReadOnlyList<string> PartyKeys => [.. Contract.Parties.Select(p => p.ContractPartyId.ToString())];
+    /// <summary>
+    /// The parties in RENDER order: the ones naming what the agreement is ABOUT first
+    /// (<c>Object</c>, <c>Property</c>, <c>Collateral</c> — issue #169), then the parties that stand
+    /// on a side of it. Each group keeps the order the server sent, so the grouping is the only thing
+    /// this imposes.
+    /// </summary>
+    /// <remarks>
+    /// The thing contracted over is what a reader scans a tenancy or a loan for, and it is the one
+    /// tile that is not a counterparty — leading with it costs the counterparties nothing, since they
+    /// keep their relative order.
+    /// </remarks>
+    private IReadOnlyList<ExistingContractParty> SortedParties =>
+    [
+        .. Contract.Parties.Where(p => OdsTypeRegistries.IsObjectRole(p.Role)),
+        .. Contract.Parties.Where(p => !OdsTypeRegistries.IsObjectRole(p.Role)),
+    ];
+
+    // The focus keys follow the RENDERED order, not the server's: after a detach the helper lands
+    // focus on the removed tile's neighbour, and a list ordered differently from the one on screen
+    // would name the wrong neighbour.
+    private IReadOnlyList<string> PartyKeys => [.. SortedParties.Select(p => p.ContractPartyId.ToString())];
 
     protected override void OnParametersSet() => Focus.OnKeysChanged(PartyKeys);
 
@@ -83,6 +103,27 @@ public partial class ContractDetailView : IAsyncDisposable
             await _focus.DisposeAsync();
         }
     }
+
+    /// <summary>
+    /// The party tile's classes. An object party (issue #169) takes <c>object</c> so the tile can be
+    /// marked as naming what the agreement is ABOUT rather than a side of it.
+    /// </summary>
+    private static string TileClass(ContractPartyRole role) =>
+        OdsTypeRegistries.IsObjectRole(role) ? "con-party-tile object" : "con-party-tile";
+
+    /// <summary>
+    /// The role overline's classes: <c>unset</c> for a role this build cannot name — an ABSENCE, not
+    /// a category — and <c>object</c> for one naming the thing contracted over.
+    /// </summary>
+    /// <remarks>
+    /// Built here rather than interpolated in the markup because two <c>@(…)</c> expressions side by
+    /// side in one attribute value do not parse inside a <c>@&lt;text&gt;</c> <c>RenderFragment</c>
+    /// lambda — see <c>docs/frontend-mudblazor-gotchas.md</c>.
+    /// </remarks>
+    private static string RoleClass(ContractPartyRole role) =>
+        "con-role"
+        + (PartyRoleLabel.IsNamed(role) ? "" : " unset")
+        + (OdsTypeRegistries.IsObjectRole(role) ? " object" : "");
 
     /// <summary>
     /// A party whose term closed before today: still a party of record, drawn quieter than one

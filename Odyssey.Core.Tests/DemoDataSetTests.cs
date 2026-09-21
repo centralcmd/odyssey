@@ -166,6 +166,12 @@ public class DemoDataSetTests
         // would never exercise (issue #157 §4.6).
         roles.Should().Contain([ContractPartyRole.Guarantor, ContractPartyRole.Other]);
 
+        // The two type-specific OBJECT roles (issue #169 §14 step 11): what the house purchase bought
+        // and what the car loan is secured on. The E2E tiers read seeded data, so a role absent here
+        // is a role no full-stack test ever renders or round-trips — which is why this is asserted
+        // rather than left to the seeder's discretion.
+        roles.Should().Contain([ContractPartyRole.Property, ContractPartyRole.Collateral]);
+
         parties.Should().Contain(party => party.FromDate != null || party.ToDate != null);
     }
 

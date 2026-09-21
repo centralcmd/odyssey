@@ -16,8 +16,9 @@ public enum ContractPartyRoleLegality
 }
 
 /// <summary>
-/// The contract-type × party-role matrix (issue #157 §4.7): which roles are legal on which contract
-/// type, and which of those are <em>suggested</em>. <b>52 of the 135 cells are legal.</b>
+/// The contract-type × party-role matrix (issue #157 §4.7, widened by issue #169 §4.2): which roles
+/// are legal on which contract type, and which of those are <em>suggested</em>.
+/// <b>69 of the 162 cells are legal.</b>
 /// </summary>
 /// <remarks>
 /// <b>This is the single declaration, not a server rule the client re-implements.</b> It lives in
@@ -34,12 +35,22 @@ public enum ContractPartyRoleLegality
 /// </para>
 ///
 /// <para>
-/// <see cref="ContractPartyRole.Broker"/> and <see cref="ContractPartyRole.Other"/> are legal on every
-/// type. Every type carries exactly two suggested roles except <see cref="ContractType.Insurance"/>,
-/// which carries four — mirroring an insurance policy's four link collections — and
-/// <see cref="ContractType.Other"/>, which carries one: a contract whose type is "none of the above"
-/// has no domain vocabulary to offer, so the only role that can be <em>suggested</em> is the one that
-/// says as much.
+/// <see cref="ContractPartyRole.Guarantor"/>, <see cref="ContractPartyRole.Broker"/> and
+/// <see cref="ContractPartyRole.Other"/> are legal on every type — the universal trio (issue #169 §2
+/// goal 2). A party standing behind another's obligation belongs to no particular kind of agreement,
+/// which is why <c>Guarantor</c> joined the two that were universal already.
+/// </para>
+///
+/// <para>
+/// The suggested counts are <b>4 / 3 / 2 / 1</b>: four for <see cref="ContractType.Insurance"/>,
+/// mirroring an insurance policy's four link collections; three for
+/// <see cref="ContractType.Rental"/>, <see cref="ContractType.Purchase"/> and
+/// <see cref="ContractType.Loan"/>, whose object role is as ordinary as their two counterparties;
+/// two for the remaining named types; and one for <see cref="ContractType.Other"/>, since a contract
+/// whose type is "none of the above" has no domain vocabulary to offer, so the only role that can be
+/// <em>suggested</em> is the one that says as much. The earlier "exactly two except Insurance and
+/// Other" invariant is <b>retired</b> by issue #169 §4.4, not loosened — the count is still pinned,
+/// at a new shape.
 /// </para>
 /// </remarks>
 public static class ContractPartyRoleMatrix
@@ -47,24 +58,36 @@ public static class ContractPartyRoleMatrix
     private static readonly IReadOnlyList<ContractPartyRole> NoRoles = [];
 
     /// <summary>
-    /// Legal on every contract type, and never suggested on any: an intermediary and a deliberate
-    /// "none of these", neither of which belongs to a particular kind of agreement. Held once so a
-    /// type added later cannot forget them.
+    /// Legal on every contract type, and never suggested on any: a party standing behind another's
+    /// obligation, an intermediary, and a deliberate "none of these", none of which belongs to a
+    /// particular kind of agreement. Held once so a type added later cannot forget them.
     /// </summary>
+    /// <remarks>
+    /// <b>A member here must NOT also appear in a column's <c>allowedBeyondUniversal</c> list.</b>
+    /// <see cref="Cell"/>'s constructor composes the two, so a role in both yields a duplicated entry
+    /// in <see cref="LegalFor"/> — a self-inflicted failure of the distinctness assertion on the
+    /// ordinary path, which is why <see cref="ContractPartyRole.Guarantor"/> was deleted from the
+    /// Rental, Purchase, Loan and Other columns as it was promoted here (issue #169 §3).
+    /// </remarks>
     private static readonly ContractPartyRole[] UniversallyAllowed =
-        [ContractPartyRole.Broker, ContractPartyRole.Other];
+        [ContractPartyRole.Guarantor, ContractPartyRole.Broker, ContractPartyRole.Other];
 
     private static readonly Dictionary<ContractType, Cell> Cells = new()
     {
+        // Employment takes no object role at all: the object of an employment contract is the
+        // employee's labour, and Employee already names them (issue #169 §4.3).
         [ContractType.Employment] = new(
             [ContractPartyRole.Employee, ContractPartyRole.Employer],
             []),
         [ContractType.Service] = new(
             [ContractPartyRole.Buyer, ContractPartyRole.Seller],
-            []),
+            [ContractPartyRole.Object]),
         [ContractType.Rental] = new(
-            [ContractPartyRole.Landlord, ContractPartyRole.Tenant],
-            [ContractPartyRole.Guarantor]),
+            [ContractPartyRole.Landlord, ContractPartyRole.Tenant, ContractPartyRole.Property],
+            [ContractPartyRole.Object]),
+        // Nor does Insurance: Insured is already documented as "the person, account or thing
+        // covered", and a second name for one concept would split where the covered thing is
+        // recorded, so a report or filter would have to check both (issue #169 §4.3).
         [ContractType.Insurance] = new(
             [
                 ContractPartyRole.Insurer,
@@ -75,16 +98,16 @@ public static class ContractPartyRoleMatrix
             []),
         [ContractType.Subscription] = new(
             [ContractPartyRole.Buyer, ContractPartyRole.Seller],
-            []),
+            [ContractPartyRole.Object]),
         [ContractType.Purchase] = new(
-            [ContractPartyRole.Buyer, ContractPartyRole.Seller],
-            [ContractPartyRole.Guarantor]),
+            [ContractPartyRole.Buyer, ContractPartyRole.Seller, ContractPartyRole.Property],
+            [ContractPartyRole.Object]),
         [ContractType.Loan] = new(
-            [ContractPartyRole.Lender, ContractPartyRole.Borrower],
-            [ContractPartyRole.Guarantor]),
+            [ContractPartyRole.Lender, ContractPartyRole.Borrower, ContractPartyRole.Collateral],
+            [ContractPartyRole.Object]),
         [ContractType.Membership] = new(
             [ContractPartyRole.Buyer, ContractPartyRole.Seller],
-            []),
+            [ContractPartyRole.Object]),
         // The catch-all type takes the catch-all role as its one suggestion and permits every other
         // role outright — a contract filed as "none of the above" may genuinely be any of them.
         [ContractType.Other] = new(
@@ -102,7 +125,9 @@ public static class ContractPartyRoleMatrix
                 ContractPartyRole.Beneficiary,
                 ContractPartyRole.Lender,
                 ContractPartyRole.Borrower,
-                ContractPartyRole.Guarantor,
+                ContractPartyRole.Object,
+                ContractPartyRole.Property,
+                ContractPartyRole.Collateral,
             ]),
     };
 
