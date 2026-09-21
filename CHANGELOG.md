@@ -5,6 +5,38 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0](https://github.com/centralcmd/odyssey/compare/v0.32.1...v0.33.0) (2026-09-21)
+
+
+### Features
+
+* **client:** withhold the signature dates from the new-contract dialog ([430e49e](https://github.com/centralcmd/odyssey/commit/430e49e796f891af1fa08edcb15fc10695895279))
+* contract event automation (backend + frontend) ([#163](https://github.com/centralcmd/odyssey/issues/163)) ([9c42c7f](https://github.com/centralcmd/odyssey/commit/9c42c7f77bedebe4d445a63eceb171e93a648c3e))
+* contract object parties and a universal Guarantor (backend + frontend) ([#174](https://github.com/centralcmd/odyssey/issues/174)) ([cf07baa](https://github.com/centralcmd/odyssey/commit/cf07baaf5789eb9a1f62d9b1fbaa3d4093d4cf8c))
+* contract smart tags (backend + frontend) ([#173](https://github.com/centralcmd/odyssey/issues/173)) ([2a49283](https://github.com/centralcmd/odyssey/commit/2a49283e21be65176e9de368b288626cc7f6ec38))
+* contract term money direction (backend + frontend) ([#162](https://github.com/centralcmd/odyssey/issues/162)) ([a1293ae](https://github.com/centralcmd/odyssey/commit/a1293ae2cc70ab405b3fade1fd8dc938855fdbc2))
+* **core:** contract party role matrix and the Loan contract type ([#160](https://github.com/centralcmd/odyssey/issues/160)) ([b434561](https://github.com/centralcmd/odyssey/commit/b4345616a0d533c704a69f966d00ba2231d45892))
+* sync the frontend to the updated design system ([#156](https://github.com/centralcmd/odyssey/issues/156)) ([eac7e98](https://github.com/centralcmd/odyssey/commit/eac7e983dfec5ba5299c4da1b803d6ceb0c70eee))
+* sync the smaller design-system changes since [#156](https://github.com/centralcmd/odyssey/issues/156) ([#170](https://github.com/centralcmd/odyssey/issues/170)) ([955d048](https://github.com/centralcmd/odyssey/commit/955d048129039700595144f086145159eb3e556a))
+
+
+### Bug Fixes
+
+* **client:** caption a contract party with its type alone ([ac7f495](https://github.com/centralcmd/odyssey/commit/ac7f4959123ae2f29b5f60cb20110f663e1ad309))
+* **core:** refuse deleting a transaction tag that is still in use ([#171](https://github.com/centralcmd/odyssey/issues/171)) ([b7b18b7](https://github.com/centralcmd/odyssey/commit/b7b18b73c72e0091ab7b4b1f72541987d1dd8907))
+* **shared:** bound the account smart-tag cap by the tagIds filter limit ([#172](https://github.com/centralcmd/odyssey/issues/172)) ([1c5d0ae](https://github.com/centralcmd/odyssey/commit/1c5d0ae37d3c6203b47543da66171a3f62168092))
+
+
+### Documentation
+
+* update design system ([2b461ae](https://github.com/centralcmd/odyssey/commit/2b461ae500d491200cc50400509172894b4516b6))
+* update design system ([9ebc418](https://github.com/centralcmd/odyssey/commit/9ebc4188a98504e49548b70403a4ac4cea4b15de))
+* update design system ([37b3e0e](https://github.com/centralcmd/odyssey/commit/37b3e0e0f49843196d97383813070b2fecd8daa3))
+* update design system ([0700936](https://github.com/centralcmd/odyssey/commit/070093662ac08a4258e2b9acf21def1006dffdf8))
+* update design system ([230e9f5](https://github.com/centralcmd/odyssey/commit/230e9f5229206feecca0478b87ef3493dc4c3edb))
+* update design system ([b9528d1](https://github.com/centralcmd/odyssey/commit/b9528d1ef4fbedd6ae18b06c2acb352b7bfa5be0))
+* update design system ([3586d93](https://github.com/centralcmd/odyssey/commit/3586d936a2f73778ba604dc3cf176d7ab63fb4e3))
+
 ## [0.32.1](https://github.com/centralcmd/odyssey/compare/v0.32.0...v0.32.1) (2026-09-20)
 
 
