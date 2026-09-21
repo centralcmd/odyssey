@@ -9,6 +9,7 @@ using MudBlazor;
 using MudBlazor.Services;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
@@ -51,11 +52,13 @@ public class ContractEventSurfaceTests
         string? description = "Asked for the CPI basis in writing.",
         string? notes = "Chase on the 21st if no reply.",
         DateTime? occurredAt = null,
-        string? createdBy = "Jane Doe") => new()
+        string? createdBy = "Jane Doe",
+        ContractEventSource source = ContractEventSource.User) => new()
     {
         ContractEventId = Guid.NewGuid(),
         ContractId = ContractId,
         Type = type,
+        Source = source,
         Title = title,
         Description = description,
         Notes = notes,
@@ -450,6 +453,339 @@ public class ContractEventSurfaceTests
     private static void ClickFooter(IRenderedComponent<DialogHost> cut, string label) =>
         cut.FindAll("button").Single(b => b.TextContent.Contains(label, StringComparison.Ordinal)).Click();
 
+
+    // ── Provenance: the recorded/hand-written distinction (issue #154 / #155) ──
+
+    /// <summary>
+    /// A recorded row says so, in TEXT, in the attribution line — and a hand-written one says nothing.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is the design system's product decision, and it overrides issue #155's §4 and its AC
+    /// 1/2/17</b>, which asked for a persistent <c>OdsChip</c> in a new rail-item <c>tag</c> slot. One
+    /// sentence carrying who and how was preferred to a pill per row competing with the record head's
+    /// status vocabulary; the accepted cost is that the note inherits <c>.odc-er-meta</c>'s
+    /// hover-reveal. Asserted as markup rather than by eye because "the marker is text, not a hue" is
+    /// the WCAG 1.4.1 claim and a colour-only marker would still render.
+    /// </remarks>
+    [Fact]
+    public void A_recorded_row_names_its_origin_in_the_attribution_line_and_a_hand_written_one_does_not()
+    {
+        var recorded = RenderSection(Lease(), [Event(source: ContractEventSource.System)]);
+
+        Assert.Contains("(automatically generated)", recorded.Markup, StringComparison.Ordinal);
+        Assert.NotEmpty(recorded.FindAll(".cev-auto-note"));
+        // In the author's own line, so who and how are read together.
+        Assert.Contains("Recorded by", recorded.Find(".odc-er-meta").TextContent, StringComparison.Ordinal);
+        Assert.Contains(
+            "automatically generated", recorded.Find(".odc-er-meta").TextContent, StringComparison.Ordinal);
+
+        var handWritten = RenderSection(Lease(), [Event()]);
+        Assert.DoesNotContain("automatically generated", handWritten.Markup, StringComparison.Ordinal);
+        Assert.Empty(handWritten.FindAll(".cev-auto-note"));
+    }
+
+    /// <summary>
+    /// The marker is not carried by colour or glyph: <c>.cev-auto-note</c> declares a font style and
+    /// nothing else, so the row reads the same in greyscale (WCAG 1.4.1).
+    /// </summary>
+    [Fact]
+    public void The_origin_note_is_styled_without_relying_on_colour()
+    {
+        var rule = ComponentRule(".cev-auto-note");
+
+        Assert.Contains("font-style: italic", rule, StringComparison.Ordinal);
+        Assert.DoesNotContain("color:", rule, StringComparison.Ordinal);
+        Assert.DoesNotContain("background", rule, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Non-Goal 1 — a recorded row carries the same two actions as any other. It is a log line, not an
+    /// audit record, and the backend's §7.7 makes the same claim from the other side.
+    /// </summary>
+    [Fact]
+    public void A_recorded_row_carries_the_same_row_actions_as_a_hand_written_one()
+    {
+        var recorded = RenderSection(Lease(), [Event(source: ContractEventSource.System)]);
+        var handWritten = RenderSection(Lease(), [Event()]);
+
+        Assert.Equal(
+            handWritten.FindAll(".odc-er-item .odc-rowactions").Count,
+            recorded.FindAll(".odc-er-item .odc-rowactions").Count);
+        Assert.NotEmpty(recorded.FindAll(".odc-er-item .odc-rowactions"));
+    }
+
+    /// <summary>
+    /// AC 9 — a caller without <c>contracts.update</c> sees every row, recorded ones included, with no
+    /// row actions. <b>Presentation only</b>: the server's <c>403</c> on every write path is the
+    /// enforcement, never the hidden control.
+    /// </summary>
+    [Fact]
+    public void A_read_only_caller_sees_recorded_rows_with_no_actions()
+    {
+        var cut = RenderSection(
+            Lease(), [Event(source: ContractEventSource.System)], canUpdate: false);
+
+        Assert.Contains("(automatically generated)", cut.Markup, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".odc-er-item .odc-rowactions"));
+    }
+
+    /// <summary>
+    /// Non-Goal 3 / AC 8 — the section surfaces NO filter control, and calls the endpoint with no
+    /// <c>source</c> argument. The endpoint serves the filter and the typed client exposes it; the
+    /// per-row marker already answers "was this written or recorded?" where the question is asked.
+    /// </summary>
+    [Fact]
+    public async Task The_section_renders_no_filter_control_and_asks_for_no_source()
+    {
+        var ctx = NewContext();
+        var client = new Mock<IContractsApiClient>();
+        client
+            .Setup(c => c.ListEventsAsync(
+                ContractId, It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(),
+                It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<ContractEventSource?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<PagedResult<ExistingContractEvent>>.Success(
+                new PagedResult<ExistingContractEvent>
+                {
+                    Items = [Event()],
+                    Offset = 0,
+                    Limit = ContractEventsSection.PageSize,
+                    TotalCount = 1,
+                },
+                HttpStatusCode.OK));
+        ctx.Services.AddSingleton(client.Object);
+
+        var cut = ctx.Render<ContractEventsSection>(p => p
+            .Add(s => s.Contract, Lease())
+            .Add(s => s.CanUpdate, true));
+        await cut.InvokeAsync(() => cut.Instance.ReloadAsync());
+
+        client.Verify(
+            c => c.ListEventsAsync(
+                ContractId, It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(),
+                It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+
+        // No select, no segmented control, no search box — the section keeps zero filter controls.
+        Assert.Empty(cut.FindAll(".odc-select"));
+        Assert.Empty(cut.FindAll("input[type=search]"));
+        Assert.Empty(cut.FindAll(".odc-segmented"));
+    }
+
+    /// <summary>
+    /// AC 13 — the section heading is a real focus destination, which it is not by default:
+    /// <c>OdsSectionDivider</c> renders a plain span until it is given a <c>HeadingId</c>. The
+    /// <c>@@key</c> already on each rail item is a separate and also-necessary protection and does not
+    /// substitute for this one.
+    /// </summary>
+    [Fact]
+    public void The_section_heading_is_focusable_and_identified()
+    {
+        var label = RenderSection(Lease(), [Event()]).Find(".odc-sectiondivider-l");
+
+        Assert.Equal("con-events-heading", label.GetAttribute("id"));
+        Assert.Equal("-1", label.GetAttribute("tabindex"));
+        Assert.Equal("heading", label.GetAttribute("role"));
+    }
+
+    /// <summary>
+    /// The focus target has to survive the transition into the empty state, because deleting the last
+    /// row is exactly when focus is moved to it.
+    /// </summary>
+    [Fact]
+    public void The_heading_stays_focusable_in_the_empty_state()
+    {
+        var cut = RenderSection(Lease(), []);
+
+        var label = cut.Find(".odc-sectiondivider-l");
+        Assert.Equal("con-events-heading", label.GetAttribute("id"));
+        Assert.Equal("-1", label.GetAttribute("tabindex"));
+    }
+
+    /// <summary>
+    /// AC 14 / Non-Goal 8 — the section mounts NO live region of its own. Two regions on one page race
+    /// each other, so the sentence goes up to the page's single announcer through <c>OnAnnounce</c>.
+    /// </summary>
+    [Fact]
+    public void The_section_mounts_no_live_region_of_its_own()
+    {
+        var cut = RenderSection(Lease(), [Event()]);
+
+        // The loading wrapper is the one role="status" the section owns, and it is gone once loaded.
+        Assert.Empty(cut.FindAll("[aria-live=assertive]"));
+        Assert.Empty(cut.FindAll(".odc-liveannouncer"));
+    }
+
+    /// <summary>
+    /// The revised empty-state copy names BOTH halves of the log, in that order — what Odyssey
+    /// records, then what the user can add. The old copy named only the second, which is now half the
+    /// story.
+    /// </summary>
+    [Fact]
+    public void The_empty_state_names_both_halves_of_the_log()
+    {
+        var text = RenderSection(Lease(), []).Find(".odc-empty").TextContent;
+
+        Assert.Contains("Odyssey records what it does to this agreement", text, StringComparison.Ordinal);
+        Assert.Contains("you can add anything else", text, StringComparison.Ordinal);
+    }
+
+    // ── The dialog's copy (AC 10, AC 11) ─────────────────────────────────────
+
+    /// <summary>
+    /// AC 10 — the "recording an event does not change the contract" sentence rides the TYPE field's
+    /// help, so it lands in that field's <c>aria-describedby</c>. A caption a screen reader never
+    /// reaches would leave the misconception uncorrected for the users most likely to form it — and a
+    /// type list now offering <em>Paused</em>, <em>Archived</em> and <em>Signed</em> is exactly what
+    /// invites it.
+    /// </summary>
+    [Fact]
+    public void The_dialog_says_recording_an_event_does_not_change_the_contract_in_the_type_fields_description()
+    {
+        var cut = RenderDialog(Lease());
+
+        AssertDescribedBy(cut, "cev-type", "Recording an event does not change the contract.");
+    }
+
+    /// <summary>
+    /// AC 11 — on a recorded row the "recorded automatically" wording is in the TITLE field's help,
+    /// which is what makes it programmatic. <c>OdsModal</c>'s subtitle is a visual slot with no
+    /// <c>aria-describedby</c> wiring and Title is the field that takes focus, so a screen-reader user
+    /// would otherwise land on Title and never hear it. Verified by inspecting the attribute, not by
+    /// the subtitle's presence.
+    /// </summary>
+    [Fact]
+    public void Editing_a_recorded_row_puts_the_origin_in_the_title_fields_description()
+    {
+        var cut = RenderDialogWithClient(
+            Lease(), Event(type: ContractEventType.Paused, source: ContractEventSource.System)).Cut;
+
+        AssertDescribedBy(cut, "cev-title", "Recorded automatically when the contract was paused.");
+        AssertDescribedBy(cut, "cev-title", "it does not change the contract");
+
+        // The subtitle repeats it for sighted users; it must never be the only place it appears.
+        Assert.Contains("Recorded automatically.", cut.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>Editing a hand-written row keeps the ordinary title help — nothing claims an origin it does not have.</summary>
+    [Fact]
+    public void Editing_a_hand_written_row_keeps_the_ordinary_title_help()
+    {
+        var cut = RenderDialogWithClient(Lease(), Event()).Cut;
+
+        AssertDescribedBy(cut, "cev-title", "A short label.");
+        Assert.DoesNotContain("Recorded automatically", cut.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>source</c> appears nowhere in the dialog — not as a control, not as a disabled one. A
+    /// disabled input would imply it is ordinarily settable, when in fact it is absent from both write
+    /// DTOs and cannot be set at all (#154 §7.4).
+    /// </summary>
+    [Fact]
+    public void The_dialog_offers_no_source_control_at_all()
+    {
+        var cut = RenderDialogWithClient(
+            Lease(), Event(source: ContractEventSource.System)).Cut;
+
+        Assert.Empty(cut.FindAll("#cev-source"));
+        Assert.Empty(cut.FindAll("[name=source]"));
+        Assert.Empty(cut.FindAll("input[disabled]"));
+    }
+
+    /// <summary>
+    /// The nine automation members are pickable by hand — "the contract was paused last March" is a
+    /// legitimate entry — and <c>Other</c> is offered LAST despite keeping ordinal 8 (AC 3, AC 4).
+    /// </summary>
+    [Fact]
+    public void Every_automation_type_is_offered_and_Other_is_offered_last()
+    {
+        var options = OdsTypeRegistries.ContractEventTypes.Select(t => t.Key).ToList();
+
+        foreach (var member in new[]
+                 {
+                     "Paused", "Unpaused", "Ready", "Unready", "Unsigned",
+                     "Archived", "Unarchived", "PartyAdded", "PartyRemoved",
+                 })
+        {
+            Assert.Contains(member, options);
+        }
+
+        Assert.Equal("Other", options[^1]);
+        Assert.Equal(8, (int)ContractEventType.Other);
+    }
+
+    /// <summary>
+    /// AC 20 — every rail string renders through escaped binding. A system row's title and description
+    /// are server-authored but travel through the same component as user-authored text, so a
+    /// <c>MarkupString</c> introduced "just for the generated half" would open the other one too.
+    /// </summary>
+    [Fact]
+    public void No_markup_string_appears_anywhere_in_the_section_or_its_dialog()
+    {
+        foreach (var file in new[]
+                 {
+                     "Pages/Finance/ContractEventsSection.razor",
+                     "Pages/Finance/ContractEventsSection.razor.cs",
+                     "Pages/Finance/AddContractEventDialog.razor",
+                     "Pages/Finance/AddContractEventDialog.razor.cs",
+                 })
+        {
+            var source = File.ReadAllText(Path.Combine(ClientSource.Root, file));
+            Assert.DoesNotContain("MarkupString", source, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// An event carrying an ordinal this build does not know renders as <c>Other</c> — the trailing
+    /// registry entry, which is why <c>Other</c> must stay last even though it no longer ends the enum.
+    /// </summary>
+    [Fact]
+    public void An_unknown_ordinal_renders_as_Other()
+    {
+        var cut = RenderSection(Lease(), [Event(type: (ContractEventType)99)]);
+
+        Assert.Equal("Other", cut.Find(".odc-er-node").GetAttribute("aria-label"));
+    }
+
+    private static void AssertDescribedBy(IRenderedComponent<DialogHost> cut, string fieldId, string expected)
+    {
+        var control = cut.Find($"#{fieldId}");
+        var describedBy = control.GetAttribute("aria-describedby");
+        Assert.False(string.IsNullOrWhiteSpace(describedBy),
+            $"#{fieldId} carries no aria-describedby, so its help text reaches nobody.");
+
+        var described = string.Join(
+            " ",
+            describedBy!.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Select(id => cut.FindAll($"#{id}").FirstOrDefault()?.TextContent ?? string.Empty));
+
+        Assert.Contains(expected, described, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// One declaration block out of <c>odyssey-components.css</c>, comments stripped so a rationale
+    /// note cannot satisfy an assertion. Same shape <c>ContractOrphanRowContrastTests</c> uses.
+    /// </summary>
+    private static string ComponentRule(string selector)
+    {
+        var css = Regex.Replace(
+            File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css")),
+            @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
+
+        var start = css.IndexOf(selector + " {", StringComparison.Ordinal);
+        if (start < 0)
+            start = css.IndexOf(selector, StringComparison.Ordinal);
+
+        Assert.True(start >= 0, $"No rule for '{selector}' in odyssey-components.css.");
+
+        var end = css.IndexOf('}', start);
+        Assert.True(end > start, $"Unterminated rule for '{selector}'.");
+        return css[start..end];
+    }
+
     private static IRenderedComponent<ContractEventsSection> RenderSection(
         ExistingContract contract, IReadOnlyList<ExistingContractEvent> events, bool canUpdate = true)
     {
@@ -458,7 +794,7 @@ public class ContractEventSurfaceTests
         client
             .Setup(c => c.ListEventsAsync(
                 contract.ContractId, null, null, null, null, null, null,
-                It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<PagedResult<ExistingContractEvent>>.Success(
                 new PagedResult<ExistingContractEvent>
                 {

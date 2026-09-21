@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
@@ -43,10 +44,28 @@ public partial class ContractEventsSection
     /// </summary>
     private const string UnknownAuthor = "Unknown user";
 
+    /// <summary>
+    /// The DOM id of the section heading, and the focus destination for a delete. It is an id rather
+    /// than an <c>@ref</c> because the heading belongs to <c>OdsSectionDivider</c>, which only becomes
+    /// focusable when it is given one.
+    /// </summary>
+    private const string HeadingId = "con-events-heading";
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private IJSObjectReference? _focusJs;
+
     [Parameter, EditorRequired] public ExistingContract Contract { get; set; } = default!;
 
     /// <summary>Gates every write affordance (<c>contracts.update</c>).</summary>
     [Parameter] public bool CanUpdate { get; set; }
+
+    /// <summary>
+    /// A sentence for the <b>page's</b> single live region, raised after a delete. The section mounts
+    /// no announcer of its own: <c>OdsLiveAnnouncer</c> is mounted once per page in this codebase
+    /// (<c>ContractsCard</c>'s), and two live regions on one page race each other.
+    /// </summary>
+    [Parameter] public EventCallback<string> OnAnnounce { get; set; }
 
     /// <summary>
     /// An outstanding "New event" request from the record's row action menu — a token that changes
@@ -190,8 +209,46 @@ public partial class ContractEventsSection
         var ok = (await Contracts.DeleteEventAsync(Contract.ContractId, ev.ContractEventId))
             .Toast(Snackbar, "Unable to delete event", "Event deleted.");
 
-        if (ok)
-            await LoadAsync();
+        if (!ok)
+            return;
+
+        await LoadAsync();
+
+        // Focus and the announcement are part of the delete, not a nicety after it: the row that held
+        // focus is gone, and a keyboard user who is not moved lands nowhere.
+        await FocusHeadingAsync();
+        await AnnounceCountAsync();
+    }
+
+    /// <summary>
+    /// Moves focus to the section heading. Deferred past a macrotask inside the module — the row's ⋯
+    /// menu restores focus to its own invoker as it closes, and a synchronous focus here is silently
+    /// overwritten by it.
+    /// </summary>
+    private async Task FocusHeadingAsync()
+    {
+        if (!OperatingSystem.IsBrowser())
+            return;
+
+        try
+        {
+            _focusJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/section-focus.js");
+            await _focusJs.InvokeVoidAsync("focusHeading", HeadingId);
+        }
+        catch (JSException)
+        {
+            // Focus is an enhancement on an operation that already succeeded; a failed import must
+            // never surface as a failed delete.
+        }
+    }
+
+    private Task AnnounceCountAsync()
+    {
+        if (!OnAnnounce.HasDelegate)
+            return Task.CompletedTask;
+
+        return OnAnnounce.InvokeAsync(
+            $"Event deleted. {_total} {(_total == 1 ? "entry" : "entries")} in the log.");
     }
 
     private Task OnEventChangedAsync() => LoadAsync();

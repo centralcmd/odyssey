@@ -105,6 +105,15 @@ public interface IContractsApiClient
     /// </summary>
     /// <param name="page">1-based page number, paired with <paramref name="pageSize"/>.</param>
     /// <param name="pageSize">Rows per page; <see cref="PagedQuery.SizeAll"/> requests the whole log.</param>
+    /// <param name="source">
+    /// Restricts the page to hand-written or to server-recorded events (issue #154 §5.1); omitted
+    /// returns both. <b>Library parity with the API contract, not a UI deliverable</b> — no call site
+    /// passes it in v1, and the optional parameter is what lets the eventual filter be a page change
+    /// rather than a client change. It is APPENDED LAST, immediately before the
+    /// <see cref="CancellationToken"/>: every call site uses named arguments today, so either position
+    /// compiles, but a ten-parameter method is exactly where a positional call will eventually be
+    /// written.
+    /// </param>
     Task<ApiResult<PagedResult<ExistingContractEvent>>> ListEventsAsync(
         Guid contractId,
         string? search = null,
@@ -115,6 +124,7 @@ public interface IContractsApiClient
         string? sortDir = null,
         int page = 1,
         int pageSize = PagedQuery.SizeAll,
+        ContractEventSource? source = null,
         CancellationToken ct = default);
 
     /// <summary>
@@ -237,6 +247,7 @@ public sealed class ContractsApiClient(IOdysseyApi api) : IContractsApiClient
         string? sortDir = null,
         int page = 1,
         int pageSize = PagedQuery.SizeAll,
+        ContractEventSource? source = null,
         CancellationToken ct = default) =>
         api.GetPagedAsync<ExistingContractEvent>(
             PagedQuery.For(Events(contractId))
@@ -247,6 +258,7 @@ public sealed class ContractsApiClient(IOdysseyApi api) : IContractsApiClient
                 .Add("to", to)
                 .Add("sortBy", sortBy)
                 .Add("sortDir", sortDir)
+                .Add("source", source?.ToString())
                 .Build(),
             ct);
 

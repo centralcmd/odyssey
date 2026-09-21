@@ -65,6 +65,34 @@ public class ContractEventsApiClientTests
         Assert.Contains("sortDir=Desc", query, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Issue #154 §5.1 / #155 AC 21 — the <c>source</c> filter reaches the query string, and its
+    /// parameter is the LAST one before the <see cref="CancellationToken"/>.
+    /// </summary>
+    /// <remarks>
+    /// The position is asserted by reflection rather than by a positional call. Every call site uses
+    /// named arguments today, so either position compiles — but a ten-parameter method is exactly
+    /// where a positional call will eventually be written, and an inserted mid-signature parameter
+    /// would silently re-bind every one of them.
+    /// </remarks>
+    [Fact]
+    public async Task ListEventsAsync_CarriesTheSourceFilter_AsTheLastParameterBeforeTheToken()
+    {
+        var (client, handler) = Create(EmptyPage);
+
+        await client.ListEventsAsync(ContractId, source: ContractEventSource.System);
+
+        Assert.Contains("source=System", handler.LastRequest!.RequestUri!.Query, StringComparison.Ordinal);
+
+        var parameters = typeof(IContractsApiClient)
+            .GetMethod(nameof(IContractsApiClient.ListEventsAsync))!
+            .GetParameters();
+
+        Assert.Equal(typeof(CancellationToken), parameters[^1].ParameterType);
+        Assert.Equal("source", parameters[^2].Name);
+        Assert.Equal(typeof(ContractEventSource?), parameters[^2].ParameterType);
+    }
+
     /// <summary>A filter the caller did not set contributes nothing — a blank value is dropped, not sent empty.</summary>
     [Fact]
     public async Task ListEventsAsync_OmitsUnsetFilters()
@@ -78,6 +106,9 @@ public class ContractEventsApiClientTests
         Assert.DoesNotContain("types=", query, StringComparison.Ordinal);
         Assert.DoesNotContain("from=", query, StringComparison.Ordinal);
         Assert.DoesNotContain("sortBy=", query, StringComparison.Ordinal);
+        // The v1 surface never sends it, so an omitted source must not become an empty parameter that
+        // the server's [EnumDataType] would then reject.
+        Assert.DoesNotContain("source=", query, StringComparison.Ordinal);
     }
 
     /// <summary>

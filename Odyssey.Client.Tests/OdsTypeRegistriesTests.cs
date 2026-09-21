@@ -161,6 +161,36 @@ public class OdsTypeRegistriesTests
         Assert.Equal("Other", OdsTypeRegistries.TaxStatementFileTypeOf((TaxStatementFileType)99).Key);
     }
 
+    /// <summary>
+    /// <c>ContractEventTypes</c> reads in a different order from the one it is stored in (issue #154).
+    /// <c>Other</c> keeps ordinal 8 while the nine automation members take 9–17, so the registry's
+    /// reading order and the enum's ordinal order have parted company — the same split
+    /// <c>ContractTypes</c> already carries.
+    /// </summary>
+    /// <remarks>
+    /// <b><c>Other</c> must stay LAST in the registry.</b> <c>ContractEventTypeOf</c> documents the
+    /// trailing entry as its fallback for an ordinal this build does not know, so a reorder that ends
+    /// the list with something else would silently render every unknown event as that member instead —
+    /// plausible, specific and wrong. The assertion is deliberately made on both halves at once: that
+    /// <c>Other</c> is last, and that its ordinal is NOT.
+    /// </remarks>
+    [Fact]
+    public void ContractEventTypes_reads_with_Other_last_although_its_ordinal_is_not()
+    {
+        var keys = OdsTypeRegistries.ContractEventTypes.Select(t => t.Key).ToList();
+
+        Assert.Equal("Other", keys[^1]);
+        Assert.Equal(8, (int)ContractEventType.Other);
+        Assert.NotEqual(
+            ContractEventType.Other,
+            Enum.GetValues<ContractEventType>().Max());
+
+        // The nine automation members read AFTER the original eight and BEFORE Other.
+        var firstAutomation = keys.IndexOf("Paused");
+        Assert.Equal(keys.IndexOf("EmailSent") + 1, firstAutomation);
+        Assert.Equal(keys.Count - 1, keys.IndexOf("PartyRemoved") + 1);
+    }
+
     /// <summary>A contact whose type is missing renders as an organisation, not as a person —
     /// the safer default for a record with no stated kind.</summary>
     [Theory]

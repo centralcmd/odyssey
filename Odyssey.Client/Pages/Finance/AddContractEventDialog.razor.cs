@@ -59,8 +59,27 @@ public partial class AddContractEventDialog
     /// </summary>
     private DateTime Today => DateTime.UtcNow.Date;
 
-    /// <summary>What the chosen type means, so the field explains itself, from the shared registry.</summary>
-    private string TypeHelp => _type switch
+    /// <summary>
+    /// The one sentence that stops an eighteen-member list of lifecycle verbs from reading like a
+    /// control surface (issue #155 §6.8).
+    /// </summary>
+    /// <remarks>
+    /// It rides the TYPE field's <c>Help</c>, so it lands in that field's <c>aria-describedby</c> and a
+    /// screen-reader user meets it too. A caption would not: a misconception a screen reader never
+    /// reaches is a misconception kept — and this list now offers <em>Paused</em>, <em>Archived</em>
+    /// and <em>Signed</em>, which is exactly what invites the assumption that picking one DOES the
+    /// thing.
+    /// </remarks>
+    private const string NoSideEffects =
+        "Recording an event does not change the contract. To pause the contract itself, use Edit on the record.";
+
+    /// <summary>
+    /// What the chosen type means, so the field explains itself — followed by
+    /// <see cref="NoSideEffects"/> on every member, not just the tempting ones.
+    /// </summary>
+    private string TypeHelp => $"{TypeMeaning} {NoSideEffects}";
+
+    private string TypeMeaning => _type switch
     {
         ContractEventType.Signed => "The agreement was executed by the parties.",
         ContractEventType.Amended => "A variation or addendum changed the terms.",
@@ -72,7 +91,62 @@ public partial class AddContractEventDialog
         ContractEventType.Terminated => "The agreement was brought to an end. This does not change the contract's status.",
         ContractEventType.PriceChanged => "What the agreement costs was renegotiated or re-set.",
         ContractEventType.EmailSent => "Correspondence you sent about the agreement. Name the recipient in the title or description.",
+        // ── The nine automation members (issue #154) ──────────────────────────────
+        ContractEventType.Paused => "The contract was paused. Recording this by hand does not pause anything.",
+        ContractEventType.Unpaused => "A paused contract was taken off pause.",
+        ContractEventType.Ready => "The contract was marked ready.",
+        ContractEventType.Unready => "The ready mark was taken off the contract.",
+        ContractEventType.Unsigned => "The contract's signed date was removed.",
+        ContractEventType.Archived => "The contract was archived. Archival hides a contract; it does not lock it.",
+        ContractEventType.Unarchived => "An archived contract was brought back.",
+        ContractEventType.PartyAdded => "Someone joined the agreement.",
+        ContractEventType.PartyRemoved => "Someone left the agreement.",
         _ => "The default — anything the other members do not name. The title carries it.",
+    };
+
+    /// <summary>Whether the row being edited was recorded by the server (issue #154).</summary>
+    private bool IsSystemEvent => Event?.Source == ContractEventSource.System;
+
+    /// <summary>
+    /// The load-bearing copy for a recorded row — on the field that TAKES FOCUS, so it is in the
+    /// Title field's <c>aria-describedby</c> (issue #155 §6.9). <see langword="null"/> on every other
+    /// row, which leaves the ordinary title help in place.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>OdsModal</c>'s <c>Subtitle</c> is a visual slot with no <c>aria-describedby</c> wiring, and
+    /// the Title field carries <c>AutoFocus</c> — so a screen-reader user editing a system row would
+    /// land on Title and might never hear the subtitle at all. The subtitle keeps the same wording for
+    /// sighted users; this line is what carries it programmatically.
+    /// </para>
+    /// <para>
+    /// Both halves matter: where the row came from, and that editing it changes the LOG and nothing
+    /// else. The second is not decoration — the <c>PUT</c> is a full replacement, so clearing a
+    /// generated description clears it for good, because nothing regenerates it.
+    /// </para>
+    /// </remarks>
+    private string? SystemTitleHelp => IsSystemEvent
+        ? $"Recorded automatically when {AutoClause}. Editing changes this log line only; it does not change the contract."
+        : null;
+
+    /// <summary>
+    /// The clause spliced into <see cref="SystemTitleHelp"/>. Falls back to a type-free phrasing, so a
+    /// member this build does not recognise still produces an honest sentence rather than a gap.
+    /// </summary>
+    private string AutoClause => Event?.Type switch
+    {
+        ContractEventType.Signed => "the contract was marked signed",
+        ContractEventType.PriceChanged => "the agreement was re-priced",
+        ContractEventType.Paused => "the contract was paused",
+        ContractEventType.Unpaused => "the contract was resumed",
+        ContractEventType.Ready => "the contract was marked ready",
+        ContractEventType.Unready => "the ready mark was withdrawn",
+        ContractEventType.Unsigned => "the signed date was cleared",
+        ContractEventType.Archived => "the contract was archived",
+        ContractEventType.Unarchived => "the contract was restored",
+        ContractEventType.PartyAdded => "a party was added to the agreement",
+        ContractEventType.PartyRemoved => "a party was removed from the agreement",
+        _ => "the application made this change",
     };
 
     protected override void OnInitialized()

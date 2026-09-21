@@ -20,9 +20,25 @@
       by the same term and are exported with everything else, so nothing here may imply they are
       private. The dialog is where they are read and written, and its helper line states the audience.
 
-    • NOTHING IS AUTO-GENERATED. Pausing, archiving or renewing the contract writes no event (§7.6 /
-      Non-Goal 4), so there is no "system" badge, no lock and no two-tier list — every row is the
-      user's own and every row is editable and deletable by any contracts.update holder.
+    • THE LOG HAS TWO HALVES AND ONE CHRONOLOGY (issue #154, which reverses #138's Non-Goal 4).
+      Pausing, resuming, marking ready, clearing a signed date, archiving, restoring, adding or
+      removing a party and re-pricing each now write their own row. Those rows are marked in the
+      ATTRIBUTION LINE and nowhere else — "Recorded by Jane Doe at … (automatically generated)".
+
+      That is a PRODUCT DECISION taken in the design system, and it overrides issue #155's §4 and
+      its AC 1/2/17, which asked for a persistent chip in a new rail-item `tag` slot. The argument
+      for the chip was sound — .odc-er-meta is hover-gated, and a system row keeps its ⋯ menu so it
+      is never .no-actions, which means on a pointer device a recorded row is indistinguishable from
+      a hand-written one until hovered. That is still true and is the ACCEPTED COST: one sentence
+      carrying who and how beats a pill per row competing with the record head's status vocabulary.
+      If the marker is ever wanted back at a glance, the place for it is a PERSISTENT slot — never a
+      second hover-gated one.
+
+      It is TEXT, in the same line as the author, so nothing rides on hue or glyph and the row reads
+      the same in greyscale. There is no read-only treatment: a system row carries the same two
+      actions as any other and editing one does not re-author it — `source` survives the save. No
+      grouping, no roll-up and no source filter; the endpoint serves `?source=` and the typed client
+      exposes it, but v1 surfaces no control for it.
 
     • THE LOG IS PAGED ON ITS OWN ENDPOINT. GET /api/contracts/{id} deliberately does not carry events
       (§5): parties and files are bounded sets, a log is not. So the section reads GET …/events
@@ -39,7 +55,10 @@
 *@
 
 <div class="con-section">
-    <OdsSectionDivider Label="Events" Meta="@Meta" />
+    @* HeadingId, so the heading can RECEIVE focus after a delete takes the focused row off the page.
+       It stays focusable in the empty state too: deleting the last row lands there, and the focus
+       target has to survive the transition. *@
+    <OdsSectionDivider Label="Events" Meta="@Meta" HeadingId="@HeadingId" />
 
     @if (_isLoading)
     {
@@ -50,9 +69,12 @@
     }
     else if (_total == 0)
     {
+        @* Both halves of the log, in that order — what Odyssey records, then what the user can add.
+           The old copy named only the second, which is now half the story. *@
         <OdsEmptyLine>
-            No events yet — record what has happened to this agreement: signed, renewed, notice
-            given, a price renegotiated, an email sent.
+            No events yet. Odyssey records what it does to this agreement — pausing it, signing it,
+            archiving it — and you can add anything else: notice given, a price renegotiated, an
+            email sent.
         </OdsEmptyLine>
     }
     else
@@ -146,9 +168,20 @@
     /// response does not carry at all. A deleted author reads back as "Unknown user", and is drawn
     /// quieter so an absent name is not mistaken for someone called that.
     /// </summary>
+    /// <remarks>
+    /// ORIGIN RIDES THE SAME SENTENCE (issue #154). On a recorded row the line closes with
+    /// "(automatically generated)" — text, in the author's own line, so who and how are read
+    /// together and nothing about the row differs by hue alone. It inherits this slot's hover-reveal,
+    /// which is the trade the design system's product decision accepted; see the note at the top of
+    /// this file.
+    /// </remarks>
     private RenderFragment RowAttribution(ExistingContractEvent ev) =>
         @<div class="odc-er-meta@(IsKnownAuthor(ev) ? "" : " cev-by-unknown")">
             Recorded by <span class="cev-by-who">@AuthorLabel(ev)</span> at @FormatDateTime(ev.CreatedAtUtc)
+            @if (ev.Source == ContractEventSource.System)
+            {
+                <span class="cev-auto-note"> (automatically generated)</span>
+            }
         </div>;
 
     private RenderFragment? RowActions(ExistingContractEvent ev) => CanUpdate

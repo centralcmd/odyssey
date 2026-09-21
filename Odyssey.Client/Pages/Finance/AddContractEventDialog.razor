@@ -42,8 +42,13 @@
     <ChildContent>
         <div class="ods-modal-body">
 
-            @* A plain registry select, not a card grid: nine members is a list, and the type
+            @* A plain registry select, not a card grid: eighteen members is still a list, and the type
                CLASSIFIES rather than being the thing the reader scans for — the title is.
+
+               `source` is NOT a field here (issue #154 §7.4) — not as a control, not as a disabled
+               one. A disabled input would imply it is ordinarily settable, when in fact it is absent
+               from both write DTOs and cannot be set at all. The row says so in its attribution line
+               on the rail, and this dialog says so in the Title field's help text.
 
                OdsTypeSelect, not the generic OdsSelect: it draws each member in its own glyph and
                category colour straight from the registry, and carries the listbox semantics, keyboard
@@ -78,7 +83,7 @@
                       Value="@_title" ValueChanged="OnTitleChanged"
                       MaxLength="256" Error="@_errors.GetValueOrDefault("title")"
                       Placeholder="e.g. Emailed landlord about the rent increase"
-                      Help="@(_errors.ContainsKey("title") ? null : "A short label. This is the line the timeline shows.")" />
+                      Help="@(_errors.ContainsKey("title") ? null : SystemTitleHelp ?? "A short label. This is the line the timeline shows.")" />
 
             <OdsNoteField Id="cev-description" Label="Description" MaxLength="1024"
                           Value="@_description" ValueChanged="@(v => _description = v)"
@@ -115,7 +120,12 @@
     // code-behind. Everything else does.
     private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit event" : "New event")</text>;
 
+    @* Repeated from the Title field's help text, for sighted users. The help text is what carries it
+       programmatically — this line is not wired to anything and must never be the only place the
+       fact appears. *@
     private RenderFragment SubtitleFragment => IsEdit
-        ? @<text>Change what this entry records. Who recorded it, and when, does not change.</text>
+        ? IsSystemEvent
+            ? @<text>Recorded automatically. Changing it changes this log line, not the contract.</text>
+            : @<text>Change what this entry records. Who recorded it, and when, does not change.</text>
         : @<text>Record something that has happened to @Contract.Name.</text>;
 }
