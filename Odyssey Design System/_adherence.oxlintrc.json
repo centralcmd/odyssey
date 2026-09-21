@@ -271,8 +271,8 @@
         "message": "<ContactType> doesn't accept that prop. Declared props: key, label, icon, color, soft."
       },
       {
-        "selector": "JSXOpeningElement[name.name='ContractPartyRoleEntry'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|desc|group|key|ref|className|style|children)$/]",
-        "message": "<ContractPartyRoleEntry> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft, desc, group."
+        "selector": "JSXOpeningElement[name.name='ContractPartyRoleEntry'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|desc|object|group|key|ref|className|style|children)$/]",
+        "message": "<ContractPartyRoleEntry> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft, desc, object, group."
       },
       {
         "selector": "JSXOpeningElement[name.name='ContractPartyRoleEntry'] > JSXAttribute[name.name='group'] > Literal[value!=/^(?:suggested|allowed)$/]",

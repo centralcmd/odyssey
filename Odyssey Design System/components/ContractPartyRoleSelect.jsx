@@ -33,26 +33,33 @@ export const CONTRACT_PARTY_ROLES = [
   { key: 'Beneficiary',  label: 'Beneficiary',  enumValue: 12, icon: 'volunteer_activism', color: 'oklch(0.78 0.13 185)', soft: 'oklch(0.78 0.13 185 / 0.16)', desc: 'The party that receives on the policy. Blocks deletion of the linked contact.' },
   { key: 'Lender',       label: 'Lender',       enumValue: 13, icon: 'savings',            color: 'oklch(0.78 0.13 120)', soft: 'oklch(0.78 0.13 120 / 0.16)', desc: 'The party advancing the money.' },
   { key: 'Borrower',     label: 'Borrower',     enumValue: 14, icon: 'request_quote',      color: 'oklch(0.78 0.13 165)', soft: 'oklch(0.78 0.13 165 / 0.16)', desc: 'The party that owes the money back.' },
-  { key: 'Guarantor',    label: 'Guarantor',    enumValue: 15, icon: 'verified_user',      color: 'oklch(0.76 0.13 330)', soft: 'oklch(0.76 0.13 330 / 0.16)', desc: 'A party standing behind another’s obligation.' },
+  { key: 'Guarantor',    label: 'Guarantor',    enumValue: 15, icon: 'verified_user',      color: 'oklch(0.76 0.07 330)', soft: 'oklch(0.76 0.07 330 / 0.16)', desc: 'A party standing behind another’s obligation. Legal on every type.' },
   { key: 'Broker',       label: 'Broker',       enumValue: 16, icon: 'handshake',          color: 'oklch(0.76 0.07 245)', soft: 'oklch(0.76 0.07 245 / 0.16)', desc: 'An intermediary that arranged the agreement. Legal on every type.' },
+  // Object roles — the THING the agreement is about, not a side of it. Role is
+  // orthogonal to kind: expected on an Account, equally legal on a Contact.
+  { key: 'Object',       label: 'Object',       enumValue: 17, icon: 'category',           color: 'oklch(0.78 0.11 75)',  soft: 'oklch(0.78 0.11 75 / 0.16)',  object: true, desc: 'The thing the agreement concerns — the record it is about, not a side of it.' },
+  { key: 'Property',     label: 'Property',     enumValue: 18, icon: 'holiday_village',    color: 'oklch(0.78 0.11 45)',  soft: 'oklch(0.78 0.11 45 / 0.16)',  object: true, desc: 'Real property or goods — the let premises, the purchased asset.' },
+  { key: 'Collateral',   label: 'Collateral',   enumValue: 19, icon: 'lock',               color: 'oklch(0.78 0.11 105)', soft: 'oklch(0.78 0.11 105 / 0.16)', object: true, desc: 'Security pledged against the loan.' },
 ];
 
 /**
  * The type × role matrix. Per contract type: `suggested` (legal, offered first)
  * and `allowed` (legal, offered after). Anything absent from both is rejected
- * server-side with a 422 — 52 of the 135 cells are legal. Every type carries at
+ * server-side with a 422 — 69 of the 162 cells are legal. Every type carries at
  * least one suggested role, so the picker's first group is never empty.
+ * `Guarantor`, `Broker`, `Other` are universal: legal everywhere, suggested
+ * nowhere. `Object` is deliberately absent from Employment and Insurance.
  */
 export const CONTRACT_PARTY_ROLE_MATRIX = {
-  Employment:   { suggested: ['Employee', 'Employer'],                        allowed: ['Broker', 'Other'] },
-  Service:      { suggested: ['Buyer', 'Seller'],                             allowed: ['Broker', 'Other'] },
-  Rental:       { suggested: ['Landlord', 'Tenant'],                          allowed: ['Guarantor', 'Broker', 'Other'] },
-  Insurance:    { suggested: ['Insurer', 'Policyholder', 'Insured', 'Beneficiary'], allowed: ['Broker', 'Other'] },
-  Subscription: { suggested: ['Buyer', 'Seller'],                             allowed: ['Broker', 'Other'] },
-  Purchase:     { suggested: ['Buyer', 'Seller'],                             allowed: ['Guarantor', 'Broker', 'Other'] },
-  Loan:         { suggested: ['Lender', 'Borrower'],                          allowed: ['Guarantor', 'Broker', 'Other'] },
-  Membership:   { suggested: ['Buyer', 'Seller'],                             allowed: ['Broker', 'Other'] },
-  Other:        { suggested: ['Other'],                                       allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Guarantor', 'Broker'] },
+  Employment:   { suggested: ['Employee', 'Employer'],                        allowed: ['Guarantor', 'Broker', 'Other'] },
+  Service:      { suggested: ['Buyer', 'Seller'],                             allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+  Rental:       { suggested: ['Landlord', 'Tenant', 'Property'],              allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+  Insurance:    { suggested: ['Insurer', 'Policyholder', 'Insured', 'Beneficiary'], allowed: ['Guarantor', 'Broker', 'Other'] },
+  Subscription: { suggested: ['Buyer', 'Seller'],                             allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+  Purchase:     { suggested: ['Buyer', 'Seller', 'Property'],                 allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+  Loan:         { suggested: ['Lender', 'Borrower', 'Collateral'],            allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+  Membership:   { suggested: ['Buyer', 'Seller'],                             allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+  Other:        { suggested: ['Other'],                                       allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Object', 'Property', 'Collateral', 'Guarantor', 'Broker'] },
 };
 
 /** 'suggested' | 'allowed' | 'rejected' for one (contract type, role) cell. */

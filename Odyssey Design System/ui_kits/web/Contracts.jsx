@@ -130,12 +130,18 @@ const PartyTile = ({ party, today, onEdit, onDetach }) => {
   // colour), and never as the deliberate "Other". Same for a member this
   // client is too old to name.
   const plain = !!role.unset || !!role.unknown;
+  // An OBJECT role (Object / Property / Collateral) names the thing the
+  // agreement is about, not a side of it. The role overline carries a small
+  // marker so the record the contract concerns reads at a glance among the
+  // counterparties; the tile shape is otherwise identical.
+  const object = !!role.object;
   return (
-    <div className="con-party-tile">
+    <div className={`con-party-tile${object ? ' object' : ''}`}>
       <InfoTile icon={r.icon} iconColor={r.color} iconSoft={r.soft}
         label={(
           <React.Fragment>
-            <span className={`con-role${plain ? ' unset' : ''}`}>
+            <span className={`con-role${plain ? ' unset' : ''}${object ? ' object' : ''}`}>
+              {object ? <span className="material-icons con-role-mark" aria-hidden="true">north_east</span> : null}
               <span>{role.label}</span>
             </span>
             {term ? <span className={`con-term${past ? ' past' : ''}`}>{term}</span> : null}
@@ -245,7 +251,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         <SectionDivider label="Parties" meta={`${parties.length} linked`} />
         {parties.length ? (
           <InfoTileGrid>
-            {parties.map(p => <PartyTile key={p.id} party={p} today={nowDate} onEdit={onEditParty} onDetach={detachParty} />)}
+            {CON_H.conSortParties(parties).map(p => <PartyTile key={p.id} party={p} today={nowDate} onEdit={onEditParty} onDetach={detachParty} />)}
           </InfoTileGrid>
         ) : (
           <EmptyLine>No parties yet — link the account or contact this contract relates to, and say what it does in the agreement.</EmptyLine>

@@ -6,11 +6,13 @@ export interface ContractPartyRoleEntry {
   color: string;
   soft: string;
   desc?: string;
+  /** True for Object / Property / Collateral — the thing the agreement is about, not a side of it. */
+  object?: boolean;
   /** Set by contractPartyRolesFor: which matrix group the row fell in. */
   group?: 'suggested' | 'allowed';
 }
 
-/** Canonical ContractPartyRole registry — the fifteen live members. Ordinals 0 and 5 are retired holes. */
+/** Canonical ContractPartyRole registry — the eighteen live members. Ordinals 0 and 5 are retired holes. */
 export declare const CONTRACT_PARTY_ROLES: ContractPartyRoleEntry[];
 
 export interface ContractPartyRoleMatrixCell {
@@ -18,7 +20,7 @@ export interface ContractPartyRoleMatrixCell {
   allowed: string[];
 }
 
-/** Canonical contract type × party role legality matrix; 52 of 135 cells are legal. */
+/** Canonical contract type × party role legality matrix; 69 of 162 cells are legal. */
 export declare const CONTRACT_PARTY_ROLE_MATRIX: Record<string, ContractPartyRoleMatrixCell>;
 
 /** Legality of one cell. An unknown contract type reports 'allowed' rather than refusing. */

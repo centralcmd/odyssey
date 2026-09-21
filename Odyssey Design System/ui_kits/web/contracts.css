@@ -213,3 +213,9 @@
    because it is finished. Only the outer edge changes — density, type and
    every control inside stay identical, so the row is marked, not decorated. */
 .con-unsigned > .odc-record { border-style: dashed; border-color: color-mix(in srgb, var(--mud-palette-text-secondary) 40%, transparent); }
+
+/* An OBJECT party — the thing the agreement is about. The overline gains a
+   small outward-arrow mark in the role's own colour; nothing else changes, so
+   the tile stays the same shape as a counterparty's. */
+.con-role.object { display: inline-flex; align-items: center; gap: 3px; }
+.con-role-mark { font-size: 13px; line-height: 1; opacity: .8; }

@@ -76,7 +76,7 @@
   ];
 
   /* ---- Canonical ContractPartyRole registry — what a linked record DOES in
-     the agreement, orthogonal to its kind. FIFTEEN live members; `Unspecified`
+     the agreement, orthogonal to its kind. EIGHTEEN live members; `Unspecified`
      (0) and `ServiceProvider` (5) are RETIRED and their ordinals are permanent
      holes that must never be reused — reusing one would make an unmigrated row
      mean something new rather than nothing. ORDINALS ARE A WIRE AND PERSISTENCE
@@ -85,9 +85,14 @@
      With `Unspecified` gone a role is REQUIRED on every party write, so this
      kit has no "no role stated" member and no default selection anywhere; the
      only remaining unset role is a legacy row, drawn as an absence.
-     Colours sit in the same categorical band as the other registries; `Broker`
-     is deliberately low-chroma because it is legal on every type and should not
-     read as a category of its own. */
+     Colours sit in the same categorical band as the other registries; `Guarantor`
+     and `Broker` are deliberately low-chroma because they are legal on every
+     type and should not read as a category of their own.
+     The three OBJECT roles (`Object`, `Property`, `Collateral` — 17/18/19) name
+     the THING the agreement is about rather than a side of it; `object: true`
+     is what the party tile reads to draw them apart. Role stays orthogonal to
+     kind: an object party is expected to be an Account, but a Contact target is
+     equally legal and never refused. */
   D.contractPartyRoles = [
     { key: 'Employee',     label: 'Employee',     enumValue: 1,  icon: 'badge',              color: 'oklch(0.76 0.13 265)', soft: 'oklch(0.76 0.13 265 / 0.16)', desc: 'The person employed under this agreement.' },
     { key: 'Employer',     label: 'Employer',     enumValue: 2,  icon: 'corporate_fare',     color: 'oklch(0.75 0.14 300)', soft: 'oklch(0.75 0.14 300 / 0.16)', desc: 'The party that employs.' },
@@ -102,27 +107,34 @@
     { key: 'Beneficiary',  label: 'Beneficiary',  enumValue: 12, icon: 'volunteer_activism', color: 'oklch(0.78 0.13 185)', soft: 'oklch(0.78 0.13 185 / 0.16)', desc: 'The party that receives on the policy. Blocks deletion of the linked contact.' },
     { key: 'Lender',       label: 'Lender',       enumValue: 13, icon: 'savings',            color: 'oklch(0.78 0.13 120)', soft: 'oklch(0.78 0.13 120 / 0.16)', desc: 'The party advancing the money.' },
     { key: 'Borrower',     label: 'Borrower',     enumValue: 14, icon: 'request_quote',      color: 'oklch(0.78 0.13 165)', soft: 'oklch(0.78 0.13 165 / 0.16)', desc: 'The party that owes the money back.' },
-    { key: 'Guarantor',    label: 'Guarantor',    enumValue: 15, icon: 'verified_user',      color: 'oklch(0.76 0.13 330)', soft: 'oklch(0.76 0.13 330 / 0.16)', desc: 'A party standing behind another’s obligation.' },
+    { key: 'Guarantor',    label: 'Guarantor',    enumValue: 15, icon: 'verified_user',      color: 'oklch(0.76 0.07 330)', soft: 'oklch(0.76 0.07 330 / 0.16)', desc: 'A party standing behind another’s obligation. Legal on every type.' },
     { key: 'Broker',       label: 'Broker',       enumValue: 16, icon: 'handshake',          color: 'oklch(0.76 0.07 245)', soft: 'oklch(0.76 0.07 245 / 0.16)', desc: 'An intermediary that arranged the agreement. Legal on every type.' },
+    { key: 'Object',       label: 'Object',       enumValue: 17, icon: 'category',           color: 'oklch(0.78 0.11 75)',  soft: 'oklch(0.78 0.11 75 / 0.16)',  object: true, desc: 'The thing the agreement concerns — the record it is about, not a side of it.' },
+    { key: 'Property',     label: 'Property',     enumValue: 18, icon: 'holiday_village',    color: 'oklch(0.78 0.11 45)',  soft: 'oklch(0.78 0.11 45 / 0.16)',  object: true, desc: 'Real property or goods — the let premises, the purchased asset.' },
+    { key: 'Collateral',   label: 'Collateral',   enumValue: 19, icon: 'lock',               color: 'oklch(0.78 0.11 105)', soft: 'oklch(0.78 0.11 105 / 0.16)', object: true, desc: 'Security pledged against the loan.' },
   ];
 
   /* ---- The contract type × party role MATRIX — the client half of the shared
      server declaration, not a copy of a rule the client invented. Per type:
      `suggested` (legal, offered first) and `allowed` (legal, offered after);
-     anything in neither is rejected server-side with a 422. 52 of the 135 cells
+     anything in neither is rejected server-side with a 422. 69 of the 162 cells
      are legal. Every type carries at least one suggested role, so the picker's
      first group is never empty — `Other`-the-type suggests `Other`-the-role,
-     which is the only honest suggestion for "none of the above". */
+     which is the only honest suggestion for "none of the above".
+     `Guarantor`, `Broker` and `Other` are the universal trio: legal on every
+     type, suggested on none, always in that order at the end of `allowed`.
+     `Object` is deliberately NOT legal on Employment (`Employee` already names
+     the object) nor on Insurance (`Insured` already covers "the thing covered"). */
   D.contractPartyRoleMatrix = {
-    Employment:   { suggested: ['Employee', 'Employer'], allowed: ['Broker', 'Other'] },
-    Service:      { suggested: ['Buyer', 'Seller'],      allowed: ['Broker', 'Other'] },
-    Rental:       { suggested: ['Landlord', 'Tenant'],   allowed: ['Guarantor', 'Broker', 'Other'] },
-    Insurance:    { suggested: ['Insurer', 'Policyholder', 'Insured', 'Beneficiary'], allowed: ['Broker', 'Other'] },
-    Subscription: { suggested: ['Buyer', 'Seller'],      allowed: ['Broker', 'Other'] },
-    Purchase:     { suggested: ['Buyer', 'Seller'],      allowed: ['Guarantor', 'Broker', 'Other'] },
-    Loan:         { suggested: ['Lender', 'Borrower'],   allowed: ['Guarantor', 'Broker', 'Other'] },
-    Membership:   { suggested: ['Buyer', 'Seller'],      allowed: ['Broker', 'Other'] },
-    Other:        { suggested: ['Other'], allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Guarantor', 'Broker'] },
+    Employment:   { suggested: ['Employee', 'Employer'],             allowed: ['Guarantor', 'Broker', 'Other'] },
+    Service:      { suggested: ['Buyer', 'Seller'],                  allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+    Rental:       { suggested: ['Landlord', 'Tenant', 'Property'],   allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+    Insurance:    { suggested: ['Insurer', 'Policyholder', 'Insured', 'Beneficiary'], allowed: ['Guarantor', 'Broker', 'Other'] },
+    Subscription: { suggested: ['Buyer', 'Seller'],                  allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+    Purchase:     { suggested: ['Buyer', 'Seller', 'Property'],      allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+    Loan:         { suggested: ['Lender', 'Borrower', 'Collateral'], allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+    Membership:   { suggested: ['Buyer', 'Seller'],                  allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+    Other:        { suggested: ['Other'], allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Object', 'Property', 'Collateral', 'Guarantor', 'Broker'] },
   };
 
   /* ---- The file library (the user's files.read-visible FileMetadata records).
@@ -172,7 +184,9 @@
       description: 'Twelve-month assured shorthold tenancy on the Maple St residence. Rent due on the 1st. Pets permitted by amendment.',
       startDate: '2025-09-01', endDate: '2026-08-31', ready: '2025-08-14T09:00:00Z', signed: '2025-08-20T09:00:00Z', paused: null, archived: null, createdAtUtc: '2025-08-14T10:00:00Z', createdByUserId: 'u-jane',
       parties: [
-        { id: 'cp-lease-1', accountId: '7', role: 'Other', fromDate: null, toDate: null },
+        // The let flat itself — an OBJECT party. Before the object roles this
+        // was filed under the catch-all `Other` and lost what it meant.
+        { id: 'cp-lease-1', accountId: '7', role: 'Property', fromDate: null, toDate: null },
         // A party that joined partway through the term — the case the term
         // exists for. Rental now has its own vocabulary, so this is a Landlord
         // rather than the `Other` the pre-matrix seeder had to settle for.
@@ -189,7 +203,9 @@
       description: 'Purchase of the Maple St property — a one-off agreement recorded by its completion (closing) date, not a term. Kept as the deed of record for the property.',
       startDate: null, endDate: null, completionDate: '2021-04-15', ready: '2021-03-02T09:00:00Z', signed: '2021-03-30T09:00:00Z', paused: null, archived: null, createdAtUtc: '2021-03-02T09:00:00Z', createdByUserId: null,
       parties: [
-        { id: 'cp-house-1', accountId: '7', role: 'Buyer', fromDate: null, toDate: null },
+        // The property bought is the OBJECT of the purchase, not its buyer.
+        { id: 'cp-house-1', accountId: '7', role: 'Property', fromDate: null, toDate: null },
+        { id: 'cp-house-3', contactId: 'c2', role: 'Buyer', fromDate: null, toDate: null },
         { id: 'cp-house-2', contactId: 'c9', role: 'Seller', fromDate: null, toDate: null },
       ],
       files: [
@@ -206,9 +222,10 @@
       parties: [
         { id: 'cp-loan-1', contactId: 'c13', role: 'Lender', fromDate: null, toDate: null },
         { id: 'cp-loan-2', accountId: '5', role: 'Borrower', fromDate: null, toDate: null },
-        // Guarantor is `allowed` on Loan, not suggested — a real party, but
-        // not one of the two the agreement is between.
+        // Guarantor is universal now — legal on every type, suggested on none.
         { id: 'cp-loan-3', contactId: 'c9', role: 'Guarantor', fromDate: null, toDate: null },
+        // The security pledged against the loan — a Loan's own object role.
+        { id: 'cp-loan-4', accountId: '5', role: 'Collateral', fromDate: null, toDate: null },
       ],
       files: [],
     },
@@ -295,7 +312,8 @@
       description: 'Twenty-year rooftop solar lease — transferred to the new owner on sale of the property. Retained for reference.',
       startDate: '2023-06-01', endDate: '2025-10-31', ready: '2023-05-28T09:00:00Z', signed: '2023-05-30T09:00:00Z', paused: null, archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
-        { id: 'cp-solar-1', accountId: '7', role: 'Other', fromDate: null, toDate: null },
+        // The roof the panels sit on — `Object` on an Other-type contract.
+        { id: 'cp-solar-1', accountId: '7', role: 'Object', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-solar-1', fileMetadataId: 'fm-solar-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2023-05-28T09:04:00Z', validFrom: '2023-06-01', validTo: '2033-05-31', issuedAt: '2023-05-24', issuedBy: 'c8' },
@@ -528,6 +546,12 @@
           roleLabel: H.conPartyRoleInfo(p.role).label,
           displayName: H.conResolveParty(p).name,
         }));
+    },
+    /* Object parties first (what the contract is about), then everyone else
+       in stored order — a stable partition, not a re-sort. */
+    conSortParties(parties) {
+      const isObj = p => !!(D.contractPartyRoleByKey[p.role] || {}).object;
+      return (parties || []).filter(isObj).concat((parties || []).filter(p => !isObj(p)));
     },
     conPartyRoleOptions(contractType) {
       const rows = contractType ? H.conRolesForType(contractType) : D.contractPartyRoles;
