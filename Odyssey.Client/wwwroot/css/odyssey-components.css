@@ -2522,8 +2522,9 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-orphans { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 2px; padding: 0; list-style: none; }
 .con-orphan { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); min-width: 0; }
 /* --warning-text, NOT --mud-palette-warning: this is 11px TEXT, and the raw warning token is the
-   >=3:1 graphics floor (it clears 4.5:1 on plain white but not on the tint this row sits on). Every
-   other warning-toned label in this stylesheet uses the same token; the raw one is reserved for
+   >=3:1 graphics floor — 3.70:1 on this row's plain --mud-palette-surface, under 4.5:1 outright
+   rather than only once tinted. --warning-text resolves to 7.09:1 light / 8.06:1 dark on the same
+   surface. Every other warning-toned label in this stylesheet uses it; the raw one is reserved for
    glyphs and borders. The design system's contracts.css uses the raw token here, but the client's
    own split is the stricter of the two and wins. */
 .con-orphan-role { font: 500 11px/1 var(--font-mono); letter-spacing: 0.02em; text-transform: uppercase; color: var(--warning-text); white-space: nowrap; }
