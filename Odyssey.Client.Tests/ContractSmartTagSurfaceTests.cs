@@ -35,11 +35,13 @@ public class ContractSmartTagSurfaceTests
     private static readonly Guid UtilitiesTagId = Guid.NewGuid();
     private static readonly Guid SpareTagId = Guid.NewGuid();
 
-    private static ExistingTransactionTag Tag(Guid id, string name) => new()
+    private static readonly Guid RetiredTagId = Guid.NewGuid();
+
+    private static ExistingTransactionTag Tag(Guid id, string name, bool archived = false) => new()
     {
         TransactionTagId = id,
         Name = name,
-        Archived = null,
+        Archived = archived ? new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) : null,
     };
 
     // ── The host boundary ────────────────────────────────────────────────────
@@ -80,9 +82,15 @@ public class ContractSmartTagSurfaceTests
     }
 
     /// <summary>
-    /// The option pool offers only tags this contract is not already watching to be CHECKED, and the
-    /// catalogue it draws on excludes archived tags — an archived tag is retired vocabulary the
-    /// server would refuse anyway.
+    /// The option pool draws on the catalogue with ARCHIVED tags excluded — retired vocabulary the
+    /// server would refuse anyway, and which the user could not manage from the tags page.
+    ///
+    /// <para>
+    /// The fixture seeds a real archived tag, which is the whole point: without one in the INPUT the
+    /// assertion could not fail, and the filter it exists to pin could be deleted with the test still
+    /// green. (Raised by the test reviewer on this PR — the first version of this test had exactly
+    /// that hole.)
+    /// </para>
     /// </summary>
     [Fact]
     public void The_adder_is_offered_the_unarchived_catalogue()
@@ -93,6 +101,7 @@ public class ContractSmartTagSurfaceTests
         Assert.Equal(
             ["Groceries", "Rent", "Utilities"],
             adder.Options.Select(o => o.Label).OrderBy(l => l, StringComparer.Ordinal));
+        Assert.DoesNotContain("Retired", adder.Options.Select(o => o.Label));
         Assert.Equal(2, adder.SelectedIds.Count);
     }
 
@@ -311,8 +320,14 @@ public class ContractSmartTagSurfaceTests
             .ReturnsAsync(ApiResult<List<ExistingTransaction>>.Success([], HttpStatusCode.OK));
 
         var reference = new Mock<IReferenceDataCache>();
+        // The archived entry is load-bearing: it is what makes the exclusion assertion able to fail.
         IReadOnlyList<ExistingTransactionTag> catalogue =
-            [Tag(RentTagId, "Rent"), Tag(UtilitiesTagId, "Utilities"), Tag(SpareTagId, "Groceries")];
+        [
+            Tag(RentTagId, "Rent"),
+            Tag(UtilitiesTagId, "Utilities"),
+            Tag(SpareTagId, "Groceries"),
+            Tag(RetiredTagId, "Retired", archived: true),
+        ];
         reference
             .Setup(r => r.TransactionTagsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(catalogue);
