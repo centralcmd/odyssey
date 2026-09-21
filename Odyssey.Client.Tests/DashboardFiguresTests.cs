@@ -1,4 +1,5 @@
 using System.Globalization;
+using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -25,101 +26,91 @@ public class DashboardFiguresTests
 
     // ── Currency resolution ──
 
-    [Fact]
-    public void MoneyFormat_UsesTheCurrencysSymbolAndMinorUnits()
-    {
-        var format = DashboardFigures.MoneyFormat("NOK", Currency("NOK", "kr", 2));
-
-        Assert.Equal("kr", format.CurrencySymbol);
-        Assert.Equal(2, format.CurrencyDecimalDigits);
-    }
-
     /// <summary>
-    /// Minor units are not always 2, and they are the half of the pair a symbol-only assertion would
-    /// miss. JPY has none — formatting a yen figure with two decimals invents precision the currency
-    /// does not have.
-    /// </summary>
-    [Fact]
-    public void MoneyFormat_HonoursANonDefaultMinorUnits()
-    {
-        var format = DashboardFigures.MoneyFormat("JPY", Currency("JPY", "¥", 0));
-
-        Assert.Equal("¥", format.CurrencySymbol);
-        Assert.Equal(0, format.CurrencyDecimalDigits);
-
-        // Asserted through the format's own separator rather than a literal: the group separator is
-        // culture-supplied, so a literal expectation would pin the test host's culture, not the rule.
-        var rendered = 1234.56m.ToString("C", format);
-        Assert.DoesNotContain(format.CurrencyDecimalSeparator, rendered, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// A known code whose reference row is missing or carries no symbol falls back to the CODE. Not
-    /// to "$": a wrong sigil misreports the denomination outright, where the bare code is merely
-    /// unpolished and still true.
+    /// Minor units are not always 2, and they are what a figure's precision depends on now that the
+    /// symbol is gone. JPY has none — formatting a yen figure with two decimals invents precision the
+    /// currency does not have.
     /// </summary>
     [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void MoneyFormat_WithNoUsableSymbol_FallsBackToTheCodeNotADollar(string? symbol)
+    [InlineData("NOK", 2)]
+    [InlineData("JPY", 0)]
+    public void MinorUnits_ComeFromTheCurrencysOwnRow(string code, int minorUnits)
     {
-        var currency = symbol is null ? null : Currency("XYZ", symbol, 2);
-
-        var format = DashboardFigures.MoneyFormat("XYZ", currency);
-
-        Assert.Equal("XYZ", format.CurrencySymbol);
+        Assert.Equal(minorUnits, DashboardFigures.MinorUnits(Currency(code, "x", minorUnits)));
     }
 
-    /// <summary>No main currency at all (totals unavailable) is the one case that keeps the generic symbol.</summary>
+    /// <summary>A missing reference row is the default two, never a guess at the currency's precision.</summary>
     [Fact]
-    public void MoneyFormat_WithNoCurrencyCode_IsTheGenericFormat()
+    public void MinorUnits_WithNoReferenceRow_IsTheDefault()
     {
-        Assert.Equal("$", DashboardFigures.MoneyFormat(null, null).CurrencySymbol);
+        Assert.Equal(OdsMoney.DefaultMinorUnits, DashboardFigures.MinorUnits(null));
     }
 
-    /// <summary>A negative net worth is a real state, and it must read as a minus sign, not accounting parentheses.</summary>
+    /// <summary>
+    /// The denomination is now carried by the CODE, trailing the figure — never a symbol. Odyssey is
+    /// multi-currency and several shipped currencies share a glyph, so a symbol is ambiguous exactly
+    /// where the figure matters. The currency's own <c>Symbol</c> must not appear even when it is known.
+    /// </summary>
     [Fact]
-    public void MoneyFormat_RendersNegativesWithALeadingMinus()
+    public void AFormattedFigure_CarriesItsCodeAndNeverASymbol()
     {
-        var format = DashboardFigures.MoneyFormat("USD", Currency("USD", "$", 2));
+        var rendered = OdsMoney.Format(1234.5m, "NOK", Currency("NOK", "kr", 2));
 
-        var rendered = (-1234.5m).ToString("C", format);
+        Assert.EndsWith(" NOK", rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain("kr", rendered, StringComparison.Ordinal);
+        Assert.DoesNotContain("$", rendered, StringComparison.Ordinal);
+    }
 
-        Assert.StartsWith("-", rendered, StringComparison.Ordinal);
+    /// <summary>
+    /// No currency at all — a naive cross-currency aggregate — carries NO code. The old behaviour was
+    /// a generic "$", which asserted USD about a figure that might be in anything.
+    /// </summary>
+    [Fact]
+    public void AFigureWithNoCurrency_CarriesNoCodeAtAll()
+    {
+        var rendered = OdsMoney.Format(1234.5m, currencyCode: null);
+
+        Assert.DoesNotContain("$", rendered, StringComparison.Ordinal);
+        Assert.Equal(rendered.TrimEnd(), rendered);
+    }
+
+    /// <summary>A negative is a real state, and it must read as a minus sign, not accounting parentheses.</summary>
+    [Fact]
+    public void ANegative_RendersWithALeadingMinusAndNoParentheses()
+    {
+        var rendered = OdsMoney.Format(-1234.5m, "USD");
+
+        Assert.StartsWith(OdsMoney.MinusSign.ToString(), rendered, StringComparison.Ordinal);
         Assert.DoesNotContain("(", rendered, StringComparison.Ordinal);
     }
 
     // ── Axis label ──
 
     /// <summary>
-    /// The separator rule. An alphabetic symbol needs one and a sigil does not — and NOK, whose symbol
-    /// is "kr", is the app's own default main currency, so the unseparated form is what most users
-    /// would have seen.
+    /// The axis carries the same trailing code as the headline figure above it, so the two read as one
+    /// denomination rather than two. The old rule — separate an alphabetic symbol from its number —
+    /// is gone with the symbol it separated.
     /// </summary>
     [Theory]
-    [InlineData("$", 52000, "$52k")]
-    [InlineData("€", 52000, "€52k")]
-    [InlineData("kr", 52000, "kr 52k")]
-    [InlineData("CHF", 52000, "CHF 52k")]
-    [InlineData("kr", 640, "kr 640")]
-    [InlineData("$", 640, "$640")]
-    public void AxisLabel_SeparatesAnAlphabeticSymbolFromItsNumber(string symbol, decimal value, string expected)
+    [InlineData("USD", 52000, "52k USD")]
+    [InlineData("NOK", 52000, "52k NOK")]
+    [InlineData("CHF", 640, "640 CHF")]
+    public void AxisLabel_PutsTheCodeAfterTheFigure(string code, decimal value, string expected)
     {
-        Assert.Equal(expected, DashboardFigures.AxisLabel(value, symbol));
+        Assert.Equal(expected, DashboardFigures.AxisLabel(value, code));
     }
 
     /// <summary>The thousands form applies below zero too; a liability-heavy axis would otherwise print a raw six-digit number.</summary>
     [Fact]
     public void AxisLabel_AbbreviatesLargeNegativesAsWell()
     {
-        Assert.Equal("$-52k", DashboardFigures.AxisLabel(-52000m, "$"));
+        Assert.Equal($"{OdsMoney.MinusSign}{OdsMoney.FigureSpace}52k USD", DashboardFigures.AxisLabel(-52000m, "USD"));
     }
 
     [Fact]
-    public void AxisLabel_WithAnEmptySymbol_IsJustTheNumber()
+    public void AxisLabel_WithNoCurrency_IsJustTheNumber()
     {
-        Assert.Equal("52k", DashboardFigures.AxisLabel(52000m, string.Empty));
+        Assert.Equal("52k", DashboardFigures.AxisLabel(52000m, null));
     }
 
     // ── Advisory wording ──

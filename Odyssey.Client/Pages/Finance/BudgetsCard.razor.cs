@@ -25,7 +25,7 @@ public partial class BudgetsCard
     private BudgetSummary? _summary;
     private List<ExistingCurrency> _currencies = [];
     private Dictionary<string, ExistingCurrency> _currenciesByCode = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, NumberFormatInfo> _moneyFormatCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _minorUnitsCache = new(StringComparer.OrdinalIgnoreCase);
     private List<ExistingTransactionTag> _transactionTags = [];
 
     // Lazily-loaded per-budget reports (transactions + per-tag actual sums).
@@ -204,7 +204,7 @@ public partial class BudgetsCard
     {
         _currencies = [.. (await ReferenceData.CurrenciesAsync()).Where(c => c.Archived is null)];
         _currenciesByCode = _currencies.ToDictionary(c => c.CurrencyCode, StringComparer.OrdinalIgnoreCase);
-        _moneyFormatCache.Clear(); // currency symbols/minor-units may have changed
+        _minorUnitsCache.Clear(); // a currency's minor units may have changed
     }
 
     private async Task LoadTransactionTags()
@@ -559,30 +559,20 @@ public partial class BudgetsCard
     private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     private string FormatMoney(decimal value, string? currencyCode) =>
-        value.ToString("C", MoneyFormat(currencyCode));
+        OdsMoney.Format(value, currencyCode, MinorUnits(currencyCode));
 
-    // One configured NumberFormatInfo per currency code (and one for the generic
-    // fallback), cached so list re-renders don't clone+configure a fresh one per row.
-    private NumberFormatInfo MoneyFormat(string? currencyCode)
+    // One minor-unit count per currency code, cached so list re-renders don't re-walk the currency
+    // table per row.
+    private int MinorUnits(string? currencyCode)
     {
         var key = string.IsNullOrWhiteSpace(currencyCode) ? string.Empty : currencyCode;
-        if (_moneyFormatCache.TryGetValue(key, out var cached))
+        if (_minorUnitsCache.TryGetValue(key, out var cached))
             return cached;
 
-        var nf = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
-        if (key.Length > 0 && _currenciesByCode.TryGetValue(key, out var currency))
-        {
-            nf.CurrencySymbol = currency.Symbol;
-            nf.CurrencyDecimalDigits = currency.MinorUnits;
-        }
-        else
-        {
-            nf.CurrencySymbol = "$";
-            nf.CurrencyDecimalDigits = 2;
-        }
-        nf.CurrencyNegativePattern = 1; // "-$n" — leading minus, no parentheses
-        _moneyFormatCache[key] = nf;
-        return nf;
+        _currenciesByCode.TryGetValue(key, out var currency);
+        var units = OdsMoney.MinorUnitsOf(currency);
+        _minorUnitsCache[key] = units;
+        return units;
     }
 
     // ── Per-budget detail donuts ─────────────────────────────────────────

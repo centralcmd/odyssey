@@ -514,9 +514,8 @@ public partial class SubscriptionCard
     // ── Money / label helpers ─────────────────────────────────────────────────────
     private string Money(decimal amount, string? code)
     {
-        var symbol = _currencies.FirstOrDefault(c => string.Equals(c.CurrencyCode, code, StringComparison.OrdinalIgnoreCase))?.Symbol
-            ?? code ?? string.Empty;
-        return $"{symbol} {amount.ToString("#,##0.##", CultureInfo.InvariantCulture)}".Trim();
+        var currency = _currencies.FirstOrDefault(c => string.Equals(c.CurrencyCode, code, StringComparison.OrdinalIgnoreCase));
+        return OdsMoney.Format(amount, code, currency);
     }
 
     // ── Record-card presentation ──────────────────────────────────────────────────

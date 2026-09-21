@@ -45,15 +45,22 @@
                                  OnRetry="OnRetryTags"
                                  OnCreateTag="@(_canCreateTag ? CreateTagOption : null)" />
 
-        <!-- Category + Planned amount -->
-        <OdsFormRow>
-            <OdsBudgetCategoryTypeSelect Label="Category" Required="true" @bind-Value="_categoryType" />
-            @* A planned amount is money, and the budget's base currency is the only one it can be
-               in — so the code rides inside the control, locked. *@
-            <OdsMoneyField Label="Planned amount" Required="true" @bind-Value="_plannedAmountText" AllowNegative="false"
-                           Currency="@BudgetCurrencyCode" CurrencyEditable="false"
-                           Error="@(_plannedError ? "Enter a planned amount." : null)"
-                           Help="@(_plannedError ? null : "Budget currency")" />
-        </OdsFormRow>
+        @* ONE control for the planned amount, direction included. A budget item records a
+           DIRECTION (Expense / Income), not a sign, so the direction rides in the slot a sign
+           would occupy — the same lead a contract term's amount carries. The separate Category
+           picker that used to sit beside it asked the same question twice, in a second place
+           that could drift.
+
+           The amount stays POSITIVE either way: the direction carries the meaning, and a sign
+           would be a second, contradictory encoding of it. *@
+        @* A planned amount is money, and the budget's base currency is the only one it can be
+           in — so the code rides inside the control, locked. *@
+        <OdsMoneyField Label="Planned amount" Required="true" @bind-Value="_plannedAmountText" AllowNegative="false"
+                       Direction="@_categoryType.ToString()"
+                       DirectionChanged="OnCategoryTypeChanged"
+                       DirectionOptions="DirectionLead"
+                       Currency="@BudgetCurrencyCode" CurrencyEditable="false"
+                       HelpContent="@PlannedHelp"
+                       Error="@(_plannedError ? "Enter a planned amount." : null)" />
     </ChildContent>
 </OdsFormDialog>

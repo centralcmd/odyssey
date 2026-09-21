@@ -18,51 +18,24 @@ namespace Odyssey.Client.Pages.Finance;
 /// </remarks>
 internal static class DashboardFigures
 {
-    /// <summary>Two decimals under a generic "$", for an amount whose currency is not the main one.</summary>
-    internal static NumberFormatInfo GenericMoneyFormat() => BaseFormat();
+    /// <summary>
+    /// The currency's own decimals, for a figure the caller renders through <see cref="OdsMoney"/>.
+    /// <paramref name="currency"/> is the reference-data row when one was found; an unknown code
+    /// takes the default two.
+    /// </summary>
+    /// <remarks>
+    /// This replaced a <see cref="NumberFormatInfo"/> carrying a currency SYMBOL. Money is written
+    /// as the amount followed by its ISO 4217 code now (Odyssey Design System · README "Numbers"),
+    /// so there is no sigil left to resolve — only the decimals, which are still the currency's own.
+    /// </remarks>
+    internal static int MinorUnits(ExistingCurrency? currency) => OdsMoney.MinorUnitsOf(currency);
 
     /// <summary>
-    /// The main currency's symbol and minor units. <paramref name="currency"/> is the reference-data
-    /// row when one was found. A known code with no usable symbol falls back to the CODE, not to "$":
-    /// a wrong sigil misreports the denomination, where the code merely looks unpolished.
+    /// A compact axis label, e.g. "52k USD" / "640 CHF". The code trails, exactly as it does on the
+    /// headline figure above the chart, so an axis and its headline read as one denomination.
     /// </summary>
-    internal static NumberFormatInfo MoneyFormat(string? currencyCode, ExistingCurrency? currency)
-    {
-        var format = BaseFormat();
-        if (string.IsNullOrWhiteSpace(currencyCode))
-            return format;
-
-        if (currency is not null && !string.IsNullOrWhiteSpace(currency.Symbol))
-        {
-            format.CurrencySymbol = currency.Symbol;
-            format.CurrencyDecimalDigits = currency.MinorUnits;
-        }
-        else
-        {
-            format.CurrencySymbol = currencyCode;
-        }
-
-        return format;
-    }
-
-    /// <summary>
-    /// A compact axis label, e.g. "$52k" / "kr 52k" / "CHF 640".
-    ///
-    /// <para>
-    /// The separator is the point. A sigil ("$", "€", "£") sits against its number; an ALPHABETIC
-    /// symbol does not, and the app's own default main currency is one — NOK's symbol is "kr", so
-    /// the unseparated form reads "kr52k", and CHF's symbol is the code itself. The headline figure
-    /// has no such problem because <see cref="NumberFormatInfo"/>'s "C" format supplies the spacing;
-    /// this label is hand-composed to get the "k" suffix, so it has to supply its own.
-    /// </para>
-    /// </summary>
-    internal static string AxisLabel(decimal value, string symbol)
-    {
-        var prefix = Prefix(symbol);
-        return value >= 1000 || value <= -1000
-            ? $"{prefix}{value / 1000:0}k"
-            : $"{prefix}{value:0}";
-    }
+    internal static string AxisLabel(decimal value, string? currencyCode) =>
+        OdsMoney.Compact(value, currencyCode);
 
     /// <summary>The advisory on a party the server could not convert. Order matters: FROM the account's currency, TO the main one.</summary>
     internal static string UnconvertedMessage(string accountCurrencyCode, string mainCurrencyCode) =>
@@ -248,15 +221,4 @@ internal static class DashboardFigures
             + $"point{(pointCount == 1 ? "" : "s")} from {firstLabel} to {lastLabel}";
     }
 
-    private static string Prefix(string symbol) =>
-        symbol.Length > 0 && char.IsLetter(symbol[^1]) ? symbol + " " : symbol;
-
-    private static NumberFormatInfo BaseFormat()
-    {
-        var format = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
-        format.CurrencySymbol = "$";
-        format.CurrencyDecimalDigits = 2;
-        format.CurrencyNegativePattern = 1; // "-$n" — leading minus, no parentheses
-        return format;
-    }
 }

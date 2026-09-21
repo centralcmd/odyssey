@@ -566,27 +566,14 @@ public partial class TaxStatementsCard
     private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     // ── Money ────────────────────────────────────────────────────────────────
-    // Mirrors the design system's taxMoney: symbol-prefixed whole units with an
-    // en-dash minus (e.g. "kr 1,600,000"). Tax figures carry no minor units.
-    private string TaxMoney(decimal? n, string code)
-    {
-        if (n is null) return "—";
-        var sign = n.Value < 0 ? "−" : string.Empty;
-        return $"{sign}{SymbolFor(code)} {Math.Abs(n.Value).ToString("#,##0", CultureInfo.InvariantCulture)}";
-    }
+    // Mirrors the design system's taxMoney: the amount with its ISO code trailing (e.g.
+    // "1,600,000 NOK"). Tax figures carry NO minor units — a declared figure is whole units by
+    // construction — which is the one thing that differs from the ordinary money path, so the
+    // decimals are pinned at zero here rather than read off the currency.
+    private static string TaxMoney(decimal? n, string code) => OdsMoney.Format(n, code, minorUnits: 0);
 
-    private string SymbolFor(string code) =>
-        _currenciesByCode.TryGetValue(code, out var c) && !string.IsNullOrWhiteSpace(c.Symbol) ? c.Symbol : code;
-
-    // Compact y-axis tick: "kr 1.7M" / "kr 232k" / "kr 980".
-    private string TaxAxis(decimal n, string code)
-    {
-        var sym = SymbolFor(code);
-        var abs = Math.Abs(n);
-        if (abs >= 1_000_000) return $"{sym} {(n / 1_000_000m):0.#}M";
-        if (abs >= 1_000) return $"{sym} {(n / 1_000m):0}k";
-        return $"{sym} {n:0}";
-    }
+    // Compact y-axis tick: "1.7M NOK" / "232k NOK" / "980 NOK".
+    private static string TaxAxis(decimal n, string code) => OdsMoney.Compact(n, code);
 
     // The currency the overview charts read in — the latest active statement's base.
     private string OverviewCurrency =>

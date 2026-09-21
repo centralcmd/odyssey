@@ -102,6 +102,12 @@
                     Saving replaces the whole event — type, title, description, notes and date. Text you
                     clear is cleared on the contract, and a type you leave unset resets to
                     <strong>Other</strong>. Who recorded this event, and when, is never rewritten.
+                    @* The full replacement bites hardest on a recorded row: its description was
+                       written once, at the moment of the change, and no later write re-derives it. *@
+                    @if (IsSystemEvent)
+                    {
+                        <text> Nothing regenerates a description you clear on a recorded event.</text>
+                    }
                 </OdsAlert>
             }
         </div>

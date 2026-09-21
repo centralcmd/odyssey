@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.Client.Services;
@@ -23,7 +24,9 @@ public partial class BudgetItemsSection
 
     /// <summary>Re-fetch the tag list after a failed load.</summary>
     [Parameter] public EventCallback OnRetryTags { get; set; }
-    [Parameter] public Func<decimal, string?, string> Format { get; set; } = (value, _) => value.ToString("C2");
+    /// <summary>Formats a figure in its currency — supplied by the host, which holds the currency
+    /// table. The fallback writes the amount with its code trailing and the default two decimals.</summary>
+    [Parameter] public Func<decimal, string?, string> Format { get; set; } = (value, code) => OdsMoney.Format(value, code);
     [Parameter] public string CurrencyCode { get; set; } = "USD";
 
     /// <summary>

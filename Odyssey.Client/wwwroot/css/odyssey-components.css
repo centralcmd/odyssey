@@ -4080,6 +4080,16 @@ tr:focus-within > .odc-rowactions.reveal,
     font: 600 11px/1 var(--font-sans); letter-spacing: var(--tracking-caps, 0.08em);
     text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none;
 }
+/* Only a divider given HeadingId is focusable, and only programmatically — it carries
+   tabindex="-1", so it is out of the tab order and this ring appears after something in
+   the section moves focus here (a delete), never while tabbing through it. Without the
+   rule the focus lands silently: ContractEventsSection sends focus to its heading after
+   deleting an event, and a keyboard user would have no idea where they ended up. */
+.odc-sectiondivider-l[tabindex]:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: var(--space-1);
+    border-radius: var(--radius-sm);
+}
 .odc-sectiondivider-rule { flex: 1; height: 1px; background: var(--mud-palette-divider); }
 .odc-sectiondivider-meta { font: var(--fw-regular) 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); flex: none; }
 

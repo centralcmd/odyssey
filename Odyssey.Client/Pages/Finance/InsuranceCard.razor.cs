@@ -20,7 +20,7 @@ public partial class InsuranceCard
     private readonly Dictionary<Guid, ExistingInsurancePolicy> _details = new();
     private InsurancePortfolioSummary? _summary;
 
-    private Dictionary<string, string> _currencySymbols = new(StringComparer.OrdinalIgnoreCase);
+    private Dictionary<string, int> _currencyMinorUnits = new(StringComparer.OrdinalIgnoreCase);
     // One contact list, shared by the three contact pickers — insurers, insured contacts and
     // beneficiaries all choose from the whole address book (no contact-type restriction: a trust is a
     // legitimate beneficiary, a company a legitimate insured).
@@ -215,9 +215,9 @@ public partial class InsuranceCard
     private async Task LoadCurrencies()
     {
         var currencies = await ReferenceData.CurrenciesAsync();
-        _currencySymbols = currencies
+        _currencyMinorUnits = currencies
             .GroupBy(c => c.CurrencyCode, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First().Symbol, StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(g => g.Key, g => OdsMoney.MinorUnitsOf(g.First()), StringComparer.OrdinalIgnoreCase);
     }
 
     private async Task LoadContacts()
@@ -885,24 +885,11 @@ public partial class InsuranceCard
         InsuranceHeadline.Compute(p, Today);
 
     // ── Money ────────────────────────────────────────────────────────────────────
-    private string Money(decimal? n, string? code)
-    {
-        if (n is null) return "—";
-        var sign = n.Value < 0 ? "−" : string.Empty;
-        return $"{sign}{Symbol(code)} {Math.Abs(n.Value).ToString("#,##0.##", CultureInfo.InvariantCulture)}";
-    }
+    private string Money(decimal? n, string? code) =>
+        OdsMoney.Format(n, code, MinorUnits(code));
 
-    private string MoneyCompact(decimal? n, string? code)
-    {
-        if (n is null) return "—";
-        var sym = Symbol(code);
-        var abs = Math.Abs(n.Value);
-        var sign = n.Value < 0 ? "−" : string.Empty;
-        if (abs >= 1_000_000) return $"{sign}{sym} {(abs / 1_000_000m):0.#}M";
-        if (abs >= 1_000) return $"{sign}{sym} {(abs / 1_000m):0.#}k";
-        return $"{sign}{sym} {abs.ToString("#,##0", CultureInfo.InvariantCulture)}";
-    }
+    private string MoneyCompact(decimal? n, string? code) => OdsMoney.Compact(n, code);
 
-    private string Symbol(string? code) =>
-        code is not null && _currencySymbols.TryGetValue(code, out var s) && !string.IsNullOrWhiteSpace(s) ? s : code ?? string.Empty;
+    private int MinorUnits(string? code) =>
+        code is not null && _currencyMinorUnits.TryGetValue(code, out var units) ? units : OdsMoney.DefaultMinorUnits;
 }

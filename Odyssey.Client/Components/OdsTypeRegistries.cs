@@ -433,6 +433,60 @@ public static class OdsTypeRegistries
     public static OdsTypeOption BudgetCategoryTypeOf(BudgetCategoryType type) =>
         BudgetCategoryTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? BudgetCategoryTypes[0];
 
+    /// <summary>
+    /// The same two values shaped as a money field's LEAD (Odyssey Design System ·
+    /// <c>BUDGET_CATEGORY_DIRECTION_OPTIONS</c>) — the left-edge button that flips the value's
+    /// direction in the slot a sign would occupy.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A budget item records a <b>direction</b>, not a sign, so its planned amount can carry the
+    /// question outright and the form needs no separate category picker beside it — the picker asked
+    /// the same question twice, in a second place that could drift.
+    /// </para>
+    /// <para>
+    /// Derived from <see cref="BudgetCategoryTypes"/> rather than written out again, so the lead, the
+    /// helper copy and the stored enum cannot disagree. <b>Tone comes from
+    /// <see cref="BudgetCategoryDirection.Tone"/>, never from the value</b>: a lead tinted from
+    /// <c>Value</c> would emit <c>tone-Expense</c>, which matches no CSS rule and leaves the figure
+    /// the wrong colour with nothing failing.
+    /// </para>
+    /// <para>
+    /// A <b>word</b>, not an arrow: a directional glyph beside a figure reads as that figure rising
+    /// or falling — the same reason <c>TermDirectionVisuals</c> carries none.
+    /// </para>
+    /// </remarks>
+    public static readonly IReadOnlyList<OdsDirectionOption> BudgetCategoryDirections =
+        [.. BudgetCategoryTypes.Select(t =>
+        {
+            var direction = BudgetCategoryDirectionOf(t.Key);
+            return new OdsDirectionOption
+            {
+                Value = t.Key,
+                Label = t.Label,
+                Short = direction.Short,
+                Tone = direction.Tone,
+            };
+        })];
+
+    /// <summary>
+    /// The direction vocabulary for a budget category — the lead's short word, the finance tone, and
+    /// what the direction MEANS for the field's helper line. Falls back to Expense, which is the enum's
+    /// zero member and what a row written before the field existed means.
+    /// </summary>
+    public static BudgetCategoryDirection BudgetCategoryDirectionOf(BudgetCategoryType type) =>
+        BudgetCategoryDirectionOf(type.ToString());
+
+    private static BudgetCategoryDirection BudgetCategoryDirectionOf(string key) => key == "Income"
+        ? new BudgetCategoryDirection("in", "income", "money into the budget")
+        : new BudgetCategoryDirection("out", "expense", "money out of the budget");
+
+    /// <summary>Parses a lead's string value back to the enum; anything unrecognised is Expense.</summary>
+    public static BudgetCategoryType BudgetCategoryTypeFrom(string? value) =>
+        Enum.TryParse<BudgetCategoryType>(value, out var parsed) && Enum.IsDefined(parsed)
+            ? parsed
+            : BudgetCategoryType.Expense;
+
     /// <summary>The InsurancePolicyType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption InsurancePolicyTypeOf(InsurancePolicyType type) =>
         InsurancePolicyTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? InsurancePolicyTypes[^1];
@@ -617,4 +671,17 @@ public static class OdsTypeRegistries
     public static readonly IReadOnlyList<OdsOption> ContractFileOptions = ToOptions(ContractFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractPartyRoleOptions = ToOptions(ContractPartyRoles);
     public static readonly IReadOnlyList<OdsOption> BillingIntervalOptions = ToOptions(BillingIntervals);
+}
+
+/// <summary>
+/// The direction vocabulary for one <see cref="BudgetCategoryType"/> — the sibling of
+/// <c>TermDirectionInfo</c>, for the surface where a budget line's amount carries its own direction.
+/// </summary>
+/// <param name="Short">The lead's short word ("out", "in").</param>
+/// <param name="Tone">"income" / "expense" — the finance semantics, never the brand hues.</param>
+/// <param name="Sentence">What the direction MEANS, for the field's helper line.</param>
+public sealed record BudgetCategoryDirection(string Short, string Tone, string Sentence)
+{
+    /// <summary>The colour of this side's figures.</summary>
+    public string Color => Tone == "income" ? "var(--finance-income)" : "var(--finance-expense)";
 }

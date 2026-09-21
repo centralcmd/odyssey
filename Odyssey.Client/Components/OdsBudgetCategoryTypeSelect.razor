@@ -1,3 +1,9 @@
+@* DS parity — no consumer yet. The design system still ships components/BudgetCategoryTypeSelect,
+   so the atom stays; what changed is the one surface that used it. AddBudgetItemModal folded the
+   category question into the planned amount's DIRECTION LEAD, because a budget item records a
+   direction rather than a sign — so a picker beside the amount asked the same question twice, in a
+   second place that could drift. CreateBudgetItemDialog follows it. The edit-multiple grid still
+   picks a category, but through a plain MudSelect inside its own row layout, as the kit's does. *@
 @using Odyssey.Dtos.Finance
 @*
     OdsBudgetCategoryTypeSelect — a single-select pre-wired to the BudgetCategoryType

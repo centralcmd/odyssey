@@ -242,36 +242,36 @@ public partial class ContractsCard
     // ── Money (term values) ──────────────────────────────────────────────────────
     //
     // A contract has no currency of its own — every term names the one it is priced in — so the
-    // formatter is resolved PER VALUE rather than once per record. The format itself comes from
-    // DashboardFigures, the one helper that decides a symbol's fallback: a known code with no usable
-    // symbol falls back to the CODE, never to "$", since a wrong sigil misreports the denomination.
+    // denomination is resolved PER VALUE rather than once per record. OdsMoney writes the ISO code
+    // after the figure, so the code IS the denomination on screen and there is no sigil to fall back
+    // from; the only thing looked up here is the currency's own decimals.
 
     private IReadOnlyDictionary<string, ExistingCurrency> _currenciesByCode =
         new Dictionary<string, ExistingCurrency>(StringComparer.OrdinalIgnoreCase);
 
-    private readonly Dictionary<string, NumberFormatInfo> _moneyFormatCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _minorUnitsCache = new(StringComparer.OrdinalIgnoreCase);
 
     private async Task LoadCurrencies()
     {
         var currencies = await ReferenceData.CurrenciesAsync();
         _currenciesByCode = currencies.ToDictionary(c => c.CurrencyCode, c => c, StringComparer.OrdinalIgnoreCase);
-        _moneyFormatCache.Clear();
+        _minorUnitsCache.Clear();
     }
 
     private string FormatMoney(decimal value, string? currencyCode) =>
-        value.ToString("C", MoneyFormat(currencyCode));
+        OdsMoney.Format(value, currencyCode, MinorUnits(currencyCode));
 
-    // Cached per code so a list re-render does not clone and configure a fresh format per row.
-    private NumberFormatInfo MoneyFormat(string? currencyCode)
+    // Cached per code so a list re-render does not re-walk the currency table per row.
+    private int MinorUnits(string? currencyCode)
     {
         var key = string.IsNullOrWhiteSpace(currencyCode) ? string.Empty : currencyCode;
-        if (_moneyFormatCache.TryGetValue(key, out var cached))
+        if (_minorUnitsCache.TryGetValue(key, out var cached))
             return cached;
 
         _currenciesByCode.TryGetValue(key, out var currency);
-        var format = DashboardFigures.MoneyFormat(key.Length == 0 ? null : key, currency);
-        _moneyFormatCache[key] = format;
-        return format;
+        var units = OdsMoney.MinorUnitsOf(currency);
+        _minorUnitsCache[key] = units;
+        return units;
     }
 
     // ── Header signal: "Upcoming" ─────────────────────────────────────────────────
