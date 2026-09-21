@@ -17,6 +17,7 @@ using ContextContractPartyRole = Odyssey.Context.ContractPartyRole;
 using ContextInterval = Odyssey.Context.Interval;
 using ContextTermKind = Odyssey.Context.TermKind;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
+using ContextTermDirection = Odyssey.Context.TermDirection;
 using DtoInterval = Odyssey.Dtos.Finance.Interval;
 using DtoContractPartyRole = Odyssey.Dtos.Finance.ContractPartyRole;
 
@@ -192,9 +193,17 @@ public class ContractService
     /// recurring charges falling due inside the look-ahead window.
     ///
     /// <para>
-    /// The run rate and the charges are the SAME read of the same rows — the in-force <c>Fee</c>
+    /// The run rate and the movements are the SAME read of the same rows — the in-force <c>Fee</c>
     /// terms of the Active contracts — once summed and once projected forward. Neither schedules
     /// anything: a term's cadence anchor is read, never advanced or written.
+    /// </para>
+    ///
+    /// <para>
+    /// Since issue #159 each of those rows also says which way its money moves, so the run rate reports
+    /// the two sides separately plus an explicit net, and the projection emits into two lists. Direction
+    /// plays NO part in the status derivation, in <c>CountsByStatus</c>, in <c>CountsByType</c> or in
+    /// the "ending soon" slice; it is not a query predicate and not part of the series key, so the query
+    /// plan is unchanged and the split is an in-memory bucketing of a set already materialised.
     /// </para>
     ///
     /// <para>
@@ -282,6 +291,8 @@ public class ContractService
         }
 
         var priced = await LoadInForceFeesAsync(priceable, today, cancellationToken);
+        var movements = BuildUpcomingMovements(
+            priced, today, windows.ChargeWindowDays, windows.MaxSummaryCharges);
 
         return new ContractSummary
         {
@@ -292,8 +303,8 @@ public class ContractService
                 .Select(kv => new ContractTypeCount { Type = kv.Key, Count = kv.Value })
                 .ToList(),
             RunRate = await BuildRunRateAsync(priced, baseCurrency, cancellationToken),
-            UpcomingCharges = BuildUpcomingCharges(
-                priced, today, windows.ChargeWindowDays, windows.MaxSummaryCharges),
+            UpcomingCharges = movements.Charges,
+            UpcomingReceipts = movements.Receipts,
             EndingWindowDays = windows.EndingWindowDays,
             ChargeWindowDays = windows.ChargeWindowDays,
         };
@@ -344,7 +355,11 @@ public class ContractService
                     byId[group.Key], term.Label, term.Value,
                     CurrencyValidationService.Normalize(term.CurrencyCode ?? string.Empty),
                     interval, Math.Max(1, term.IntervalCount ?? 1),
-                    (term.AnchorDate ?? term.EffectiveFrom).Date));
+                    (term.AnchorDate ?? term.EffectiveFrom).Date,
+                    // R1 (issue #159) — the direction of the WINNING entry, read after the series
+                    // collapse, so a superseded entry's direction never reaches a total. Direction is
+                    // not a query predicate and not part of the series key, so nothing above changes.
+                    term.Direction));
             }
         }
 
@@ -352,14 +367,21 @@ public class ContractService
     }
 
     /// <summary>
-    /// What the file costs to run: each in-force periodic fee projected by its cadence
-    /// (<c>Value ÷ IntervalCount × periods</c>) and converted to base.
+    /// What the file costs to run and what it brings in: each in-force periodic fee projected by its
+    /// cadence (<c>Value ÷ IntervalCount × periods</c>), bucketed by the direction of the in-force
+    /// entry, and converted to base.
     ///
     /// <para>
     /// A currency with no rate to base is NAMED rather than folded in at 1:1 — a silent 1:1 would
     /// under-report a strong currency and over-report a weak one, and either reads as a real figure.
-    /// The same exclusion applies to the per-type split, so the rows and the totals always cover the
-    /// same set of terms.
+    /// The same exclusion applies to the per-type split and to BOTH directions, so the rows, the two
+    /// grosses and the net always cover the same set of terms.
+    /// </para>
+    ///
+    /// <para>
+    /// The base-currency vote (issue #159 §5.7 rule 6) counts both directions and runs BEFORE the
+    /// bucketing. Splitting first and voting per bucket would elect two bases, and the net would then
+    /// be a difference of two different currencies.
     /// </para>
     /// </summary>
     private async Task<ContractRunRate> BuildRunRateAsync(
@@ -388,15 +410,18 @@ public class ContractService
 
         var runRate = new ContractRunRate { BaseCurrency = baseCode };
         var unconverted = new SortedSet<string>(StringComparer.Ordinal);
-        var byType = new Dictionary<DtoContractType, ContractRunRateTypeRow>();
-        decimal? monthly = null;
-        decimal? yearly = null;
+
+        // One accumulator per direction. The two are summed independently and NEVER mixed: the only
+        // figure that crosses them is the net, which says so in its name.
+        var outgoing = new DirectionTotals();
+        var incoming = new DirectionTotals();
 
         foreach (var p in priced)
         {
             // Narrowed back to Active here rather than at the query: a next charge legitimately looks
             // ahead to a contract that has not started, but nothing that has not started is costing
-            // anything yet, so it carries no run rate.
+            // anything yet, so it carries no run rate. R2 — direction neither widens nor narrows this
+            // gate, and no parallel status test is added beside it.
             if (!p.Contract.IsActive)
             {
                 continue;
@@ -405,6 +430,9 @@ public class ContractService
             var code = p.CurrencyCode.Length == 0 ? baseCode : p.CurrencyCode;
             if (!TryRateToBase(code, baseCode, rates, out var rate))
             {
+                // Named once, on whichever side it appeared, and excluded from both grosses and the
+                // net — so the net is partial exactly when the grosses are, which is the existing
+                // legibility contract extended rather than a new one.
                 unconverted.Add(code);
                 continue;
             }
@@ -413,19 +441,8 @@ public class ContractService
             var mo = p.Amount * moFactor / p.IntervalCount * rate;
             var yr = p.Amount * yrFactor / p.IntervalCount * rate;
 
-            monthly = (monthly ?? 0m) + mo;
-            yearly = (yearly ?? 0m) + yr;
-
-            var dtoType = p.Contract.Type.Adapt<DtoContractType>();
-            if (!byType.TryGetValue(dtoType, out var row))
-            {
-                row = new ContractRunRateTypeRow { Type = dtoType };
-                byType[dtoType] = row;
-            }
-
-            row.Monthly += mo;
-            row.Yearly += yr;
-            row.Count++;
+            var side = p.Direction == ContextTermDirection.Incoming ? incoming : outgoing;
+            side.Add(p.Contract.Type.Adapt<DtoContractType>(), mo, yr);
         }
 
         // Display-only estimates (the daily/weekly cadence factors are not exact in decimal), so round
@@ -433,10 +450,63 @@ public class ContractService
         // rounded independently, so with enough types their sum can differ from the total by a cent;
         // what "the rows sum to the totals" guarantees is CURRENCY PARITY — a currency excluded from
         // the total is excluded from every row too — not post-rounding arithmetic equality.
-        runRate.Monthly = monthly is { } m ? Round2(m) : null;
-        runRate.Yearly = yearly is { } y ? Round2(y) : null;
+        runRate.Monthly = outgoing.Monthly is { } om ? Round2(om) : null;
+        runRate.Yearly = outgoing.Yearly is { } oy ? Round2(oy) : null;
+        runRate.ByType = outgoing.Rows();
+
+        runRate.IncomingMonthly = incoming.Monthly is { } im ? Round2(im) : null;
+        runRate.IncomingYearly = incoming.Yearly is { } iy ? Round2(iy) : null;
+        runRate.IncomingByType = incoming.Rows();
+
+        // Computed from the UNROUNDED sums and rounded once: differencing two already-rounded figures
+        // compounds the rounding rather than cancelling it. Null only when BOTH sides are null — a
+        // household with income and no recorded costs has a perfectly good net.
+        runRate.NetMonthly = Net(incoming.Monthly, outgoing.Monthly);
+        runRate.NetYearly = Net(incoming.Yearly, outgoing.Yearly);
+
         runRate.UnconvertedCurrencies = [.. unconverted];
-        runRate.ByType = byType
+
+        return runRate;
+    }
+
+    /// <summary>
+    /// <c>(incoming ?? 0) − (outgoing ?? 0)</c>, rounded once, or <c>null</c> when neither side
+    /// contributed anything convertible.
+    /// </summary>
+    private static decimal? Net(decimal? incoming, decimal? outgoing) =>
+        incoming is null && outgoing is null ? null : Round2((incoming ?? 0m) - (outgoing ?? 0m));
+
+    /// <summary>
+    /// One direction's running totals and per-type split. Two instances rather than a parameterised
+    /// pass, so the two sides are summed by the SAME arithmetic and cannot drift — and so a total can
+    /// never be assembled from rows of mixed direction.
+    /// </summary>
+    private sealed class DirectionTotals
+    {
+        private readonly Dictionary<DtoContractType, ContractRunRateTypeRow> byType = [];
+
+        /// <summary>Null until something is added: absent means "no convertible terms on this side".</summary>
+        public decimal? Monthly { get; private set; }
+
+        public decimal? Yearly { get; private set; }
+
+        public void Add(DtoContractType type, decimal monthly, decimal yearly)
+        {
+            Monthly = (Monthly ?? 0m) + monthly;
+            Yearly = (Yearly ?? 0m) + yearly;
+
+            if (!byType.TryGetValue(type, out var row))
+            {
+                row = new ContractRunRateTypeRow { Type = type };
+                byType[type] = row;
+            }
+
+            row.Monthly += monthly;
+            row.Yearly += yearly;
+            row.Count++;
+        }
+
+        public List<ContractRunRateTypeRow> Rows() => byType
             .OrderBy(kv => kv.Key)
             .Select(kv =>
             {
@@ -445,23 +515,28 @@ public class ContractService
                 return kv.Value;
             })
             .ToList();
-
-        return runRate;
     }
 
     /// <summary>
-    /// Each contract's SOONEST next charge inside the window — one row per contract, not one per term,
-    /// so a contract pricing four fees does not crowd out three others.
+    /// Each contract's SOONEST next movement inside the window, per DIRECTION — one outgoing row and
+    /// one incoming row per contract at most, so a contract pricing four fees does not crowd out three
+    /// others, and a contract that pays a salary on the 25th and deducts a fee on the 1st reports both.
     ///
     /// <para>
-    /// A charge never falls outside the agreement it is priced under, so an occurrence past the
+    /// Collapsing on the contract alone would silently discard whichever movement fell later, which is
+    /// why the key is <c>(contract, direction)</c> since issue #159. The cap applies PER LIST, so a
+    /// file with many outgoing charges cannot starve the receipts.
+    /// </para>
+    ///
+    /// <para>
+    /// A movement never falls outside the agreement it is priced under, so an occurrence past the
     /// contract's end date is dropped rather than shown.
     /// </para>
     /// </summary>
-    private static List<ContractUpcomingCharge> BuildUpcomingCharges(
+    private static (List<ContractUpcomingCharge> Charges, List<ContractUpcomingCharge> Receipts) BuildUpcomingMovements(
         List<PricedTerm> priced, DateTime today, int windowDays, int maxCharges)
     {
-        var soonest = new Dictionary<Guid, ContractUpcomingCharge>();
+        var soonest = new Dictionary<(Guid ContractId, ContextTermDirection Direction), ContractUpcomingCharge>();
 
         foreach (var p in priced)
         {
@@ -483,12 +558,13 @@ public class ContractService
                 continue;
             }
 
-            if (soonest.TryGetValue(p.Contract.ContractId, out var held) && held.ChargeDate <= date)
+            var key = (p.Contract.ContractId, p.Direction);
+            if (soonest.TryGetValue(key, out var held) && held.ChargeDate <= date)
             {
                 continue;
             }
 
-            soonest[p.Contract.ContractId] = new ContractUpcomingCharge
+            soonest[key] = new ContractUpcomingCharge
             {
                 ContractId = p.Contract.ContractId,
                 Name = p.Contract.Name,
@@ -503,12 +579,16 @@ public class ContractService
             };
         }
 
-        return soonest.Values
+        List<ContractUpcomingCharge> Ordered(ContextTermDirection direction) => soonest
+            .Where(kv => kv.Key.Direction == direction)
+            .Select(kv => kv.Value)
             .OrderBy(c => c.ChargeDate)
             .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(c => c.ContractId)
             .Take(maxCharges)
             .ToList();
+
+        return (Ordered(ContextTermDirection.Outgoing), Ordered(ContextTermDirection.Incoming));
     }
 
     /// <summary>Cadence → (monthly, yearly) multiplier for a single charge (the design's own factors).</summary>
@@ -612,7 +692,8 @@ public class ContractService
     /// and the next-charge projection's, so both read exactly the same set.</summary>
     private sealed record PricedTerm(
         SummaryRow Contract, string? Label, decimal Amount, string CurrencyCode,
-        ContextInterval Interval, int IntervalCount, DateTime Anchor);
+        ContextInterval Interval, int IntervalCount, DateTime Anchor,
+        ContextTermDirection Direction);
 
     public async Task<ExistingContract?> Get(Guid id, CancellationToken cancellationToken = default)
     {

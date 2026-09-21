@@ -352,6 +352,44 @@ public sealed class OdsUploadFile
 /// <param name="Changed">Invoke after mutating <paramref name="File"/> to re-commit the list.</param>
 public readonly record struct OdsUploadFileExtraContext(OdsUploadFile File, EventCallback Changed);
 
+/// <summary>
+/// One of the two states a money / amount field's LEAD flips between (Odyssey Design System ·
+/// MoneyField <c>directionOptions</c>).
+///
+/// <para>
+/// The lead is a <b>vocabulary, not a sign</b>. Where a record stores a DIRECTION rather than a sign
+/// — a contract term's Outgoing / Incoming — the lead shows that vocabulary's own word where the
+/// sign would be, and the stored amount stays positive: a sign glyph would be a second, contradictory
+/// encoding of the same fact.
+/// </para>
+///
+/// <para>
+/// Prefer <see cref="Short"/> to <see cref="Icon"/> for an in/out vocabulary. A directional arrow
+/// beside a figure reads as that figure rising or falling — against VALUE — before it reads as money
+/// leaving the household, which is the opposite of what the word says.
+/// </para>
+/// </summary>
+public sealed record OdsDirectionOption
+{
+    /// <summary>The stored value this state maps to ("Outgoing", "expense").</summary>
+    public required string Value { get; set; }
+
+    /// <summary>Spoken name, used in the lead button's accessible name and title.</summary>
+    public required string Label { get; set; }
+
+    /// <summary>Short word shown in the lead ("out", "in"). Preferred over <see cref="Icon"/>.</summary>
+    public string? Short { get; set; }
+
+    /// <summary>Material Icons ligature shown in the lead. Takes precedence over <see cref="Short"/>.</summary>
+    public string? Icon { get; set; }
+
+    /// <summary>Glyph shown when there is neither an icon nor a short word ("−", "+").</summary>
+    public string? Sign { get; set; }
+
+    /// <summary>"income" / "expense" — colors the lead and the value by the finance semantics.</summary>
+    public string? Tone { get; set; }
+}
+
 /// <summary>One row of an <see cref="OdsBreakdownTile"/> — icon · label · count.</summary>
 public sealed record OdsBreakdownRow
 {

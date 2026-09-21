@@ -10,6 +10,10 @@ using Odyssey.Dtos.Journal;
 using Odyssey.Context.Legal;
 using Odyssey.Dtos.Application;
 using Odyssey.TestData;
+using Odyssey.Core.Finance;
+using Odyssey.Core.Journal;
+using SystemSettingsDefaults = Odyssey.Dtos.SystemSettingsDefaults;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Odyssey.MigrationService.Tests;
@@ -342,6 +346,91 @@ public class DemoDataSeederTests
         Assert.Null(host.Paused);
         Assert.True(host.EndDate is null || host.EndDate > DateTime.UtcNow,
             "the contract holding the Terminated event has not itself ended");
+    }
+
+    /// <summary>
+    /// Issue #159 AC 26 — the demo set carries an income-bearing contract, and the roll-up over the
+    /// SEEDED rows reports it. Without one, every figure the incoming half of the summary produces
+    /// would be null in the demo stack and the feature would read as absent rather than empty.
+    /// </summary>
+    /// <remarks>
+    /// The assertion runs the real <c>ContractService.GetSummary</c> rather than counting rows,
+    /// because what is being pinned is not "an Incoming term exists" but "an Incoming term on a
+    /// contract the roll-up actually prices" — the status gate, the cadence and the currency all have
+    /// to line up, and each is a way a seeded income term could be present and still invisible. Time
+    /// is pinned to the demo anchor so the derived statuses do not drift with the wall clock.
+    /// </remarks>
+    [Fact]
+    public async Task Seeds_an_income_bearing_contract_the_rollup_reports()
+    {
+        await using var provider = BuildProvider(out var seeder);
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        var service = new ContractService(
+            context,
+            new ContactLookup(context),
+            new FixedTimeProvider(DemoDataDefaults.AnchorDate),
+            new AnchorSettingsLookup(),
+            NullLogger<ContractService>.Instance);
+
+        var summary = await service.GetSummary("USD");
+
+        Assert.NotNull(summary.RunRate.IncomingMonthly);
+        Assert.True(summary.RunRate.IncomingMonthly > 0m);
+        Assert.NotEmpty(summary.RunRate.IncomingByType);
+        Assert.NotEmpty(summary.UpcomingReceipts);
+
+        // Both sides at once, on ONE contract — the shape a contract-level flag could not express.
+        var receipt = summary.UpcomingReceipts[0];
+        Assert.Contains(summary.UpcomingCharges, c => c.ContractId == receipt.ContractId);
+
+        // The outgoing side is unchanged and still the larger set, so the demo does not read as though
+        // direction were a rename of the existing figure.
+        Assert.NotNull(summary.RunRate.Monthly);
+        Assert.NotNull(summary.RunRate.NetMonthly);
+    }
+
+    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(utcNow);
+    }
+
+    /// <summary>
+    /// The shipped settings defaults, so the roll-up above reads the same windows a freshly-migrated
+    /// database would. This project has no settings rows of its own — the seeder does not write them.
+    /// </summary>
+    private sealed class AnchorSettingsLookup : ISystemSettingsLookup
+    {
+        public Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new InsurancePolicySettings(
+                SystemSettingsDefaults.InsuranceExpiringSoonWindowDays,
+                SystemSettingsDefaults.InsuranceMaxSummaryPolicies));
+
+        public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new FinanceRequestCaps(
+                SystemSettingsDefaults.ContractMaxPartiesPerContract,
+                SystemSettingsDefaults.ContractMaxFilesPerContract,
+                SystemSettingsDefaults.ContractMaxTermsPerContract,
+                SystemSettingsDefaults.ContractMaxSummaryContracts,
+                SystemSettingsDefaults.InsuranceMaxRenewalsPerPolicy,
+                SystemSettingsDefaults.InsuranceMaxFilesPerParent,
+                SystemSettingsDefaults.InsuranceMaxLinksPerPolicy));
+
+        public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new SubscriptionSettings(
+                SystemSettingsDefaults.SubscriptionRenewalWindowDays,
+                SystemSettingsDefaults.SubscriptionMaxSummaryRenewals,
+                SystemSettingsDefaults.SubscriptionMaxSummarySubscriptions));
+
+        public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ContractSummarySettings(
+                SystemSettingsDefaults.ContractEndingWindowDays,
+                SystemSettingsDefaults.ContractChargeWindowDays,
+                SystemSettingsDefaults.ContractMaxSummaryCharges));
     }
 
     [Fact]

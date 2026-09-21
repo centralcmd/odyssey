@@ -714,8 +714,11 @@ public partial class Settings
                 Write: (p, req) => req.ContractChargeWindowDays = p.IntRequest("contractChargeWindowDays"),
                 Unit: "days"),
             new("contractMaxSummaryCharges", "format_list_numbered", "Max next charges shown in summary",
-                "Upper limit on the next-charge rows listed in the page-header panel. Each row is a "
-                + "separate rendered block, so this is deliberately bounded well below the other summary caps.",
+                "Upper limit on the next-movement rows listed in the page-header panel. It applies to "
+                + "outgoing charges and incoming receipts SEPARATELY, so a file with many charges "
+                + "cannot starve the receipts — the panel can therefore list up to twice this number "
+                + "in total. Each row is a separate rendered block, so this is deliberately bounded "
+                + "well below the other summary caps.",
                 SettingClaim.Count, SettingControl.Number,
                 Min: SystemSettingsBounds.ContractMaxSummaryChargesMin,
                 Max: SystemSettingsBounds.ContractMaxSummaryChargesMax,

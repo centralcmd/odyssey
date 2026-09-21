@@ -79,6 +79,41 @@ public class TermVocabularyGuardTests
     }
 
     /// <summary>
+    /// Issue #159 — the two copies of <c>TermDirection</c> are identical and their ordinals are pinned
+    /// by literal. <c>Outgoing = 0</c> in particular is load-bearing twice over: it is the database
+    /// default the migration backfills every existing row with, and it is what an omitted
+    /// <c>direction</c> on a request deserializes to. Renumbering either copy would silently
+    /// reinterpret every stored row and move money to the other side of the household's net.
+    /// </summary>
+    [Fact]
+    public void TheTwoCopiesOfTheTermDirectionEnum_AreIdentical_AtPinnedOrdinals()
+    {
+        static Dictionary<string, int> Shape<TEnum>() where TEnum : struct, Enum =>
+            Enum.GetValues<TEnum>().ToDictionary(v => v.ToString()!, v => Convert.ToInt32(v));
+
+        Assert.Equal(0, (int)Odyssey.Dtos.Finance.TermDirection.Outgoing);
+        Assert.Equal(1, (int)Odyssey.Dtos.Finance.TermDirection.Incoming);
+        Assert.Equal(0, (int)Odyssey.Context.TermDirection.Outgoing);
+        Assert.Equal(1, (int)Odyssey.Context.TermDirection.Incoming);
+
+        Assert.Equal(
+            Shape<Odyssey.Dtos.Finance.TermDirection>(),
+            Shape<Odyssey.Context.TermDirection>());
+        Assert.Equal(2, Shape<Odyssey.Dtos.Finance.TermDirection>().Count);
+
+        // The default of the C# type is the default of the COLUMN, which is what makes the backfill
+        // behaviour-preserving without a data migration.
+        Assert.Equal(Odyssey.Context.TermDirection.Outgoing, default(Odyssey.Context.TermDirection));
+        Assert.Equal(Odyssey.Dtos.Finance.TermDirection.Outgoing, new Odyssey.Dtos.Finance.NewTerm
+        {
+            TermKind = Odyssey.Dtos.Finance.TermKind.Fee,
+            ValueUnit = Odyssey.Dtos.Finance.TermValueUnit.Amount,
+            Value = 0m,
+            EffectiveFrom = default,
+        }.Direction);
+    }
+
+    /// <summary>
     /// AC 1 / AC 22 — the retired vocabulary is gone from the solution, and the one name that was
     /// deliberately kept is still there.
     /// </summary>

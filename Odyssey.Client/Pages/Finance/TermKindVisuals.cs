@@ -1,4 +1,5 @@
 using System.Globalization;
+using Odyssey.Client.Components;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
@@ -236,4 +237,122 @@ public static class TermKindVisuals
 
         return (term.Value < 0 ? "−" : "") + PctStr(Math.Abs(term.Value));
     }
+
+    // ---- Direction (issue #159) -------------------------------------------------------------
+
+    /// <summary>
+    /// Whether direction MEANS something here: a <see cref="TermKind.Fee"/> owned by a CONTRACT.
+    /// A rate kind is a percentage the roll-up never projects, and an account term has no surface
+    /// that reads a direction — the server refuses <see cref="TermDirection.Incoming"/> on both with
+    /// a <c>400</c>, so neither is offered one.
+    /// </summary>
+    /// <remarks>
+    /// ONE predicate, so the dialog's control, the read surfaces and the refusal copy can never
+    /// disagree about where a direction is a fact and where it is noise.
+    /// </remarks>
+    public static bool DirectionApplies(TermKind kind, bool isContractOwned) =>
+        isContractOwned && kind == TermKind.Fee;
+
+    /// <inheritdoc cref="DirectionApplies(TermKind, bool)"/>
+    public static bool DirectionApplies(ExistingTerm term) =>
+        DirectionApplies(term.TermKind, term.ContractId is not null);
+
+    /// <summary>
+    /// Why direction is refused here, in the words the <c>400</c> uses; <c>null</c> when it is
+    /// allowed. The copy is the server's rule restated, so a user never meets a refusal the dialog
+    /// did not predict.
+    /// </summary>
+    public static string? DirectionRefusal(TermKind kind, bool isContractOwned) =>
+        !isContractOwned
+            ? "Direction applies to a contract term. An account term is always money out."
+            : kind != TermKind.Fee
+                ? "Direction applies to a fee term only — a rate is a percentage, not a movement."
+                : null;
+
+    /// <summary>
+    /// Whether this term brings money IN — direction applies here AND it is
+    /// <see cref="TermDirection.Incoming"/>. A predicate of its own rather than a null-test on
+    /// <see cref="DirectionColor"/>: a caller that wants the fact should ask for the fact, or a later
+    /// change to what the colour helper returns silently changes what the caller counts.
+    /// </summary>
+    public static bool IsIncoming(ExistingTerm term) =>
+        DirectionApplies(term) && term.Direction == TermDirection.Incoming;
+
+    /// <summary>
+    /// Mint wherever an INCOMING term's own value is printed; <c>null</c> everywhere else, so every
+    /// surface keeps the colour it already had and nothing that existed before this field changes
+    /// appearance.
+    /// </summary>
+    public static string? DirectionColor(ExistingTerm term) =>
+        IsIncoming(term) ? "var(--finance-income)" : null;
+}
+
+/// <summary>
+/// How one <see cref="TermDirection"/> renders — its word, its short form for the slot a sign would
+/// occupy, and the finance hue of its side. Mirrors the design system's <c>termDirections</c>
+/// registry (data.js).
+/// </summary>
+/// <param name="Label">The word a read surface states ("Incoming").</param>
+/// <param name="Short">The two- or three-letter form for the money field's lead ("in").</param>
+/// <param name="Sentence">What the direction MEANS, for the dialog's helper line.</param>
+/// <param name="Tone">"income" / "expense" — the finance semantics, never the brand hues.</param>
+public sealed record TermDirectionInfo(string Label, string Short, string Sentence, string Tone)
+{
+    /// <summary>The colour of this side's figures.</summary>
+    public string Color => Tone == "income" ? "var(--finance-income)" : "var(--finance-expense)";
+}
+
+/// <summary>
+/// The <see cref="TermDirection"/> registry (issue #159) — which way the money moves, stated from the
+/// HOUSEHOLD's perspective and never from either named party's.
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>NO GLYPH, deliberately.</b> Every arrow reads against VALUE rather than against the household:
+/// an up arrow says "gain" before it says "leaves here", and a down arrow says "loss". The
+/// unambiguous pairs are emoji, which product chrome bars. So direction is carried by its WORD plus
+/// the finance hue — which is what a reader parses first anyway.
+/// </para>
+/// <para>
+/// <b>Read with a DEFAULT, never a truthiness test.</b> A row written before the field existed, and
+/// every account term, is <see cref="TermDirection.Outgoing"/>.
+/// </para>
+/// </remarks>
+public static class TermDirectionVisuals
+{
+    private static readonly IReadOnlyDictionary<TermDirection, TermDirectionInfo> Registry =
+        new Dictionary<TermDirection, TermDirectionInfo>
+        {
+            [TermDirection.Outgoing] = new("Outgoing", "out", "money leaves the household", "expense"),
+            [TermDirection.Incoming] = new("Incoming", "in", "money arrives", "income"),
+        };
+
+    /// <summary>Both directions in registry order — Outgoing (the default) first.</summary>
+    public static readonly IReadOnlyList<TermDirection> All = [TermDirection.Outgoing, TermDirection.Incoming];
+
+    public static TermDirectionInfo Info(TermDirection direction) =>
+        Registry.TryGetValue(direction, out var info) ? info : Registry[TermDirection.Outgoing];
+
+    /// <summary>
+    /// The pair as a money / amount field's LEAD — each state's own short word in the slot a sign
+    /// would occupy, since the record stores a direction and not a sign.
+    /// </summary>
+    public static readonly IReadOnlyList<OdsDirectionOption> LeadOptions =
+        [.. All.Select(d =>
+        {
+            var info = Info(d);
+            return new OdsDirectionOption
+            {
+                Value = d.ToString(),
+                Label = info.Label,
+                Short = info.Short,
+                Tone = info.Tone,
+            };
+        })];
+
+    /// <summary>Parses the lead's string value back to the enum; anything unrecognised is the default.</summary>
+    public static TermDirection Parse(string? value) =>
+        Enum.TryParse<TermDirection>(value, out var parsed) && Enum.IsDefined(parsed)
+            ? parsed
+            : TermDirection.Outgoing;
 }

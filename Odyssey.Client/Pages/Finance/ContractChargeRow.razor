@@ -17,10 +17,12 @@
     scroll from the first keystroke without a JS hop.
 
     Nothing here is scheduled. The date is the contract's in-force fee term read forward from its own
-    cadence anchor, computed server-side and carried on ContractSummary.UpcomingCharges.
+    cadence anchor, computed server-side and carried on ContractSummary.UpcomingCharges — or, for a
+    receipt, on UpcomingReceipts (issue #159). ONE row shape serves both: the list a row belongs to
+    names its direction, so the row itself carries no direction field to drift out of step.
 *@
 
-<button type="button" class="con-charge-row" aria-label="@AriaLabel" @onclick="Activate">
+<button type="button" class="@RowClass" aria-label="@AriaLabel" @onclick="Activate">
     <span class="con-charge-when">
         <span class="con-charge-md">@Charge.ChargeDate.ToString("MMM d", Culture)</span>
         <span class="con-charge-rel">@RelativeDays</span>
@@ -36,7 +38,7 @@
             <span class="con-charge-term">@Charge.Label</span>
         }
     </span>
-    <span class="con-charge-amt">@Money(Charge.Amount, Charge.CurrencyCode)</span>
+    <span class="@AmountClass">@Money(Charge.Amount, Charge.CurrencyCode)</span>
     <span class="con-charge-go" aria-hidden="true">View →</span>
 </button>
 
@@ -48,7 +50,20 @@
 
     [Parameter] public EventCallback<Guid> OnView { get; set; }
 
+    /// <summary>
+    /// Whether this row is a RECEIPT rather than a charge (issue #159). The row shape is identical
+    /// either way — what names the direction is the GROUP HEADING above it, so the row carries no
+    /// direction field of its own and there is no second copy of the fact to drift. This flag only
+    /// tints the amount and words the accessible sentence.
+    /// </summary>
+    [Parameter] public bool Incoming { get; set; }
+
     private static CultureInfo Culture => CultureInfo.CurrentCulture;
+
+    private string RowClass => Incoming ? "con-charge-row incoming" : "con-charge-row";
+
+    // Mint for money in, per the finance semantics. The amount is the only thing that changes colour.
+    private string AmountClass => Incoming ? "con-charge-amt in" : "con-charge-amt";
 
     private OdsTypeOption TypeInfo => OdsTypeRegistries.ContractTypeOf(Charge.Type);
 
@@ -58,9 +73,12 @@
 
     // The visual row is a grid of fragments; a screen reader gets the whole thing as one sentence,
     // including the series name the narrow layout drops.
+    // "due" / "expected" is the only wording difference: the colour that carries the direction
+    // visually must not be its only carrier (WCAG 1.4.1), and a screen reader never sees the group
+    // heading's relationship to this row.
     private string AriaLabel =>
         $"{Charge.Name}{(string.IsNullOrWhiteSpace(Charge.Label) ? "" : $", {Charge.Label}")}, "
-        + $"{Money(Charge.Amount, Charge.CurrencyCode)} due {RelativeDays} "
+        + $"{Money(Charge.Amount, Charge.CurrencyCode)} {(Incoming ? "expected" : "due")} {RelativeDays} "
         + $"on {Charge.ChargeDate.ToString("MMMM d, yyyy", Culture)}. View contract.";
 
     private Task Activate() => OnView.InvokeAsync(Charge.ContractId);

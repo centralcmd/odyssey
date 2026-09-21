@@ -3,8 +3,14 @@
 
 @*
     ContractsSummaryView — the header Overview rollup (issue #174 §7). Mirrors the design system's
-    ContractsSummary: a run-rate pair over the fee terms in force, then four breakdowns — what kinds
-    of agreement are on file, what state they are in, and what each kind costs per month and per year.
+    ContractsSummary: the run rate over the fee terms in force, then four breakdowns — what kinds of
+    agreement are on file, what state they are in, and what each kind nets per month and per year.
+
+    SINCE ISSUE #159 THE RUN RATE REPORTS TWO SIDES AND A NET. The single tile once named "Monthly
+    run rate" silently mixed a landlord's rent income into the same figure as a streaming
+    subscription; it is RENAMED rather than reused, because the figure it holds is now one side of
+    two and a name that stayed would read as a total. Each gross counts one direction — the only
+    figure that crosses them is the net, and it says so in its name.
 
     The two by-type breakdowns answer DIFFERENT questions and a paused contract is why: "By type" is
     a headcount and keeps counting it, while the run-rate splits are a cost read and do not. That
@@ -15,23 +21,44 @@
 *@
 
 <div class="con-summary">
+    @* FOUR tiles: each period's two grosses. The icon names the PERIOD, not the direction — the
+       label and the finance hue say which side, and a directional arrow would read as a rise or a
+       fall in the figure beside it. The NET is not a tile; it closes each by-type breakdown below,
+       where it reads against the types it came from instead of restating a subtraction. *@
     <div class="con-run-tiles">
-        <OdsInfoTile Icon="calendar_month" Label="Monthly run rate" ValueVariant="OdsInfoTileVariant.Mono">
+        <OdsInfoTile Class="dir-out" Icon="calendar_month" Label="Monthly out" ValueVariant="OdsInfoTileVariant.Mono">
             <Value>@RunRate(Summary.RunRate.Monthly)</Value>
             <Foot>@RunRateFoot</Foot>
         </OdsInfoTile>
-        <OdsInfoTile Icon="event_repeat" Label="Yearly run rate" ValueVariant="OdsInfoTileVariant.Mono">
+        <OdsInfoTile Class="dir-in" Icon="calendar_month" Label="Monthly in" ValueVariant="OdsInfoTileVariant.Mono">
+            <Value>@RunRate(Summary.RunRate.IncomingMonthly)</Value>
+            <Foot>@IncomingFoot(Summary.RunRate.IncomingMonthly)</Foot>
+        </OdsInfoTile>
+        <OdsInfoTile Class="dir-out" Icon="event_repeat" Label="Yearly out" ValueVariant="OdsInfoTileVariant.Mono">
             <Value>@RunRate(Summary.RunRate.Yearly)</Value>
             <Foot>@RunRateFoot</Foot>
         </OdsInfoTile>
+        <OdsInfoTile Class="dir-in" Icon="event_repeat" Label="Yearly in" ValueVariant="OdsInfoTileVariant.Mono">
+            <Value>@RunRate(Summary.RunRate.IncomingYearly)</Value>
+            <Foot>@IncomingFoot(Summary.RunRate.IncomingYearly)</Foot>
+        </OdsInfoTile>
     </div>
     <div class="con-stats">
-        <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No active contracts." />
-        <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No contracts." />
-        <OdsBreakdownTile Label="Monthly run rate by type" Rows="MonthlyRunRateRows"
-                          Empty="No recurring fees in force." />
-        <OdsBreakdownTile Label="Yearly run rate by type" Rows="YearlyRunRateRows"
-                          Empty="No recurring fees in force." />
+        @* "By type" sums the records on file, so it closes with a total. "By status" is given its
+           total EXPLICITLY: its rows carry an "Ending soon" slice of Active, which an arithmetic sum
+           would double-count. *@
+        <OdsBreakdownTile Label="By type" Rows="TypeRows" Total="true" Empty="No active contracts." />
+        <OdsBreakdownTile Label="By status" Rows="StatusRows" TotalValue="Summary.TotalContracts" Empty="No contracts." />
+        @* One tile per period carrying the NET per type — signed and coloured. Two figures per row
+           said the same thing twice at half the density; what a reader wants per type is which way
+           that type leaves them, and the grosses are already the tiles above. The counts are rendered
+           NODES, so each tile is handed its own net rather than summing them. *@
+        <OdsBreakdownTile Class="con-bd-money" Label="Monthly net by type" Rows="MonthlyNetRows"
+                          TotalValue="NetCell(Summary.RunRate.NetMonthly)" TotalLabel="Net"
+                          Empty="No recurring terms in force." />
+        <OdsBreakdownTile Class="con-bd-money" Label="Yearly net by type" Rows="YearlyNetRows"
+                          TotalValue="NetCell(Summary.RunRate.NetYearly)" TotalLabel="Net"
+                          Empty="No recurring terms in force." />
     </div>
 </div>
 
@@ -83,28 +110,73 @@
         }
     }
 
-    private IReadOnlyList<OdsBreakdownRow> MonthlyRunRateRows => RunRateRows(r => r.Monthly);
+    private IReadOnlyList<OdsBreakdownRow> MonthlyNetRows => NetRows(r => r.Monthly);
 
-    private IReadOnlyList<OdsBreakdownRow> YearlyRunRateRows => RunRateRows(r => r.Yearly);
+    private IReadOnlyList<OdsBreakdownRow> YearlyNetRows => NetRows(r => r.Yearly);
 
-    private IReadOnlyList<OdsBreakdownRow> RunRateRows(Func<ContractRunRateTypeRow, decimal> pick) =>
-        [.. Summary.RunRate.ByType.Select(r =>
-        {
-            var info = OdsTypeRegistries.ContractTypeOf(r.Type);
-            return new OdsBreakdownRow
-            {
-                Key = r.Type,
-                Icon = info.Icon,
-                IconColor = info.Color,
-                Label = info.Label,
-                Count = FormatMoney(pick(r), Summary.RunRate.BaseCurrency),
-            };
-        })];
+    /// <summary>
+    /// One row per contract type that carries a rate on EITHER side, holding that type's net. A type
+    /// present on only one side still gets a row — its net is simply the whole of that side — which is
+    /// why the key set is the union rather than the outgoing rows alone.
+    /// </summary>
+    private IReadOnlyList<OdsBreakdownRow> NetRows(Func<ContractRunRateTypeRow, decimal> pick)
+    {
+        var outgoing = Summary.RunRate.ByType.ToDictionary(r => r.Type);
+        var incoming = Summary.RunRate.IncomingByType.ToDictionary(r => r.Type);
+
+        return
+        [
+            @* Registry READING order, which is not ordinal order — Other keeps ordinal 3 and reads
+               last, and Loan reads after Purchase. Parsing the registry's own key is what keeps this
+               list in the same order as every other contract-type surface. *@
+            .. OdsTypeRegistries.ContractTypes
+                .Select(t => Enum.TryParse<ContractType>(t.Key, out var parsed) ? parsed : (ContractType?)null)
+                .Where(type => type is { } t && (outgoing.ContainsKey(t) || incoming.ContainsKey(t)))
+                .Select(type => type!.Value)
+                .Select(type =>
+                {
+                    var info = OdsTypeRegistries.ContractTypeOf(type);
+                    var inValue = incoming.TryGetValue(type, out var i) ? pick(i) : 0m;
+                    var outValue = outgoing.TryGetValue(type, out var o) ? pick(o) : 0m;
+                    return new OdsBreakdownRow
+                    {
+                        Key = type,
+                        Icon = info.Icon,
+                        IconColor = info.Color,
+                        Label = info.Label,
+                        Count = NetCell(inValue - outValue),
+                    };
+                }),
+        ];
+    }
+
+    /// <summary>
+    /// A net figure, signed and coloured. The net is the only signed figure in the payload, so it is
+    /// the only one that ever carries a leading <c>+</c> — and the sign is what makes the colour a
+    /// second cue rather than the only one (WCAG 1.4.1).
+    /// </summary>
+    private RenderFragment NetCell(decimal? value) => builder =>
+    {
+        var tone = value is null or 0m ? "net-flat" : value > 0m ? "net-pos" : "net-neg";
+        var text = value is { } v
+            ? (v > 0m ? "+ " : v < 0m ? "− " : string.Empty) + FormatMoney(Math.Abs(v), Summary.RunRate.BaseCurrency)
+            : "—";
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"con-bd-net {tone}");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
 
     // Null is "nothing convertible carries a recurring price", which is a legitimate healthy state —
     // an em dash, never a zero, which would claim the agreements on file are free.
     private string RunRate(decimal? value) =>
         value is { } amount ? FormatMoney(amount, Summary.RunRate.BaseCurrency) : "—";
+
+    // A household that records only costs has no incoming side, and that is healthy rather than
+    // partial — so the tile says so in its own words instead of repeating the exclusion list, which
+    // would read as though something had been left out of a figure that has nothing in it.
+    private string IncomingFoot(decimal? value) =>
+        value is null ? "no incoming terms in force" : RunRateFoot;
 
     // An unconvertible currency is NAMED rather than folded in at 1:1, so a partial total always says
     // so on its own tile instead of reading as the whole picture. A paused contract keeps its price

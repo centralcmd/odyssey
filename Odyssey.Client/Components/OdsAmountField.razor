@@ -12,11 +12,35 @@
     Controlled: bind via @bind-Value. Input is kept as a string so partial entries
     ("3.", "1,2") aren't clobbered; characters are sanitized to digits, separators and
     (optionally, with AllowNegative) a leading minus — parse on submit.
+
+    A DIRECTION LEAD, the same one OdsMoneyField carries: Direction + DirectionChanged (with
+    DirectionOptions naming the two states) turn the left edge into a button that flips between
+    them, showing each option's short word where a sign would be. For a record that stores a
+    direction rather than a sign — a percentage-unit fee that is money in or money out — so the
+    value and its direction stay ONE control, exactly as on the money path.
 *@
 
 <OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required"
                Help="@Help" HelpContent="@HelpContent" Error="@Error" Class="@Class">
     <div class="@BoxClass">
+        @if (DirectionMode)
+        {
+            <button type="button"
+                    class="odc-money-sign btn"
+                    disabled="@Disabled"
+                    aria-label="@DirectionAriaLabel"
+                    title="@DirectionTitle"
+                    @onclick="FlipDirectionAsync">
+                @if (CurrentDirection.Icon is { Length: > 0 } icon)
+                {
+                    <span class="material-icons odc-money-dir-ic" aria-hidden="true">@icon</span>
+                }
+                else
+                {
+                    <span class="odc-money-dir-word" aria-hidden="true">@(CurrentDirection.Short ?? CurrentDirection.Sign)</span>
+                }
+            </button>
+        }
         @if (!string.IsNullOrEmpty(Prefix))
         {
             <span class="odc-amount-adorn pre" aria-hidden="true">@Prefix</span>
@@ -30,6 +54,7 @@
                disabled="@Disabled"
                autofocus="@AutoFocus"
                style="@(Align == "right" ? "text-align:right" : null)"
+               aria-label="@EffectiveAriaLabel"
                aria-required="@(Required ? "true" : null)"
                aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
                aria-describedby="@DescribedBy"
@@ -68,6 +93,22 @@
     /// <summary>Allow a leading minus for rates / deltas that can go below zero.</summary>
     [Parameter] public bool AllowNegative { get; set; }
 
+    /// <summary>Current direction — one of <see cref="DirectionOptions"/>' values. With
+    /// <see cref="DirectionChanged"/> the left edge becomes a button that flips between the two
+    /// states, showing each one's short word where a sign would be.</summary>
+    [Parameter] public string? Direction { get; set; }
+
+    /// <summary>Fires with the next direction when the lead is clicked. Omit for no lead.</summary>
+    [Parameter] public EventCallback<string> DirectionChanged { get; set; }
+
+    /// <summary>The two states the lead flips between — same shape as OdsMoneyField's. Use where the
+    /// record stores a DIRECTION rather than a sign. Exactly two options.</summary>
+    [Parameter] public IReadOnlyList<OdsDirectionOption>? DirectionOptions { get; set; }
+
+    /// <summary>Colors the lead and the value by finance semantics; defaults to the active
+    /// direction's own tone.</summary>
+    [Parameter] public string? Tone { get; set; }
+
     [Parameter] public string? Help { get; set; }
 
     /// <summary>Rich helper content (takes precedence over <see cref="Help"/>), e.g. a hint with bold.</summary>
@@ -81,6 +122,14 @@
 
     [Parameter] public bool AutoFocus { get; set; }
 
+    /// <summary>
+    /// Accessible name for the input where no visible <see cref="Label"/> is set — a hero whose
+    /// caption is a separate heading, a dense cell. Without it such a field has NO programmatic name:
+    /// a nearby <c>&lt;div&gt;</c> is not a label. Mirrors <c>OdsMoneyField.AriaLabel</c>, so the two
+    /// halves of a value control are named the same way whichever unit is showing.
+    /// </summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
     [Parameter] public string? Class { get; set; }
 
     [Parameter] public string? Id { get; set; }
@@ -92,14 +141,64 @@
 
     protected override void OnInitialized() => FieldId = Id ?? $"odc-amount-{Guid.NewGuid():N}";
 
+    // ---- direction lead -------------------------------------------------------------------
+
+    /// <summary>The finance pair, so a caller passing only a direction still gets a sensible − / +.</summary>
+    private static readonly IReadOnlyList<OdsDirectionOption> FinanceDirections =
+    [
+        new() { Value = "expense", Label = "Expense", Sign = "−", Tone = "expense" },
+        new() { Value = "income", Label = "Income", Sign = "+", Tone = "income" },
+    ];
+
+    private bool DirectionMode => !string.IsNullOrEmpty(Direction) && DirectionChanged.HasDelegate;
+
+    private IReadOnlyList<OdsDirectionOption> Directions =>
+        DirectionOptions is { Count: 2 } supplied ? supplied : FinanceDirections;
+
+    private int IndexOfDirection
+    {
+        get
+        {
+            var options = Directions;
+            for (var i = 0; i < options.Count; i++)
+            {
+                if (string.Equals(options[i].Value, Direction, StringComparison.Ordinal)) return i;
+            }
+            return 0;
+        }
+    }
+
+    private OdsDirectionOption CurrentDirection => Directions[IndexOfDirection];
+
+    private OdsDirectionOption NextDirection => Directions[(IndexOfDirection + 1) % Directions.Count];
+
+    private string DirectionAriaLabel =>
+        $"{CurrentDirection.Label} — switch to {NextDirection.Label.ToLowerInvariant()}";
+
+    private string DirectionTitle => $"{CurrentDirection.Label} — click to switch";
+
+    private string? EffectiveTone => Tone ?? (DirectionMode ? CurrentDirection.Tone : null);
+
+    private async Task FlipDirectionAsync()
+    {
+        var next = NextDirection.Value;
+        Direction = next;
+        await DirectionChanged.InvokeAsync(next);
+    }
+
     private string BoxClass =>
         string.Join(' ', new[]
         {
             "odc-amount",
             Size == "lg" ? "lg" : null,
+            string.IsNullOrEmpty(EffectiveTone) ? null : $"tone-{EffectiveTone}",
             string.IsNullOrEmpty(Error) ? null : "error",
             Disabled ? "disabled" : null,
         }.Where(value => !string.IsNullOrEmpty(value)));
+
+    // A visible label already names the input through OdsFieldShell's <label for>, so an aria-label
+    // would override it with a second, competing name.
+    private string? EffectiveAriaLabel => string.IsNullOrEmpty(Label) ? AriaLabel : null;
 
     private string? DescribedBy =>
         (string.IsNullOrEmpty(Error) && string.IsNullOrEmpty(Help) && HelpContent is null) ? null : $"{FieldId}-help";

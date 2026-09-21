@@ -143,6 +143,11 @@
 .odc-breakdown-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .odc-breakdown-n { margin-left: auto; font: 600 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
 .odc-breakdown-empty { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+/* The total row — the tile's conclusion, ruled off from the categories above it and muted in its
+   label so it never reads as another category. */
+.odc-breakdown-total { margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--mud-palette-divider); }
+.odc-breakdown-total .odc-breakdown-label { color: var(--mud-palette-text-secondary); }
+.odc-breakdown-total .material-icons { color: var(--mud-palette-text-secondary); }
 /* Summary grid — the auto-fitting row of tiles a page's Overview lays out
    (BreakdownTile "By type" / "By status", stat tiles, donut cards). */
 .odc-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
@@ -1095,6 +1100,17 @@
 .odc-money-sign.btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
 .odc-money-sign.btn:disabled { cursor: not-allowed; }
 .odc-money-dir-sign { font: var(--fw-medium) var(--fs-body1)/1 var(--font-sans); }
+/* An option that names its own direction shows its GLYPH in the lead instead of a sign — for a
+   record that stores a direction rather than a sign. Same metrics as the sign it replaces. */
+.odc-money-dir-ic { font-size: 19px; line-height: 1; }
+/* …or its short WORD, for an in/out vocabulary where an arrow would read as the figure beside it
+   rising or falling. */
+.odc-money-dir-word { font: var(--fw-medium) 12px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
+/* A word needs more room than a glyph, and a FIXED slot: "OUT" and "IN" are different widths, so
+   without one the digits shift sideways every time the lead is flipped. The padding matches the
+   amount's own inset so the three segments (lead · amount · code) read as evenly spaced. */
+.odc-money-sign.btn:has(.odc-money-dir-word) { min-width: 58px; padding: 0 14px; }
+.odc-money-sign.btn:has(.odc-money-dir-word) + .odc-money-input { padding-left: 14px; }
 .odc-money-sign + .odc-money-input { padding-left: 6px; }
 .odc-money-sign.btn + .odc-money-input { padding-left: 12px; }
 .odc-money.tone-income .odc-money-sign, .odc-money.tone-income .odc-money-input { color: var(--finance-income); }
@@ -1195,6 +1211,20 @@
 .odc-money.lg .odc-money-sign + .odc-money-input { padding-left: 8px; }
 .odc-money.lg .odc-money-sign.btn { min-width: 48px; margin: 0; padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md); }
 .odc-money.lg .odc-money-dir-sign { font-size: 30px; }
+.odc-money.lg .odc-money-dir-ic { font-size: 26px; }
+.odc-money.lg .odc-money-dir-word { font-size: 15px; }
+.odc-money.lg .odc-money-sign.btn:has(.odc-money-dir-word) { min-width: 76px; padding: 0 18px; }
+.odc-money.lg .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-money-input { padding-left: 18px; }
+/* The same lead inside an OdsAmountField (a percentage-unit value whose record stores a direction):
+   one set of metrics, so the money and percentage paths of a form are the same control with a
+   different unit. */
+.odc-amount.tone-income .odc-money-sign, .odc-amount.tone-income .odc-amount-input { color: var(--finance-income); }
+.odc-amount.tone-expense .odc-money-sign, .odc-amount.tone-expense .odc-amount-input { color: var(--finance-expense); }
+.odc-amount .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-amount-input { padding-left: 14px; }
+.odc-amount.lg .odc-money-dir-word { font-size: 15px; }
+.odc-amount.lg .odc-money-sign.btn { min-width: 48px; margin: 0; padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.odc-amount.lg .odc-money-sign.btn:has(.odc-money-dir-word) { min-width: 76px; padding: 0 18px; }
+.odc-amount.lg .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-amount-input { padding-left: 18px; }
 .odc-money.lg .odc-money-sign.btn + .odc-money-input { padding-left: 16px; }
 
 /* ---------- CurrencySelect (currency-only picker) ----------
@@ -1877,6 +1907,47 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-bill { font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; padding: 3px 7px; border-radius: 999px; background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
 
 /* ---- Cadence block in the New / Edit term dialog ---- */
+/* ---- Direction (TermDirection, issue #159) ------------------------------------------
+   The WORD, in the quiet mono caption the tile's sub-line uses — no glyph, because a directional
+   arrow reads against value rather than against the household, and the FIGURE is what carries the
+   direction's hue. Not a chip: a pill repeated down a history read as a warning beside every
+   ordinary row. Rendered only on a contract's fee terms. */
+.trm-dir {
+  display: block; margin-top: 2px;
+  font: 400 9.5px/1 var(--font-mono); letter-spacing: 0;
+  color: var(--mud-palette-text-secondary); white-space: nowrap;
+}
+/* A DIRECTION SUB-LINE, the treatment a contract party tile gives its from–to dates: the overline
+   stacks the term's name over its direction, in the space the icon leaves, so the caption below
+   stays one line. */
+.odc-infotile.trm-dir-tile .odc-infotile-k { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; flex: 1; min-width: 0; }
+.trm-dir-name { display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; }
+.trm-dir-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trm-dir-sub {
+  font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
+  color: var(--mud-palette-text-secondary);
+  white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+.trm-row-kind .trm-dir { margin-top: 3px; }
+/* EVERY figure keeps its direction's hue at full strength. Dimming the superseded and scheduled
+   ones was tried and reverted upstream: at 55% the coral composited below the 4.5:1 text floor, and
+   it drew the SCHEDULED entry — the one that is next — as though it were already history. The
+   hierarchy is carried by things that cost no contrast: the in-force row's tinted ground, its
+   heavier figure, and the status cell that names In force / Superseded / Scheduled in words. */
+.trm-tbl tbody tr.current .trm-cell-value { font-weight: var(--fw-medium); }
+
+/* The dialog's Direction refusal — the state that stands in place of the control where direction
+   has no meaning (a rate kind, or an account-owned term). */
+.trm-dir-field { display: flex; flex-direction: column; gap: 6px; }
+.trm-dir-refused {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 9px 11px; border-radius: var(--radius-sm);
+  border: 1px dashed var(--mud-palette-divider);
+  font: 400 11.5px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.trm-dir-refused .material-icons { color: var(--mud-palette-text-disabled, var(--mud-palette-text-secondary)); flex: none; margin-top: 1px; font-size: 15px; }
+.trm-dir-refused b { color: var(--mud-palette-text-primary); font-weight: 500; }
+
 .trm-cadence { display: flex; flex-direction: column; gap: var(--space-2); }
 .trm-cadence-echo { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: -2px; }
 
@@ -2433,9 +2504,18 @@ tr:focus-within > .odc-rowactions.reveal,
 /* Run-rate stat tiles — FLAT, like the sibling breakdown tiles beneath them, so an elevated surface
    never floats one pair of figures above the rest of the Overview. The figures are recurring spend,
    so they take the expense colour (never a brand hue — brand encodes no money). */
-.con-run-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+/* Run-rate stat tiles — flat, like the sibling breakdown tiles, so an elevated surface tile never
+   floats above them. FOUR tiles: each period's two grosses, coloured by the finance semantics of
+   their own side. The net is not a tile; it closes each by-type breakdown instead. */
+.con-run-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .con-run-tiles .odc-infotile { background: var(--mud-palette-background); box-shadow: none; }
-.con-run-tiles .odc-infotile .odc-infotile-v { color: var(--finance-expense); }
+.con-run-tiles .odc-infotile.dir-out .odc-infotile-v { color: var(--finance-expense); }
+.con-run-tiles .odc-infotile.dir-in .odc-infotile-v { color: var(--finance-income); }
+/* A money breakdown row carries ONE figure: the net for that type, signed and coloured. The ruled
+   total row is the component's own (OdsBreakdownTile TotalValue). */
+.con-bd-net { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); }
+.con-bd-net.net-pos { color: var(--finance-income); }
+.con-bd-net.net-neg { color: var(--finance-expense); }
 
 /* ── Header signal: the derived "next charge" row ──────────────────────────────────────────────
    Four columns — when · what · how much · go. It shares the panel with the alert rows above it but
@@ -2464,6 +2544,10 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-charge-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .con-charge-term { font: var(--fw-regular) var(--fs-caption) / 1 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .con-charge-amt { font: var(--fw-medium) var(--fs-body2) / 1 var(--font-mono); color: var(--mud-palette-text-primary); }
+/* Next receipts sit in the same panel, in rows of the same shape: the GROUP HEADING names the
+   direction, and the amount is the only thing that changes colour — mint for money in. */
+.con-charge-amt.in { color: var(--finance-income); }
+.con-charge-row.incoming .con-charge-md { color: var(--mud-palette-text-primary); }
 .con-charge-go { font: var(--fw-medium) var(--fs-caption) / 1 var(--font-sans); color: var(--brand-text); white-space: nowrap; }
 
 /* Narrow: the date column collapses into the name column and the two secondary fragments go. The

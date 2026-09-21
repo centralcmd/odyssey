@@ -68,7 +68,10 @@ public class TermsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a new term (rate/fee) entry on an account.")]
+    [SwaggerOperation(
+        Summary = "Create a new term (rate/fee) entry on an account.",
+        Description = @"'direction' is accepted only as Outgoing, or omitted: an account term may not
+                        carry a non-default direction, because no account surface reads one (issue #159).")]
     public async Task<IActionResult> PostTerm(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromBody] NewTerm newTerm, CancellationToken cancellationToken = default)
@@ -84,7 +87,10 @@ public class TermsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a term entry on an account.")]
+    [SwaggerOperation(
+        Summary = "Update a term entry on an account.",
+        Description = @"A full replace. 'direction' is accepted only as Outgoing, or omitted — an
+                        account term may not carry a non-default direction (issue #159).")]
     public async Task<IActionResult> PutTerm(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromRoute(Name = "termId")] Guid termId,

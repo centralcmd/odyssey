@@ -60,13 +60,32 @@
                    rides in the foot beside the date. From the one helper every surface reads. *@
                 var cadence = TermKindVisuals.CadenceText(term);
                 var labelled = TermKindVisuals.IsLabelled(term);
+                @* Every contract FEE states its direction, both ways: the fact belongs to the term,
+                   not to the set of terms around it, so a reader never has to interpret an absence.
+                   No chip — the FIGURE carries the direction in its own finance hue, and the word
+                   sits on its own line under the tile's title, the slot a party tile gives its
+                   from–to dates. There is room there for the whole word, so it reads "Incoming". *@
+                var directed = TermKindVisuals.DirectionApplies(term);
+                var direction = TermDirectionVisuals.Info(term.Direction);
+                var valueColor = TermKindVisuals.DirectionColor(term) ?? info.Color;
                 <OdsInfoTile @key="term.TermId"
+                             Class="@(directed ? "trm-dir-tile" : null)"
                              Icon="@info.Icon" IconColor="@info.Color" IconSoft="@info.Soft"
-                             Label="@TermKindVisuals.DisplayName(term, null)"
                              ValueVariant="OdsInfoTileVariant.Text"
                              Foot="@OdsInfoTile.Caption(TileFoot(term, labelled, cadence))">
+                    <LabelContent>
+                        @if (directed)
+                        {
+                            <span class="trm-dir-name"><span>@TermKindVisuals.DisplayName(term, null)</span></span>
+                            <span class="trm-dir-sub">@direction.Label</span>
+                        }
+                        else
+                        {
+                            @TermKindVisuals.DisplayName(term, null)
+                        }
+                    </LabelContent>
                     <Value>
-                        <span style="color:@info.Color;">@TermKindVisuals.FormatValue(term, FormatMoney)</span>
+                        <span style="color:@valueColor;">@TermKindVisuals.FormatValue(term, FormatMoney)</span>
                     </Value>
                 </OdsInfoTile>
             }

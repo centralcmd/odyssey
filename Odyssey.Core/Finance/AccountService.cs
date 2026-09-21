@@ -12,6 +12,7 @@ using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoAccountFileType = Odyssey.Dtos.Finance.AccountFileType;
 using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
 using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
+using DtoTermDirection = Odyssey.Dtos.Finance.TermDirection;
 using DtoInterval = Odyssey.Dtos.Finance.Interval;
 
 namespace Odyssey.Core.Finance;
@@ -460,6 +461,11 @@ public class AccountService
         // several indistinguishable tiles. Note is still excluded from this cross-claim projection.
         Label = term.Label,
         ValueUnit = term.ValueUnit.Adapt<DtoTermValueUnit>(),
+        // Carried by HAND, like every other member of this initializer: Mapster is not used here, so a
+        // field added to the shared AccountCurrentTerm projection is silently dropped on the account
+        // side unless it is listed. An account term is always Outgoing (TermService rule V4), so this
+        // one is constant here — the next field added to this type may not be so forgiving.
+        Direction = term.Direction.Adapt<DtoTermDirection>(),
         Value = term.Value,
         CurrencyCode = term.CurrencyCode,
         Interval = term.Interval?.Adapt<DtoInterval>(),

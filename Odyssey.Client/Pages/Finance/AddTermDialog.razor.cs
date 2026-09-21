@@ -74,6 +74,36 @@ public partial class AddTermDialog
     /// <summary>Whether the Name field is rendered: a fee takes a label, a rate is refused one.</summary>
     private bool TakesLabel => TermLabel.RuleFor(_kind) == TermLabelRule.Required;
 
+    // ---- direction (issue #159) ---------------------------------------------------------------
+
+    /// <summary>
+    /// Whether this dialog offers a direction at all — a FEE on a CONTRACT. Read from the one shared
+    /// predicate, so the control, the read surfaces and the refusal copy cannot disagree.
+    /// </summary>
+    private bool DirectionApplies => TermKindVisuals.DirectionApplies(_kind, IsContractOwner);
+
+    /// <summary>Why it is refused here, in the words the server's <c>400</c> uses; null when allowed.</summary>
+    private string? DirectionRefusal => TermKindVisuals.DirectionRefusal(_kind, IsContractOwner);
+
+    private TermDirectionInfo DirectionInfo => TermDirectionVisuals.Info(_direction);
+
+    /// <summary>The value control's lead — the registry mapped to the field's two-state shape.</summary>
+    private static IReadOnlyList<OdsDirectionOption> DirectionLead => TermDirectionVisuals.LeadOptions;
+
+    /// <summary>
+    /// The lead's current value, or <c>null</c> where direction does not apply — which is what turns
+    /// the lead OFF in the field. The handler is wired unconditionally: with no value the control
+    /// never enters direction mode, so a conditional callback would be a second switch for one fact.
+    /// </summary>
+    private string? DirectionValue => DirectionApplies ? _direction.ToString() : null;
+
+    private void OnDirectionChanged(string value)
+    {
+        _direction = TermDirectionVisuals.Parse(value);
+        // A direction is never the reason a value is invalid, so nothing is re-validated here; the
+        // refusals it could trip are decided by the KIND, which has its own handler.
+    }
+
     private const int TermLabelMaxLength = TermLabel.MaxLength;
 
     private TermKind _kind;
@@ -87,6 +117,13 @@ public partial class AddTermDialog
     private DateTime? _effectiveFrom = DateTime.UtcNow.Date;
     private string? _note = "";
     private bool _isSaving;
+
+    /// <summary>
+    /// Which way the money moves (issue #159). <see cref="TermDirection.Outgoing"/> is the default
+    /// because it is what every term meant before the field existed — an omitted direction and a
+    /// chosen <c>Outgoing</c> are the same fact.
+    /// </summary>
+    private TermDirection _direction = TermDirection.Outgoing;
 
     private static readonly IReadOnlyList<OdsSegmentedOption> _unitOptions =
     [
@@ -124,6 +161,7 @@ public partial class AddTermDialog
             _intervalCount = Term.IntervalCount;
             _anchorDate = Term.AnchorDate?.Date;
             _effectiveFrom = Term.EffectiveFrom.Date;
+            _direction = Term.Direction;
             _note = Term.Note ?? "";
         }
         else
@@ -251,6 +289,10 @@ public partial class AddTermDialog
         // invisibly into a request the server would reject.
         if (TermLabel.RuleFor(kind) != TermLabelRule.Required)
             _label = "";
+        // A rate carries no direction — a percentage is not a movement — so the answer is dropped
+        // rather than carried invisibly into a field the server refuses.
+        if (!DirectionApplies)
+            _direction = TermDirection.Outgoing;
         // A rate is not billed, so it carries NEITHER half of a billing description, nor an anchor.
         if (info.Group == TermGroup.Fee)
         {
@@ -473,6 +515,9 @@ public partial class AddTermDialog
             AnchorDate = IsRate || _anchorDate is null
                 ? null
                 : DateTime.SpecifyKind(_anchorDate.Value.Date, DateTimeKind.Utc),
+            // Sent only where it means something. Everywhere else the request carries the default,
+            // which is exactly what omitting it would have meant — and what the server stores.
+            Direction = DirectionApplies ? _direction : TermDirection.Outgoing,
             EffectiveFrom = DateTime.SpecifyKind(_effectiveFrom!.Value.Date, DateTimeKind.Utc),
             Note = string.IsNullOrWhiteSpace(_note) ? null : _note!.Trim(),
         };

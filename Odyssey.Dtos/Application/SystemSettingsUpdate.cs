@@ -216,8 +216,14 @@ public sealed record SystemSettingsUpdate
     public int? ContractChargeWindowDays { get; set; }
 
     /// <summary>
-    /// Next-charge rows the page-header panel lists. Bounded at 50 rather than the 100000 the
+    /// Next-movement rows the page-header panel lists. Bounded at 50 rather than the 100000 the
     /// materialised-fetch caps carry: each row is its own rendered block in an always-open region.
+    ///
+    /// <para>
+    /// Since issue #159 the cap applies to the outgoing charges and the incoming receipts SEPARATELY,
+    /// so a file with many charges cannot starve the receipts. The bound itself is unchanged; the
+    /// worst-case row count for that part of the payload doubles.
+    /// </para>
     /// </summary>
     [Range(SystemSettingsBounds.ContractMaxSummaryChargesMin,
         SystemSettingsBounds.ContractMaxSummaryChargesMax, ErrorMessage =
