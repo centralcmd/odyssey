@@ -86,20 +86,22 @@ public class SystemSettingsBoundsTests
     /// The census, so a wrong denominator cannot scope a future fix to a subset of its own defect class.
     /// 38 int keys before issue #437, 41 after, 42 once issue #8 added the SMTP port, 43 once issue #27
     /// added the insurance link cap, 44 once issue #135 added the per-contract term cap, 47 once the
-    /// Contracts summary gained its two windows and its next-charge row cap.
+    /// Contracts summary gained its two windows and its next-charge row cap, 48 once issue #166 added
+    /// the per-contract smart-tag cap.
     /// </summary>
     [Fact]
-    public void The_int_key_census_is_forty_seven()
+    public void The_int_key_census_is_forty_eight()
     {
-        Assert.Equal(47, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
-        Assert.Equal(47, IntProperties.Count);
+        Assert.Equal(48, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
+        Assert.Equal(48, IntProperties.Count);
 
         // …and the whole registry equals the persisted key catalogue, which is the check that the
         // per-kind counts are right rather than merely consistent with each other. Issue #8 added four:
         // one int (the SMTP port), one bool (STARTTLS) and two strings (the host and the link origin).
         // Issue #27 added one more int, InsuranceMaxLinksPerPolicy; issue #135 another,
-        // ContractMaxTermsPerContract; the Contracts summary windows added three more.
-        Assert.Equal(71, SystemSettingsRegistry.All.Count);
+        // ContractMaxTermsPerContract; the Contracts summary windows added three more; issue #166 the
+        // per-contract smart-tag cap.
+        Assert.Equal(72, SystemSettingsRegistry.All.Count);
         Assert.Equal(5, SystemSettingsRegistry.All.OfType<BoolSetting>().Count());
         Assert.Equal(8, SystemSettingsRegistry.All.OfType<CapacitySetting>().Count());
         Assert.Equal(10, SystemSettingsRegistry.All.OfType<StringSetting>().Count());
@@ -130,12 +132,22 @@ public class SystemSettingsBoundsTests
     /// <summary>
     /// The alias is asserted by NAME too, in the source: a literal that happens to equal the constant
     /// today satisfies the value assertion above and would drift the moment the seed moved.
+    ///
+    /// <para>
+    /// The fourth case is a different kind of pin and belongs on the same assertion (issue #166 §8.3,
+    /// AC 21): <c>ContractMaxSmartTagsPerContractMax</c> mirrors <c>ListDefaults.MaxFilterArrayLength</c>
+    /// because a contract's smart tags are resolved through <c>GET /api/transactions?tagIds=…</c>,
+    /// whose filter carries that <c>[MaxLength]</c> — so a value above it would configure smart tags
+    /// the feature's own resolution query rejects with a <c>400</c>. It is pinned by the constant, not
+    /// by the number 50, so the two move together if the filter length ever changes.
+    /// </para>
     /// </summary>
     [Theory]
     [InlineData("RecurrenceMaxGeneratedOccurrencesMax", "SystemSettingsDefaults.RecurrenceMaxGeneratedOccurrences")]
     [InlineData("ContactVCardMaxRepeatablePropertiesPerEntryMax", "SystemSettingsDefaults.ContactVCardMaxRepeatablePropertiesPerEntry")]
     [InlineData("EmailMaxTrackedRecipientsMin", "SystemSettingsDefaults.EmailMaxTrackedRecipients")]
-    public void The_three_single_direction_ends_name_the_shared_constant(string constant, string expression)
+    [InlineData("ContractMaxSmartTagsPerContractMax", "ListDefaults.MaxFilterArrayLength")]
+    public void The_ends_that_alias_a_shared_constant_name_it_in_source(string constant, string expression)
     {
         var source = File.ReadAllText(
             SolutionFile("Odyssey.Dtos", "SystemSettings", "SystemSettingsBounds.cs"));
@@ -157,6 +169,12 @@ public class SystemSettingsBoundsTests
     /// same drift in the other direction: the cap the administrator sets would once again exceed what
     /// one query can carry, and the smart-tag panel would once again 400 past it.
     /// </para>
+    ///
+    /// <para>
+    /// The per-CONTRACT ceiling (issue #166) is asserted here too rather than in a parallel test: the
+    /// two keys are bounded by the same filter for the same reason, so one assertion is what keeps
+    /// them from being fixed one at a time — which is how the account key spent a release at 1000.
+    /// </para>
     /// </summary>
     [Fact]
     public void The_smart_tag_ceiling_is_the_cap_on_the_filter_it_is_resolved_through()
@@ -164,6 +182,9 @@ public class SystemSettingsBoundsTests
         Assert.Equal(
             ListDefaults.MaxFilterArrayLength,
             SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax);
+        Assert.Equal(
+            ListDefaults.MaxFilterArrayLength,
+            SystemSettingsBounds.ContractMaxSmartTagsPerContractMax);
 
         var tagIds = typeof(Odyssey.Dtos.Finance.TransactionsQueryParams)
             .GetProperty(nameof(Odyssey.Dtos.Finance.TransactionsQueryParams.TagIds))!;
@@ -173,6 +194,7 @@ public class SystemSettingsBoundsTests
             "TransactionsQueryParams.TagIds carries no [MaxLength] — the smart-tag ceiling has nothing "
             + "to be bounded by.");
         Assert.Equal(SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax, maxLength!.Length);
+        Assert.Equal(SystemSettingsBounds.ContractMaxSmartTagsPerContractMax, maxLength.Length);
     }
 
     /// <summary>

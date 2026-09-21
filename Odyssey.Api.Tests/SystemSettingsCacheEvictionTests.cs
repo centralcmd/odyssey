@@ -38,9 +38,10 @@ public class SystemSettingsCacheEvictionTests
         (ImportExportLimitsLookup.CacheKey, KeysOf<ImportExportLimitsLookup>("Keys")),
         (FileAnalysisSettingsLookup.CacheKey, KeysOf<FileAnalysisSettingsLookup>("Keys")),
 
-        // These two resolve a single key inline rather than from an array, so there is nothing to
+        // These three resolve a single key inline rather than from an array, so there is nothing to
         // reflect. Naming the constant still fails if the lookup is repointed at a different key.
         (AccountLimitsLookup.CacheKey, [SystemSettingsKeys.AccountMaxSmartTagsPerAccount]),
+        (ContractLimitsLookup.CacheKey, [SystemSettingsKeys.ContractMaxSmartTagsPerContract]),
         (UploadLimitsLookup.CacheKey, [SystemSettingsKeys.FileStorageMaxUploadMegabytes]),
     ];
 

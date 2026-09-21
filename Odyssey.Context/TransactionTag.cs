@@ -33,4 +33,6 @@ public class TransactionTag
     public ICollection<BudgetItem> BudgetItems { get; set; } = new List<BudgetItem>();
 
     public ICollection<AccountSmartTag> AccountSmartTags { get; set; } = new List<AccountSmartTag>();
+
+    public ICollection<ContractSmartTag> ContractSmartTags { get; set; } = new List<ContractSmartTag>();
 }

@@ -250,6 +250,8 @@ public sealed record SystemSettingsDto
 
     public int AccountMaxSmartTagsPerAccount { get; set; }
 
+    public int ContractMaxSmartTagsPerContract { get; set; }
+
     // ---------------------------------------------------------------------------------------------
     // The file-analysis kill switch, model and destination (issue #439).
     //

@@ -160,6 +160,7 @@ public sealed class DataExportService
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractParties), ContractPartiesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractFiles), ContractFilesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractEvents), ContractEventsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractSmartTags), ContractSmartTagsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Subscriptions), SubscriptionsQuery(), cancellationToken);
     }
 
@@ -595,6 +596,18 @@ public sealed class DataExportService
                 EffectiveDate = renewalFile.EffectiveDate,
                 AttachedByUserId = renewalFile.AttachedByUserId,
                 AttachedAtUtc = renewalFile.AttachedAtUtc,
+            });
+
+    // Composite-keyed, so both key columns order it — there is no single id to sort on.
+    private IQueryable<ContractSmartTagExport> ContractSmartTagsQuery() =>
+        context.ContractSmartTags.AsNoTracking()
+            .OrderBy(smartTag => smartTag.ContractId)
+            .ThenBy(smartTag => smartTag.TransactionTagId)
+            .Select(smartTag => new ContractSmartTagExport
+            {
+                ContractId = smartTag.ContractId,
+                TransactionTagId = smartTag.TransactionTagId,
+                AddedAt = smartTag.AddedAt,
             });
 
     private IQueryable<ContractExport> ContractsQuery() =>

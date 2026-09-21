@@ -112,4 +112,13 @@ public class Contract
     /// all. Nothing on the read path loads it — the log is unbounded and has its own paged endpoint.
     /// </summary>
     public ICollection<ContractEvent> Events { get; set; } = new List<ContractEvent>();
+
+    /// <summary>
+    /// The contract's smart tags (issue #166) — the curated transaction tags this contract's saved
+    /// filter resolves against. Load-bearing for the same reason <see cref="Terms"/> and
+    /// <see cref="Events"/> are: <c>ContractService.Delete</c> includes it so the cascade also happens
+    /// under the EF InMemory provider the fast test tiers run on, which enforces no foreign keys at
+    /// all.
+    /// </summary>
+    public ICollection<ContractSmartTag> SmartTags { get; set; } = new List<ContractSmartTag>();
 }

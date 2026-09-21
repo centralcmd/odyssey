@@ -169,6 +169,8 @@ public class DataExportApiTests
                      "insurancePolicyInsuredAccounts", "insurancePolicyInsuredContacts",
                      "insurancePolicyBeneficiaries", "policyRenewals", "policyRenewalFiles",
                      "contracts", "contractParties", "contractFiles", "subscriptions",
+                     // Issue #166.
+                     "contractSmartTags",
                  })
         {
             Assert.Equal(JsonValueKind.Array, finance.GetProperty(collection).ValueKind);
@@ -709,6 +711,11 @@ public class DataExportApiTests
         var smartTag = Assert.Single(finance.GetProperty("accountSmartTags").EnumerateArray());
         Assert.NotEqual(Guid.Empty, smartTag.GetProperty("accountId").GetGuid());
         Assert.NotEqual(Guid.Empty, smartTag.GetProperty("transactionTagId").GetGuid());
+
+        // Its contract sibling (issue #166), composite-keyed the same way.
+        var contractSmartTag = Assert.Single(finance.GetProperty("contractSmartTags").EnumerateArray());
+        Assert.NotEqual(Guid.Empty, contractSmartTag.GetProperty("contractId").GetGuid());
+        Assert.NotEqual(Guid.Empty, contractSmartTag.GetProperty("transactionTagId").GetGuid());
     }
 
     // ── Deterministic ordering, every collection (spec §10.1.9) ───────────────
@@ -752,6 +759,8 @@ public class DataExportApiTests
         { "contracts", ["contractId"], KeyKind.Guid },
         { "contractParties", ["contractPartyId"], KeyKind.Guid },
         { "contractFiles", ["contractFileId"], KeyKind.Guid },
+        // Composite-keyed, like accountSmartTags: ordered by both key columns, in that order.
+        { "contractSmartTags", ["contractId", "transactionTagId"], KeyKind.Guid },
         { "subscriptions", ["subscriptionId"], KeyKind.Guid },
     };
 
@@ -969,6 +978,12 @@ public class DataExportApiTests
             context.ContractFiles.Add(new ContractFile
             {
                 ContractFileId = id, ContractId = id, FileMetadataId = fileMetadataId, AttachedAtUtc = now,
+            });
+            // Composite-keyed like AccountSmartTags (issue #166): the inversion comes from the
+            // contract, since the loop inserts sequence 3 before sequence 2.
+            context.ContractSmartTags.Add(new ContractSmartTag
+            {
+                ContractId = id, TransactionTagId = tagId, AddedAt = now,
             });
 
             context.Subscriptions.Add(new Subscription
@@ -1311,6 +1326,12 @@ public class DataExportApiTests
             {
                 ContractPartyId = Guid.NewGuid(), ContractId = contractId, AccountId = accountId,
             });
+        context.ContractSmartTags.Add(new ContractSmartTag
+        {
+            ContractId = contractId,
+            TransactionTagId = tagId,
+            AddedAt = DateTime.UtcNow,
+        });
         context.ContractFiles.Add(new ContractFile
         {
             ContractFileId = Guid.NewGuid(),

@@ -331,6 +331,14 @@ public class TuningSystemSettingsApiTests
         Both(nameof(SystemSettingsUpdate.AccountMaxSmartTagsPerAccount), SmartTagsMin, SmartTagsMax,
             $"Smart tags per account must be between {SmartTagsMin} and {SmartTagsMax}.");
 
+        // The contract sibling (issue #166), on the same terms and for the same reason: its ceiling
+        // is that same filter length, so the fragment interpolates the pair rather than restating it.
+        const int ContractSmartTagsMin = SystemSettingsBounds.ContractMaxSmartTagsPerContractMin;
+        const int ContractSmartTagsMax = SystemSettingsBounds.ContractMaxSmartTagsPerContractMax;
+        Both(nameof(SystemSettingsUpdate.ContractMaxSmartTagsPerContract),
+            ContractSmartTagsMin, ContractSmartTagsMax,
+            $"Smart tags per contract must be between {ContractSmartTagsMin} and {ContractSmartTagsMax}.");
+
         return data;
     }
 

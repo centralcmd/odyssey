@@ -135,6 +135,7 @@ public sealed class FinanceDatabaseExport
     public IReadOnlyList<ContractPartyExport> ContractParties { get; init; } = [];
     public IReadOnlyList<ContractFileExport> ContractFiles { get; init; } = [];
     public IReadOnlyList<ContractEventExport> ContractEvents { get; init; } = [];
+    public IReadOnlyList<ContractSmartTagExport> ContractSmartTags { get; init; } = [];
     public IReadOnlyList<SubscriptionExport> Subscriptions { get; init; } = [];
 }
 
@@ -316,6 +317,17 @@ public sealed class AccountEstimateExport
 public sealed class AccountSmartTagExport
 {
     public Guid AccountId { get; init; }
+    public Guid TransactionTagId { get; init; }
+    public DateTime AddedAt { get; init; }
+}
+
+/// <summary>
+/// A contract's saved tag filter (issue #166): the transaction tags the contract watches. The table's
+/// key is the <c>(ContractId, TransactionTagId)</c> pair — there is no surrogate id to export.
+/// </summary>
+public sealed class ContractSmartTagExport
+{
+    public Guid ContractId { get; init; }
     public Guid TransactionTagId { get; init; }
     public DateTime AddedAt { get; init; }
 }

@@ -394,6 +394,31 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .HasConversion<int>();
         });
 
+        modelBuilder.Entity<ContractSmartTag>(entity =>
+        {
+            // Composite key: one association per (contract, tag) pair, no surrogate id. This is also
+            // what makes add/remove idempotent at the database level and what lets the route address a
+            // link by its pair rather than by a link-row id (issue #166 §4).
+            entity.HasKey(smartTag => new { smartTag.ContractId, smartTag.TransactionTagId });
+
+            // Cascade-delete a contract's smart-tag links along with the contract itself: the saved
+            // filter is meaningless once the contract is gone, and links are only reachable through it.
+            entity.HasOne(smartTag => smartTag.Contract)
+                .WithMany(contract => contract.SmartTags)
+                .HasForeignKey(smartTag => smartTag.ContractId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Restrict on the tag side so an in-use tag cannot be hard-deleted out from under a
+            // contract's smart-tag configuration (mirrors AccountSmartTag and TransactionTagLink).
+            // TransactionTagService.Delete pre-checks for it, because this key's violation reaches
+            // GlobalExceptionHandler as a generic 409 naming no surface, and because the EF InMemory
+            // tiers enforce no foreign keys at all.
+            entity.HasOne(smartTag => smartTag.TransactionTag)
+                .WithMany(tag => tag.ContractSmartTags)
+                .HasForeignKey(smartTag => smartTag.TransactionTagId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<Subscription>(entity =>
         {
             entity.Property(s => s.Interval)
@@ -979,6 +1004,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             new SystemSetting { Key = SystemSettingsKeys.ImportMaxSamplesPerSkipReason, Value = "100", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.EmailMaxTrackedRecipients, Value = "20000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.AccountMaxSmartTagsPerAccount, Value = "20", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.ContractMaxSmartTagsPerContract, Value = "20", UpdatedAt = seededAt },
             // The file-analysis kill switch, model and destination (issue #439). Seeded to today's
             // effective values, so a default install is behaviourally identical: analysis OFF,
             // claude-sonnet-5, api.anthropic.com.
@@ -1347,6 +1373,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<ContractParty> ContractParties { get; set; }
     public DbSet<ContractFile> ContractFiles { get; set; }
     public DbSet<ContractEvent> ContractEvents { get; set; }
+    public DbSet<ContractSmartTag> ContractSmartTags { get; set; }
     public DbSet<Subscription> Subscriptions { get; set; }
 
     // ── Journal, tasks, photos, calendars and contacts ────────────────────────────────────────

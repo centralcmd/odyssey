@@ -119,6 +119,9 @@ public class ContractService
                 // query. The log itself is unbounded and has its own paged endpoint — nothing on this
                 // path loads its rows.
                 EventCount = c.Events.Count,
+                // The contract's saved tag filter, counted on the same terms (issue #166 §3.4): the
+                // fifth correlated subquery in the one list query, never a second grouped read.
+                SmartTagCount = c.SmartTags.Count,
                 // Contact id of the first institution party (issue #325); its display name is resolved
                 // after materialisation via the contact lookup (Contact now lives in OdysseyContext).
                 InstitutionContactId = c.Parties
@@ -158,6 +161,7 @@ public class ContractService
             FileCount = x.FileCount,
             TermCount = x.TermCount,
             EventCount = x.EventCount,
+            SmartTagCount = x.SmartTagCount,
             Archived = x.Contract.Archived,
             Paused = x.Contract.Paused,
             Ready = x.Contract.Ready,
@@ -889,16 +893,17 @@ public class ContractService
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         // Hard delete: removes the contract and cascades its party + file link rows, its term history
-        // (issue #135) and its event log (issue #138). The underlying accounts/contacts/policies and
-        // FileMetadata/blobs are left intact. Children are loaded so the cascade also applies under the
-        // EF InMemory provider (used by tests), which does not enforce database-level cascade — without
-        // the Terms/Events includes a contract delete would orphan every such row on exactly the tier
-        // meant to catch it.
+        // (issue #135), its event log (issue #138) and its smart-tag links (issue #166). The underlying
+        // accounts/contacts/policies, FileMetadata/blobs and TransactionTags are left intact. Children
+        // are loaded so the cascade also applies under the EF InMemory provider (used by tests), which
+        // does not enforce database-level cascade — without the Terms/Events/SmartTags includes a
+        // contract delete would orphan every such row on exactly the tier meant to catch it.
         var contract = await context.Contracts
             .Include(c => c.Parties)
             .Include(c => c.Files)
             .Include(c => c.Terms)
             .Include(c => c.Events)
+            .Include(c => c.SmartTags)
             .FirstOrDefaultAsync(c => c.ContractId == id, cancellationToken);
         if (contract is null)
         {

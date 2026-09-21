@@ -838,6 +838,25 @@ internal static class SystemSettingsRegistry
             Write = (dto, v) => dto.AccountMaxSmartTagsPerAccount = v,
         },
 
+        // ── Contracts: the smart-tag cap (issue #166) ─────────────────────────────────────────────
+        //
+        // The ORDINARY write claim, matching its account sibling and the other display-bound keys.
+        // Its own cache key, not AccountLimitsLookup's: SystemSettingDescriptor.CacheKeyToEvict is a
+        // single string, so a shared entry would make a contract change evict the account limits and
+        // vice versa.
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.ContractMaxSmartTagsPerContract,
+            Min = SystemSettingsBounds.ContractMaxSmartTagsPerContractMin,
+            Max = SystemSettingsBounds.ContractMaxSmartTagsPerContractMax,
+            FieldName = nameof(SystemSettingsUpdate.ContractMaxSmartTagsPerContract),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.ContractMaxSmartTagsPerContract),
+            CacheKeyToEvict = ContractLimitsLookup.CacheKey,
+            Read = r => r.ContractMaxSmartTagsPerContract,
+            Write = (dto, v) => dto.ContractMaxSmartTagsPerContract = v,
+        },
+
         // ── The Subscriptions summary limits (issue #437) ─────────────────────────────────────────
         //
         // All three take the ORDINARY write claim, matching the three analogous keys above

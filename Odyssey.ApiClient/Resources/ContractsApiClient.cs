@@ -146,6 +146,27 @@ public interface IContractsApiClient
 
     /// <summary>Removes one event from the contract's log. The contract itself is untouched.</summary>
     Task<ApiResult> DeleteEventAsync(Guid contractId, Guid eventId, CancellationToken ct = default);
+
+    // ── Smart tags (issue #166) ──────────────────────────────────────────────
+
+    /// <summary>
+    /// The transaction tags this contract watches, oldest association first. An empty list is a
+    /// healthy result; a missing contract is a <c>404</c>.
+    /// </summary>
+    Task<ApiResult<List<ExistingTransactionTag>>> ListSmartTagsAsync(
+        Guid contractId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Associates an existing, non-archived tag with the contract. No request body — both ids are
+    /// route parameters. An already-linked pair is a <c>409</c>; an archived tag or an over-cap add is
+    /// a <c>422</c>.
+    /// </summary>
+    Task<ApiResult> AddSmartTagAsync(Guid contractId, Guid tagId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes one smart-tag association. The tag itself and the contract are untouched.
+    /// </summary>
+    Task<ApiResult> RemoveSmartTagAsync(Guid contractId, Guid tagId, CancellationToken ct = default);
 }
 
 /// <inheritdoc cref="IContractsApiClient" />
@@ -274,4 +295,18 @@ public sealed class ContractsApiClient(IOdysseyApi api) : IContractsApiClient
         api.SendAsync(HttpMethod.Delete, $"{Events(contractId)}/{eventId}", null, ct);
 
     private static string Events(Guid contractId) => $"{Base}/{contractId}/events";
+
+    // ── Smart tags ───────────────────────────────────────────────────────────
+
+    public Task<ApiResult<List<ExistingTransactionTag>>> ListSmartTagsAsync(
+        Guid contractId, CancellationToken ct = default) =>
+        api.GetAsync<List<ExistingTransactionTag>>(SmartTags(contractId), ct);
+
+    public Task<ApiResult> AddSmartTagAsync(Guid contractId, Guid tagId, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Post, $"{SmartTags(contractId)}/{tagId}", null, ct);
+
+    public Task<ApiResult> RemoveSmartTagAsync(Guid contractId, Guid tagId, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Delete, $"{SmartTags(contractId)}/{tagId}", null, ct);
+
+    private static string SmartTags(Guid contractId) => $"{Base}/{contractId}/smart-tags";
 }

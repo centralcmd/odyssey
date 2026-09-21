@@ -177,6 +177,14 @@ public static class SystemSettingsKeys
     public const string EmailMaxTrackedRecipients = "EmailMaxTrackedRecipients";
     public const string AccountMaxSmartTagsPerAccount = "AccountMaxSmartTagsPerAccount";
 
+    /// <summary>
+    /// Smart tags one contract may carry (issue #166). Same shipped default as its account sibling;
+    /// its <em>range</em> deliberately differs — the ceiling is
+    /// <c>ListDefaults.MaxFilterArrayLength</c>, because these tags resolve through
+    /// <c>GET /api/transactions?tagIds=…</c>, whose filter is bounded by that constant.
+    /// </summary>
+    public const string ContractMaxSmartTagsPerContract = "ContractMaxSmartTagsPerContract";
+
     // ---------------------------------------------------------------------------------------------
     // The file-analysis kill switch, model and destination (issue #439) — the last three FileAnalysis
     // values that were still deploy-time only. FileAnalysis:ApiKey deliberately does NOT join them —
@@ -278,6 +286,7 @@ public static class SystemSettingsKeys
         ImportMaxSamplesPerSkipReason,
         EmailMaxTrackedRecipients,
         AccountMaxSmartTagsPerAccount,
+        ContractMaxSmartTagsPerContract,
         FileAnalysisEnabled,
         FileAnalysisModel,
         FileAnalysisBaseUrl,

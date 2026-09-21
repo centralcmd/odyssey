@@ -684,6 +684,18 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.ContractMaxTermsPerContract),
                 Load: (p, dto) => p.SetIntLoaded("contractMaxTermsPerContract", dto.ContractMaxTermsPerContract),
                 Write: (p, req) => req.ContractMaxTermsPerContract = p.IntRequest("contractMaxTermsPerContract")),
+            new("contractMaxSmartTagsPerContract", "sell", "Max smart tags per contract",
+                "Upper limit on the saved tag filters one contract may carry. Its ceiling is the number "
+                + "of tag ids the transactions list accepts in one query, because that is what the "
+                + "filter is resolved through.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.ContractMaxSmartTagsPerContractMin,
+                Max: SystemSettingsBounds.ContractMaxSmartTagsPerContractMax,
+                Field: nameof(SystemSettingsUpdate.ContractMaxSmartTagsPerContract),
+                Load: (p, dto) => p.SetIntLoaded(
+                    "contractMaxSmartTagsPerContract", dto.ContractMaxSmartTagsPerContract),
+                Write: (p, req) => req.ContractMaxSmartTagsPerContract =
+                    p.IntRequest("contractMaxSmartTagsPerContract")),
             new("contractMaxSummaryContracts", "list_alt", "Max contracts in summary",
                 "Safety ceiling on how many contracts the dashboard summary aggregates over.",
                 SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.ContractMaxSummaryContractsMin, Max: SystemSettingsBounds.ContractMaxSummaryContractsMax,
