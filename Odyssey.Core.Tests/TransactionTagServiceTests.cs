@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core;
 using Odyssey.Dtos.Finance;
@@ -232,5 +233,151 @@ public class TransactionTagServiceTests
         await service.Delete(tag.TransactionTagId);
 
         Assert.Equal(0, context.TransactionTags.Count());
+    }
+
+    // ── Delete guard: account smart tags (issue #165) ──────────────────────
+
+    /// <summary>
+    /// The silent-orphan case. The RESTRICT key on <c>AccountSmartTags.TransactionTagId</c> is the only
+    /// protection on MariaDB, and this tier enforces no foreign keys at all — so without the service
+    /// pre-check the tag is deleted with no error and the link row survives pointing at nothing.
+    /// </summary>
+    [Fact]
+    public async Task Delete_IsRefusedWhileAnAccountWatchesTheTag_AndNamesTheCount()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedSmartTagLink(context, tag.TransactionTagId, "Checking");
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("1 account", conflict.Message);
+        // A COUNT, never the accounts: naming them would reach past transactions.tags.delete's boundary.
+        Assert.DoesNotContain("Checking", conflict.Message);
+        Assert.Equal(1, context.TransactionTags.Count());
+        Assert.Equal(1, context.AccountSmartTags.Count());
+    }
+
+    [Fact]
+    public async Task Delete_PluralisesTheAccountCount()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedSmartTagLink(context, tag.TransactionTagId, "Checking");
+        await SeedSmartTagLink(context, tag.TransactionTagId, "Savings");
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("2 accounts", conflict.Message);
+    }
+
+    /// <summary>
+    /// Each blocker class gets its own clause, so a tag blocked by both reports both rather than
+    /// whichever the pre-check happened to count first.
+    /// </summary>
+    [Fact]
+    public async Task Delete_BlockedByBothClasses_NamesBoth()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedBudgetItem(context, tag.TransactionTagId);
+        await SeedSmartTagLink(context, tag.TransactionTagId, "Checking");
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("1 budget item", conflict.Message);
+        Assert.Contains("1 account", conflict.Message);
+    }
+
+    /// <summary>
+    /// The tracked-context variant of the same delete. With the link rows tracked, EF severs a required
+    /// relationship at <c>Remove()</c> and throws <c>InvalidOperationException</c> before
+    /// <c>SaveChangesAsync</c> — a 500 rather than a conflict. The pre-check runs first, so this stays a
+    /// <see cref="DomainConflictException"/> whether or not the caller happened to load the links.
+    /// </summary>
+    [Fact]
+    public async Task Delete_IsRefusedEvenWhenTheLinkRowsAreTracked()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedSmartTagLink(context, tag.TransactionTagId, "Checking");
+
+        _ = await context.AccountSmartTags.ToListAsync();
+
+        await Assert.ThrowsAsync<DomainConflictException>(() => service.Delete(tag.TransactionTagId));
+
+        Assert.Equal(1, context.TransactionTags.Count());
+    }
+
+    [Fact]
+    public async Task Delete_SucceedsOnceTheSmartTagLinkIsRemoved()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        var accountId = await SeedSmartTagLink(context, tag.TransactionTagId, "Checking");
+
+        var link = await context.AccountSmartTags
+            .SingleAsync(l => l.AccountId == accountId && l.TransactionTagId == tag.TransactionTagId);
+        context.AccountSmartTags.Remove(link);
+        await context.SaveChangesAsync();
+
+        await service.Delete(tag.TransactionTagId);
+
+        Assert.Equal(0, context.TransactionTags.Count());
+    }
+
+    private static async Task<Guid> SeedSmartTagLink(OdysseyContext context, Guid tagId, string accountName)
+    {
+        var account = new Account
+        {
+            Name = accountName,
+            Description = string.Empty,
+            Opened = DateTime.UtcNow,
+            AccountType = Odyssey.Context.AccountType.CheckingAccount,
+            CurrencyCode = "USD",
+        };
+        context.Accounts.Add(account);
+        await context.SaveChangesAsync();
+
+        context.AccountSmartTags.Add(new AccountSmartTag
+        {
+            AccountId = account.AccountId,
+            TransactionTagId = tagId,
+            AddedAt = DateTime.UtcNow,
+        });
+        await context.SaveChangesAsync();
+
+        return account.AccountId;
+    }
+
+    private static async Task SeedBudgetItem(OdysseyContext context, Guid tagId)
+    {
+        var budget = new Budget
+        {
+            Name = "2026",
+            Description = "Annual",
+            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
+            Archived = null,
+        };
+        context.Budgets.Add(budget);
+        await context.SaveChangesAsync();
+
+        context.BudgetItems.Add(new BudgetItem
+        {
+            BudgetId = budget.BudgetId,
+            CategoryType = Odyssey.Context.BudgetCategoryType.Expense,
+            PlannedAmount = 100m,
+            TransactionTagId = tagId,
+        });
+        await context.SaveChangesAsync();
     }
 }
