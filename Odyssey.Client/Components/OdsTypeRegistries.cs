@@ -352,23 +352,51 @@ public static class OdsTypeRegistries
     }
 
     /// <summary>
-    /// ContractEventType — what kind of thing HAPPENED to an agreement (issue #138). Mirrors the DS
-    /// <c>contractEventTypes</c> registry and the C# <c>ContractEventType</c> enum, in ORDINAL order
-    /// — which here is also reading order, because <c>Other</c> carries the last ordinal (8) as well
-    /// as being the catch-all. That agreement is a convenience of this enum, not a rule:
-    /// <c>ContractTypes</c> above is the case where the two orders diverge.
+    /// ContractEventType — what kind of thing HAPPENED to an agreement (issue #138, extended by
+    /// issue #154). Mirrors the DS <c>contractEventTypes</c> registry and the C#
+    /// <c>ContractEventType</c> enum.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is READING order, and it is no longer ordinal order.</b> It used to be both, because
+    /// <c>Other</c> happened to carry the last ordinal as well as being the catch-all. Issue #154
+    /// appended nine members at 9–17 while <c>Other</c> kept 8 — an ordinal is a wire and persistence
+    /// contract and is never renumbered — so the two orders have parted company here exactly as they
+    /// already had on <see cref="ContractTypes"/>.
+    /// </para>
+    /// <para>
+    /// <b><c>Other</c> must therefore stay the LAST entry.</b> <see cref="ContractEventTypeOf"/>
+    /// documents the <em>trailing</em> registry entry as its fallback for an ordinal this build does
+    /// not know, so reordering this list so that something else ends it would silently render every
+    /// unknown event as that member instead.
+    /// </para>
+    /// <para>
+    /// The nine automation members use the verbs a user would: <em>Resumed</em>, not "Unpaused";
+    /// <em>Restored</em>, not "Unarchived".
+    /// </para>
+    /// </remarks>
     public static readonly IReadOnlyList<OdsTypeOption> ContractEventTypes =
     [
-        new() { Key = "Signed",       Label = "Signed",        Icon = "history_edu",   Color = "oklch(0.72 0.16 295)", Soft = "oklch(0.72 0.16 295 / 0.16)" },
-        new() { Key = "Amended",      Label = "Amended",       Icon = "edit_document", Color = "oklch(0.80 0.13 85)",  Soft = "oklch(0.80 0.13 85 / 0.16)" },
-        new() { Key = "Renewed",      Label = "Renewed",       Icon = "autorenew",     Color = "oklch(0.78 0.14 170)", Soft = "oklch(0.78 0.14 170 / 0.16)" },
-        new() { Key = "Extended",     Label = "Extended",      Icon = "more_time",     Color = "oklch(0.78 0.14 145)", Soft = "oklch(0.78 0.14 145 / 0.16)" },
-        new() { Key = "NoticeGiven",  Label = "Notice given",  Icon = "campaign",      Color = "oklch(0.79 0.14 60)",  Soft = "oklch(0.79 0.14 60 / 0.16)" },
-        new() { Key = "Terminated",   Label = "Terminated",    Icon = "gavel",         Color = "oklch(0.72 0.15 25)",  Soft = "oklch(0.72 0.15 25 / 0.16)" },
-        new() { Key = "PriceChanged", Label = "Price changed", Icon = "price_change",  Color = "oklch(0.76 0.14 320)", Soft = "oklch(0.76 0.14 320 / 0.16)" },
-        new() { Key = "EmailSent",    Label = "Email sent",    Icon = "outgoing_mail", Color = "oklch(0.77 0.14 205)", Soft = "oklch(0.77 0.14 205 / 0.16)" },
-        new() { Key = "Other",        Label = "Other",         Icon = "more_horiz",    Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Signed",       Label = "Signed",              Icon = "history_edu",        Color = "oklch(0.72 0.16 295)", Soft = "oklch(0.72 0.16 295 / 0.16)" },
+        new() { Key = "Amended",      Label = "Amended",             Icon = "edit_document",      Color = "oklch(0.80 0.13 85)",  Soft = "oklch(0.80 0.13 85 / 0.16)" },
+        new() { Key = "Renewed",      Label = "Renewed",             Icon = "autorenew",          Color = "oklch(0.78 0.14 170)", Soft = "oklch(0.78 0.14 170 / 0.16)" },
+        new() { Key = "Extended",     Label = "Extended",            Icon = "more_time",          Color = "oklch(0.78 0.14 145)", Soft = "oklch(0.78 0.14 145 / 0.16)" },
+        new() { Key = "NoticeGiven",  Label = "Notice given",        Icon = "campaign",           Color = "oklch(0.79 0.14 60)",  Soft = "oklch(0.79 0.14 60 / 0.16)" },
+        new() { Key = "Terminated",   Label = "Terminated",          Icon = "gavel",              Color = "oklch(0.72 0.15 25)",  Soft = "oklch(0.72 0.15 25 / 0.16)" },
+        new() { Key = "PriceChanged", Label = "Price changed",       Icon = "price_change",       Color = "oklch(0.76 0.14 320)", Soft = "oklch(0.76 0.14 320 / 0.16)" },
+        new() { Key = "EmailSent",    Label = "Email sent",          Icon = "outgoing_mail",      Color = "oklch(0.77 0.14 205)", Soft = "oklch(0.77 0.14 205 / 0.16)" },
+        // ── The nine automation members (issue #154), ordinals 9-17 ──────────────
+        new() { Key = "Paused",       Label = "Paused",              Icon = "pause_circle",       Color = "oklch(0.79 0.12 70)",  Soft = "oklch(0.79 0.12 70 / 0.16)" },
+        new() { Key = "Unpaused",     Label = "Resumed",             Icon = "play_circle",        Color = "oklch(0.79 0.14 155)", Soft = "oklch(0.79 0.14 155 / 0.16)" },
+        new() { Key = "Ready",        Label = "Marked ready",        Icon = "rule",               Color = "oklch(0.76 0.13 260)", Soft = "oklch(0.76 0.13 260 / 0.16)" },
+        new() { Key = "Unready",      Label = "Ready withdrawn",     Icon = "remove_done",        Color = "oklch(0.75 0.10 240)", Soft = "oklch(0.75 0.10 240 / 0.16)" },
+        new() { Key = "Unsigned",     Label = "Signed date cleared", Icon = "history_toggle_off", Color = "oklch(0.74 0.10 285)", Soft = "oklch(0.74 0.10 285 / 0.16)" },
+        new() { Key = "Archived",     Label = "Archived",            Icon = "inventory_2",        Color = "oklch(0.75 0.06 250)", Soft = "oklch(0.75 0.06 250 / 0.16)" },
+        new() { Key = "Unarchived",   Label = "Restored",            Icon = "unarchive",          Color = "oklch(0.78 0.12 185)", Soft = "oklch(0.78 0.12 185 / 0.16)" },
+        new() { Key = "PartyAdded",   Label = "Party added",         Icon = "person_add",         Color = "oklch(0.79 0.13 130)", Soft = "oklch(0.79 0.13 130 / 0.16)" },
+        new() { Key = "PartyRemoved", Label = "Party removed",       Icon = "person_remove",      Color = "oklch(0.74 0.13 15)",  Soft = "oklch(0.74 0.13 15 / 0.16)" },
+        // LAST, and it must stay last — the unknown-ordinal fallback is positional.
+        new() { Key = "Other",        Label = "Other",               Icon = "more_horiz",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
     /// <summary>ContractFileType — the kind of document attached to a contract (issue #174). Mirrors

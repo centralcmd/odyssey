@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq.Expressions;
 using Odyssey.Core;
 using Odyssey.Context;
@@ -5,6 +6,8 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ContextAccountType = Odyssey.Context.AccountType;
 using ContextInterval = Odyssey.Context.Interval;
 using ContextTermKind = Odyssey.Context.TermKind;
@@ -40,6 +43,7 @@ public class TermService
     private readonly OdysseyContext context;
     private readonly TimeProvider timeProvider;
     private readonly ISystemSettingsLookup? systemSettingsLookup;
+    private readonly ILogger<TermService> logger;
 
     /// <param name="systemSettingsLookup">
     /// Source of the per-contract term cap. Optional because the account surface has no cap at all
@@ -47,14 +51,20 @@ public class TermService
     /// resolves to the shipped default, which is the same value a healthy absent settings row would
     /// resolve to.
     /// </param>
+    /// <param name="logger">
+    /// Sink for the per-term-write safety net (issue #154 §8.8). Optional-defaulted like the two above
+    /// so a direct construction in a unit test need not supply one.
+    /// </param>
     public TermService(
         OdysseyContext context,
         TimeProvider? timeProvider = null,
-        ISystemSettingsLookup? systemSettingsLookup = null)
+        ISystemSettingsLookup? systemSettingsLookup = null,
+        ILogger<TermService>? logger = null)
     {
         this.context = context;
         this.timeProvider = timeProvider ?? TimeProvider.System;
         this.systemSettingsLookup = systemSettingsLookup;
+        this.logger = logger ?? NullLogger<TermService>.Instance;
     }
 
     // The eligibility matrix lives in code (not the database) so it can evolve without a migration.
@@ -293,15 +303,31 @@ public class TermService
     /// <exception cref="DomainValidationException">Validation or eligibility failed.</exception>
     /// <exception cref="DomainConflictException">A term in the same series with that effective date exists.</exception>
     /// <exception cref="DomainUnprocessableException">The per-contract term cap is reached.</exception>
-    public async Task<ExistingTerm> CreateForContract(Guid contractId, NewTerm newTerm, CancellationToken cancellationToken = default)
+    public async Task<ExistingTerm> CreateForContract(
+        Guid contractId, NewTerm newTerm, string? userId, CancellationToken cancellationToken = default)
     {
         var owner = await ResolveContractOwner(contractId, cancellationToken)
             ?? throw new DomainNotFoundException($"Contract ID {contractId} not found.");
 
-        return await CreateFor(owner, newTerm, cancellationToken);
+        TermSnapshot? after = null;
+        var created = await CreateFor(owner, newTerm, cancellationToken, term =>
+        {
+            var now = timeProvider.GetUtcNow().UtcDateTime;
+            ContractEventRecorder.Stage(
+                context, contractId, ContractEventCatalogue.Term(TermWriteAction.Added, term, now), userId, now);
+            after = TermSnapshot.Of(term);
+        });
+
+        // Post-commit: a log line describes a committed fact. A create has no "before" half, and that
+        // (none) is HARDCODED rather than derived — an entity in the Added state has no prior row, so
+        // OriginalValues is meaningless there and would silently read back the new values (§8.7).
+        LogTermWrite("added", contractId, before: null, after, userId);
+
+        return created;
     }
 
-    private async Task<ExistingTerm> CreateFor(TermOwnerFacts owner, NewTerm newTerm, CancellationToken cancellationToken)
+    private async Task<ExistingTerm> CreateFor(
+        TermOwnerFacts owner, NewTerm newTerm, CancellationToken cancellationToken, Action<Term>? stage = null)
     {
         var term = new Term
         {
@@ -326,6 +352,18 @@ public class TermService
         }
 
         context.Terms.Add(term);
+
+        // The staging seam (issue #154 §8.7). Invoked after the mutation is applied and BEFORE the save,
+        // with the Term as it will be persisted, so whatever it stages rides this very SaveChangesAsync
+        // — which is the atomicity §8.6 requires. The three ACCOUNT wrappers pass nothing and keep their
+        // behaviour by OMISSION: an account-owned term write cannot emit a ContractEvent because no
+        // delegate was supplied, not because a branch decided not to. There is no code path to get it
+        // wrong, and ApplyAndValidate — the one validation path — is untouched.
+        //
+        // It is reached only after the cap check above, which throws before context.Terms.Add: a refused
+        // create therefore writes no event and logs no line, structurally rather than by a guard.
+        stage?.Invoke(term);
+
         await context.SaveChangesAsync(cancellationToken);
 
         return term.Adapt<ExistingTerm>();
@@ -347,13 +385,44 @@ public class TermService
     /// an account or to a different contract, which is what keeps the endpoint from being an existence
     /// oracle across owners. The owner itself is never changeable through this endpoint.
     /// </summary>
-    public async Task<bool> UpdateForContract(Guid contractId, Guid termId, NewTerm putTerm, CancellationToken cancellationToken = default)
+    public async Task<bool> UpdateForContract(
+        Guid contractId, Guid termId, NewTerm putTerm, string? userId, CancellationToken cancellationToken = default)
     {
         var owner = await ResolveContractOwner(contractId, cancellationToken);
-        return owner is not null && await UpdateFor(owner, termId, putTerm, cancellationToken);
+        if (owner is null)
+            return false;
+
+        // Both halves are captured by this closure, which also tells the wrapper whether the delegate
+        // ran at all — it does not when the term id matches no row on this owner.
+        TermSnapshot? before = null;
+        TermSnapshot? after = null;
+        var updated = await UpdateFor(owner, termId, putTerm, cancellationToken, term =>
+        {
+            var now = timeProvider.GetUtcNow().UtcDateTime;
+            ContractEventRecorder.Stage(
+                context, contractId, ContractEventCatalogue.Term(TermWriteAction.Changed, term, now), userId, now);
+            before = TermSnapshot.Original(context, term);
+            after = TermSnapshot.Of(term);
+        });
+
+        if (updated)
+            LogTermWrite("changed", contractId, before, after, userId);
+
+        return updated;
     }
 
-    private async Task<bool> UpdateFor(TermOwnerFacts owner, Guid termId, NewTerm putTerm, CancellationToken cancellationToken)
+    /// <remarks>
+    /// <b>The lookup must stay a TRACKED query.</b> It is load-bearing rather than incidental since
+    /// issue #154: <c>TermSnapshot.Original</c> reads <c>context.Entry(term).OriginalValues</c>, the
+    /// snapshot EF took when the entity began being tracked, and a later performance pass adding
+    /// <c>AsNoTracking()</c> here would empty the "before" half of every term log line <b>silently</b> —
+    /// EF returns <c>OriginalValues == CurrentValues</c> with no exception for an untracked-then-attached
+    /// entity, so the line would simply read <c>X -&gt; X</c>. If one is ever added, the entity must be
+    /// attached <em>before</em> mutation, not after.
+    /// </remarks>
+    private async Task<bool> UpdateFor(
+        TermOwnerFacts owner, Guid termId, NewTerm putTerm, CancellationToken cancellationToken,
+        Action<Term>? stage = null)
     {
         var term = await context.Terms
             .Where(OwnedBy(owner))
@@ -362,6 +431,10 @@ public class TermService
             return false;
 
         await ApplyAndValidate(term, putTerm, owner, excludeTermId: termId, cancellationToken);
+
+        // After ApplyAndValidate, so the entity already holds the new values; the PREVIOUS ones still
+        // come off the change tracker's untouched original snapshot, at no extra query.
+        stage?.Invoke(term);
 
         await context.SaveChangesAsync(cancellationToken);
         return true;
@@ -379,13 +452,32 @@ public class TermService
     /// <summary>
     /// The contract mirror of <see cref="Delete"/>. The contract itself is untouched.
     /// </summary>
-    public async Task<bool> DeleteForContract(Guid contractId, Guid termId, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteForContract(
+        Guid contractId, Guid termId, string? userId, CancellationToken cancellationToken = default)
     {
         var owner = await ResolveContractOwner(contractId, cancellationToken);
-        return owner is not null && await DeleteFor(owner, termId, cancellationToken);
+        if (owner is null)
+            return false;
+
+        TermSnapshot? before = null;
+        var deleted = await DeleteFor(owner, termId, cancellationToken, term =>
+        {
+            var now = timeProvider.GetUtcNow().UtcDateTime;
+            ContractEventRecorder.Stage(
+                context, contractId, ContractEventCatalogue.Term(TermWriteAction.Removed, term, now), userId, now);
+            before = TermSnapshot.Of(term);
+        });
+
+        // A delete hard-deletes the row (Non-Goal 10), so once the PriceChanged event is itself deleted
+        // this line is the only surviving record of what the term used to say. Hence the empty "after".
+        if (deleted)
+            LogTermWrite("removed", contractId, before, after: null, userId);
+
+        return deleted;
     }
 
-    private async Task<bool> DeleteFor(TermOwnerFacts owner, Guid termId, CancellationToken cancellationToken)
+    private async Task<bool> DeleteFor(
+        TermOwnerFacts owner, Guid termId, CancellationToken cancellationToken, Action<Term>? stage = null)
     {
         var term = await context.Terms
             .Where(OwnedBy(owner))
@@ -393,9 +485,135 @@ public class TermService
         if (term is null)
             return false;
 
+        // Before Remove, for readability rather than correctness: Remove() only flips the tracked state
+        // and does not clear the entity's properties, so either order would in fact work. Stated so
+        // nobody has to re-derive it.
+        stage?.Invoke(term);
+
         context.Terms.Remove(term);
         await context.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    // ── The structured-log safety net for term writes (issue #154 §8.8) ──────────
+
+    /// <summary>
+    /// The four values a term log line names, on one side of a write. Money amounts, a currency code, a
+    /// date and an opaque id — <b>no names, no free text and no user-supplied <c>Label</c></b>, matching
+    /// <c>ContractService.LogPartyWrite</c>'s rule. A <c>Guid</c> or a <c>decimal</c> cannot carry the
+    /// CR/LF a forged log line would need, which is what makes them safe to record verbatim.
+    /// </summary>
+    /// <remarks>
+    /// Note the deliberate asymmetry with the event text: the term's <c>Label</c> may appear in the
+    /// <em>event</em>, which is contract data behind <c>contracts.read</c>, and may not appear
+    /// <em>here</em>, which is operator-facing.
+    /// </remarks>
+    private sealed record TermSnapshot(
+        Guid TermId, ContextTermKind Kind, decimal Value, string? CurrencyCode, DateTime EffectiveFrom)
+    {
+        /// <summary>The term as it stands right now.</summary>
+        public static TermSnapshot Of(Term term) =>
+            new(term.TermId, term.TermKind, term.Value, term.CurrencyCode, term.EffectiveFrom);
+
+        /// <summary>
+        /// The term as it stood before this update, read off the change tracker's original snapshot —
+        /// untouched by property mutation, reset only by a <em>successful</em> <c>SaveChangesAsync</c>,
+        /// and costing no second query. Requires a <b>tracked</b> entity in a state other than
+        /// <c>Added</c>; both preconditions fail by returning the CURRENT values rather than by
+        /// throwing, so a line reading <c>X -&gt; X</c> means one of them was violated (§8.7).
+        /// </summary>
+        public static TermSnapshot Original(OdysseyContext context, Term term)
+        {
+            var original = context.Entry(term).OriginalValues;
+            return new TermSnapshot(
+                term.TermId,
+                original.GetValue<ContextTermKind>(nameof(Term.TermKind)),
+                original.GetValue<decimal>(nameof(Term.Value)),
+                original.GetValue<string?>(nameof(Term.CurrencyCode)),
+                original.GetValue<DateTime>(nameof(Term.EffectiveFrom)));
+        }
+    }
+
+    /// <summary>What a log slot reads when there is no term on that side of the write.</summary>
+    private const string NoTermValue = "(none)";
+
+    /// <summary>
+    /// One structured <c>Information</c> line per <b>contract</b> term write, emitted <b>after</b> the
+    /// commit. The three account wrappers supply no staging delegate, so they reach this with both
+    /// snapshots null and log nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Why this exists.</b> A term update mutates the row <em>in place</em> and a term delete
+    /// <em>hard-deletes</em> it (issue #154 Non-Goal 10), so after either write the <c>PriceChanged</c>
+    /// event is the only record of what the term used to say — and that event is itself deletable by any
+    /// <c>contracts.update</c> holder. Deleting it would destroy the last evidence. This line goes to the
+    /// application log, which no endpoint can edit or delete.
+    /// </para>
+    /// <para>
+    /// A create has no before half and a delete no after half; both slots read <c>(none)</c> rather than
+    /// being omitted, so the shape is one shape.
+    /// </para>
+    /// </remarks>
+    private void LogTermWrite(
+        string action, Guid contractId, TermSnapshot? before, TermSnapshot? after, string? userId)
+    {
+        if (before is null && after is null)
+            return;
+
+        var subject = after ?? before!;
+
+        logger.LogInformation(
+            "Contract term {Action}: contract {ContractId}, term {TermId}, kind {TermKind}, " +
+            "{BeforeValue} {BeforeCurrency} from {BeforeEffectiveFrom} -> " +
+            "{AfterValue} {AfterCurrency} from {AfterEffectiveFrom}, by user {UserId}.",
+            action,
+            contractId,
+            subject.TermId,
+            subject.Kind,
+            before is null ? NoTermValue : before.Value.ToString(CultureInfo.InvariantCulture),
+            LogCurrency(before?.CurrencyCode),
+            before is null ? NoTermValue : before.EffectiveFrom.ToString("O", CultureInfo.InvariantCulture),
+            after is null ? NoTermValue : after.Value.ToString(CultureInfo.InvariantCulture),
+            LogCurrency(after?.CurrencyCode),
+            after is null ? NoTermValue : after.EffectiveFrom.ToString("O", CultureInfo.InvariantCulture),
+            userId ?? "(unknown)");
+    }
+
+    /// <summary>
+    /// The currency slot, reduced to what a currency code can be: exactly three ASCII letters, or
+    /// <see cref="NoTermValue"/>. Anything else never reaches the line.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the one value on the line that starts life as a caller-supplied string</b>, and it is
+    /// what CodeQL flagged (<c>cs/log-forging</c>, "log entries created from user input"). Everything
+    /// else is a <c>Guid</c>, a closed enum, a <c>decimal</c> or a round-tripped <c>DateTime</c>, none
+    /// of which can carry the CR/LF a forged log line needs.
+    /// </para>
+    /// <para>
+    /// <c>ApplyAndValidate</c> does already normalize the code and refuse one that is not a supported,
+    /// active currency, so no such value can be stored today — but that guarantee sits three call
+    /// frames away, behind a database lookup, and a later change there would silently widen what
+    /// reaches an operator's log. Issue #154 §8.8 states the line carries "ids, closed enums, dates and
+    /// money amounts"; this makes that a property of the <em>log site</em> rather than an inference
+    /// about its callers. The "before" half is read back off a stored row and gets the same treatment,
+    /// since a row written by an earlier build is outside this build's validator entirely.
+    /// </para>
+    /// </remarks>
+    private static string LogCurrency(string? code)
+    {
+        if (code is not { Length: 3 } || !code.All(char.IsAsciiLetter))
+            return NoTermValue;
+
+        // The shape check above already makes this a no-op — three ASCII letters contain no line
+        // break. It is here because it is the form CodeQL recognises as a barrier for
+        // `cs/log-forging`: a predicate that returns the original string is not one, however total,
+        // so the first cut of this guard left the alert standing. Stated plainly rather than dressed
+        // up as defence in depth: the security property comes from the check, the Replace comes from
+        // the analyzer, and removing either would be a regression in a different sense.
+        return code.Replace("\r", string.Empty, StringComparison.Ordinal)
+                   .Replace("\n", string.Empty, StringComparison.Ordinal);
     }
 
     /// <summary>

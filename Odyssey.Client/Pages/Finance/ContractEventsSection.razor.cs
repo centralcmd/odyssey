@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
@@ -28,7 +29,7 @@ namespace Odyssey.Client.Pages.Finance;
 /// would invite a guard that contradicts the API.
 /// </para>
 /// </remarks>
-public partial class ContractEventsSection
+public partial class ContractEventsSection : IAsyncDisposable
 {
     /// <summary>
     /// Rows per page. Matches the design system's <c>pageSize</c> default; the endpoint's own default
@@ -43,10 +44,28 @@ public partial class ContractEventsSection
     /// </summary>
     private const string UnknownAuthor = "Unknown user";
 
+    /// <summary>
+    /// The DOM id of the section heading, and the focus destination for a delete. It is an id rather
+    /// than an <c>@ref</c> because the heading belongs to <c>OdsSectionDivider</c>, which only becomes
+    /// focusable when it is given one.
+    /// </summary>
+    private const string HeadingId = "con-events-heading";
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private IJSObjectReference? _focusJs;
+
     [Parameter, EditorRequired] public ExistingContract Contract { get; set; } = default!;
 
     /// <summary>Gates every write affordance (<c>contracts.update</c>).</summary>
     [Parameter] public bool CanUpdate { get; set; }
+
+    /// <summary>
+    /// A sentence for the <b>page's</b> single live region, raised after a delete. The section mounts
+    /// no announcer of its own: <c>OdsLiveAnnouncer</c> is mounted once per page in this codebase
+    /// (<c>ContractsCard</c>'s), and two live regions on one page race each other.
+    /// </summary>
+    [Parameter] public EventCallback<string> OnAnnounce { get; set; }
 
     /// <summary>
     /// An outstanding "New event" request from the record's row action menu — a token that changes
@@ -190,9 +209,66 @@ public partial class ContractEventsSection
         var ok = (await Contracts.DeleteEventAsync(Contract.ContractId, ev.ContractEventId))
             .Toast(Snackbar, "Unable to delete event", "Event deleted.");
 
-        if (ok)
-            await LoadAsync();
+        if (!ok)
+            return;
+
+        await LoadAsync();
+
+        // Focus and the announcement are part of the delete, not a nicety after it: the row that held
+        // focus is gone, and a keyboard user who is not moved lands nowhere.
+        await FocusHeadingAsync();
+        await AnnounceCountAsync();
     }
+
+    /// <summary>
+    /// Moves focus to the section heading. Deferred past a macrotask inside the module — the row's ⋯
+    /// menu restores focus to its own invoker as it closes, and a synchronous focus here is silently
+    /// overwritten by it.
+    /// </summary>
+    private async Task FocusHeadingAsync()
+    {
+        try
+        {
+            _focusJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/section-focus.js");
+            await _focusJs.InvokeVoidAsync("focusHeading", HeadingId);
+        }
+        catch (Exception exception) when (exception is JSException or InvalidOperationException)
+        {
+            // Focus is an enhancement on an operation that already succeeded, so a failed import or a
+            // host that cannot take an interop call must never surface as a failed delete. Deliberately
+            // NOT guarded by an OperatingSystem.IsBrowser() early return: this path runs only from a
+            // user's click, which is always interactive, and the guard would make the call unassertable
+            // on the tier that tests it.
+        }
+    }
+
+    /// <summary>
+    /// Releases the imported focus module. The house pattern for every component that imports one
+    /// (<c>TileRemovalFocus</c>, <c>OdsInfiniteList</c>, <c>OdsImageCropDialog</c> and the rest): a
+    /// section is torn down every time a contract row collapses, so without this each collapse and
+    /// re-expand leaks a module registration.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (_focusJs is not null)
+        {
+            try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// The sentence a delete raises to the page's announcer. Public and pure, so the copy — including
+    /// the "0 entries" case a naive guard drops — is assertable without a dialog provider.
+    /// </summary>
+    public static string DeletionAnnouncement(int remaining) =>
+        $"Event deleted. {remaining} {(remaining == 1 ? "entry" : "entries")} in the log.";
+
+    private Task AnnounceCountAsync() =>
+        OnAnnounce.HasDelegate
+            ? OnAnnounce.InvokeAsync(DeletionAnnouncement(_total))
+            : Task.CompletedTask;
 
     private Task OnEventChangedAsync() => LoadAsync();
 

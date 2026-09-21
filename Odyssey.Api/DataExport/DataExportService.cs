@@ -649,6 +649,10 @@ public sealed class DataExportService
                 ContractEventId = contractEvent.ContractEventId,
                 ContractId = contractEvent.ContractId,
                 Type = (FinanceDtos.ContractEventType)contractEvent.Type,
+                // Hand-maintained, like every column here: this projection enumerates each one
+                // explicitly, so a new column is omitted by default rather than included by default.
+                // DataExportTableCoverageTests reflects over DbSets, not columns, and would not catch it.
+                Source = (FinanceDtos.ContractEventSource)contractEvent.Source,
                 Title = contractEvent.Title,
                 Description = contractEvent.Description,
                 Notes = contractEvent.Notes,

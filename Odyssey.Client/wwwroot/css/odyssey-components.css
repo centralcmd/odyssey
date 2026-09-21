@@ -1829,6 +1829,12 @@ tr:focus-within > .odc-rowactions.reveal,
 .cev-by-who { color: var(--mud-palette-text-primary); }
 .cev-by-unknown .cev-by-who { font-style: italic; color: inherit; }
 
+/* Origin, in the attribution line: "Recorded by Jane Doe at … (automatically generated)". Quieter
+   than the author's name but the same size and the same full-opacity ink — it is the provenance of
+   the row, not a decorative aside, so it is not dimmed. It inherits .odc-er-meta's hover-reveal by
+   design (the product decision recorded in ContractEventsSection's header comment). */
+.cev-auto-note { font-style: italic; }
+
 /* Date and time as one field: the pair answers one question, so it reads as one control with
    one label rather than as two independent fields the user has to associate. */
 .cev-when { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--space-2); }

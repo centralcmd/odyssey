@@ -60,6 +60,14 @@ public sealed class ContractEventsQueryParams : QueryParams<ContractEventSortBy>
 
     /// <summary>Inclusive upper bound on <c>OccurredAt</c>.</summary>
     public DateTime? To { get; set; }
+
+    /// <summary>
+    /// Restricts the page to hand-written or to server-recorded events (issue #154 §5.1). Omitted
+    /// returns both. Applied inside the contract-scoped window the <c>(ContractId, OccurredAt)</c>
+    /// index already serves, so it needs no index of its own.
+    /// </summary>
+    [EnumDataType(typeof(ContractEventSource))]
+    public ContractEventSource? Source { get; set; }
 }
 
 /// <summary>Currencies list query: filter by archival status.</summary>

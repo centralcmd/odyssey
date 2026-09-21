@@ -380,6 +380,18 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .HasDefaultValue(ContractEventType.Other)
                 .HasSentinel(ContractEventType.Other)
                 .HasConversion<int>();
+
+            // Same treatment, same reason (issue #154 §4): stored as the int ordinal, User is both the
+            // entity default and every pre-#154 row's value, and the sentinel keeps a hand-written row
+            // out of the INSERT's column list. Declared here rather than left to the migration's raw
+            // default, so the model snapshot and the database agree on it — the column would otherwise
+            // read as a bare int in the snapshot while the database carried a default the model did not
+            // know about.
+            entity.Property(e => e.Source)
+                .IsRequired()
+                .HasDefaultValue(ContractEventSource.User)
+                .HasSentinel(ContractEventSource.User)
+                .HasConversion<int>();
         });
 
         modelBuilder.Entity<Subscription>(entity =>

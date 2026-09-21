@@ -527,6 +527,14 @@ public sealed class ContractEventExport
     public Guid ContractEventId { get; init; }
     public Guid ContractId { get; init; }
     public ContractEventType Type { get; init; }
+
+    /// <summary>
+    /// Whether the row was hand-written or recorded by the server (issue #154 §4). Exported because
+    /// without it the two kinds of line are indistinguishable in the dump — which is precisely the
+    /// distinction the column exists to create.
+    /// </summary>
+    public ContractEventSource Source { get; init; }
+
     public string Title { get; init; } = string.Empty;
     public string? Description { get; init; }
     public string? Notes { get; init; }

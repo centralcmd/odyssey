@@ -4,7 +4,9 @@ using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using ContextContractEventType = Odyssey.Context.ContractEventType;
+using ContextContractEventSource = Odyssey.Context.ContractEventSource;
 using DtoContractEventType = Odyssey.Dtos.Finance.ContractEventType;
+using DtoContractEventSource = Odyssey.Dtos.Finance.ContractEventSource;
 
 namespace Odyssey.Core.Finance;
 
@@ -32,8 +34,10 @@ public sealed record ContractEventPage(
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Not an audit log, and not authoritative over anything.</b> Nothing here is called from a
-/// contract mutation, no event is system-generated, and an event never affects the contract's derived
+/// <b>Not an audit log, and not authoritative over anything.</b> Since issue #154 the server does record
+/// some events itself — but through <c>ContractEventRecorder</c>, staged onto the mutating service's own
+/// change tracker, never through this service, which stays the HTTP write path and the reader. Every row
+/// remains editable and deletable by any <c>contracts.update</c> holder, and an event never affects the contract's derived
 /// <c>ContractStatus</c> — a <see cref="ContextContractEventType.Terminated"/> event leaves an
 /// otherwise-active contract <c>Active</c> (issue #138 §4.2).
 /// </para>
@@ -105,6 +109,12 @@ public class ContractEventService
             q = q.Where(e => typeFilter.Contains(e.Type));
         }
 
+        if (query.Source is { } source)
+        {
+            var sourceFilter = (ContextContractEventSource)source;
+            q = q.Where(e => e.Source == sourceFilter);
+        }
+
         if (query.From is { } from)
         {
             var fromUtc = NormalizeToUtc(from);
@@ -165,6 +175,7 @@ public class ContractEventService
                 ContractEventId = e.ContractEventId,
                 ContractId = e.ContractId,
                 Type = e.Type,
+                Source = e.Source,
                 Title = e.Title,
                 Description = e.Description,
                 Notes = e.Notes,
@@ -210,6 +221,9 @@ public class ContractEventService
         {
             ContractId = contractId,
             Type = (ContextContractEventType)request.Type,
+            // Always User on this path, by CONSTRUCTION rather than by a check: NewContractEvent carries
+            // no source field, so there is no request body that produces a System row (issue #154 §7.4).
+            Source = ContextContractEventSource.User,
             Title = RequireTitle(request.Title),
             Description = Blank(request.Description),
             Notes = Blank(request.Notes),
@@ -249,6 +263,10 @@ public class ContractEventService
             return null;
         }
 
+        // Source is deliberately NOT part of the replacement (issue #154 §5.3). It records how the row
+        // came to exist, which an edit does not change — flipping an edited System row to User would
+        // make the log's one provenance signal depend on whether anyone had since fixed a typo, and
+        // would erase the fact that the transition really did occur.
         entity.Type = (ContextContractEventType)request.Type;
         entity.Title = RequireTitle(request.Title);
         entity.Description = Blank(request.Description);
@@ -286,6 +304,7 @@ public class ContractEventService
         ContractEventId = e.ContractEventId,
         ContractId = e.ContractId,
         Type = (DtoContractEventType)e.Type,
+        Source = (DtoContractEventSource)e.Source,
         Title = e.Title,
         Description = e.Description,
         Notes = e.Notes,
@@ -298,6 +317,7 @@ public class ContractEventService
         ContractEventId = row.ContractEventId,
         ContractId = row.ContractId,
         Type = (DtoContractEventType)row.Type,
+        Source = (DtoContractEventSource)row.Source,
         Title = row.Title,
         Description = row.Description,
         Notes = row.Notes,
@@ -356,6 +376,7 @@ public class ContractEventService
         public required Guid ContractEventId { get; init; }
         public required Guid ContractId { get; init; }
         public required ContextContractEventType Type { get; init; }
+        public required ContextContractEventSource Source { get; init; }
         public required string Title { get; init; }
         public string? Description { get; init; }
         public string? Notes { get; init; }

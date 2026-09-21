@@ -842,7 +842,7 @@ public class TermServiceTests
         term.Direction = TermDirection.Incoming;
 
         await Assert.ThrowsAsync<DomainValidationException>(
-            () => service.CreateForContract(contractId, term));
+            () => service.CreateForContract(contractId, term, userId: null));
         Assert.Empty(context.Terms);
     }
 
@@ -907,7 +907,7 @@ public class TermServiceTests
         term.Interval = interval;
         term.Direction = TermDirection.Incoming;
 
-        await service.CreateForContract(contractId, term);
+        await service.CreateForContract(contractId, term, userId: null);
 
         Assert.Equal(Odyssey.Context.TermDirection.Incoming,
             (await context.Terms.AsNoTracking().SingleAsync()).Direction);
@@ -928,14 +928,14 @@ public class TermServiceTests
 
         var outgoing = Fee("Base salary", 4000m, new DateTime(2026, 1, 1));
         outgoing.CurrencyCode = "USD";
-        await service.CreateForContract(contractId, outgoing);
+        await service.CreateForContract(contractId, outgoing, userId: null);
 
         var incoming = Fee("Base salary", 4000m, new DateTime(2026, 1, 1));
         incoming.CurrencyCode = "USD";
         incoming.Direction = TermDirection.Incoming;
 
         await Assert.ThrowsAsync<DomainConflictException>(
-            () => service.CreateForContract(contractId, incoming));
+            () => service.CreateForContract(contractId, incoming, userId: null));
     }
 
     private static async Task<Guid> SeedContractAsync(OdysseyContext context)

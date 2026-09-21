@@ -302,7 +302,12 @@ written — re-role those parties or detach them first.")]
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewTerm newTerm, CancellationToken cancellationToken = default)
     {
-        var term = await termService.CreateForContract(id, newTerm, cancellationToken);
+        // The acting user, threaded through exactly as every sibling contract write already does. Without
+        // it the PriceChanged system event this write records would read "Unknown user" — which is
+        // indistinguishable from a deleted author, so the defect would look like correct behaviour
+        // (issue #154 §5.6).
+        var term = await termService.CreateForContract(
+            id, newTerm, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
         // A term has no standalone GET (it is only ever read through its owner), so the 201 Location
         // points at the contract's term list — the addressable collection that now contains it.
         // Mirrors the account term endpoint.
@@ -331,7 +336,8 @@ written — re-role those parties or detach them first.")]
         [FromRoute(Name = "termId")] Guid termId,
         [FromBody] NewTerm putTerm, CancellationToken cancellationToken = default)
     {
-        var updated = await termService.UpdateForContract(id, termId, putTerm, cancellationToken);
+        var updated = await termService.UpdateForContract(
+            id, termId, putTerm, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
         return updated
             ? NoContent()
             // Deliberately does not reveal which owner DOES hold the id (issue #135 §9).
@@ -348,7 +354,8 @@ written — re-role those parties or detach them first.")]
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "termId")] Guid termId, CancellationToken cancellationToken = default)
     {
-        return await termService.DeleteForContract(id, termId, cancellationToken)
+        return await termService.DeleteForContract(
+            id, termId, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken)
             ? NoContent()
             : this.NotFoundProblem($"Term ID {termId} is not attached to contract ID {id}.");
     }

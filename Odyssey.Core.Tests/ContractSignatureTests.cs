@@ -588,11 +588,15 @@ public class ContractSignatureTests
     // ── Independence from the event log (AC 18) ──────────────────────────────────
 
     /// <summary>
-    /// AC 18, first direction — setting the stamp creates no <c>ContractEvent</c>. Two writers onto
-    /// one fact is a reconciliation problem this feature deliberately does not take on.
+    /// <b>Issue #154 reversed this direction deliberately.</b> Under issue #145 setting the stamps
+    /// wrote no <c>ContractEvent</c> at all; under #154 §8.1 a contract entered already-signed records
+    /// its <c>Ready</c> and <c>Signed</c> <em>transitions</em> — and nothing else. The independence the
+    /// old assertion was protecting is the OTHER direction, which the test below still pins: an event
+    /// never moves <c>Contract.Signed</c>. Recording is one-way, so there are still not two writers on
+    /// one fact.
     /// </summary>
     [Fact]
-    public async Task SettingTheStamp_CreatesNoEvent()
+    public async Task SettingTheStamps_RecordsOneSystemEventPerTransition()
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
@@ -600,7 +604,15 @@ public class ContractSignatureTests
         var created = await service.Create(
             New(FixedToday.AddDays(-10), ready: ReadyOn, signed: SignedOn), userId: null);
 
-        Assert.Empty(context.ContractEvents.Where(e => e.ContractId == created.ContractId));
+        var events = context.ContractEvents
+            .Where(e => e.ContractId == created.ContractId)
+            .ToList();
+
+        // Exactly two, and no third describing the creation itself (#154 Non-Goal 6).
+        Assert.Equal(2, events.Count);
+        Assert.All(events, e => Assert.Equal(Odyssey.Context.ContractEventSource.System, e.Source));
+        Assert.Contains(events, e => e.Type == Odyssey.Context.ContractEventType.Ready);
+        Assert.Contains(events, e => e.Type == Odyssey.Context.ContractEventType.Signed);
     }
 
     /// <summary>

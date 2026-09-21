@@ -1,3 +1,4 @@
+using System.Globalization;
 using Odyssey.Context;
 using Odyssey.TestData.Catalog;
 using TermLabel = Odyssey.Dtos.Finance.TermLabel;
@@ -116,7 +117,8 @@ public static class ContractGenerator
         string? Description,
         string? Notes,
         int OccurredMonths,
-        string? AuthorRole = "Owner");
+        string? AuthorRole = "Owner",
+        ContractEventSource Source = ContractEventSource.User);
 
     /// <summary>
     /// One priced series on a contract. <paramref name="Interval"/> null is a fee with no cadence —
@@ -598,6 +600,34 @@ public static class ContractGenerator
                 "Told the broker we intend to end the mandate",
                 "A note of the conversation only — the mandate itself still runs until its own dates say otherwise.",
                 null, -1),
+
+            // ── System-recorded lines (issue #154) ──────────────────────────────────────
+            //
+            // Seeded so the frontend has BOTH kinds of row to render — the provenance affordance and
+            // the source filter are otherwise unexercised until someone clicks through the app first.
+            // The text is the catalogue's own wording, and carries no contact or account name (§7.3);
+            // Notes is null, as it always is on a system event.
+            //
+            // Seeded as data rather than produced by replaying transitions through ContractService:
+            // the seeder writes rows directly, and a demo database must stay deterministic and
+            // idempotent, which a real write path with a wall clock would not be.
+            new("Apartment Lease", ContractEventType.Ready,
+                "Marked ready for signature", null, null, -6,
+                Source: ContractEventSource.System),
+            new("Apartment Lease", ContractEventType.PartyAdded,
+                "Landlord added as a party", null, null, -6,
+                Source: ContractEventSource.System),
+            new("Employment Agreement — Globex", ContractEventType.PartyAdded,
+                "Employer added as a party", null, null, -24,
+                AuthorRole: "Admin", Source: ContractEventSource.System),
+            // A system row whose author has since been deleted: the line survives and reads
+            // "Unknown user", which is the SET NULL rule on a row nobody typed.
+            new("Mortgage Insurance Mandate", ContractEventType.Paused,
+                "Contract paused", null, null, -2,
+                AuthorRole: null, Source: ContractEventSource.System),
+            new("Mortgage Insurance Mandate", ContractEventType.Unpaused,
+                "Contract resumed", null, null, -1,
+                Source: ContractEventSource.System),
         };
 
         var byName = contracts.ToDictionary(contract => contract.Name, contract => contract.ContractId, StringComparer.Ordinal);
@@ -611,15 +641,19 @@ public static class ContractGenerator
             }
 
             var occurredAt = anchor.AddMonths(spec.OccurredMonths);
+            // A system event's description is generated prose that names its own moment, so a seeded
+            // one has to be written from the same offset rather than hardcoded — the anchor moves.
+            var description = spec.Description ?? SeededSystemDescription(spec.Type, occurredAt);
             events.Add(new ContractEvent
             {
                 ContractEventId = EventIdFor(spec.ContractName, spec.Title),
                 ContractId = contractId,
                 Type = spec.Type,
                 Title = spec.Title,
-                Description = spec.Description,
+                Description = description,
                 Notes = spec.Notes,
                 OccurredAt = occurredAt,
+                Source = spec.Source,
                 CreatedByUserId = spec.AuthorRole is { } role ? UserId(role) : null,
                 // Recorded shortly after it happened, which is what a log looks like — and never the
                 // same instant, so the two dates on the row are visibly different facts.
@@ -628,6 +662,35 @@ public static class ContractGenerator
         }
 
         return events;
+    }
+
+    /// <summary>
+    /// The description a seeded <b>stamp</b> system event carries, phrased as
+    /// <c>ContractEventCatalogue</c> phrases it and dated from the same anchor offset the row occurs
+    /// at. Party events carry none at all, matching the catalogue.
+    /// </summary>
+    /// <remarks>
+    /// <b>This is demo prose, not a second implementation of the rule.</b> The catalogue in
+    /// <c>Odyssey.Core</c> is the authority and nothing reads this at runtime; it is restated here
+    /// because <c>Odyssey.TestData</c> deliberately references <c>Odyssey.Context</c> alone — adding
+    /// <c>Odyssey.Core</c> would drag EF, Mapster and the HTTP stack into <c>Odyssey.E2ETests</c>,
+    /// which references this project and nothing else. A drift between the two is cosmetic in a demo
+    /// database, which is what makes the trade acceptable here and nowhere on a write path.
+    /// </remarks>
+    private static string? SeededSystemDescription(ContractEventType type, DateTime occurredAt)
+    {
+        var date = occurredAt.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
+        return type switch
+        {
+            ContractEventType.Paused => $"Suspended on {date}.",
+            ContractEventType.Unpaused => $"Resumed on {date}.",
+            ContractEventType.Ready => $"Ready for signature as of {date}.",
+            ContractEventType.Unready => $"Withdrawn on {date}.",
+            ContractEventType.Unsigned => $"Cleared on {date}.",
+            ContractEventType.Archived => $"Archived on {date}.",
+            ContractEventType.Unarchived => $"Restored on {date}.",
+            _ => null,
+        };
     }
 
     private static string UserId(string role) => DemoUsers.All.First(user => user.Role == role).Id;
