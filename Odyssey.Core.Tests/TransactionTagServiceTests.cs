@@ -205,99 +205,41 @@ public class TransactionTagServiceTests
     }
 
     /// <summary>
-    /// Both blocker classes at once (issue #166 §9.4). The clauses ACCUMULATE rather than reporting
-    /// the first match, so a tag blocked twice says so twice — and with one test per class, each
-    /// tripping only its own clause, the accumulation itself would be unexercised: a regression back
-    /// to a first-match throw would pass both of them.
-    /// </summary>
-    [Fact]
-    public async Task Delete_BlockedByBothABudgetItemAndAContract_NamesBothClauses()
-    {
-        await using var context = TestContextFactory.Create();
-        var service = new TransactionTagService(context);
-        var tag = await service.Create(new NewTransactionTag { Name = "Streaming", Description = null, Archived = false });
-
-        var budget = new Budget
-        {
-            Name = "2026",
-            Description = "Annual",
-            StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
-            Archived = null,
-        };
-        context.Budgets.Add(budget);
-
-        var contract = new Contract
-        {
-            Name = "Maple St lease",
-            Type = Odyssey.Context.ContractType.Rental,
-            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        };
-        context.Contracts.Add(contract);
-        await context.SaveChangesAsync();
-
-        context.BudgetItems.Add(new BudgetItem
-        {
-            BudgetId = budget.BudgetId,
-            CategoryType = Odyssey.Context.BudgetCategoryType.Expense,
-            PlannedAmount = 100m,
-            TransactionTagId = tag.TransactionTagId,
-        });
-        context.ContractSmartTags.Add(new ContractSmartTag
-        {
-            ContractId = contract.ContractId,
-            TransactionTagId = tag.TransactionTagId,
-            AddedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        });
-        await context.SaveChangesAsync();
-
-        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
-            () => service.Delete(tag.TransactionTagId));
-
-        Assert.Contains("1 budget item", conflict.Message);
-        Assert.Contains("1 contract", conflict.Message);
-        // Counts on both sides, never the names — the same boundary each clause keeps on its own.
-        Assert.DoesNotContain("2026", conflict.Message);
-        Assert.DoesNotContain("Maple St lease", conflict.Message);
-        Assert.Equal(1, context.TransactionTags.Count());
-    }
-
-    /// <summary>
-    /// The contract clause on its own (issue #166 §9.4), so a tag blocked only by a smart-tag link is
-    /// refused here too — this tier enforces no foreign keys, so without the pre-check the delete
-    /// would succeed and orphan the link row.
+    /// The contract clause on its own (issue #166 §9.4). This tier enforces no foreign keys, so
+    /// without the pre-check the delete would succeed and leave the link row pointing at a tag that
+    /// no longer exists.
     /// </summary>
     [Fact]
     public async Task Delete_IsRefusedWhileAContractWatchesTheTag_AndNamesTheCount()
     {
         await using var context = TestContextFactory.Create();
         var service = new TransactionTagService(context);
-        var tag = await service.Create(new NewTransactionTag { Name = "Streaming", Description = null, Archived = false });
-
-        var contract = new Contract
-        {
-            Name = "Maple St lease",
-            Type = Odyssey.Context.ContractType.Rental,
-            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        };
-        context.Contracts.Add(contract);
-        await context.SaveChangesAsync();
-
-        context.ContractSmartTags.Add(new ContractSmartTag
-        {
-            ContractId = contract.ContractId,
-            TransactionTagId = tag.TransactionTagId,
-            AddedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        });
-        await context.SaveChangesAsync();
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedContractSmartTagLink(context, tag.TransactionTagId, "Maple St lease");
 
         var conflict = await Assert.ThrowsAsync<DomainConflictException>(
             () => service.Delete(tag.TransactionTagId));
 
         Assert.Contains("1 contract", conflict.Message);
-        Assert.DoesNotContain("budget item", conflict.Message);
+        // A COUNT, never the contracts: naming them would reach past transactions.tags.delete's boundary.
         Assert.DoesNotContain("Maple St lease", conflict.Message);
         Assert.Equal(1, context.TransactionTags.Count());
+        Assert.Equal(1, context.ContractSmartTags.Count());
+    }
+
+    [Fact]
+    public async Task Delete_PluralisesTheContractCount()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedContractSmartTagLink(context, tag.TransactionTagId, "Maple St lease");
+        await SeedContractSmartTagLink(context, tag.TransactionTagId, "Harbor Point parking");
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("2 contracts", conflict.Message);
     }
 
     [Fact]
@@ -452,17 +394,26 @@ public class TransactionTagServiceTests
     }
 
     /// <summary>
-    /// All three blocker classes at once. The pre-check counts every class before reporting any, so a
-    /// tag blocked three ways explains all three rather than sending the caller round the loop twice.
+    /// All four blocker classes at once. The pre-check counts every class before reporting any, so a
+    /// tag blocked four ways explains all four rather than sending the caller round the loop three
+    /// times.
+    ///
+    /// <para>
+    /// The contract class joined the other three in issue #166. It is asserted HERE rather than in a
+    /// parallel "blocked by a budget item and a contract" test, because what needs covering is that
+    /// the new clause participates in the accumulation — and a test naming every class is the one
+    /// that fails if any of them stops.
+    /// </para>
     /// </summary>
     [Fact]
-    public async Task Delete_BlockedByAllThreeClasses_NamesAllThree()
+    public async Task Delete_BlockedByAllFourClasses_NamesAllFour()
     {
         await using var context = TestContextFactory.Create();
         var service = new TransactionTagService(context);
         var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
         await SeedBudgetItem(context, tag.TransactionTagId);
         await SeedSmartTagLink(context, tag.TransactionTagId, "Checking");
+        await SeedContractSmartTagLink(context, tag.TransactionTagId, "Maple St lease");
         await SeedTaggedTransaction(context, tag.TransactionTagId, "Weekly shop");
 
         var conflict = await Assert.ThrowsAsync<DomainConflictException>(
@@ -470,6 +421,7 @@ public class TransactionTagServiceTests
 
         Assert.Contains("1 budget item", conflict.Message);
         Assert.Contains("1 account", conflict.Message);
+        Assert.Contains("1 contract", conflict.Message);
         Assert.Contains("1 transaction", conflict.Message);
     }
 
@@ -529,6 +481,26 @@ public class TransactionTagServiceTests
         await context.SaveChangesAsync();
 
         return account.AccountId;
+    }
+
+    private static async Task SeedContractSmartTagLink(OdysseyContext context, Guid tagId, string contractName)
+    {
+        var contract = new Contract
+        {
+            Name = contractName,
+            Type = Odyssey.Context.ContractType.Rental,
+            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        };
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+
+        context.ContractSmartTags.Add(new ContractSmartTag
+        {
+            ContractId = contract.ContractId,
+            TransactionTagId = tagId,
+            AddedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        });
+        await context.SaveChangesAsync();
     }
 
     private static async Task SeedBudgetItem(OdysseyContext context, Guid tagId)
