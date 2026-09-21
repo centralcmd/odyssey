@@ -53,6 +53,15 @@ public sealed record ContractListItem
     /// </summary>
     public int EventCount { get; set; }
 
+    /// <summary>
+    /// The number of transaction tags this contract watches as smart tags (issue #166). Counted the
+    /// same way <see cref="EventCount"/> is — one correlated subquery in the list read — so a page of
+    /// 50 costs the same as a page of 1. It counts link ROWS, including a link whose tag has since
+    /// been archived: the row is the configuration, and dropping archived links from the count would
+    /// make a watched contract read as unwatched.
+    /// </summary>
+    public int SmartTagCount { get; set; }
+
     public DateTime? Archived { get; set; }
 
     /// <summary>

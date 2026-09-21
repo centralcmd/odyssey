@@ -247,6 +247,24 @@ public static class SystemSettingsBounds
     /// </summary>
     public const int AccountMaxSmartTagsPerAccountMax = ListDefaults.MaxFilterArrayLength;
 
+    public const int ContractMaxSmartTagsPerContractMin = 1;
+
+    /// <summary>
+    /// The ceiling <strong>names the constant</strong> rather than restating 50 (issue #166 §8.3). A
+    /// contract's smart tags are resolved through <c>GET /api/transactions?tagIds=…</c>, whose
+    /// <c>TagIds</c> filter carries <c>[MaxLength(ListDefaults.MaxFilterArrayLength)]</c> — so that is
+    /// the real ceiling of usefulness, and any value above it would configure smart tags the feature's
+    /// own resolution query rejects with a <c>400</c>.
+    ///
+    /// <para>
+    /// The same bound as <see cref="AccountMaxSmartTagsPerAccountMax"/>, and for the same reason.
+    /// The two were written independently — this key shipped with the bound and issue #168 brought
+    /// the account key to it — so the agreement is convergence on one constraint rather than one
+    /// copying the other. Neither restates the number.
+    /// </para>
+    /// </summary>
+    public const int ContractMaxSmartTagsPerContractMax = ListDefaults.MaxFilterArrayLength;
+
     // ── The Subscriptions summary limits (issue #437) ────────────────────────────────────────────
     //
     // Declared HERE first and named by the [Range] rather than transcribed from it — the sourcing

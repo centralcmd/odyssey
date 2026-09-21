@@ -266,6 +266,13 @@ public static class SystemSettingsDefaults
     /// <summary>Smart tags one account may carry.</summary>
     public const int AccountMaxSmartTagsPerAccount = 20;
 
+    /// <summary>
+    /// Smart tags one contract may carry (issue #166). The same shipped default as
+    /// <see cref="AccountMaxSmartTagsPerAccount"/>; the two <em>ranges</em> differ deliberately, see
+    /// <c>SystemSettingsBounds.ContractMaxSmartTagsPerContractMax</c>.
+    /// </summary>
+    public const int ContractMaxSmartTagsPerContract = 20;
+
     // ─────────────────────────────────────────────────────────────────────────────────────────────
     // The file-analysis kill switch, model and destination (issue #439). These three were the last
     // FileAnalysis values an administrator would reasonably want to change without a redeploy; the

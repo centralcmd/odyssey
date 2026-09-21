@@ -684,6 +684,18 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.ContractMaxTermsPerContract),
                 Load: (p, dto) => p.SetIntLoaded("contractMaxTermsPerContract", dto.ContractMaxTermsPerContract),
                 Write: (p, req) => req.ContractMaxTermsPerContract = p.IntRequest("contractMaxTermsPerContract")),
+            new("contractMaxSmartTagsPerContract", "sell", "Max smart tags per contract",
+                "Upper limit on the saved tag filters one contract may carry. Its ceiling is the number "
+                + "of tag ids the transactions list accepts in one query, because that is what the "
+                + "filter is resolved through.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.ContractMaxSmartTagsPerContractMin,
+                Max: SystemSettingsBounds.ContractMaxSmartTagsPerContractMax,
+                Field: nameof(SystemSettingsUpdate.ContractMaxSmartTagsPerContract),
+                Load: (p, dto) => p.SetIntLoaded(
+                    "contractMaxSmartTagsPerContract", dto.ContractMaxSmartTagsPerContract),
+                Write: (p, req) => req.ContractMaxSmartTagsPerContract =
+                    p.IntRequest("contractMaxSmartTagsPerContract")),
             new("contractMaxSummaryContracts", "list_alt", "Max contracts in summary",
                 "Safety ceiling on how many contracts the dashboard summary aggregates over.",
                 SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.ContractMaxSummaryContractsMin, Max: SystemSettingsBounds.ContractMaxSummaryContractsMax,
@@ -2410,6 +2422,9 @@ public partial class Settings
             // an account without this would pre-validate against the old number for the rest of the
             // session.
             AccountLimits.Invalidate();
+            // And the contract cap (issue #166), which has its own key, its own cache entry and its
+            // own eviction on the server — so it needs its own invalidation here for the same reason.
+            ContractLimits.Invalidate();
             // The processor disclosure (issue #421 Wave 1, extended by #439). All three of the switch,
             // the model and the destination feed the consent gate — the switch decides whether the
             // Analyze affordance is offered at all — so an administrator toggling analysis off must see

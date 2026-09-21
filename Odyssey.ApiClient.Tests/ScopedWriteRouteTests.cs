@@ -53,6 +53,9 @@ public class ScopedWriteRouteTests
         { "contract event update",     $"/api/contracts/{Parent}/events/{Child}",                       "PUT" },
         { "contract event delete",     $"/api/contracts/{Parent}/events/{Child}",                       "DELETE" },
         { "contract event list",       $"/api/contracts/{Parent}/events",                               "GET" },
+        { "contract smart tag list",   $"/api/contracts/{Parent}/smart-tags",                           "GET" },
+        { "contract smart tag add",    $"/api/contracts/{Parent}/smart-tags/{Child}",                   "POST" },
+        { "contract smart tag remove", $"/api/contracts/{Parent}/smart-tags/{Child}",                   "DELETE" },
         { "tax file attach",           $"/api/tax-statements/{Parent}/files",                           "POST" },
         { "tax file download",         $"/api/tax-statements/{Parent}/files/{Child}",                   "GET" },
         { "tax file detach",           $"/api/tax-statements/{Parent}/files/{Child}",                   "DELETE" },
@@ -85,6 +88,9 @@ public class ScopedWriteRouteTests
             "contract event update" => contracts.UpdateEventAsync(Parent, Child, SampleEventUpdate()),
             "contract event delete" => contracts.DeleteEventAsync(Parent, Child),
             "contract event list" => contracts.ListEventsAsync(Parent),
+            "contract smart tag list" => contracts.ListSmartTagsAsync(Parent),
+            "contract smart tag add" => contracts.AddSmartTagAsync(Parent, Child),
+            "contract smart tag remove" => contracts.RemoveSmartTagAsync(Parent, Child),
             "tax file attach" => tax.AttachFileAsync(Parent, new AttachTaxStatementFileRequest(Child)),
             "tax file download" => tax.DownloadFileAsync(Parent, Child),
             "tax file detach" => tax.DetachFileAsync(Parent, Child),
@@ -95,6 +101,23 @@ public class ScopedWriteRouteTests
 
         Assert.Equal(expectedPath, handler.LastRequest!.RequestUri!.AbsolutePath);
         Assert.Equal(method, handler.LastRequest.Method.Method);
+    }
+
+    /// <summary>
+    /// Both smart-tag writes are identified entirely by the path — there is no body to send, which is
+    /// what closes mass assignment structurally rather than by a check (issue #166 §4).
+    /// </summary>
+    [Fact]
+    public async Task Contract_smart_tag_writes_send_no_body()
+    {
+        var (api, handler) = Create();
+        var contracts = new ContractsApiClient(api);
+
+        await contracts.AddSmartTagAsync(Parent, Child);
+        Assert.Null(handler.LastRequest!.Content);
+
+        await contracts.RemoveSmartTagAsync(Parent, Child);
+        Assert.Null(handler.LastRequest!.Content);
     }
 
     private static UpdateContractFileRequest SampleFileUpdate() => new()

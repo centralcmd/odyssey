@@ -344,7 +344,8 @@
                             <OdsRecordSection Class="acct-section" Label="Smart tags"
                                               Meta="@(account.SmartTagCount > 0 ? $"{account.SmartTagCount} watched" : "none watched")">
                                 <AccountSmartTagsSection @key="@($"smart-tags:{account.AccountId}")"
-                                                         Account="account"
+                                                         Host="SmartTagHost.Account"
+                                                         SubjectId="account.AccountId"
                                                          Chrome="false"
                                                          CanWrite="@_canUpdateAccounts"
                                                          FormatMoney="FormatMoney"

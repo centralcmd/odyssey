@@ -398,6 +398,23 @@ public sealed record SystemSettingsUpdate
         + "a state the feature cannot read.")]
     public int? AccountMaxSmartTagsPerAccount { get; set; }
 
+    /// <summary>
+    /// Both ends are compile-time constants, so this is an attribute bound rather than a
+    /// <c>RequestCapCeilings</c> validator — a validator whose limit equalled the <c>[Range]</c> limit
+    /// could never fire. The ceiling names
+    /// <see cref="SystemSettingsBounds.ContractMaxSmartTagsPerContractMax"/>, which is itself
+    /// <see cref="ListDefaults.MaxFilterArrayLength"/> — the cap on the <c>tagIds</c> filter the smart
+    /// tags are resolved through (issue #166 §8.2-8.3). The message interpolates the rendered bounds
+    /// for the same reason its account sibling does: a literal could drift from the constraint it
+    /// mirrors.
+    /// </summary>
+    [Range(SystemSettingsBounds.ContractMaxSmartTagsPerContractMin,
+        SystemSettingsBounds.ContractMaxSmartTagsPerContractMax, ErrorMessage =
+        "Smart tags per contract must be between {1} and {2}. The section resolves every watched tag in "
+        + "one transactions query whose tag filter carries at most {2} ids, so a higher cap configures "
+        + "a state the feature cannot read.")]
+    public int? ContractMaxSmartTagsPerContract { get; set; }
+
     // ---------------------------------------------------------------------------------------------
     // The file-analysis kill switch, model and destination (issue #439). All three require
     // system-settings.security.update and are therefore audited by the derived AuditChanges rule.

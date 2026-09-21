@@ -1,17 +1,36 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using Odyssey.ApiClient;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
 
+/// <summary>Which record a smart-tag watchlist hangs off.</summary>
+/// <remarks>
+/// The two hosts differ in three things and nothing else: which endpoints the add/remove/list calls
+/// go to, which claim-free limits endpoint serves the cap, and the noun in the default copy. Keeping
+/// them one component is the design system's own instruction — a second component would be a second
+/// place for the states to drift.
+/// </remarks>
+public enum SmartTagHost
+{
+    Account,
+    Contract,
+}
+
 public partial class AccountSmartTagsSection
 {
-    [Parameter, EditorRequired] public ExistingAccount Account { get; set; } = default!;
+    /// <summary>The record the watchlist hangs off.</summary>
+    [Parameter] public SmartTagHost Host { get; set; } = SmartTagHost.Account;
 
-    /// <summary>Gates the add/remove controls (accounts.update). Read-only viewers keep the chips + table.</summary>
+    /// <summary>The record's id — an <c>AccountId</c> or a <c>ContractId</c>, per <see cref="Host"/>.</summary>
+    [Parameter, EditorRequired] public Guid SubjectId { get; set; }
+
+    /// <summary>Gates the add/remove controls (<c>accounts.update</c> / <c>contracts.update</c>).
+    /// Read-only viewers keep the chips + table.</summary>
     [Parameter] public bool CanWrite { get; set; }
 
     /// <summary>
@@ -21,23 +40,35 @@ public partial class AccountSmartTagsSection
     /// </summary>
     [Parameter] public bool Chrome { get; set; } = true;
 
+    /// <summary>
+    /// The section's leading glyph. <c>sell</c> on an account; the contract host passes
+    /// <c>local_offer</c>, because <c>sell</c> already denotes Terms on a contract record and one
+    /// glyph meaning two things in one counts strip is worse than two glyphs meaning one thing each.
+    /// </summary>
+    [Parameter] public string Icon { get; set; } = "sell";
+
     /// <summary>Formats a money amount in its currency — supplied by the host (per-account currency).</summary>
     [Parameter, EditorRequired] public Func<decimal, string?, string> FormatMoney { get; set; } = (v, _) => v.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>
+    /// Overrides the empty-state sentence. The contract host needs it: the default noun substitution
+    /// would say the match is scoped to the record, and a contract's smart tags are not.
+    /// </summary>
+    [Parameter] public string? EmptyDesc { get; set; }
+
+    /// <summary>Overrides the no-matching-transactions sentence, for the same reason.</summary>
+    [Parameter] public string? NoMatchDesc { get; set; }
+
     /// <summary>Raised with the new smart-tag count after a load or an add/remove, so the host can keep
-    /// the account-row header badge live without re-fetching the whole account list.</summary>
+    /// the record-row header badge live without re-fetching the whole list.</summary>
     [Parameter] public EventCallback<int> OnCountChanged { get; set; }
 
     // The cap was `private const int MaxTags = 20` here, mirroring a server constant. Once the server
     // value became admin-editable (issue #434 key 15) that mirror was the defect class CLAUDE.md names
     // outright: lowering the setting would let a user add tags the server then refused, and raising it
     // would be unusable because this pre-check still stopped at 20. It is served from the claim-free
-    // /api/account-limits endpoint through a session cache that a settings save invalidates, and the
-    // effective number is interpolated into the child's message rather than written into it.
-    //
-    // There is deliberately NO failure branch: AccountLimitsCache.GetAsync cannot fail (it ends in
-    // `?? Fallback`), the upload surfaces this mirrors do not disable either, and the server remains the
-    // control — AccountSmartTagService rejects an over-cap add whatever this component believes.
+    // /api/account-limits or /api/contract-limits endpoint through a session cache that a settings save
+    // invalidates, and the effective number is interpolated into the message rather than written into it.
 
     private List<ExistingTransactionTag> _smartTags = [];
     private List<OdsOption> _options = [];
@@ -48,11 +79,48 @@ public partial class AccountSmartTagsSection
     private bool _isLoadingTxns;
     private string? _error;
 
+    /// <summary>
+    /// A refused add, verbatim from the server — the 422 at the cap (which names the effective
+    /// number), the 422 on an archived tag, the 409 on an already-linked pair. Rendered on the bar
+    /// rather than toasted: the refusal explains a control the reader is still looking at.
+    /// </summary>
+    private string? _addError;
+
     private IReadOnlyCollection<string> _selectedIds = [];
     private bool _hasTags => _smartTags.Count > 0;
+
     private int _maxTags = AccountLimitsCache.Fallback.MaxSmartTagsPerAccount;
-    private bool _atCap => _smartTags.Count >= _maxTags;
+
+    /// <summary>
+    /// The limits read failed or came back <c>503</c>. There is then no number to pre-check against,
+    /// so the adder stays open and the server's conservative bound does the refusing — never a
+    /// guessed ceiling. Only the contract host can reach this state: its cache reports the degraded
+    /// read, while <see cref="AccountLimitsCache"/> deliberately resolves to its fallback.
+    /// </summary>
+    private bool _limitsDegraded;
+
+    private bool _capKnown => !_limitsDegraded && _maxTags > 0;
+    private bool _atCap => _capKnown && _smartTags.Count >= _maxTags;
     private decimal _total => _transactions.Sum(t => t.Amount);
+
+    private string Subject => Host == SmartTagHost.Contract ? "contract" : "account";
+
+    /// <summary>
+    /// The cap sentence, shown both inside the adder and on the bar. It interpolates the effective
+    /// number — never a literal, which would go stale the moment an administrator changed the
+    /// setting — and says nothing at all while there is room left.
+    /// </summary>
+    private string? CapNote => _atCap
+        ? $"Watching the maximum of {_maxTags} tag{(_maxTags == 1 ? "" : "s")} — remove one to add another."
+        : _limitsDegraded
+            ? "The tag limit is unavailable right now, so an add may be refused."
+            : null;
+
+    private string EmptyDescription => EmptyDesc ?? (CanWrite
+        ? $"Pin a tag to watch its transactions from this {Subject} without re-filtering the ledger."
+        : $"No tags are being watched on this {Subject}.");
+
+    private string NoMatchDescription => NoMatchDesc ?? "No transactions carry the selected tags yet.";
 
     // The header pill — matching-transaction count, only once tags exist and we're settled.
     private bool ShowCount => _hasTags && !_isLoadingTxns && _error is null;
@@ -77,16 +145,25 @@ public partial class AccountSmartTagsSection
             await LoadAsync();
     }
 
+    /// <summary>
+    /// Re-reads the cap, the watchlist and the matching transactions. Public because
+    /// <c>OnInitializedAsync</c> early-returns outside the browser, so a render test has no other way
+    /// in — the same seam <c>ContractEventsSection</c> exposes, and the same one the retry uses.
+    /// </summary>
+    public Task ReloadAsync() => LoadAsync();
+
     private Task Reload() => LoadAsync();
+
+    private void DismissAddError() => _addError = null;
 
     // Loads the configured smart tags + the selectable-tag option pool, then the matching
     // transactions when tags exist. Drives the inline error panel on failure (no snackbar).
     private async Task LoadAsync()
     {
         _error = null;
-        _maxTags = (await AccountLimits.GetAsync()).MaxSmartTagsPerAccount;
+        await LoadLimitsAsync();
 
-        var smartResult = await Accounts.ListSmartTagsAsync(Account.AccountId);
+        var smartResult = await ListSmartTagsAsync();
         var smartTags = smartResult.ValueOr([]);
         if (!smartResult.IsSuccess)
         {
@@ -96,10 +173,8 @@ public partial class AccountSmartTagsSection
             return;
         }
 
-        // Served from the session's reference-data cache (issue #372), so expanding one account
-        // after another doesn't re-fetch the tag catalogue each time. (Was TryLoadAsync<List<T>>
-        // against an endpoint that returns PagedResult<T> — the deserialize always failed, so the
-        // picker silently had no options.)
+        // Served from the session's reference-data cache (issue #372), so expanding one record
+        // after another doesn't re-fetch the tag catalogue each time.
         var allTags = await ReferenceData.TransactionTagsAsync();
 
         _smartTags = smartTags;
@@ -114,6 +189,25 @@ public partial class AccountSmartTagsSection
         await LoadTransactionsAsync();
     }
 
+    private async Task LoadLimitsAsync()
+    {
+        if (Host == SmartTagHost.Contract)
+        {
+            var limits = await ContractLimits.GetAsync();
+            _maxTags = limits.MaxSmartTagsPerContract;
+            _limitsDegraded = limits.IsDegraded;
+            return;
+        }
+
+        _maxTags = (await AccountLimits.GetAsync()).MaxSmartTagsPerAccount;
+        _limitsDegraded = false;
+    }
+
+    private Task<ApiResult<List<ExistingTransactionTag>>> ListSmartTagsAsync() =>
+        Host == SmartTagHost.Contract
+            ? Contracts.ListSmartTagsAsync(SubjectId)
+            : Accounts.ListSmartTagsAsync(SubjectId);
+
     private async Task LoadTransactionsAsync()
     {
         if (!_hasTags)
@@ -126,8 +220,9 @@ public partial class AccountSmartTagsSection
         _isLoadingTxns = true;
         StateHasChanged();
 
-        // Cross-account: filter only by the watched tags, not by this account — a smart tag
-        // surfaces every transaction carrying it, wherever it lives.
+        // Cross-record: filter only by the watched tags, not by this account or contract — a smart
+        // tag surfaces every transaction carrying it, wherever it lives. On the contract host there
+        // is no other option: no transaction carries a ContractId.
         var result = await Transactions.ListAllAsync(
             tagIds: [.. _smartTags.Select(t => t.TransactionTagId.ToString())]);
 
@@ -148,16 +243,37 @@ public partial class AccountSmartTagsSection
     private async Task AddTag(string tagId)
     {
         // Empty body — the association is identified entirely by the URL path.
-        if ((await Accounts.AddSmartTagAsync(Account.AccountId, Guid.Parse(tagId))).Toast(Snackbar, "Could not add tag"))
+        var id = Guid.Parse(tagId);
+        var result = Host == SmartTagHost.Contract
+            ? await Contracts.AddSmartTagAsync(SubjectId, id)
+            : await Accounts.AddSmartTagAsync(SubjectId, id);
+
+        if (result.IsSuccess)
         {
+            _addError = null;
             await ReloadTagsAndTransactions();
+            return;
         }
+
+        // The server's own sentence, on the bar. A toast would be gone before the reader looked back
+        // at the control that refused, and at the cap the message carries the effective number — the
+        // one thing this component must never restate itself.
+        _addError = result.Problem?.Detail is { Length: > 0 } detail
+            ? detail
+            : "Could not add tag.";
+        StateHasChanged();
     }
 
     private async Task RemoveTag(string tagId)
     {
-        if ((await Accounts.RemoveSmartTagAsync(Account.AccountId, Guid.Parse(tagId))).Toast(Snackbar, "Could not remove tag"))
+        var id = Guid.Parse(tagId);
+        var result = Host == SmartTagHost.Contract
+            ? await Contracts.RemoveSmartTagAsync(SubjectId, id)
+            : await Accounts.RemoveSmartTagAsync(SubjectId, id);
+
+        if (result.Toast(Snackbar, "Could not remove tag"))
         {
+            _addError = null;
             await ReloadTagsAndTransactions();
         }
     }
@@ -167,7 +283,7 @@ public partial class AccountSmartTagsSection
     private async Task ReloadTagsAndTransactions()
     {
         _error = null;
-        var smartResult = await Accounts.ListSmartTagsAsync(Account.AccountId);
+        var smartResult = await ListSmartTagsAsync();
         var smartTags = smartResult.ValueOr([]);
         if (!smartResult.IsSuccess)
         {

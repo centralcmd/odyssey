@@ -78,6 +78,14 @@ public partial class ContractsCard
     // ── Permissions ────────────────────────────────────────────────────────────
     private bool _canCreate;
     private bool _canUpdate;
+
+    /// <summary>
+    /// Gates the Smart tags section (issue #166). It resolves its watchlist through
+    /// <c>GET /api/transactions?tagIds=…</c>, so a caller without <c>transactions.read</c> would see
+    /// the chips and an error where the ledger should be — the section is withheld instead. Same
+    /// gate, same reason, as the Accounts card's copy.
+    /// </summary>
+    private bool _canReadTransactions;
     private bool _canDelete;
     private bool _canDownloadFiles;
     private bool _canUploadFiles;
@@ -174,6 +182,7 @@ public partial class ContractsCard
         _canUpdate = user.HasPermission(PermissionClaims.ContractsUpdate);
         _canDelete = user.HasPermission(PermissionClaims.ContractsDelete);
         _canDownloadFiles = user.HasPermission(PermissionClaims.FilesRead);
+        _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
         _canUploadFiles = user.HasPermission(PermissionClaims.FilesCreate)
                        && user.HasPermission(PermissionClaims.FilesRead)
                        && user.HasPermission(PermissionClaims.ContractsUpdate);

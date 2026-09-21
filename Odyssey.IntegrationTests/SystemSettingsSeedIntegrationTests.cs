@@ -63,6 +63,8 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             $"{SystemSettingsDefaults.ContractChargeWindowDays}"),
         (SystemSettingsKeys.ContractMaxSummaryCharges,
             $"{SystemSettingsDefaults.ContractMaxSummaryCharges}"),
+        (SystemSettingsKeys.ContractMaxSmartTagsPerContract,
+            $"{SystemSettingsDefaults.ContractMaxSmartTagsPerContract}"),
     ];
 
     [SkippableFact]
@@ -82,8 +84,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
 
             // 62 before issue #8, +4 for the mail transport and the public link origin, +1 for the
             // insurance link cap (issue #27), +1 for the per-contract term cap (issue #135), +3 for the
-            // Contracts summary windows and its next-charge row cap.
-            Assert.Equal(71, rows.Count);
+            // Contracts summary windows and its next-charge row cap, +1 for the per-contract smart-tag
+            // cap (issue #166).
+            Assert.Equal(72, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)
