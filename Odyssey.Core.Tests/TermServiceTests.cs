@@ -7,6 +7,7 @@ using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using Interval = Odyssey.Dtos.Finance.Interval;
+using TermDirection = Odyssey.Dtos.Finance.TermDirection;
 using Odyssey.Core.Finance;
 using System.ComponentModel.DataAnnotations;
 
@@ -800,5 +801,94 @@ public class TermServiceTests
 
         var stored = await context.Terms.AsNoTracking().SingleAsync();
         Assert.Null(stored.IntervalCount);
+    }
+
+    // ── Direction (issue #159) ───────────────────────────────────────────────
+
+    /// <summary>
+    /// The direct (non-HTTP) caller never reaches <c>[EnumDataType]</c> model validation, so the
+    /// service checks the ordinal itself. Without this, an undefined value would fall through the
+    /// Mapster converter and be PERSISTED as whichever member it defaults to — a write-path fail-open
+    /// rather than a read-path degradation. Same reasoning as the <c>Interval</c> check beside it.
+    /// </summary>
+    [Fact]
+    public async Task Create_AnUndefinedDirectionOrdinal_IsRefused_EvenOffTheHttpPath()
+    {
+        await using var context = TestContextFactory.Create();
+        var accountId = await SeedAccountAsync(context);
+        var service = new TermService(context);
+
+        var term = Fee("Card fee", 4m, new DateTime(2026, 1, 1));
+        term.Direction = (TermDirection)99;
+
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, term));
+        Assert.Empty(context.Terms);
+    }
+
+    /// <summary>
+    /// V2 — direction is accepted on any FEE, including the ones the roll-up ignores. A one-off signing
+    /// bonus is legitimate incoming record-keeping: the roll-up's exclusions are about having no rate
+    /// to PROJECT, not about direction.
+    /// </summary>
+    [Theory]
+    [InlineData(Interval.OneTime)]
+    [InlineData(Interval.PerOccurrence)]
+    [InlineData(Interval.PerUnit)]
+    [InlineData(null)]
+    public async Task Create_ACadencelessFee_StillCarriesItsDirection(Interval? interval)
+    {
+        await using var context = TestContextFactory.Create();
+        var contractId = await SeedContractAsync(context);
+        var service = new TermService(context);
+
+        var term = Fee("Signing bonus", 5000m, new DateTime(2026, 1, 1));
+        term.CurrencyCode = "USD";
+        term.Interval = interval;
+        term.Direction = TermDirection.Incoming;
+
+        await service.CreateForContract(contractId, term);
+
+        Assert.Equal(Odyssey.Context.TermDirection.Incoming,
+            (await context.Terms.AsNoTracking().SingleAsync()).Direction);
+    }
+
+    /// <summary>
+    /// V3 — direction joins neither the series key nor the duplicate guard. Two entries sharing a
+    /// <c>(kind, label)</c> and an effective date still collide however they are directed; if direction
+    /// forked the series, correcting a mis-directed term would grow a second concurrent history
+    /// instead of superseding the first.
+    /// </summary>
+    [Fact]
+    public async Task Create_TheDuplicateGuard_IsBlindToDirection()
+    {
+        await using var context = TestContextFactory.Create();
+        var contractId = await SeedContractAsync(context);
+        var service = new TermService(context);
+
+        var outgoing = Fee("Base salary", 4000m, new DateTime(2026, 1, 1));
+        outgoing.CurrencyCode = "USD";
+        await service.CreateForContract(contractId, outgoing);
+
+        var incoming = Fee("Base salary", 4000m, new DateTime(2026, 1, 1));
+        incoming.CurrencyCode = "USD";
+        incoming.Direction = TermDirection.Incoming;
+
+        await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.CreateForContract(contractId, incoming));
+    }
+
+    private static async Task<Guid> SeedContractAsync(OdysseyContext context)
+    {
+        var contract = new Contract
+        {
+            ContractId = Guid.NewGuid(),
+            Name = "Employment Agreement",
+            Type = Odyssey.Context.ContractType.Employment,
+            StartDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            CreatedAtUtc = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        };
+        context.Contracts.Add(contract);
+        await context.SaveChangesAsync();
+        return contract.ContractId;
     }
 }

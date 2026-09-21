@@ -567,6 +567,42 @@ rather than the enum ordinal, so `Expired` and `Archived` now sort *after* `Acti
 wire ordinals are unchanged — `Draft` and `Ready` are appended at 5 and 6 — and this affects display
 order only.
 
+### Release note: contract terms now carry a money direction (issue #159)
+
+Each priced contract term now says **which way the money moves**, from the household's perspective —
+`Outgoing` or `Incoming` — so a landlord's rent is no longer summed into "what the file costs to run"
+and an employment contract's salary no longer reads as an expense. Three things an operator should
+know.
+
+**The `AddTermDirection` migration is additive and behaviour-preserving, with no backfill statement.**
+It adds one `NOT NULL DEFAULT 0` `int` column to `Terms`; the default writes `Outgoing` into every
+existing row, which is what every existing term already meant. On a file whose contracts only record
+costs, `GET /api/contracts/summary` returns a **byte-identical** body before and after, except for the
+new fields being null or empty. No index, no seeded row, no data migration. `Down` drops the column,
+and the directions recorded after the upgrade are not recoverable from it.
+
+**`runRate.monthly` / `.yearly` / `.byType` keep their names *and* their meaning — they are now
+explicitly the OUTGOING side.** The incoming side arrives under new names (`incomingMonthly`,
+`incomingYearly`, `incomingByType`), the net under `netMonthly` / `netYearly`, and the incoming
+movements in a new `upcomingReceipts` list beside `upcomingCharges`. A consumer reading the existing
+fields today is correct tomorrow. Two rules worth knowing when reading the payload: no gross ever
+mixes directions, and the net is the only signed figure — it is `(incoming ?? 0) − (outgoing ?? 0)`,
+computed from the unrounded sums, and null only when **both** sides are.
+
+**`ContractMaxSummaryCharges` changes meaning without changing its value or bound.** It now caps the
+outgoing and incoming movement lists **separately**, so a file with many charges cannot starve the
+receipts — and the worst-case row count for that part of the payload doubles. The setting's own
+description on **System settings → Contracts** says so; nothing about it needs changing on upgrade.
+
+**No new permission claim and no new configuration.** Direction rides the existing `contracts.read` /
+`.update` and `accounts.terms.write` claims, so **no sign-out/sign-in is required on deploy**. Two new
+`400`s exist on the write path: `Incoming` on an `InterestRate` / `ExpectedReturn` term, and `Incoming`
+on an *account*-owned term — no account surface reads a direction yet, so accepting one there would
+record a fact the product then contradicts. And note that `PUT …/terms/{termId}` is a **full replace**:
+omitting `direction` resets the term to `Outgoing`, exactly as omitting `label` or `anchorDate` already
+clears those. Every read path returns the field, so a read-modify-write round trip carries it back
+unchanged.
+
 ## Backups
 
 The only stateful pieces are two named volumes — back both up:

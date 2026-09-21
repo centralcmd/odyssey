@@ -67,9 +67,18 @@ public sealed record ContractRunRateTypeRow
 }
 
 /// <summary>
-/// What the agreements on file cost to run: the in-force <c>Fee</c>/<c>Amount</c> terms of the
-/// <b>Active</b> contracts, each projected by its cadence (<c>Value ÷ IntervalCount × periods</c>) and
-/// converted to <see cref="BaseCurrency"/>.
+/// What the agreements on file cost to run and what they bring in: the in-force <c>Fee</c>/<c>Amount</c>
+/// terms of the <b>Active</b> contracts, each projected by its cadence
+/// (<c>Value ÷ IntervalCount × periods</c>) and converted to <see cref="BaseCurrency"/>.
+///
+/// <para>
+/// Since issue #159 each term also says which way its money moves, and the two sides are reported
+/// separately: <b>no gross total ever mixes directions</b>. <see cref="Monthly"/>/<see cref="Yearly"/>/
+/// <see cref="ByType"/> count outgoing terms only, <see cref="IncomingMonthly"/>/
+/// <see cref="IncomingYearly"/>/<see cref="IncomingByType"/> incoming terms only, and the one figure
+/// that crosses them says so in its name. The base currency is elected from BOTH directions and before
+/// the split, so there is one base per response and never one per direction.
+/// </para>
 ///
 /// <para>
 /// One-time and per-occurrence fees are excluded <i>by construction</i> — they name an occasion rather
@@ -82,23 +91,66 @@ public sealed record ContractRunRate
 {
     public required string BaseCurrency { get; set; }
 
-    /// <summary>Converted monthly total; null when nothing convertible carries a rate.</summary>
+    /// <summary>
+    /// Converted monthly total of the <b>outgoing</b> terms; null when nothing convertible carries a
+    /// rate. The name and the meaning are both unchanged by issue #159: every term that existed
+    /// before it is <c>Outgoing</c>, so "the run rate" and "the outgoing run rate" are the same
+    /// number on every existing file.
+    /// </summary>
     public decimal? Monthly { get; set; }
 
-    /// <summary>Converted yearly total; null when nothing convertible carries a rate.</summary>
+    /// <summary>Converted yearly total of the outgoing terms; null when nothing convertible carries a rate.</summary>
     public decimal? Yearly { get; set; }
 
-    /// <summary>The same read split by contract type, in enum order.</summary>
+    /// <summary>The outgoing read split by contract type, in enum order.</summary>
     public List<ContractRunRateTypeRow> ByType { get; set; } = new();
 
-    /// <summary>Currencies present in the run rate with no rate to <see cref="BaseCurrency"/>.</summary>
+    /// <summary>
+    /// Converted monthly total of the <b>incoming</b> terms (issue #159) — same units, same base
+    /// currency, same exclusions. Null when that side contributes nothing convertible, which is a
+    /// healthy state for a household that only records costs.
+    /// </summary>
+    public decimal? IncomingMonthly { get; set; }
+
+    /// <summary>Converted yearly total of the incoming terms; null on the same terms as <see cref="IncomingMonthly"/>.</summary>
+    public decimal? IncomingYearly { get; set; }
+
+    /// <summary>The incoming read split by contract type, in enum order. Same row shape as <see cref="ByType"/>.</summary>
+    public List<ContractRunRateTypeRow> IncomingByType { get; set; } = new();
+
+    /// <summary>
+    /// Incoming minus outgoing, monthly — the ONLY signed figure in the payload, and the only one that
+    /// crosses the two directions.
+    ///
+    /// <para>
+    /// Computed as <c>(incoming ?? 0) − (outgoing ?? 0)</c> from the <b>unrounded</b> sums and rounded
+    /// once, so a household with income and no recorded costs still gets a net. It is null <b>only
+    /// when both</b> sides are. It covers exactly the convertible subset the two grosses cover, so it
+    /// is a partial net precisely when they are partial — <see cref="UnconvertedCurrencies"/> is what
+    /// makes that legible.
+    /// </para>
+    /// </summary>
+    public decimal? NetMonthly { get; set; }
+
+    /// <summary>Incoming minus outgoing, yearly. Same rules as <see cref="NetMonthly"/>.</summary>
+    public decimal? NetYearly { get; set; }
+
+    /// <summary>
+    /// Currencies present in the run rate with no rate to <see cref="BaseCurrency"/>. ONE list covers
+    /// both directions: a currency with no rate is named once and excluded from both grosses and from
+    /// the net, never folded in at 1:1.
+    /// </summary>
     public List<string> UnconvertedCurrencies { get; set; } = new();
 }
 
 /// <summary>
-/// A derived next charge: the soonest occurrence of one of a contract's in-force periodic fee terms,
+/// A derived next money movement: the soonest occurrence of one of a contract's in-force periodic fee
+/// terms — a charge or, since issue #159, a receipt. The record's name predates direction and is kept
+/// rather than renamed: it carries one dated movement either way, and which way is said by the list it
+/// appears in (<see cref="ContractSummary.UpcomingCharges"/> or
+/// <see cref="ContractSummary.UpcomingReceipts"/>) rather than by a field on the row. The occurrence is
 /// projected from that term's cadence anchor (<c>AnchorDate</c>, else <c>EffectiveFrom</c>) and never
-/// past the contract's own end date.
+/// falls past the contract's own end date.
 ///
 /// <para>
 /// <b>Nothing is scheduled or stored.</b> This is the term history read forward, the way
@@ -132,7 +184,8 @@ public sealed record ContractUpcomingCharge
 
 /// <summary>
 /// Summary rollup for the contracts page header (issue #174 §7): totals plus counts by status and by
-/// type, the recurring-cost run rate, and the derived upcoming charges. Archived contracts are counted
+/// type, the direction-aware run rate, and the derived upcoming movements — outgoing charges and, since
+/// issue #159, incoming receipts. Archived contracts are counted
 /// in <see cref="CountsByStatus"/> but excluded from the active totals, the by-type breakdown, the run
 /// rate and the charges.
 ///
@@ -153,7 +206,20 @@ public sealed record ContractSummary
 
     public required ContractRunRate RunRate { get; set; }
 
+    /// <summary>
+    /// The soonest OUTGOING movement of each contract inside the look-ahead window. Bounded by
+    /// <c>ContractMaxSummaryCharges</c>, which since issue #159 bounds each list separately so a file
+    /// with many charges cannot starve <see cref="UpcomingReceipts"/>.
+    /// </summary>
     public List<ContractUpcomingCharge> UpcomingCharges { get; set; } = new();
+
+    /// <summary>
+    /// The soonest INCOMING movement of each contract inside the same window (issue #159), in the same
+    /// row shape. The LIST names the direction — the row carries no direction field, so there is no
+    /// second copy of the fact to drift. A contract that pays a salary on the 25th and deducts a fee
+    /// on the 1st contributes one row to each list.
+    /// </summary>
+    public List<ContractUpcomingCharge> UpcomingReceipts { get; set; } = new();
 
     /// <summary>
     /// The effective "ending soon" window, in days. Served rather than held as a client constant: the

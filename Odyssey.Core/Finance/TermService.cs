@@ -9,6 +9,7 @@ using ContextAccountType = Odyssey.Context.AccountType;
 using ContextInterval = Odyssey.Context.Interval;
 using ContextTermKind = Odyssey.Context.TermKind;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
+using ContextTermDirection = Odyssey.Context.TermDirection;
 using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
 
 namespace Odyssey.Core.Finance;
@@ -419,6 +420,15 @@ public class TermService
             throw new DomainValidationException(
                 $"IntervalCount must be between {TermIntervalCount.Min} and {TermIntervalCount.Max}.");
 
+        // Same fail-closed reasoning as the Interval check above: the HTTP path is bounded by
+        // [EnumDataType], but a direct caller never reaches model validation, and an undefined ordinal
+        // would otherwise be persisted through the Mapster converter as whichever member it defaults to.
+        if (!Enum.IsDefined(source.Direction))
+            throw new DomainValidationException(
+                $"Direction '{(int)source.Direction}' is not a recognised value.",
+                code: null,
+                field: nameof(NewTerm.Direction));
+
         var kind = source.TermKind.Adapt<ContextTermKind>();
         if (kind == ContextTermKind.Unknown)
             throw new DomainValidationException("TermKind must be a recognised value.");
@@ -469,6 +479,32 @@ public class TermService
         if (source.AnchorDate is not null && isRateKind)
             throw new DomainValidationException(
                 $"AnchorDate is not allowed for term kind '{source.TermKind}'.");
+
+        var direction = source.Direction.Adapt<ContextTermDirection>();
+
+        // V1 (issue #159) — direction is a FEE-only field. A rate is a percentage, is already excluded
+        // from the roll-up, and belongs to the account-side question direction on account terms is
+        // deferred to. Stored as Outgoing there, where it carries no meaning.
+        if (direction != ContextTermDirection.Outgoing && isRateKind)
+            throw new DomainValidationException(
+                $"Direction applies to a fee term only, not to term kind '{source.TermKind}'.",
+                code: null,
+                field: nameof(NewTerm.Direction));
+
+        // V4 (issue #159) — an account-owned term may not carry a non-default direction. A savings
+        // account's interest is incoming and a loan's is outgoing, but no account surface READS a
+        // direction, so accepting one would let a user record a fact the product then contradicts.
+        // Deliberately deferred to its own issue rather than half-implemented here.
+        if (direction != ContextTermDirection.Outgoing && owner.Kind == TermOwnerKind.Account)
+            throw new DomainValidationException(
+                "Direction applies to contract terms only.",
+                code: null,
+                field: nameof(NewTerm.Direction));
+
+        // V2 is the ABSENCE of a rule: every other fee accepts a direction, including the ones the
+        // roll-up ignores — a percentage-unit fee, a OneTime/PerOccurrence/PerUnit fee, and a fee with
+        // no interval at all. A one-off signing bonus is legitimate incoming record-keeping; the
+        // roll-up's exclusions are about having no rate to PROJECT, not about direction.
 
         // A count is meaningful only for a periodic unit. Stored as 1 when a periodic interval
         // arrives without one (the identity cadence), and as null — never 1 — otherwise: a
@@ -543,6 +579,10 @@ public class TermService
         term.Label = label;
         term.LabelKey = labelKey;
         term.ValueUnit = unit;
+        // V3 — assigned unconditionally on both create and replace, and read by NOTHING above: it is
+        // not in the series key, the duplicate guard or supersession, so two entries differing only in
+        // direction are the ordinary supersession case rather than two concurrent series.
+        term.Direction = direction;
         term.Value = source.Value;
         term.CurrencyCode = currencyCode;
         term.Interval = interval;

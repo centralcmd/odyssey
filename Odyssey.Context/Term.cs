@@ -68,6 +68,21 @@ public class Term : IEffectiveDated
     [Required]
     public TermValueUnit ValueUnit { get; set; }
 
+    /// <summary>
+    /// Which way the money moves, from the household's perspective (issue #159).
+    /// <see cref="TermDirection.Outgoing"/> is the default and the value every pre-#159 row backfills
+    /// to, which is what makes the migration behaviour-preserving: every figure the contracts roll-up
+    /// returned before it returns the same number after.
+    ///
+    /// <para>
+    /// Not part of the series key, the duplicate guard or supersession — the direction that counts is
+    /// the one on the entry currently in force. Never a SQL predicate either, so the column carries no
+    /// index of its own.
+    /// </para>
+    /// </summary>
+    [Required]
+    public TermDirection Direction { get; set; }
+
     [Required]
     [Precision(18, 6)]
     public decimal Value { get; set; }

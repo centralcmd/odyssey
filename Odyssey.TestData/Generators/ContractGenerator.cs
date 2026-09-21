@@ -30,6 +30,13 @@ namespace Odyssey.TestData.Generators;
 /// </para>
 ///
 /// <para>
+/// Since issue #159 the employment contract carries both DIRECTIONS at once — an incoming salary and
+/// an outgoing union fee, anchored to different days of the month. That is what makes the incoming
+/// run rate, the net and the second movement list non-empty in the demo, and it is the one shape a
+/// single flag on the contract could not express.
+/// </para>
+///
+/// <para>
 /// Since issue #145 it also covers the two <b>signature</b> states: one <b>Draft</b> (no stamps, a
 /// future start date, and a fully priced fee — so the money gate is visible rather than asserted) and
 /// one <b>Ready</b> (a ready stamp, never signed, with a term that has since run out, which reads
@@ -124,7 +131,8 @@ public static class ContractGenerator
         int? Count,
         int EffectiveFromMonths,
         int? AnchorDays = null,
-        string? Note = null);
+        string? Note = null,
+        TermDirection Direction = TermDirection.Outgoing);
 
     public static Guid IdFor(string name) => DeterministicGuid.From($"contract::{name}");
 
@@ -416,13 +424,28 @@ public static class ContractGenerator
     /// The set covers the three things the projection has to get right: a periodic fee with a
     /// multiplier (quarterly = Monthly × 3), a fee whose <c>AnchorDate</c> differs from its
     /// <c>EffectiveFrom</c>, and a supersession — the storage plan's price changed, so only the later
-    /// entry is in force and the run rate must not count both.
+    /// entry is in force and the run rate must not count both. Every one of them is
+    /// <see cref="TermDirection.Outgoing"/> bar the salary, which is the point: the incoming side is
+    /// the exception a file records, not the rule.
     /// </para>
     /// </summary>
     private static List<Term> BuildTerms(DateTime anchor, List<Contract> contracts)
     {
         var specs = new List<ContractTermSpec>
         {
+            // The employment contract's two sides (issue #159), which is the whole reason direction
+            // exists: a salary that ARRIVES and a union fee that LEAVES, on one agreement, neither
+            // cancelling the other. Without an incoming term seeded, every figure the incoming half of
+            // the roll-up produces would be null in the demo and the split would read as dead weight.
+            new("Employment Agreement — Globex", "Base salary", 6200.00m, Currencies.Usd,
+                Interval.Monthly, 1, 0, AnchorDays: 24, Note: "Paid on the 25th.",
+                Direction: TermDirection.Incoming),
+            // Deducted on the 1st — a DIFFERENT day from the salary, so the per-(contract, direction)
+            // collapse of the next movements has something to show: one row in each list for one
+            // contract, where collapsing on the contract alone would discard whichever fell later.
+            new("Employment Agreement — Globex", "Union membership", 55.00m, Currencies.Usd,
+                Interval.Monthly, 1, 0, AnchorDays: 0, Note: "Deducted from the monthly pay."),
+
             // The parking licence: the largest recurring line, monthly, due on the 1st. Its anchor is
             // deliberately a different date from its effective date.
             new("Harbor Point Parking — Space 14", "Space licence", 165.00m, Currencies.Usd,
@@ -495,6 +518,7 @@ public static class ContractGenerator
                 Label = spec.Label,
                 LabelKey = TermLabel.Key(spec.Label),
                 ValueUnit = TermValueUnit.Amount,
+                Direction = spec.Direction,
                 Value = spec.Value,
                 CurrencyCode = spec.Currency,
                 Interval = spec.Interval,

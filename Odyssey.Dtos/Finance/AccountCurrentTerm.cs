@@ -22,6 +22,15 @@ public sealed record AccountCurrentTerm
 
     public TermValueUnit ValueUnit { get; set; }
 
+    /// <summary>
+    /// Which way the money moves, from the household's perspective (issue #159). This projection is
+    /// shared: it is what <c>ExistingContract.CurrentTerms</c> carries as well as
+    /// <c>ExistingAccount.CurrentTerms</c>, which is why the field belongs here and not on
+    /// <see cref="CurrentTerm"/> alone. On the account side it is constant — an account term may not
+    /// carry a non-default direction — but the contract side is the feature's primary read.
+    /// </summary>
+    public TermDirection Direction { get; set; }
+
     public decimal Value { get; set; }
 
     /// <summary>Set for a money-valued term; null for a percentage.</summary>

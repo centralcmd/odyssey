@@ -22,6 +22,10 @@ public sealed record ExistingTerm
     public string? Label { get; set; }
 
     public TermValueUnit ValueUnit { get; set; }
+
+    /// <summary>Which way the money moves, from the household's perspective (issue #159).</summary>
+    public TermDirection Direction { get; set; }
+
     public decimal Value { get; set; }
 
     [StringLength(3)]

@@ -67,8 +67,17 @@ public class ContractController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ContractSummary))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary =
-        "Summary rollup: counts by status and by type, the recurring-cost run rate, and the derived upcoming charges.")]
+    [SwaggerOperation(
+        Summary =
+            "Summary rollup: counts by status and by type, the run rate, and the derived upcoming movements.",
+        Description = @"The run rate is direction-aware (issue #159): 'monthly'/'yearly'/'byType' are the
+                        OUTGOING side and keep their pre-#159 meaning, 'incomingMonthly'/'incomingYearly'/
+                        'incomingByType' are the incoming side, and 'netMonthly'/'netYearly' are incoming
+                        minus outgoing — the only signed figures in the payload. No gross ever mixes the
+                        two. A gross is null when its own side has nothing convertible; the net is null
+                        only when both are. One base currency is elected from both directions, and a
+                        currency with no rate to it is named in 'unconvertedCurrencies' and excluded from
+                        both sides and the net rather than folded in at 1:1.")]
     public async Task<IActionResult> GetSummary(
         [FromQuery(Name = "baseCurrency")][StringLength(3, ErrorMessage = "baseCurrency must be a 3-letter ISO 4217 code.")] string? baseCurrency = null,
         CancellationToken cancellationToken = default)
@@ -286,7 +295,9 @@ written — re-role those parties or detach them first.")]
         Summary = "Create a term (rate/fee) entry on a contract.",
         Description = @"Fee and InterestRate only; ExpectedReturn prices invested principal, which a
                         contract does not hold. A money-valued term must name its currency — a contract
-                        has none of its own to default from.")]
+                        has none of its own to default from. 'direction' says which way the money moves
+                        from the household's perspective; it is optional, omitting it means Outgoing,
+                        and Incoming is refused on the two rate kinds.")]
     public async Task<IActionResult> PostTerm(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewTerm newTerm, CancellationToken cancellationToken = default)
@@ -308,7 +319,13 @@ written — re-role those parties or detach them first.")]
         Summary = "Replace a term entry on a contract.",
         Description = @"The owner is not changeable through this endpoint — the route is the only
                         thing that names it. A term id belonging to an account or to a different
-                        contract is a 404, never a 403 and never a silent success.")]
+                        contract is a 404, never a 403 and never a silent success.
+
+                        This is a FULL replace and 'direction' is not exempt: omitting it resets the
+                        term to Outgoing, exactly as omitting 'label', 'currencyCode', 'interval' or
+                        'anchorDate' already clears those. That matters more here than elsewhere, since
+                        it moves the amount from one side of the household's net to the other — read
+                        the term back and send its direction with the replacement.")]
     public async Task<IActionResult> PutTerm(
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "termId")] Guid termId,
