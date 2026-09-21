@@ -7,9 +7,9 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// Issue #165 against the real engine: a transaction tag used as an account smart tag cannot be
-/// hard-deleted, and the <c>RESTRICT</c> foreign key on <c>AccountSmartTags.TransactionTagId</c> is
-/// still there backing the service pre-check.
+/// Issue #165 against the real engine: a transaction tag that is in use cannot be hard-deleted, and
+/// the <c>RESTRICT</c> foreign keys on <c>AccountSmartTags.TransactionTagId</c> and
+/// <c>TransactionTagLinks.TransactionTagId</c> are still there backing the service pre-check.
 /// </summary>
 /// <remarks>
 /// The pre-check itself is covered on the fast tier (<c>Odyssey.Core.Tests</c>), which is where the
@@ -151,6 +151,103 @@ public class TransactionTagSmartTagBlockerTests(MariaDbFixture fixture)
         {
             await DropAsync();
         }
+    }
+
+    /// <summary>
+    /// The third <c>RESTRICT</c> key on the same path — a tag applied to a transaction. Same defect
+    /// class, same two halves: the service explains the refusal, and the constraint still refuses a
+    /// caller that goes around it.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_tag_applied_to_a_transaction_cannot_be_deleted()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+
+        var connectionString = await MigratedSchemaAsync();
+        try
+        {
+            var tagId = Guid.NewGuid();
+            var accountId = Guid.NewGuid();
+            var transactionId = Guid.NewGuid();
+
+            await using (var context = New(connectionString))
+            {
+                await SeedTaggedTransactionAsync(context, tagId, accountId, transactionId);
+            }
+
+            await using (var context = New(connectionString))
+            {
+                var service = new TransactionTagService(context);
+                var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+                    () => service.Delete(tagId));
+
+                Assert.Contains("1 transaction", conflict.Message);
+                Assert.DoesNotContain("Weekly shop", conflict.Message);
+            }
+
+            await using (var context = New(connectionString))
+            {
+                var tag = await context.TransactionTags.SingleAsync(t => t.TransactionTagId == tagId);
+                context.TransactionTags.Remove(tag);
+
+                await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+            }
+
+            await using (var context = New(connectionString))
+            {
+                Assert.True(await context.TransactionTags.AnyAsync(tag => tag.TransactionTagId == tagId));
+                Assert.Equal(1, await context.TransactionTagLinks.CountAsync(link => link.TransactionTagId == tagId));
+            }
+        }
+        finally
+        {
+            await DropAsync();
+        }
+    }
+
+    private static async Task SeedTaggedTransactionAsync(
+        OdysseyContext context,
+        Guid tagId,
+        Guid accountId,
+        Guid transactionId)
+    {
+        context.TransactionTags.Add(new TransactionTag
+        {
+            TransactionTagId = tagId,
+            Name = $"Groceries {tagId:N}",
+            Archived = null,
+        });
+
+        context.Accounts.Add(new Account
+        {
+            AccountId = accountId,
+            Name = "Everyday",
+            Description = string.Empty,
+            Opened = DateTime.UtcNow,
+            AccountType = AccountType.CheckingAccount,
+            CurrencyCode = "USD",
+        });
+        await context.SaveChangesAsync();
+
+        context.Transactions.Add(new Transaction
+        {
+            TransactionId = transactionId,
+            Description = "Weekly shop",
+            Amount = -42.00m,
+            AccountId = accountId,
+            CurrencyCode = "USD",
+            TimeStamp = DateTime.UtcNow,
+            Status = Odyssey.Dtos.Finance.TransactionStatus.New,
+            StatusChangedAt = DateTime.UtcNow,
+        });
+        await context.SaveChangesAsync();
+
+        context.TransactionTagLinks.Add(new TransactionTagLink
+        {
+            TransactionId = transactionId,
+            TransactionTagId = tagId,
+        });
+        await context.SaveChangesAsync();
     }
 
     private static async Task SeedLinkedPairAsync(

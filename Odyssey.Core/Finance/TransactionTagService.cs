@@ -127,7 +127,9 @@ public class TransactionTagService
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Each clause corresponds to a <c>RESTRICT</c> foreign key pointing at <c>TransactionTags</c>.
+    /// Each clause corresponds to one of the three <c>RESTRICT</c> foreign keys pointing at
+    /// <c>TransactionTags</c> — <c>BudgetItems</c>, <c>AccountSmartTags</c> and the
+    /// <c>TransactionTagLinks</c> join table.
     /// Those keys say the same thing on MariaDB, but their violation reaches
     /// <c>GlobalExceptionHandler</c> as a generic 409 naming no surface — and the EF InMemory tiers
     /// enforce no foreign keys at all, so there the delete would simply succeed and leave the link
@@ -168,6 +170,16 @@ public class TransactionTagService
             blockers.Add(
                 $"This tag is a smart tag on {watchedBy} account{(watchedBy == 1 ? "" : "s")}. "
                 + "Remove it there first.");
+        }
+
+        var appliedTo = await context.TransactionTagLinks
+            .CountAsync(link => link.TransactionTagId == id, cancellationToken);
+
+        if (appliedTo > 0)
+        {
+            blockers.Add(
+                $"This tag is used on {appliedTo} transaction{(appliedTo == 1 ? "" : "s")}. "
+                + "Remove it from those transactions first.");
         }
 
         return blockers;

@@ -334,6 +334,102 @@ public class TransactionTagServiceTests
         Assert.Equal(0, context.TransactionTags.Count());
     }
 
+    // ── Delete guard: transaction tag links ──────────────────────────
+
+    /// <summary>
+    /// The third RESTRICT key on this path, and the likeliest of them to be hit: a tag actually applied
+    /// to a transaction. Same defect class as the smart-tag one — on this tier the delete would
+    /// otherwise succeed silently and orphan the <c>TransactionTagLinks</c> row.
+    /// </summary>
+    [Fact]
+    public async Task Delete_IsRefusedWhileTheTagIsAppliedToATransaction_AndNamesTheCount()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedTaggedTransaction(context, tag.TransactionTagId, "Weekly shop");
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("1 transaction", conflict.Message);
+        // A COUNT, never the transactions.
+        Assert.DoesNotContain("Weekly shop", conflict.Message);
+        Assert.Equal(1, context.TransactionTags.Count());
+        Assert.Equal(1, context.TransactionTagLinks.Count());
+    }
+
+    [Fact]
+    public async Task Delete_PluralisesTheTransactionCount()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedTaggedTransaction(context, tag.TransactionTagId, "Weekly shop");
+        await SeedTaggedTransaction(context, tag.TransactionTagId, "Top-up shop");
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("2 transactions", conflict.Message);
+    }
+
+    /// <summary>
+    /// All three blocker classes at once. The pre-check counts every class before reporting any, so a
+    /// tag blocked three ways explains all three rather than sending the caller round the loop twice.
+    /// </summary>
+    [Fact]
+    public async Task Delete_BlockedByAllThreeClasses_NamesAllThree()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedBudgetItem(context, tag.TransactionTagId);
+        await SeedSmartTagLink(context, tag.TransactionTagId, "Checking");
+        await SeedTaggedTransaction(context, tag.TransactionTagId, "Weekly shop");
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("1 budget item", conflict.Message);
+        Assert.Contains("1 account", conflict.Message);
+        Assert.Contains("1 transaction", conflict.Message);
+    }
+
+    private static async Task SeedTaggedTransaction(OdysseyContext context, Guid tagId, string description)
+    {
+        var account = new Account
+        {
+            Name = $"Account for {description}",
+            Description = string.Empty,
+            Opened = DateTime.UtcNow,
+            AccountType = Odyssey.Context.AccountType.CheckingAccount,
+            CurrencyCode = "USD",
+        };
+        context.Accounts.Add(account);
+        await context.SaveChangesAsync();
+
+        var transaction = new Transaction
+        {
+            Description = description,
+            Amount = -42.00m,
+            AccountId = account.AccountId,
+            CurrencyCode = "USD",
+            TimeStamp = DateTime.UtcNow,
+            Status = TransactionStatus.New,
+            StatusChangedAt = DateTime.UtcNow,
+        };
+        context.Transactions.Add(transaction);
+        await context.SaveChangesAsync();
+
+        context.TransactionTagLinks.Add(new TransactionTagLink
+        {
+            TransactionId = transaction.TransactionId,
+            TransactionTagId = tagId,
+        });
+        await context.SaveChangesAsync();
+    }
+
     private static async Task<Guid> SeedSmartTagLink(OdysseyContext context, Guid tagId, string accountName)
     {
         var account = new Account
