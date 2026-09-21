@@ -31,6 +31,11 @@ public partial class Home
     // _currencyFormatIsDegraded reports; the figures still render, in the default two decimals.
     private int? _mainCurrencyMinorUnits;
 
+    // Every currency's decimals, for the recent-transaction rows: each is in its OWN account's
+    // currency, not the main one, so one lookup is not enough. Empty on a failed load, which costs
+    // the precision of a zero-decimal currency and nothing about the denomination.
+    private Dictionary<string, int> _minorUnitsByCode = new(StringComparer.OrdinalIgnoreCase);
+
     // ── State ──
     private bool _isLoadingAccounts = true;
     private bool _isLoadingHistory = true;
@@ -143,6 +148,10 @@ public partial class Home
             _mainCurrencyCode = UserPreferences.MainCurrency ?? DefaultMainCurrency;
 
             var currencies = await ReferenceData.CurrenciesAsync();
+            _minorUnitsByCode = currencies
+                .GroupBy(c => c.CurrencyCode, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => DashboardFigures.MinorUnits(g.First()), StringComparer.OrdinalIgnoreCase);
+
             var currency = currencies.FirstOrDefault(c =>
                 string.Equals(c.CurrencyCode, _mainCurrencyCode, StringComparison.OrdinalIgnoreCase));
 
@@ -351,10 +360,14 @@ public partial class Home
         OdsMoney.Format(value, _mainCurrencyCode, _mainCurrencyMinorUnits ?? OdsMoney.DefaultMinorUnits);
 
     // A per-transaction amount is in its ACCOUNT's own currency, which is not necessarily the main
-    // one, and nothing converts it here — so it carries no code at all rather than being labelled
-    // with a denomination it may not be in. It is presented as signed: the direction is the point of
-    // the row, and a bare positive would read as an ordinary total.
-    private static string FormatSignedMoney(decimal value) => OdsMoney.Signed(value, currencyCode: null);
+    // one, and nothing converts it here — so the row names that currency rather than the main one.
+    // It is presented as signed: the direction is the point of the row, and a bare positive would
+    // read as an ordinary total.
+    private string FormatSignedMoney(decimal value, string? currencyCode) =>
+        OdsMoney.Signed(value, currencyCode,
+            currencyCode is not null && _minorUnitsByCode.TryGetValue(currencyCode, out var units)
+                ? units
+                : OdsMoney.DefaultMinorUnits);
 
     // Matches the API's own fallback when no main-currency preference is set.
     private const string DefaultMainCurrency = "NOK";

@@ -41,7 +41,7 @@
                               style="@(string.IsNullOrEmpty(row.IconColor) ? null : $"color:{row.IconColor};")">@row.Icon</span>
                     }
                     <span class="odc-breakdown-label">@row.Label</span>
-                    <span class="odc-breakdown-n">@row.Count</span>
+                    <span class="odc-breakdown-n">@Figure(row.Count)</span>
                 </div>
             }
             @if (TotalContent is not null)
@@ -54,7 +54,7 @@
                         <span class="material-icons" aria-hidden="true">@TotalIcon</span>
                     }
                     <span class="odc-breakdown-label">@TotalLabel</span>
-                    <span class="odc-breakdown-n">@TotalContent</span>
+                    <span class="odc-breakdown-n">@Figure(TotalContent)</span>
                 </div>
             }
         </div>
@@ -129,6 +129,21 @@
             return sum == decimal.Truncate(sum) ? (object)(long)sum : sum;
         }
     }
+
+    /// <summary>
+    /// A row's figure, rendered rather than stringified.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="OdsBreakdownRow.Count"/> is an <c>object</c>, so a bare <c>@@row.Count</c> binds the
+    /// <c>AddContent(int, object)</c> overload and a RENDER FRAGMENT lands on screen as the literal
+    /// text "Microsoft.AspNetCore.Components.RenderFragment". That is not hypothetical: the contracts
+    /// header's two money tiles pass a coloured, signed net as a fragment, on every row and on the
+    /// total. Branching here is what makes a node count a supported kind of figure rather than a
+    /// documented one.
+    /// </remarks>
+    private static RenderFragment Figure(object? value) => value is RenderFragment fragment
+        ? fragment
+        : builder => builder.AddContent(0, value);
 
     private static bool TryNumber(object? value, out decimal number)
     {
