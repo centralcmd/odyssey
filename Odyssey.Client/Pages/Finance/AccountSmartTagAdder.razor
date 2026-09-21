@@ -28,7 +28,11 @@
             </button>
         </ActivatorContent>
         <ChildContent>
-            <div class="odc-smarttags-pop" role="listbox" aria-multiselectable="true">
+            @* A labelled GROUP of checkboxes — not a listbox: these are real <input type="checkbox">
+               rows reached by Tab, with no roving tabindex and no arrow-key handling, so
+               role="listbox"/"option" would describe a widget that is not here (WCAG 1.3.1, 4.1.2).
+               The same correction OdsTagMultiSelect already carries over an identical structure. *@
+            <div class="odc-smarttags-pop" role="group" aria-label="@GroupLabel">
                 <div class="odc-smarttags-search">
                     <span class="material-icons" aria-hidden="true">search</span>
                     <input value="@_query"
@@ -57,9 +61,13 @@
                         <div class="odc-smarttags-empty-opt">@EmptyText</div>
                     }
                 </div>
+                @* role="status": the sentence APPEARS in response to an action (the add that reached
+                   the cap), and DOM presence is not announcement — without it a screen-reader user
+                   gets no notification that the reason the next row is disabled has just been
+                   written. Polite rather than alert: it explains a state, it does not refuse. *@
                 @if (FootNote is not null)
                 {
-                    <div class="odc-smarttags-cap">@FootNote</div>
+                    <div class="odc-smarttags-cap" role="status">@FootNote</div>
                 }
             </div>
         </ChildContent>
@@ -97,6 +105,9 @@
     [Parameter] public string? FootNote { get; set; }
 
     [Parameter] public string Label { get; set; } = "Add tag";
+
+    /// <summary>The checkbox group's accessible name — what this list of tags is FOR.</summary>
+    [Parameter] public string GroupLabel { get; set; } = "Tags to watch";
 
     [Parameter] public string EmptyText { get; set; } = "No tags match";
 

@@ -98,8 +98,11 @@
         else if (_hasTags && CanWrite && CapNote is not null)
         {
             @* The cap advisory also reads outside the popover, so "why can I not add another" is
-               answerable without opening the control. *@
-            <div class="odc-smarttags-advisory">@CapNote</div>
+               answerable without opening the control — and role="status" so it is ANNOUNCED when it
+               appears, not merely present. Placement solves reachability; it does not solve
+               notification (WCAG 4.1.3). Polite rather than alert: the refusal band above is the
+               one that interrupts. *@
+            <div class="odc-smarttags-advisory" role="status">@CapNote</div>
         }
 
         @if (_error is not null)
@@ -141,7 +144,10 @@
         }
         else if (_transactions.Count == 0)
         {
-            <OdsEmptyState Icon="search_off">
+            @* MutedIcon: the design system dims this state's glyph (odc-empty-ic muted) and leaves
+               the "No smart tags yet" one bright — the first is informational, the second is the
+               feature's only entry point, and the weight is what tells them apart. *@
+            <OdsEmptyState Icon="search_off" MutedIcon="true">
                 <Title>No matching transactions</Title>
                 <Description>@NoMatchDescription</Description>
             </OdsEmptyState>

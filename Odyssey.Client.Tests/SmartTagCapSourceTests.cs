@@ -42,6 +42,13 @@ public class SmartTagCapSourceTests
     private static string WithoutLineComments(string text) =>
         Regex.Replace(text, @"//[^\r\n]*", string.Empty);
 
+    /// <summary>
+    /// The same idea for Razor's own <c>@*…*@</c> block comments, which is where a markup file
+    /// explains itself. A lint that its own rationale trips teaches people to delete the rationale.
+    /// </summary>
+    private static string WithoutRazorComments(string text) =>
+        Regex.Replace(text, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline);
+
     [Fact]
     public void No_page_declares_its_own_smart_tag_cap_constant()
     {
@@ -114,6 +121,49 @@ public class SmartTagCapSourceTests
         // The number in the sentence is the LIVE one. A literal here is the defect the whole file exists
         // to prevent, and it would satisfy every other assertion in it.
         Assert.Contains("{_maxTags}", section, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The adder's popover is a labelled GROUP of checkboxes, not a listbox. Its rows are real
+    /// <c>&lt;input type="checkbox"&gt;</c>s reached by Tab, with no roving tabindex and no arrow-key
+    /// handling, so <c>role="listbox"</c> would name a widget that is not there (WCAG 1.3.1, 4.1.2).
+    /// <c>OdsTagMultiSelect</c> carries the same correction, and a comment warning against exactly
+    /// this, over an identical structure.
+    ///
+    /// <para>
+    /// A SOURCE lint rather than a render assertion, and deliberately so: the popover lives in a
+    /// <c>MudMenu</c>'s <c>ChildContent</c> and is not in the DOM until the menu is opened, so a
+    /// markup query for the role passes vacuously on an unopened menu — it would assert nothing while
+    /// looking like it asserted something.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void The_adder_popover_is_a_labelled_checkbox_group_not_a_listbox()
+    {
+        // Razor comments stripped first: the markup carries a comment explaining WHY the role is not
+        // listbox, and a lint its own rationale can trip is a bad lint — the same reason
+        // WithoutLineComments exists above.
+        var adder = WithoutRazorComments(File.ReadAllText(
+            Path.Combine(ClientSource.Root, "Pages", "Finance", "AccountSmartTagAdder.razor")));
+
+        Assert.Contains("role=\"group\"", adder, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"@GroupLabel\"", adder, StringComparison.Ordinal);
+        Assert.DoesNotContain("role=\"listbox\"", adder, StringComparison.Ordinal);
+        Assert.DoesNotContain("aria-multiselectable", adder, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The adder's own copy of the cap advisory is a status message too (WCAG 4.1.3) — it appears in
+    /// response to the add that reached the cap. Source-linted for the same reason as above: it is
+    /// inside the popover.
+    /// </summary>
+    [Fact]
+    public void The_adders_cap_advisory_is_a_status_message()
+    {
+        var adder = File.ReadAllText(
+            Path.Combine(ClientSource.Root, "Pages", "Finance", "AccountSmartTagAdder.razor"));
+
+        Assert.Contains("class=\"odc-smarttags-cap\" role=\"status\"", adder, StringComparison.Ordinal);
     }
 
     /// <summary>

@@ -223,6 +223,35 @@ public class ContractSmartTagSurfaceTests
         Assert.Empty(harness.Cut.FindAll("button[aria-label^='Stop watching']"));
     }
 
+    // ── Accessibility (raised by the accessibility reviewer on this PR) ──────
+
+    /// <summary>
+    /// The cap advisory is ANNOUNCED when it appears, not merely present. It is written in response
+    /// to an action — the add that reached the cap — and DOM presence is not notification
+    /// (WCAG 4.1.3). Polite, not assertive: the refusal band is the one that interrupts.
+    /// </summary>
+    [Fact]
+    public void The_cap_advisory_is_a_status_message()
+    {
+        var harness = Render(cap: new ContractLimits(2, IsDegraded: false));
+
+        var advisory = harness.Cut.Find(".odc-smarttags-advisory");
+        Assert.Equal("status", advisory.GetAttribute("role"));
+    }
+
+    /// <summary>
+    /// The design system dims this state's glyph and leaves the "No smart tags yet" one bright: the
+    /// first is informational, the second is the feature's only entry point, and the icon weight is
+    /// what tells them apart.
+    /// </summary>
+    [Fact]
+    public void The_no_matches_state_uses_the_muted_glyph()
+    {
+        var harness = Render();
+
+        Assert.NotEmpty(harness.Cut.FindAll(".odc-empty.muted-ic"));
+    }
+
     // ── Harness ──────────────────────────────────────────────────────────────
 
     private sealed record Harness(
