@@ -385,7 +385,17 @@ public sealed record SystemSettingsUpdate
         + "its table is full, so a smaller table weakens the control it exists to provide.")]
     public int? EmailMaxTrackedRecipients { get; set; }
 
-    [Range(1, 1000, ErrorMessage = "Smart tags per account must be between 1 and 1000.")]
+    /// <summary>
+    /// The ceiling names <see cref="SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax"/>, which is
+    /// itself <see cref="ListDefaults.MaxFilterArrayLength"/> — the cap on the <c>tagIds</c> filter the
+    /// smart tags are resolved through (issue #168). A literal here could drift from the constraint it
+    /// mirrors, which is how this key came to accept 1000 against a filter that carries 50.
+    /// </summary>
+    [Range(SystemSettingsBounds.AccountMaxSmartTagsPerAccountMin,
+        SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax, ErrorMessage =
+        "Smart tags per account must be between {1} and {2}. The section resolves every watched tag in "
+        + "one transactions query whose tag filter carries at most {2} ids, so a higher cap configures "
+        + "a state the feature cannot read.")]
     public int? AccountMaxSmartTagsPerAccount { get; set; }
 
     // ---------------------------------------------------------------------------------------------

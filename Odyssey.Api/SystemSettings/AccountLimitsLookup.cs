@@ -65,7 +65,26 @@ public sealed class AccountLimitsLookup(
         else if (int.TryParse(stored, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
                  && parsed > 0)
         {
-            maxSmartTags = parsed;
+            // Clamped, not degraded: the row parsed, it is simply outside its pair, so it resolves to
+            // the nearer bound — the same posture SystemSettingsLookup.Resolve takes, and a Warning
+            // rather than an Error for the same reason.
+            //
+            // This end is load-bearing (issue #168), which is why the [Range] alone will not do: that
+            // bound runs on the HTTP path only, so a row left above the ceiling by a hand edit, a
+            // restore, or a save made before the ceiling narrowed would otherwise reach the section
+            // verbatim and break the very query the cap exists to keep answerable.
+            maxSmartTags = Math.Clamp(
+                parsed,
+                SystemSettingsBounds.AccountMaxSmartTagsPerAccountMin,
+                SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax);
+
+            if (maxSmartTags != parsed)
+            {
+                logger.LogWarning(
+                    "The stored smart-tag cap '{Value}' is outside its allowed range; reading the nearer bound {Bound}.",
+                    stored,
+                    maxSmartTags);
+            }
         }
         else
         {

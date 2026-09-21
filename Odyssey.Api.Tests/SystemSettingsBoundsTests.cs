@@ -148,6 +148,56 @@ public class SystemSettingsBoundsTests
     }
 
     /// <summary>
+    /// Issue #168 — the per-account smart-tag ceiling IS the filter-array cap, joined at all three
+    /// ends that have to agree: the bound pair, the constant it names, and the <c>[MaxLength]</c> on
+    /// the filter the section actually resolves its tags through.
+    ///
+    /// <para>
+    /// Asserting only the first two would pass if <c>TagIds</c> grew its own literal, which is the
+    /// same drift in the other direction: the cap the administrator sets would once again exceed what
+    /// one query can carry, and the smart-tag panel would once again 400 past it.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void The_smart_tag_ceiling_is_the_cap_on_the_filter_it_is_resolved_through()
+    {
+        Assert.Equal(
+            ListDefaults.MaxFilterArrayLength,
+            SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax);
+
+        var tagIds = typeof(Odyssey.Dtos.Finance.TransactionsQueryParams)
+            .GetProperty(nameof(Odyssey.Dtos.Finance.TransactionsQueryParams.TagIds))!;
+
+        var maxLength = tagIds.GetCustomAttribute<MaxLengthAttribute>();
+        Assert.True(maxLength is not null,
+            "TransactionsQueryParams.TagIds carries no [MaxLength] — the smart-tag ceiling has nothing "
+            + "to be bounded by.");
+        Assert.Equal(SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax, maxLength!.Length);
+    }
+
+    /// <summary>
+    /// The same pin by NAME, for the reason the three single-direction ends carry one: a literal that
+    /// happens to equal 50 today satisfies the value assertion above and drifts the moment
+    /// <see cref="ListDefaults.MaxFilterArrayLength"/> moves — which is exactly how this key came to
+    /// accept 1000 against a filter that carries 50.
+    /// </summary>
+    [Fact]
+    public void The_smart_tag_ceiling_names_the_filter_array_constant()
+    {
+        var source = File.ReadAllText(
+            SolutionFile("Odyssey.Dtos", "SystemSettings", "SystemSettingsBounds.cs"));
+
+        var declaration = System.Text.RegularExpressions.Regex.Match(
+            source, @"public const int AccountMaxSmartTagsPerAccountMax\s*=\s*(?<value>[^;]+);");
+
+        Assert.True(declaration.Success, "No declaration found for AccountMaxSmartTagsPerAccountMax.");
+        Assert.Contains(
+            "ListDefaults.MaxFilterArrayLength",
+            declaration.Groups["value"].Value,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Every descriptor's shipped default lies inside its own pair. A default outside its bound would
     /// be silently clamped on every single read — including on an absent row, which is the one path
     /// that is supposed to be exactly the documented value.

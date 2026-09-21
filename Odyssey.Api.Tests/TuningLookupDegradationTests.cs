@@ -1,7 +1,10 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Api.SystemSettings;
+using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos;
 using Xunit;
@@ -268,12 +271,12 @@ public class TuningLookupDegradationTests
         var dbName = Guid.NewGuid().ToString();
 
         var healthy = CreateContext(dbName);
-        await SeedAsync(healthy, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "500"));
+        await SeedAsync(healthy, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "40"));
         var live = await new AccountLimitsLookup(
             healthy, cache, NullLogger<AccountLimitsLookup>.Instance).GetAsync();
 
         Assert.False(live.IsDegraded);
-        Assert.Equal(500, live.MaxSmartTagsPerAccount);
+        Assert.Equal(40, live.MaxSmartTagsPerAccount);
 
         cache.Remove(AccountCacheKey);
         var broken = CreateContext(dbName);
@@ -287,6 +290,73 @@ public class TuningLookupDegradationTests
     }
 
     /// <summary>
+    /// Issue #168 — a row left ABOVE the ceiling resolves to the ceiling, and is not degraded.
+    ///
+    /// <para>
+    /// The <c>[Range]</c> runs on the HTTP path alone, so a value saved before the ceiling narrowed,
+    /// or written by a hand edit or a restore, reaches this lookup unchecked. Without the clamp it
+    /// would be served verbatim to both consumers — the section's pre-check and
+    /// <c>AccountSmartTagService</c>'s own enforcement — and the account could again hold more smart
+    /// tags than one <c>tagIds</c> filter can carry.
+    /// </para>
+    ///
+    /// <para>
+    /// <strong>Clamped, not degraded:</strong> the row parsed. Reporting it as degraded would make a
+    /// healthy database with a stale row look like a failed read, which is the distinction
+    /// <c>CLAUDE.md</c> draws between the two.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task AccountLimits_WhenTheStoredCapExceedsItsCeiling_ResolvesToTheCeiling()
+    {
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var context = CreateContext(Guid.NewGuid().ToString());
+        await SeedAsync(context, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "500"));
+
+        // A CapturingLogger rather than NullLogger: the warning is the OTHER half of the behaviour
+        // this test names, and the reason a clamp is not silent — without an assertion on it the log
+        // call could be deleted, downgraded to Debug or emptied of its numbers and nothing would fail.
+        // (Raised by the test reviewer on this PR.)
+        var logger = new CapturingLogger<AccountLimitsLookup>();
+
+        var limits = await new AccountLimitsLookup(context, cache, logger).GetAsync();
+
+        Assert.False(limits.IsDegraded);
+        Assert.Equal(
+            SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax, limits.MaxSmartTagsPerAccount);
+        Assert.Equal(ListDefaults.MaxFilterArrayLength, limits.MaxSmartTagsPerAccount);
+
+        // Warning, not Error: the level is what separates "clamped" from "degraded" in the operator's
+        // log, so it is pinned alongside the value. Both numbers are named — the stored one, so an
+        // operator can find the row to repair, and the resolved one, so the line says what is in force.
+        var warning = Assert.Single(logger.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Contains("500", warning.Message, StringComparison.Ordinal);
+        Assert.Contains(
+            SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax.ToString(CultureInfo.InvariantCulture),
+            warning.Message,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The companion to the clamp test: a row INSIDE its pair is not warned about. Without this, an
+    /// implementation that logged on every read would satisfy the assertion above while making the
+    /// warning useless as a signal that something needs repairing.
+    /// </summary>
+    [Fact]
+    public async Task AccountLimits_WhenTheStoredCapIsInRange_IsNotWarnedAbout()
+    {
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var context = CreateContext(Guid.NewGuid().ToString());
+        await SeedAsync(context, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "40"));
+
+        var logger = new CapturingLogger<AccountLimitsLookup>();
+        var limits = await new AccountLimitsLookup(context, cache, logger).GetAsync();
+
+        Assert.Equal(40, limits.MaxSmartTagsPerAccount);
+        Assert.Empty(logger.Entries);
+    }
+
+    /// <summary>
     /// The watermarks live in <see cref="IMemoryCache"/>, not <c>static</c> fields. Same lifetime in
     /// production (the cache is a singleton), but container-scoped — so a watermark cannot leak between
     /// test classes running in parallel, which is a bug this codebase has actually had.
@@ -296,7 +366,7 @@ public class TuningLookupDegradationTests
     {
         var dbName = Guid.NewGuid().ToString();
         var seeded = CreateContext(dbName);
-        await SeedAsync(seeded, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "500"));
+        await SeedAsync(seeded, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "40"));
 
         var firstCache = new MemoryCache(new MemoryCacheOptions());
         await new AccountLimitsLookup(seeded, firstCache, NullLogger<AccountLimitsLookup>.Instance).GetAsync();

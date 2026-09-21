@@ -854,10 +854,16 @@ public partial class Settings
         // ── Accounts (issue #434 key 15) ──────────────────────────────────────────────────────────
         new("Accounts", Icons.Material.Filled.AccountBalance,
         [
+            // Min/Max name the SystemSettingsBounds pair rather than restating literals (issue #168):
+            // the ceiling IS ListDefaults.MaxFilterArrayLength, the cap on the tagIds filter the
+            // section resolves its tags through, so a literal here could drift from the constraint.
             new("accountMaxSmartTagsPerAccount", "sell", "Max smart tags per account",
                 "Upper limit on the saved tag filters one account may carry. The Accounts page reads this "
-                + "value directly, so a change takes effect there without a reload.",
-                SettingClaim.Count, SettingControl.Number, Min: 1, Max: 1000,
+                + "value directly, so a change takes effect there without a reload. The ceiling is the "
+                + "number of tag ids the section's own transactions query can carry in one request.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.AccountMaxSmartTagsPerAccountMin,
+                Max: SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax,
                 Field: nameof(SystemSettingsUpdate.AccountMaxSmartTagsPerAccount),
                 Load: (p, dto) => p.SetIntLoaded(
                     "accountMaxSmartTagsPerAccount", dto.AccountMaxSmartTagsPerAccount),

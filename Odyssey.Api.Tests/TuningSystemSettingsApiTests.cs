@@ -317,8 +317,19 @@ public class TuningSystemSettingsApiTests
             "Samples per skip reason must be between");
         Both(nameof(SystemSettingsUpdate.EmailMaxTrackedRecipients),
             SystemSettingsDefaults.EmailMaxTrackedRecipients, 200_000, "can only be raised, not lowered");
-        Both(nameof(SystemSettingsUpdate.AccountMaxSmartTagsPerAccount), 1, 1_000,
-            "Smart tags per account must be between");
+        // The ceiling is ListDefaults.MaxFilterArrayLength, named rather than restated (issue #168) —
+        // a literal here is the drift this key's own bug was.
+        //
+        // The fragment carries the RENDERED bounds, not just the prose. This is the one key whose
+        // ErrorMessage uses RangeAttribute's {1}/{2} placeholders, so a fragment stopping short of
+        // them would pass equally on an unsubstituted "between {1} and {2}" or on a future edit that
+        // swapped the two arguments into "between 50 and 1". Interpolated rather than written out,
+        // so it follows the pair instead of becoming the next literal to drift. (Raised by the test
+        // reviewer on this PR.)
+        const int SmartTagsMin = SystemSettingsBounds.AccountMaxSmartTagsPerAccountMin;
+        const int SmartTagsMax = SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax;
+        Both(nameof(SystemSettingsUpdate.AccountMaxSmartTagsPerAccount), SmartTagsMin, SmartTagsMax,
+            $"Smart tags per account must be between {SmartTagsMin} and {SmartTagsMax}.");
 
         return data;
     }

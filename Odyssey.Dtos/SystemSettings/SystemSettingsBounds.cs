@@ -229,7 +229,23 @@ public static class SystemSettingsBounds
     public const int EmailMaxTrackedRecipientsMax = 200000;
 
     public const int AccountMaxSmartTagsPerAccountMin = 1;
-    public const int AccountMaxSmartTagsPerAccountMax = 1000;
+
+    /// <summary>
+    /// <strong>Named, never restated</strong> (issue #168): the smart tags configured by this key are
+    /// resolved through one transactions query whose <c>tagIds</c> filter is capped at
+    /// <see cref="ListDefaults.MaxFilterArrayLength"/>, so a larger value is one the feature cannot
+    /// use — past it the section's own resolution query is rejected 400 by model validation and the
+    /// panel stops showing transactions. The ceiling <strong>is</strong> that constant, so the two
+    /// cannot drift.
+    ///
+    /// <para>
+    /// The alternative close was chunking the resolution query, which is strictly more work for a
+    /// capability nobody has asked for. Prefer this bound unless 50+ smart tags on one record turns
+    /// out to be a real use case; the shipped default is
+    /// <see cref="SystemSettingsDefaults.AccountMaxSmartTagsPerAccount"/>, comfortably under it.
+    /// </para>
+    /// </summary>
+    public const int AccountMaxSmartTagsPerAccountMax = ListDefaults.MaxFilterArrayLength;
 
     // ── The Subscriptions summary limits (issue #437) ────────────────────────────────────────────
     //
