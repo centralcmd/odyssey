@@ -572,13 +572,37 @@ public class TermService
             subject.TermId,
             subject.Kind,
             before is null ? NoTermValue : before.Value.ToString(CultureInfo.InvariantCulture),
-            before?.CurrencyCode ?? NoTermValue,
+            LogCurrency(before?.CurrencyCode),
             before is null ? NoTermValue : before.EffectiveFrom.ToString("O", CultureInfo.InvariantCulture),
             after is null ? NoTermValue : after.Value.ToString(CultureInfo.InvariantCulture),
-            after?.CurrencyCode ?? NoTermValue,
+            LogCurrency(after?.CurrencyCode),
             after is null ? NoTermValue : after.EffectiveFrom.ToString("O", CultureInfo.InvariantCulture),
             userId ?? "(unknown)");
     }
+
+    /// <summary>
+    /// The currency slot, reduced to what a currency code can be: exactly three ASCII letters, or
+    /// <see cref="NoTermValue"/>. Anything else never reaches the line.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>This is the one value on the line that starts life as a caller-supplied string</b>, and it is
+    /// what CodeQL flagged (<c>cs/log-forging</c>, "log entries created from user input"). Everything
+    /// else is a <c>Guid</c>, a closed enum, a <c>decimal</c> or a round-tripped <c>DateTime</c>, none
+    /// of which can carry the CR/LF a forged log line needs.
+    /// </para>
+    /// <para>
+    /// <c>ApplyAndValidate</c> does already normalize the code and refuse one that is not a supported,
+    /// active currency, so no such value can be stored today — but that guarantee sits three call
+    /// frames away, behind a database lookup, and a later change there would silently widen what
+    /// reaches an operator's log. Issue #154 §8.8 states the line carries "ids, closed enums, dates and
+    /// money amounts"; this makes that a property of the <em>log site</em> rather than an inference
+    /// about its callers. The "before" half is read back off a stored row and gets the same treatment,
+    /// since a row written by an earlier build is outside this build's validator entirely.
+    /// </para>
+    /// </remarks>
+    private static string LogCurrency(string? code) =>
+        code is { Length: 3 } && code.All(char.IsAsciiLetter) ? code : NoTermValue;
 
     /// <summary>
     /// The single validation, normalization and supersession path both owners run through. Everything

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Odyssey.Client.Components;
 using Odyssey.Dtos.Finance;
@@ -189,6 +190,69 @@ public class OdsTypeRegistriesTests
         var firstAutomation = keys.IndexOf("Paused");
         Assert.Equal(keys.IndexOf("EmailSent") + 1, firstAutomation);
         Assert.Equal(keys.Count - 1, keys.IndexOf("PartyRemoved") + 1);
+    }
+
+    /// <summary>
+    /// Issue #155 AC 19 — the design system and this registry agree on all eighteen keys, labels,
+    /// glyphs, colours <b>and reading order</b>. The design system is the source of truth for all
+    /// five; this is the only thing that catches the two drifting apart.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The AC says "pinned by <c>OdsTypeRegistriesTests</c>", and until this test the file pinned only
+    /// the C# side's <em>internal</em> consistency — that <c>Other</c> is last and every enum member
+    /// has an entry. Both would stay green while the DS renamed a label, re-hued a glyph or reordered
+    /// the list, which is exactly the drift the AC names and the class of defect this whole file
+    /// exists for: a wrong mapping never throws and never fails a build, it is just silently wrong on
+    /// screen.
+    /// </para>
+    /// <para>
+    /// <c>ContractEventTypes</c> is the only registry with this cross-file check today. That is a
+    /// repo-wide gap rather than a rule — the others are equally exposed — but a test that covers one
+    /// registry is worth more than a note saying all of them should have one.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ContractEventTypes_agrees_with_the_design_systems_registry()
+    {
+        var path = ClientSource.Sibling(
+            Path.Combine("Odyssey Design System", "ui_kits", "web", "contract-events-data.js"));
+        Assert.True(File.Exists(path), $"The design system's registry is missing at {path}.");
+
+        // One object literal per member, in source order — which IS the reading order on both sides.
+        var declared = Regex.Matches(
+                File.ReadAllText(path),
+                @"\{\s*key:\s*'(?<key>\w+)',\s*label:\s*'(?<label>[^']*)',\s*enumValue:\s*(?<ordinal>\d+),"
+                + @"\s*icon:\s*'(?<icon>\w+)',\s*color:\s*'(?<color>[^']*)',\s*soft:\s*'(?<soft>[^']*)'")
+            .Select(m => (
+                Key: m.Groups["key"].Value,
+                Label: m.Groups["label"].Value.Replace("\u2019", "'", StringComparison.Ordinal),
+                Ordinal: int.Parse(m.Groups["ordinal"].Value, CultureInfo.InvariantCulture),
+                Icon: m.Groups["icon"].Value,
+                Color: m.Groups["color"].Value,
+                Soft: m.Groups["soft"].Value))
+            .ToList();
+
+        Assert.Equal(
+            OdsTypeRegistries.ContractEventTypes.Count,
+            declared.Count);
+
+        // Reading order, member for member.
+        Assert.Equal(
+            declared.Select(d => d.Key),
+            OdsTypeRegistries.ContractEventTypes.Select(t => t.Key));
+
+        foreach (var (entry, ds) in OdsTypeRegistries.ContractEventTypes.Zip(declared))
+        {
+            Assert.Equal(ds.Label, entry.Label);
+            Assert.Equal(ds.Icon, entry.Icon);
+            Assert.Equal(ds.Color, entry.Color);
+            Assert.Equal(ds.Soft, entry.Soft);
+
+            // The ordinal is the wire contract, and the DS carries it explicitly precisely because
+            // reading order no longer implies it.
+            Assert.Equal(ds.Ordinal, (int)Enum.Parse<ContractEventType>(entry.Key));
+        }
     }
 
     /// <summary>A contact whose type is missing renders as an organisation, not as a person —

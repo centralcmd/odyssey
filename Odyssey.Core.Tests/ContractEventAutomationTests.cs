@@ -820,6 +820,42 @@ public class ContractEventAutomationTests
         });
     }
 
+    /// <summary>
+    /// The currency slot is reduced to three ASCII letters or <c>(none)</c> at the LOG SITE, so a
+    /// stored code outside that shape never reaches an operator's log — the <c>cs/log-forging</c>
+    /// alert CodeQL raised on the first cut of this line.
+    /// </summary>
+    /// <remarks>
+    /// The write path already refuses an unsupported currency, so this state is unreachable through
+    /// the API today; it is reached here by writing the row directly, which is exactly the case the
+    /// guard exists for — a row written by an earlier build, or by a later change to a validator three
+    /// call frames away. Asserting through the validator would test the validator instead.
+    /// </remarks>
+    [Fact]
+    public async Task ATermCurrencyOutsideTheThreeLetterShape_NeverReachesTheLogLine()
+    {
+        await using var context = TestContextFactory.Create();
+        var created = await Contracts(context).Create(New(), TestUserId);
+        var log = new RecordingLogger<TermService>();
+        var terms = Terms(context, log);
+
+        var term = await terms.CreateForContract(
+            created.ContractId, Rent(14500m, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)), TestUserId);
+
+        // Written straight onto the row, bypassing the write path's currency validation.
+        var stored = await context.Terms.FirstAsync(t => t.TermId == term.TermId);
+        stored.CurrencyCode = "U\r\nS";
+        await context.SaveChangesAsync();
+        log.Lines.Clear();
+
+        Assert.True(await terms.DeleteForContract(created.ContractId, term.TermId, TestUserId));
+
+        var line = Assert.Single(log.Lines);
+        Assert.DoesNotContain("\r", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("\n", line, StringComparison.Ordinal);
+        Assert.Contains("(none)", line, StringComparison.Ordinal);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────────
 
     /// <summary>

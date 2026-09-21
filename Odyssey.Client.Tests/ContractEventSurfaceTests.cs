@@ -766,6 +766,115 @@ public class ContractEventSurfaceTests
     }
 
     /// <summary>
+    /// AC 13 and AC 14, behaviourally — a delete really does move focus to the section heading and
+    /// really does raise the resulting count. Both are driven through the row's own Delete button and
+    /// MudBlazor's confirm, so what is exercised is <c>DeleteAsync</c> rather than the two helpers it
+    /// calls.
+    /// </summary>
+    /// <remarks>
+    /// The structural assertions elsewhere in this file — that the heading carries an <c>id</c> and
+    /// <c>tabindex="-1"</c>, and that no second live region is mounted — say the destination and the
+    /// channel exist. Neither says either is used, and under <c>JSRuntimeMode.Loose</c> an omitted JS
+    /// call would pass silently. This is the test that fails if the wiring is dropped.
+    /// </remarks>
+    [Fact]
+    public async Task Deleting_a_row_moves_focus_to_the_heading_and_announces_what_is_left()
+    {
+        var ctx = NewContext();
+        var announced = new List<string>();
+        var rows = new List<ExistingContractEvent> { Event(title: "Kept"), Event(title: "Doomed") };
+
+        var client = new Mock<IContractsApiClient>();
+        client
+            .Setup(c => c.ListEventsAsync(
+                ContractId, null, null, null, null, null, null,
+                It.IsAny<int>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ApiResult<PagedResult<ExistingContractEvent>>.Success(
+                new PagedResult<ExistingContractEvent>
+                {
+                    Items = [.. rows],
+                    Offset = 0,
+                    Limit = ContractEventsSection.PageSize,
+                    TotalCount = rows.Count,
+                },
+                HttpStatusCode.OK));
+        client
+            .Setup(c => c.DeleteEventAsync(ContractId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent))
+            .Callback(() => rows.RemoveAll(e => e.Title == "Doomed"));
+        ctx.Services.AddSingleton(client.Object);
+
+        var cut = ctx.Render<SectionHost>(p => p
+            .Add(h => h.Contract, Lease())
+            .Add(h => h.OnAnnounce, EventCallback.Factory.Create<string>(this, announced.Add)));
+        var section = cut.FindComponent<ContractEventsSection>();
+        await cut.InvokeAsync(() => section.Instance.ReloadAsync());
+
+        cut.Find("button[aria-label='Delete Doomed']").Click();
+
+        // MudBlazor's message box renders into the provider in the same tree; confirming it lets
+        // DeleteAsync run on past its await.
+        var confirm = cut.FindAll("button").First(b => b.TextContent.Trim() == "Delete");
+        confirm.Click();
+        cut.WaitForAssertion(() => Assert.Single(announced));
+
+        Assert.Equal("Event deleted. 1 entry in the log.", announced[0]);
+
+        var focusCall = Assert.Single(
+            ctx.JSInterop.Invocations, i => i.Identifier == "focusHeading");
+        Assert.Equal("con-events-heading", Assert.Single(focusCall.Arguments));
+    }
+
+    /// <summary>
+    /// AC 14 — the sentence a delete raises to the page's announcer, in both numbers. An emptied log
+    /// says "0 entries" rather than falling silent, which is the case a naive guard drops.
+    /// </summary>
+    /// <remarks>
+    /// The sentence is asserted directly because the delete that raises it goes through MudBlazor's
+    /// message box, which needs the dialog provider this section's own test context does not mount.
+    /// <c>DeleteAsync</c> has exactly one call site for it, beside the focus move, and both are
+    /// reached only after the write succeeds.
+    /// </remarks>
+    [Theory]
+    [InlineData(0, "Event deleted. 0 entries in the log.")]
+    [InlineData(1, "Event deleted. 1 entry in the log.")]
+    [InlineData(4, "Event deleted. 4 entries in the log.")]
+    public void The_delete_announcement_agrees_in_number_with_what_is_left(int left, string expected)
+    {
+        Assert.Equal(expected, ContractEventsSection.DeletionAnnouncement(left));
+    }
+
+    /// <summary>
+    /// The section raises its announcement rather than mounting a region for it, so the callback has
+    /// to exist as a parameter and the host has to bind it. Both halves, because either alone leaves
+    /// the sentence going nowhere.
+    /// </summary>
+    [Fact]
+    public void The_announcement_callback_is_a_parameter_and_the_host_binds_it()
+    {
+        var parameter = typeof(ContractEventsSection).GetProperty(nameof(ContractEventsSection.OnAnnounce));
+        Assert.NotNull(parameter);
+        Assert.Equal(typeof(EventCallback<string>), parameter!.PropertyType);
+
+        var host = File.ReadAllText(
+            Path.Combine(ClientSource.Root, "Pages", "Finance", "ContractDetailView.razor"));
+        Assert.Matches(@"<ContractEventsSection[^>]*OnAnnounce=""OnAnnounce""", host.Replace("\n", " "));
+    }
+
+    /// <summary>
+    /// The imported focus module is released on teardown. A section is torn down every time a contract
+    /// row collapses, so without this each collapse and re-expand leaks a module registration — the
+    /// house pattern every other component importing a module follows.
+    /// </summary>
+    [Fact]
+    public void The_section_releases_its_focus_module_on_teardown()
+    {
+        Assert.True(
+            typeof(IAsyncDisposable).IsAssignableFrom(typeof(ContractEventsSection)),
+            "ContractEventsSection imports a JS module, so it must release it on teardown.");
+    }
+
+    /// <summary>
     /// One declaration block out of <c>odyssey-components.css</c>, comments stripped so a rationale
     /// note cannot satisfy an assertion. Same shape <c>ContractOrphanRowContrastTests</c> uses.
     /// </summary>
@@ -849,6 +958,31 @@ public class ContractEventSurfaceTests
         // either breaks the providers the modal renders through.
         ctx.Services.AddMudServices();
         return ctx;
+    }
+
+    /// <summary>
+    /// The section beside MudBlazor's dialog provider. The confirm is portaled into the provider, so
+    /// both have to sit in ONE render tree for a test to reach it — the same arrangement
+    /// <see cref="DialogHost"/> uses for the modal.
+    /// </summary>
+    public sealed class SectionHost : ComponentBase
+    {
+        [Parameter] public ExistingContract Contract { get; set; } = default!;
+
+        [Parameter] public EventCallback<string> OnAnnounce { get; set; }
+
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+        {
+            builder.OpenComponent<MudDialogProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<MudPopoverProvider>(1);
+            builder.CloseComponent();
+            builder.OpenComponent<ContractEventsSection>(2);
+            builder.AddComponentParameter(3, nameof(ContractEventsSection.Contract), Contract);
+            builder.AddComponentParameter(4, nameof(ContractEventsSection.CanUpdate), true);
+            builder.AddComponentParameter(5, nameof(ContractEventsSection.OnAnnounce), OnAnnounce);
+            builder.CloseComponent();
+        }
     }
 
     /// <summary>The dialog beside MudBlazor's providers, which portal the modal it renders into.</summary>

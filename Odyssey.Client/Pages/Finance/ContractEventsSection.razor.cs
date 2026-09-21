@@ -29,7 +29,7 @@ namespace Odyssey.Client.Pages.Finance;
 /// would invite a guard that contradicts the API.
 /// </para>
 /// </remarks>
-public partial class ContractEventsSection
+public partial class ContractEventsSection : IAsyncDisposable
 {
     /// <summary>
     /// Rows per page. Matches the design system's <c>pageSize</c> default; the endpoint's own default
@@ -227,29 +227,48 @@ public partial class ContractEventsSection
     /// </summary>
     private async Task FocusHeadingAsync()
     {
-        if (!OperatingSystem.IsBrowser())
-            return;
-
         try
         {
             _focusJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/section-focus.js");
             await _focusJs.InvokeVoidAsync("focusHeading", HeadingId);
         }
-        catch (JSException)
+        catch (Exception exception) when (exception is JSException or InvalidOperationException)
         {
-            // Focus is an enhancement on an operation that already succeeded; a failed import must
-            // never surface as a failed delete.
+            // Focus is an enhancement on an operation that already succeeded, so a failed import or a
+            // host that cannot take an interop call must never surface as a failed delete. Deliberately
+            // NOT guarded by an OperatingSystem.IsBrowser() early return: this path runs only from a
+            // user's click, which is always interactive, and the guard would make the call unassertable
+            // on the tier that tests it.
         }
     }
 
-    private Task AnnounceCountAsync()
+    /// <summary>
+    /// Releases the imported focus module. The house pattern for every component that imports one
+    /// (<c>TileRemovalFocus</c>, <c>OdsInfiniteList</c>, <c>OdsImageCropDialog</c> and the rest): a
+    /// section is torn down every time a contract row collapses, so without this each collapse and
+    /// re-expand leaks a module registration.
+    /// </summary>
+    public async ValueTask DisposeAsync()
     {
-        if (!OnAnnounce.HasDelegate)
-            return Task.CompletedTask;
+        if (_focusJs is not null)
+        {
+            try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+        }
 
-        return OnAnnounce.InvokeAsync(
-            $"Event deleted. {_total} {(_total == 1 ? "entry" : "entries")} in the log.");
+        GC.SuppressFinalize(this);
     }
+
+    /// <summary>
+    /// The sentence a delete raises to the page's announcer. Public and pure, so the copy — including
+    /// the "0 entries" case a naive guard drops — is assertable without a dialog provider.
+    /// </summary>
+    public static string DeletionAnnouncement(int remaining) =>
+        $"Event deleted. {remaining} {(remaining == 1 ? "entry" : "entries")} in the log.";
+
+    private Task AnnounceCountAsync() =>
+        OnAnnounce.HasDelegate
+            ? OnAnnounce.InvokeAsync(DeletionAnnouncement(_total))
+            : Task.CompletedTask;
 
     private Task OnEventChangedAsync() => LoadAsync();
 

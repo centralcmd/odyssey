@@ -12,7 +12,7 @@ using Odyssey.Context;
 namespace Odyssey.Context.Migrations
 {
     [DbContext(typeof(OdysseyContext))]
-    [Migration("20260921152024_AddContractEventSource")]
+    [Migration("20260921162025_AddContractEventSource")]
     partial class AddContractEventSource
     {
         /// <inheritdoc />
@@ -792,7 +792,9 @@ namespace Odyssey.Context.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<int>("Source")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("Title")
                         .IsRequired()

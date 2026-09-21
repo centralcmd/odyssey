@@ -789,7 +789,9 @@ namespace Odyssey.Context.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.Property<int>("Source")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("Title")
                         .IsRequired()
