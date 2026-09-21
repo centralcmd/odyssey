@@ -31,7 +31,6 @@ const MODULES = [
         { key: 'tax-statements', label: 'Tax Statements', icon: 'request_quote' },
         { key: 'insurance', label: 'Insurance', icon: 'shield' },
         { key: 'contracts', label: 'Contracts', icon: 'handshake' },
-        { key: 'subscriptions', label: 'Subscriptions', icon: 'subscriptions' },
       ] },
       { label: 'Documents', items: [
         { key: 'files', label: 'Files', icon: 'folder' },

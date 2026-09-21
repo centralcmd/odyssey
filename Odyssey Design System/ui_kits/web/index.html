@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now opening on Contracts, where object parties (Object / Property / Collateral) name what the agreement is about and Guarantor is legal on every type — all decided by one shared matrix — Landlord/Tenant on a lease, Insurer/Policyholder/Insured/Beneficiary on insurance, Lender/Borrower on the new Loan type — with Unspecified and Service provider retired, a role required on every write, and a type change refused while it would orphan an existing party. Party tiles lead with the role, show a non-default term under it, and their ⋯ menu opens the edit-in-place dialog (role, record and both dates are replaced as one). Plus the contact import/export family across the productivity surfaces, Tasks, Budgets, the Calendar module, the User Profile, Subscriptions, Insurance, Accounts, Tax and the rest." viewport="1440x1100" -->
+<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now opening on Contracts, where object parties (Object / Property / Collateral) name what the agreement is about and Guarantor is legal on every type — all decided by one shared matrix — Landlord/Tenant on a lease, Insurer/Policyholder/Insured/Beneficiary on insurance, Lender/Borrower on the new Loan type — with Unspecified and Service provider retired, a role required on every write, and a type change refused while it would orphan an existing party. Party tiles lead with the role, show a non-default term under it, and their ⋯ menu opens the edit-in-place dialog (role, record and both dates are replaced as one). Plus the contact import/export family across the productivity surfaces, Tasks, Budgets, the Calendar module, the User Profile, Insurance, Accounts, Tax and the rest." viewport="1440x1100" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -19,7 +19,6 @@
   <link rel="stylesheet" href="legal.css" />
   <link rel="stylesheet" href="contracts.css" />
   <link rel="stylesheet" href="contract-events.css" />
-  <link rel="stylesheet" href="subscriptions.css" />
   <link rel="stylesheet" href="journal.css" />
   <link rel="stylesheet" href="photos.css" />
   <link rel="stylesheet" href="calendar.css" />
@@ -39,7 +38,6 @@
   <script src="insurance-data.js"></script>
   <script src="contracts-data.js"></script>
   <script src="contract-events-data.js"></script>
-  <script src="subscriptions-data.js"></script>
   <script src="journal-data.js"></script>
   <script src="photos-data.js"></script>
   <script src="calendar-data.js"></script>
@@ -96,8 +94,6 @@
   <script type="text/babel" src="AddContractEventModal.jsx"></script>
   <script type="text/babel" src="ContractEvents.jsx"></script>
   <script type="text/babel" src="Contracts.jsx"></script>
-  <script type="text/babel" src="AddSubscriptionModal.jsx"></script>
-  <script type="text/babel" src="Subscriptions.jsx"></script>
   <script type="text/babel" src="ImportJournalEntriesModal.jsx"></script>
   <script type="text/babel" src="Journal.jsx"></script>
   <script type="text/babel" src="AddCalendarEventModal.jsx"></script>
@@ -206,7 +202,6 @@
           {view === 'tax-statements' && <TaxStatements tweaks={tweaks} onNavigate={setView} />}
           {view === 'insurance'    && <Insurance tweaks={tweaks} onNavigate={setView} />}
           {view === 'contracts'    && <Contracts tweaks={tweaks} onNavigate={setView} />}
-          {view === 'subscriptions'&& <Subscriptions />}
           {view === 'journal'      && <Journal tweaks={tweaks} onNavigate={setView} />}
           {view === 'calendar'     && <Calendar />}
           {view === 'photos'       && <Photos mode="library" />}

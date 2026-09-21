@@ -550,7 +550,8 @@ const CoverageStatusChip = DS.CoverageStatusChip || (({ status = 'NoCoverage', d
 
 // Subscriptions — BillingInterval pickers + read chips. Typed DS components with
 // registry-fed / shipped-markup fallbacks (same pattern as the insurance atoms),
-// so the Subscriptions page holds even if the compiled bundle lags a turn behind.
+// The kit-side registry/helper fallbacks are gone with the Subscriptions page —
+// these now resolve entirely from the compiled bundle.
 const subIntervalOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.billingIntervals);
 const BillingIntervalSelect = ({ helper, types, ...props }) => {
   if (DS.BillingIntervalSelect) return <DS.BillingIntervalSelect help={helper} types={types} {...props} />;

@@ -22,7 +22,7 @@ This system targets **dark mode as the primary surface**, with a fully-mapped li
 - [Iconography](#iconography)
 - [Components — Dialogs](#components--dialogs)
 - Reference data: [Contact types](#reference-data--contact-types) · [Contact-method labels](#reference-data--contact-method-labels) · [Contact aliases & lifecycle dates](#reference-data--contact-aliases--lifecycle-dates) · [File types](#reference-data--file-types) · [Term kinds](#reference-data--term-kinds) · [Insurance types](#reference-data--insurance-policy--document-types) · [Contract types](#reference-data--contract--document-types) · [Contract party roles](#reference-data--contract-party-roles) · [Billing interval](#reference-data--billing-interval)
-- Feature pages: [Budgets](#components--budgets-page) · [Tax Statements](#components--tax-statements-page) · [Insurance](#components--insurance-policies-page) · [Contracts](#components--contracts-page) · [Subscriptions](#components--subscriptions-page) · [Transactions](#components--transactions-page) · [Files](#components--files-page) · [Users](#components--users) · [User Account](#components--user-account) · [Authentication](#components--authentication)
+- Feature pages: [Budgets](#components--budgets-page) · [Tax Statements](#components--tax-statements-page) · [Insurance](#components--insurance-policies-page) · [Contracts](#components--contracts-page) · [Transactions](#components--transactions-page) · [Files](#components--files-page) · [Users](#components--users) · [User Account](#components--user-account) · [Authentication](#components--authentication)
 - Account record sections: [Rate & fee history (Terms)](#components--account-rate--fee-history) · [Value estimates](#components--account-value-estimates) · [Custodian](#components--account-custodian) · [Detail chips & menu conventions](#components--account-detail-chips--menu-conventions)
 - Overlays: [File viewer](#components--file-viewer) · [Analyze file](#components--analyze-file)
 - [Substitutions to flag](#substitutions-to-flag)
@@ -270,7 +270,6 @@ Every product screen has a reference build in `ui_kits/web/` and a copyable star
 | Tax Statements | `TaxStatements.jsx` | `templates/tax-statements` |
 | Insurance | `Insurance.jsx` | `templates/insurance` |
 | Contracts | `Contracts.jsx` | `templates/contracts` |
-| Subscriptions | `Subscriptions.jsx` (Contracts-style record cards) | `templates/subscriptions` |
 | Journal | `Journal.jsx` (record cards + `JournalPhotoGallery`) | `templates/journal` |
 | Tasks | `Tasks.jsx` (`TaskBoard` kanban + list view) | `templates/tasks` |
 | Calendar | `Calendar.jsx` (`CalendarGrid` month + week/day/agenda + header calendar filter) | `templates/calendar` |
@@ -546,7 +545,6 @@ Maps to the Blazor `OdsPager` (a `MudBlazor`-button pager mirroring the `/users`
 | Budgets | `pie_chart` |
 | Insurance | `shield` |
 | Contracts | `handshake` |
-| Subscriptions | `subscriptions` |
 | Transactions | `receipt_long` |
 | Tags | `local_offer` |
 | Contacts | `store` |
@@ -1273,20 +1271,6 @@ Four **productivity surfaces** — **Contacts**, **Tasks**, **Journal**, and **C
 **Export — scope choices.** Bulk export takes a **scope**: *all* (every record the caller can read, bounded by the per-format entry cap) or *filtered* (the current search / type / status / date set — Calendar's filtered export prefills From/To from the on-screen period and a ≤ 92-day span). Exporting a **single recurring calendar event** first asks **occurrence vs. series** via a compact radio-card dialog (`ExportEventScopeModal`) with one **Export** button — a standalone event downloads immediately. A whole recurring series collapses to one `RRULE` VEVENT only when the entire materialized series is in the set; a filtered subset exports per-occurrence. Success and cap/again failures surface as **toasts**.
 
 **Tweaks.** Contacts, Tasks, and Journal each expose demo tweaks for the edge states — the import claim on/off, an export-cap-exceeded simulation, and the import outcome (all-clean / with-skips / file-rejected); Journal adds a `contacts.read` toggle that drives the contact-link skip count.
-
----
-
-The **Subscriptions page** (`Subscriptions.jsx`) is a manual list of recurring subscriptions at `/subscriptions` — the sister of Contracts: the same PageHeader + expandable **record-card** scaffold (`.acct-list` / `.acct-item`), not the flat table. It is a pure record-keeping list: subscriptions **do not** generate transactions, post to accounts, or schedule anything. Reference build: `ui_kits/web/Subscriptions.jsx` (+ `AddSubscriptionModal.jsx`, `subscriptions-data.js`, `subscriptions.css`).
-
-**Each card** shows the interval-colored `Avatar`, the name with a **`SubscriptionStatusChip`** (Paused / Ended / Archived), and a tag line of external id · company (the data-minimised `{id,name,type}` contact projection, or “No company”) · cadence (the "every N" interval label + derived anchor, e.g. "Every 2 months · day 1"). The right-hand figure is the price with a *per month* / *every N months* caption; the row's `ActionMenu` carries Edit / Pause·Resume / **End subscription** / Copy ID / Archive·Restore / Delete (Pause and End are hidden once the subscription has ended). Expanding reveals a `MetaTile` grid over every field — including a derived **Next billing** date (the next on/after today, stepping by the `intervalCount`, with a relative word; "Paused" / "Ended" / "Archived" / "No further billing" when there is nothing to bill); inline edit reuses the create form's controls (Paused / Archived / end date via **End** are managed from the action menu, not the form — the end date is also editable directly). Archived rows dim (via the shared `.acct-item.dimmed`), with the Archived chip as the primary text cue.
-
-**Lifecycle states.** **Paused** = still tracked and visible in the default list, flagged as temporarily not billing; **Ended** = a **derived** terminal state (its `endDate` is set and on/before today — `endDate ≤ today`), no longer billing; **Archived** = hidden from the default (Active) list, reachable via the status filter. Paused and Archived are orthogonal stored flags set by a boolean toggle (the service owns the timestamp); Ended is never stored — it falls out of the `endDate`. The **End subscription** action sets `endDate` to today so the row reads Ended immediately and drops out of all billing derivations (next-billing, run-rate); the end date can equally be set/cleared from the edit form. Row actions offer Pause / Resume, End, and Archive / Unarchive directly.
-
-**Filters + sort.** Search spans name / external id / company name; the **interval** filter is a `BillingIntervalMultiSelect` and the **status** filter is a `MultiSelect` (Active / Paused / Archived — same treatment as the Contracts page; archived rows stay hidden until "Archived" is picked), with the curated `SortSelect` sorting Name / Price / Start date / Frequency (the interval's numeric enum order) via the shared `SortHelpers.sortRows`.
-
-**Overview + upcoming renewals.** The header **Overview** leads with two **run-rate stat tiles** — Monthly and Yearly — in the same elevated `InfoTile` treatment as the Insurance detail's "Total premium" tile; each shows the blended **base-currency** total (converted via the stored exchange rates, hopping through USD), in the finance-expense hue, with the Monthly tile captioned by the **largest single cost driver**. A **By currency** caption keeps the un-converted per-currency amounts visible (cadence normalized daily/weekly/yearly → monthly & yearly; paused / archived / ended subs excluded), and the **by-interval** / **by-status** breakdowns follow. The header **signal** panel lists the soonest **upcoming renewals** (each subscription's *derived* next-billing date within a 45-day window); clicking a row jumps to and opens that card. Next-billing is derived from `firstBillingDate` + `interval` (month/year steps clamp to month length), never stored.
-
-> **Stack reality check.** Mirrors the *Subscriptions* backend: a single `Subscription` entity (amount + currency + interval directly on the row — no child collection, no derived-status engine), with `BillingInterval` (Daily/Weekly/Monthly/Yearly) plus an integer **`IntervalCount`** multiplier ("every N", default 1), an optional `ExternalId`, an optional scalar `ContactId` (minimal read projection), a required `FirstBillingDate` anchor, and independent nullable `Paused` / `Archived` stamps. Dialogs map to `NewSubscription` / `UpdateSubscription`; the derived billing anchor and the summary are computed client-side in `subscriptions-data.js`.
 
 ---
 

@@ -61,7 +61,6 @@
    'ui_kits/web/legal.css',
    'ui_kits/web/contracts.css',
    'ui_kits/web/contract-events.css',
-   'ui_kits/web/subscriptions.css',
    'ui_kits/web/journal.css',
    'ui_kits/web/photos.css',
    'ui_kits/web/calendar.css',
@@ -106,7 +105,7 @@
   // Plain JS first (compiled bundle + seed data), then the kit's JSX in the
   // same order ui_kits/web/index.html loads it. Eval order matters (shared
   // window globals), so we FETCH every file in parallel but EVAL in sequence.
-  const PLAIN = ['_ds_bundle.js', 'ui_kits/web/data.js', 'ui_kits/web/tax-data.js', 'ui_kits/web/insurance-data.js', 'ui_kits/web/contracts-data.js', 'ui_kits/web/contract-events-data.js', 'ui_kits/web/subscriptions-data.js', 'ui_kits/web/journal-data.js', 'ui_kits/web/photos-data.js', 'ui_kits/web/calendar-data.js', 'ui_kits/web/system-settings-data.js', 'ui_kits/web/net-worth-data.js', 'ui_kits/web/legal-data.js'];
+  const PLAIN = ['_ds_bundle.js', 'ui_kits/web/data.js', 'ui_kits/web/tax-data.js', 'ui_kits/web/insurance-data.js', 'ui_kits/web/contracts-data.js', 'ui_kits/web/contract-events-data.js', 'ui_kits/web/journal-data.js', 'ui_kits/web/photos-data.js', 'ui_kits/web/calendar-data.js', 'ui_kits/web/system-settings-data.js', 'ui_kits/web/net-worth-data.js', 'ui_kits/web/legal-data.js'];
   const JSX = [
     'Components.jsx', 'profile-fields.jsx', 'AppShell.jsx', 'Login.jsx', 'ForgotPassword.jsx', 'ResetPassword.jsx', 'ChangePasswordRequired.jsx', 'Onboarding.jsx', 'Dashboard.jsx',
     'AddAccountModal.jsx', 'AddFileModal.jsx', 'FileViewerModal.jsx', 'AnalyzeFileModal.jsx',
@@ -117,7 +116,6 @@
     'Budgets.jsx', 'AddTaxStatementModal.jsx', 'TaxStatements.jsx',
     'AddInsurancePolicyModal.jsx', 'AddRenewalModal.jsx', 'InsuranceUploadModal.jsx', 'AddPolicyPartyModal.jsx', 'Insurance.jsx',
     'AddContractModal.jsx', 'AddContractPartyModal.jsx', 'AddContractFileModal.jsx', 'AddContractTermModal.jsx', 'ContractTerms.jsx', 'AddContractEventModal.jsx', 'ContractEvents.jsx', 'Contracts.jsx',
-    'AddSubscriptionModal.jsx', 'Subscriptions.jsx',
     'ImportJournalEntriesModal.jsx', 'Journal.jsx', 'ImportTasksModal.jsx', 'Tasks.jsx',
     'AddCalendarEventModal.jsx', 'ExportCalendarEventsModal.jsx', 'ManageCalendarsModal.jsx', 'ImportCalendarModal.jsx', 'Calendar.jsx',
     'ProfilePicture.jsx', 'Users.jsx', 'Roles.jsx', 'FileAnalysisLog.jsx', 'SystemSettings.jsx', 'Preferences.jsx', 'AccountTwoFactor.jsx',
