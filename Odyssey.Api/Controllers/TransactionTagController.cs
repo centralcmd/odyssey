@@ -108,8 +108,9 @@ public class TransactionTagController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Delete a transaction tag based on the transaction tag ID.",
-        Description = @"Delete a transaction tag based on the transaction tag ID. A tag planned for by a budget 
-                        item is refused with a 409 naming how many items reference it.")]
+        Description = @"Delete a transaction tag based on the transaction tag ID. A tag that is planned for by a 
+                        budget item, configured as an account smart tag, or applied to a transaction is refused 
+                        with a 409 naming how many of each reference it.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the transaction tag to delete.")] Guid id, CancellationToken cancellationToken = default)

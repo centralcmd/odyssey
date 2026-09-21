@@ -110,24 +110,79 @@ public class TransactionTagService
             return;
         }
 
-        // A tag planned for by a budget item cannot be deleted (issue #75 §7.9). The RESTRICT key says
-        // the same on MariaDB, but its violation reaches GlobalExceptionHandler as a generic 409 naming
-        // no surface — and the EF InMemory tiers enforce no foreign keys at all, so there the delete
-        // would simply succeed. This pre-check is what makes the refusal explain itself, and what makes
-        // it happen on every tier. It names a COUNT and not the budgets: naming them would reach past
-        // transactions.tags.delete's own boundary.
+        var blockers = await CountDeleteBlockers(id, cancellationToken);
+
+        if (blockers.Count > 0)
+        {
+            throw new DomainConflictException(string.Join(" ", blockers));
+        }
+
+        context.TransactionTags.Remove(transactionTag);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Every reason the tag cannot be hard-deleted, one explaining clause per blocker class
+    /// (issues #75 §7.9, #165).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Each clause corresponds to one of the three <c>RESTRICT</c> foreign keys pointing at
+    /// <c>TransactionTags</c> — <c>BudgetItems</c>, <c>AccountSmartTags</c> and the
+    /// <c>TransactionTagLinks</c> join table.
+    /// Those keys say the same thing on MariaDB, but their violation reaches
+    /// <c>GlobalExceptionHandler</c> as a generic 409 naming no surface — and the EF InMemory tiers
+    /// enforce no foreign keys at all, so there the delete would simply succeed and leave the link
+    /// row orphaned. This pre-check is what makes the refusal explain itself, and what makes it
+    /// happen on every tier. Refusing before <c>Remove()</c> also closes the tracked-context path,
+    /// where severing a required relationship throws <see cref="InvalidOperationException"/> ahead of
+    /// <c>SaveChangesAsync</c> and so reaches neither <c>DbUpdateException</c> arm of the handler.
+    /// </para>
+    /// <para>
+    /// Every blocker class is counted before any is reported, so a tag blocked by two of them names
+    /// both rather than the first one found. Adding a class is one more count and one more clause
+    /// here; do not collapse them into a single message that could only describe one.
+    /// </para>
+    /// <para>
+    /// Each clause names a COUNT and never the blocking records: naming them would reach past
+    /// <c>transactions.tags.delete</c>'s own boundary.
+    /// </para>
+    /// </remarks>
+    private async Task<List<string>> CountDeleteBlockers(Guid id, CancellationToken cancellationToken)
+    {
+        var blockers = new List<string>();
+
         var plannedFor = await context.BudgetItems
             .CountAsync(item => item.TransactionTagId == id, cancellationToken);
 
         if (plannedFor > 0)
         {
-            throw new DomainConflictException(
+            blockers.Add(
                 $"This tag is planned for by {plannedFor} budget item{(plannedFor == 1 ? "" : "s")}. "
                 + "Remove those items on the Budgets page first.");
         }
 
-        context.TransactionTags.Remove(transactionTag);
-        await context.SaveChangesAsync(cancellationToken);
+        var watchedBy = await context.AccountSmartTags
+            .CountAsync(link => link.TransactionTagId == id, cancellationToken);
+
+        if (watchedBy > 0)
+        {
+            blockers.Add(
+                $"This tag is a smart tag on {watchedBy} account{(watchedBy == 1 ? "" : "s")}. "
+                + "Remove it there first.");
+        }
+
+        var appliedTo = await context.TransactionTagLinks
+            .CountAsync(link => link.TransactionTagId == id, cancellationToken);
+
+        if (appliedTo > 0)
+        {
+            blockers.Add(
+                $"This tag is used on {appliedTo} transaction{(appliedTo == 1 ? "" : "s")}. "
+                + "Remove it from those transactions first.");
+        }
+
+        return blockers;
     }
 
     /// <summary>
