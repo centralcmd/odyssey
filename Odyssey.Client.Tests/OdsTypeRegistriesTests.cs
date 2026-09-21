@@ -348,6 +348,105 @@ public class OdsTypeRegistriesTests
             OdsTypeRegistries.BillingIntervals.Select(t => t.Key));
     }
 
+    // ── The budget category's DIRECTION projection (issue #159 / #162) ───────
+
+    /// <summary>
+    /// <c>BudgetCategoryDirections</c> is the same two values shaped as a money field's LEAD, and it is
+    /// DERIVED from <see cref="OdsTypeRegistries.BudgetCategoryTypes"/> rather than written out again —
+    /// so the lead, the dialog's copy and the stored enum cannot disagree. It deliberately does not
+    /// appear in <see cref="RegistryEnumPairs"/>: it is a list of <c>OdsDirectionOption</c>, not
+    /// <c>OdsTypeOption</c>, so the reflection helper there would throw on it.
+    /// </summary>
+    [Fact]
+    public void The_budget_direction_lead_mirrors_the_category_registry()
+    {
+        Assert.Equal(
+            OdsTypeRegistries.BudgetCategoryTypes.Select(t => t.Key),
+            OdsTypeRegistries.BudgetCategoryDirections.Select(o => o.Value));
+        Assert.Equal(
+            OdsTypeRegistries.BudgetCategoryTypes.Select(t => t.Label),
+            OdsTypeRegistries.BudgetCategoryDirections.Select(o => o.Label));
+    }
+
+    /// <summary>
+    /// <b>The lead carries a WORD and no glyph.</b> A directional arrow beside a figure reads as that
+    /// figure rising or falling — against value rather than against the budget — which is the same
+    /// reason <c>TermDirectionVisuals</c> carries none. <c>OdsMoneyField</c> prefers <c>Icon</c> over
+    /// <c>Short</c>, so an icon slipped in here would silently replace the word everywhere.
+    /// </summary>
+    [Fact]
+    public void The_budget_direction_lead_is_a_word_with_no_icon()
+    {
+        var lead = OdsTypeRegistries.BudgetCategoryDirections;
+
+        Assert.Equal(2, lead.Count);
+        Assert.All(lead, option =>
+        {
+            Assert.Null(option.Icon);
+            Assert.False(string.IsNullOrWhiteSpace(option.Short));
+        });
+        Assert.Equal(["out", "in"], lead.Select(o => o.Short));
+    }
+
+    /// <summary>
+    /// <b>Tone comes from the DIRECTION, never from the value.</b> This is the trap
+    /// <c>docs/frontend-mudblazor-gotchas.md</c> names: a lead tinted from <c>Value</c> would emit
+    /// <c>tone-Expense</c>, which matches no CSS rule, leaving the figure the wrong colour with
+    /// nothing failing. Expense is coral, Income mint — the finance semantics, never a brand hue.
+    /// </summary>
+    [Fact]
+    public void Each_budget_direction_carries_its_own_finance_tone()
+    {
+        Assert.Equal(["expense", "income"], OdsTypeRegistries.BudgetCategoryDirections.Select(o => o.Tone));
+
+        Assert.Equal("expense", OdsTypeRegistries.BudgetCategoryDirectionOf(BudgetCategoryType.Expense).Tone);
+        Assert.Equal("income", OdsTypeRegistries.BudgetCategoryDirectionOf(BudgetCategoryType.Income).Tone);
+        Assert.Equal("var(--finance-expense)", OdsTypeRegistries.BudgetCategoryDirectionOf(BudgetCategoryType.Expense).Color);
+        Assert.Equal("var(--finance-income)", OdsTypeRegistries.BudgetCategoryDirectionOf(BudgetCategoryType.Income).Color);
+    }
+
+    /// <summary>Each side says what it MEANS, for the field's helper line — and the two differ.</summary>
+    [Fact]
+    public void Each_budget_direction_names_what_it_means()
+    {
+        var expense = OdsTypeRegistries.BudgetCategoryDirectionOf(BudgetCategoryType.Expense).Sentence;
+        var income = OdsTypeRegistries.BudgetCategoryDirectionOf(BudgetCategoryType.Income).Sentence;
+
+        Assert.Contains("out of the budget", expense, StringComparison.Ordinal);
+        Assert.Contains("into the budget", income, StringComparison.Ordinal);
+        Assert.NotEqual(expense, income);
+    }
+
+    /// <summary>
+    /// The lead hands back a STRING, so the dialog parses it to get the enum it stores. Anything
+    /// unrecognised resolves to <see cref="BudgetCategoryType.Expense"/> — the enum's zero member and
+    /// the same fallback <c>BudgetCategoryTypeOf</c> documents — rather than throwing on a value from
+    /// an older build.
+    /// </summary>
+    [Theory]
+    [InlineData("Expense", BudgetCategoryType.Expense)]
+    [InlineData("Income", BudgetCategoryType.Income)]
+    [InlineData("Sideways", BudgetCategoryType.Expense)]
+    [InlineData("99", BudgetCategoryType.Expense)]
+    [InlineData("", BudgetCategoryType.Expense)]
+    [InlineData(null, BudgetCategoryType.Expense)]
+    public void An_unrecognised_budget_direction_resolves_to_the_default(string? value, BudgetCategoryType expected) =>
+        Assert.Equal(expected, OdsTypeRegistries.BudgetCategoryTypeFrom(value));
+
+    /// <summary>
+    /// The round trip the dialog actually performs: the lead's value parses back to the enum whose
+    /// direction produced it. A mismatch here would store the opposite direction from the one shown.
+    /// </summary>
+    [Fact]
+    public void Every_budget_lead_value_round_trips_to_its_own_enum_member()
+    {
+        foreach (var value in Enum.GetValues<BudgetCategoryType>())
+        {
+            var option = OdsTypeRegistries.BudgetCategoryDirections.Single(o => o.Value == value.ToString());
+            Assert.Equal(value, OdsTypeRegistries.BudgetCategoryTypeFrom(option.Value));
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static IReadOnlyList<OdsTypeOption> Registry(string name) =>

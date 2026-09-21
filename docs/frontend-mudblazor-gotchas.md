@@ -49,6 +49,18 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
 - **Brand colours are brand only.** Tide (teal) and Sea (cyan) never encode income or expense — mint
   and coral do. No emoji, no gradients in product chrome. Numbers tabular; negatives use `−` plus
   the expense colour.
+- **Money is the amount followed by its ISO 4217 code — `1,234.56 USD`, never `$1,234.56`** — and
+  every figure goes through `OdsMoney`, the one formatter. Several shipped currencies share a glyph
+  (`$` for USD and CAD, `kr` for NOK and SEK), so a symbol is ambiguous exactly where the figure
+  matters. Do not build a `NumberFormatInfo` with a `CurrencySymbol`: the currency's row supplies
+  only its decimals now (`OdsMoney.MinorUnitsOf`, so JPY renders none). `Format` marks a negative
+  and leaves a positive unpadded; `Signed` is for a figure whose direction is the point (a net, a
+  delta) and fills the same slot with a real `+` — never glue one onto a `Format` string, it lands
+  outside the slot and breaks the column. The lead is U+2212 then a **figure space** (U+2007), which
+  is digit-width and non-collapsing where an ordinary space is neither. A figure with no currency —
+  a naive cross-currency aggregate — carries **no code at all**, rather than a generic `$` asserting
+  a denomination it is not in. The one place a symbol still belongs is the Currency admin record,
+  where `Symbol` is a stored field being edited.
 - **Deliberate exception:** the picker `oklch(...)` literals mirror the design system on purpose and
   are **not** tokenized. Don't "fix" them.
 - **An unavailable action is ABSENT from a menu, never dimmed.** `OdsMenuItem.Disabled` makes
@@ -65,12 +77,17 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
   the figure the wrong colour with nothing failing. Prefer `Short` to `Icon` for an in/out
   vocabulary: an arrow beside a figure reads as that figure rising or falling. Registries supply the
   pair (`TermDirectionVisuals.LeadOptions`); a call site never hand-rolls one.
-- **`OdsBreakdownTile`'s total row is OPT-IN here and default-ON in the design system.** The
-  divergence is deliberate and written down in the component: flipping the default adds a row to all
-  21 tiles across the app at once. Pass `Total="true"` for a summable distribution, `TotalValue` for
-  a figure the arithmetic cannot produce (a net, or rows whose counts are rendered nodes), and
-  neither for a distribution whose sum means nothing — rows that are a SLICE of one another must
-  never be summed.
+- **`OdsBreakdownTile`'s total row is ON by default**, as it is in the design system — the earlier
+  opt-in divergence is retired. A new tile therefore closes with a total unless you say otherwise.
+  Pass `TotalValue` for a figure the arithmetic cannot produce (a net, or rows whose counts are
+  rendered nodes — it wins over the sum and needs no `Total`), and `Total="false"` for a
+  distribution whose sum means nothing. There are three shapes of that, and all three are live in
+  the tree: rows that **overlap** (a photo sits in several albums and carries several tags, so
+  per-tag counts sum one photo many times — Photos, Journal); rows that are a **slice** of one
+  another (contracts' "Ending soon" is inside Active, so that tile passes the real
+  `Summary.TotalContracts` as `TotalValue`); and rows that **omit a bucket the data can hold**
+  (Accounts "By type" renders `AccountTypeVisuals.Selectable`, which excludes the persistable
+  `AccountType.Unknown`, so its rows partition what is drawn but not what exists).
 - **An empty section or table frame is `<OdsEmptyLine>`, not a hand-rolled `<div>`.** The retired
   `.empty-line` / `.con-empty-line` classes are gone; `Align="Center" Pad="Lg"` is the whole-list
   form. `OdsEmptyState` still owns the panel shape (icon + title + one CTA) and reaches the line

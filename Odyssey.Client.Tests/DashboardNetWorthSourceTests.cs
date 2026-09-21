@@ -225,59 +225,61 @@ public class DashboardNetWorthSourceTests
     // ── AC30 — a totals failure must not change how the chart's figures are denominated ────────
 
     /// <summary>
-    /// The money format is resolved from the user's PREFERENCE before the fan-out, not from the totals
-    /// response. It used to be assigned inside the totals load, so a totals failure left it null and
-    /// the fallback was the generic "$" — which, with the history call succeeding, would have rendered
-    /// a real NOK series under a dollar sign.
+    /// The currency is resolved from the user's PREFERENCE before the fan-out, not from the totals
+    /// response. It used to be assigned inside the totals load, so a totals failure left the page with
+    /// no denomination at all while the history call succeeded.
     ///
     /// <para>
-    /// Asserted on the resolved <see cref="NumberFormatInfo"/> rather than on the currency code: the
-    /// code being right is what the old version already had, and it is not what prevented the "$".
+    /// The old defect this guarded — a NOK series rendered under a generic "$" — is now structurally
+    /// impossible: money carries its ISO code, and the code comes from <c>_mainCurrencyCode</c>, which
+    /// is always a real code. What the ordering still buys is the currency's DECIMALS, resolved before
+    /// anything renders rather than after a call that may fail.
     /// </para>
     /// </summary>
     [Fact]
     public void TheMoneyFormat_IsNotOwnedByTheTotalsResponse()
     {
         var source = CodeBehind();
-        var totalsLoad = Between(source, "private async Task LoadTotalsAsync()", "private async Task<NumberFormatInfo?>");
+        var totalsLoad = Between(source, "private async Task LoadTotalsAsync()", "private async Task<int?>");
 
-        Assert.DoesNotContain("_mainCurrencyFormat", totalsLoad, StringComparison.Ordinal);
+        Assert.DoesNotContain("_mainCurrencyMinorUnits", totalsLoad, StringComparison.Ordinal);
 
         // …and it is resolved before the three calls fan out, not after any of them returns.
         var accountsLoad = Between(source, "private async Task LoadAccountsAsync()", "private async Task LoadHistoryAsync()");
-        var resolvedAt = accountsLoad.IndexOf("ResolveMainCurrencyFormatAsync", StringComparison.Ordinal);
+        var resolvedAt = accountsLoad.IndexOf("ResolveMainCurrencyMinorUnitsAsync", StringComparison.Ordinal);
         var fannedOutAt = accountsLoad.IndexOf("Task.WhenAll", StringComparison.Ordinal);
 
         Assert.True(resolvedAt >= 0 && fannedOutAt > resolvedAt,
-            "The NumberFormatInfo has to be resolved above the Task.WhenAll: a totals failure must not "
-            + "be able to leave the chart formatting its figures with the generic \"$\".");
+            "The currency has to be resolved above the Task.WhenAll: a totals failure must not be able "
+            + "to leave the chart's figures rendering in the wrong precision.");
     }
 
     /// <summary>
-    /// The page must never reach the GENERIC money format for a main-currency figure.
+    /// A main-currency figure is always denominated by <c>_mainCurrencyCode</c>, never by a generic
+    /// fallback.
     ///
     /// <para>
     /// This is a regression guard for a real defect found in review. Decoupling the format from the
     /// totals response (above) made a previously-unreachable state reachable: totals succeeding while
     /// the reference-data lookup failed. The chart was guarded against it, but <c>HeaderSubLine</c>
-    /// was not, and <c>MainCurrencyFormat</c> fell back to <c>GenericMoneyFormat</c> — so the header
-    /// rendered a NOK net worth as "$48,260.00". That is the same misreported-denomination defect this
-    /// page removes from the chart, relocated to the header.
+    /// was not, and the format fell back to a generic "$" — so the header rendered a NOK net worth as
+    /// "$48,260.00". That is the same misreported-denomination defect this page removes from the
+    /// chart, relocated to the header.
     /// </para>
     ///
     /// <para>
-    /// The fix is at the root rather than at the call site: the fallback is now the currency CODE, so
-    /// no caller — present or future, guarded or not — can produce a wrong sigil.
+    /// The fix is now structural rather than a fallback rule: there is no generic format left to reach
+    /// for, and the only thing a failed lookup costs is the currency's decimals.
     /// </para>
     /// </summary>
     [Fact]
     public void TheMainCurrencyFormat_NeverFallsBackToTheGenericDollarFormat()
     {
         var source = CodeBehind();
-        var accessor = Between(source, "private NumberFormatInfo MainCurrencyFormat", ";");
+        var accessor = Between(source, "private string FormatMoney(decimal value)", ";");
 
-        Assert.DoesNotContain("GenericMoneyFormat", accessor, StringComparison.Ordinal);
         Assert.Contains("_mainCurrencyCode", accessor, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"$\"", source, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -300,20 +302,21 @@ public class DashboardNetWorthSourceTests
     }
 
     /// <summary>
-    /// A resolved main currency formats in its own symbol, and a code with no reference-data row falls
-    /// back to the CODE rather than to "$". A wrong sigil misreports the denomination; a bare code
-    /// merely looks unpolished.
+    /// The denomination is the CODE, trailing the figure, whether or not the reference row resolved —
+    /// so a missing row costs the currency's decimals and nothing about what the figure is in. The
+    /// generic "$" this used to fall back to asserted USD about a NOK balance.
     /// </summary>
     [Fact]
-    public void TheResolvedFormat_NeverFallsBackToAGenericDollar()
+    public void TheResolvedFigure_NeverFallsBackToAGenericDollar()
     {
-        var known = DashboardFigures.MoneyFormat("NOK",
+        var known = OdsMoney.Format(48260m, "NOK",
             new ExistingCurrency { CurrencyCode = "NOK", Name = "Norwegian Krone", Symbol = "kr", MinorUnits = 2 });
-        Assert.Equal("kr", known.CurrencySymbol);
+        Assert.EndsWith(" NOK", known, StringComparison.Ordinal);
+        Assert.DoesNotContain("$", known, StringComparison.Ordinal);
 
-        var unknownRow = DashboardFigures.MoneyFormat("NOK", null);
-        Assert.Equal("NOK", unknownRow.CurrencySymbol);
-        Assert.NotEqual("$", unknownRow.CurrencySymbol);
+        var unknownRow = OdsMoney.Format(48260m, "NOK", currency: null);
+        Assert.EndsWith(" NOK", unknownRow, StringComparison.Ordinal);
+        Assert.DoesNotContain("$", unknownRow, StringComparison.Ordinal);
     }
 
     // ── AC37 — no client-side copy of a server cap ────────────────────────────────────────────

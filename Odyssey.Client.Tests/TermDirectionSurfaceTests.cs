@@ -350,6 +350,33 @@ public class TermDirectionSurfaceTests
     }
 
     /// <summary>
+    /// A node count is RENDERED, not stringified. <c>OdsBreakdownRow.Count</c> is an <c>object</c>, so
+    /// a bare binding picks the object overload and a render fragment reaches the screen as the
+    /// literal text "Microsoft.AspNetCore.Components.RenderFragment" — which is what the contracts
+    /// header's two money tiles did, on every row and on the total.
+    /// </summary>
+    [Fact]
+    public void A_node_count_is_rendered_rather_than_stringified()
+    {
+        using var ctx = NewContext();
+        var tile = ctx.Render<OdsBreakdownTile>(p => p
+            .Add(t => t.TotalValue,
+                (Microsoft.AspNetCore.Components.RenderFragment)(b => b.AddContent(0, "net")))
+            .Add(t => t.Rows,
+            [
+                new OdsBreakdownRow
+                {
+                    Label = "Employment",
+                    Count = (Microsoft.AspNetCore.Components.RenderFragment)(b => b.AddContent(0, "+ 6,200.00 USD")),
+                },
+            ]));
+
+        Assert.Equal("+ 6,200.00 USD", tile.Find(".odc-breakdown-row:not(.odc-breakdown-total) .odc-breakdown-n").TextContent.Trim());
+        Assert.Equal("net", tile.Find(".odc-breakdown-total .odc-breakdown-n").TextContent.Trim());
+        Assert.DoesNotContain("RenderFragment", tile.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Numeric counts DO sum, and read as whole counts rather than acquiring a decimal tail.
     /// </summary>
     [Fact]
@@ -368,15 +395,34 @@ public class TermDirectionSurfaceTests
     }
 
     /// <summary>
-    /// The total is OPT-IN here, where the design system has it on by default — so the 21 tiles that
-    /// never asked for one are untouched by the parameter's arrival. Pinned because flipping the
-    /// default is a one-word change with an app-wide blast radius.
+    /// The total is ON by default, matching the design system: a distribution whose sum a reader has
+    /// to add up in their head is a table, not a summary. Pinned because the default is a one-word
+    /// change with an app-wide blast radius, in both directions.
+    /// </summary>
+    [Fact]
+    public void A_tile_that_says_nothing_about_a_total_renders_one()
+    {
+        using var ctx = NewContext();
+        var tile = ctx.Render<OdsBreakdownTile>(p => p
+            .Add(t => t.Rows,
+            [
+                new OdsBreakdownRow { Label = "Employment", Count = 2 },
+                new OdsBreakdownRow { Label = "Rental", Count = 3 },
+            ]));
+
+        Assert.Equal("5", tile.Find(".odc-breakdown-total .odc-breakdown-n").TextContent.Trim());
+    }
+
+    /// <summary>
+    /// Total="false" is the opt-out, for a distribution whose sum means nothing — overlapping
+    /// buckets, a slice of another row, or rows that omit a bucket the data can hold.
     /// </summary>
     [Fact]
     public void A_tile_that_asks_for_no_total_renders_none()
     {
         using var ctx = NewContext();
         var tile = ctx.Render<OdsBreakdownTile>(p => p
+            .Add(t => t.Total, false)
             .Add(t => t.Rows,
             [
                 new OdsBreakdownRow { Label = "Employment", Count = 2 },

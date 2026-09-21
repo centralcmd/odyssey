@@ -39,8 +39,8 @@ public partial class AccountEstimatesSection
     /// <summary>Formats a money amount in its currency — supplied by the host (per-account currency).</summary>
     [Parameter, EditorRequired] public Func<decimal, string?, string> FormatMoney { get; set; } = (v, _) => v.ToString(CultureInfo.InvariantCulture);
 
-    /// <summary>The account currency's symbol, for the compact chart axis — supplied by the host.</summary>
-    [Parameter] public string CurrencySymbol { get; set; } = "$";
+    /// <summary>The account's ISO currency code, for the compact chart axis — supplied by the host.</summary>
+    [Parameter] public string? CurrencyCode { get; set; }
 
     private List<ExistingAccountEstimate> _estimates = [];
     private ExistingAccountEstimate? _current;
@@ -262,7 +262,7 @@ public partial class AccountEstimatesSection
         foreach (var v in yticks)
         {
             sb.Append($"<line class=\"grid\" x1=\"{F(padL)}\" y1=\"{F(Y(v))}\" x2=\"{F(W - padR)}\" y2=\"{F(Y(v))}\" />");
-            var label = EstimateVisuals.MoneyCompact((decimal)v, CurrencySymbol);
+            var label = EstimateVisuals.MoneyCompact((decimal)v, CurrencyCode);
             sb.Append($"<text class=\"axis\" x=\"{F(padL - 8)}\" y=\"{F(Y(v) + 3)}\" text-anchor=\"end\">{label}</text>");
         }
 

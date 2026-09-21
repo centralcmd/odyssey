@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -27,7 +26,14 @@ public partial class Home
     // succeed — the header and chart then withhold the figure rather than substituting
     // a naive sum, which is the defect this replaced.
     private AccountTotals? _totals;
-    private NumberFormatInfo? _mainCurrencyFormat;
+    // The main currency's own decimals. Null means the reference-data lookup failed, which is what
+    // _currencyFormatIsDegraded reports; the figures still render, in the default two decimals.
+    private int? _mainCurrencyMinorUnits;
+
+    // Every currency's decimals, for the recent-transaction rows: each is in its OWN account's
+    // currency, not the main one, so one lookup is not enough. Empty on a failed load, which costs
+    // the precision of a zero-decimal currency and nothing about the denomination.
+    private Dictionary<string, int> _minorUnitsByCode = new(StringComparer.OrdinalIgnoreCase);
 
     // ── State ──
     private bool _isLoadingAccounts = true;
@@ -79,13 +85,11 @@ public partial class Home
 
     private async Task LoadAccountsAsync()
     {
-        // The money FORMAT is resolved before the fan-out, and the whole NumberFormatInfo rather than
-        // just the currency code. It used to be built inside LoadTotalsAsync, so a totals failure left
-        // it null and MainCurrencyFormat fell back to the generic "$" — which, with the history call
-        // succeeding, would render a NOK series under a dollar sign. The preference and the reference
-        // data are both client-side caches, so paying for them first costs a round trip only on the
-        // very first load.
-        _mainCurrencyFormat = await ResolveMainCurrencyFormatAsync();
+        // The currency is resolved before the fan-out. It used to be resolved inside LoadTotalsAsync,
+        // so a totals failure left the dashboard with no denomination at all while the history call
+        // succeeded. The preference and the reference data are both client-side caches, so paying for
+        // them first costs a round trip only on the very first load.
+        _mainCurrencyMinorUnits = await ResolveMainCurrencyMinorUnitsAsync();
 
         // The accounts list supplies the count, the totals endpoint the headline figure, and the
         // history endpoint the series. None depends on the others, so they go out together —
@@ -131,15 +135,11 @@ public partial class Home
         _totals = result.IsSuccess ? result.Value : null;
     }
 
-    // The main currency's symbol and minor units, resolved through the shared reference-data cache so
-    // the dashboard shows "kr 48 260,00" rather than the generic "$" the design specimen used for its
-    // single-currency mock data. The mapping itself is in DashboardFigures, where it is testable
-    // without a renderer.
-    //
-    // Returns null when the reference-data lookup fails. That degrades the SYMBOL only: MainCurrencyFormat
-    // then falls back to the currency code, so the denomination is still reported correctly and the
-    // header rollup says what was lost.
-    private async Task<NumberFormatInfo?> ResolveMainCurrencyFormatAsync()
+    // The main currency's own decimals, resolved through the shared reference-data cache (JPY renders
+    // none). The CODE is never at risk: _mainCurrencyCode is a real code either way, and money is
+    // written with its ISO code trailing, so a failed lookup costs the minor-unit count and nothing
+    // about the denomination. The header rollup says what was lost.
+    private async Task<int?> ResolveMainCurrencyMinorUnitsAsync()
     {
         try
         {
@@ -147,10 +147,14 @@ public partial class Home
             _mainCurrencyCode = UserPreferences.MainCurrency ?? DefaultMainCurrency;
 
             var currencies = await ReferenceData.CurrenciesAsync();
+            _minorUnitsByCode = currencies
+                .GroupBy(c => c.CurrencyCode, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => DashboardFigures.MinorUnits(g.First()), StringComparer.OrdinalIgnoreCase);
+
             var currency = currencies.FirstOrDefault(c =>
                 string.Equals(c.CurrencyCode, _mainCurrencyCode, StringComparison.OrdinalIgnoreCase));
 
-            return DashboardFigures.MoneyFormat(_mainCurrencyCode, currency);
+            return currency is null ? null : DashboardFigures.MinorUnits(currency);
         }
         catch (HttpRequestException)
         {
@@ -213,7 +217,7 @@ public partial class Home
     // wrong sigil, and the region then rendered NOTHING — no skeleton, no chart, no explanation — which
     // is its own defect. With the code-based fallback above, a failed reference-data lookup costs the
     // symbol and the minor-unit count, and the degradation is disclosed in the header rollup instead.
-    private bool _currencyFormatIsDegraded => _mainCurrencyFormat is null;
+    private bool _currencyFormatIsDegraded => _mainCurrencyMinorUnits is null;
 
     private IReadOnlyList<NetWorthHistoryPoint> HistoryPoints => _history?.Points ?? [];
 
@@ -345,32 +349,24 @@ public partial class Home
         _ => OdsChipTone.Info,
     };
 
-    // Compact y-axis label, e.g. "$52k" / "kr 52k", in the main currency.
-    private string KLabel(decimal v) =>
-        DashboardFigures.AxisLabel(v, MainCurrencyFormat.CurrencySymbol);
+    // Compact y-axis label, e.g. "52k NOK", in the main currency. The code trails here exactly as it
+    // does on the headline figure, so the axis and the headline read as one denomination.
+    private string KLabel(decimal v) => DashboardFigures.AxisLabel(v, _mainCurrencyCode);
 
-    // Net worth is converted server-side into the user's main currency, so it is formatted
-    // in that currency's symbol and minor units rather than the specimen's generic "$".
-    private string FormatMoney(decimal value) => value.ToString("C", MainCurrencyFormat);
+    // Net worth is converted server-side into the user's main currency, so it is written in that
+    // currency's code and decimals.
+    private string FormatMoney(decimal value) =>
+        OdsMoney.Format(value, _mainCurrencyCode, _mainCurrencyMinorUnits ?? OdsMoney.DefaultMinorUnits);
 
-    // The fallback is the currency CODE, never the generic "$". _mainCurrencyCode is always a real
-    // code — it defaults to NOK and is only ever overwritten with the user's preference — so when the
-    // reference-data lookup fails, all that is lost is the pretty symbol and the minor-unit count, not
-    // the denomination. GenericMoneyFormat is for a per-transaction amount in its own account's
-    // currency; reaching for it here rendered a NOK figure as "$48,260.00", which is the same
-    // misreported-denomination defect this page removes from the chart, relocated to the header.
-    private NumberFormatInfo MainCurrencyFormat =>
-        _mainCurrencyFormat ??= DashboardFigures.MoneyFormat(_mainCurrencyCode, null);
-
-    // Per-transaction amounts stay on the generic symbol: a transaction is in its account's
-    // own currency, which is not necessarily the main one, and nothing converts it here.
-    private static string FormatSignedMoney(decimal value)
-    {
-        var sign = value < 0 ? "−" : "+";
-        return $"{sign}{Math.Abs(value).ToString("C", GenericMoneyFormat)}";
-    }
-
-    private static readonly NumberFormatInfo GenericMoneyFormat = DashboardFigures.GenericMoneyFormat();
+    // A per-transaction amount is in its ACCOUNT's own currency, which is not necessarily the main
+    // one, and nothing converts it here — so the row names that currency rather than the main one.
+    // It is presented as signed: the direction is the point of the row, and a bare positive would
+    // read as an ordinary total.
+    // The rule itself lives in DashboardFigures, where it is testable without a renderer: this page
+    // early-returns off the browser and exposes no InteractiveCheck seam, so anything left inline here
+    // is reachable only by reading it.
+    private string FormatSignedMoney(decimal value, string? currencyCode) =>
+        DashboardFigures.TransactionAmount(value, currencyCode, _minorUnitsByCode);
 
     // Matches the API's own fallback when no main-currency preference is set.
     private const string DefaultMainCurrency = "NOK";

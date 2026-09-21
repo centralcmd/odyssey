@@ -680,6 +680,54 @@ public class ContractEventSurfaceTests
     }
 
     /// <summary>
+    /// The full-replacement notice gains one sentence on a RECORDED row: nothing regenerates a
+    /// description cleared there.
+    /// </summary>
+    /// <remarks>
+    /// The PUT replaces the whole event either way, but the consequence differs by origin. A
+    /// hand-written description was typed and can be typed again; a generated one was written once, at
+    /// the moment of the change it records, and no later write re-derives it. Clearing it is therefore
+    /// permanent in a way the ordinary notice does not convey.
+    /// </remarks>
+    [Fact]
+    public void Editing_a_recorded_row_warns_that_a_cleared_description_never_comes_back()
+    {
+        var cut = RenderDialogWithClient(
+            Lease(), Event(type: ContractEventType.Paused, source: ContractEventSource.System)).Cut;
+
+        Assert.Contains(
+            "Nothing regenerates a description you clear on a recorded event.",
+            cut.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// …and a hand-written row does not carry it, because there the claim would be false: its
+    /// description was typed, so retyping it restores exactly what was lost.
+    /// </summary>
+    [Fact]
+    public void Editing_a_hand_written_row_carries_no_regeneration_warning()
+    {
+        var cut = RenderDialogWithClient(Lease(), Event()).Cut;
+
+        // The ordinary full-replacement notice is still there — only the origin-specific sentence is not.
+        Assert.Contains("Saving replaces the whole event", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Nothing regenerates", cut.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Creating an event shows neither notice: there is nothing to replace, and a new row is always
+    /// hand-written — this dialog is the hand.
+    /// </summary>
+    [Fact]
+    public void Creating_an_event_carries_no_replacement_notice()
+    {
+        var cut = RenderDialogWithClient(Lease(), editing: null).Cut;
+
+        Assert.DoesNotContain("Saving replaces the whole event", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Nothing regenerates", cut.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// <c>source</c> appears nowhere in the dialog — not as a control, not as a disabled one. A
     /// disabled input would imply it is ordinarily settable, when in fact it is absent from both write
     /// DTOs and cannot be set at all (#154 §7.4).

@@ -145,7 +145,7 @@
         @<OdsChip Tone="StatusTone(txn.Status)" Dot="true">@txn.Status.ToString()</OdsChip>;
 
     private RenderFragment<ExistingTransaction> AmountCell => txn =>
-        @<span class="@(IsIncome(txn) ? "dsh-amt income" : "dsh-amt expense")">@FormatSignedMoney(txn.Amount)</span>;
+        @<span class="@(IsIncome(txn) ? "dsh-amt income" : "dsh-amt expense")">@FormatSignedMoney(txn.Amount, txn.CurrencyCode)</span>;
 
     private RenderFragment<ExistingTransaction> DateCell => txn =>
         @<span class="dsh-muted">@txn.TimeStamp.ToLocalTime().ToString("MMM d", CultureInfo.InvariantCulture)</span>;

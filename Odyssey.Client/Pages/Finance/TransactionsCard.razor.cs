@@ -97,22 +97,14 @@ public partial class TransactionsCard
         [new("income", "Money in"), new("expense", "Money out")];
 
     // Header sub totals — the whole ledger's count and its money in / out. Naive cross-currency sums
-    // (the app has no FX on this path), shown with a generic "$" like the Accounts "combined" figure;
-    // mirrors the design system's Transactions sub. Computed server-side (issue #372).
+    // (the app has no FX on this path), so they are written with NO currency code, like the Accounts
+    // "combined" figure: naming one would assert a denomination the sum is not in. Mirrors the design
+    // system's Transactions sub. Computed server-side (issue #372).
     private int TotalCount => _summary?.TotalTransactions ?? 0;
     private decimal TotalIn => _summary?.TotalIn ?? 0m;
     private decimal TotalOut => _summary?.TotalOut ?? 0m;
 
-    private static readonly System.Globalization.NumberFormatInfo GenericMoneyFormat = BuildGenericMoneyFormat();
-    private static System.Globalization.NumberFormatInfo BuildGenericMoneyFormat()
-    {
-        var nf = (System.Globalization.NumberFormatInfo)System.Globalization.CultureInfo.CurrentCulture.NumberFormat.Clone();
-        nf.CurrencySymbol = "$";
-        nf.CurrencyDecimalDigits = 2;
-        nf.CurrencyNegativePattern = 1; // "-$n" — leading minus, no parentheses
-        return nf;
-    }
-    private static string Money(decimal value) => value.ToString("C", GenericMoneyFormat);
+    private static string Money(decimal value) => OdsMoney.Format(value, currencyCode: null);
 
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_search)
         || _accountFilter.Count > 0 || _statusFilter.Count > 0

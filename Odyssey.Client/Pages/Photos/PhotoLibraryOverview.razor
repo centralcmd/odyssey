@@ -22,9 +22,12 @@
                      Value="@(b => b.AddContent(0, _stats.FavouriteCount.ToString()))"
                      Foot="@(b => b.AddContent(0, "loved"))" />
     </div>
-    <OdsBreakdownTile Label="By album" Empty="No albums." Rows="AlbumRows" />
-    <OdsBreakdownTile Label="By tag" Empty="No tags." Rows="TagRows" />
-    <OdsBreakdownTile Label="People" Empty="No people tagged." Rows="PeopleRows" />
+    @* No totals on any of the three: all three count PHOTOS by something a photo can hold many of
+       — PhotoAlbumItem and PhotoTagLink are join tables, and a photo shows several people — so a
+       sum counts the same photo once per album, tag and face it appears in. *@
+    <OdsBreakdownTile Label="By album" Empty="No albums." Rows="AlbumRows" Total="false" />
+    <OdsBreakdownTile Label="By tag" Empty="No tags." Rows="TagRows" Total="false" />
+    <OdsBreakdownTile Label="People" Empty="No people tagged." Rows="PeopleRows" Total="false" />
 </div>
 
 @code {

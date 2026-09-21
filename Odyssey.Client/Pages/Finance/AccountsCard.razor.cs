@@ -27,7 +27,7 @@ public partial class AccountsCard
     private AccountSummary? _summary;
     private List<ExistingCurrency> _currencies = [];
     private Dictionary<string, ExistingCurrency> _currenciesByCode = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, NumberFormatInfo> _moneyFormatCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> _minorUnitsCache = new(StringComparer.OrdinalIgnoreCase);
 
     // ── Account problems (exchange-rate signals) ──
     // Server totals are loaded only to learn which accounts have no rate to the main
@@ -349,7 +349,7 @@ public partial class AccountsCard
     {
         _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
         _currenciesByCode = _currencies.ToDictionary(c => c.CurrencyCode, StringComparer.OrdinalIgnoreCase);
-        _moneyFormatCache.Clear(); // currency symbols/minor-units may have changed
+        _minorUnitsCache.Clear(); // a currency's minor units may have changed
     }
 
     // Projects the per-account problems into the PageHeader's rollup rows. The header
@@ -779,45 +779,24 @@ public partial class AccountsCard
         _   => "var(--mud-palette-text-secondary)",
     };
 
-    // Formats an amount in the given currency's symbol/minor-units when known, else a
-    // generic "$" with two decimals. A null currencyCode means a naive cross-currency
-    // aggregate (no FX in the app), so the generic symbol is intentional.
+    // Formats an amount in the given currency's code and minor units. A null currencyCode means a
+    // naive cross-currency aggregate (no FX in the app), so the figure is deliberately written with
+    // NO code — labelling it with one would assert a denomination it is not in.
     private string FormatMoney(decimal value, string? currencyCode) =>
-        value.ToString("C", MoneyFormat(currencyCode));
+        OdsMoney.Format(value, currencyCode, MinorUnits(currencyCode));
 
-    // The currency's display symbol when known, else the code itself — for the estimate value
-    // chart's compact y-axis (the section formats full amounts via FormatMoney).
-    private string CurrencySymbol(string? currencyCode)
-    {
-        if (!string.IsNullOrWhiteSpace(currencyCode)
-            && _currenciesByCode.TryGetValue(currencyCode, out var currency)
-            && !string.IsNullOrWhiteSpace(currency.Symbol))
-            return currency.Symbol;
-        return string.IsNullOrWhiteSpace(currencyCode) ? "$" : currencyCode;
-    }
-
-    // One configured NumberFormatInfo per currency code (and one for the generic
-    // fallback), cached so list re-renders don't clone+configure a fresh one per row.
-    private NumberFormatInfo MoneyFormat(string? currencyCode)
+    // One minor-unit count per currency code, cached so list re-renders don't re-walk the currency
+    // table per row.
+    private int MinorUnits(string? currencyCode)
     {
         var key = string.IsNullOrWhiteSpace(currencyCode) ? string.Empty : currencyCode;
-        if (_moneyFormatCache.TryGetValue(key, out var cached))
+        if (_minorUnitsCache.TryGetValue(key, out var cached))
             return cached;
 
-        var nf = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
-        if (key.Length > 0 && _currenciesByCode.TryGetValue(key, out var currency))
-        {
-            nf.CurrencySymbol = currency.Symbol;
-            nf.CurrencyDecimalDigits = currency.MinorUnits;
-        }
-        else
-        {
-            nf.CurrencySymbol = "$";
-            nf.CurrencyDecimalDigits = 2;
-        }
-        nf.CurrencyNegativePattern = 1; // "-$n" — leading minus, no parentheses
-        _moneyFormatCache[key] = nf;
-        return nf;
+        _currenciesByCode.TryGetValue(key, out var currency);
+        var units = OdsMoney.MinorUnitsOf(currency);
+        _minorUnitsCache[key] = units;
+        return units;
     }
 
     // ── Balance aggregates (sub-line) ───────────────────────────────────────────

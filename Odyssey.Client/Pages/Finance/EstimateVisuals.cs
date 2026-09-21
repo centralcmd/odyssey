@@ -1,4 +1,4 @@
-using System.Globalization;
+using Odyssey.Client.Components;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
@@ -28,25 +28,9 @@ public static class EstimateVisuals
     /// in the empty state and the dialog hint — never to gate).</summary>
     public static bool IsRecommended(AccountType type) => RecommendedTypes.Contains(type);
 
-    /// <summary>Compact money for the value chart's y-axis, e.g. <c>kr 350k</c> / <c>$ 1.2M</c>.
-    /// Negative values use the typographic minus. Mirrors the design-system <c>moneyCompact</c>.</summary>
-    public static string MoneyCompact(decimal value, string symbol)
-    {
-        var sign = value < 0 ? "−" : "";
-        var abs = Math.Abs(value);
-        string s;
-        if (abs >= 1_000_000_000m)
-            s = Trim(abs / 1_000_000_000m, abs % 1_000_000_000m != 0 ? 2 : 0) + "B";
-        else if (abs >= 1_000_000m)
-            s = Trim(abs / 1_000_000m, abs % 1_000_000m != 0 ? 2 : 0) + "M";
-        else if (abs >= 1_000m)
-            s = Trim(abs / 1_000m, abs % 1_000m != 0 ? 1 : 0) + "k";
-        else
-            s = Math.Round(abs).ToString("0", CultureInfo.InvariantCulture);
-
-        return $"{sign}{symbol} {s}";
-    }
-
-    private static string Trim(decimal value, int decimals) =>
-        value.ToString("0." + new string('#', decimals), CultureInfo.InvariantCulture);
+    /// <summary>Compact money for the value chart's y-axis, e.g. <c>350k NOK</c> / <c>1.2M USD</c>.
+    /// Delegates to <see cref="OdsMoney.Compact"/> — the solution's one money formatter — so the axis
+    /// and the full amounts above it cannot drift on the sign slot or the code's placement.</summary>
+    public static string MoneyCompact(decimal value, string? currencyCode) =>
+        OdsMoney.Compact(value, currencyCode);
 }

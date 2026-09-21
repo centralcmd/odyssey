@@ -30,15 +30,15 @@ public partial class AddEstimateDialog
     private string? _note = "";
     private bool _isSaving;
     private bool _recommended;
-    private string _currencySymbol = "$";
+    // The account currency's own decimals (JPY renders none). The CODE is never resolved here — it
+    // is Account.CurrencyCode and always known; only the decimals need the reference-data round trip.
+    private int _minorUnits = OdsMoney.DefaultMinorUnits;
 
     private readonly Dictionary<string, string> _errors = new();
 
     protected override void OnInitialized()
     {
         _recommended = EstimateVisuals.IsRecommended(Account.AccountType);
-        _currencySymbol = Account.CurrencyCode; // replaced with the real symbol once currencies load
-
         if (Estimate is not null)
         {
             _valueStr = Estimate.Value.ToString(CultureInfo.InvariantCulture);
@@ -57,10 +57,10 @@ public partial class AddEstimateDialog
             return;
 
         var currencies = await ReferenceData.CurrenciesAsync();
-        var symbol = currencies
-            .FirstOrDefault(c => string.Equals(c.CurrencyCode, Account.CurrencyCode, StringComparison.OrdinalIgnoreCase))?.Symbol;
-        if (!string.IsNullOrWhiteSpace(symbol))
-            _currencySymbol = symbol;
+        var currency = currencies
+            .FirstOrDefault(c => string.Equals(c.CurrencyCode, Account.CurrencyCode, StringComparison.OrdinalIgnoreCase));
+        if (currency is not null)
+            _minorUnits = OdsMoney.MinorUnitsOf(currency);
 
         StateHasChanged();
     }
@@ -87,12 +87,7 @@ public partial class AddEstimateDialog
         get
         {
             var raw = ParseValue();
-            if (raw is null)
-                return null;
-            var nf = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
-            nf.CurrencySymbol = _currencySymbol;
-            nf.CurrencyNegativePattern = 1;
-            return raw.Value.ToString("C", nf);
+            return raw is null ? null : OdsMoney.Format(raw, Account.CurrencyCode, _minorUnits);
         }
     }
 

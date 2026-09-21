@@ -67,6 +67,46 @@ public partial class CreateBudgetItemDialog
             && !_canCreateTag
             && !TransactionTags.Any(tag => tag.Archived is null && !UsedTransactionTagIds.Contains(tag.TransactionTagId)));
 
+    /// <summary>The planned amount's lead — the category registry mapped to the field's two-state shape.</summary>
+    private static IReadOnlyList<OdsDirectionOption> DirectionLead => OdsTypeRegistries.BudgetCategoryDirections;
+
+    private BudgetCategoryDirection DirectionInfo => OdsTypeRegistries.BudgetCategoryDirectionOf(_categoryType);
+
+    private string CategoryTypeLabel => OdsTypeRegistries.BudgetCategoryTypeOf(_categoryType).Label;
+
+    /// <summary>
+    /// The helper line, or <c>null</c> while the amount is in error — the field renders an error
+    /// <em>in addition to</em> its help, and the design system suppresses the help in that state so
+    /// the refusal is the only sentence under the control.
+    /// </summary>
+    /// <remarks>
+    /// A <c>RenderFragment?</c> rather than markup guarded by an <c>@@if</c>: an empty fragment is
+    /// still non-null, and <c>OdsFieldShell</c> tests for null — so the guarded form would emit an
+    /// empty helper node instead of none.
+    /// </remarks>
+    private RenderFragment? PlannedHelp => _plannedError
+        ? null
+        : builder =>
+        {
+            var info = DirectionInfo;
+            builder.OpenElement(0, "b");
+            builder.AddContent(1, CategoryTypeLabel);
+            builder.CloseElement();
+            builder.AddContent(2, $" — {info.Sentence}. Click ");
+            builder.OpenElement(3, "b");
+            builder.AddContent(4, info.Short);
+            builder.CloseElement();
+            builder.AddContent(5, $" to switch · {BudgetCurrencyCode}");
+        };
+
+    /// <summary>
+    /// The lead moved the category: a budget item stores a DIRECTION, so flipping the lead IS the
+    /// category change. Nothing is re-validated — a direction is never the reason an amount is
+    /// invalid.
+    /// </summary>
+    private void OnCategoryTypeChanged(string value) =>
+        _categoryType = OdsTypeRegistries.BudgetCategoryTypeFrom(value);
+
     protected override async Task OnInitializedAsync()
     {
         // The create row is an affordance; the authorization that matters is server-side on
