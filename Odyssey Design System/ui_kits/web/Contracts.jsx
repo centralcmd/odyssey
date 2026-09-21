@@ -164,8 +164,91 @@ const PartyTile = ({ party, today, onEdit, onDetach }) => {
   );
 };
 
+/* ====================== Contract smart tags ======================
+   The saved transaction filter a contract carries: a curated set of existing
+   TransactionTags, resolved to the transactions that carry any of them. The
+   DS section is shared with the account record — this wrapper only supplies
+   the contract's watched set, the matches, and the contract-side cap.
+
+   The match is BY TAG, not by contract: the backend adds no Transaction →
+   Contract link, so resolution is the two existing endpoints composed
+   (GET …/smart-tags then GET /api/transactions?tagIds=…). Nothing here scopes
+   the result to the contract. */
+const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite = true, cap, limitsDegraded = false, bare = true }) => {
+  const { useState, useEffect, useRef } = React;
+  const DSSection = (window.OdysseyDesignSystem_d5aa51 || {}).AccountSmartTagsSection;
+  const allTags = CON_D.tags.filter(t => !t.archived);
+  const tagById = CON_D.tagById;
+
+  const [loading, setLoading] = useState(false);
+  const [addError, setAddError] = useState(null);
+  const timer = useRef(null);
+  const first = useRef(true);
+  // Every add/remove re-reads the resolution query, so the table flashes its
+  // loading state rather than mutating in place.
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    setLoading(true);
+    timer.current = setTimeout(() => setLoading(false), 420);
+    return () => clearTimeout(timer.current);
+  }, [tagIds.join(',')]);
+
+  if (!DSSection) return null;
+
+  const matches = CON_D.transactions.filter(t => CON_D.txnTagIds(t).some(id => tagIds.includes(id)));
+  const configured = tagIds.map(id => tagById[id]).filter(Boolean).map(t => ({ id: t.id, label: t.name }));
+  const options = allTags.map(t => ({ value: t.id, label: t.name }));
+  // The term currency in force is the contract's own; USD is the fallback for a
+  // contract with no priced term.
+  const inForce = window.trmCurrentFromList ? window.trmCurrentFromList(contract.terms || []) : [];
+  const currency = (inForce.find(t => t.currency) || {}).currency || 'USD';
+
+  /* The cap is enforced server-side and only pre-checked here. Past it the POST
+     answers 422 with the effective number interpolated — which is what the bar
+     shows, rather than a number this page holds as a constant. */
+  const add = (id) => {
+    if (cap != null && tagIds.length >= cap) {
+      setAddError(`A contract may have at most ${cap} smart tags.`);
+      return;
+    }
+    setAddError(null);
+    setTagIds(prev => (prev.includes(id) ? prev : [...prev, id]));
+  };
+  const remove = (id) => { setAddError(null); setTagIds(prev => prev.filter(x => x !== id)); };
+
+  return (
+    <DSSection
+      chrome={!bare}
+      subject="contract"
+      tags={configured}
+      tagOptions={options}
+      transactions={matches}
+      onAddTag={add}
+      onRemoveTag={remove}
+      canWrite={canWrite}
+      loading={loading}
+      maxTags={cap}
+      limitsDegraded={limitsDegraded}
+      addError={addError}
+      onDismissAddError={() => setAddError(null)}
+      emptyDesc={canWrite
+        ? 'Pin the tags this agreement settles against, and what it actually costs reads here — no filter to rebuild on the Transactions page.'
+        : 'No tags are being watched on this contract.'}
+      noMatchDesc="No transactions carry the watched tags yet."
+      formatAmount={(n) => CON_H.signedMoney(n, currency)}
+      renderTable={(rows) => (
+        <div className="acct-txn-table">
+          <InlinePager items={rows}>
+            {(pageRows) => <TxnTable txns={pageRows} onNavigate={onNavigate} />}
+          </InlinePager>
+        </div>
+      )}
+    />
+  );
+};
+
 /* ====================== Expanded detail ====================== */
-const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, onNewTerm, onEditTerm, onDeleteTerm, events, onEditEvent, onDeleteEvent, onAnnounceEvent }) => {
+const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, smartTagIds, setSmartTagIds, smartTagCap, smartTagsDegraded, canWriteSmartTags, onNavigate, onNewTerm, onEditTerm, onDeleteTerm, events, onEditEvent, onDeleteEvent, onAnnounceEvent }) => {
   const typeInfo = CON_H.contractTypeInfo(contract.type);
   const parties = contract.parties || [];
   const files = contract.files || [];
@@ -271,6 +354,19 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         onDelete={onDeleteTerm}
       />
 
+      {/* SMART TAGS — what the agreement actually COST, straight after what it
+          is contracted to cost. Always rendered: this section is the only
+          place a first smart tag can be added, so it is an entry point rather
+          than an optional collection. Writable on an archived contract, like
+          every other section. */}
+      <div className="con-section">
+        <SectionDivider label="Smart tags"
+          meta={smartTagIds.length ? `${smartTagIds.length} watched` : 'none watched'} />
+        <ContractSmartTags contract={contract} tagIds={smartTagIds} setTagIds={setSmartTagIds}
+          onNavigate={onNavigate} canWrite={canWriteSmartTags} cap={smartTagCap}
+          limitsDegraded={smartTagsDegraded} />
+      </div>
+
       {/* DOCUMENTS — last section ("Upload document" is in the row menu too).
           With no files there is no table to head: the empty line stands on its
           own, as it does in Parties, Terms and Events. */}
@@ -303,7 +399,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
 };
 
 /* ====================== One contract list item ====================== */
-const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, onToggle, highlight, onDelete }) => {
+const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smartTagsDegraded, canWriteSmartTags = true, onNavigate, open: openProp, onToggle, highlight, onDelete }) => {
   const { useState, useRef, useEffect } = React;
   // Terms hang off the record like parties and files do — seeded from the
   // contract-scoped history (GET /api/contracts/{id}/terms).
@@ -312,6 +408,10 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
      deliberately does not inline them (an event log grows without bound), so
      they are their own paged read and their own piece of state. */
   const [events, setEvents] = useState(() => CON_H.cevFor(row.id));
+  /* Smart tags are their own read (GET …/smart-tags) and are lifted here so the
+     collapsed row's count stays live as tags are added and removed inside the
+     expanded section — the same field ContractListItem.SmartTagCount carries. */
+  const [smartTagIds, setSmartTagIds] = useState(() => (CON_D.contractSmartTagSeed[row.id] || []).slice());
   // Open state lives in the list — opening a contract closes its siblings.
   const open = !!openProp;
   const setOpen = (next) => onToggle(typeof next === 'function' ? next(open) : next);
@@ -515,6 +615,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
           { icon: 'diversity_3', value: parties.length, label: 'Parties' },
           { icon: 'sell', value: terms.length, label: 'Terms' },
           { icon: 'description', value: files.length, label: 'Documents' },
+          { icon: 'local_offer', value: smartTagIds.length, label: 'Smart tags' },
           { icon: 'history', value: events.length, label: 'Events' },
         ]}
         figure={{
@@ -571,6 +672,8 @@ const ContractListItem = ({ row, today, endingWindow, termCap, open: openProp, o
         <ContractDetail contract={c} today={today} focusDocs={focusDocs} setContract={setC}
           onAddParty={() => setModal('party')} onEditParty={(p) => setEditParty(p)} onAttach={() => setModal('file')}
           termCap={termCap}
+          smartTagIds={smartTagIds} setSmartTagIds={setSmartTagIds} smartTagCap={smartTagCap}
+          smartTagsDegraded={smartTagsDegraded} canWriteSmartTags={canWriteSmartTags} onNavigate={onNavigate}
           onNewTerm={() => setModal('term')} onEditTerm={(t) => setEditTerm(t)} onDeleteTerm={deleteTerm}
           events={events} onEditEvent={(ev) => setEditEvent(ev)} onDeleteEvent={deleteEvent} onAnnounceEvent={say} />
       </RecordCard>
@@ -717,6 +820,15 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
   const chargeWindow = tweaks.chargeWindowDays != null ? tweaks.chargeWindowDays : CON_D.CONTRACTS_CHARGE_WINDOW_DAYS;
   // ContractMaxTermsPerContract — a system setting, not a per-contract field.
   const termCap = tweaks.contractTermCap != null ? tweaks.contractTermCap : CON_D.CONTRACT_MAX_TERMS_PER_CONTRACT;
+  /* ContractMaxSmartTagsPerContract — served by the claim-free
+     GET /api/contract-limits, never held as a constant on this page. A degraded
+     read (503) leaves the number unknown: the section says so and stops
+     pre-checking, and the server keeps refusing at its conservative bound. */
+  const smartTagsDegraded = !!tweaks.conSmartTagLimitsDegraded;
+  const smartTagCap = smartTagsDegraded ? null
+    : (tweaks.conSmartTagCap != null ? tweaks.conSmartTagCap : CON_D.CONTRACT_MAX_SMART_TAGS_PER_CONTRACT);
+  // contracts.update — read-only viewers keep the chips and the table.
+  const canWriteSmartTags = tweaks.conCanUpdate !== false;
 
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState([]);
@@ -980,6 +1092,8 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
             revealKey={jumpId}
             renderItem={(c) => (
               <ContractListItem row={c} today={today} endingWindow={endingWindow} termCap={termCap}
+                smartTagCap={smartTagCap} smartTagsDegraded={smartTagsDegraded}
+                canWriteSmartTags={canWriteSmartTags} onNavigate={onNavigate}
                 open={openId === c.id}
                 onToggle={(o) => setOpenId(o ? c.id : null)}
                 highlight={jumpId === c.id}

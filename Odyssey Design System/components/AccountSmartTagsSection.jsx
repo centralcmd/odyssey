@@ -103,7 +103,7 @@ function odcUsePopover({ align = 'start', gap = 6, matchWidth = false } = {}) {
    checkable list of every available tag. Checking adds (onAddTag), unchecking
    removes (onRemoveTag) — one call per toggle, matching the per-tag endpoints.
    Disabled tags past the cap can't be newly checked. */
-function SmartTagAdder({ options, selectedIds, onAddTag, onRemoveTag, atCap, label = 'Add tag', emptyText = 'No tags match' }) {
+function SmartTagAdder({ options, selectedIds, onAddTag, onRemoveTag, atCap, footNote, label = 'Add tag', emptyText = 'No tags match' }) {
   const { useState, useRef, useEffect } = React;
   const { open, setOpen, anchorRef, popRef, floatStyle } = odcUsePopover({ align: 'start' });
   const [query, setQuery] = useState('');
@@ -164,7 +164,7 @@ function SmartTagAdder({ options, selectedIds, onAddTag, onRemoveTag, atCap, lab
               })}
               {filtered.length === 0 ? <div className="odc-smarttags-empty-opt">{emptyText}</div> : null}
             </div>
-            {atCap ? <div className="odc-smarttags-cap">Tag limit reached — remove one to add another.</div> : null}
+            {footNote ? <div className="odc-smarttags-cap">{footNote}</div> : null}
           </div>,
           document.body,
         )
@@ -187,6 +187,21 @@ export function AccountSmartTagsSection({
   formatAmount,
   amountOf,
   maxTags = 20,
+  /** The record this watchlist hangs off — interpolated into the default
+   *  empty-state copy. 'account' | 'contract' | any noun. */
+  subject = 'account',
+  /** Copy overrides, where the default noun-substituted sentence is wrong for
+   *  the host (a contract's match is not scoped to the contract). */
+  emptyDesc,
+  noMatchDesc,
+  /** The cap read failed (`/api/<record>-limits` answered 503). The number
+   *  cannot be named, so the client stops pre-checking and says so; the server
+   *  still enforces its conservative bound. */
+  limitsDegraded = false,
+  /** A refused write, verbatim from the server (422 at the cap, 422 archived,
+   *  409 already linked). Rendered on the bar; `onDismissAddError` clears it. */
+  addError = null,
+  onDismissAddError,
   title = 'Smart tags',
   icon = 'sell',
   open,
@@ -221,7 +236,13 @@ export function AccountSmartTagsSection({
 
   const hasTags = cfg.length > 0;
   const matchCount = transactions.length;
-  const atCap = cfg.length >= maxTags;
+  // Blocking needs a number. A degraded limits read has none, so the adder
+  // stays open and the server is left to refuse — never a guessed ceiling.
+  const capKnown = !limitsDegraded && typeof maxTags === 'number' && maxTags > 0;
+  const atCap = capKnown && cfg.length >= maxTags;
+  const capNote = atCap
+    ? `Watching the maximum of ${maxTags} tag${maxTags === 1 ? '' : 's'} — remove one to add another.`
+    : (limitsDegraded ? 'The tag limit is unavailable right now, so an add may be refused.' : null);
   // The header pill: matching-transaction count once tags exist and we're settled.
   const showCount = hasTags && !loading && !error;
 
@@ -257,9 +278,9 @@ export function AccountSmartTagsSection({
         <div className="odc-empty-ic"><span className="material-icons" aria-hidden="true">sell</span></div>
         <div className="odc-empty-ttl">No smart tags yet</div>
         <div className="odc-empty-desc">
-          {canWrite
-            ? 'Pin a tag to watch its transactions on this account without re-filtering the ledger.'
-            : 'No tags are being watched on this account.'}
+          {emptyDesc || (canWrite
+            ? `Pin a tag to watch its transactions from this ${subject} without re-filtering the ledger.`
+            : `No tags are being watched on this ${subject}.`)}
         </div>
         {canWrite ? (
           <div className="odc-empty-actions">
@@ -269,6 +290,7 @@ export function AccountSmartTagsSection({
               onAddTag={onAddTag}
               onRemoveTag={onRemoveTag}
               atCap={atCap}
+              footNote={capNote}
               label="Add a tag"
             />
           </div>
@@ -287,7 +309,7 @@ export function AccountSmartTagsSection({
       <div className="odc-empty odc-smarttags-empty">
         <div className="odc-empty-ic muted"><span className="material-icons" aria-hidden="true">search_off</span></div>
         <div className="odc-empty-ttl">No matching transactions</div>
-        <div className="odc-empty-desc">No transactions on this account carry the selected tags.</div>
+        <div className="odc-empty-desc">{noMatchDesc || `No transactions on this ${subject} carry the selected tags.`}</div>
       </div>
     );
   } else {
@@ -301,7 +323,8 @@ export function AccountSmartTagsSection({
   const inner = (
     <SmartTagsInner hasTags={hasTags} cfg={cfg} cfgIds={cfgIds} canWrite={canWrite} opts={opts} atCap={atCap}
       onAddTag={onAddTag} onRemoveTag={onRemoveTag} showTotal={showTotal} total={total}
-      matchCount={matchCount} fmtAmount={fmtAmount} body={body} />
+      matchCount={matchCount} fmtAmount={fmtAmount} body={body}
+      capNote={capNote} addError={addError} onDismissAddError={onDismissAddError} />
   );
 
   // Bare form (chrome={false}): no disclosure shell and no header — the host
@@ -341,7 +364,7 @@ export function AccountSmartTagsSection({
   );
 }
 
-function SmartTagsInner({ hasTags, cfg, cfgIds, canWrite, opts, atCap, onAddTag, onRemoveTag, showTotal, total, matchCount, fmtAmount, body }) {
+function SmartTagsInner({ hasTags, cfg, cfgIds, canWrite, opts, atCap, onAddTag, onRemoveTag, showTotal, total, matchCount, fmtAmount, body, capNote, addError, onDismissAddError }) {
   return (
     <React.Fragment>
           {/* Tag-management bar — shown whenever tags exist (or a writer can add
@@ -375,6 +398,7 @@ function SmartTagsInner({ hasTags, cfg, cfgIds, canWrite, opts, atCap, onAddTag,
                       onAddTag={onAddTag}
                       onRemoveTag={onRemoveTag}
                       atCap={atCap}
+                      footNote={capNote}
                     />
                   ) : null}
                 </div>
@@ -386,6 +410,26 @@ function SmartTagsInner({ hasTags, cfg, cfgIds, canWrite, opts, atCap, onAddTag,
                 </div>
               ) : null}
             </div>
+          ) : null}
+
+          {/* A refused add, in the server's own words. Kept on the bar rather
+              than in the popover: the popover closes on the click that caused
+              the refusal, so the sentence would leave with it. */}
+          {hasTags && addError ? (
+            <div className="odc-smarttags-refused" role="alert">
+              <span className="material-icons" aria-hidden="true">error_outline</span>
+              <span className="odc-smarttags-refused-txt">{addError}</span>
+              {onDismissAddError ? (
+                <button type="button" className="odc-smarttags-x" aria-label="Dismiss" onClick={onDismissAddError}>
+                  <span className="material-icons" aria-hidden="true">close</span>
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {/* The cap advisory also reads outside the popover, so "why can I not
+              add another" is answerable without opening the control. */}
+          {hasTags && !addError && canWrite && capNote ? (
+            <div className="odc-smarttags-advisory">{capNote}</div>
           ) : null}
 
           {body}

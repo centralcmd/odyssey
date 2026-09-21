@@ -1,0 +1,146 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Smart tags (contract host)" subtitle="The same AccountSmartTagsSection on a contract record — subject=&quot;contract&quot;, the ContractMaxSmartTagsPerContract cap, and the at-cap / refused / degraded-limits states. Live off the DS namespace." viewport="1120x1700" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · Contract smart tags</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="../ui_kits/web/kit.css" />
+<link rel="stylesheet" href="../ui_kits/web/admin.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<style>
+html,body{margin:0;background:var(--mud-palette-background)}
+body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:26px 28px 40px}
+.cap{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:0 0 12px}
+.cap code{font-family:var(--font-mono);text-transform:none;letter-spacing:0;color:var(--brand-text)}
+.stack{display:flex;flex-direction:column;gap:30px}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}
+.stack>div{min-width:0}
+.note{margin:14px 2px 0;font:var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);color:var(--mud-palette-text-secondary);max-width:92ch}
+.note b{color:var(--mud-palette-text-primary);font-weight:var(--fw-medium)}
+</style>
+</head>
+<body>
+<div class="cap">Smart tags · contract host <code>&lt;AccountSmartTagsSection subject="contract" maxTags limitsDegraded addError /&gt;</code></div>
+<div class="stack" id="root"></div>
+<p class="note">One component, two hosts. On a contract the watchlist answers <b>what this agreement actually cost</b>, beside the Terms section that says what it is contracted to cost — the tags resolve through the transactions endpoint, so the match is by tag and carries no contract scope. The cap is <b>ContractMaxSmartTagsPerContract</b> (default 20, ceiling 50 — the filter-array length the resolution query accepts); it is served by the claim-free <b>/api/contract-limits</b> and interpolated, never held here as a constant. At the cap the adder blocks and the bar says the number; a refused write shows the server's own sentence; a <b>degraded (503)</b> limits read leaves the number unknown, so the client stops pre-checking and the server's conservative bound does the refusing.</p>
+<script type="text/babel" data-presets="env,react">
+const { AccountSmartTagsSection, TxnTable } = window.OdysseyDesignSystem_d5aa51;
+
+const TAGS = [
+  { value: 't4', label: 'Rent' }, { value: 't7', label: 'Utilities' },
+  { value: 't2', label: 'Subscriptions' }, { value: 't1', label: 'Groceries' },
+  { value: 't3', label: 'Transit' }, { value: 't6', label: 'Dining' },
+  { value: 't13', label: 'Home maintenance' },
+];
+const LABEL = Object.fromEntries(TAGS.map(t => [t.value, t.label]));
+
+const TXNS = [
+  { id: 'c1', desc: 'Northgate Lettings · Rent', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Approved', amount: -2250.00, date: '2026-09-01', dir: 'expense', icon: 'home', tags: ['t4'] },
+  { id: 'c2', desc: 'Northgate Lettings · Rent', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Approved', amount: -2250.00, date: '2026-08-01', dir: 'expense', icon: 'home', tags: ['t4'] },
+  { id: 'c3', desc: 'Northgate Lettings · Parking space', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Approved', amount: -85.00, date: '2026-08-01', dir: 'expense', icon: 'local_parking', tags: ['t4'] },
+  { id: 'c4', desc: 'PG&E · Electric', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Approved', amount: -104.20, date: '2026-08-14', dir: 'expense', icon: 'bolt', tags: ['t7'] },
+  { id: 'c5', desc: 'City Water · Quarterly', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Flagged', amount: -61.18, date: '2026-08-09', dir: 'expense', icon: 'water_drop', tags: ['t7'] },
+  { id: 'c6', desc: 'Spotify · Monthly', accountLabel: 'Amex Platinum', accountNumber: '·5512', currency: 'USD', status: 'Approved', amount: -11.99, date: '2026-08-03', dir: 'expense', icon: 'music_note', tags: ['t2'] },
+];
+const money = (n) => `${n < 0 ? '− ' : '+ '}${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
+const renderTable = (rows) => (
+  <div className="acct-txn-table">
+    <TxnTable txns={rows.map(t => ({ ...t, tags: t.tags.map(id => LABEL[id]) }))} formatAmount={(t) => money(t.amount)} />
+  </div>
+);
+const CONTRACT_COPY = {
+  subject: 'contract',
+  emptyDesc: 'Pin the tags this agreement settles against, and what it actually costs reads here — no filter to rebuild on the Transactions page.',
+  noMatchDesc: 'No transactions carry the watched tags yet.',
+};
+
+/* The live instance — the Maple St lease, watching Rent + Utilities, against a
+   cap of 3 so the at-cap block is reachable by clicking. */
+function Live() {
+  const [ids, setIds] = React.useState(['t4', 't7']);
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState(null);
+  const cap = 3;
+  const first = React.useRef(true);
+  React.useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    setLoading(true);
+    const h = setTimeout(() => setLoading(false), 440);
+    return () => clearTimeout(h);
+  }, [ids.join(',')]);
+  const matches = TXNS.filter(t => t.tags.some(id => ids.includes(id)));
+  return (
+    <div>
+      <div className="cap">Live — cap 3, so the block and its sentence are reachable</div>
+      <AccountSmartTagsSection
+        {...CONTRACT_COPY}
+        tags={ids.map(id => ({ id, label: LABEL[id] }))}
+        tagOptions={TAGS}
+        transactions={matches}
+        loading={loading}
+        maxTags={cap}
+        addError={err}
+        onDismissAddError={() => setErr(null)}
+        onAddTag={(id) => { if (ids.length >= cap) { setErr(`A contract may have at most ${cap} smart tags.`); return; } setErr(null); setIds(p => p.includes(id) ? p : [...p, id]); }}
+        onRemoveTag={(id) => { setErr(null); setIds(p => p.filter(x => x !== id)); }}
+        formatAmount={money}
+        renderTable={renderTable}
+        defaultOpen
+      />
+    </div>
+  );
+}
+
+const WATCHED = [{ id: 't4', label: 'Rent' }, { id: 't7', label: 'Utilities' }];
+const MATCHES = TXNS.filter(t => t.tags.some(id => ['t4', 't7'].includes(id)));
+
+function Demo() {
+  return (
+    <React.Fragment>
+      <Live />
+      {/* The two table-less states sit side by side; every state that carries the
+          ledger takes a full row — the Account column is the point on the
+          contract host (the match is cross-account), so it never gets squeezed. */}
+      <div className="pair">
+        <div>
+          <div className="cap">No smart tags — the only place the first one is added</div>
+          <AccountSmartTagsSection {...CONTRACT_COPY} tags={[]} tagOptions={TAGS} transactions={[]} renderTable={renderTable} defaultOpen />
+        </div>
+        <div>
+          <div className="cap">Watched, nothing matching yet</div>
+          <AccountSmartTagsSection {...CONTRACT_COPY} tags={[{ id: 't13', label: 'Home maintenance' }]} tagOptions={TAGS}
+            transactions={[]} formatAmount={money} renderTable={renderTable} defaultOpen />
+        </div>
+      </div>
+      <div>
+        <div className="cap">At the cap — the number comes from /api/contract-limits</div>
+        <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={MATCHES}
+          maxTags={2} formatAmount={money} renderTable={renderTable} defaultOpen />
+      </div>
+      <div>
+        <div className="cap">Refused add — 422, the server's own sentence</div>
+        <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={MATCHES}
+          addError="Tag ‘Groceries’ is archived and cannot be added as a smart tag." onDismissAddError={() => {}}
+          formatAmount={money} renderTable={renderTable} defaultOpen />
+      </div>
+      <div>
+        <div className="cap">Limits degraded — 503, no number to pre-check against</div>
+        <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={MATCHES}
+          limitsDegraded maxTags={null} formatAmount={money} renderTable={renderTable} defaultOpen />
+      </div>
+      <div>
+        <div className="cap">Read-only — holds contracts.read, not contracts.update</div>
+        <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={MATCHES}
+          canWrite={false} formatAmount={money} renderTable={renderTable} defaultOpen />
+      </div>
+    </React.Fragment>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

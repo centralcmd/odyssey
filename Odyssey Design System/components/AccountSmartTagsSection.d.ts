@@ -47,8 +47,27 @@ export interface AccountSmartTagsSectionProps {
   /** Formats the net total figure shown on the bar. Default: a signed "$ x.xx".
    *  Pass a currency-aware formatter (e.g. the account's `signedMoney`). */
   formatAmount?: (total: number) => React.ReactNode;
-  /** Soft cap on watched tags (v1 = 20). The adder blocks new checks at the cap. */
+  /** Soft cap on watched tags (accounts v1 = 20; contracts = the
+   *  `ContractMaxSmartTagsPerContract` setting, ceiling 50). The adder blocks
+   *  new checks at the cap. */
   maxTags?: number;
+  /** The record the watchlist hangs off, interpolated into the default empty
+   *  copy. Default "account"; pass "contract" on the contract record. */
+  subject?: string;
+  /** Override the empty-state sentence. Needed where the noun substitution
+   *  would misstate the match (a contract's smart tags are not contract-scoped). */
+  emptyDesc?: React.ReactNode;
+  /** Override the no-matching-transactions sentence. */
+  noMatchDesc?: React.ReactNode;
+  /** The limits read is degraded (`/api/contract-limits` → 503). No number to
+   *  pre-check against, so the adder stays open, says the limit is unavailable,
+   *  and leaves the refusal to the server's conservative bound. */
+  limitsDegraded?: boolean;
+  /** A refused add, in the server's words — 422 at the cap (which names the
+   *  effective number), 422 archived tag, 409 already linked. Rendered on the
+   *  bar, not in the popover, which closes on the click that caused it. */
+  addError?: string | null;
+  onDismissAddError?: () => void;
   /** Section title. Default "Smart tags". */
   title?: string;
   /** Leading Material Icons ligature. Default "sell". */
@@ -61,8 +80,10 @@ export interface AccountSmartTagsSectionProps {
 }
 
 /**
- * AccountSmartTagsSection — the per-account "Smart tags" disclosure shown in the
- * expanded account record, below the Transactions section. It pins a curated
+ * AccountSmartTagsSection — the "Smart tags" watchlist shown in an expanded
+ * record. Two hosts: the account record (`subject="account"`) and the contract
+ * record (`subject="contract"`), which reads the same saved filter against the
+ * `ContractMaxSmartTagsPerContract` cap. It pins a curated
  * set of existing TransactionTags to an account as a saved filter and surfaces
  * every transaction on that account carrying any of them.
  *

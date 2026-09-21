@@ -276,6 +276,14 @@
               <TweakSection label="Contract terms" />
               <TweakSlider label="Max terms per contract" min={1} max={20} step={1} value={tweaks.contractTermCap}
                            unit=" terms" onChange={(v) => setTweak('contractTermCap', v)} />
+              <TweakSection label="Contract smart tags" />
+              <TweakSlider label="ContractMaxSmartTagsPerContract" min={1} max={50} step={1}
+                           value={tweaks.conSmartTagCap != null ? tweaks.conSmartTagCap : 20}
+                           unit=" tags" onChange={(v) => setTweak('conSmartTagCap', v)} />
+              <TweakToggle label="Holds contracts.update (can add / remove)" value={tweaks.conCanUpdate !== false}
+                           onChange={(v) => setTweak('conCanUpdate', v)} />
+              <TweakToggle label="/api/contract-limits degraded (503)" value={!!tweaks.conSmartTagLimitsDegraded}
+                           onChange={(v) => setTweak('conSmartTagLimitsDegraded', v)} />
             </React.Fragment>
           )}
           {view === 'contacts' && (

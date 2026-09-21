@@ -137,6 +137,28 @@ const AddTagModal = ({ onClose, onCreate, onSave, tag = null, siblings = [], sub
   );
 };
 
+/* ---------- Delete refusal (409) ----------
+   A tag in use is not deletable: the link rows are RESTRICT, and the service
+   pre-checks so the refusal can name the surface instead of answering a
+   generic conflict. One clause per blocker class — a tag blocked by several
+   reports all of them — and COUNTS ONLY: naming the contracts or budgets would
+   reach past what `transactions.tags.delete` is allowed to read. */
+const TagDeleteBlockedModal = ({ tag, clauses, onClose }) => (
+  <Modal
+    title="Unable to delete this tag"
+    subtitle={<React.Fragment>“<strong>{tag.name}</strong>” is still in use. Remove it where it is used, then delete it.</React.Fragment>}
+    icon="block"
+    onClose={onClose}
+    footer={<Button variant="filled" color="primary" onClick={onClose}>Close</Button>}>
+    <ul className="tag-block-list">
+      {clauses.map((c, i) => (
+        <li key={i}><MIcon name="link" size={16} /><span>{c}</span></li>
+      ))}
+    </ul>
+    <p className="tag-block-foot">Archiving it instead keeps every link intact and retires the tag from the pickers.</p>
+  </Modal>
+);
+
 /* ---------- Page ----------
    One generic tags-management page. Journal tags, task tags and transaction
    tags share the exact same DTO shape (Name / Description / Archived) and
@@ -151,6 +173,8 @@ const createTagsPage = (cfg) => () => {
   const [statusFilter, setStatusFilter] = useState([]);
   const [adding, setAdding] = useState(false);
   const [editingTag, setEditingTag] = useState(null);
+  // The tag whose delete was refused, with the clauses naming each blocker.
+  const [blocked, setBlocked] = useState(null);
   const [tags, setTags] = useState(cfg.source(d));
   // Shared sort (§6.7): Name is the single curated field — the toolbar
   // renders a direction toggle only — but the one {key,dir} still syncs with
@@ -169,6 +193,14 @@ const createTagsPage = (cfg) => () => {
   };
   const onSave = (id, patch) => { setTags(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t)); setEditingTag(null); };
   const onDelete = (id) => setTags(prev => prev.filter(t => t.id !== id));
+  /* The pre-check the service runs before the delete. Refused → the 409's
+     clauses, nothing removed; clear → the ordinary delete. */
+  const tryDelete = (id) => {
+    const tag = tags.find(t => t.id === id);
+    const clauses = tag && cfg.blockers ? cfg.blockers(tag, d) : [];
+    if (clauses.length) { setBlocked({ tag, clauses }); return; }
+    onDelete(id);
+  };
 
   const filtered = useMemo(() => tags.filter(t => {
     const st = t.archived ? 'archived' : 'active';
@@ -229,6 +261,7 @@ const createTagsPage = (cfg) => () => {
 
       {adding && <AddTagModal onClose={() => setAdding(false)} onCreate={createTag} siblings={tags} subtitle={cfg.modalSubtitle} />}
       {editingTag && <AddTagModal tag={editingTag} onClose={() => setEditingTag(null)} onSave={onSave} siblings={tags} subtitle={cfg.modalSubtitle} />}
+      {blocked && <TagDeleteBlockedModal tag={blocked.tag} clauses={blocked.clauses} onClose={() => setBlocked(null)} />}
 
       <Card>
         <CardBody style={{ padding: 0 }}>
@@ -236,7 +269,7 @@ const createTagsPage = (cfg) => () => {
             tags={paged}
             ariaLabel={cfg.title}
             onSave={onSave}
-            onDelete={onDelete}
+            onDelete={tryDelete}
             onEdit={setEditingTag}
             sort={sort}
             onSortChange={setSort}
@@ -266,6 +299,16 @@ const TransactionTags = createTagsPage({
   searchPlaceholder: 'Search name or description…',
   modalSubtitle: 'Tags group transactions and budget items by category.',
   emptyDesc: 'Create your first tag to start categorizing transactions.',
+  /* Both link classes that RESTRICT a tag delete today: budget items plan for a
+     tag, and contracts watch one as a smart tag. Each reports its own clause. */
+  blockers: (tag, d) => {
+    const items = (d.budgets || []).reduce((n, b) => n + (b.items || []).filter(i => i.tagId === tag.id).length, 0);
+    const contracts = Object.values(d.contractSmartTagSeed || {}).filter(ids => ids.includes(tag.id)).length;
+    return [
+      items ? `${items} budget item${items === 1 ? '' : 's'} plan${items === 1 ? 's' : ''} for this tag.` : null,
+      contracts ? `This tag is a smart tag on ${contracts} contract${contracts === 1 ? '' : 's'}.` : null,
+    ].filter(Boolean);
+  },
 });
 
 const JournalTags = createTagsPage({

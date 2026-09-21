@@ -766,6 +766,19 @@
   D.CONTRACTS_CHARGE_WINDOW_DAYS = 45;
 
   D.CONTRACT_MAX_TERMS_PER_CONTRACT = 500;
+  /* ContractMaxSmartTagsPerContract — a system setting (default 20, range
+     1–50). The ceiling is ListDefaults.MaxFilterArrayLength: past it the
+     feature's own resolution query (GET /api/transactions?tagIds=…) refuses
+     the array the section builds. */
+  D.CONTRACT_MAX_SMART_TAGS_PER_CONTRACT = 20;
+  D.CONTRACT_SMART_TAGS_CEILING = 50;
+  /* Seed associations by contractId (GET /api/contracts/{id}/smart-tags in the
+     real app), ordered as AddedAt ascending. */
+  D.contractSmartTagSeed = {
+    'ct-lease': ['t4', 't7'],     // Maple St lease — Rent, Utilities
+    'ct-fiber': ['t2'],           // Fiber service — Subscriptions
+    'ct-employment': ['t5'],      // ACME Co — Salary
+  };
   D.contractTermKinds = ['InterestRate', 'Fee'];
 
   /* Seed term history, keyed by contractId. EffectiveFrom ascending here for

@@ -2102,3 +2102,9 @@ html, body, #root {
      inside the frame instead of being clipped by .odc-record's overflow-x. */
   overflow-x: auto;
 }
+
+/* Tag delete refusal (409) — one clause per blocker class, counts only. */
+.tag-block-list { list-style: none; margin: 0 0 var(--space-4); padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.tag-block-list li { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-3) var(--space-3); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-sm, 6px); background: var(--mud-palette-surface); font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
+.tag-block-list li .material-icons { color: var(--mud-palette-text-secondary); flex: none; margin-top: 1px; }
+.tag-block-foot { margin: 0; font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
