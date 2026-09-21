@@ -1,7 +1,10 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Api.SystemSettings;
+using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos;
 using Xunit;
@@ -310,13 +313,47 @@ public class TuningLookupDegradationTests
         var context = CreateContext(Guid.NewGuid().ToString());
         await SeedAsync(context, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "500"));
 
-        var limits = await new AccountLimitsLookup(
-            context, cache, NullLogger<AccountLimitsLookup>.Instance).GetAsync();
+        // A CapturingLogger rather than NullLogger: the warning is the OTHER half of the behaviour
+        // this test names, and the reason a clamp is not silent — without an assertion on it the log
+        // call could be deleted, downgraded to Debug or emptied of its numbers and nothing would fail.
+        // (Raised by the test reviewer on this PR.)
+        var logger = new CapturingLogger<AccountLimitsLookup>();
+
+        var limits = await new AccountLimitsLookup(context, cache, logger).GetAsync();
 
         Assert.False(limits.IsDegraded);
         Assert.Equal(
             SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax, limits.MaxSmartTagsPerAccount);
         Assert.Equal(ListDefaults.MaxFilterArrayLength, limits.MaxSmartTagsPerAccount);
+
+        // Warning, not Error: the level is what separates "clamped" from "degraded" in the operator's
+        // log, so it is pinned alongside the value. Both numbers are named — the stored one, so an
+        // operator can find the row to repair, and the resolved one, so the line says what is in force.
+        var warning = Assert.Single(logger.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Contains("500", warning.Message, StringComparison.Ordinal);
+        Assert.Contains(
+            SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax.ToString(CultureInfo.InvariantCulture),
+            warning.Message,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The companion to the clamp test: a row INSIDE its pair is not warned about. Without this, an
+    /// implementation that logged on every read would satisfy the assertion above while making the
+    /// warning useless as a signal that something needs repairing.
+    /// </summary>
+    [Fact]
+    public async Task AccountLimits_WhenTheStoredCapIsInRange_IsNotWarnedAbout()
+    {
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var context = CreateContext(Guid.NewGuid().ToString());
+        await SeedAsync(context, (SystemSettingsKeys.AccountMaxSmartTagsPerAccount, "40"));
+
+        var logger = new CapturingLogger<AccountLimitsLookup>();
+        var limits = await new AccountLimitsLookup(context, cache, logger).GetAsync();
+
+        Assert.Equal(40, limits.MaxSmartTagsPerAccount);
+        Assert.Empty(logger.Entries);
     }
 
     /// <summary>
