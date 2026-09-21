@@ -105,11 +105,6 @@ public partial class ContractDetailView : IAsyncDisposable
     }
 
     /// <summary>
-    /// A party whose term closed before today: still a party of record, drawn quieter than one
-    /// currently in its role. Read from the injected <see cref="TimeProvider"/>, so the rendering is
-    /// deterministic under test rather than depending on the wall clock.
-    /// </summary>
-    /// <summary>
     /// The party tile's classes. An object party (issue #169) takes <c>object</c> so the tile can be
     /// marked as naming what the agreement is ABOUT rather than a side of it.
     /// </summary>
@@ -118,15 +113,23 @@ public partial class ContractDetailView : IAsyncDisposable
 
     /// <summary>
     /// The role overline's classes: <c>unset</c> for a role this build cannot name — an ABSENCE, not
-    /// a category — and <c>object</c> for one naming the thing contracted over. Built here rather
-    /// than interpolated in the markup because two conditionals in one attribute value do not parse
-    /// inside a <c>RenderFragment</c> lambda.
+    /// a category — and <c>object</c> for one naming the thing contracted over.
     /// </summary>
+    /// <remarks>
+    /// Built here rather than interpolated in the markup because two <c>@(…)</c> expressions side by
+    /// side in one attribute value do not parse inside a <c>@&lt;text&gt;</c> <c>RenderFragment</c>
+    /// lambda — see <c>docs/frontend-mudblazor-gotchas.md</c>.
+    /// </remarks>
     private static string RoleClass(ContractPartyRole role) =>
         "con-role"
         + (PartyRoleLabel.IsNamed(role) ? "" : " unset")
         + (OdsTypeRegistries.IsObjectRole(role) ? " object" : "");
 
+    /// <summary>
+    /// A party whose term closed before today: still a party of record, drawn quieter than one
+    /// currently in its role. Read from the injected <see cref="TimeProvider"/>, so the rendering is
+    /// deterministic under test rather than depending on the wall clock.
+    /// </summary>
     private bool IsPast(ExistingContractParty party) =>
         party.ToDate is { } to && to.Date < Time.GetUtcNow().UtcDateTime.Date;
 
