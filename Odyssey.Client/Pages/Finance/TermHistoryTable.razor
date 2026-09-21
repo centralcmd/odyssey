@@ -54,6 +54,13 @@
                                     <span class="trm-kind-caption">@TermKindVisuals.LabelFor(term, Account)</span>
                                 }
                             </span>
+                            @if (TermKindVisuals.DirectionApplies(term))
+                            {
+                                @* The WORD under the name, on every contract fee and both ways round.
+                                   The figure's hue is the other carrier; neither is alone, so the
+                                   direction never rests on colour (WCAG 1.4.1). *@
+                                <span class="trm-dir">@TermDirectionVisuals.Info(term.Direction).Label</span>
+                            }
                             @if (!string.IsNullOrWhiteSpace(term.Note))
                             {
                                 <div class="trm-row-note">@term.Note</div>
@@ -62,7 +69,12 @@
                     </div>
                 </td>
                 <td class="trm-cell-date">@term.EffectiveFrom.ToString("MMM dd, yyyy")</td>
-                <td class="trm-cell-value" style="@(isCurrent ? $"color:{TermKindVisuals.CostColor(term, Account) ?? info.Color};" : "")">
+                @* An INCOMING figure keeps its mint at full strength on every row, in force or not:
+                   dimming a superseded one drops it below the contrast floor, and dimming a SCHEDULED
+                   one draws the entry that is next as though it were already history. The hierarchy
+                   is carried by the in-force row's tinted ground, its heavier figure and the status
+                   cell's own words — none of which costs contrast. *@
+                <td class="trm-cell-value" style="@ValueStyle(term, isCurrent, info)">
                     @TermKindVisuals.FormatValue(term, FormatMoney)@if (cadence is not null)
                     {@* The separator is an explicit string: Razor trims leading whitespace inside an
                          element, which glued "$45.00" to "every 3 months". *@
@@ -100,3 +112,17 @@
         }
     </tbody>
 </table>
+
+@code {
+    /// <summary>
+    /// The figure's colour. A direction outranks the cost-rate tint because it is the stronger claim
+    /// — money arriving, not merely a rate that costs — and the two can never both apply: a cost rate
+    /// is a percentage on an ACCOUNT, and a direction only exists on a CONTRACT's fee.
+    /// </summary>
+    private string ValueStyle(ExistingTerm term, bool isCurrent, TermKindInfo info)
+    {
+        var direction = TermKindVisuals.DirectionColor(term);
+        if (direction is not null) return $"color:{direction};";
+        return isCurrent ? $"color:{TermKindVisuals.CostColor(term, Account) ?? info.Color};" : "";
+    }
+}

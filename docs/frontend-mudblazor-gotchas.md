@@ -57,6 +57,20 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
   needs to know *why* a capability is missing, the surface says so in its own copy: an
   `OdsRecordSection` notice band or a helper line, which is readable without opening anything.
   `OdsMenuUnavailableItemTests` pins the filter and all four orphan shapes.
+- **A money / amount field's LEAD is a vocabulary, not a sign.** `OdsMoneyField` and
+  `OdsAmountField` take `DirectionOptions` — exactly two `OdsDirectionOption`s — and show each
+  state's own `Short` word where the sign would be, tinting from the option's **`Tone`** rather than
+  from its `Value`. That last part is the trap: a vocabulary whose values are `Outgoing`/`Incoming`
+  emits `tone-Outgoing` if the tone is derived from the value, which matches no CSS rule and leaves
+  the figure the wrong colour with nothing failing. Prefer `Short` to `Icon` for an in/out
+  vocabulary: an arrow beside a figure reads as that figure rising or falling. Registries supply the
+  pair (`TermDirectionVisuals.LeadOptions`); a call site never hand-rolls one.
+- **`OdsBreakdownTile`'s total row is OPT-IN here and default-ON in the design system.** The
+  divergence is deliberate and written down in the component: flipping the default adds a row to all
+  21 tiles across the app at once. Pass `Total="true"` for a summable distribution, `TotalValue` for
+  a figure the arithmetic cannot produce (a net, or rows whose counts are rendered nodes), and
+  neither for a distribution whose sum means nothing — rows that are a SLICE of one another must
+  never be summed.
 - **An empty section or table frame is `<OdsEmptyLine>`, not a hand-rolled `<div>`.** The retired
   `.empty-line` / `.con-empty-line` classes are gone; `Align="Center" Pad="Lg"` is the whole-list
   form. `OdsEmptyState` still owns the panel shape (icon + title + one CTA) and reaches the line

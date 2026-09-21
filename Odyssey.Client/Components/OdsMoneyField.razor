@@ -19,6 +19,12 @@
     amount with no income/expense meaning, SignEditable makes it toggle the value's own minus
     — picked, never typed.
 
+    THE LEAD IS A VOCABULARY, NOT A SIGN. DirectionOptions names the two states it flips
+    between — the finance pair by default — and each may carry its own short word, icon and
+    tone. A field whose record stores a DIRECTION rather than a sign (a contract term's
+    Outgoing / Incoming) shows that word where the sign would be, and the stored amount stays
+    positive: a sign glyph would be a second, contradictory encoding of the same fact.
+
     Controlled: bind via @bind-Value. The value stays a string so partial entries ("3.", "1,2")
     survive. Invalid keystrokes are blocked as typed — letters are dropped, and a second
     decimal separator (or a non-leading minus) is rejected outright, so nothing is silently
@@ -33,8 +39,8 @@
     <div class="@BoxClass">
         @if (DirectionMode || SignMode)
         {
-            @* One button, two meanings: with Direction it flips expense ↔ income; with
-               SignEditable it flips the value's own sign. Either way the glyph is
+            @* One button, two meanings: with Direction it flips between the two DirectionOptions;
+               with SignEditable it flips the value's own sign. Either way the glyph is
                aria-hidden and the button carries the state in its accessible name. *@
             <button type="button"
                     class="odc-money-sign btn"
@@ -42,7 +48,20 @@
                     aria-label="@SignAriaLabel"
                     title="@SignTitle"
                     @onclick="FlipSignAsync">
-                <span class="odc-money-dir-sign" aria-hidden="true">@SignGlyph</span>
+                @if (DirectionIcon is { Length: > 0 } icon)
+                {
+                    <span class="material-icons odc-money-dir-ic" aria-hidden="true">@icon</span>
+                }
+                else if (DirectionWord is { Length: > 0 } word)
+                {
+                    @* A WORD, not an arrow: an arrow beside a figure reads as that figure rising or
+                       falling before it reads as money leaving the household. *@
+                    <span class="odc-money-dir-word" aria-hidden="true">@word</span>
+                }
+                else
+                {
+                    <span class="odc-money-dir-sign" aria-hidden="true">@SignGlyph</span>
+                }
             </button>
         }
         else if (!string.IsNullOrEmpty(SignGlyph))

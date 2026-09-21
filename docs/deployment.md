@@ -589,6 +589,14 @@ fields today is correct tomorrow. Two rules worth knowing when reading the paylo
 mixes directions, and the net is the only signed figure — it is `(incoming ?? 0) − (outgoing ?? 0)`,
 computed from the unrounded sums, and null only when **both** sides are.
 
+**The contracts header now shows four run-rate tiles instead of two.** "Monthly run rate" and
+"Yearly run rate" are renamed **"Monthly out" / "Yearly out"** and joined by **"Monthly in" /
+"Yearly in"**; the two by-type tiles become **"Monthly net by type" / "Yearly net by type"**, each
+closing with a ruled **Net** row. The figures behind the two "out" tiles are the same numbers the old
+two showed — the rename is because the figure is now one side of two, and a name that stayed would
+read as a total. The signal panel gains a **Next receipts** group beside Next charges. Nothing here
+needs an operator action; it is noted so the change is not mistaken for a defect.
+
 **`ContractMaxSummaryCharges` changes meaning without changing its value or bound.** It now caps the
 outgoing and incoming movement lists **separately**, so a file with many charges cannot starve the
 receipts — and the worst-case row count for that part of the payload doubles. The setting's own

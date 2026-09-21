@@ -71,11 +71,27 @@ public partial class ContractTermsSection
 
     private string CurrentLabel => HasNoTerms ? "Terms" : "Current terms";
 
-    private string CurrentMeta => HasNoTerms
-        ? "0 entries"
-        : _current.Count == 0
-            ? "none in force"
-            : $"{_current.Count} {(_current.Count == 1 ? "value" : "values")} in force · {DateTime.UtcNow:MMM dd, yyyy}";
+    /// <summary>
+    /// A contract is not one-directional — an employment agreement pays a salary in and deducts dues
+    /// out — so the divider says how many of each rather than one undifferentiated count of "values".
+    /// </summary>
+    private string CurrentMeta
+    {
+        get
+        {
+            if (HasNoTerms) return "0 entries";
+            if (_current.Count == 0) return "none in force";
+
+            var incoming = _current.Count(t => TermKindVisuals.DirectionColor(t) is not null);
+            // The split is stated only when there IS an incoming side: on a file that records costs
+            // alone it would be a breakdown of one thing, which reads as noise on every contract.
+            var split = incoming > 0
+                ? $" · {incoming} incoming, {_current.Count - incoming} outgoing"
+                : string.Empty;
+
+            return $"{_current.Count} {(_current.Count == 1 ? "value" : "values")} in force{split} · {DateTime.UtcNow:MMM dd, yyyy}";
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

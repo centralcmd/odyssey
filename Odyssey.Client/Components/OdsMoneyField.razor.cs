@@ -55,8 +55,17 @@ public partial class OdsMoneyField
     [Parameter] public string? Direction { get; set; }
 
     /// <summary>Fires with the next direction when the leading segment is clicked — or when − / + is
-    /// typed in the amount. Omit for a read-only sign.</summary>
+    /// typed in the amount (− picks the first state, + the second). Omit for a read-only sign.</summary>
     [Parameter] public EventCallback<string> DirectionChanged { get; set; }
+
+    /// <summary>
+    /// The two states the lead flips between. Defaults to the finance pair (expense −, income +), so
+    /// every caller that passes only <see cref="Direction"/> is unchanged. Pass your own where the
+    /// record stores a DIRECTION rather than a sign — a contract term's Outgoing / Incoming — and the
+    /// lead shows that vocabulary's own word or glyph in the slot the sign would occupy. Exactly two
+    /// options; anything else falls back to the default pair.
+    /// </summary>
+    [Parameter] public IReadOnlyList<OdsDirectionOption>? DirectionOptions { get; set; }
 
     /// <summary>Turns the leading segment into a − / + toggle over the value's own sign, for a signed
     /// amount with no income/expense meaning (a correction, an adjustment). The minus is picked, not
@@ -114,8 +123,51 @@ public partial class OdsMoneyField
 
     // ---- modes ----------------------------------------------------------------------------
 
-    /// <summary>The leading segment flips expense ↔ income (the transaction hero).</summary>
+    /// <summary>The leading segment flips between the two <see cref="DirectionOptions"/>.</summary>
     private bool DirectionMode => !string.IsNullOrEmpty(Direction) && DirectionChanged.HasDelegate;
+
+    /// <summary>The finance pair, so a caller passing only a direction still gets a sensible − / +.</summary>
+    private static readonly IReadOnlyList<OdsDirectionOption> FinanceDirections =
+    [
+        new() { Value = "expense", Label = "Expense", Sign = "−", Tone = "expense" },
+        new() { Value = "income", Label = "Income", Sign = "+", Tone = "income" },
+    ];
+
+    private IReadOnlyList<OdsDirectionOption> Directions =>
+        DirectionOptions is { Count: 2 } supplied ? supplied : FinanceDirections;
+
+    /// <summary>The active option. An unrecognised <see cref="Direction"/> resolves to the first —
+    /// the lead always shows one of the two states rather than going blank.</summary>
+    private OdsDirectionOption CurrentDirection
+    {
+        get
+        {
+            var options = Directions;
+            var index = IndexOfDirection;
+            return options[index];
+        }
+    }
+
+    private int IndexOfDirection
+    {
+        get
+        {
+            var options = Directions;
+            for (var i = 0; i < options.Count; i++)
+            {
+                if (string.Equals(options[i].Value, Direction, StringComparison.Ordinal)) return i;
+            }
+            return 0;
+        }
+    }
+
+    private OdsDirectionOption NextDirection => Directions[(IndexOfDirection + 1) % Directions.Count];
+
+    /// <summary>The word shown in the lead, or null when the option carries an icon or only a sign.</summary>
+    private string? DirectionWord =>
+        DirectionMode && string.IsNullOrEmpty(CurrentDirection.Icon) ? CurrentDirection.Short : null;
+
+    private string? DirectionIcon => DirectionMode ? CurrentDirection.Icon : null;
 
     /// <summary>The leading segment flips the value's own minus (a correction, a settlement).</summary>
     private bool SignMode => !DirectionMode && SignEditable && ValueChanged.HasDelegate;
@@ -134,24 +186,25 @@ public partial class OdsMoneyField
 
     private string? DisplayValue => SignMode ? Magnitude : Value;
 
-    private string? EffectiveTone => Tone ?? (DirectionMode ? Direction : null);
+    private string? EffectiveTone => Tone ?? (DirectionMode ? (CurrentDirection.Tone ?? Direction) : null);
 
     private string? SignGlyph
     {
         get
         {
             if (!string.IsNullOrEmpty(Sign)) return Sign;
-            if (!string.IsNullOrEmpty(Direction)) return Direction == "expense" ? "−" : "+";
+            if (!string.IsNullOrEmpty(Direction))
+                return CurrentDirection.Sign ?? (IndexOfDirection == 0 ? "−" : "+");
             return SignMode ? (Negative ? "−" : "+") : null;
         }
     }
 
     private string SignAriaLabel => DirectionMode
-        ? (Direction == "expense" ? "Expense — switch to income" : "Income — switch to expense")
+        ? $"{CurrentDirection.Label} — switch to {NextDirection.Label.ToLowerInvariant()}"
         : (Negative ? "Negative — switch to positive" : "Positive — switch to negative");
 
     private string SignTitle => DirectionMode
-        ? (Direction == "expense" ? "Expense — click to switch" : "Income — click to switch")
+        ? $"{CurrentDirection.Label} — click to switch"
         : (Negative ? "Negative — click to switch" : "Positive — click to switch");
 
     // ---- currency -------------------------------------------------------------------------
@@ -243,7 +296,10 @@ public partial class OdsMoneyField
 
         if (DirectionMode)
         {
-            var next = minus ? "expense" : "income";
+            // − picks the FIRST state and + the second, whatever the two are called: the keystroke
+            // names a side, not a sign, so an out/in vocabulary answers it the same way expense/income
+            // does.
+            var next = (minus ? Directions[0] : Directions[1]).Value;
             if (next != Direction)
             {
                 Direction = next;
@@ -264,7 +320,7 @@ public partial class OdsMoneyField
     {
         if (DirectionMode)
         {
-            var next = Direction == "expense" ? "income" : "expense";
+            var next = NextDirection.Value;
             Direction = next;
             await DirectionChanged.InvokeAsync(next);
             return;

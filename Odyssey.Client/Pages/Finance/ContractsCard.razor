@@ -355,8 +355,9 @@
             <span class="material-icons" aria-hidden="true">groups</span><span>@name</span>
         </span>;
 
-    // A derived next-charge row in the header signal panel. Razor syntax, so it lives here rather than
-    // in the code-behind that builds the rest of the panel.
-    private RenderFragment ChargeRow(ContractUpcomingCharge charge) =>
-        @<ContractChargeRow Charge="charge" Money="FormatMoney" OnView="JumpTo" />;
+    // A derived next-movement row in the header signal panel — a charge or a receipt, one shape
+    // either way. Razor syntax, so it lives here rather than in the code-behind that builds the rest
+    // of the panel.
+    private RenderFragment ChargeRow(ContractUpcomingCharge charge, bool incoming) =>
+        @<ContractChargeRow Charge="charge" Money="FormatMoney" Incoming="incoming" OnView="JumpTo" />;
 }

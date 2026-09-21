@@ -86,6 +86,36 @@
                           Error="@(_errors.TryGetValue("label", out var labelErr) ? labelErr : null)" />
             }
 
+            @* Direction — which way the money moves, from the HOUSEHOLD's side, not from either
+               named party's. It rides in the VALUE control itself, in the slot a sign would occupy:
+               the record stores a direction, not a sign, so the word IS the sign. Both units carry
+               the same lead, so there is exactly ONE control for the value whichever way it is
+               priced. Where direction has no meaning the control is replaced by its REASON rather
+               than shown disabled — a disabled control invites a user to work out how to enable it,
+               and there is nothing to work out. *@
+            @if (DirectionRefusal is { Length: > 0 } refusal)
+            {
+                <div class="trm-field trm-dir-field">
+                    @if (IsContractOwner)
+                    {
+                        @* On a contract the field exists and this kind refuses it, so the block is
+                           labelled like the control it stands in for. On an account it never exists
+                           at all, so a label would imply a missing field rather than an absent one. *@
+                        <div class="trm-label">Direction</div>
+                    }
+                    <div class="trm-dir-refused">
+                        <span class="material-icons" aria-hidden="true">block</span>
+                        <span>
+                            @refusal
+                            @if (IsContractOwner)
+                            {
+                                <text> It is recorded as <b>outgoing</b>, where it carries no meaning.</text>
+                            }
+                        </span>
+                    </div>
+                </div>
+            }
+
             @* Unit + value — the hero input *@
             <div class="trm-value-block">
                 <div class="trm-field-head">
@@ -105,28 +135,41 @@
                 {
                     @* The caption is the "Value" heading above, beside the unit toggle — not a label
                        element — so the input carries its own accessible name. *@
+                    @* A percentage FEE is money too: it carries the same direction lead as an
+                       amount, so the two units are one control with one unit swapped rather than two
+                       differently-shaped questions. A rate gets no lead — see the refusal above. *@
                     <OdsAmountField Size="lg" Required="true" AllowNegative="true" Suffix="%"
                                     Value="@_valueStr" ValueChanged="OnValueChanged"
+                                    Direction="@DirectionValue"
+                                    DirectionChanged="OnDirectionChanged"
+                                    DirectionOptions="DirectionLead"
                                     aria-label="Value"
                                     Error="@(_errors.TryGetValue("value", out var pctErr) ? pctErr : null)">
                         <HelpContent>
+                            @if (DirectionApplies)
+                            {
+                                <text><b>@DirectionInfo.Label</b> — @DirectionInfo.Sentence. Click <b>@DirectionInfo.Short</b> to switch. </text>
+                            }
                             <text>Stored as a fraction: <b>@PreviewFraction</b>@(IsRate ? " · annual" : "")</text>
                         </HelpContent>
                     </OdsAmountField>
                 }
                 else
                 {
-                    @* No sign affordance here, which diverges from the DS's prop set on purpose: a fee
-                       amount can't be negative (this dialog rejects it, and so does the service), so a
-                       −/+ toggle would offer a state the form always refuses. The DS kit carries the
-                       same contradiction — its own submit() rejects a negative fee. The rate branch
-                       above keeps its sign, where a negative genuinely means something. *@
+                    @* No SIGN affordance: a fee amount can't be negative (this dialog rejects it, and
+                       so does the service), so a −/+ toggle would offer a state the form always
+                       refuses. What the lead carries instead on a contract fee is the DIRECTION
+                       (issue #159) — a different fact in the same slot, and the reason the amount can
+                       stay positive while still saying which way the money moves. *@
                     @* An owner with a currency of its own lends it; a contract has none, so the
                        picker opens unset with a placeholder, the helper says WHY, and submitting
                        without an answer is refused inline. A silently-assigned currency would be
                        indistinguishable from a chosen one on the next read. *@
                     <OdsMoneyField Size="lg" Required="true" AllowNegative="false"
                                    Value="@_valueStr" ValueChanged="OnValueChanged"
+                                   Direction="@DirectionValue"
+                                   DirectionChanged="OnDirectionChanged"
+                                   DirectionOptions="DirectionLead"
                                    Currency="@_currency" CurrencyChanged="OnCurrencyChanged"
                                    CurrencyOptions="_currencyOptions" CurrencySearchThreshold="0"
                                    CurrencyPlaceholder="@CurrencyPlaceholder"
@@ -136,6 +179,17 @@
                             @if (string.IsNullOrEmpty(_currency))
                             {
                                 <text>A @OwnerNoun has no currency of its own — <b>pick one</b> for this amount.</text>
+                                @if (DirectionApplies)
+                                {
+                                    <text> The word on the left says which way the money moves.</text>
+                                }
+                            }
+                            else if (DirectionApplies)
+                            {
+                                @* The amount stays POSITIVE either way — the direction carries the
+                                   sign, and a negative would make the sign mean two different things
+                                   depending on who typed it. *@
+                                <text><b>@DirectionInfo.Label</b> — @DirectionInfo.Sentence. Flat amount in <b>@_currency</b>@CadenceValueHint Click <b>@DirectionInfo.Short</b> to switch@(IsEdit ? " — a correction supersedes the entry, it never forks the history" : "").</text>
                             }
                             else
                             {

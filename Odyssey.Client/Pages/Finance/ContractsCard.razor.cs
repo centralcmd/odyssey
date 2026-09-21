@@ -369,7 +369,22 @@ public partial class ContractsCard
                     // raise the button above info would cry wolf on every contract that has a price.
                     Severity = PageHeaderSeverity.Information,
                     Message = charge.Name,
-                    Row = ChargeRow(charge),
+                    Row = ChargeRow(charge, incoming: false),
+                }));
+
+            // The receipts beside them (issue #159) — same row shape, same window, its own server-side
+            // cap, and its own GROUP, which is what names the direction. A contract that pays a salary
+            // on the 25th and deducts a fee on the 1st appears in both lists: the server collapses per
+            // (contract, direction), so neither movement hides the other.
+            problems.AddRange((_summary?.UpcomingReceipts ?? [])
+                .Where(receipt => listed.Contains(receipt.ContractId))
+                .Select(receipt => new PageHeaderProblem
+                {
+                    Group = "Next receipts",
+                    // Money arriving is even less of a problem than money leaving on schedule.
+                    Severity = PageHeaderSeverity.Information,
+                    Message = receipt.Name,
+                    Row = ChargeRow(receipt, incoming: true),
                 }));
 
             return problems;

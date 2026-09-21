@@ -9,6 +9,20 @@
     { Icon, IconColor, Label, Count, Key }. The count is right-aligned in tabular
     monospace; the icon tints to IconColor. When Rows is empty the Empty message
     shows instead. Styled by .odc-breakdown-*.
+
+    A TOTAL ROW closes the tile when Total is set: a distribution whose sum a reader has to
+    add up in their head is a table, not a summary. Total sums the rows' own counts when
+    every one is a number; a tile whose counts are NODES (money, a rendered figure) cannot
+    be summed safely, so nothing renders rather than a wrong figure — such a tile passes
+    TotalValue instead.
+
+    NOTE A DELIBERATE DIVERGENCE FROM THE DESIGN SYSTEM: there the total is on by DEFAULT.
+    Here it is opt-in, because flipping the default would add a row to all 21 tiles across
+    Photos, Journal, Insurance, Contacts, Accounts, Subscriptions, Currencies, Transactions,
+    Exchange rates, Files and Tags — an app-wide visual change that has nothing to do with
+    the feature that introduced this parameter (issue #159's contracts header). Each of those
+    tiles wants its own answer: "By status" rows that carry a SLICE of one another must not be
+    summed at all. Turning the default on, tile by tile, is its own change.
 *@
 
 <div class="odc-breakdown @Class">
@@ -31,6 +45,19 @@
                     <span class="odc-breakdown-n">@row.Count</span>
                 </div>
             }
+            @if (TotalContent is not null)
+            {
+                @* The tile's conclusion: ruled off above and muted in its label, so it never reads
+                   as another category. *@
+                <div class="odc-breakdown-row odc-breakdown-total">
+                    @if (!string.IsNullOrEmpty(TotalIcon))
+                    {
+                        <span class="material-icons" aria-hidden="true">@TotalIcon</span>
+                    }
+                    <span class="odc-breakdown-label">@TotalLabel</span>
+                    <span class="odc-breakdown-n">@TotalContent</span>
+                </div>
+            }
         </div>
     }
     else
@@ -49,5 +76,78 @@
     /// <summary>Message shown when there are no rows.</summary>
     [Parameter] public string Empty { get; set; } = "Nothing to show.";
 
+    /// <summary>
+    /// Whether to close the tile with a ruled total row. When true, the row shows the sum of every
+    /// <see cref="OdsBreakdownRow.Count"/> — but only when all of them are numbers — unless
+    /// <see cref="TotalValue"/> supplies the figure instead.
+    ///
+    /// <para>
+    /// Opt-in here, where the design system has it on by default: see the note at the top of this
+    /// file. Leave it off for a distribution whose sum means nothing — overlapping buckets, or rows
+    /// carrying a slice of one another (the contracts status tile's "Ending soon" is a slice of
+    /// Active, so summing the rows would double-count it).
+    /// </para>
+    /// </summary>
+    [Parameter] public bool Total { get; set; }
+
+    /// <summary>
+    /// An explicit total, for exactly the case the arithmetic cannot serve: a net, a figure the caller
+    /// computed, or rows whose counts are rendered nodes rather than numbers. Takes precedence over
+    /// the summed value.
+    /// </summary>
+    [Parameter] public object? TotalValue { get; set; }
+
+    /// <summary>The total row's label. "Total" unless the figure is something else ("Net").</summary>
+    [Parameter] public string TotalLabel { get; set; } = "Total";
+
+    /// <summary>Material Icons ligature for the total row; empty for none.</summary>
+    [Parameter] public string? TotalIcon { get; set; } = "functions";
+
     [Parameter] public string? Class { get; set; }
+
+    /// <summary>
+    /// What the total row renders, or null for no row. An explicit <see cref="TotalValue"/> wins;
+    /// otherwise the counts are summed, and only when EVERY one of them is a number — a node count
+    /// (money, a coloured figure) has no safe arithmetic, so the row is omitted rather than guessed.
+    /// </summary>
+    private object? TotalContent
+    {
+        get
+        {
+            if (Rows.Count == 0) return null;
+            // An explicit figure IS the opt-in — a caller that computed a net has already said it
+            // wants the row, and making them pass Total as well would be a second switch for one fact.
+            if (TotalValue is not null) return TotalValue;
+            if (!Total) return null;
+
+            var sum = 0m;
+            foreach (var row in Rows)
+            {
+                if (!TryNumber(row.Count, out var n)) return null;
+                sum += n;
+            }
+            // Whole counts read as whole counts: the summed form is what the rows themselves are.
+            return sum == decimal.Truncate(sum) ? (object)(long)sum : sum;
+        }
+    }
+
+    private static bool TryNumber(object? value, out decimal number)
+    {
+        switch (value)
+        {
+            case null:
+                number = 0;
+                return false;
+            case int i: number = i; return true;
+            case long l: number = l; return true;
+            case decimal d: number = d; return true;
+            case double dd: number = (decimal)dd; return true;
+            case string s:
+                return decimal.TryParse(s, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out number);
+            default:
+                number = 0;
+                return false;
+        }
+    }
 }
