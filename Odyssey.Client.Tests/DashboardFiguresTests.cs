@@ -84,6 +84,82 @@ public class DashboardFiguresTests
         Assert.DoesNotContain("(", rendered, StringComparison.Ordinal);
     }
 
+    // ── A recent-transaction row's amount ──
+
+    /// <summary>
+    /// A transaction row names the currency the amount is actually IN — its own account's — not the
+    /// page's main one. Nothing on this page converts a transaction, so labelling one with the main
+    /// currency asserts a denomination it may not have.
+    /// </summary>
+    [Fact]
+    public void TransactionAmount_NamesTheTransactionsOwnCurrency()
+    {
+        var byCode = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["USD"] = 2, ["NOK"] = 2 };
+
+        Assert.EndsWith(" USD", DashboardFigures.TransactionAmount(211.04m, "USD", byCode), StringComparison.Ordinal);
+        Assert.EndsWith(" NOK", DashboardFigures.TransactionAmount(211.04m, "NOK", byCode), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The decimals come from THAT currency's row, not the main one's — so a JPY row renders whole
+    /// while a USD row beside it keeps its cents. Reading the main currency's decimals would round one
+    /// of the two wrong, and neither would look broken.
+    /// </summary>
+    [Fact]
+    public void TransactionAmount_UsesTheTransactionsOwnMinorUnits()
+    {
+        var byCode = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["USD"] = 2, ["JPY"] = 0 };
+        var separator = CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
+
+        Assert.Contains(separator, DashboardFigures.TransactionAmount(1234.5m, "USD", byCode), StringComparison.Ordinal);
+        Assert.DoesNotContain(separator, DashboardFigures.TransactionAmount(1234.5m, "JPY", byCode), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A row is presented as SIGNED: on a ledger the direction is the point, so a positive carries an
+    /// explicit plus rather than reading as an ordinary total.
+    /// </summary>
+    [Fact]
+    public void TransactionAmount_IsSignedInBothDirections()
+    {
+        var byCode = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["USD"] = 2 };
+
+        Assert.StartsWith($"+{OdsMoney.FigureSpace}",
+            DashboardFigures.TransactionAmount(211.04m, "USD", byCode), StringComparison.Ordinal);
+        Assert.StartsWith($"{OdsMoney.MinusSign}{OdsMoney.FigureSpace}",
+            DashboardFigures.TransactionAmount(-211.04m, "USD", byCode), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// An unknown code, or a reference-data load that failed outright, degrades to the default two
+    /// decimals and still names the currency. A blank dashboard would be a worse answer than a
+    /// two-decimal yen.
+    /// </summary>
+    [Theory]
+    [InlineData("CHF")]
+    [InlineData("JPY")]
+    public void TransactionAmount_WithNoKnownMinorUnits_FallsBackToTheDefault(string code)
+    {
+        var empty = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        var rendered = DashboardFigures.TransactionAmount(1234.5m, code, empty);
+
+        Assert.EndsWith($" {code}", rendered, StringComparison.Ordinal);
+        Assert.Contains(CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator, rendered, StringComparison.Ordinal);
+    }
+
+    /// <summary>A transaction with no currency code at all carries none, rather than a guessed one.</summary>
+    [Fact]
+    public void TransactionAmount_WithNoCurrency_CarriesNoCode()
+    {
+        var byCode = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["USD"] = 2 };
+
+        var rendered = DashboardFigures.TransactionAmount(211.04m, currencyCode: null, byCode);
+
+        Assert.DoesNotContain("$", rendered, StringComparison.Ordinal);
+        Assert.Equal(rendered.TrimEnd(), rendered);
+    }
+
     // ── Axis label ──
 
     /// <summary>

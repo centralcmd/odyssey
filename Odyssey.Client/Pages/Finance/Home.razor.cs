@@ -362,11 +362,11 @@ public partial class Home
     // one, and nothing converts it here — so the row names that currency rather than the main one.
     // It is presented as signed: the direction is the point of the row, and a bare positive would
     // read as an ordinary total.
+    // The rule itself lives in DashboardFigures, where it is testable without a renderer: this page
+    // early-returns off the browser and exposes no InteractiveCheck seam, so anything left inline here
+    // is reachable only by reading it.
     private string FormatSignedMoney(decimal value, string? currencyCode) =>
-        OdsMoney.Signed(value, currencyCode,
-            currencyCode is not null && _minorUnitsByCode.TryGetValue(currencyCode, out var units)
-                ? units
-                : OdsMoney.DefaultMinorUnits);
+        DashboardFigures.TransactionAmount(value, currencyCode, _minorUnitsByCode);
 
     // Matches the API's own fallback when no main-currency preference is set.
     private const string DefaultMainCurrency = "NOK";

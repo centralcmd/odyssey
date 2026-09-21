@@ -31,6 +31,31 @@ internal static class DashboardFigures
     internal static int MinorUnits(ExistingCurrency? currency) => OdsMoney.MinorUnitsOf(currency);
 
     /// <summary>
+    /// A per-transaction amount, written in its OWN account's currency rather than the page's main one.
+    /// </summary>
+    /// <param name="minorUnitsByCode">Every known currency's decimals; empty when the lookup failed.</param>
+    /// <remarks>
+    /// <para>
+    /// Two things this gets right that the old generic-"$" formatting did not. The row names the
+    /// currency the amount is actually IN — nothing on this page converts a transaction to the main
+    /// currency, so labelling it with the main one asserted a denomination it may not have had. And
+    /// the decimals come from THAT currency's own row, so a JPY amount renders whole while a USD one
+    /// beside it keeps its cents; reading the main currency's decimals would round one of them wrong.
+    /// </para>
+    /// <para>
+    /// Presented as SIGNED: on a ledger row the direction is the point, and a bare positive would
+    /// read as an ordinary total. An unknown or missing code degrades to the default two decimals
+    /// rather than throwing — a failed reference-data load must not blank the dashboard.
+    /// </para>
+    /// </remarks>
+    internal static string TransactionAmount(
+        decimal value, string? currencyCode, IReadOnlyDictionary<string, int> minorUnitsByCode) =>
+        OdsMoney.Signed(value, currencyCode,
+            currencyCode is not null && minorUnitsByCode.TryGetValue(currencyCode, out var units)
+                ? units
+                : OdsMoney.DefaultMinorUnits);
+
+    /// <summary>
     /// A compact axis label, e.g. "52k USD" / "640 CHF". The code trails, exactly as it does on the
     /// headline figure above the chart, so an axis and its headline read as one denomination.
     /// </summary>
