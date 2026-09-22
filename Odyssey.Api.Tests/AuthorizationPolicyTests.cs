@@ -63,11 +63,12 @@ public class AuthorizationPolicyTests
     /// migrations and baked into issued auth cookies, so renaming one silently de-authorizes existing
     /// users and rows. Pins the count so a drive-by rename or deletion has to be deliberate.
     /// 102 before the standalone subscriptions feature was removed, taking its four
-    /// <c>subscriptions.*</c> claims with it.
+    /// <c>subscriptions.*</c> claims with it, and 98 before the standalone insurance-policy feature
+    /// went the same way with its four <c>insurance.*</c> claims.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(98, DeclaredClaims().Count());
+        Assert.Equal(94, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).
