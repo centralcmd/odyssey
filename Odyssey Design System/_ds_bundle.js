@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"46b26ed2e8d0","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"548f677572e7","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"77a2688a5486","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d56735c7fe2d","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"5a8b2c825711","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"0750ad0a7cc4","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"8e5c6844d774","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"ecfd7d13a4df","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"92918d09c235","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"5c790e9006b9","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"247fb5488f6f","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"76653fd8e15b","ui_kits/web/Contracts.jsx":"ba7845b0ae11","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5118424de926","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"80c686ed592f","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"f4d098849ff3","ui_kits/web/contracts-data.js":"b44e95b77899","ui_kits/web/data.js":"e6ef05cc5fba","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/system-settings-data.js":"b7eea7ed2b3c","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"46b26ed2e8d0","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"548f677572e7","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"77a2688a5486","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d56735c7fe2d","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"5a8b2c825711","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"1e717f1f9227","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"af5ab32675ac","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"6f3ae5b7eb3c","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"79706b8b03ba","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"0487ec4e9d16","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"247fb5488f6f","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"36ed78215490","ui_kits/web/Contracts.jsx":"ba7845b0ae11","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5118424de926","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"80c686ed592f","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"f4d098849ff3","ui_kits/web/contracts-data.js":"6761c7d3002f","ui_kits/web/data.js":"6fef8e2fb528","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/system-settings-data.js":"b7eea7ed2b3c","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -20734,7 +20734,26 @@ try { (() => {
 const H = window.OdysseyHelpers;
 const D = window.OdysseyData;
 const trmToday = () => new Date().toISOString().slice(0, 10);
-const trmKindInfo = k => H.termKindInfo(k);
+const trmKindInfo = t => H.termInfo(t);
+
+/* The series the hero charts: the percentage series with the most history
+   (ties → the one that started first). Null when no percentage term exists. */
+const trmHeadlineKey = terms => {
+  const by = {};
+  for (const t of terms) {
+    if (t.unit !== 'Percentage') continue;
+    const k = H.termSeriesKey(t);
+    const s = by[k] || (by[k] = {
+      k,
+      n: 0,
+      first: t.effectiveFrom
+    });
+    s.n += 1;
+    if (t.effectiveFrom < s.first) s.first = t.effectiveFrom;
+  }
+  const best = Object.values(by).sort((x, y) => y.n - x.n || (x.first < y.first ? -1 : 1))[0];
+  return best ? best.k : null;
+};
 
 /* ---- per-list resolvers (operate on a live array so edits reflect at once) ----
    The series key is (kind, labelKey), so one kind can hold several concurrently
@@ -20751,7 +20770,7 @@ const trmCurrentFromList = (terms, asOf) => {
   }
   return H.sortTermsBySeries(Object.values(bySeries));
 };
-const trmSeriesFromList = (terms, kind, labelKey = null) => terms.filter(t => t.kind === kind && (t.labelKey || H.termLabelKey(t.label) || null) === labelKey).map(t => ({
+const trmSeriesFromList = (terms, labelKey) => terms.filter(t => trmKey(t) === (labelKey || '')).map(t => ({
   id: t.id,
   date: t.effectiveFrom,
   value: t.value,
@@ -20763,19 +20782,12 @@ const trmSeriesFromList = (terms, kind, labelKey = null) => terms.filter(t => t.
    glyph or its hue alone. */
 const TermName = ({
   t,
-  account,
-  nameClass,
-  captionClass = 'trm-kind-caption'
-}) => {
-  const labelled = !!H.termLabelNormalize(t.label);
-  return /*#__PURE__*/React.createElement("span", {
-    className: "trm-name"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: nameClass
-  }, H.termDisplayName(t, account)), labelled && /*#__PURE__*/React.createElement("span", {
-    className: captionClass
-  }, H.termKindLabelFor(t, account)));
-};
+  nameClass
+}) => /*#__PURE__*/React.createElement("span", {
+  className: "trm-name"
+}, /*#__PURE__*/React.createElement("span", {
+  className: nameClass
+}, H.termDisplayName(t)));
 
 /* Short month-year for axis + deltas: "Feb ’24" */
 const trmMonY = iso => {
@@ -20991,20 +21003,14 @@ const TermHero = ({
   terms,
   account
 }) => {
-  // Prefer interest rate; else expected return. Need ≥1 entry to show.
-  const kind = trmSeriesFromList(terms, 'InterestRate').length ? 'InterestRate' : trmSeriesFromList(terms, 'ExpectedReturn').length ? 'ExpectedReturn' : null;
-  if (!kind) return null;
-  const info = trmKindInfo(kind);
-  // Interest charged on a liability is a cost — carried by the label + expense
-  // color, never by flipping the sign. The series is plotted as stored, so a
-  // rising APR trends UP (and a genuinely negative rate stays negative).
-  const cost = kind === 'InterestRate' && H.accountIsLiability(account);
-  const color = cost ? 'var(--finance-expense)' : info.color;
-  const label = H.termKindLabelFor({
-    kind
-  }, account); // rate kinds never carry a label
+  const key = trmHeadlineKey(terms);
+  if (key == null) return null;
+  const series = trmSeriesFromList(terms, key);
+  const head = terms.find(t => trmKey(t) === key);
+  const info = trmKindInfo(head);
+  const color = info.color;
+  const label = H.termDisplayName(head);
   const fmt = v => (v < 0 ? '−' : '') + H.pctStr(Math.abs(v));
-  const series = trmSeriesFromList(terms, kind);
   const current = series[series.length - 1];
   const prev = series.length > 1 ? series[series.length - 2] : null;
   const diff = prev ? current.value - prev.value : 0;
@@ -21033,7 +21039,7 @@ const TermHero = ({
     }
   }, "\xB7 history")), /*#__PURE__*/React.createElement("div", {
     className: "trm-hero-sub"
-  }, cost ? 'Rate you pay · ' : '', series.length, " change", series.length === 1 ? '' : 's', " since ", trmMonY(series[0].date), " \xB7 in force since ", H.dateLong(current.date))), /*#__PURE__*/React.createElement("div", {
+  }, series.length, " change", series.length === 1 ? '' : 's', " since ", trmMonY(series[0].date), " \xB7 in force since ", H.dateLong(current.date))), /*#__PURE__*/React.createElement("div", {
     className: "trm-hero-figs"
   }, /*#__PURE__*/React.createElement("div", {
     className: "trm-hero-value",
@@ -21100,7 +21106,7 @@ const TermDirectionTag = ({
    which figure is mint. */
 const trmValueColor = (t, account) => {
   if (H.termDirectionApplies(t, account)) return H.termDirectionInfo(t).color;
-  return H.costColor(t, account) || trmKindInfo(t.kind).color;
+  return trmKindInfo(t).color;
 };
 const CurrentTermsSummary = ({
   current,
@@ -21112,7 +21118,7 @@ const CurrentTermsSummary = ({
     return /*#__PURE__*/React.createElement("div", {
       className: "trm-summary row"
     }, current.map(t => {
-      const info = trmKindInfo(t.kind);
+      const info = trmKindInfo(t);
       return /*#__PURE__*/React.createElement("div", {
         className: "trm-srow",
         key: trmKey(t)
@@ -21136,10 +21142,7 @@ const CurrentTermsSummary = ({
       }), /*#__PURE__*/React.createElement("span", {
         className: "trm-srow-date"
       }, "since ", trmMonY(t.effectiveFrom)), /*#__PURE__*/React.createElement("span", {
-        className: "trm-srow-value",
-        style: {
-          color: H.costColor(t, account) || undefined
-        }
+        className: "trm-srow-value"
       }, H.fmtTermValueFor(t, account))));
     }));
   }
@@ -21147,7 +21150,7 @@ const CurrentTermsSummary = ({
     return /*#__PURE__*/React.createElement("div", {
       className: "trm-summary chips"
     }, current.map(t => {
-      const info = trmKindInfo(t.kind);
+      const info = trmKindInfo(t);
       return /*#__PURE__*/React.createElement("div", {
         className: "trm-cchip",
         key: trmKey(t)
@@ -21168,10 +21171,7 @@ const CurrentTermsSummary = ({
         nameClass: "trm-cchip-kind",
         captionClass: "trm-kind-caption inline"
       }), /*#__PURE__*/React.createElement("span", {
-        className: "trm-cchip-value",
-        style: {
-          color: H.costColor(t, account) || undefined
-        }
+        className: "trm-cchip-value"
       }, H.fmtTermValueFor(t, account)));
     }));
   }
@@ -21180,7 +21180,7 @@ const CurrentTermsSummary = ({
   return /*#__PURE__*/React.createElement("div", {
     className: "trm-summary tiles"
   }, current.map(t => {
-    const info = trmKindInfo(t.kind);
+    const info = trmKindInfo(t);
     return /*#__PURE__*/React.createElement("div", {
       className: "trm-tile",
       key: trmKey(t)
@@ -21198,11 +21198,11 @@ const CurrentTermsSummary = ({
     })), /*#__PURE__*/React.createElement(TermName, {
       t: t,
       account: account,
-      nameClass: H.termLabelNormalize(t.label) ? 'trm-tile-name' : 'trm-tile-kind'
+      nameClass: "trm-tile-name"
     })), /*#__PURE__*/React.createElement("div", {
       className: "trm-tile-value",
       style: {
-        color: H.costColor(t, account) || info.color
+        color: info.color
       }
     }, H.fmtTermValueFor(t, account)), /*#__PURE__*/React.createElement("div", {
       className: "trm-tile-foot"
@@ -21280,7 +21280,7 @@ const TermTable = ({
   className: "act",
   "aria-label": "Actions"
 }))), /*#__PURE__*/React.createElement("tbody", null, rows.map(t => {
-  const info = trmKindInfo(t.kind);
+  const info = trmKindInfo(t);
   const isCurrent = currentIds.has(t.id);
   const cadence = H.cadenceTextFor(t);
   return /*#__PURE__*/React.createElement("tr", {
@@ -21290,21 +21290,29 @@ const TermTable = ({
     className: "trm-row-kind"
   }, /*#__PURE__*/React.createElement("span", {
     className: "trm-kind-ic sm",
-    style: {
+    style: H.termDirectionApplies(t, account) ? {
+      background: H.termDirectionInfo(t).soft || `color-mix(in srgb, ${H.termDirectionInfo(t).color} 16%, transparent)`,
+      color: H.termDirectionInfo(t).color
+    } : {
       background: info.soft,
       color: info.color
     }
   }, /*#__PURE__*/React.createElement(MIcon, {
     name: info.icon,
     size: 15
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(TermName, {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "trm-row-top"
+  }, /*#__PURE__*/React.createElement(TermName, {
     t: t,
     account: account,
     nameClass: "trm-row-kind-name"
+  }), H.termDirectionApplies(t, account) && /*#__PURE__*/React.createElement("span", {
+    className: "trm-row-dot",
+    "aria-hidden": "true"
   }), /*#__PURE__*/React.createElement(TermDirectionTag, {
     term: t,
     owner: account
-  }), t.note && /*#__PURE__*/React.createElement("div", {
+  })), t.note && /*#__PURE__*/React.createElement("div", {
     className: "trm-row-note"
   }, t.note)))), /*#__PURE__*/React.createElement("td", {
     className: "trm-cell-date"
@@ -21337,7 +21345,7 @@ const TermTimeline = ({
 }) => /*#__PURE__*/React.createElement("div", {
   className: "trm-timeline"
 }, rows.map(t => {
-  const info = trmKindInfo(t.kind);
+  const info = trmKindInfo(t);
   const cadence = H.cadenceTextFor(t);
   return /*#__PURE__*/React.createElement("div", {
     className: "trm-tl-item",
@@ -21411,40 +21419,15 @@ const TermHistory = ({
   account
 }) => {
   const sorted = terms.slice().sort((a, b) => a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : 0);
-  const rateRows = sorted.filter(t => trmKindInfo(t.kind).group === 'rate');
-  const feeRows = sorted.filter(t => trmKindInfo(t.kind).group === 'fee');
   const View = historyStyle === 'timeline' ? TermTimeline : TermTable;
-  const Group = ({
-    icon,
-    label,
-    rows
-  }) => rows.length === 0 ? null : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "trm-group-label"
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: icon,
-    size: 16,
-    style: {
-      color: 'var(--mud-palette-text-secondary)'
-    }
-  }), label, /*#__PURE__*/React.createElement("span", {
-    className: "trm-group-count"
-  }, rows.length)), /*#__PURE__*/React.createElement(View, {
-    rows: rows,
+  return /*#__PURE__*/React.createElement("div", {
+    className: "trm-history"
+  }, /*#__PURE__*/React.createElement(View, {
+    rows: sorted,
     currentIds: currentIds,
     onEdit: onEdit,
     onDelete: onDelete,
     account: account
-  }));
-  return /*#__PURE__*/React.createElement("div", {
-    className: "trm-history"
-  }, /*#__PURE__*/React.createElement(Group, {
-    icon: "trending_up",
-    label: "Rate history",
-    rows: rateRows
-  }), /*#__PURE__*/React.createElement(Group, {
-    icon: "sell",
-    label: "Fees",
-    rows: feeRows
   }));
 };
 
@@ -21509,18 +21492,18 @@ const AccountTerms = ({
   }, empty ? /*#__PURE__*/React.createElement(EmptyState, {
     icon: "article",
     mutedIcon: true,
-    title: "No rates or fees recorded yet",
-    desc: "Track this account\u2019s interest rate over time and the prices of its services. Add the first term to start the history.",
+    title: "No terms recorded yet",
+    desc: "Record what this account charges or pays \u2014 a rate, a fee, a price \u2014 each under its own name with its own history.",
     action: /*#__PURE__*/React.createElement(Button, {
       variant: "filled",
       color: "primary",
       icon: "add",
       onClick: openNew
     }, "New term")
-  }) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(TermHero, {
+  }) : /*#__PURE__*/React.createElement(React.Fragment, null, window.ContractTermChart ? /*#__PURE__*/React.createElement(window.ContractTermChart, {
     terms: terms,
-    account: account
-  }), showCurrent ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    owner: account
+  }) : null, showCurrent ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "trm-sub"
   }, /*#__PURE__*/React.createElement("span", {
     className: "trm-sub-label"
@@ -21586,6 +21569,7 @@ Object.assign(window, {
   trmCurrentFromList,
   trmSeriesFromList,
   trmKindInfo,
+  trmHeadlineKey,
   trmToday,
   trmKey,
   trmMonY
@@ -22976,7 +22960,7 @@ const AccountDetail = ({
       value: H.money(txnSum, a.currency),
       foot: txns.length === 0 ? 'No transactions' : `${txns.length} transaction${txns.length === 1 ? '' : 's'} · secondary`
     })) : null, curTerms.map(t => {
-      const info = window.trmKindInfo(t.kind);
+      const info = window.trmKindInfo(t);
       // The cadence is what separates a 695 USD annual fee from a 695 USD
       // monthly one, so it rides in the foot beside the date.
       const period = H.cadenceTextFor(t);
@@ -22992,10 +22976,10 @@ const AccountDetail = ({
         label: H.termDisplayName(t, a),
         value: /*#__PURE__*/React.createElement("span", {
           style: {
-            color: H.costColor(t, a) || info.color
+            color: info.color
           }
         }, H.fmtTermValueFor(t, a)),
-        foot: `${labelled ? `${H.termKindLabelFor(t, a)} · ` : ''}since ${H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`
+        foot: `since ${H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`
       });
     })));
   })(), estimates.length > 0 ? /*#__PURE__*/React.createElement(RecordSection, {
@@ -23172,8 +23156,6 @@ const AccountListItem = ({
 
   // The estimate in force now — the headline value for an asset account.
   const curEstimate = window.estCurrentFromList ? window.estCurrentFromList(estimates) : null;
-  // The interest rate / expected return in force now (never a fee), for the header.
-  const rateTerm = (window.trmCurrentFromList ? window.trmCurrentFromList(terms) : []).find(t => window.trmKindInfo(t.kind).group === 'rate');
   // Map a NewTransaction DTO from the modal into a row for this account's list.
   const createTxn = dto => {
     const row = {
@@ -23272,15 +23254,7 @@ const AccountListItem = ({
     }, /*#__PURE__*/React.createElement(MIcon, {
       name: "tag",
       size: 14
-    }), /*#__PURE__*/React.createElement("span", null, acct.accountNumber)) : null, rateTerm ? /*#__PURE__*/React.createElement("span", {
-      className: "acct-rate mono",
-      title: H.termKindLabelFor(rateTerm, acct),
-      style: {
-        color: H.costColor(rateTerm, acct) || window.trmKindInfo(rateTerm.kind).color,
-        fontVariantNumeric: 'tabular-nums',
-        fontWeight: 500
-      }
-    }, H.fmtTermValueFor(rateTerm, acct)) : null],
+    }), /*#__PURE__*/React.createElement("span", null, acct.accountNumber)) : null],
     counts: [{
       icon: 'receipt_long',
       value: txns.length,
@@ -25573,9 +25547,6 @@ try { (() => {
    one an account POSTs, and the owner is never in it: it comes from the route.
    Three rules differ, and they are the whole reason this is its own file:
 
-     • KIND — Fee and InterestRate only, on every ContractType. ExpectedReturn
-       prices invested principal, which a contract does not hold, so it is not
-       offered (and would be a 400 if posted).
      • CURRENCY — required, and prefilled from the user's DEFAULT CURRENCY. An
        account lends its own currency to an Amount term; a contract has none to
        lend, so the preference stands in for it: the common case is one keystroke
@@ -25588,7 +25559,7 @@ try { (() => {
 
    Everything else — label normalization, the [-1, 1] percentage bound, the
    cadence pair (interval + count, count only for a periodic unit), the anchor
-   date, the (kind, label, effectiveFrom) duplicate guard that is the server's
+   date, the (label, effectiveFrom) duplicate guard that is the server's
    409 — is the shared rule, read from the same helpers the account dialog uses.
 
    On confirm, onSave(dto, id?) receives the term-shaped object (id on edit). */
@@ -25618,12 +25589,12 @@ const ctmFracToPctStr = f => String(Number((f * 100).toFixed(4)));
    Picking a row and typing a new name are two different writes, and the help
    line under the field says which one is about to happen. Both remain legal:
    the field suggests, it never constrains. */
-const ctmNameOptions = (existing, kind, currentId) => {
+const ctmNameOptions = (existing, currentId) => {
   const H = window.OdysseyHelpers;
   const today = new Date().toISOString().slice(0, 10);
   const bySeries = {};
   for (const t of existing) {
-    if (t.kind !== kind || t.id === currentId) continue;
+    if (t.id === currentId) continue;
     const key = t.labelKey || H.termLabelKey(t.label);
     if (!key) continue;
     const s = bySeries[key] || (bySeries[key] = {
@@ -25669,19 +25640,14 @@ const AddContractTermModal = ({
   const D = window.OdysseyData;
   const H = window.OdysseyHelpers;
   const isEdit = !!term;
-  const eligible = H.conEligibleTermKinds();
-  const eligibleKinds = D.termKinds.filter(k => eligible.includes(k.key));
-  const initKind = term ? term.kind : 'Fee';
-  const initInfo = H.termKindInfo(initKind);
   const COUNT = D.termIntervalCount;
   const [draft, setDraft] = useState(() => ({
-    kind: initKind,
-    unit: term ? term.unit : initInfo.defaultUnit,
+    unit: term ? term.unit : 'Amount',
     valueStr: term ? term.unit === 'Percentage' ? ctmFracToPctStr(term.value) : String(term.value) : '',
     // No account currency to inherit, so the USER'S DEFAULT stands in for one.
     // Still required: a cleared field refuses the write.
     currency: term ? term.currency || '' : H.defaultCurrency(),
-    interval: term ? term.interval || '' : initInfo.group === 'fee' ? D.defaultFeeInterval : '',
+    interval: term ? term.interval || '' : D.defaultFeeInterval,
     intervalCount: term && term.intervalCount != null ? String(term.intervalCount) : '',
     anchorDate: term ? term.anchorDate || '' : '',
     // Which way the money moves. Outgoing is the default because it is what
@@ -25693,10 +25659,8 @@ const AddContractTermModal = ({
     note: term ? term.note || '' : ''
   }));
   const [errors, setErrors] = useState({});
-  const info = H.termKindInfo(draft.kind);
-  const isRate = info.group === 'rate';
   const isPct = draft.unit === 'Percentage';
-  const labelRule = H.termLabelRule(draft.kind);
+  const info = H.termInfo(draft.unit);
   const periodic = H.intervalIsPeriodic(draft.interval);
   const intervalInfo = H.intervalInfo(draft.interval);
   const set = k => v => {
@@ -25709,33 +25673,16 @@ const AddContractTermModal = ({
       [k]: undefined
     }));
   };
-  const pickKind = k => {
-    const ki = H.termKindInfo(k);
-    setDraft(d => ({
-      ...d,
-      kind: k,
-      unit: ki.defaultUnit,
-      label: H.termLabelRule(k) === 'hidden' ? '' : d.label,
-      interval: ki.group === 'fee' ? d.interval || D.defaultFeeInterval : '',
-      intervalCount: ki.group === 'fee' ? d.intervalCount : '',
-      anchorDate: ki.group === 'fee' ? d.anchorDate : '',
-      // Direction survives a kind change: an arrears rate and a late-payment
-      // fee are both money out, so the answer already given still holds.
-      direction: d.direction
-    }));
-    setErrors({});
-  };
   const submit = () => {
     const next = {};
-    if (!eligible.includes(draft.kind)) next.kind = 'Not available on a contract.';
-    if (contract.archived) next.kind = 'This contract is archived — restore it first.';
+    if (contract.archived) next.archived = 'This contract is archived — restore it first.';
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
     if (draft.valueStr === '' || isNaN(raw)) {
       next.value = 'Enter a value.';
     } else if (isPct) {
-      if (raw < -100 || raw > 100) next.value = 'Rate must be between −100% and 100%.';
+      if (raw < -100 || raw > 100) next.value = 'Must be between −100% and 100%.';
     } else if (raw < 0) {
-      next.value = 'A fee amount can’t be negative.';
+      next.value = 'An amount can’t be negative.';
     }
 
     // The contract rule: an amount needs a currency of its own on the record.
@@ -25743,29 +25690,22 @@ const AddContractTermModal = ({
     if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
     const countRaw = String(draft.intervalCount).trim();
     let count = null;
-    if (!isRate && periodic && countRaw !== '') {
+    if (periodic && countRaw !== '') {
       count = parseInt(countRaw, 10);
       if (isNaN(count) || count < COUNT.min || count > COUNT.max) {
         next.intervalCount = `Enter a whole number between ${COUNT.min} and ${COUNT.max}.`;
       }
     }
     if (draft.note.length > 512) next.note = 'Keep the note under 512 characters.';
-    const label = labelRule === 'hidden' ? null : H.termLabelNormalize(draft.label);
-    if (labelRule === 'required' && !label) next.label = 'Name this charge so it keeps its own history.';
-    if (label && label.length > 64) next.label = 'Keep the name under 64 characters.';
+    const label = H.termLabelNormalize(draft.label);
+    if (!label) next.label = 'Name this term so it keeps its own history.';else if (label.length > 64) next.label = 'Keep the name under 64 characters.';
 
-    // Duplicate (kind, label, effectiveFrom) within THIS contract's series → 409.
-    // An account term with the same kind, label and date is a different series
+    // Duplicate (label, effectiveFrom) within THIS contract's series → 409.
+    // An account term with the same label and date is a different series
     // and never collides with it.
     const key = H.termLabelKey(label);
-    const dup = existing.some(t => t.id !== (term && term.id) && t.kind === draft.kind && (t.labelKey || H.termLabelKey(t.label) || null) === (key || null) && t.effectiveFrom === draft.effectiveFrom);
-    if (dup) next.effectiveFrom = label ? `“${label}” already has an entry on that date.` : 'This contract already has an interest rate on that date.';
-    if (draft.direction === 'Incoming' && !H.termDirectionApplies({
-      kind: draft.kind,
-      contractId: contract.id
-    }, null)) {
-      next.direction = H.termDirectionRefusal(draft.kind, 'contract');
-    }
+    const dup = label && existing.some(t => t.id !== (term && term.id) && H.termSeriesKey(t) === key && t.effectiveFrom === draft.effectiveFrom);
+    if (dup) next.effectiveFrom = `“${label}” already has an entry on that date.`;
     if (Object.keys(next).length) {
       setErrors(next);
       return;
@@ -25774,13 +25714,12 @@ const AddContractTermModal = ({
     onSave({
       contractId: contract.id,
       accountId: null,
-      kind: draft.kind,
       unit: draft.unit,
       value,
       currency: isPct ? null : draft.currency,
-      interval: isRate ? null : draft.interval || null,
-      intervalCount: !isRate && periodic ? count == null ? 1 : count : null,
-      anchorDate: isRate ? null : draft.anchorDate || null,
+      interval: draft.interval || null,
+      intervalCount: periodic ? count == null ? 1 : count : null,
+      anchorDate: draft.anchorDate || null,
       direction: draft.direction,
       effectiveFrom: draft.effectiveFrom,
       label,
@@ -25791,10 +25730,10 @@ const AddContractTermModal = ({
 
   /* The name field's two outcomes, resolved on the SAME key the duplicate guard
      and the server use — so what the help line promises is what gets written. */
-  const nameOptions = labelRule === 'hidden' ? [] : ctmNameOptions(existing, draft.kind, term && term.id);
+  const nameOptions = ctmNameOptions(existing, term && term.id);
   const draftKey = H.termLabelKey(draft.label);
   const matchedSeries = draftKey ? nameOptions.find(o => H.termLabelKey(o.value) === draftKey) : null;
-  const cadence = isRate ? null : H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
+  const cadence = H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
   const dirInfo = H.termDirectionInfo(draft.direction);
   /* The money field's lead flips between these two, showing each one's own
      SHORT WORD where a sign would be — the registry, mapped to MoneyField's
@@ -25824,52 +25763,12 @@ const AddContractTermModal = ({
       icon: isEdit ? 'check' : 'add',
       onClick: submit
     }, isEdit ? 'Save changes' : 'Create term'))
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "field"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "label"
-  }, "Term", /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-req",
-    "aria-hidden": "true"
-  }, "*")), isEdit ? /*#__PURE__*/React.createElement("div", {
-    className: "trm-kind-opt on",
-    style: {
-      cursor: 'default'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "trm-kind-ic md",
-    style: {
-      background: info.soft,
-      color: info.color
-    }
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: info.icon,
-    size: 18
-  })), /*#__PURE__*/React.createElement("span", {
-    className: "trm-kind-opt-txt"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "trm-kind-opt-name"
-  }, info.label), /*#__PURE__*/React.createElement("span", {
-    className: "trm-kind-opt-grp"
-  }, info.group === 'rate' ? 'Rate' : 'Fee'))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(CardSelect, {
-    ariaLabel: "Term",
-    value: draft.kind,
-    onChange: pickKind,
-    options: eligibleKinds.map(k => ({
-      value: k.key,
-      label: k.label,
-      icon: k.icon,
-      color: k.color,
-      soft: k.soft
-    }))
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "trm-kind-ineligible"
-  }, "A contract can carry a ", /*#__PURE__*/React.createElement("b", null, "fee"), " or an ", /*#__PURE__*/React.createElement("b", null, "interest rate"), ". Expected return prices invested principal, which a contract doesn\u2019t hold.")), errors.kind && /*#__PURE__*/React.createElement("div", {
+  }, errors.archived && /*#__PURE__*/React.createElement("div", {
     className: "helper aam-err"
-  }, errors.kind)), labelRule !== 'hidden' && /*#__PURE__*/React.createElement(FieldShell, {
+  }, errors.archived), /*#__PURE__*/React.createElement(FieldShell, {
     label: "Name",
     htmlFor: "ctm-label",
-    required: labelRule === 'required',
+    required: true,
     error: errors.label,
     help: errors.label ? undefined : matchedSeries ? /*#__PURE__*/React.createElement(React.Fragment, null, "Joins the price history of ", /*#__PURE__*/React.createElement("b", null, matchedSeries.label), " \u2014 currently ", matchedSeries.note, ". This entry supersedes it from the effective date.") : draft.label.trim() ? /*#__PURE__*/React.createElement(React.Fragment, null, "Starts a ", /*#__PURE__*/React.createElement("b", null, "new charge"), " on this contract, with its own history separate from the others.") : 'Pick a charge this updates, or type a new name to start one.'
   }, /*#__PURE__*/React.createElement(Combobox, {
@@ -25883,7 +25782,7 @@ const AddContractTermModal = ({
     createLabel: "New charge",
     placeholder: "e.g. Monthly rent",
     ariaLabel: "Name",
-    required: labelRule === 'required',
+    required: true,
     invalid: !!errors.label,
     emptyText: nameOptions.length ? 'No matching charge — type to name a new one' : 'No charges yet — type a name'
   })), /*#__PURE__*/React.createElement("div", {
@@ -25898,7 +25797,7 @@ const AddContractTermModal = ({
   }, "Value", /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*")), !isRate && /*#__PURE__*/React.createElement("div", {
+  }, "*")), /*#__PURE__*/React.createElement("div", {
     className: "atm-seg",
     role: "radiogroup",
     "aria-label": "Unit",
@@ -25948,7 +25847,7 @@ const AddContractTermModal = ({
     directionOptions: DIR_OPTIONS,
     tone: dirInfo.tone,
     error: errors.value,
-    help: errors.value ? undefined : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("b", null, dirInfo.label), " \u2014 ", dirInfo.sentence, ". Click ", /*#__PURE__*/React.createElement("b", null, dirInfo.short), " to switch.", ' ', "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), isRate ? ' · annual' : '')
+    help: errors.value ? undefined : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("b", null, dirInfo.label), " \u2014 ", dirInfo.sentence, ". Click ", /*#__PURE__*/React.createElement("b", null, dirInfo.short), " to switch.", ' ', "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), cadence ? ` · ${cadence}` : '')
   }) : /*#__PURE__*/React.createElement(MoneyField, {
     size: "lg",
     required: true,
@@ -25983,13 +25882,13 @@ const AddContractTermModal = ({
     style: {
       marginTop: -6
     }
-  }, errors.effectiveFrom), !isRate && /*#__PURE__*/React.createElement("div", {
+  }, errors.effectiveFrom), /*#__PURE__*/React.createElement("div", {
     className: "trm-cadence"
   }, /*#__PURE__*/React.createElement(FormRow, {
     cols: periodic ? 2 : 1
   }, /*#__PURE__*/React.createElement(FieldShell, {
-    label: "Billing interval",
-    help: periodic ? `Charged ${cadence}` : intervalInfo && intervalInfo.key !== 'OneTime' ? `Charged ${intervalInfo.adverb}` : undefined
+    label: "Interval",
+    help: periodic ? `Applies ${cadence}` : intervalInfo && intervalInfo.key !== 'OneTime' ? `Applies ${intervalInfo.adverb}` : undefined
   }, /*#__PURE__*/React.createElement(Select, {
     value: draft.interval,
     onChange: set('interval'),
@@ -26778,65 +26677,41 @@ Object.assign(window, {
 
 // ui_kits/web/AddTermModal.jsx
 try { (() => {
-/* AddTermModal — New / Edit dialog for a Term (interest-rate & fee history).
+/* AddTermModal — New / Edit dialog for an account Term.
 
-   Opened from the "Terms" section (Accounts → account detail). Built on the
-   shared DS Modal shell, like every other create/edit dialog. Field set mirrors
-   the NewTerm DTO and enforces the spec's validation:
+   There is no term kind. Every term is one shape, named by its Label, and keeps
+   its own dated history — a rate is simply a term priced as a Percentage.
+   Field set mirrors the NewTerm DTO:
 
-     • TermKind        — eligibility-gated by the account's AccountType (matrix in
-                         data.js). Three values: InterestRate (interest-bearing
-                         accounts), ExpectedReturn (investment/pension) and Fee
-                         (everywhere). Where only ONE kind is eligible — cash,
-                         property, vehicle, any type with no rate — the picker is
-                         not rendered at all and the form opens on that kind.
-     • Label           — the series name. Refused on rate kinds, REQUIRED on every
-                         fee. Normalized (trim + collapse whitespace) by the
-                         shared rule; ≤ 64 chars.
-     • ValueUnit       — Percentage | Amount. Locked to Percentage for rate kinds.
+     • Label           — REQUIRED; the series name. Normalized (trim + collapse
+                         whitespace) by the shared rule; ≤ 64 chars.
+     • ValueUnit       — Percentage | Amount.
      • Value           — Percentage: typed as a percent, stored as a fraction in
                          [-1, 1] (3.40 → 0.0340; negative allowed). Amount: ≥ 0.
      • CurrencyCode    — required for Amount (defaults to the account currency);
                          null for Percentage.
-     • Interval        — optional context for fees; null for rate kinds. The
-                         cadence UNIT only: OneTime / PerOccurrence / PerUnit /
-                         Daily / Weekly / Monthly / Annually. Quarterly is gone —
-                         it is Monthly with a count of 3.
-     • IntervalCount   — the multiplier, 1…1000. Offered, and written, ONLY for a
-                         periodic unit; null in every other case (including a
-                         null interval), never a meaningless 1.
-     • AnchorDate      — optional, fees only: when the term is FIRST BILLED, as
-                         opposed to when its price took effect. No ordering
-                         against EffectiveFrom is imposed — arrears and prepaid
-                         are both legitimate records.
+     • Interval        — optional cadence unit: OneTime / PerOccurrence / PerUnit /
+                         Daily / Weekly / Monthly / Annually.
+     • IntervalCount   — 1…1000, only for a periodic unit; null otherwise.
+     • AnchorDate      — optional: when the term is FIRST BILLED.
      • EffectiveFrom   — required; past or future allowed (future = scheduled).
      • Note            — optional, ≤ 512 chars.
 
-   Rejects a (TermKind, Label, EffectiveFrom) duplicate on the case-folded label
-   key (the server's 409). On confirm, onSave(dto, id?) receives the term-shaped
-   object (id present on edit). */
+   Rejects a (Label, EffectiveFrom) duplicate on the case-folded label key (the
+   server's 409). On confirm, onSave(dto, id?) receives the term-shaped object. */
 
-/* Money adornments are the ISO CODE, not a symbol — see MoneyField. */
 const TRM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({
   value: c.code,
   label: c.name
 }));
-
-/* One default interval for a new fee — there is no longer a fee kind to
-   guess from, and the four kind-specific guesses went away with the kinds. */
 const trmDefaultInterval = () => window.OdysseyData.defaultFeeInterval;
 const TRM_COUNT = window.OdysseyData.termIntervalCount; // { min: 1, max: 1000 }
 
-/* percent fraction → editable percent string ("0.0340" → "3.4") */
-const fracToPctStr = f => {
-  const p = f * 100;
-  return String(Number(p.toFixed(4)));
-};
+const fracToPctStr = f => String(Number((f * 100).toFixed(4)));
 const AddTermModal = ({
   account,
   term,
   existing = [],
-  initialKind,
   onClose,
   onSave
 }) => {
@@ -26846,16 +26721,11 @@ const AddTermModal = ({
   const isEdit = !!term;
   const D = window.OdysseyData;
   const H = window.OdysseyHelpers;
-  const eligible = H.eligibleTermKinds(account.type);
-  const eligibleKinds = D.termKinds.filter(k => eligible.includes(k.key));
-  const initKind = term ? term.kind : initialKind && eligible.includes(initialKind) ? initialKind : eligibleKinds[0] && eligibleKinds[0].key || 'Fee';
-  const initInfo = H.termKindInfo(initKind);
   const [draft, setDraft] = useState(() => ({
-    kind: initKind,
-    unit: term ? term.unit : initInfo.defaultUnit,
+    unit: term ? term.unit : 'Amount',
     valueStr: term ? term.unit === 'Percentage' ? fracToPctStr(term.value) : String(term.value) : '',
     currency: term ? term.currency || account.currency || 'USD' : account.currency || 'USD',
-    interval: term ? term.interval || '' : initInfo.group === 'fee' ? trmDefaultInterval() : '',
+    interval: term ? term.interval || '' : trmDefaultInterval(),
     intervalCount: term && term.intervalCount != null ? String(term.intervalCount) : '',
     anchorDate: term ? term.anchorDate || '' : '',
     effectiveFrom: term ? term.effectiveFrom : new Date().toISOString().slice(0, 10),
@@ -26863,12 +26733,8 @@ const AddTermModal = ({
     note: term ? term.note || '' : ''
   }));
   const [errors, setErrors] = useState({});
-  const info = H.termKindInfo(draft.kind);
-  const isRate = info.group === 'rate';
   const isPct = draft.unit === 'Percentage';
-  const labelRule = H.termLabelRule(draft.kind); // hidden | optional | required
-  // The one condition the cadence fields hang off: a count exists only for a
-  // periodic unit, so the field is not merely disabled — it is not there.
+  const info = H.termInfo(draft.unit);
   const periodic = H.intervalIsPeriodic(draft.interval);
   const intervalInfo = H.intervalInfo(draft.interval);
   const set = k => v => {
@@ -26881,91 +26747,53 @@ const AddTermModal = ({
       [k]: undefined
     }));
   };
-  const pickKind = k => {
-    const ki = H.termKindInfo(k);
-    setDraft(d => ({
-      ...d,
-      kind: k,
-      unit: ki.defaultUnit,
-      // A rate kind refuses a label, so a typed one is discarded on the switch.
-      label: H.termLabelRule(k) === 'hidden' ? '' : d.label,
-      interval: ki.group === 'fee' ? d.interval || trmDefaultInterval() : '',
-      // A rate is not billed, so it carries neither half of a billing description.
-      intervalCount: ki.group === 'fee' ? d.intervalCount : '',
-      anchorDate: ki.group === 'fee' ? d.anchorDate : ''
-    }));
-    setErrors({});
-  };
   const submit = () => {
     const next = {};
-    if (!draft.kind) next.kind = 'Choose what this term is.';
-    if (!H.isTermKindEligible(draft.kind, account.type)) next.kind = 'Not available for this account type.';
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
-    if (draft.valueStr === '' || isNaN(raw)) {
-      next.value = 'Enter a value.';
-    } else if (isPct) {
-      if (raw < -100 || raw > 100) next.value = 'Rate must be between −100% and 100%.';
-    } else if (raw < 0) {
-      next.value = 'A fee amount can’t be negative.';
-    }
+    if (draft.valueStr === '' || isNaN(raw)) next.value = 'Enter a value.';else if (isPct) {
+      if (raw < -100 || raw > 100) next.value = 'Must be between −100% and 100%.';
+    } else if (raw < 0) next.value = 'An amount can’t be negative.';
     if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
-
-    // IntervalCount range — the same bound as the DTO's [Range], which the
-    // service re-checks for callers that never pass through model binding.
     const countRaw = String(draft.intervalCount).trim();
     let count = null;
-    if (!isRate && periodic && countRaw !== '') {
+    if (periodic && countRaw !== '') {
       count = parseInt(countRaw, 10);
       if (isNaN(count) || count < TRM_COUNT.min || count > TRM_COUNT.max) {
         next.intervalCount = `Enter a whole number between ${TRM_COUNT.min} and ${TRM_COUNT.max}.`;
       }
     }
     if (draft.note.length > 512) next.note = 'Keep the note under 512 characters.';
-
-    // Label rules — refused on rate kinds, required on every fee, ≤ 64 chars.
-    const label = labelRule === 'hidden' ? null : H.termLabelNormalize(draft.label);
-    if (labelRule === 'required' && !label) next.label = 'Name this fee so it keeps its own history.';
-    if (label && label.length > 64) next.label = 'Keep the name under 64 characters.';
-
-    // Duplicate (kind, label, effectiveFrom) → 409, excluding the row being edited.
-    // Compared on the SAME normalized, case-folded key the server writes, so
-    // "ATM abroad" and "  atm   Abroad " collide here exactly as they would there.
+    const label = H.termLabelNormalize(draft.label);
+    if (!label) next.label = 'Name this term so it keeps its own history.';else if (label.length > 64) next.label = 'Keep the name under 64 characters.';
     const key = H.termLabelKey(label);
-    const dup = existing.some(t => t.id !== (term && term.id) && t.kind === draft.kind && (t.labelKey || H.termLabelKey(t.label) || null) === (key || null) && t.effectiveFrom === draft.effectiveFrom);
-    if (dup) next.effectiveFrom = label ? `“${label}” already has an entry on that date.` : 'This kind already has an entry on that date.';
+    const dup = label && existing.some(t => t.id !== (term && term.id) && H.termSeriesKey(t) === key && t.effectiveFrom === draft.effectiveFrom);
+    if (dup) next.effectiveFrom = `“${label}” already has an entry on that date.`;
     if (Object.keys(next).length) {
       setErrors(next);
       return;
     }
     const value = isPct ? Number((raw / 100).toFixed(6)) : Number(raw.toFixed(2));
     onSave({
-      kind: draft.kind,
       unit: draft.unit,
       value,
       currency: isPct ? null : draft.currency,
-      interval: isRate ? null : draft.interval || null,
-      // Stored as 1 when a periodic unit is left without a count (the identity
-      // cadence), and as null — never 1 — in every non-periodic case.
-      intervalCount: !isRate && periodic ? count == null ? 1 : count : null,
-      anchorDate: isRate ? null : draft.anchorDate || null,
+      interval: draft.interval || null,
+      intervalCount: periodic ? count == null ? 1 : count : null,
+      anchorDate: draft.anchorDate || null,
       effectiveFrom: draft.effectiveFrom,
       label,
-      // LabelKey is derived, never posted — this stands in for the server's
-      // write path, which is the only thing allowed to set it.
       labelKey: key,
       note: draft.note.trim() || null
     }, term && term.id);
   };
-  const sym = draft.currency; // eslint-disable-line no-unused-vars
-  // The cadence in words, from the single helper every surface reads.
-  const cadence = isRate ? null : H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
+  const cadence = H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
   const previewFrac = (() => {
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
     return isNaN(raw) ? null : raw / 100;
   })();
   return /*#__PURE__*/React.createElement(Modal, {
     title: isEdit ? 'Edit term' : 'New term',
-    subtitle: isEdit ? 'Correct this rate or fee entry.' : `Record a rate or fee on ${account.name}, effective from a date.`,
+    subtitle: isEdit ? 'Correct this entry.' : `Record a term on ${account.name}, effective from a date.`,
     icon: isEdit ? 'edit' : '§',
     className: "trm-dialog",
     onClose: onClose,
@@ -26978,56 +26806,14 @@ const AddTermModal = ({
       icon: isEdit ? 'check' : 'add',
       onClick: submit
     }, isEdit ? 'Save changes' : 'Create term'))
-  }, (isEdit || eligibleKinds.length > 1) && /*#__PURE__*/React.createElement("div", {
-    className: "field"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "label"
-  }, "Term", /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-req",
-    "aria-hidden": "true"
-  }, "*")), isEdit ? /*#__PURE__*/React.createElement("div", {
-    className: "trm-kind-opt on",
-    style: {
-      cursor: 'default'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "trm-kind-ic md",
-    style: {
-      background: info.soft,
-      color: info.color
-    }
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: info.icon,
-    size: 18
-  })), /*#__PURE__*/React.createElement("span", {
-    className: "trm-kind-opt-txt"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "trm-kind-opt-name"
-  }, info.label), /*#__PURE__*/React.createElement("span", {
-    className: "trm-kind-opt-grp"
-  }, info.group === 'rate' ? 'Rate' : 'Fee'))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(CardSelect, {
-    ariaLabel: "Term",
-    value: draft.kind,
-    onChange: pickKind,
-    options: eligibleKinds.map(k => ({
-      value: k.key,
-      label: k.label,
-      icon: k.icon,
-      color: k.color,
-      soft: k.soft
-    }))
-  }), eligibleKinds.length < D.termKinds.length && /*#__PURE__*/React.createElement("div", {
-    className: "trm-kind-ineligible"
-  }, "Some kinds don\u2019t apply to a ", /*#__PURE__*/React.createElement("b", null, window.ACCOUNT_TYPE_LABEL[account.type] || account.type), " account and are hidden.")), errors.kind && /*#__PURE__*/React.createElement("div", {
-    className: "helper aam-err"
-  }, errors.kind)), labelRule !== 'hidden' && /*#__PURE__*/React.createElement(Field, {
+  }, /*#__PURE__*/React.createElement(Field, {
     label: "Name",
-    required: labelRule === 'required',
+    required: true,
     value: draft.label,
     onChange: set('label'),
-    placeholder: "e.g. ATM withdrawal \xB7 abroad",
+    placeholder: "e.g. Interest rate \xB7 ATM withdrawal abroad",
     error: errors.label,
-    help: "Names this fee so it keeps its own history, separate from the account's other fees."
+    help: "Names this term so it keeps its own history, separate from the account's other terms."
   }), /*#__PURE__*/React.createElement("div", {
     className: "trm-value-block"
   }, /*#__PURE__*/React.createElement("div", {
@@ -27040,7 +26826,7 @@ const AddTermModal = ({
   }, "Value", /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*")), !isRate && /*#__PURE__*/React.createElement("div", {
+  }, "*")), /*#__PURE__*/React.createElement("div", {
     className: "atm-seg",
     role: "radiogroup",
     "aria-label": "Unit",
@@ -27078,17 +26864,15 @@ const AddTermModal = ({
     required: true,
     suffix: "%",
     allowNegative: true,
-    autoFocus: true,
     value: draft.valueStr,
     onChange: set('valueStr'),
     error: errors.value,
-    help: /*#__PURE__*/React.createElement(React.Fragment, null, "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), isRate ? ' · annual' : '')
+    help: /*#__PURE__*/React.createElement(React.Fragment, null, "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), cadence ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", cadence) : '')
   }) : /*#__PURE__*/React.createElement(MoneyField, {
     size: "lg",
     required: true,
     allowNegative: true,
     signEditable: true,
-    autoFocus: true,
     value: draft.valueStr,
     onChange: set('valueStr'),
     currency: draft.currency,
@@ -27097,7 +26881,7 @@ const AddTermModal = ({
     currencySearchThreshold: 0,
     error: errors.value,
     help: /*#__PURE__*/React.createElement(React.Fragment, null, "Flat amount in ", /*#__PURE__*/React.createElement("b", null, draft.currency), cadence ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", cadence) : '')
-  })), !isRate && /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", {
     className: "trm-dir-refused"
   }, /*#__PURE__*/React.createElement(MIcon, {
     name: "block",
@@ -27115,13 +26899,13 @@ const AddTermModal = ({
     style: {
       marginTop: -6
     }
-  }, errors.effectiveFrom), !isRate && /*#__PURE__*/React.createElement("div", {
+  }, errors.effectiveFrom), /*#__PURE__*/React.createElement("div", {
     className: "trm-cadence"
   }, /*#__PURE__*/React.createElement(FormRow, {
     cols: periodic ? 2 : 1
   }, /*#__PURE__*/React.createElement(FieldShell, {
-    label: "Billing interval",
-    help: periodic ? `Charged ${cadence}` : intervalInfo && intervalInfo.key !== 'OneTime' ? `Charged ${intervalInfo.adverb}` : undefined
+    label: "Interval",
+    help: periodic ? `Applies ${cadence}` : intervalInfo && intervalInfo.key !== 'OneTime' ? `Applies ${intervalInfo.adverb}` : undefined
   }, /*#__PURE__*/React.createElement(Select, {
     value: draft.interval,
     onChange: set('interval'),
@@ -27147,7 +26931,7 @@ const AddTermModal = ({
     help: errors.intervalCount ? undefined : `Leave blank for ${intervalInfo.adverb}`
   })), draft.interval === 'PerUnit' && /*#__PURE__*/React.createElement("div", {
     className: "helper trm-cadence-echo"
-  }, "Name the unit in the fee\u2019s name \u2014 \u201CCustody \xB7 per share\u201D."), /*#__PURE__*/React.createElement(DateField, {
+  }, "Name the unit in the term\u2019s name \u2014 \u201CCustody \xB7 per share\u201D."), /*#__PURE__*/React.createElement(DateField, {
     label: "First billed on",
     value: draft.anchorDate,
     onChange: set('anchorDate'),
@@ -29199,14 +28983,15 @@ const MODULES = [{
     }]
   }, {
     label: 'Commitments',
+    noDivider: true,
     items: [{
-      key: 'tax-statements',
-      label: 'Tax Statements',
-      icon: 'request_quote'
-    }, {
       key: 'contracts',
       label: 'Contracts',
       icon: 'handshake'
+    }, {
+      key: 'tax-statements',
+      label: 'Tax Statements',
+      icon: 'request_quote'
     }]
   }, {
     label: 'Documents',
@@ -38293,7 +38078,6 @@ const conTermSeriesList = terms => {
     const key = trmKey(t);
     const s = by[key] || (by[key] = {
       key,
-      kind: t.kind,
       labelKey: t.labelKey || CTRM_H.termLabelKey(t.label) || null,
       latest: t,
       inForce: null,
@@ -38347,9 +38131,9 @@ const ContractTermChart = ({
         label: dir.label,
         color: dir.color
       } : undefined,
-      color: dir ? dir.color : trmKindInfo(x.kind).color,
+      color: dir ? dir.color : trmKindInfo(t).color,
       group: conCompatKey(t),
-      points: trmSeriesFromList(terms, x.kind, x.labelKey).map(p => ({
+      points: trmSeriesFromList(terms, x.key).map(p => ({
         id: p.id,
         date: p.date,
         value: p.value
@@ -38417,7 +38201,7 @@ const ContractTerms = ({
   }), block ? /*#__PURE__*/React.createElement(ContractTermsNotice, {
     block: block
   }) : null, current.length ? /*#__PURE__*/React.createElement(InfoTileGrid, null, current.map(t => {
-    const info = trmKindInfo(t.kind);
+    const info = trmKindInfo(t);
     // The cadence is what separates a 2,150 USD monthly rent from a
     // 2,150 USD one-off, so it rides in the foot beside the date.
     const period = CTRM_H.cadenceTextFor(t);
@@ -38434,8 +38218,8 @@ const ContractTerms = ({
     return /*#__PURE__*/React.createElement(InfoTile, {
       key: trmKey(t),
       icon: info.icon,
-      iconColor: info.color,
-      iconSoft: info.soft,
+      iconColor: value,
+      iconSoft: tagged ? dir.soft || `color-mix(in srgb, ${dir.color} 16%, transparent)` : info.soft,
       className: tagged ? 'trm-dir-tile' : undefined,
       label: tagged ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
         className: "trm-dir-name"
@@ -38447,7 +38231,7 @@ const ContractTerms = ({
           color: value
         }
       }, CTRM_H.fmtTermValueFor(t, owner)),
-      foot: `${labelled ? `${CTRM_H.termKindLabelFor(t, owner)} · ` : ''}since ${CTRM_H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`
+      foot: `since ${CTRM_H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`
     });
   })) : /*#__PURE__*/React.createElement(EmptyLine, null, "Nothing in force today \u2014 every entry on this contract is scheduled for a later date.")), /*#__PURE__*/React.createElement("div", {
     className: "con-section"
@@ -57514,7 +57298,6 @@ try { (() => {
     // Fiber service — Subscriptions
     'ct-employment': ['t5'] // ACME Co — Salary
   };
-  D.contractTermKinds = ['InterestRate', 'Fee'];
 
   /* Seed term history, keyed by contractId. EffectiveFrom ascending here for
      readability; the helpers sort as needed. Every row carries an explicit
@@ -57527,7 +57310,6 @@ try { (() => {
     'ct-lease': [{
       id: 'ctm-lease-1',
       contractId: 'ct-lease',
-      kind: 'Fee',
       unit: 'Amount',
       value: 2150.00,
       currency: 'USD',
@@ -57542,7 +57324,6 @@ try { (() => {
     }, {
       id: 'ctm-lease-2',
       contractId: 'ct-lease',
-      kind: 'Fee',
       unit: 'Amount',
       value: 2250.00,
       currency: 'USD',
@@ -57558,7 +57339,6 @@ try { (() => {
     {
       id: 'ctm-lease-3',
       contractId: 'ct-lease',
-      kind: 'Fee',
       unit: 'Amount',
       value: 2350.00,
       currency: 'USD',
@@ -57572,7 +57352,6 @@ try { (() => {
     }, {
       id: 'ctm-lease-4',
       contractId: 'ct-lease',
-      kind: 'Fee',
       unit: 'Amount',
       value: 85.00,
       currency: 'USD',
@@ -57590,7 +57369,6 @@ try { (() => {
     {
       id: 'ctm-lease-4b',
       contractId: 'ct-lease',
-      kind: 'Fee',
       unit: 'Amount',
       value: 95.00,
       currency: 'USD',
@@ -57604,7 +57382,6 @@ try { (() => {
     }, {
       id: 'ctm-lease-5',
       contractId: 'ct-lease',
-      kind: 'Fee',
       unit: 'Amount',
       value: 50.00,
       currency: 'USD',
@@ -57618,7 +57395,6 @@ try { (() => {
     }, {
       id: 'ctm-lease-6',
       contractId: 'ct-lease',
-      kind: 'Fee',
       unit: 'Amount',
       value: 300.00,
       currency: 'USD',
@@ -57632,7 +57408,6 @@ try { (() => {
     }, {
       id: 'ctm-lease-6b',
       contractId: 'ct-lease',
-      kind: 'Fee',
       unit: 'Amount',
       value: 340.00,
       currency: 'USD',
@@ -57651,30 +57426,28 @@ try { (() => {
     {
       id: 'ctm-lease-7',
       contractId: 'ct-lease',
-      kind: 'InterestRate',
       unit: 'Percentage',
       value: 0.08,
       currency: null,
       interval: null,
       intervalCount: null,
       effectiveFrom: '2025-09-01',
-      label: null,
-      labelKey: null,
+      label: 'Arrears interest',
+      labelKey: 'arrears interest',
       direction: 'Outgoing',
       note: 'Statutory rate on rent in arrears.',
       createdAtUtc: '2025-08-14T10:00:00Z'
     }, {
       id: 'ctm-lease-7b',
       contractId: 'ct-lease',
-      kind: 'InterestRate',
       unit: 'Percentage',
       value: 0.0925,
       currency: null,
       interval: null,
       intervalCount: null,
       effectiveFrom: '2026-03-01',
-      label: null,
-      labelKey: null,
+      label: 'Arrears interest',
+      labelKey: 'arrears interest',
       direction: 'Outgoing',
       note: 'Tracks the statutory rate.',
       createdAtUtc: '2026-01-28T09:00:00Z'
@@ -57683,7 +57456,6 @@ try { (() => {
     'ct-fiber': [{
       id: 'ctm-fiber-1',
       contractId: 'ct-fiber',
-      kind: 'Fee',
       unit: 'Amount',
       value: 79.00,
       currency: 'USD',
@@ -57697,7 +57469,6 @@ try { (() => {
     }, {
       id: 'ctm-fiber-2',
       contractId: 'ct-fiber',
-      kind: 'Fee',
       unit: 'Amount',
       value: 84.00,
       currency: 'USD',
@@ -57711,7 +57482,6 @@ try { (() => {
     }, {
       id: 'ctm-fiber-3',
       contractId: 'ct-fiber',
-      kind: 'Fee',
       unit: 'Amount',
       value: 240.00,
       currency: 'USD',
@@ -57725,7 +57495,6 @@ try { (() => {
     }, {
       id: 'ctm-fiber-4',
       contractId: 'ct-fiber',
-      kind: 'Fee',
       unit: 'Amount',
       value: 99.00,
       currency: 'USD',
@@ -57742,30 +57511,28 @@ try { (() => {
     'ct-house': [{
       id: 'ctm-house-1',
       contractId: 'ct-house',
-      kind: 'InterestRate',
       unit: 'Percentage',
       value: 0.0425,
       currency: null,
       interval: null,
       intervalCount: null,
       effectiveFrom: '2021-04-15',
-      label: null,
-      labelKey: null,
+      label: 'Interest rate',
+      labelKey: 'interest rate',
       direction: 'Outgoing',
       note: 'Vendor financing on the balance of the purchase price.',
       createdAtUtc: '2021-04-15T09:00:00Z'
     }, {
       id: 'ctm-house-2',
       contractId: 'ct-house',
-      kind: 'InterestRate',
       unit: 'Percentage',
       value: 0.0399,
       currency: null,
       interval: null,
       intervalCount: null,
       effectiveFrom: '2024-05-01',
-      label: null,
-      labelKey: null,
+      label: 'Interest rate',
+      labelKey: 'interest rate',
       direction: 'Outgoing',
       note: 'Renegotiated at the three-year review.',
       createdAtUtc: '2024-05-01T09:00:00Z'
@@ -57773,7 +57540,6 @@ try { (() => {
     'ct-parking': [{
       id: 'ctm-parking-1',
       contractId: 'ct-parking',
-      kind: 'Fee',
       unit: 'Amount',
       value: 165.00,
       currency: 'USD',
@@ -57787,7 +57553,6 @@ try { (() => {
     }, {
       id: 'ctm-parking-2',
       contractId: 'ct-parking',
-      kind: 'Fee',
       unit: 'Amount',
       value: 40.00,
       currency: 'USD',
@@ -57802,7 +57567,6 @@ try { (() => {
     'ct-energy': [{
       id: 'ctm-energy-1',
       contractId: 'ct-energy',
-      kind: 'Fee',
       unit: 'Amount',
       value: 28.50,
       currency: 'USD',
@@ -57817,7 +57581,6 @@ try { (() => {
     'ct-storage': [{
       id: 'ctm-storage-1',
       contractId: 'ct-storage',
-      kind: 'Fee',
       unit: 'Amount',
       value: 95.00,
       currency: 'USD',
@@ -57831,7 +57594,6 @@ try { (() => {
     }, {
       id: 'ctm-storage-2',
       contractId: 'ct-storage',
-      kind: 'Fee',
       unit: 'Amount',
       value: 105.00,
       currency: 'USD',
@@ -57847,7 +57609,6 @@ try { (() => {
     'ct-solar': [{
       id: 'ctm-solar-1',
       contractId: 'ct-solar',
-      kind: 'Fee',
       unit: 'Amount',
       value: 130.00,
       currency: 'USD',
@@ -57861,7 +57622,6 @@ try { (() => {
     }, {
       id: 'ctm-solar-2',
       contractId: 'ct-solar',
-      kind: 'Fee',
       unit: 'Amount',
       value: 138.00,
       currency: 'USD',
@@ -57876,7 +57636,6 @@ try { (() => {
     'ct-gym': [{
       id: 'ctm-gym-1',
       contractId: 'ct-gym',
-      kind: 'Fee',
       unit: 'Amount',
       value: 39.00,
       currency: 'USD',
@@ -57890,7 +57649,6 @@ try { (() => {
     }, {
       id: 'ctm-gym-2',
       contractId: 'ct-gym',
-      kind: 'Fee',
       unit: 'Amount',
       value: 25.00,
       currency: 'USD',
@@ -57909,7 +57667,6 @@ try { (() => {
     'ct-cleaning': [{
       id: 'ctm-cleaning-1',
       contractId: 'ct-cleaning',
-      kind: 'Fee',
       unit: 'Amount',
       value: 180.00,
       currency: 'USD',
@@ -57936,7 +57693,6 @@ try { (() => {
     'ct-employment': [{
       id: 'ctm-emp-1',
       contractId: 'ct-employment',
-      kind: 'Fee',
       unit: 'Amount',
       value: 6250.00,
       currency: 'USD',
@@ -57952,7 +57708,6 @@ try { (() => {
     }, {
       id: 'ctm-emp-2',
       contractId: 'ct-employment',
-      kind: 'Fee',
       unit: 'Amount',
       value: 6600.00,
       currency: 'USD',
@@ -57968,7 +57723,6 @@ try { (() => {
     }, {
       id: 'ctm-emp-3',
       contractId: 'ct-employment',
-      kind: 'Fee',
       unit: 'Amount',
       value: 42.00,
       currency: 'USD',
@@ -57984,7 +57738,6 @@ try { (() => {
     }, {
       id: 'ctm-emp-4',
       contractId: 'ct-employment',
-      kind: 'Fee',
       unit: 'Amount',
       value: 380.00,
       currency: 'USD',
@@ -58000,7 +57753,6 @@ try { (() => {
     }, {
       id: 'ctm-emp-5',
       contractId: 'ct-employment',
-      kind: 'Fee',
       unit: 'Amount',
       value: 3000.00,
       currency: 'USD',
@@ -58018,11 +57770,6 @@ try { (() => {
     // All terms on a contract, EffectiveFrom DESC (the history listing order).
     conTermsFor(contractId) {
       return (D.contractTerms[contractId] || []).slice().sort((a, b) => a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : 0);
-    },
-    // TermKinds a CONTRACT may carry, in registry order. Not a per-type matrix:
-    // the same two kinds on every ContractType.
-    conEligibleTermKinds() {
-      return D.termKinds.filter(k => D.contractTermKinds.includes(k.key)).map(k => k.key);
     },
     // Why a write is refused, or null when it is allowed. One place, so the
     // disabled menu item, the section notice and the dialog all say the same.
@@ -58089,7 +57836,7 @@ try { (() => {
       const start = H.conDateOnly(contract.startDate);
       let best = null;
       for (const term of inForce || []) {
-        if (term.kind !== 'Fee' || term.unit !== 'Amount') continue;
+        if (term.unit !== 'Amount') continue;
         if (H.termDirection(term) !== dir) continue;
         const iv = D.intervalByKey[term.interval];
         if (!iv || !iv.periodic) continue;
@@ -58217,7 +57964,7 @@ try { (() => {
         if (H.conStatus(c, t) !== 'Active') continue;
         const inForce = window.trmCurrentFromList ? window.trmCurrentFromList(H.conTermsFor(c.id)) : [];
         for (const term of inForce || []) {
-          if (term.kind !== 'Fee' || term.unit !== 'Amount') continue;
+          if (term.unit !== 'Amount') continue;
           const iv = D.intervalByKey[term.interval];
           if (!iv || !iv.periodic || !F[iv.key]) continue;
           const every = Math.max(1, term.intervalCount || 1);
@@ -61224,44 +60971,25 @@ Object.assign(window.OdysseyHelpers, {
    qualified for none of it — all four were eligible everywhere and differed only
    by a display label, an icon and a default billing period, which is exactly what
    the term's own Label carries better. They collapse into one Fee. */
-window.OdysseyData.termKinds = [
-// ---- Rates: not taxonomy. Each is a distinct quoted number some surface
-//      must single out, so neither can be a label. ----
-{
-  key: 'InterestRate',
-  label: 'Interest rate',
-  group: 'rate',
-  enumValue: 1,
-  defaultUnit: 'Percentage',
-  icon: 'percent',
-  color: 'oklch(0.78 0.13 200)',
-  soft: 'oklch(0.78 0.13 200 / 0.15)',
-  desc: 'Contractual interest the account earns or is charged.'
-}, {
-  key: 'ExpectedReturn',
-  label: 'Expected return',
-  group: 'rate',
-  enumValue: 2,
-  defaultUnit: 'Percentage',
-  icon: 'trending_up',
-  color: 'oklch(0.72 0.16 295)',
-  soft: 'oklch(0.72 0.16 295 / 0.15)',
-  desc: 'Optional target / expected annual return for a variable-return holding.'
-},
-// ---- Fee: one kind, always named by its Label. Keeps ordinal 10 (the head of
-//      the old fee band) so former ManagementFee rows need no remap. ----
-{
-  key: 'Fee',
-  label: 'Fee',
-  group: 'fee',
-  enumValue: 10,
-  defaultUnit: 'Amount',
-  icon: 'receipt_long',
-  color: 'oklch(0.77 0.14 55)',
-  soft: 'oklch(0.77 0.14 55 / 0.15)',
-  desc: 'A price the account charges — named by its own label, with its own history.'
-}];
-window.OdysseyData.termKindByKey = Object.fromEntries(window.OdysseyData.termKinds.map(t => [t.key, t]));
+/* There is no TermKind. Every term is named by its Label (required) and keeps
+   its own dated history; its value is a Percentage or an Amount. The glyph and
+   hue follow the UNIT, so a rate and a price still read apart at a glance. */
+window.OdysseyData.termUnits = {
+  Percentage: {
+    key: 'Percentage',
+    label: 'Percentage',
+    icon: 'percent',
+    color: 'oklch(0.78 0.13 200)',
+    soft: 'oklch(0.78 0.13 200 / 0.15)'
+  },
+  Amount: {
+    key: 'Amount',
+    label: 'Amount',
+    icon: 'payments',
+    color: 'oklch(0.77 0.14 55)',
+    soft: 'oklch(0.77 0.14 55 / 0.15)'
+  }
+};
 
 /* Interval enum (was BillingPeriod) — optional context for fees; null for rates.
    A cadence is now TWO fields: the unit (this enum) and IntervalCount, the
@@ -61398,15 +61126,7 @@ window.OdysseyData.termIntervalCount = {
   max: 1000
 };
 
-/* Eligibility matrix (TermKind → permitted AccountTypes). Lives in code, not the
-   DB, so it can evolve without a migration. 'ALL' = every account type. With one
-   fee kind, most account types leave exactly ONE eligible kind — the dialog then
-   renders no kind picker at all. */
-window.OdysseyData.termKindEligibility = {
-  InterestRate: ['CheckingAccount', 'SavingsAccount', 'PensionAccount', 'CreditCard', 'Mortgage', 'StudentLoan', 'PersonalLoan', 'CarLoan', 'TaxDebt'],
-  ExpectedReturn: ['InvestmentAccount', 'PensionAccount'],
-  Fee: 'ALL'
-};
+/* Every account type may carry terms — there is no eligibility matrix. */
 
 /* Seed Term history, keyed by accountId. EffectiveFrom ascending here for
    readability; the helpers sort as needed. Percentages stored as fractions.
@@ -61417,62 +61137,66 @@ window.OdysseyData.accountTerms = {
   '2': [{
     id: 'tm-2-1',
     accountId: '2',
-    kind: 'InterestRate',
     unit: 'Percentage',
     value: 0.0425,
     currency: null,
     interval: null,
     effectiveFrom: '2024-02-01',
+    label: 'Interest rate',
+    labelKey: 'interest rate',
     note: 'Promotional intro APY',
     createdAtUtc: '2024-02-01T09:00:00Z'
   }, {
     id: 'tm-2-2',
     accountId: '2',
-    kind: 'InterestRate',
     unit: 'Percentage',
     value: 0.0410,
     currency: null,
     interval: null,
     effectiveFrom: '2024-09-01',
+    label: 'Interest rate',
+    labelKey: 'interest rate',
     note: null,
     createdAtUtc: '2024-09-01T09:00:00Z'
   }, {
     id: 'tm-2-3',
     accountId: '2',
-    kind: 'InterestRate',
     unit: 'Percentage',
     value: 0.0385,
     currency: null,
     interval: null,
     effectiveFrom: '2025-01-15',
+    label: 'Interest rate',
+    labelKey: 'interest rate',
     note: 'Fed cut pass-through',
     createdAtUtc: '2025-01-15T09:00:00Z'
   }, {
     id: 'tm-2-4',
     accountId: '2',
-    kind: 'InterestRate',
     unit: 'Percentage',
     value: 0.0360,
     currency: null,
     interval: null,
     effectiveFrom: '2025-07-01',
+    label: 'Interest rate',
+    labelKey: 'interest rate',
     note: null,
     createdAtUtc: '2025-07-01T09:00:00Z'
   }, {
     id: 'tm-2-5',
     accountId: '2',
-    kind: 'InterestRate',
     unit: 'Percentage',
     value: 0.0340,
     currency: null,
     interval: null,
     effectiveFrom: '2026-02-10',
+    label: 'Interest rate',
+    labelKey: 'interest rate',
     note: 'Fed cut pass-through',
     createdAtUtc: '2026-02-10T09:00:00Z'
   }, {
     id: 'tm-2-6',
     accountId: '2',
-    kind: 'Fee',
     unit: 'Amount',
     value: 10.00,
     currency: 'USD',
@@ -61486,7 +61210,6 @@ window.OdysseyData.accountTerms = {
   }, {
     id: 'tm-2-7',
     accountId: '2',
-    kind: 'Fee',
     unit: 'Amount',
     value: 35.00,
     currency: 'USD',
@@ -61502,7 +61225,6 @@ window.OdysseyData.accountTerms = {
   {
     id: 'tm-2-8',
     accountId: '2',
-    kind: 'Fee',
     unit: 'Amount',
     value: 3.00,
     currency: 'USD',
@@ -61520,40 +61242,42 @@ window.OdysseyData.accountTerms = {
   '3': [{
     id: 'tm-3-1',
     accountId: '3',
-    kind: 'InterestRate',
     unit: 'Percentage',
     value: 0.2249,
     currency: null,
     interval: null,
     effectiveFrom: '2023-01-01',
+    label: 'Purchase APR',
+    labelKey: 'purchase apr',
     note: 'Variable purchase APR (Prime + 16.99%)',
     createdAtUtc: '2023-01-01T09:00:00Z'
   }, {
     id: 'tm-3-2',
     accountId: '3',
-    kind: 'InterestRate',
     unit: 'Percentage',
     value: 0.2624,
     currency: null,
     interval: null,
     effectiveFrom: '2023-09-01',
+    label: 'Purchase APR',
+    labelKey: 'purchase apr',
     note: null,
     createdAtUtc: '2023-09-01T09:00:00Z'
   }, {
     id: 'tm-3-3',
     accountId: '3',
-    kind: 'InterestRate',
     unit: 'Percentage',
     value: 0.2899,
     currency: null,
     interval: null,
     effectiveFrom: '2024-06-01',
+    label: 'Purchase APR',
+    labelKey: 'purchase apr',
     note: 'Prime-rate increase',
     createdAtUtc: '2024-06-01T09:00:00Z'
   }, {
     id: 'tm-3-4',
     accountId: '3',
-    kind: 'Fee',
     unit: 'Amount',
     value: 695.00,
     currency: 'USD',
@@ -61567,7 +61291,6 @@ window.OdysseyData.accountTerms = {
   }, {
     id: 'tm-3-5',
     accountId: '3',
-    kind: 'Fee',
     unit: 'Percentage',
     value: 0.0275,
     currency: null,
@@ -61581,7 +61304,6 @@ window.OdysseyData.accountTerms = {
   }, {
     id: 'tm-3-6',
     accountId: '3',
-    kind: 'Fee',
     unit: 'Amount',
     value: 5.00,
     currency: 'USD',
@@ -61595,7 +61317,6 @@ window.OdysseyData.accountTerms = {
   }, {
     id: 'tm-3-7',
     accountId: '3',
-    kind: 'Fee',
     unit: 'Amount',
     value: 25.00,
     currency: 'USD',
@@ -61612,7 +61333,6 @@ window.OdysseyData.accountTerms = {
   {
     id: 'tm-3-8',
     accountId: '3',
-    kind: 'Fee',
     unit: 'Amount',
     value: 30.00,
     currency: 'USD',
@@ -61626,7 +61346,6 @@ window.OdysseyData.accountTerms = {
   }, {
     id: 'tm-3-9',
     accountId: '3',
-    kind: 'Fee',
     unit: 'Amount',
     value: 15.00,
     currency: 'USD',
@@ -61640,7 +61359,6 @@ window.OdysseyData.accountTerms = {
   }, {
     id: 'tm-3-10',
     accountId: '3',
-    kind: 'Fee',
     unit: 'Amount',
     value: 2.00,
     currency: 'USD',
@@ -61657,7 +61375,6 @@ window.OdysseyData.accountTerms = {
   {
     id: 'tm-3-11',
     accountId: '3',
-    kind: 'Fee',
     unit: 'Amount',
     value: 45.00,
     currency: 'USD',
@@ -61676,29 +61393,30 @@ window.OdysseyData.accountTerms = {
   '4': [{
     id: 'tm-4-1',
     accountId: '4',
-    kind: 'ExpectedReturn',
     unit: 'Percentage',
     value: 0.0700,
     currency: null,
     interval: null,
     effectiveFrom: '2024-01-01',
+    label: 'Expected return',
+    labelKey: 'expected return',
     note: 'Long-run target · 80/20 blend',
     createdAtUtc: '2024-01-01T09:00:00Z'
   }, {
     id: 'tm-4-2',
     accountId: '4',
-    kind: 'ExpectedReturn',
     unit: 'Percentage',
     value: 0.0650,
     currency: null,
     interval: null,
     effectiveFrom: '2025-06-01',
+    label: 'Expected return',
+    labelKey: 'expected return',
     note: 'Trimmed on valuation outlook',
     createdAtUtc: '2025-06-01T09:00:00Z'
   }, {
     id: 'tm-4-3',
     accountId: '4',
-    kind: 'Fee',
     unit: 'Percentage',
     value: 0.0004,
     currency: null,
@@ -61712,7 +61430,6 @@ window.OdysseyData.accountTerms = {
   }, {
     id: 'tm-4-4',
     accountId: '4',
-    kind: 'Fee',
     unit: 'Percentage',
     value: 0.0003,
     currency: null,
@@ -61728,7 +61445,6 @@ window.OdysseyData.accountTerms = {
   {
     id: 'tm-4-5',
     accountId: '4',
-    kind: 'Fee',
     unit: 'Amount',
     value: 0.02,
     currency: 'USD',
@@ -61744,18 +61460,18 @@ window.OdysseyData.accountTerms = {
   '5': [{
     id: 'tm-5-1',
     accountId: '5',
-    kind: 'InterestRate',
     unit: 'Percentage',
     value: 0.0649,
     currency: null,
     interval: null,
     effectiveFrom: '2023-06-01',
+    label: 'APR',
+    labelKey: 'apr',
     note: 'Fixed APR · 60-month term',
     createdAtUtc: '2023-06-01T09:00:00Z'
   }, {
     id: 'tm-5-2',
     accountId: '5',
-    kind: 'Fee',
     unit: 'Amount',
     value: 15.00,
     currency: 'USD',
@@ -61775,16 +61491,10 @@ window.OdysseyData.accountTerms = {
    how it resolved before labels existed. */
 window.OdysseyData.termLabelMaxLength = 64;
 Object.assign(window.OdysseyHelpers, {
-  termKindInfo(kind) {
-    return window.OdysseyData.termKindByKey[kind] || {
-      key: kind,
-      label: kind || 'Term',
-      group: 'fee',
-      defaultUnit: 'Amount',
-      icon: 'sell',
-      color: 'var(--ink-300)',
-      soft: 'rgba(199,208,224,0.12)'
-    };
+  // Presentation for a term (or a unit key): glyph + hue by unit.
+  termInfo(t) {
+    const u = typeof t === 'string' ? t : t && t.unit;
+    return window.OdysseyData.termUnits[u] || window.OdysseyData.termUnits.Amount;
   },
   intervalInfo(key) {
     return key ? window.OdysseyData.intervalByKey[key] || {
@@ -61843,7 +61553,7 @@ Object.assign(window.OdysseyHelpers, {
     return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract';
   },
   // Why direction is refused here, in the words the 400 uses. Null = allowed.
-  termDirectionRefusal(kind, ownerKind) {
+  termDirectionRefusal(ownerKind) {
     if (ownerKind !== 'contract') return 'Direction applies to a contract term. An account term is always money out.';
     return null;
   },
@@ -61856,18 +61566,6 @@ Object.assign(window.OdysseyHelpers, {
   // All terms for an account, EffectiveFrom DESC (history listing, newest first).
   termsForAccount(accountId) {
     return (window.OdysseyData.accountTerms[accountId] || []).slice().sort((a, b) => a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : 0);
-  },
-  // TermKinds permitted for an account type, in registry order.
-  eligibleTermKinds(accountType) {
-    const E = window.OdysseyData.termKindEligibility;
-    return window.OdysseyData.termKinds.filter(k => {
-      const a = E[k.key];
-      return a === 'ALL' || a && a.includes(accountType);
-    }).map(k => k.key);
-  },
-  isTermKindEligible(kind, accountType) {
-    const a = window.OdysseyData.termKindEligibility[kind];
-    return a === 'ALL' || !!a && a.includes(accountType);
   },
   // ---- Series labels: one TermKind can hold several named series --------
   // ONE normalization rule, shared by the write path and the client's
@@ -61883,22 +61581,13 @@ Object.assign(window.OdysseyHelpers, {
     const s = window.OdysseyHelpers.termLabelNormalize(raw);
     return s == null ? null : s.toLowerCase();
   },
-  // Whether a kind takes a label: refused on the rate kinds (the headline rate
-  // must stay unambiguous), REQUIRED on every fee. With one fee kind, two
-  // unnamed fees could not be told apart — so the old OtherFee-only rule
-  // collapses into one unconditional rule.
-  termLabelRule(kind) {
-    return window.OdysseyHelpers.termKindInfo(kind).group === 'rate' ? 'hidden' : 'required';
-  },
-  // The series a term belongs to: (TermKind, LabelKey).
+  // The series a term belongs to: its LabelKey — nothing else.
   termSeriesKey(t) {
-    return `${t.kind}\u0000${t.labelKey || window.OdysseyHelpers.termLabelKey(t.label) || ''}`;
+    return t.labelKey || window.OdysseyHelpers.termLabelKey(t.label) || '';
   },
-  // What a term is CALLED: its label when it has one, else the kind wording.
-  // Falls back to termKindLabelFor (not the bare registry label) so an
-  // unlabelled interest rate on a liability still reads "Interest charged".
-  termDisplayName(t, account) {
-    return window.OdysseyHelpers.termLabelNormalize(t.label) || window.OdysseyHelpers.termKindLabelFor(t, account);
+  // What a term is CALLED: its label (always present on a valid row).
+  termDisplayName(t) {
+    return window.OdysseyHelpers.termLabelNormalize(t.label) || 'Term';
   },
   // The currently-effective entry per SERIES as of `asOf` (default: today): for
   // each (kind, label) with ≥1 entry, the one with the greatest EffectiveFrom ≤
@@ -61915,23 +61604,18 @@ Object.assign(window.OdysseyHelpers, {
     }
     return window.OdysseyHelpers.sortTermsBySeries(Object.values(bySeries));
   },
-  // Kind in registry order, then label ordinal (the unnamed series first).
+  // Label ordinal — a stable order across loads.
   sortTermsBySeries(list) {
-    const order = Object.fromEntries(window.OdysseyData.termKinds.map((k, i) => [k.key, i]));
     return list.slice().sort((a, b) => {
-      const ka = order[a.kind] ?? 99,
-        kb = order[b.kind] ?? 99;
-      if (ka !== kb) return ka - kb;
       const la = a.label || '',
         lb = b.label || '';
       return la < lb ? -1 : la > lb ? 1 : 0;
     });
   },
-  // Ascending {date,value,note,id} series for one kind + label — the step chart
-  // plots one series, never two labelled fees mixed together.
-  termSeries(accountId, kind, labelKey) {
-    const key = labelKey === undefined ? null : window.OdysseyHelpers.termLabelKey(labelKey) || null;
-    return (window.OdysseyData.accountTerms[accountId] || []).filter(t => t.kind === kind && (t.labelKey || null) === key).map(t => ({
+  // Ascending {date,value,note,id} series for one label.
+  termSeries(accountId, labelKey) {
+    const key = window.OdysseyHelpers.termLabelKey(labelKey) || '';
+    return (window.OdysseyData.accountTerms[accountId] || []).filter(t => window.OdysseyHelpers.termSeriesKey(t) === key).map(t => ({
       id: t.id,
       date: t.effectiveFrom,
       value: t.value,
@@ -61960,27 +61644,9 @@ Object.assign(window.OdysseyHelpers, {
     const ti = account && window.OdysseyData.accountTypeById[account.type];
     return !!ti && ti.group === 'liability';
   },
-  // Does this term read as a cost for its account? An interest rate on a
-  // liability. (Expected return only exists on assets; fees stay positive.)
-  termIsCostRate(t, account) {
-    return t.unit === 'Percentage' && t.kind === 'InterestRate' && window.OdysseyHelpers.accountIsLiability(account);
-  },
   // The value as charted / delta'd — the stored value, sign preserved.
   termChartValue(t) {
     return t.value;
-  },
-  // Expense color for a cost-rate, else null (caller keeps its own color).
-  costColor(t, account) {
-    return window.OdysseyHelpers.termIsCostRate(t, account) ? 'var(--finance-expense)' : null;
-  },
-  // The label that says what the rate IS: cost framing lives here, not in the sign.
-  // `owner` is an account or a contract (the two Term owners). A contract has
-  // no asset/liability side to frame the rate from — the agreement's own wording
-  // does that — so it reads as the plain kind.
-  termKindLabelFor(t, owner) {
-    if (t.kind !== 'InterestRate') return window.OdysseyHelpers.termKindInfo(t.kind).label;
-    if (owner && owner.ownerKind === 'contract') return 'Interest rate';
-    return window.OdysseyHelpers.accountIsLiability(owner) ? 'Interest charged' : 'Interest earned';
   },
   // Display string — the stored sign, never a synthesized one: "6.49%" on a
   // loan (coral, labelled "Interest charged"), "3.40%" on savings, "−0.50%"

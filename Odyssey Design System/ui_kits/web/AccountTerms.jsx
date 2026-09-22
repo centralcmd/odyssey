@@ -29,7 +29,21 @@ const H = window.OdysseyHelpers;
 const D = window.OdysseyData;
 
 const trmToday = () => new Date().toISOString().slice(0, 10);
-const trmKindInfo = (k) => H.termKindInfo(k);
+const trmKindInfo = (t) => H.termInfo(t);
+
+/* The series the hero charts: the percentage series with the most history
+   (ties → the one that started first). Null when no percentage term exists. */
+const trmHeadlineKey = (terms) => {
+  const by = {};
+  for (const t of terms) {
+    if (t.unit !== 'Percentage') continue;
+    const k = H.termSeriesKey(t);
+    const s = by[k] || (by[k] = { k, n: 0, first: t.effectiveFrom });
+    s.n += 1; if (t.effectiveFrom < s.first) s.first = t.effectiveFrom;
+  }
+  const best = Object.values(by).sort((x, y) => (y.n - x.n) || (x.first < y.first ? -1 : 1))[0];
+  return best ? best.k : null;
+};
 
 /* ---- per-list resolvers (operate on a live array so edits reflect at once) ----
    The series key is (kind, labelKey), so one kind can hold several concurrently
@@ -47,23 +61,19 @@ const trmCurrentFromList = (terms, asOf) => {
   }
   return H.sortTermsBySeries(Object.values(bySeries));
 };
-const trmSeriesFromList = (terms, kind, labelKey = null) => terms
-  .filter(t => t.kind === kind && (t.labelKey || H.termLabelKey(t.label) || null) === labelKey)
+const trmSeriesFromList = (terms, labelKey) => terms
+  .filter(t => trmKey(t) === (labelKey || ''))
   .map(t => ({ id: t.id, date: t.effectiveFrom, value: t.value, note: t.note }))
   .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
 /* A term's name (its label, else the kind wording) plus the kind caption that
    sits beneath a labelled one — both plain TEXT, so nothing is carried by the
    glyph or its hue alone. */
-const TermName = ({ t, account, nameClass, captionClass = 'trm-kind-caption' }) => {
-  const labelled = !!H.termLabelNormalize(t.label);
-  return (
-    <span className="trm-name">
-      <span className={nameClass}>{H.termDisplayName(t, account)}</span>
-      {labelled && <span className={captionClass}>{H.termKindLabelFor(t, account)}</span>}
-    </span>
-  );
-};
+const TermName = ({ t, nameClass }) => (
+  <span className="trm-name">
+    <span className={nameClass}>{H.termDisplayName(t)}</span>
+  </span>
+);
 
 /* Short month-year for axis + deltas: "Feb ’24" */
 const trmMonY = (iso) => {
@@ -204,19 +214,14 @@ const TermStepChart = ({ series, color, fmtAxis, ariaLabel }) => {
    Hero card — current rate + delta + the step chart
    ============================================================= */
 const TermHero = ({ terms, account }) => {
-  // Prefer interest rate; else expected return. Need ≥1 entry to show.
-  const kind = trmSeriesFromList(terms, 'InterestRate').length ? 'InterestRate'
-    : trmSeriesFromList(terms, 'ExpectedReturn').length ? 'ExpectedReturn' : null;
-  if (!kind) return null;
-  const info = trmKindInfo(kind);
-  // Interest charged on a liability is a cost — carried by the label + expense
-  // color, never by flipping the sign. The series is plotted as stored, so a
-  // rising APR trends UP (and a genuinely negative rate stays negative).
-  const cost = kind === 'InterestRate' && H.accountIsLiability(account);
-  const color = cost ? 'var(--finance-expense)' : info.color;
-  const label = H.termKindLabelFor({ kind }, account); // rate kinds never carry a label
+  const key = trmHeadlineKey(terms);
+  if (key == null) return null;
+  const series = trmSeriesFromList(terms, key);
+  const head = terms.find(t => trmKey(t) === key);
+  const info = trmKindInfo(head);
+  const color = info.color;
+  const label = H.termDisplayName(head);
   const fmt = (v) => (v < 0 ? '−' : '') + H.pctStr(Math.abs(v));
-  const series = trmSeriesFromList(terms, kind);
   const current = series[series.length - 1];
   const prev = series.length > 1 ? series[series.length - 2] : null;
   const diff = prev ? (current.value - prev.value) : 0;
@@ -231,7 +236,7 @@ const TermHero = ({ terms, account }) => {
         <div className="trm-hero-titles">
           <div className="trm-hero-kind">{label} <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400 }}>· history</span></div>
           <div className="trm-hero-sub">
-            {cost ? 'Rate you pay · ' : ''}{series.length} change{series.length === 1 ? '' : 's'} since {trmMonY(series[0].date)} · in force since {H.dateLong(current.date)}
+            {series.length} change{series.length === 1 ? '' : 's'} since {trmMonY(series[0].date)} · in force since {H.dateLong(current.date)}
           </div>
         </div>
         <div className="trm-hero-figs">
@@ -289,7 +294,7 @@ const TermDirectionTag = ({ term, owner }) => {
    which figure is mint. */
 const trmValueColor = (t, account) => {
   if (H.termDirectionApplies(t, account)) return H.termDirectionInfo(t).color;
-  return H.costColor(t, account) || trmKindInfo(t.kind).color;
+  return trmKindInfo(t).color;
 };
 
 const CurrentTermsSummary = ({ current, style, account }) => {
@@ -299,7 +304,7 @@ const CurrentTermsSummary = ({ current, style, account }) => {
     return (
       <div className="trm-summary row">
         {current.map(t => {
-          const info = trmKindInfo(t.kind);
+          const info = trmKindInfo(t);
           return (
             <div className="trm-srow" key={trmKey(t)}>
               <span className="trm-kind-ic sm" style={{ background: info.soft, color: info.color }}>
@@ -309,7 +314,7 @@ const CurrentTermsSummary = ({ current, style, account }) => {
               <span className="trm-srow-meta">
                 <CadenceTag term={t} />
                 <span className="trm-srow-date">since {trmMonY(t.effectiveFrom)}</span>
-                <span className="trm-srow-value" style={{ color: H.costColor(t, account) || undefined }}>{H.fmtTermValueFor(t, account)}</span>
+                <span className="trm-srow-value" >{H.fmtTermValueFor(t, account)}</span>
               </span>
             </div>
           );
@@ -322,14 +327,14 @@ const CurrentTermsSummary = ({ current, style, account }) => {
     return (
       <div className="trm-summary chips">
         {current.map(t => {
-          const info = trmKindInfo(t.kind);
+          const info = trmKindInfo(t);
           return (
             <div className="trm-cchip" key={trmKey(t)}>
               <span className="trm-kind-ic sm" style={{ width: 26, height: 26, background: info.soft, color: info.color }}>
                 <MIcon name={info.icon} size={15} />
               </span>
               <TermName t={t} account={account} nameClass="trm-cchip-kind" captionClass="trm-kind-caption inline" />
-              <span className="trm-cchip-value" style={{ color: H.costColor(t, account) || undefined }}>{H.fmtTermValueFor(t, account)}</span>
+              <span className="trm-cchip-value" >{H.fmtTermValueFor(t, account)}</span>
             </div>
           );
         })}
@@ -341,7 +346,7 @@ const CurrentTermsSummary = ({ current, style, account }) => {
   return (
     <div className="trm-summary tiles">
       {current.map(t => {
-        const info = trmKindInfo(t.kind);
+        const info = trmKindInfo(t);
         return (
           <div className="trm-tile" key={trmKey(t)}>
             <div className="trm-tile-top">
@@ -349,9 +354,9 @@ const CurrentTermsSummary = ({ current, style, account }) => {
                 <MIcon name={info.icon} size={18} />
               </span>
               <TermName t={t} account={account}
-                nameClass={H.termLabelNormalize(t.label) ? 'trm-tile-name' : 'trm-tile-kind'} />
+                nameClass="trm-tile-name" />
             </div>
-            <div className="trm-tile-value" style={{ color: H.costColor(t, account) || info.color }}>{H.fmtTermValueFor(t, account)}</div>
+            <div className="trm-tile-value" style={{ color: info.color }}>{H.fmtTermValueFor(t, account)}</div>
             <div className="trm-tile-foot">
               <span>since {trmMonY(t.effectiveFrom)}</span>
               <CadenceTag term={t} />
@@ -392,19 +397,24 @@ const TermTable = ({ rows, currentIds, onEdit, onDelete, account }) => (
     </thead>
     <tbody>
       {rows.map(t => {
-        const info = trmKindInfo(t.kind);
+        const info = trmKindInfo(t);
         const isCurrent = currentIds.has(t.id);
         const cadence = H.cadenceTextFor(t);
         return (
           <tr key={t.id} className={isCurrent ? 'current' : ''}>
             <td>
               <div className="trm-row-kind">
-                <span className="trm-kind-ic sm" style={{ background: info.soft, color: info.color }}>
+                <span className="trm-kind-ic sm" style={H.termDirectionApplies(t, account)
+                  ? { background: H.termDirectionInfo(t).soft || `color-mix(in srgb, ${H.termDirectionInfo(t).color} 16%, transparent)`, color: H.termDirectionInfo(t).color }
+                  : { background: info.soft, color: info.color }}>
                   <MIcon name={info.icon} size={15} />
                 </span>
                 <div>
-                  <TermName t={t} account={account} nameClass="trm-row-kind-name" />
-                  <TermDirectionTag term={t} owner={account} />
+                  <div className="trm-row-top">
+                    <TermName t={t} account={account} nameClass="trm-row-kind-name" />
+                    {H.termDirectionApplies(t, account) && <span className="trm-row-dot" aria-hidden="true" />}
+                    <TermDirectionTag term={t} owner={account} />
+                  </div>
                   {t.note && <div className="trm-row-note">{t.note}</div>}
                 </div>
               </div>
@@ -435,7 +445,7 @@ const TermTable = ({ rows, currentIds, onEdit, onDelete, account }) => (
 const TermTimeline = ({ rows, currentIds, onEdit, onDelete, account }) => (
   <div className="trm-timeline">
     {rows.map(t => {
-      const info = trmKindInfo(t.kind);
+      const info = trmKindInfo(t);
       const cadence = H.cadenceTextFor(t);
       return (
         <div className="trm-tl-item" key={t.id}>
@@ -469,25 +479,11 @@ const TermTimeline = ({ rows, currentIds, onEdit, onDelete, account }) => (
 
 const TermHistory = ({ terms, currentIds, historyStyle, onEdit, onDelete, account }) => {
   const sorted = terms.slice().sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : 0));
-  const rateRows = sorted.filter(t => trmKindInfo(t.kind).group === 'rate');
-  const feeRows = sorted.filter(t => trmKindInfo(t.kind).group === 'fee');
   const View = historyStyle === 'timeline' ? TermTimeline : TermTable;
-
-  const Group = ({ icon, label, rows }) => rows.length === 0 ? null : (
-    <div>
-      <div className="trm-group-label">
-        <MIcon name={icon} size={16} style={{ color: 'var(--mud-palette-text-secondary)' }} />
-        {label}
-        <span className="trm-group-count">{rows.length}</span>
-      </div>
-      <View rows={rows} currentIds={currentIds} onEdit={onEdit} onDelete={onDelete} account={account} />
-    </div>
-  );
 
   return (
     <div className="trm-history">
-      <Group icon="trending_up" label="Rate history" rows={rateRows} />
-      <Group icon="sell" label="Fees" rows={feeRows} />
+      <View rows={sorted} currentIds={currentIds} onEdit={onEdit} onDelete={onDelete} account={account} />
     </div>
   );
 };
@@ -527,13 +523,14 @@ const AccountTerms = ({ account, summaryStyle = 'tiles', historyStyle = 'table',
         <EmptyState
           icon="article"
           mutedIcon
-          title="No rates or fees recorded yet"
-          desc="Track this account’s interest rate over time and the prices of its services. Add the first term to start the history."
+          title="No terms recorded yet"
+          desc="Record what this account charges or pays — a rate, a fee, a price — each under its own name with its own history."
           action={<Button variant="filled" color="primary" icon="add" onClick={openNew}>New term</Button>}
         />
       ) : (
         <React.Fragment>
-          <TermHero terms={terms} account={account} />
+          {/* Same series chooser + table as a contract's term history. */}
+          {window.ContractTermChart ? <window.ContractTermChart terms={terms} owner={account} /> : null}
 
           {showCurrent ? (
             <div>
@@ -600,5 +597,5 @@ const AccountTerms = ({ account, summaryStyle = 'tiles', historyStyle = 'table',
 
 Object.assign(window, {
   AccountTerms, TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermName, CadenceTag, TermDirectionTag,
-  trmCurrentFromList, trmSeriesFromList, trmKindInfo, trmToday, trmKey, trmMonY,
+  trmCurrentFromList, trmSeriesFromList, trmKindInfo, trmHeadlineKey, trmToday, trmKey, trmMonY,
 });

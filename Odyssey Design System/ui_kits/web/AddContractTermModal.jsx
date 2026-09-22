@@ -5,9 +5,6 @@
    one an account POSTs, and the owner is never in it: it comes from the route.
    Three rules differ, and they are the whole reason this is its own file:
 
-     • KIND — Fee and InterestRate only, on every ContractType. ExpectedReturn
-       prices invested principal, which a contract does not hold, so it is not
-       offered (and would be a 400 if posted).
      • CURRENCY — required, and prefilled from the user's DEFAULT CURRENCY. An
        account lends its own currency to an Amount term; a contract has none to
        lend, so the preference stands in for it: the common case is one keystroke
@@ -20,7 +17,7 @@
 
    Everything else — label normalization, the [-1, 1] percentage bound, the
    cadence pair (interval + count, count only for a periodic unit), the anchor
-   date, the (kind, label, effectiveFrom) duplicate guard that is the server's
+   date, the (label, effectiveFrom) duplicate guard that is the server's
    409 — is the shared rule, read from the same helpers the account dialog uses.
 
    On confirm, onSave(dto, id?) receives the term-shaped object (id on edit). */
@@ -50,12 +47,12 @@ const ctmFracToPctStr = (f) => String(Number((f * 100).toFixed(4)));
    Picking a row and typing a new name are two different writes, and the help
    line under the field says which one is about to happen. Both remain legal:
    the field suggests, it never constrains. */
-const ctmNameOptions = (existing, kind, currentId) => {
+const ctmNameOptions = (existing, currentId) => {
   const H = window.OdysseyHelpers;
   const today = new Date().toISOString().slice(0, 10);
   const bySeries = {};
   for (const t of existing) {
-    if (t.kind !== kind || t.id === currentId) continue;
+    if (t.id === currentId) continue;
     const key = t.labelKey || H.termLabelKey(t.label);
     if (!key) continue;
     const s = bySeries[key] || (bySeries[key] = { key, label: t.label, entries: [] });
@@ -93,20 +90,15 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
   const H = window.OdysseyHelpers;
   const isEdit = !!term;
 
-  const eligible = H.conEligibleTermKinds();
-  const eligibleKinds = D.termKinds.filter(k => eligible.includes(k.key));
-  const initKind = term ? term.kind : 'Fee';
-  const initInfo = H.termKindInfo(initKind);
   const COUNT = D.termIntervalCount;
 
   const [draft, setDraft] = useState(() => ({
-    kind: initKind,
-    unit: term ? term.unit : initInfo.defaultUnit,
+    unit: term ? term.unit : 'Amount',
     valueStr: term ? (term.unit === 'Percentage' ? ctmFracToPctStr(term.value) : String(term.value)) : '',
     // No account currency to inherit, so the USER'S DEFAULT stands in for one.
     // Still required: a cleared field refuses the write.
     currency: term ? (term.currency || '') : H.defaultCurrency(),
-    interval: term ? (term.interval || '') : (initInfo.group === 'fee' ? D.defaultFeeInterval : ''),
+    interval: term ? (term.interval || '') : D.defaultFeeInterval,
     intervalCount: term && term.intervalCount != null ? String(term.intervalCount) : '',
     anchorDate: term ? (term.anchorDate || '') : '',
     // Which way the money moves. Outgoing is the default because it is what
@@ -119,10 +111,8 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
   }));
   const [errors, setErrors] = useState({});
 
-  const info = H.termKindInfo(draft.kind);
-  const isRate = info.group === 'rate';
   const isPct = draft.unit === 'Percentage';
-  const labelRule = H.termLabelRule(draft.kind);
+  const info = H.termInfo(draft.unit);
   const periodic = H.intervalIsPeriodic(draft.interval);
   const intervalInfo = H.intervalInfo(draft.interval);
 
@@ -131,35 +121,18 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
     if (errors[k]) setErrors(e => ({ ...e, [k]: undefined }));
   };
 
-  const pickKind = (k) => {
-    const ki = H.termKindInfo(k);
-    setDraft(d => ({
-      ...d,
-      kind: k,
-      unit: ki.defaultUnit,
-      label: H.termLabelRule(k) === 'hidden' ? '' : d.label,
-      interval: ki.group === 'fee' ? (d.interval || D.defaultFeeInterval) : '',
-      intervalCount: ki.group === 'fee' ? d.intervalCount : '',
-      anchorDate: ki.group === 'fee' ? d.anchorDate : '',
-      // Direction survives a kind change: an arrears rate and a late-payment
-      // fee are both money out, so the answer already given still holds.
-      direction: d.direction,
-    }));
-    setErrors({});
-  };
 
   const submit = () => {
     const next = {};
-    if (!eligible.includes(draft.kind)) next.kind = 'Not available on a contract.';
-    if (contract.archived) next.kind = 'This contract is archived — restore it first.';
+    if (contract.archived) next.archived = 'This contract is archived — restore it first.';
 
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
     if (draft.valueStr === '' || isNaN(raw)) {
       next.value = 'Enter a value.';
     } else if (isPct) {
-      if (raw < -100 || raw > 100) next.value = 'Rate must be between −100% and 100%.';
+      if (raw < -100 || raw > 100) next.value = 'Must be between −100% and 100%.';
     } else if (raw < 0) {
-      next.value = 'A fee amount can’t be negative.';
+      next.value = 'An amount can’t be negative.';
     }
 
     // The contract rule: an amount needs a currency of its own on the record.
@@ -169,7 +142,7 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
 
     const countRaw = String(draft.intervalCount).trim();
     let count = null;
-    if (!isRate && periodic && countRaw !== '') {
+    if (periodic && countRaw !== '') {
       count = parseInt(countRaw, 10);
       if (isNaN(count) || count < COUNT.min || count > COUNT.max) {
         next.intervalCount = `Enter a whole number between ${COUNT.min} and ${COUNT.max}.`;
@@ -177,25 +150,19 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
     }
     if (draft.note.length > 512) next.note = 'Keep the note under 512 characters.';
 
-    const label = labelRule === 'hidden' ? null : H.termLabelNormalize(draft.label);
-    if (labelRule === 'required' && !label) next.label = 'Name this charge so it keeps its own history.';
-    if (label && label.length > 64) next.label = 'Keep the name under 64 characters.';
+    const label = H.termLabelNormalize(draft.label);
+    if (!label) next.label = 'Name this term so it keeps its own history.';
+    else if (label.length > 64) next.label = 'Keep the name under 64 characters.';
 
-    // Duplicate (kind, label, effectiveFrom) within THIS contract's series → 409.
-    // An account term with the same kind, label and date is a different series
+    // Duplicate (label, effectiveFrom) within THIS contract's series → 409.
+    // An account term with the same label and date is a different series
     // and never collides with it.
     const key = H.termLabelKey(label);
-    const dup = existing.some(t =>
-      t.id !== (term && term.id) && t.kind === draft.kind
-      && (t.labelKey || H.termLabelKey(t.label) || null) === (key || null)
+    const dup = label && existing.some(t =>
+      t.id !== (term && term.id)
+      && H.termSeriesKey(t) === key
       && t.effectiveFrom === draft.effectiveFrom);
-    if (dup) next.effectiveFrom = label
-      ? `“${label}” already has an entry on that date.`
-      : 'This contract already has an interest rate on that date.';
-
-    if (draft.direction === 'Incoming' && !H.termDirectionApplies({ kind: draft.kind, contractId: contract.id }, null)) {
-      next.direction = H.termDirectionRefusal(draft.kind, 'contract');
-    }
+    if (dup) next.effectiveFrom = `“${label}” already has an entry on that date.`;
 
     if (Object.keys(next).length) { setErrors(next); return; }
 
@@ -203,13 +170,12 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
     onSave({
       contractId: contract.id,
       accountId: null,
-      kind: draft.kind,
       unit: draft.unit,
       value,
       currency: isPct ? null : draft.currency,
-      interval: isRate ? null : (draft.interval || null),
-      intervalCount: !isRate && periodic ? (count == null ? 1 : count) : null,
-      anchorDate: isRate ? null : (draft.anchorDate || null),
+      interval: draft.interval || null,
+      intervalCount: periodic ? (count == null ? 1 : count) : null,
+      anchorDate: draft.anchorDate || null,
       direction: draft.direction,
       effectiveFrom: draft.effectiveFrom,
       label,
@@ -220,11 +186,11 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
 
   /* The name field's two outcomes, resolved on the SAME key the duplicate guard
      and the server use — so what the help line promises is what gets written. */
-  const nameOptions = labelRule === 'hidden' ? [] : ctmNameOptions(existing, draft.kind, term && term.id);
+  const nameOptions = ctmNameOptions(existing, term && term.id);
   const draftKey = H.termLabelKey(draft.label);
   const matchedSeries = draftKey ? nameOptions.find(o => H.termLabelKey(o.value) === draftKey) : null;
 
-  const cadence = isRate ? null : H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
+  const cadence = H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
   const dirInfo = H.termDirectionInfo(draft.direction);
   /* The money field's lead flips between these two, showing each one's own
      SHORT WORD where a sign would be — the registry, mapped to MoneyField's
@@ -251,33 +217,7 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
         </React.Fragment>
       }>
 
-      {/* Kind — two eligible values on every contract type, so the picker is
-         always a real choice (unlike the account dialog, which drops it when the
-         account type leaves one). Locked on edit: the owner and the series key
-         are what the route already named. */}
-      <div className="field">
-        <div className="label">Term<span className="odc-field-req" aria-hidden="true">*</span></div>
-        {isEdit ? (
-          <div className="trm-kind-opt on" style={{ cursor: 'default' }}>
-            <span className="trm-kind-ic md" style={{ background: info.soft, color: info.color }}>
-              <MIcon name={info.icon} size={18} />
-            </span>
-            <span className="trm-kind-opt-txt">
-              <span className="trm-kind-opt-name">{info.label}</span>
-              <span className="trm-kind-opt-grp">{info.group === 'rate' ? 'Rate' : 'Fee'}</span>
-            </span>
-          </div>
-        ) : (
-          <React.Fragment>
-            <CardSelect ariaLabel="Term" value={draft.kind} onChange={pickKind}
-              options={eligibleKinds.map(k => ({ value: k.key, label: k.label, icon: k.icon, color: k.color, soft: k.soft }))} />
-            <div className="trm-kind-ineligible">
-              A contract can carry a <b>fee</b> or an <b>interest rate</b>. Expected return prices invested principal, which a contract doesn’t hold.
-            </div>
-          </React.Fragment>
-        )}
-        {errors.kind && <div className="helper aam-err">{errors.kind}</div>}
-      </div>
+      {errors.archived && <div className="helper aam-err">{errors.archived}</div>}
 
       {/* Name — the series label. Required on every fee; refused on a rate.
 
@@ -287,11 +227,11 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
          one. Typing it exactly was the only way to join before; now it is a
          pick, and the help line names the consequence either way. `freeText`
          keeps a new name a first-class answer rather than a fallback. */}
-      {labelRule !== 'hidden' && (
+      {(
         <FieldShell
           label="Name"
           htmlFor="ctm-label"
-          required={labelRule === 'required'}
+          required
           error={errors.label}
           help={errors.label ? undefined : (matchedSeries
             ? <React.Fragment>Joins the price history of <b>{matchedSeries.label}</b> — currently {matchedSeries.note}. This entry supersedes it from the effective date.</React.Fragment>
@@ -309,7 +249,7 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
             createLabel="New charge"
             placeholder="e.g. Monthly rent"
             ariaLabel="Name"
-            required={labelRule === 'required'}
+            required
             invalid={!!errors.label}
             emptyText={nameOptions.length ? 'No matching charge — type to name a new one' : 'No charges yet — type a name'}
           />
@@ -328,7 +268,7 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
       <div className="trm-value-block">
         <div className="trm-field-head">
           <div className="label" style={{ marginBottom: 0 }}>Value<span className="odc-field-req" aria-hidden="true">*</span></div>
-          {!isRate && (
+          {(
             <div className="atm-seg" role="radiogroup" aria-label="Unit" style={{ marginLeft: 'auto' }}>
               <button type="button" role="radio" aria-checked={isPct}
                 className={`atm-seg-btn ${isPct ? 'on' : ''}`} style={isPct ? { background: info.soft, color: info.color } : {}}
@@ -365,7 +305,7 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
             help={errors.value ? undefined : (
               <React.Fragment>
                 <b>{dirInfo.label}</b> — {dirInfo.sentence}. Click <b>{dirInfo.short}</b> to switch.{' '}
-                Stored as a fraction: <b>{previewFrac == null ? '—' : previewFrac.toFixed(4)}</b>{isRate ? ' · annual' : ''}
+                Stored as a fraction: <b>{previewFrac == null ? '—' : previewFrac.toFixed(4)}</b>{cadence ? ` · ${cadence}` : ''}
               </React.Fragment>
             )}
           />
@@ -406,12 +346,12 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
       </FormRow>
       {errors.effectiveFrom && <div className="helper aam-err" style={{ marginTop: -6 }}>{errors.effectiveFrom}</div>}
 
-      {/* Cadence — fees only; the count only once the unit is periodic. */}
-      {!isRate && (
+      {/* Cadence — the count only once the unit is periodic. */}
+      {(
         <div className="trm-cadence">
           <FormRow cols={periodic ? 2 : 1}>
-            <FieldShell label="Billing interval"
-              help={periodic ? `Charged ${cadence}` : (intervalInfo && intervalInfo.key !== 'OneTime' ? `Charged ${intervalInfo.adverb}` : undefined)}>
+            <FieldShell label="Interval"
+              help={periodic ? `Applies ${cadence}` : (intervalInfo && intervalInfo.key !== 'OneTime' ? `Applies ${intervalInfo.adverb}` : undefined)}>
               <Select value={draft.interval} onChange={set('interval')}
                 options={[{ value: '', label: 'Not specified' }, ...D.intervals.map(b => ({ value: b.key, label: b.label, icon: b.icon, iconColor: b.color }))]} />
             </FieldShell>

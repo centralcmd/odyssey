@@ -27,9 +27,9 @@ const MODULES = [
         { key: 'transactions', label: 'Transactions', icon: 'receipt_long' },
         { key: 'budgets', label: 'Budgets', icon: 'pie_chart' },
       ] },
-      { label: 'Commitments', items: [
-        { key: 'tax-statements', label: 'Tax Statements', icon: 'request_quote' },
+      { label: 'Commitments', noDivider: true, items: [
         { key: 'contracts', label: 'Contracts', icon: 'handshake' },
+        { key: 'tax-statements', label: 'Tax Statements', icon: 'request_quote' },
       ] },
       { label: 'Documents', items: [
         { key: 'files', label: 'Files', icon: 'folder' },

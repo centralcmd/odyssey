@@ -532,7 +532,7 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
                 </React.Fragment>
               ) : null}
               {curTerms.map((t) => {
-                const info = window.trmKindInfo(t.kind);
+                const info = window.trmKindInfo(t);
                 // The cadence is what separates a 695 USD annual fee from a 695 USD
                 // monthly one, so it rides in the foot beside the date.
                 const period = H.cadenceTextFor(t);
@@ -543,8 +543,8 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
                 return (
                   <InfoTile key={window.trmKey(t)} icon={info.icon} iconColor={info.color} iconSoft={info.soft}
                     label={H.termDisplayName(t, a)}
-                    value={<span style={{ color: H.costColor(t, a) || info.color }}>{H.fmtTermValueFor(t, a)}</span>}
-                    foot={`${labelled ? `${H.termKindLabelFor(t, a)} · ` : ''}since ${H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`} />
+                    value={<span style={{ color: info.color }}>{H.fmtTermValueFor(t, a)}</span>}
+                    foot={`since ${H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`} />
                 );
               })}
             </InfoTileGrid>
@@ -657,9 +657,6 @@ const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJu
 
   // The estimate in force now — the headline value for an asset account.
   const curEstimate = window.estCurrentFromList ? window.estCurrentFromList(estimates) : null;
-  // The interest rate / expected return in force now (never a fee), for the header.
-  const rateTerm = (window.trmCurrentFromList ? window.trmCurrentFromList(terms) : [])
-    .find(t => window.trmKindInfo(t.kind).group === 'rate');
   // Map a NewTransaction DTO from the modal into a row for this account's list.
   const createTxn = (dto) => {
     const row = {
@@ -749,12 +746,6 @@ const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJu
           cust ? <span className="acct-cust-inline"><MIcon name={custMetaHdr.icon || 'groups'} size={14} /><span>{cust.name}</span></span> : null,
           ti.label,
           acct.accountNumber ? <span className="mono"><MIcon name="tag" size={14} /><span>{acct.accountNumber}</span></span> : null,
-          rateTerm ? (
-            <span className="acct-rate mono" title={H.termKindLabelFor(rateTerm, acct)}
-              style={{ color: H.costColor(rateTerm, acct) || window.trmKindInfo(rateTerm.kind).color, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
-              {H.fmtTermValueFor(rateTerm, acct)}
-            </span>
-          ) : null,
         ]}
         counts={[
           { icon: 'receipt_long', value: txns.length, label: 'Transactions' },

@@ -72,7 +72,7 @@ const conTermSeriesList = (terms) => {
   const by = {};
   for (const t of terms) {
     const key = trmKey(t);
-    const s = by[key] || (by[key] = { key, kind: t.kind, labelKey: t.labelKey || CTRM_H.termLabelKey(t.label) || null, latest: t, inForce: null, earliest: t, count: 0 });
+    const s = by[key] || (by[key] = { key, labelKey: t.labelKey || CTRM_H.termLabelKey(t.label) || null, latest: t, inForce: null, earliest: t, count: 0 });
     s.count += 1;
     if (t.effectiveFrom > s.latest.effectiveFrom) s.latest = t;
     if (t.effectiveFrom < s.earliest.effectiveFrom) s.earliest = t;
@@ -113,9 +113,9 @@ const ContractTermChart = ({ terms, owner }) => {
       label: CTRM_H.termDisplayName(t, owner),
       value: CTRM_H.fmtTermValueFor(t, owner),
       tone: dir ? { label: dir.label, color: dir.color } : undefined,
-      color: dir ? dir.color : trmKindInfo(x.kind).color,
+      color: dir ? dir.color : trmKindInfo(t).color,
       group: conCompatKey(t),
-      points: trmSeriesFromList(terms, x.kind, x.labelKey).map(p => ({ id: p.id, date: p.date, value: p.value })),
+      points: trmSeriesFromList(terms, x.key).map(p => ({ id: p.id, date: p.date, value: p.value })),
       format: (v) => (pct ? CTRM_H.pctStr(v) : CTRM_H.money(v, t.currency || CTRM_H.defaultCurrency())),
       axisFormat: conAxisFmt(t),
     };
@@ -167,7 +167,7 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
         {current.length ? (
           <InfoTileGrid>
             {current.map(t => {
-              const info = trmKindInfo(t.kind);
+              const info = trmKindInfo(t);
               // The cadence is what separates a 2,150 USD monthly rent from a
               // 2,150 USD one-off, so it rides in the foot beside the date.
               const period = CTRM_H.cadenceTextFor(t);
@@ -182,7 +182,8 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
                  there for the whole word, so it reads "Incoming", not "in". */
               const value = tagged ? dir.color : info.color;
               return (
-                <InfoTile key={trmKey(t)} icon={info.icon} iconColor={info.color} iconSoft={info.soft}
+                <InfoTile key={trmKey(t)} icon={info.icon} iconColor={value}
+                  iconSoft={tagged ? (dir.soft || `color-mix(in srgb, ${dir.color} 16%, transparent)`) : info.soft}
                   className={tagged ? 'trm-dir-tile' : undefined}
                   label={tagged
                     ? <React.Fragment>
@@ -191,7 +192,7 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
                       </React.Fragment>
                     : CTRM_H.termDisplayName(t, owner)}
                   value={<span style={{ color: value }}>{CTRM_H.fmtTermValueFor(t, owner)}</span>}
-                  foot={`${labelled ? `${CTRM_H.termKindLabelFor(t, owner)} · ` : ''}since ${CTRM_H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`} />
+                  foot={`since ${CTRM_H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`} />
               );
             })}
           </InfoTileGrid>

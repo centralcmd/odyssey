@@ -784,7 +784,6 @@
     'ct-fiber': ['t2'],           // Fiber service — Subscriptions
     'ct-employment': ['t5'],      // ACME Co — Salary
   };
-  D.contractTermKinds = ['InterestRate', 'Fee'];
 
   /* Seed term history, keyed by contractId. EffectiveFrom ascending here for
      readability; the helpers sort as needed. Every row carries an explicit
@@ -795,64 +794,64 @@
     // revised at the same mid-term review, so the terms chart has something
     // real to compare; the arrears rate is the one term measured differently.
     'ct-lease': [
-      { id: 'ctm-lease-1', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 2150.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-09-01', anchorDate: '2025-09-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Due on the 1st.', createdAtUtc: '2025-08-14T10:00:00Z' },
-      { id: 'ctm-lease-2', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 2250.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-03-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Indexed to CPI at the mid-term review.', createdAtUtc: '2026-01-28T09:00:00Z' },
+      { id: 'ctm-lease-1', contractId: 'ct-lease', unit: 'Amount', value: 2150.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-09-01', anchorDate: '2025-09-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Due on the 1st.', createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-2', contractId: 'ct-lease', unit: 'Amount', value: 2250.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-03-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Indexed to CPI at the mid-term review.', createdAtUtc: '2026-01-28T09:00:00Z' },
       // Future effective date → reads "Scheduled", not in force yet.
-      { id: 'ctm-lease-3', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 2350.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-10-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Notified 30 May 2026.', createdAtUtc: '2026-05-30T09:00:00Z' },
-      { id: 'ctm-lease-4', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 85.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-09-01', label: 'Parking space', labelKey: 'parking space', note: null, createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-3', contractId: 'ct-lease', unit: 'Amount', value: 2350.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-10-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Notified 30 May 2026.', createdAtUtc: '2026-05-30T09:00:00Z' },
+      { id: 'ctm-lease-4', contractId: 'ct-lease', unit: 'Amount', value: 85.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-09-01', label: 'Parking space', labelKey: 'parking space', note: null, createdAtUtc: '2025-08-14T10:00:00Z' },
       // Raised at the same mid-term review as the rent. A second CHANGED series
       // is what makes the chart's comparison reachable at all — and at 95 beside
       // a 2,250 rent it is exactly the unlike-magnitude case indexing exists for.
-      { id: 'ctm-lease-4b', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 95.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-03-01', label: 'Parking space', labelKey: 'parking space', note: null, createdAtUtc: '2026-01-28T09:00:00Z' },
-      { id: 'ctm-lease-5', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 50.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, effectiveFrom: '2025-09-01', label: 'Late payment', labelKey: 'late payment', note: 'Charged after five days in arrears.', createdAtUtc: '2025-08-14T10:00:00Z' },
-      { id: 'ctm-lease-6', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 300.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-09-01', label: 'End-of-tenancy cleaning', labelKey: 'end-of-tenancy cleaning', note: null, createdAtUtc: '2025-08-14T10:00:00Z' },
-      { id: 'ctm-lease-6b', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 340.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2026-03-01', label: 'End-of-tenancy cleaning', labelKey: 'end-of-tenancy cleaning', note: 'Contractor rate revised.', createdAtUtc: '2026-01-28T09:00:00Z' },
+      { id: 'ctm-lease-4b', contractId: 'ct-lease', unit: 'Amount', value: 95.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-03-01', label: 'Parking space', labelKey: 'parking space', note: null, createdAtUtc: '2026-01-28T09:00:00Z' },
+      { id: 'ctm-lease-5', contractId: 'ct-lease', unit: 'Amount', value: 50.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, effectiveFrom: '2025-09-01', label: 'Late payment', labelKey: 'late payment', note: 'Charged after five days in arrears.', createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-6', contractId: 'ct-lease', unit: 'Amount', value: 300.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-09-01', label: 'End-of-tenancy cleaning', labelKey: 'end-of-tenancy cleaning', note: null, createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-6b', contractId: 'ct-lease', unit: 'Amount', value: 340.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2026-03-01', label: 'End-of-tenancy cleaning', labelKey: 'end-of-tenancy cleaning', note: 'Contractor rate revised.', createdAtUtc: '2026-01-28T09:00:00Z' },
       // The one term here NOT measured in dollars — arrears interest, as a
       // percentage. A lease carrying both is ordinary, and it is what makes
       // the chart's "measured differently, so it shows on its own" rule
       // something a reader can actually meet.
-      { id: 'ctm-lease-7', contractId: 'ct-lease', kind: 'InterestRate', unit: 'Percentage', value: 0.08, currency: null, interval: null, intervalCount: null, effectiveFrom: '2025-09-01', label: null, labelKey: null, direction: 'Outgoing', note: 'Statutory rate on rent in arrears.', createdAtUtc: '2025-08-14T10:00:00Z' },
-      { id: 'ctm-lease-7b', contractId: 'ct-lease', kind: 'InterestRate', unit: 'Percentage', value: 0.0925, currency: null, interval: null, intervalCount: null, effectiveFrom: '2026-03-01', label: null, labelKey: null, direction: 'Outgoing', note: 'Tracks the statutory rate.', createdAtUtc: '2026-01-28T09:00:00Z' },
+      { id: 'ctm-lease-7', contractId: 'ct-lease', unit: 'Percentage', value: 0.08, currency: null, interval: null, intervalCount: null, effectiveFrom: '2025-09-01', label: 'Arrears interest', labelKey: 'arrears interest', direction: 'Outgoing', note: 'Statutory rate on rent in arrears.', createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-7b', contractId: 'ct-lease', unit: 'Percentage', value: 0.0925, currency: null, interval: null, intervalCount: null, effectiveFrom: '2026-03-01', label: 'Arrears interest', labelKey: 'arrears interest', direction: 'Outgoing', note: 'Tracks the statutory rate.', createdAtUtc: '2026-01-28T09:00:00Z' },
     ],
     // Fiber service — a price rise on the monthly charge, plus two one-offs.
     'ct-fiber': [
-      { id: 'ctm-fiber-1', contractId: 'ct-fiber', kind: 'Fee', unit: 'Amount', value: 79.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-02-01', label: 'Monthly service', labelKey: 'monthly service', note: '1 Gbps symmetric.', createdAtUtc: '2025-01-22T09:00:00Z' },
-      { id: 'ctm-fiber-2', contractId: 'ct-fiber', kind: 'Fee', unit: 'Amount', value: 84.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-02-01', label: 'Monthly service', labelKey: 'monthly service', note: 'Annual CPI + 3.9% uplift.', createdAtUtc: '2026-01-04T09:00:00Z' },
-      { id: 'ctm-fiber-3', contractId: 'ct-fiber', kind: 'Fee', unit: 'Amount', value: 240.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-02-01', label: 'Early termination', labelKey: 'early termination', note: 'Falls away at the end of the 24-month term.', createdAtUtc: '2025-01-22T09:00:00Z' },
-      { id: 'ctm-fiber-4', contractId: 'ct-fiber', kind: 'Fee', unit: 'Amount', value: 99.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-02-01', label: 'Installation', labelKey: 'installation', note: null, createdAtUtc: '2025-01-22T09:00:00Z' },
+      { id: 'ctm-fiber-1', contractId: 'ct-fiber', unit: 'Amount', value: 79.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-02-01', label: 'Monthly service', labelKey: 'monthly service', note: '1 Gbps symmetric.', createdAtUtc: '2025-01-22T09:00:00Z' },
+      { id: 'ctm-fiber-2', contractId: 'ct-fiber', unit: 'Amount', value: 84.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-02-01', label: 'Monthly service', labelKey: 'monthly service', note: 'Annual CPI + 3.9% uplift.', createdAtUtc: '2026-01-04T09:00:00Z' },
+      { id: 'ctm-fiber-3', contractId: 'ct-fiber', unit: 'Amount', value: 240.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-02-01', label: 'Early termination', labelKey: 'early termination', note: 'Falls away at the end of the 24-month term.', createdAtUtc: '2025-01-22T09:00:00Z' },
+      { id: 'ctm-fiber-4', contractId: 'ct-fiber', unit: 'Amount', value: 99.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-02-01', label: 'Installation', labelKey: 'installation', note: null, createdAtUtc: '2025-01-22T09:00:00Z' },
     ],
     // Vendor note on the house purchase — the one seeded InterestRate, which a
     // contract carries unlabelled exactly as an account does.
     'ct-house': [
-      { id: 'ctm-house-1', contractId: 'ct-house', kind: 'InterestRate', unit: 'Percentage', value: 0.0425, currency: null, interval: null, intervalCount: null, effectiveFrom: '2021-04-15', label: null, labelKey: null, direction: 'Outgoing', note: 'Vendor financing on the balance of the purchase price.', createdAtUtc: '2021-04-15T09:00:00Z' },
-      { id: 'ctm-house-2', contractId: 'ct-house', kind: 'InterestRate', unit: 'Percentage', value: 0.0399, currency: null, interval: null, intervalCount: null, effectiveFrom: '2024-05-01', label: null, labelKey: null, direction: 'Outgoing', note: 'Renegotiated at the three-year review.', createdAtUtc: '2024-05-01T09:00:00Z' },
+      { id: 'ctm-house-1', contractId: 'ct-house', unit: 'Percentage', value: 0.0425, currency: null, interval: null, intervalCount: null, effectiveFrom: '2021-04-15', label: 'Interest rate', labelKey: 'interest rate', direction: 'Outgoing', note: 'Vendor financing on the balance of the purchase price.', createdAtUtc: '2021-04-15T09:00:00Z' },
+      { id: 'ctm-house-2', contractId: 'ct-house', unit: 'Percentage', value: 0.0399, currency: null, interval: null, intervalCount: null, effectiveFrom: '2024-05-01', label: 'Interest rate', labelKey: 'interest rate', direction: 'Outgoing', note: 'Renegotiated at the three-year review.', createdAtUtc: '2024-05-01T09:00:00Z' },
     ],
     'ct-parking': [
-      { id: 'ctm-parking-1', contractId: 'ct-parking', kind: 'Fee', unit: 'Amount', value: 165.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-11-01', label: 'Space licence', labelKey: 'space licence', note: 'Due on the 1st.', createdAtUtc: '2025-10-20T09:00:00Z' },
-      { id: 'ctm-parking-2', contractId: 'ct-parking', kind: 'Fee', unit: 'Amount', value: 40.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-11-01', label: 'Access fob', labelKey: 'access fob', note: null, createdAtUtc: '2025-10-20T09:00:00Z' },
+      { id: 'ctm-parking-1', contractId: 'ct-parking', unit: 'Amount', value: 165.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-11-01', label: 'Space licence', labelKey: 'space licence', note: 'Due on the 1st.', createdAtUtc: '2025-10-20T09:00:00Z' },
+      { id: 'ctm-parking-2', contractId: 'ct-parking', unit: 'Amount', value: 40.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-11-01', label: 'Access fob', labelKey: 'access fob', note: null, createdAtUtc: '2025-10-20T09:00:00Z' },
     ],
     'ct-energy': [
-      { id: 'ctm-energy-1', contractId: 'ct-energy', kind: 'Fee', unit: 'Amount', value: 28.50, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-10-15', label: 'Standing charge', labelKey: 'standing charge', note: 'Fixed for the term.', createdAtUtc: '2026-09-02T09:00:00Z' },
+      { id: 'ctm-energy-1', contractId: 'ct-energy', unit: 'Amount', value: 28.50, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-10-15', label: 'Standing charge', labelKey: 'standing charge', note: 'Fixed for the term.', createdAtUtc: '2026-09-02T09:00:00Z' },
     ],
     'ct-storage': [
-      { id: 'ctm-storage-1', contractId: 'ct-storage', kind: 'Fee', unit: 'Amount', value: 95.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2024-01-01', label: 'Unit rent', labelKey: 'unit rent', note: null, createdAtUtc: '2024-01-03T09:00:00Z' },
-      { id: 'ctm-storage-2', contractId: 'ct-storage', kind: 'Fee', unit: 'Amount', value: 105.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-01-01', label: 'Unit rent', labelKey: 'unit rent', note: 'Second-year rate.', createdAtUtc: '2024-12-02T09:00:00Z' },
+      { id: 'ctm-storage-1', contractId: 'ct-storage', unit: 'Amount', value: 95.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2024-01-01', label: 'Unit rent', labelKey: 'unit rent', note: null, createdAtUtc: '2024-01-03T09:00:00Z' },
+      { id: 'ctm-storage-2', contractId: 'ct-storage', unit: 'Amount', value: 105.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-01-01', label: 'Unit rent', labelKey: 'unit rent', note: 'Second-year rate.', createdAtUtc: '2024-12-02T09:00:00Z' },
     ],
     // Archived contract — hidden from the default list, still fully writable.
     'ct-solar': [
-      { id: 'ctm-solar-1', contractId: 'ct-solar', kind: 'Fee', unit: 'Amount', value: 130.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2023-06-01', label: 'Lease payment', labelKey: 'lease payment', note: null, createdAtUtc: '2023-05-28T09:00:00Z' },
-      { id: 'ctm-solar-2', contractId: 'ct-solar', kind: 'Fee', unit: 'Amount', value: 138.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2024-06-01', label: 'Lease payment', labelKey: 'lease payment', note: 'Annual 3% escalator.', createdAtUtc: '2024-06-01T09:00:00Z' },
+      { id: 'ctm-solar-1', contractId: 'ct-solar', unit: 'Amount', value: 130.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2023-06-01', label: 'Lease payment', labelKey: 'lease payment', note: null, createdAtUtc: '2023-05-28T09:00:00Z' },
+      { id: 'ctm-solar-2', contractId: 'ct-solar', unit: 'Amount', value: 138.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2024-06-01', label: 'Lease payment', labelKey: 'lease payment', note: 'Annual 3% escalator.', createdAtUtc: '2024-06-01T09:00:00Z' },
     ],
     'ct-gym': [
-      { id: 'ctm-gym-1', contractId: 'ct-gym', kind: 'Fee', unit: 'Amount', value: 39.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-09-01', label: 'Membership', labelKey: 'membership', note: null, createdAtUtc: '2026-06-10T09:00:00Z' },
-      { id: 'ctm-gym-2', contractId: 'ct-gym', kind: 'Fee', unit: 'Amount', value: 25.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2026-09-01', label: 'Joining fee', labelKey: 'joining fee', note: null, createdAtUtc: '2026-06-10T09:00:00Z' },
+      { id: 'ctm-gym-1', contractId: 'ct-gym', unit: 'Amount', value: 39.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-09-01', label: 'Membership', labelKey: 'membership', note: null, createdAtUtc: '2026-06-10T09:00:00Z' },
+      { id: 'ctm-gym-2', contractId: 'ct-gym', unit: 'Amount', value: 25.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2026-09-01', label: 'Joining fee', labelKey: 'joining fee', note: null, createdAtUtc: '2026-06-10T09:00:00Z' },
     ],
     /* A DRAFT with a fully priced fee — the demonstration that the money
        roll-ups gate on STATUS, not on whether a price exists. This 180/month
        appears in the term history and in nothing else: not the run rate, not
        the by-type cost split, not the upcoming charges. */
     'ct-cleaning': [
-      { id: 'ctm-cleaning-1', contractId: 'ct-cleaning', kind: 'Fee', unit: 'Amount', value: 180.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-11-01', label: 'Cleaning', labelKey: 'cleaning', note: 'Quoted rate — not agreed until the contract is signed.', createdAtUtc: '2026-09-12T11:00:00Z' },
+      { id: 'ctm-cleaning-1', contractId: 'ct-cleaning', unit: 'Amount', value: 180.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-11-01', label: 'Cleaning', labelKey: 'cleaning', note: 'Quoted rate — not agreed until the contract is signed.', createdAtUtc: '2026-09-12T11:00:00Z' },
     ],
     /* The income-bearing contract. An employment agreement is the clearest
        case for direction: the salary is money IN and the deductions taken
@@ -869,11 +868,11 @@
        and keeps it on the record, and is still excluded from the run rate —
        the exclusion is about having no rate to project, not about direction. */
     'ct-employment': [
-      { id: 'ctm-emp-1', contractId: 'ct-employment', kind: 'Fee', unit: 'Amount', value: 6250.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Incoming', anchorDate: '2024-03-25', effectiveFrom: '2024-03-01', label: 'Base salary', labelKey: 'base salary', note: 'Paid on the 25th.', createdAtUtc: '2024-02-24T09:00:00Z' },
-      { id: 'ctm-emp-2', contractId: 'ct-employment', kind: 'Fee', unit: 'Amount', value: 6600.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Incoming', anchorDate: '2024-03-25', effectiveFrom: '2026-04-01', label: 'Base salary', labelKey: 'base salary', note: 'Annual review, effective April.', createdAtUtc: '2026-03-18T09:00:00Z' },
-      { id: 'ctm-emp-3', contractId: 'ct-employment', kind: 'Fee', unit: 'Amount', value: 42.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Outgoing', anchorDate: '2024-03-01', effectiveFrom: '2024-03-01', label: 'Union dues', labelKey: 'union dues', note: 'Deducted at source.', createdAtUtc: '2024-02-24T09:00:00Z' },
-      { id: 'ctm-emp-4', contractId: 'ct-employment', kind: 'Fee', unit: 'Amount', value: 380.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Outgoing', anchorDate: '2025-01-25', effectiveFrom: '2025-01-01', label: 'Pension contribution', labelKey: 'pension contribution', note: 'Employee share, 5% of base.', createdAtUtc: '2024-12-11T09:00:00Z' },
-      { id: 'ctm-emp-5', contractId: 'ct-employment', kind: 'Fee', unit: 'Amount', value: 3000.00, currency: 'USD', interval: 'OneTime', intervalCount: null, direction: 'Incoming', effectiveFrom: '2024-03-01', label: 'Signing bonus', labelKey: 'signing bonus', note: 'Paid with the first salary. One-off — recorded, never projected.', createdAtUtc: '2024-02-24T09:00:00Z' },
+      { id: 'ctm-emp-1', contractId: 'ct-employment', unit: 'Amount', value: 6250.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Incoming', anchorDate: '2024-03-25', effectiveFrom: '2024-03-01', label: 'Base salary', labelKey: 'base salary', note: 'Paid on the 25th.', createdAtUtc: '2024-02-24T09:00:00Z' },
+      { id: 'ctm-emp-2', contractId: 'ct-employment', unit: 'Amount', value: 6600.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Incoming', anchorDate: '2024-03-25', effectiveFrom: '2026-04-01', label: 'Base salary', labelKey: 'base salary', note: 'Annual review, effective April.', createdAtUtc: '2026-03-18T09:00:00Z' },
+      { id: 'ctm-emp-3', contractId: 'ct-employment', unit: 'Amount', value: 42.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Outgoing', anchorDate: '2024-03-01', effectiveFrom: '2024-03-01', label: 'Union dues', labelKey: 'union dues', note: 'Deducted at source.', createdAtUtc: '2024-02-24T09:00:00Z' },
+      { id: 'ctm-emp-4', contractId: 'ct-employment', unit: 'Amount', value: 380.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Outgoing', anchorDate: '2025-01-25', effectiveFrom: '2025-01-01', label: 'Pension contribution', labelKey: 'pension contribution', note: 'Employee share, 5% of base.', createdAtUtc: '2024-12-11T09:00:00Z' },
+      { id: 'ctm-emp-5', contractId: 'ct-employment', unit: 'Amount', value: 3000.00, currency: 'USD', interval: 'OneTime', intervalCount: null, direction: 'Incoming', effectiveFrom: '2024-03-01', label: 'Signing bonus', labelKey: 'signing bonus', note: 'Paid with the first salary. One-off — recorded, never projected.', createdAtUtc: '2024-02-24T09:00:00Z' },
     ],
   };
 
@@ -883,11 +882,6 @@
       return (D.contractTerms[contractId] || [])
         .slice()
         .sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : 0));
-    },
-    // TermKinds a CONTRACT may carry, in registry order. Not a per-type matrix:
-    // the same two kinds on every ContractType.
-    conEligibleTermKinds() {
-      return D.termKinds.filter(k => D.contractTermKinds.includes(k.key)).map(k => k.key);
     },
     // Why a write is refused, or null when it is allowed. One place, so the
     // disabled menu item, the section notice and the dialog all say the same.
@@ -958,7 +952,7 @@
       const start = H.conDateOnly(contract.startDate);
       let best = null;
       for (const term of (inForce || [])) {
-        if (term.kind !== 'Fee' || term.unit !== 'Amount') continue;
+        if (term.unit !== 'Amount') continue;
         if (H.termDirection(term) !== dir) continue;
         const iv = D.intervalByKey[term.interval];
         if (!iv || !iv.periodic) continue;
@@ -1049,7 +1043,7 @@
         if (H.conStatus(c, t) !== 'Active') continue;
         const inForce = window.trmCurrentFromList ? window.trmCurrentFromList(H.conTermsFor(c.id)) : [];
         for (const term of (inForce || [])) {
-          if (term.kind !== 'Fee' || term.unit !== 'Amount') continue;
+          if (term.unit !== 'Amount') continue;
           const iv = D.intervalByKey[term.interval];
           if (!iv || !iv.periodic || !F[iv.key]) continue;
           const every = Math.max(1, term.intervalCount || 1);
