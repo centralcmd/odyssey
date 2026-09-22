@@ -125,6 +125,15 @@ what is charged next.
 
 </td>
 <td width="50%">
+
+![The Contacts page with its overview region open: 24 active and 1 archived contact, split
+4 Person to 20 Organization by type, then a filter bar and the first record cards — Alex
+Rivera, Allstate with its organization number, BlueCross Health, Cash Withdrawal and an
+archived Chris Rivera.](docs/images/contacts.png)
+
+**Contacts** — people and organisations shared across finance and journal, each linkable as a
+counterparty, custodian or contract party.
+
 </td>
 </tr>
 </table>
