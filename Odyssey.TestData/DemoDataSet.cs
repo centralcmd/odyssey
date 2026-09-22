@@ -25,12 +25,6 @@ public sealed class DemoDataSet
     public required IReadOnlyList<Transaction> Transactions { get; init; }
     public required IReadOnlyList<TransactionTagLink> TransactionTagLinks { get; init; }
     public required IReadOnlyList<ExchangeRate> ExchangeRates { get; init; }
-    public required IReadOnlyList<InsurancePolicy> InsurancePolicies { get; init; }
-    public required IReadOnlyList<PolicyRenewal> PolicyRenewals { get; init; }
-    public required IReadOnlyList<InsurancePolicyInsurer> InsurancePolicyInsurers { get; init; }
-    public required IReadOnlyList<InsurancePolicyInsuredAccount> InsurancePolicyInsuredAccounts { get; init; }
-    public required IReadOnlyList<InsurancePolicyInsuredContact> InsurancePolicyInsuredContacts { get; init; }
-    public required IReadOnlyList<InsurancePolicyBeneficiary> InsurancePolicyBeneficiaries { get; init; }
     public required IReadOnlyList<Contract> Contracts { get; init; }
     public required IReadOnlyList<ContractParty> ContractParties { get; init; }
     public required IReadOnlyList<ContractEvent> ContractEvents { get; init; }
@@ -86,7 +80,6 @@ public sealed class DemoDataSet
         var accounts = Catalog.Accounts.Build();
         var (budgets, budgetItems) = BudgetGenerator.Build();
         var (transactions, tagLinks) = TransactionGenerator.Build(accounts, anchor);
-        var insurance = InsurancePolicyGenerator.Build(anchor);
         var (contracts, contractParties, contractTerms, contractEvents) = ContractGenerator.Build(anchor);
         var (taxStatements, taxStatementTags) = TaxStatementGenerator.Build();
         var (fileBlobs, fileMetadata, taxStatementFiles) = TaxStatementFileGenerator.Build();
@@ -126,12 +119,6 @@ public sealed class DemoDataSet
             Transactions = transactions,
             TransactionTagLinks = tagLinks,
             ExchangeRates = ExchangeRateGenerator.Build(anchor),
-            InsurancePolicies = insurance.Policies,
-            PolicyRenewals = insurance.Renewals,
-            InsurancePolicyInsurers = insurance.Insurers,
-            InsurancePolicyInsuredAccounts = insurance.InsuredAccounts,
-            InsurancePolicyInsuredContacts = insurance.InsuredContacts,
-            InsurancePolicyBeneficiaries = insurance.Beneficiaries,
             Contracts = contracts,
             ContractParties = contractParties,
             ContractEvents = contractEvents,

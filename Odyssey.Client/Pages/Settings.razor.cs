@@ -36,7 +36,7 @@ public partial class Settings
     // row also renders Disabled, but that must never null out a field the caller actually holds the
     // claim for. Axis split (issue #343 §10 item 4): Security → system-settings.security.update
     // (the three original Security toggles AND the four size caps); Count → system-settings.update
-    // (the two Insurance counts AND the seven count caps).
+    // (the seven count caps).
     private bool _hasSecurityUpdate;
     private bool _hasCountUpdate;
     private bool CanSave => _hasSecurityUpdate || _hasCountUpdate;
@@ -268,42 +268,6 @@ public partial class Settings
             new("data-export", "download_for_offline", "Export database JSON",
                 "Download finance records as JSON for audit or migration. Excludes uploaded file contents, file analysis, Identity data, and preferences.",
                 SettingClaim.None, SettingControl.Export),
-        ]),
-        new("Insurance", Icons.Material.Filled.HealthAndSafety,
-        [
-            new("insurance-window", "schedule", "\"Expiring soon\" window",
-                "How many days ahead of expiry a policy is flagged as expiring soon.",
-                SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.InsuranceExpiringSoonWindowDaysMin, Max: SystemSettingsBounds.InsuranceExpiringSoonWindowDaysMax,
-                Field: nameof(SystemSettingsUpdate.InsuranceExpiringSoonWindowDays),
-                Load: (p, dto) => p.SetIntLoaded("insurance-window", dto.InsuranceExpiringSoonWindowDays), Write: (p, req) => req.InsuranceExpiringSoonWindowDays = p.IntRequest("insurance-window"),
-                Unit: "days"),
-            new("insuranceMaxRenewalsPerPolicy", "autorenew", "Max renewals per policy",
-                "Upper limit on renewals recorded against one policy. A request over the cap is rejected.",
-                SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.InsuranceMaxRenewalsPerPolicyMin, Max: SystemSettingsBounds.InsuranceMaxRenewalsPerPolicyMax,
-                Field: nameof(SystemSettingsUpdate.InsuranceMaxRenewalsPerPolicy),
-                Load: (p, dto) => p.SetIntLoaded("insuranceMaxRenewalsPerPolicy", dto.InsuranceMaxRenewalsPerPolicy),
-                Write: (p, req) => req.InsuranceMaxRenewalsPerPolicy = p.IntRequest("insuranceMaxRenewalsPerPolicy")),
-            new("insuranceMaxFilesPerParent", "attach_file", "Max files per policy or renewal",
-                "Upper limit on files attached to a single policy or renewal.",
-                SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.InsuranceMaxFilesPerParentMin, Max: SystemSettingsBounds.InsuranceMaxFilesPerParentMax,
-                Field: nameof(SystemSettingsUpdate.InsuranceMaxFilesPerParent),
-                Load: (p, dto) => p.SetIntLoaded("insuranceMaxFilesPerParent", dto.InsuranceMaxFilesPerParent),
-                Write: (p, req) => req.InsuranceMaxFilesPerParent = p.IntRequest("insuranceMaxFilesPerParent")),
-            new("insuranceMaxLinksPerPolicy", "link", "Max links per policy collection",
-                "Upper limit on insurers, insured accounts, insured contacts or beneficiaries on one "
-                + "policy — counted per collection, not across them. The same limit is enforced by request validation.",
-                SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.InsuranceMaxLinksPerPolicyMin, Max: SystemSettingsBounds.InsuranceMaxLinksPerPolicyMax,
-                Field: nameof(SystemSettingsUpdate.InsuranceMaxLinksPerPolicy),
-                Load: (p, dto) => p.SetIntLoaded("insuranceMaxLinksPerPolicy", dto.InsuranceMaxLinksPerPolicy),
-                Write: (p, req) => req.InsuranceMaxLinksPerPolicy = p.IntRequest("insuranceMaxLinksPerPolicy"),
-                // Tighten-only: the compile-time ceiling on the write DTOs pre-empts the setting, so the
-                // field bounds itself rather than offering a value the API would reject.
-                MaxFrom: dto => dto.InsuranceMaxLinksPerPolicyCeiling),
-            new("insurance-max", "format_list_numbered", "Max policies shown in summary",
-                "Upper limit on the policies listed in the summary roll-up.",
-                SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.InsuranceMaxSummaryPoliciesMin, Max: SystemSettingsBounds.InsuranceMaxSummaryPoliciesMax,
-                Field: nameof(SystemSettingsUpdate.InsuranceMaxSummaryPolicies),
-                Load: (p, dto) => p.SetIntLoaded("insurance-max", dto.InsuranceMaxSummaryPolicies), Write: (p, req) => req.InsuranceMaxSummaryPolicies = p.IntRequest("insurance-max")),
         ]),
         new("Contacts import & export", Icons.Material.Filled.Contacts,
         [
@@ -932,8 +896,8 @@ public partial class Settings
     // ── Draft state — a dictionary of setting-key → draft record per control shape, so adding a
     //    setting is a catalog entry (above) plus one ApplyLoaded line, rather than five new
     //    per-key switch arms (issue #343 — five key-switch methods growing to sixteen arms is the
-    //    wrong shape one commit after #399 split the god components). The original Security/
-    //    Insurance settings moved onto the same structure. ─────────────────────────────────────
+    //    wrong shape one commit after #399 split the god components). The original Security
+    //    settings moved onto the same structure. ──────────────────────────────────────────
     private sealed class BoolState
     {
         public bool Draft;
@@ -2542,7 +2506,7 @@ public partial class Settings
 
     /// <summary>
     /// Moves focus to the picked problem's control and flashes it — the same jump-to-record gesture
-    /// the Accounts / Contracts / Insurance lists use, so a sighted keyboard user can see where focus
+    /// the Accounts / Contracts / Tax statements lists use, so a sighted keyboard user can see where focus
     /// landed on a page where the target may be a full screen away from the button they pressed.
     /// </summary>
     private Task JumpToProblem(OdsErrorSummaryProblem problem) =>

@@ -30,7 +30,7 @@ internal static class SystemSettingsRegistry
     public static readonly IReadOnlyList<SystemSettingDescriptor> All =
     [
         // ── The three authentication-perimeter / security toggles (issue #349) ────────────────────
-        // TouchOnPresenceOnly: the five original #349 keys bump UpdatedAt on presence. See the
+        // TouchOnPresenceOnly: the three original #349 perimeter toggles bump UpdatedAt on presence. See the
         // property's remarks — the sixteen newer keys must not, and a test depends on the difference.
         new BoolSetting
         {
@@ -61,34 +61,6 @@ internal static class SystemSettingsRegistry
             TouchOnPresenceOnly = true,
             Read = r => r.EmailRequireConfirmation,
             Write = (dto, v) => dto.EmailRequireConfirmation = v,
-        },
-
-        // ── Insurance policy knobs (issue #349) — 30s-cached, so a change evicts that entry ───────
-        new IntSetting
-        {
-            Key = SystemSettingsKeys.InsuranceExpiringSoonWindowDays,
-            Min = SystemSettingsBounds.InsuranceExpiringSoonWindowDaysMin,
-            Max = SystemSettingsBounds.InsuranceExpiringSoonWindowDaysMax,
-            FieldName = nameof(SystemSettingsUpdate.InsuranceExpiringSoonWindowDays),
-            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
-            DefaultValue = Int(SystemSettingsDefaults.InsuranceExpiringSoonWindowDays),
-            TouchOnPresenceOnly = true,
-            CacheKeyToEvict = SystemSettingsService.InsuranceCacheKey,
-            Read = r => r.InsuranceExpiringSoonWindowDays,
-            Write = (dto, v) => dto.InsuranceExpiringSoonWindowDays = v,
-        },
-        new IntSetting
-        {
-            Key = SystemSettingsKeys.InsuranceMaxSummaryPolicies,
-            Min = SystemSettingsBounds.InsuranceMaxSummaryPoliciesMin,
-            Max = SystemSettingsBounds.InsuranceMaxSummaryPoliciesMax,
-            FieldName = nameof(SystemSettingsUpdate.InsuranceMaxSummaryPolicies),
-            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
-            DefaultValue = Int(SystemSettingsDefaults.InsuranceMaxSummaryPolicies),
-            TouchOnPresenceOnly = true,
-            CacheKeyToEvict = SystemSettingsService.InsuranceCacheKey,
-            Read = r => r.InsuranceMaxSummaryPolicies,
-            Write = (dto, v) => dto.InsuranceMaxSummaryPolicies = v,
         },
 
         // ── The sixteen import/export volume caps (issue #343 + follow-ups) ──────────────────────
@@ -352,14 +324,13 @@ internal static class SystemSettingsRegistry
         // defence-in-depth against a future role rather than a live boundary.
         //
         // Three cache keys, not one: the caps span two domain projects, and a lookup interface lives
-        // in the project that consumes it so that project's tests can fake it. Contracts and Insurance
-        // are Odyssey.Core.Finance; photos and journal are Odyssey.Core.Journal.
+        // in the project that consumes it so that project's tests can fake it. Contracts are
+        // Odyssey.Core.Finance; photos and journal are Odyssey.Core.Journal.
         //
-        // Every cap below evicts FinanceCapsCacheKey, the insurance ones included, because all of them
-        // are served off FinanceRequestCaps. InsuranceCacheKey holds a DIFFERENT pair — the
-        // expiring-soon window and the summary cap — so evicting it here would leave the changed cap
-        // stale for the cache TTL while needlessly dropping two rows the change never touched
-        // (issue #28).
+        // Every cap below evicts FinanceCapsCacheKey, because all of them are served off
+        // FinanceRequestCaps. ContractSummaryCacheKey holds a DIFFERENT set — the two windows and the
+        // charge-row cap — so evicting it here would leave the changed cap stale for the cache TTL
+        // while needlessly dropping rows the change never touched (issue #28).
         new IntSetting
         {
             Key = SystemSettingsKeys.ContractMaxPartiesPerContract,
@@ -411,8 +382,8 @@ internal static class SystemSettingsRegistry
 
         // ── The Contracts summary windows ────────────────────────────────────────────────────────
         //
-        // All three take the ORDINARY write claim, matching the analogous display bounds above
-        // (InsuranceExpiringSoonWindowDays, InsuranceMaxSummaryPolicies, ContractMaxSummaryContracts):
+        // All three take the ORDINARY write claim, matching the analogous display bound above
+        // (ContractMaxSummaryContracts):
         // the established split puts the authentication perimeter and the import/export SIZE caps
         // behind the stricter claim, and these are display bounds. The honest limit is that both
         // system-settings claims are Admin-only today, so the choice's only operational effect is the
@@ -464,46 +435,6 @@ internal static class SystemSettingsRegistry
             Advise = SettingAdvisories.AboveDefault(
                 dto => dto.ContractMaxSummaryCharges, SystemSettingsDefaults.ContractMaxSummaryCharges,
                 "Each charge is rendered as its own row in the page-header panel."),
-        },
-        new IntSetting
-        {
-            Key = SystemSettingsKeys.InsuranceMaxRenewalsPerPolicy,
-            Min = SystemSettingsBounds.InsuranceMaxRenewalsPerPolicyMin,
-            Max = SystemSettingsBounds.InsuranceMaxRenewalsPerPolicyMax,
-            FieldName = nameof(SystemSettingsUpdate.InsuranceMaxRenewalsPerPolicy),
-            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
-            DefaultValue = Int(SystemSettingsDefaults.InsuranceMaxRenewalsPerPolicy),
-            CacheKeyToEvict = SystemSettingsService.FinanceCapsCacheKey,
-            Read = r => r.InsuranceMaxRenewalsPerPolicy,
-            Write = (dto, v) => dto.InsuranceMaxRenewalsPerPolicy = v,
-        },
-        new IntSetting
-        {
-            Key = SystemSettingsKeys.InsuranceMaxFilesPerParent,
-            Min = SystemSettingsBounds.InsuranceMaxFilesPerParentMin,
-            Max = SystemSettingsBounds.InsuranceMaxFilesPerParentMax,
-            FieldName = nameof(SystemSettingsUpdate.InsuranceMaxFilesPerParent),
-            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
-            DefaultValue = Int(SystemSettingsDefaults.InsuranceMaxFilesPerParent),
-            CacheKeyToEvict = SystemSettingsService.FinanceCapsCacheKey,
-            Read = r => r.InsuranceMaxFilesPerParent,
-            Write = (dto, v) => dto.InsuranceMaxFilesPerParent = v,
-        },
-        new IntSetting
-        {
-            Key = SystemSettingsKeys.InsuranceMaxLinksPerPolicy,
-            Min = SystemSettingsBounds.InsuranceMaxLinksPerPolicyMin,
-            Max = SystemSettingsBounds.InsuranceMaxLinksPerPolicyMax,
-            FieldName = nameof(SystemSettingsUpdate.InsuranceMaxLinksPerPolicy),
-            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
-            DefaultValue = Int(SystemSettingsDefaults.InsuranceMaxLinksPerPolicy),
-            // FinanceCapsCacheKey, NOT InsuranceCacheKey: MaxLinksPerPolicy is served off
-            // FinanceRequestCaps, which SystemSettingsLookup caches under that key. Evicting the other
-            // entry would leave a settings change invisible for up to the cache TTL.
-            CacheKeyToEvict = SystemSettingsService.FinanceCapsCacheKey,
-            Validator = (value, _) => RequestCapCeilings.ValidateInsuranceLinksPerPolicy(value),
-            Read = r => r.InsuranceMaxLinksPerPolicy,
-            Write = (dto, v) => dto.InsuranceMaxLinksPerPolicy = v,
         },
         new IntSetting
         {

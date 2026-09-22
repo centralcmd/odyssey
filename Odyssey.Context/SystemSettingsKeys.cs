@@ -22,12 +22,6 @@ public static class SystemSettingsKeys
     /// <summary>Perimeter field — always read live, never cached. See the <c>IUserConfirmation</c> seam.</summary>
     public const string EmailRequireConfirmation = "EmailRequireConfirmation";
 
-    /// <summary>Cosmetic/policy field — cached with a 30s TTL by <c>ISystemSettingsLookup</c>.</summary>
-    public const string InsuranceExpiringSoonWindowDays = "InsuranceExpiringSoonWindowDays";
-
-    /// <summary>Cosmetic/policy field — cached with a 30s TTL by <c>ISystemSettingsLookup</c>.</summary>
-    public const string InsuranceMaxSummaryPolicies = "InsuranceMaxSummaryPolicies";
-
     // ---------------------------------------------------------------------------------------------
     // Import/export volume caps (issue #343). Count fields serialize as either an invariant-culture
     // decimal integer or the literal "unlimited" sentinel (ParseCount/FormatCount below); size fields
@@ -106,8 +100,8 @@ public static class SystemSettingsKeys
     public const string EmailPerRecipientWindowMinutes = "EmailPerRecipientWindowMinutes";
 
     // ---------------------------------------------------------------------------------------------
-    // Per-request defensive caps (issue #421 Wave 3). Before this they were invisible: the Contracts,
-    // Insurance and PhotoLibrary configuration sections have no appsettings.json entry and no
+    // Per-request defensive caps (issue #421 Wave 3). Before this they were invisible: the Contracts
+    // and PhotoLibrary configuration sections have no appsettings.json entry and no
     // environment plumbing at all, so these were POCO defaults nobody could change without a code
     // edit. Two of the journal caps were not even that — they were `private const` in their services.
     //
@@ -127,15 +121,6 @@ public static class SystemSettingsKeys
     public const string ContractEndingWindowDays = "ContractEndingWindowDays";
     public const string ContractChargeWindowDays = "ContractChargeWindowDays";
     public const string ContractMaxSummaryCharges = "ContractMaxSummaryCharges";
-    public const string InsuranceMaxRenewalsPerPolicy = "InsuranceMaxRenewalsPerPolicy";
-    public const string InsuranceMaxFilesPerParent = "InsuranceMaxFilesPerParent";
-
-    /// <summary>
-    /// Members allowed in each of an insurance policy's four link collections (issue #27). One cap
-    /// applied per collection, not four settings — "at most 50 insurers" and "at most 50 beneficiaries"
-    /// are the same kind of limit.
-    /// </summary>
-    public const string InsuranceMaxLinksPerPolicy = "InsuranceMaxLinksPerPolicy";
     public const string PhotoMaxLinksPerKind = "PhotoMaxLinksPerKind";
     public const string PhotoMaxAlbumMembers = "PhotoMaxAlbumMembers";
     public const string JournalEntryMaxLinksPerKind = "JournalEntryMaxLinksPerKind";
@@ -210,8 +195,6 @@ public static class SystemSettingsKeys
         RequireTwoFactor,
         RegistrationRequireAdminApproval,
         EmailRequireConfirmation,
-        InsuranceExpiringSoonWindowDays,
-        InsuranceMaxSummaryPolicies,
         ContactVCardMaxExportRows,
         ContactVCardMaxImportEntries,
         ContactVCardMaxImportMegabytes,
@@ -249,9 +232,6 @@ public static class SystemSettingsKeys
         ContractEndingWindowDays,
         ContractChargeWindowDays,
         ContractMaxSummaryCharges,
-        InsuranceMaxRenewalsPerPolicy,
-        InsuranceMaxFilesPerParent,
-        InsuranceMaxLinksPerPolicy,
         PhotoMaxLinksPerKind,
         PhotoMaxAlbumMembers,
         JournalEntryMaxLinksPerKind,

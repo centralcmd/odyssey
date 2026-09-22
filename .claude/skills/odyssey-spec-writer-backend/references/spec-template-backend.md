@@ -75,7 +75,7 @@ frontend implementer too.
 
 Numbered list. Each entry:
 
-- HTTP method + path — **plural resource nouns** (`/api/insurance-policies`, not `/api/insurance-policy`)
+- HTTP method + path — **plural resource nouns** (`/api/tax-statements`, not `/api/tax-statement`)
 - One-line description
 - Request body shape (code block) where there is one
 - Success status code and response shape

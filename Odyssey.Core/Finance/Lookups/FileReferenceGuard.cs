@@ -37,11 +37,6 @@ public sealed class FileReferenceGuard(OdysseyContext context) : IFileReferenceG
             references.Add("a contract document");
         }
 
-        if (await context.PolicyRenewalFiles.AnyAsync(f => f.FileMetadataId == fileId, cancellationToken))
-        {
-            references.Add("a policy-renewal document");
-        }
-
         if (await context.JournalEntryAttachments.AnyAsync(a => a.FileId == fileId, cancellationToken))
         {
             references.Add("a journal-entry attachment");

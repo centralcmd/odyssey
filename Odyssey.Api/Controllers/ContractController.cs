@@ -195,7 +195,7 @@ written — re-role those parties or detach them first.")]
         var created = await service.AddParty(id, request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
         // A party has no standalone GET (it is only ever read through its contract), so the 201
         // Location points at the contract — the addressable resource that now contains the new
-        // party — while the body is the created party. Mirrors the insurance renewal/file endpoints.
+        // party — while the body is the created party. Mirrors the contract file endpoints.
         return created is null
             ? this.NotFoundProblem($"Contract ID {id} not found.")
             : CreatedAtRoute("GetContract", new { id }, created);

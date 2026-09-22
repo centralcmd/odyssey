@@ -799,7 +799,7 @@ public class ContractPartyRoleMatrixApiTests
         await using var deleterFactory = new ApiFactory([PermissionClaims.ContactsDelete], factory);
         using var deleter = deleterFactory.CreateClient();
 
-        var delete = await deleter.DeleteAsync($"/api/contacts/{contactId}?detachInsuranceLinks=true");
+        var delete = await deleter.DeleteAsync($"/api/contacts/{contactId}?detachBlockingLinks=true");
 
         Assert.Equal(HttpStatusCode.Forbidden, delete.StatusCode);
         Assert.Contains("update contracts", await delete.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
@@ -821,7 +821,7 @@ public class ContractPartyRoleMatrixApiTests
         var (contactId, _) = await SeedBeneficiaryAsync(factory);
         using var client = factory.CreateClient();
 
-        var delete = await client.DeleteAsync($"/api/contacts/{contactId}?detachInsuranceLinks=true");
+        var delete = await client.DeleteAsync($"/api/contacts/{contactId}?detachBlockingLinks=true");
 
         // NOT asserting success: the delete itself runs ContactReferenceGuard's relational-only
         // cleanup, which throws on the InMemory provider — that half is covered against real MariaDB

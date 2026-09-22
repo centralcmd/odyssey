@@ -62,12 +62,9 @@ public sealed class NoopContactReferenceGuard : IContactReferenceGuard
         Task.CompletedTask;
 
     public Task<ContactLinkDetachPlan> ReadLinkDetachPlanAsync(Guid contactId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new ContactLinkDetachPlan
-        {
-            Insurers = [], InsuredContacts = [], Beneficiaries = [], ContractBeneficiaries = [],
-        });
+        Task.FromResult(new ContactLinkDetachPlan { ContractBeneficiaries = [] });
 
-    public DetachedInsuranceLinks StageLinkDetach(ContactLinkDetachPlan plan) => new();
+    public DetachedContactLinks StageLinkDetach(ContactLinkDetachPlan plan) => new();
 }
 
 public static class TestContextFactory

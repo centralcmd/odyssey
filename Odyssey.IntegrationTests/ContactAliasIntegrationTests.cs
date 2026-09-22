@@ -313,7 +313,7 @@ public class ContactAliasIntegrationTests(MariaDbFixture fixture)
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// The insurance guard is irrelevant to every case here — no seeded contact is named on a policy
+    /// The reference guard is irrelevant to every case here — no seeded contact is named on a contract
     /// — and the real one would only add queries. It is NOT stubbed to bypass a check under test: the
     /// contact delete exercised above goes through raw SQL precisely so the DATABASE's cascade is what
     /// is being observed.
@@ -330,12 +330,9 @@ public class ContactAliasIntegrationTests(MariaDbFixture fixture)
             Task.CompletedTask;
 
         public Task<Core.Finance.ContactLinkDetachPlan> ReadLinkDetachPlanAsync(Guid contactId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new Core.Finance.ContactLinkDetachPlan
-            {
-                Insurers = [], InsuredContacts = [], Beneficiaries = [], ContractBeneficiaries = [],
-            });
+            Task.FromResult(new Core.Finance.ContactLinkDetachPlan { ContractBeneficiaries = [] });
 
-        public Dtos.Finance.DetachedInsuranceLinks StageLinkDetach(Core.Finance.ContactLinkDetachPlan plan) => new();
+        public Dtos.Finance.DetachedContactLinks StageLinkDetach(Core.Finance.ContactLinkDetachPlan plan) => new();
     }
 
     private static async Task<Guid> SeedContactAsync(

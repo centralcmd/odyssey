@@ -12,9 +12,9 @@ namespace Odyssey.IntegrationTests;
 
 /// <summary>
 /// Issue #157's contact-delete half against the real engine (AC 11–14, 21–22): a contact named as a
-/// <c>Beneficiary</c> on a CONTRACT blocks its deletion exactly as a policy beneficiary does, the
-/// detach valve clears both classes in one transaction, and the per-class claim check refuses a
-/// caller that has not proved it may destroy a class actually present.
+/// <c>Beneficiary</c> on a CONTRACT blocks its deletion, the detach valve clears those rows and the
+/// contact in one transaction, and the per-class claim check refuses a caller that has not proved it
+/// may destroy a class actually present.
 /// </summary>
 /// <remarks>
 /// None of this is observable on the fast tiers. <c>ContactReferenceGuard</c>'s cleanup is written in
@@ -33,9 +33,9 @@ namespace Odyssey.IntegrationTests;
 ///
 /// <para>
 /// <b>There is no FK backstop for the contract half.</b> The <c>ContractParty → Contact</c> key stays
-/// <c>CASCADE</c> for every role, because the fourteen other roles should keep cascading — so unlike
-/// the three insurance <c>RESTRICT</c> keys, the guard here is the ONLY enforcement rather than a
-/// friendlier face on a constraint. That is what makes the direct-service test (AC 21) load-bearing.
+/// <c>CASCADE</c> for every role, because the seventeen other roles should keep cascading — so the
+/// guard here is the ONLY enforcement rather than a friendlier face on a constraint. That is what
+/// makes the direct-service test (AC 21) load-bearing.
 /// </para>
 /// </remarks>
 [Collection(MariaDbCollection.Name)]
@@ -45,7 +45,7 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
 
     /// <summary>Every claim the detach valve can demand — the ordinary Owner/Admin caller.</summary>
     private static readonly HashSet<ContactDeleteBlockerClass> AllClasses =
-        [ContactDeleteBlockerClass.InsuranceLink, ContactDeleteBlockerClass.ContractBeneficiary];
+        [ContactDeleteBlockerClass.ContractBeneficiary];
 
     // ── The blocker (AC 11, 14, 21) ──────────────────────────────────────────
 
@@ -190,7 +190,6 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
 
                 Assert.True(blockers.Any);
                 Assert.True(blockers.AnyContractBeneficiary);
-                Assert.False(blockers.AnyInsurance);
                 Assert.Equal(1, blockers.ContractBeneficiaryLinks);
 
                 var named = Assert.Single(blockers.Contracts);
@@ -245,14 +244,11 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
             await using (var context = New(connectionString))
             {
                 var service = new ContactService(context, new ContactReferenceGuard(context));
-                var detached = await service.Delete(contactId, detachInsuranceLinks: true, AllClasses);
+                var detached = await service.Delete(contactId, detachBlockingLinks: true, AllClasses);
 
                 Assert.NotNull(detached);
                 Assert.Equal(1, detached!.ContractBeneficiaryLinks);
                 Assert.Equal([contractId], detached.AffectedContractIds);
-                // No insurance links were involved, and the response says so rather than implying it.
-                Assert.Equal(0, detached.TotalLinks);
-                Assert.Empty(detached.AffectedPolicyIds);
             }
 
             await using (var context = New(connectionString))
@@ -260,70 +256,6 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
                 Assert.False(await context.Contacts.AnyAsync(c => c.ContactId == contactId));
                 Assert.Empty(await context.ContractParties.Where(p => p.ContactId == contactId).ToListAsync());
                 Assert.True(await context.Contracts.AnyAsync(c => c.ContractId == contractId));
-            }
-        }
-        finally
-        {
-            await DropAsync();
-        }
-    }
-
-    /// <summary>
-    /// Both blocker classes at once: the valve clears the insurance links AND the contract
-    /// beneficiary in the same transaction, and reports each separately.
-    /// </summary>
-    [SkippableFact]
-    public async Task The_detach_valve_clears_both_classes_together()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-
-        var connectionString = await MigratedSchemaAsync();
-        try
-        {
-            var contactId = Guid.NewGuid();
-            var contractId = Guid.NewGuid();
-            var policyId = Guid.NewGuid();
-
-            await using (var context = New(connectionString))
-            {
-                context.Contacts.Add(Organization(contactId, "Named Everywhere"));
-                context.Contracts.Add(Contract(contractId, "Whole-of-life cover"));
-                context.InsurancePolicies.Add(new InsurancePolicy
-                {
-                    InsurancePolicyId = policyId,
-                    Name = "Term life",
-                    Type = Odyssey.Context.InsurancePolicyType.Life,
-                    CreatedAtUtc = DateTime.UtcNow,
-                });
-                await context.SaveChangesAsync();
-
-                AddParty(context, contractId, contactId, ContextContractPartyRole.Beneficiary);
-                context.InsurancePolicyBeneficiaries.Add(new InsurancePolicyBeneficiary
-                {
-                    InsurancePolicyId = policyId,
-                    ContactId = contactId,
-                    CreatedAtUtc = DateTime.UtcNow,
-                });
-                await context.SaveChangesAsync();
-            }
-
-            await using (var context = New(connectionString))
-            {
-                var service = new ContactService(context, new ContactReferenceGuard(context));
-                var detached = await service.Delete(contactId, detachInsuranceLinks: true, AllClasses);
-
-                Assert.NotNull(detached);
-                Assert.Equal(1, detached!.TotalLinks);
-                Assert.Equal([policyId], detached.AffectedPolicyIds);
-                Assert.Equal(1, detached.ContractBeneficiaryLinks);
-                Assert.Equal([contractId], detached.AffectedContractIds);
-            }
-
-            await using (var context = New(connectionString))
-            {
-                Assert.False(await context.Contacts.AnyAsync(c => c.ContactId == contactId));
-                Assert.Empty(await context.InsurancePolicyBeneficiaries.Where(l => l.ContactId == contactId).ToListAsync());
-                Assert.Empty(await context.ContractParties.Where(p => p.ContactId == contactId).ToListAsync());
             }
         }
         finally
@@ -370,10 +302,10 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
             {
                 var service = new ContactService(context, new ContactReferenceGuard(context));
 
-                // Insurance only — the class this contact does NOT have.
+                // No permitted class at all — the caller has proved nothing for the class present.
                 var refusal = await Assert.ThrowsAsync<DomainForbiddenException>(() =>
-                    service.Delete(contactId, detachInsuranceLinks: true,
-                        new HashSet<ContactDeleteBlockerClass> { ContactDeleteBlockerClass.InsuranceLink }));
+                    service.Delete(contactId, detachBlockingLinks: true,
+                        new HashSet<ContactDeleteBlockerClass>()));
 
                 Assert.Equal(403, refusal.StatusCode);
                 // Names the capability, not the rows.
@@ -384,66 +316,6 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
             {
                 Assert.True(await context.Contacts.AnyAsync(c => c.ContactId == contactId));
                 Assert.Equal(1, await context.ContractParties.CountAsync(p => p.ContactId == contactId));
-            }
-        }
-        finally
-        {
-            await DropAsync();
-        }
-    }
-
-    /// <summary>
-    /// The other direction of the same rule, and the reason it is per-class rather than
-    /// unconditional: a contact with no contract links is <b>not</b> de-authorized by a rule about
-    /// contracts. Demanding <c>contracts.update</c> from that caller would break a request that is
-    /// legitimate today.
-    /// </summary>
-    [SkippableFact]
-    public async Task A_caller_without_contracts_update_still_detaches_insurance_only_links()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-
-        var connectionString = await MigratedSchemaAsync();
-        try
-        {
-            var contactId = Guid.NewGuid();
-            var policyId = Guid.NewGuid();
-
-            await using (var context = New(connectionString))
-            {
-                context.Contacts.Add(Organization(contactId, "Policy Beneficiary Only"));
-                context.InsurancePolicies.Add(new InsurancePolicy
-                {
-                    InsurancePolicyId = policyId,
-                    Name = "Term life",
-                    Type = Odyssey.Context.InsurancePolicyType.Life,
-                    CreatedAtUtc = DateTime.UtcNow,
-                });
-                await context.SaveChangesAsync();
-
-                context.InsurancePolicyBeneficiaries.Add(new InsurancePolicyBeneficiary
-                {
-                    InsurancePolicyId = policyId,
-                    ContactId = contactId,
-                    CreatedAtUtc = DateTime.UtcNow,
-                });
-                await context.SaveChangesAsync();
-            }
-
-            await using (var context = New(connectionString))
-            {
-                var service = new ContactService(context, new ContactReferenceGuard(context));
-                var detached = await service.Delete(contactId, detachInsuranceLinks: true,
-                    new HashSet<ContactDeleteBlockerClass> { ContactDeleteBlockerClass.InsuranceLink });
-
-                Assert.NotNull(detached);
-                Assert.Equal(1, detached!.TotalLinks);
-                Assert.Equal(0, detached.ContractBeneficiaryLinks);
-            }
-
-            await using (var context = New(connectionString))
-            {
-                Assert.False(await context.Contacts.AnyAsync(c => c.ContactId == contactId));
             }
         }
         finally

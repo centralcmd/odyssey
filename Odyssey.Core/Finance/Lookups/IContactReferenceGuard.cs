@@ -9,10 +9,10 @@ namespace Odyssey.Core.Finance;
 /// and called by <c>ContactService.Delete</c> (in Odyssey.Core.Journal) before the contact row is removed.
 /// </summary>
 /// <remarks>
-/// Not redundant with those FKs. It is what turns the insurance <c>RESTRICT</c> into a 409 that explains
-/// itself rather than a raw FK violation surfacing as a 500, and the EF InMemory provider enforces no
-/// foreign keys at all — so this is the only implementation the fast test tiers ever exercise. The
-/// database is the backstop for any write path that forgets to call it.
+/// Not redundant with those FKs. It turns a constraint violation into a 409 that explains itself
+/// rather than a raw FK error surfacing as a 500, and the EF InMemory provider enforces no foreign
+/// keys at all — so this is the only implementation the fast test tiers ever exercise. The database is
+/// the backstop for any write path that forgets to call it.
 ///
 /// <para>
 /// <b>The contract-<c>Beneficiary</c> rule has no FK backstop at all</b> (issue #157 §4.8, §5.5). The
@@ -25,17 +25,16 @@ namespace Odyssey.Core.Finance;
 public interface IContactReferenceGuard
 {
     /// <summary>
-    /// What still names <paramref name="contactId"/> and therefore blocks its deletion: the insurance
-    /// link kinds with per-kind row counts and the policies involved (issue #27 §7 #5), plus the
-    /// contracts naming it as a <c>Beneficiary</c> (issue #157 §5.4). Returns an empty result when
-    /// nothing blocks.
+    /// What still names <paramref name="contactId"/> and therefore blocks its deletion: the contracts
+    /// naming it as a <c>Beneficiary</c>, with the row count (issue #157 §5.4). Returns an empty result
+    /// when nothing blocks.
     /// </summary>
     /// <remarks>
     /// Returns <b>structured</b> data rather than a message because the 409 payload is
     /// <b>claim-conditional</b> and only the controller can evaluate that: <c>DomainConflictException</c>
     /// carries a message and nothing else, and the domain service has no <c>ClaimsPrincipal</c>. So the
-    /// controller calls this, decides from <c>User</c> whether to include the policy and contract
-    /// identifiers, and the service keeps its own unconditional check as defence-in-depth for non-HTTP
+    /// controller calls this, decides from <c>User</c> whether to include the contract identifiers,
+    /// and the service keeps its own unconditional check as defence-in-depth for non-HTTP
     /// callers. Same split the file-attach endpoints already use: the controller owns authorization,
     /// the service owns the invariant.
     /// </remarks>
@@ -43,14 +42,11 @@ public interface IContactReferenceGuard
 
     /// <summary>
     /// True if anything still names <paramref name="contactId"/> in a way that must block its deletion:
-    /// an insurance policy naming it as insurer, insured contact or beneficiary, or a contract naming
-    /// it as a <c>Beneficiary</c> party.
+    /// a contract naming it as a <c>Beneficiary</c> party.
     /// </summary>
     /// <remarks>
-    /// The insurance half runs in front of three <c>ON DELETE RESTRICT</c> FKs, so the constraints never
-    /// have to fire. <b>The contract half has no constraint behind it</b>, so this is the whole rule:
-    /// a direct, non-HTTP caller that skipped the controller's pre-check is refused here or not at all
-    /// (issue #157 §5.5).
+    /// <b>This rule has no constraint behind it</b>, so this is the whole of it: a direct, non-HTTP
+    /// caller that skipped the controller's pre-check is refused here or not at all (issue #157 §5.5).
     /// </remarks>
     Task<bool> IsReferencedByRestrictedLinkAsync(Guid contactId, CancellationToken cancellationToken = default);
 
@@ -95,30 +91,23 @@ public interface IContactReferenceGuard
     /// <c>EntityFrameworkCore.Relational</c> and throws on the InMemory provider, which is precisely the
     /// tier the application-code cascade exists to serve.
     /// </remarks>
-    DetachedInsuranceLinks StageLinkDetach(ContactLinkDetachPlan plan);
+    DetachedContactLinks StageLinkDetach(ContactLinkDetachPlan plan);
 }
 
 /// <summary>
 /// What names a contact, and where — the domain-side shape behind the claim-conditional 409 payload.
-/// The controller narrows it to <see cref="ContactInsuranceLinkBlockers"/> and
-/// <see cref="ContactContractBeneficiaryBlockers"/> according to the caller's claims.
+/// The controller narrows it to <see cref="ContactContractBeneficiaryBlockers"/> according to the
+/// caller's claims.
 /// </summary>
 public sealed record ContactDeleteBlockers(
-    IReadOnlyList<InsuranceLinkKindCount> InsuranceKinds,
-    IReadOnlyList<BlockingInsurancePolicy> Policies,
     IReadOnlyList<BlockingContractBeneficiary> Contracts,
     int ContractBeneficiaryLinks)
 {
-    public static readonly ContactDeleteBlockers None = new([], [], [], 0);
-
-    /// <summary>Total insurance link ROWS across all three kinds — never a count of resolved names.</summary>
-    public int TotalInsuranceLinks => InsuranceKinds.Sum(k => k.Count);
-
-    public bool AnyInsurance => InsuranceKinds.Count > 0;
+    public static readonly ContactDeleteBlockers None = new([], 0);
 
     public bool AnyContractBeneficiary => ContractBeneficiaryLinks > 0;
 
-    public bool Any => AnyInsurance || AnyContractBeneficiary;
+    public bool Any => AnyContractBeneficiary;
 
     /// <summary>
     /// The blocker classes actually present — what the detach valve derives its required claims from
@@ -129,7 +118,6 @@ public sealed record ContactDeleteBlockers(
         get
         {
             var classes = new HashSet<ContactDeleteBlockerClass>();
-            if (AnyInsurance) classes.Add(ContactDeleteBlockerClass.InsuranceLink);
             if (AnyContractBeneficiary) classes.Add(ContactDeleteBlockerClass.ContractBeneficiary);
             return classes;
         }
@@ -146,18 +134,8 @@ public sealed record ContactDeleteBlockers(
 /// </remarks>
 public sealed record ContactLinkDetachPlan
 {
-    public required IReadOnlyList<InsurancePolicyInsurer> Insurers { get; init; }
-
-    public required IReadOnlyList<InsurancePolicyInsuredContact> InsuredContacts { get; init; }
-
-    public required IReadOnlyList<InsurancePolicyBeneficiary> Beneficiaries { get; init; }
-
     /// <summary>Contract parties in the <c>Beneficiary</c> role, the one contract role that blocks a delete.</summary>
     public required IReadOnlyList<ContractParty> ContractBeneficiaries { get; init; }
-
-    public int TotalInsuranceLinks => Insurers.Count + InsuredContacts.Count + Beneficiaries.Count;
-
-    public bool AnyInsurance => TotalInsuranceLinks > 0;
 
     public bool AnyContractBeneficiary => ContractBeneficiaries.Count > 0;
 
@@ -167,7 +145,6 @@ public sealed record ContactLinkDetachPlan
         get
         {
             var classes = new HashSet<ContactDeleteBlockerClass>();
-            if (AnyInsurance) classes.Add(ContactDeleteBlockerClass.InsuranceLink);
             if (AnyContractBeneficiary) classes.Add(ContactDeleteBlockerClass.ContractBeneficiary);
             return classes;
         }

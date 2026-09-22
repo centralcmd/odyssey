@@ -64,7 +64,6 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
     private static readonly (string Endpoint, string RequiredClaim)[] WriteGatedEndpoints =
     [
         ($"/api/accounts/{Guid.NewGuid()}", PermissionClaims.AccountsDelete),
-        ($"/api/insurance-policies/{Guid.NewGuid()}", PermissionClaims.InsuranceDelete),
         ($"/api/contracts/{Guid.NewGuid()}", PermissionClaims.ContractsDelete),
         ($"/api/transactions/{Guid.NewGuid()}", PermissionClaims.TransactionsDelete),
         ($"/api/transaction-tags/{Guid.NewGuid()}", PermissionClaims.TransactionTagsDelete),

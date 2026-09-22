@@ -66,10 +66,8 @@ public class ContractServiceTests
     /// <summary>Shipped cap values; literals because this project cannot reference the key catalogue.</summary>
     private sealed class StubFinanceCaps : ISystemSettingsLookup
     {
-        public FinanceRequestCaps Caps { get; set; } = new(25, 50, 500, 1000, 100, 50, 50);
+        public FinanceRequestCaps Caps { get; set; } = new(25, 50, 500, 1000);
 
-        public Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new InsurancePolicySettings(30, 1000));
 
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(Caps);
@@ -478,7 +476,7 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var (accountId, contactId, _) = await SeedTargets(context);
+        var (accountId, contactId) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
@@ -491,7 +489,7 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var (accountId, _, _) = await SeedTargets(context);
+        var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         var party = await service.AddParty(contract.ContractId,
@@ -531,7 +529,7 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var (accountId, _, _) = await SeedTargets(context);
+        var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
@@ -550,7 +548,7 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var (accountId, _, _) = await SeedTargets(context);
+        var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday.AddDays(-100), FixedToday.AddDays(-1)), userId: null);
         await service.Update(contract.ContractId, new UpdateContract
         {
@@ -570,7 +568,7 @@ public class ContractServiceTests
         Assert.NotNull((await service.Get(contract.ContractId))!.Archived);
     }
 
-    private async Task<(Guid AccountId, Guid ContactId, Guid PolicyId)> SeedTargets(OdysseyContext context)
+    private async Task<(Guid AccountId, Guid ContactId)> SeedTargets(OdysseyContext context)
     {
         var account = new Account
         {
@@ -593,17 +591,7 @@ public class ContractServiceTests
         await journal.SaveChangesAsync();
         await context.SaveChangesAsync();
 
-        var policy = new InsurancePolicy
-        {
-            Name = "Liability cover",
-            Type = Context.InsurancePolicyType.Liability,
-            Insurers = [new Context.InsurancePolicyInsurer { ContactId = contact.ContactId }],
-            CreatedAtUtc = DateTime.UtcNow,
-        };
-        context.InsurancePolicies.Add(policy);
-        await context.SaveChangesAsync();
-
-        return (account.AccountId, contact.ContactId, policy.InsurancePolicyId);
+        return (account.AccountId, contact.ContactId);
     }
 
     // ── Party write logging (issue #121 §7.7, AC 18) ────────────────────────────
@@ -620,7 +608,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var log = new RecordingLogger();
         var service = CreateService(context, logger: log);
-        var (accountId, _, _) = await SeedTargets(context);
+        var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
         // Creating a SIGNED contract emits the two signature-transition lines (issue #145 §7.7);
         // clear them so what follows measures the PARTY lines alone.
@@ -677,7 +665,7 @@ public class ContractServiceTests
         await using var context = TestContextFactory.Create();
         var log = new RecordingLogger();
         var service = CreateService(context, logger: log);
-        var (accountId, _, _) = await SeedTargets(context);
+        var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await service.AddParty(contract.ContractId,
@@ -703,7 +691,7 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var (accountId, _, _) = await SeedTargets(context);
+        var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await service.AddParty(contract.ContractId,
@@ -726,7 +714,7 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var (accountId, _, _) = await SeedTargets(context);
+        var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         var party = await service.AddParty(contract.ContractId, new ContractPartyRequest
@@ -749,7 +737,7 @@ public class ContractServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
-        var (accountId, _, _) = await SeedTargets(context);
+        var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday.AddDays(-60)), userId: null);
 
         var from = FixedToday.AddDays(-50);

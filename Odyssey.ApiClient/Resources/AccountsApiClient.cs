@@ -12,7 +12,7 @@ namespace Odyssey.ApiClient.Resources;
 /// </summary>
 /// <remarks>
 /// Every sub-resource route is built from its parent account id, so a file, term or estimate can never
-/// be addressed by its own id alone — the same scoping the insurance and contract clients use.
+/// be addressed by its own id alone — the same scoping the contract client uses.
 /// </remarks>
 public interface IAccountsApiClient
 {

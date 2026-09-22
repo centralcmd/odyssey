@@ -102,34 +102,4 @@ public static class FileAttributionExtensions
             caller,
             statements.SelectMany(statement => statement.Files),
             cancellationToken);
-
-    /// <summary>Label the files attached to every renewal in <paramref name="renewals"/>.</summary>
-    public static Task EnrichFileAttributionAsync(
-        this IUserDisplayNameResolver resolver,
-        ClaimsPrincipal caller,
-        IEnumerable<ExistingPolicyRenewal> renewals,
-        CancellationToken cancellationToken) =>
-        resolver.EnrichFileAttributionAsync(
-            caller,
-            renewals.SelectMany(renewal => renewal.Files),
-            cancellationToken);
-
-    /// <summary>
-    /// Label the files attached to every renewal of every policy in <paramref name="policies"/>.
-    /// </summary>
-    /// <remarks>
-    /// A policy exposes its renewals twice — <c>Renewals</c> and the <c>CurrentRenewal</c> shortcut —
-    /// and the two are separately materialised objects, not one shared instance. Both are collected
-    /// here, because enriching only the list leaves the shortcut the UI actually reads unlabelled.
-    /// </remarks>
-    public static Task EnrichFileAttributionAsync(
-        this IUserDisplayNameResolver resolver,
-        ClaimsPrincipal caller,
-        IEnumerable<ExistingInsurancePolicy> policies,
-        CancellationToken cancellationToken) =>
-        resolver.EnrichFileAttributionAsync(
-            caller,
-            policies.SelectMany(policy => policy.Renewals
-                .Concat(policy.CurrentRenewal is { } current ? [current] : Array.Empty<ExistingPolicyRenewal>())),
-            cancellationToken);
 }

@@ -79,8 +79,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             // insurance link cap (issue #27), +1 for the per-contract term cap (issue #135), +3 for the
             // Contracts summary windows and its next-charge row cap, +1 for the per-contract smart-tag
             // cap (issue #166), then -3 when the standalone subscriptions feature was removed and its
-            // migration deleted the three summary-limit rows.
-            Assert.Equal(69, rows.Count);
+            // migration deleted the three summary-limit rows, and -5 when the standalone
+            // insurance-policy feature went the same way.
+            Assert.Equal(64, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)

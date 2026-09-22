@@ -46,13 +46,13 @@ public sealed record ImportExportLimits(
 /// Narrow cross-domain lookup (issue #343 §5 "arch 15"), following the same pattern as
 /// <see cref="Odyssey.Core.Finance.ISystemSettingsLookup"/>: the interface lives here, in
 /// <c>Odyssey.Core.Journal</c>, because all four import/export services that consume it live here too
-/// (unlike the Insurance settings, which are Finance-owned). The real implementation —
+/// (unlike the Contracts settings, which are Finance-owned). The real implementation —
 /// <c>Odyssey.Api.SystemSettings.ImportExportLimitsLookup</c>, backed by the <c>SystemSetting</c>
 /// table, a 30s <c>IMemoryCache</c> TTL, and the §11 monotonic fail-safe — is wired at the API
 /// composition root (<c>Odyssey.Api/Program.cs</c>). Deliberately not an extra method on
 /// <see cref="Odyssey.Core.Finance.ISystemSettingsLookup"/> (Journal already references Finance, so it
 /// would compile, but Finance consumes none of this), and deliberately not moved into
-/// <c>Odyssey.Core</c> (which would drag the Finance-specific <c>InsurancePolicySettings</c> along).
+/// <c>Odyssey.Core</c> (which would drag the Finance-specific <c>FinanceRequestCaps</c> along).
 /// </summary>
 public interface IImportExportLimitsLookup
 {

@@ -89,15 +89,6 @@ public enum FileSortBy
     Kind,
 }
 
-/// <summary>Sortable keys for the insurance-policies list.</summary>
-public enum InsuranceSortBy
-{
-    Name,
-    Type,
-    RenewalEnd,
-    Premium,
-}
-
 /// <summary>Sortable keys for the tax-statements list.</summary>
 public enum TaxStatementSortBy
 {

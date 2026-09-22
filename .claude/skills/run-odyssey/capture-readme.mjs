@@ -134,14 +134,13 @@ const shots = {
     await settle(1500);
     await shoot('contracts');
   },
-  async insurance() {
-    await page.goto('/insurance-policies', { waitUntil: 'networkidle' });
+  async contacts() {
+    await page.goto('/contacts', { waitUntil: 'networkidle' });
     await settle();
-    await ensureRegion('Renewals', true);
     await ensureRegion('Overview', true);
     await ensureRegion('Search', false);
     await settle(1500);
-    await shoot('insurance');
+    await shoot('contacts');
   },
   // Shot 8 of the brief (a transaction expanded to its documents and comments) is
   // deliberately absent: the demo seed attaches no files or comments to transactions, so the

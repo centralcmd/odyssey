@@ -46,16 +46,16 @@ public interface IContactsApiClient
     Task<ApiResult> DeleteAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Deletes a contact, first removing every insurance link naming it — insurer, insured contact and
-    /// beneficiary — in the <b>same transaction</b> (issue #27 §7 #6). The supported release valve for
-    /// an erasure request: without it, a linked contact's delete is refused with a <c>409</c>.
+    /// Deletes a contact, first removing every <c>Beneficiary</c> contract party naming it in the
+    /// <b>same transaction</b> (issue #157 §5.4). The supported release valve for an erasure request:
+    /// without it, a linked contact's delete is refused with a <c>409</c>.
     ///
     /// <para>
-    /// Needs <c>insurance.update</c> as well as <c>contacts.delete</c>; a caller holding only the
+    /// Needs <c>contracts.update</c> as well as <c>contacts.delete</c>; a caller holding only the
     /// latter gets a <c>403</c>, never a silent downgrade to the refused delete.
     /// </para>
     /// </summary>
-    Task<ApiResult<DetachedInsuranceLinks>> DeleteWithInsuranceDetachAsync(Guid id, CancellationToken ct = default);
+    Task<ApiResult<DetachedContactLinks>> DeleteWithDetachAsync(Guid id, CancellationToken ct = default);
 
     // ── Contact image (issue #86 §5.8) ───────────────────────────────────────────
 
@@ -179,9 +179,9 @@ public sealed class ContactsApiClient(IOdysseyApi api) : IContactsApiClient
     public Task<ApiResult> DeleteAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Base}/{id}", null, ct);
 
-    public Task<ApiResult<DetachedInsuranceLinks>> DeleteWithInsuranceDetachAsync(Guid id, CancellationToken ct = default) =>
-        api.SendAsync<DetachedInsuranceLinks>(
-            HttpMethod.Delete, $"{Base}/{id}?detachInsuranceLinks=true", null, ct);
+    public Task<ApiResult<DetachedContactLinks>> DeleteWithDetachAsync(Guid id, CancellationToken ct = default) =>
+        api.SendAsync<DetachedContactLinks>(
+            HttpMethod.Delete, $"{Base}/{id}?detachBlockingLinks=true", null, ct);
 
     // ── Aliases (issue #48 §7) ───────────────────────────────────────────────────
 

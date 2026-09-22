@@ -104,8 +104,8 @@ public sealed record FileAnalysisTarget(string BaseUrl, string Model);
 /// The load-bearing reason is the project boundary — a lookup interface lives in the domain project
 /// that consumes it, so <c>Odyssey.Core.Tests</c> can fake it without referencing
 /// <c>Odyssey.Context</c>. (A secondary reason: <see cref="ISystemSettingsLookup"/>'s
-/// implementation shares one cache entry with the Insurance eviction path, so folding these in would
-/// make an insurance save evict the analysis settings.)
+/// implementation shares one cache entry with the Contracts eviction path, so folding these in would
+/// make a contracts save evict the analysis settings.)
 /// </para>
 /// </summary>
 public interface IFileAnalysisSettingsLookup

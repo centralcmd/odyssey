@@ -46,11 +46,12 @@ public class SettingsBoundsCatalogueTests
     }
 
     /// <summary>
-    /// Scope, stated rather than implied: 45 of the catalogue's 53 numeric rows (48 of 56 before the
-    /// standalone subscriptions feature was removed with its three summary limits; 47 of 55 before
-    /// issue #166 added the per-contract smart-tag cap, 44 of 52 before the Contracts summary gained
-    /// its two windows and its next-charge row cap, 43 of 51 before issue #135 added the per-contract
-    /// term cap, 42 of 50 before issue #27 added the insurance link cap).
+    /// Scope, stated rather than implied: 40 of the catalogue's 48 numeric rows (45 of 53 before the
+    /// standalone insurance-policy feature was removed with its five knobs; 48 of 56 before the
+    /// standalone subscriptions feature went with its three summary limits; 47 of 55 before issue #166
+    /// added the per-contract smart-tag cap, 44 of 52 before the Contracts summary gained its two
+    /// windows and its next-charge row cap, 43 of 51 before issue #135 added the per-contract term
+    /// cap).
     /// The eight <c>CapacityLimit?</c> rows are correctly excluded by the
     /// <c>int?</c> selector — their properties carry no <c>[Range]</c> at all, so their
     /// <c>Min: 1, Max: 1_000_000</c> is a client-only invention with no server end to name.
@@ -58,7 +59,7 @@ public class SettingsBoundsCatalogueTests
     [Fact]
     public void The_guard_covers_every_int_row()
     {
-        Assert.Equal(45, NumericRows.Count);
+        Assert.Equal(40, NumericRows.Count);
         Assert.Equal(
             8,
             Settings.AllItems.Count(item => item.Control == Settings.SettingControl.Capacity));
@@ -122,7 +123,7 @@ public class SettingsBoundsCatalogueTests
     public void An_exempted_rows_load_phase_fallback_stays_inside_its_pair()
     {
         var exempt = NumericRows.Where(item => item.MaxFrom is not null || item.MinFrom is not null).ToList();
-        Assert.Equal(10, exempt.Count);
+        Assert.Equal(9, exempt.Count);
 
         foreach (var item in exempt)
         {

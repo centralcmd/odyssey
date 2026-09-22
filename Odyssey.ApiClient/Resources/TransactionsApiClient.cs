@@ -65,7 +65,7 @@ public interface ITransactionsApiClient
     Task<ApiResult> DeleteAsync(Guid id, CancellationToken ct = default);
 
     // ── Files ────────────────────────────────────────────────────────────────
-    // Parent-routed like the account and insurance attachments: a file is only ever addressed
+    // Parent-routed like the account and contract attachments: a file is only ever addressed
     // through the transaction it belongs to.
 
     Task<ApiResult<List<ExistingTransactionFile>>> ListFilesAsync(Guid transactionId, CancellationToken ct = default);

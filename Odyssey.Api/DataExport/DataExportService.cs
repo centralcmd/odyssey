@@ -30,7 +30,7 @@ public sealed record DataExportSummary(long ByteCount, IReadOnlyDictionary<strin
 ///
 /// Issue #33: the covered set is a deliberate list, not every table in the context — the contact
 /// detail tables have their own vCard export and the journal side has its own surfaces. What that
-/// list must not do is omit a Finance table silently, which is what it was doing for insurance,
+/// list must not do is omit a Finance table silently, which is what it was doing for
 /// contracts, tax statements and the two account side-tables. Anything genuinely left
 /// out belongs in <see cref="DataExportExclusions.ExcludedTables"/> with its reason; an omission that
 /// is stated is a different thing from one that is merely absent.
@@ -149,13 +149,6 @@ public sealed class DataExportService
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.TaxStatements), TaxStatementsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.TaxStatementTags), TaxStatementTagsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.TaxStatementFiles), TaxStatementFilesQuery(), cancellationToken);
-        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.InsurancePolicies), InsurancePoliciesQuery(), cancellationToken);
-        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.InsurancePolicyInsurers), InsurancePolicyInsurersQuery(), cancellationToken);
-        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.InsurancePolicyInsuredAccounts), InsurancePolicyInsuredAccountsQuery(), cancellationToken);
-        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.InsurancePolicyInsuredContacts), InsurancePolicyInsuredContactsQuery(), cancellationToken);
-        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.InsurancePolicyBeneficiaries), InsurancePolicyBeneficiariesQuery(), cancellationToken);
-        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PolicyRenewals), PolicyRenewalsQuery(), cancellationToken);
-        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PolicyRenewalFiles), PolicyRenewalFilesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Contracts), ContractsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractParties), ContractPartiesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractFiles), ContractFilesQuery(), cancellationToken);
@@ -498,103 +491,6 @@ public sealed class DataExportService
                 AttachedByUserId = statementFile.AttachedByUserId,
                 AttachedAtUtc = statementFile.AttachedAtUtc,
                 FileType = (FinanceDtos.TaxStatementFileType)statementFile.FileType,
-            });
-
-    private IQueryable<InsurancePolicyExport> InsurancePoliciesQuery() =>
-        context.InsurancePolicies.AsNoTracking()
-            .OrderBy(policy => policy.InsurancePolicyId)
-            .Select(policy => new InsurancePolicyExport
-            {
-                InsurancePolicyId = policy.InsurancePolicyId,
-                Name = policy.Name,
-                PolicyNumber = policy.PolicyNumber,
-                Type = (FinanceDtos.InsurancePolicyType)policy.Type,
-                Notes = policy.Notes,
-                Archived = policy.Archived,
-                CreatedAtUtc = policy.CreatedAtUtc,
-            });
-
-    // The four party link tables: relationship columns and the optional term, never a resolved
-    // name. See InsurancePolicyInsurerExport for why the id alone is the right projection.
-    private IQueryable<InsurancePolicyInsurerExport> InsurancePolicyInsurersQuery() =>
-        context.InsurancePolicyInsurers.AsNoTracking()
-            .OrderBy(insurer => insurer.Id)
-            .Select(insurer => new InsurancePolicyInsurerExport
-            {
-                Id = insurer.Id,
-                InsurancePolicyId = insurer.InsurancePolicyId,
-                ContactId = insurer.ContactId,
-                FromDate = insurer.FromDate,
-                ToDate = insurer.ToDate,
-            });
-
-    private IQueryable<InsurancePolicyInsuredAccountExport> InsurancePolicyInsuredAccountsQuery() =>
-        context.InsurancePolicyInsuredAccounts.AsNoTracking()
-            .OrderBy(insured => insured.Id)
-            .Select(insured => new InsurancePolicyInsuredAccountExport
-            {
-                Id = insured.Id,
-                InsurancePolicyId = insured.InsurancePolicyId,
-                AccountId = insured.AccountId,
-                FromDate = insured.FromDate,
-                ToDate = insured.ToDate,
-            });
-
-    private IQueryable<InsurancePolicyInsuredContactExport> InsurancePolicyInsuredContactsQuery() =>
-        context.InsurancePolicyInsuredContacts.AsNoTracking()
-            .OrderBy(insured => insured.Id)
-            .Select(insured => new InsurancePolicyInsuredContactExport
-            {
-                Id = insured.Id,
-                InsurancePolicyId = insured.InsurancePolicyId,
-                ContactId = insured.ContactId,
-                FromDate = insured.FromDate,
-                ToDate = insured.ToDate,
-            });
-
-    private IQueryable<InsurancePolicyBeneficiaryExport> InsurancePolicyBeneficiariesQuery() =>
-        context.InsurancePolicyBeneficiaries.AsNoTracking()
-            .OrderBy(beneficiary => beneficiary.Id)
-            .Select(beneficiary => new InsurancePolicyBeneficiaryExport
-            {
-                Id = beneficiary.Id,
-                InsurancePolicyId = beneficiary.InsurancePolicyId,
-                ContactId = beneficiary.ContactId,
-                FromDate = beneficiary.FromDate,
-                ToDate = beneficiary.ToDate,
-                CreatedByUserId = beneficiary.CreatedByUserId,
-                CreatedAtUtc = beneficiary.CreatedAtUtc,
-            });
-
-    private IQueryable<PolicyRenewalExport> PolicyRenewalsQuery() =>
-        context.PolicyRenewals.AsNoTracking()
-            .OrderBy(renewal => renewal.PolicyRenewalId)
-            .Select(renewal => new PolicyRenewalExport
-            {
-                PolicyRenewalId = renewal.PolicyRenewalId,
-                InsurancePolicyId = renewal.InsurancePolicyId,
-                FromDate = renewal.FromDate,
-                ToDate = renewal.ToDate,
-                Premium = renewal.Premium,
-                PremiumCurrencyCode = renewal.PremiumCurrencyCode,
-                CoverageAmount = renewal.CoverageAmount,
-                CoverageCurrencyCode = renewal.CoverageCurrencyCode,
-                Notes = renewal.Notes,
-                CreatedAtUtc = renewal.CreatedAtUtc,
-            });
-
-    private IQueryable<PolicyRenewalFileExport> PolicyRenewalFilesQuery() =>
-        context.PolicyRenewalFiles.AsNoTracking()
-            .OrderBy(renewalFile => renewalFile.Id)
-            .Select(renewalFile => new PolicyRenewalFileExport
-            {
-                Id = renewalFile.Id,
-                PolicyRenewalId = renewalFile.PolicyRenewalId,
-                FileMetadataId = renewalFile.FileMetadataId,
-                FileType = (FinanceDtos.PolicyFileType)renewalFile.FileType,
-                EffectiveDate = renewalFile.EffectiveDate,
-                AttachedByUserId = renewalFile.AttachedByUserId,
-                AttachedAtUtc = renewalFile.AttachedAtUtc,
             });
 
     // Composite-keyed, so both key columns order it — there is no single id to sort on.

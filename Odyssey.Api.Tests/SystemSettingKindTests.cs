@@ -34,7 +34,7 @@ public class SystemSettingKindTests
     private static DecimalSetting Number(decimal seed = 0.60m) => new()
     {
         Key = "TestDecimal",
-        FieldName = nameof(SystemSettingsUpdate.InsuranceExpiringSoonWindowDays),
+        FieldName = nameof(SystemSettingsUpdate.ContractEndingWindowDays),
         RequiredClaim = PermissionClaims.SystemSettingsUpdate,
         DefaultValue = seed.ToString(DecimalSetting.StorageFormat, CultureInfo.InvariantCulture),
         Read = _ => CapturedDecimal,

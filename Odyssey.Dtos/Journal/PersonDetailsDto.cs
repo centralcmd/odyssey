@@ -32,7 +32,7 @@ public sealed record PersonDetailsDto
     /// <summary>
     /// Optional date of death (issue #48). Recording it changes no state and removes no capability:
     /// the contact is not archived, keeps its links and stays selectable as a counterparty,
-    /// custodian, insurance party and journal participant (§2 Non-Goal 3). Must not be in the future,
+    /// custodian, contract party and journal participant (§2 Non-Goal 3). Must not be in the future,
     /// nor before <see cref="DateOfBirth"/> when both are present.
     /// </summary>
     public DateTime? DateOfDeath { get; set; }

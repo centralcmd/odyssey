@@ -37,7 +37,6 @@ public partial class ContactsCard
     // The other halves of the composed detach gate (issue #27 §7 #6, widened by issue #157 §7.3).
     // The server enforces them with a 403 — per blocker class actually present — and these only keep
     // the blocked-delete dialog from offering an action it knows will fail.
-    private bool _canUpdateInsurance;
     private bool _canUpdateContracts;
     private bool _canImport => _canCreate && _canUpdate; // POST vcard requires BOTH claims (§7.3)
 
@@ -49,7 +48,6 @@ public partial class ContactsCard
     private bool _blockedOpen;
     private Guid _blockedKey;
     private ExistingContact? _blockedContact;
-    private ContactInsuranceLinkBlockers _blockedLinks = new();
     private ContactContractBeneficiaryBlockers _blockedContracts = new();
 
     private const string PageStateKey = "contacts-page";
@@ -161,7 +159,6 @@ public partial class ContactsCard
         _canCreate = user.HasPermission(PermissionClaims.ContactsCreate);
         _canUpdate = user.HasPermission(PermissionClaims.ContactsUpdate);
         _canDelete = user.HasPermission(PermissionClaims.ContactsDelete);
-        _canUpdateInsurance = user.HasPermission(PermissionClaims.InsuranceUpdate);
         _canUpdateContracts = user.HasPermission(PermissionClaims.ContractsUpdate);
     }
 
@@ -430,7 +427,7 @@ public partial class ContactsCard
 
         // On success, a full refresh rather than a local Remove: the delete changes the header counts
         // and the overview breakdowns, which read the unfiltered set. A refusal may instead be a
-        // recoverable insurance one — see ShowInsuranceBlockers.
+        // recoverable blocked-link one — see ShowDeleteBlockers.
         var result = await Contacts.DeleteAsync(contact.ContactId);
         if (!ShowDeleteBlockers(contact, result)
             && result.Toast(Snackbar, "Delete failed", "Contact deleted."))
@@ -446,11 +443,10 @@ public partial class ContactsCard
     /// Opens the blocked-delete dialog when the refusal was a link one, and reports whether it did.
     ///
     /// <para>
-    /// A 409 here means the contact is named as an insurer, an insured contact or a beneficiary on a
-    /// policy (issue #27 §7 #5), or as a <c>Beneficiary</c> party on a contract (issue #157 §5.4).
-    /// Either payload may be present, or both. Each says how many link ROWS block and — only when
-    /// the caller holds the matching read claim — which records. It is a recoverable state with a
-    /// supported route out, so it opens a dialog rather than becoming a toast the user cannot act on.
+    /// A 409 here means the contact is named as a <c>Beneficiary</c> party on a contract
+    /// (issue #157 §5.4). The payload says how many link ROWS block and — only when the caller holds
+    /// <c>contracts.read</c> — which records. It is a recoverable state with a supported route out,
+    /// so it opens a dialog rather than becoming a toast the user cannot act on.
     /// </para>
     /// </summary>
     /// <remarks>
@@ -464,40 +460,35 @@ public partial class ContactsCard
             return false;
         }
 
-        var insurance = result.Problem?.Extension<ContactInsuranceLinkBlockers>("insuranceLinks");
         var contracts = result.Problem?.Extension<ContactContractBeneficiaryBlockers>("contractBeneficiaries");
 
-        // The server omits a class entirely when it has no rows, so "present" is what decides —
+        // The server omits the class entirely when it has no rows, so "present" is what decides —
         // and a count, not a name list, since the names are claim-gated and may legitimately be empty.
-        var blockingInsurance = insurance is { Kinds.Count: > 0 };
-        var blockingContracts = contracts is { TotalLinks: > 0 };
-        if (!blockingInsurance && !blockingContracts)
+        if (contracts is not { TotalLinks: > 0 })
         {
             return false;
         }
 
         _blockedContact = contact;
-        _blockedLinks = blockingInsurance ? insurance! : new ContactInsuranceLinkBlockers();
-        _blockedContracts = blockingContracts ? contracts! : new ContactContractBeneficiaryBlockers();
+        _blockedContracts = contracts;
         _blockedKey = Guid.NewGuid();
         _blockedOpen = true;
         return true;
     }
 
     /// <summary>
-    /// The detach path: removes every blocking link naming the contact — insurance links and
-    /// <c>Beneficiary</c> contract parties alike — and deletes it in ONE request and one transaction
-    /// (issue #27 §7 #6, issue #157 §5.4). Composed from <c>contacts.delete</c> plus
-    /// <c>insurance.update</c> and/or <c>contracts.update</c>, demanded per blocker class actually
-    /// present; a caller missing one gets a 403 rather than a silent downgrade to the refused
-    /// delete.
+    /// The detach path: removes every <c>Beneficiary</c> contract party naming the contact and
+    /// deletes it in ONE request and one transaction (issue #157 §5.4). Composed from
+    /// <c>contacts.delete</c> plus <c>contracts.update</c>, demanded only when that blocker class is
+    /// actually present; a caller missing it gets a 403 rather than a silent downgrade to the
+    /// refused delete.
     /// </summary>
-    private async Task<DetachedInsuranceLinks?> DetachAndDeleteAsync()
+    private async Task<DetachedContactLinks?> DetachAndDeleteAsync()
     {
         if (_blockedContact is not { } contact)
             return null;
 
-        var result = await Contacts.DeleteWithInsuranceDetachAsync(contact.ContactId);
+        var result = await Contacts.DeleteWithDetachAsync(contact.ContactId);
         if (!result.IsSuccess)
         {
             Snackbar.Add($"Unable to detach and delete: {result.Error}", Severity.Error);

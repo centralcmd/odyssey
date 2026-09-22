@@ -186,21 +186,19 @@ calendars, and contacts). `FinanceContext` and `JournalContext` merged into it f
 `ApplicationContext`. Each merge bought the same thing — a **real foreign key** where EF previously
 could not declare one across a model boundary:
 
-- **Cross-module:** a finance row naming a contact (transaction counterparty, account custodian, policy
-  insurer, contract party, file-analysis match) and a journal/photo row naming a file (`Photo.FileId`,
+- **Cross-module:** a finance row naming a contact (transaction counterparty, account custodian,
+  contract party, file-analysis match) and a journal/photo row naming a file (`Photo.FileId`,
   the two attachment tables) used to be bare `Guid`s. They now carry the on-delete behaviour the
   application code was imitating — `SET NULL` for the optional contact links, `CASCADE` for
-  `ContractParty` and the file links, `RESTRICT` for the three insurance contact links
-  (`InsurancePolicyInsurer`, `InsurancePolicyInsuredContact`, `InsurancePolicyBeneficiary`).
+  `ContractParty` and the file links. **There is no `RESTRICT` key to `Contact` any more**: the three
+  that existed belonged to the removed insurance-policy feature, so the one rule that still blocks a
+  contact delete — a `Beneficiary` contract party — is enforced by `IContactReferenceGuard` alone.
 - **User attribution:** the `CreatedByUserId`/`UpdatedByUserId`, `AttachedByUserId`,
-  `UploadedByUserId`, `RequestedByUserId`, `ReviewedByUserId` and (issue #27)
-  `InsurancePolicyBeneficiary.CreatedByUserId` columns used to be bare strings, so
+  `UploadedByUserId`, `RequestedByUserId` and `ReviewedByUserId` columns used to be bare strings, so
   deleting a user left every one of them naming an account that no longer existed. Every one is now an
   FK with **`SET NULL`** — these rows are *shared* data that must survive their author's departure, so
   `RESTRICT` (which would make any author undeletable) and `CASCADE` (which would destroy the shared
-  record) are both wrong. The rule also reaches `_InsurancePolicyFileRelocation`, the issue-#26
-  relocation ledger, which is not an EF entity but records who attached each document it moved.
-  `LicenseAcceptances.UserId` and `TermsOfServiceAcceptances.UserId` are the **deliberate exception**
+  record) are both wrong. `LicenseAcceptances.UserId` and `TermsOfServiceAcceptances.UserId` are the **deliberate exception**
   and stay FK-free: they outlive the account and are pseudonymized in place. Don't "complete the set"
   by adding keys to them. The full set is the allow-list in
   `Odyssey.IntegrationTests/UserAttributionForeignKeyTests`.
@@ -209,67 +207,10 @@ That last group is what makes `users.delete` genuinely atomic: `UserAdministrati
 opens one transaction, and the cascades and set-nulls now resolve inside it. See
 `Odyssey.Context/README.md` for both tables.
 
-**An insurance policy's four link collections replaced two scalar columns** (issue #27):
-`InsurancePolicy.InsurerId` and `.InsuredAccountId` are gone, and `Insurers`, `InsuredAccounts`,
-`InsuredContacts` and `Beneficiaries` are the single representation. Every collection is **optional** —
-zero insurers is a valid, healthy state, so nothing on the read path may treat absence as a defect. Four
-narrow tables rather than one polymorphic table with a kind discriminator: the target types are fixed
-per collection and it is the *relationship* that differs, and `InsurancePolicyBeneficiary`'s attribution
-columns are the first instance of exactly the divergence that buys.
-
-Three rules that are easy to get backwards, and that the tests pin:
-
-- **A link whose target is archived or unresolvable keeps its row and loses its name.** Not the old
-  `"(unknown)"`-plus-GUID placeholder, and not an outright drop: the first leaks a GUID into the UI and
-  keeps disclosing archived names, and the second silently deletes link rows, because a full-set diff
-  computes the member the caller never saw as *removed*. The id is what keeps a read-modify-write round
-  trip honest; the name is the personal data and stays out.
-- **Omitting such a link from a write is refused with a `422`, not silently ignored.** A `200` whose
-  body did not match the request would misdescribe the write, and silently retaining would swallow a
-  genuinely deliberate removal in the race where the target was `Available` at load. The `422` names
-  both routes that work, **detach first** — unarchiving is globally visible and momentarily re-discloses
-  the name on every policy linking that contact.
-- **Every count counts link ROWS, never resolved names.** The list row's three counts, the `409` payload,
-  the `contactIds` filter and the read collections all count the same thing. Aligning a display count
-  onto resolved names would make a contact whose links are all unnamed look erasable when it is not.
-
-**A party carries a TERM, and that is why parties are written one at a time.** Each of the four link
-rows has an optional `FromDate`/`ToDate`. Both null is the **default** term — the policy's own extent —
-not an unset value, so a party added with the defaults follows the policy for its whole lifetime and a
-later renewal never re-dates it; only a *non*-default term is captioned in the UI. The one tie to the
-policy is that a term cannot begin before cover ever did.
-
-The full-set `PUT /api/insurance-policies/{id}` is unchanged and still works (`null` = unchanged,
-`[]` = clear), but it has nowhere to put a term, so the write path the UI uses is per party:
-
-| | |
-|---|---|
-| `POST …/parties` | `{ role, targetId, fromDate?, toDate? }` |
-| `PUT …/parties/{role}/{targetId}` | the route names the link as it stands, the body what it should become |
-| `DELETE …/parties/{role}/{targetId}` | detaches the link; the contact or account is untouched |
-
-Three things about that split are easy to get wrong:
-
-- **A party is addressed by `(role, targetId)`, never by a link-row id.** That pair is the unique index
-  on each of the four tables and it is what the read model already hands the caller, so no link-row id
-  has to be exposed.
-- **A role move is one write, not two.** `PUT` drops the old row and inserts the new one in a single
-  `SaveChangesAsync`, so a party moved between roles stays one party — and a beneficiary that stays a
-  beneficiary keeps its original `CreatedByUserId`, because re-dating a designation must never rewrite
-  who named it.
-- **An explicit `DELETE` works on an unnamed link; an omission still does not.** The `422` above exists
-  because an omission cannot be told apart from a caller that never saw the member. A `DELETE` naming
-  the link says exactly what it means. The UI still withholds the per-tile edit on an unnamed member,
-  because its record is not in the picker and the dialog could not round-trip it.
-
-Consequently **`CreateInsurancePolicyDialog` no longer edits the four collections at all** — it omits
-them, which the update DTO reads as "leave unchanged". Parties are added, re-dated and removed from the
-policy's own **New party** action and its party tiles.
-
-**A contract party is one-of-TWO** — an `Account` or a `Contact` ("Institution"). The third target,
-`ContractParty.InsurancePolicyId`, was dropped: a contract naming a policy is expressed the other way
-round now, through the policy's own party collections. `ContractPartyKind` keeps the surviving ordinals
-(`Account = 0`, `Institution = 1`), so no persisted or wire value shifted meaning.
+**A contract party is one-of-TWO** — an `Account` or a `Contact` ("Institution"). A third target,
+`ContractParty.InsurancePolicyId`, was dropped when the design system reduced parties to two kinds.
+`ContractPartyKind` keeps the surviving ordinals (`Account = 0`, `Institution = 1`), so no persisted or
+wire value shifted meaning.
 
 **Which party roles are legal is decided by the contract's TYPE, and the matrix is declared ONCE**
 (issue #157). `ContractPartyRoleMatrix` lives in `Odyssey.Dtos/Finance/`, which holds zero project
@@ -325,9 +266,10 @@ Five further rules are easy to get backwards:
   detach hit one row inside one `SaveChangesAsync` and EF raises `DbUpdateConcurrencyException` on the
   *ordinary* success path.
 
-The transactional detach valve now destroys rows in two domains, so its claims are demanded **per
-blocker class actually present** — `insurance.update` and/or `contracts.update` — and the presence
-determination and the destruction read **one snapshot inside the delete's transaction**. A controller
+The transactional detach valve destroys rows in another domain, so its claim is demanded **per
+blocker class actually present** — `contracts.update` — and the presence determination and the
+destruction read **one snapshot inside the delete's transaction**. One class holds that list today;
+the per-class machinery stays because it is what keeps those two readings on one snapshot. A controller
 pre-flight would be a second snapshot, and a row inserted between the two would be destroyed by a
 caller never asked to prove the claim for it (CWE-367). That is what `DomainForbiddenException` exists
 for: the ordinary case is still an action-level `[Authorize]` policy or a controller pre-flight, and
@@ -368,9 +310,10 @@ charge window are admin-editable settings (`ContractEndingWindowDays`, `Contract
 constant: the page interpolates it into the row label, so a local copy would caption a row with one
 number while the server counted by another — the client-side-copy defect stated above.
 
-`DELETE /api/contacts/{id}?detachInsuranceLinks=true` is the supported release valve: it removes every
-insurance link naming the contact and deletes it **in one transaction**, composing `contacts.delete`
-with `insurance.update` rather than adding a claim. Its `409` counterpart is **claim-conditional**, and
+`DELETE /api/contacts/{id}?detachBlockingLinks=true` is the supported release valve: it removes every
+`Beneficiary` contract party naming the contact and deletes it **in one transaction**, composing
+`contacts.delete` with `contracts.update` rather than adding a claim. Its `409` counterpart is
+**claim-conditional**, and
 that conditional lives in `ContactController` — `DomainConflictException` carries a message and nothing
 else, and the domain service has no `ClaimsPrincipal`, so neither it nor `GlobalExceptionHandler` could
 shape one.
@@ -507,13 +450,11 @@ tables they belong with — that guard reflects over every `DbSet` and fails the
 the picture to the whole-database admin export would export a face from a document that deliberately
 omits the subject's name and birth date, to a `data.export` holder who is never the data subject.
 
-**`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed only because the
-insurer foreign key had been removed; three real `RESTRICT` keys are back, so the database arbitrates
-the race it was written for and its violation maps to a `409` rather than a `500`. Removing the
-insurance call sites left it a mutex with no counterparty, still taking a pinned connection and a
-blocking ten-second acquire on every contact delete. Note this is **not** a counter-example to the rule
-below: the lock was an explicit no-op on non-relational providers, so it never protected the fast tiers
-either.
+**`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed to serialize a
+write path against a contact delete; once that path's call sites were gone it was a mutex with no
+counterparty, still taking a pinned connection and a blocking ten-second acquire on every contact
+delete. Note this is **not** a counter-example to the rule below: the lock was an explicit no-op on
+non-relational providers, so it never protected the fast tiers either.
 
 The lookup services (`IContactLookup`, `IFileLookup`, `IPhotoLookup`, `IContactReferenceGuard`) stay,
 and are **not** redundant with the constraints: they build read-path projections without an `Include`,
@@ -865,7 +806,7 @@ that same blind spot today and the same property would close it.
 
 | | Where | What |
 |---|---|---|
-| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 102 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
+| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 94 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
 | The **role mapping** | `Odyssey.Context/Authorization/RolePermissions.cs` | `AllClaims`, `AdminClaims`/`OwnerClaims`/`UserClaims`/`GuestClaims`, and the per-module arrays. Server-only, so the browser never ships the role-to-claim mapping. |
 
 **Adding a claim:** add the constant to `PermissionClaims`, then add it to `RolePermissions.AllClaims`
@@ -994,9 +935,9 @@ Repair procedure: [`docs/migration-history-drift.md`](docs/migration-history-dri
 
 Resource URLs use the **plural** noun, both for API routes and the Blazor client routes that mirror
 them. Match the existing surfaces: `/api/accounts`, `/api/transactions`, `/api/tax-statements`,
-`/api/insurance-policies` (not `/api/insurance-policy` or a singular `/insurance`). The client page
-route for a resource is the same plural (e.g. `/accounts`, `/tax-statements`, `/insurance-policies`),
-and the per-page UI-state key follows `<route>-page` (e.g. `insurance-policies-page`).
+`/api/contracts` (not `/api/contract` or a singular `/contract`). The client page route for a resource
+is the same plural (e.g. `/accounts`, `/tax-statements`, `/contracts`), and the per-page UI-state key
+follows `<route>-page` (e.g. `contracts-page`).
 
 ### DTOs (`Odyssey.Dtos`, in the module's folder)
 

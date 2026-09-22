@@ -402,12 +402,6 @@ public sealed class DemoDataSeeder(
         await context.BudgetItems.AddRangeAsync(data.BudgetItems, cancellationToken);
         await context.Transactions.AddRangeAsync(data.Transactions, cancellationToken);
         await context.TransactionTagLinks.AddRangeAsync(data.TransactionTagLinks, cancellationToken);
-        await context.InsurancePolicies.AddRangeAsync(data.InsurancePolicies, cancellationToken);
-        await context.PolicyRenewals.AddRangeAsync(data.PolicyRenewals, cancellationToken);
-        await context.InsurancePolicyInsurers.AddRangeAsync(data.InsurancePolicyInsurers, cancellationToken);
-        await context.InsurancePolicyInsuredAccounts.AddRangeAsync(data.InsurancePolicyInsuredAccounts, cancellationToken);
-        await context.InsurancePolicyInsuredContacts.AddRangeAsync(data.InsurancePolicyInsuredContacts, cancellationToken);
-        await context.InsurancePolicyBeneficiaries.AddRangeAsync(data.InsurancePolicyBeneficiaries, cancellationToken);
         await context.Contracts.AddRangeAsync(data.Contracts, cancellationToken);
         await context.ContractParties.AddRangeAsync(data.ContractParties, cancellationToken);
         await context.ContractEvents.AddRangeAsync(data.ContractEvents, cancellationToken);
@@ -420,8 +414,8 @@ public sealed class DemoDataSeeder(
         await context.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
-            "Seeded {Accounts} accounts, {Budgets} budgets, {Transactions} transactions, {Policies} insurance policies, {Contracts} contracts.",
-            data.Accounts.Count, data.Budgets.Count, data.Transactions.Count, data.InsurancePolicies.Count, data.Contracts.Count);
+            "Seeded {Accounts} accounts, {Budgets} budgets, {Transactions} transactions, {Contracts} contracts.",
+            data.Accounts.Count, data.Budgets.Count, data.Transactions.Count, data.Contracts.Count);
     }
 
     private async Task SeedContactsAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)

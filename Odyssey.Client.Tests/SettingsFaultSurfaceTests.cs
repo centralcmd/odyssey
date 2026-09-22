@@ -29,8 +29,10 @@ public class SettingsFaultSurfaceTests
     private const string Window = nameof(SystemSettingsUpdate.ContractEndingWindowDays);
     private const string Charges = nameof(SystemSettingsUpdate.ContractMaxSummaryCharges);
     private const string Fetch = nameof(SystemSettingsUpdate.ContractMaxSummaryContracts);
-    private const string InsuranceWindow = nameof(SystemSettingsUpdate.InsuranceExpiringSoonWindowDays);
-    private const string InsuranceMax = nameof(SystemSettingsUpdate.InsuranceMaxSummaryPolicies);
+    // Two rows that sit EARLIER in the catalogue than the Contracts group and outside it — the two
+    // properties the ordering and filter assertions below actually depend on.
+    private const string EarlyFirst = nameof(SystemSettingsUpdate.CalendarIcsMaxAggregateExportRows);
+    private const string EarlySecond = nameof(SystemSettingsUpdate.CalendarIcsMaxAggregateOccurrences);
 
     /// <summary>
     /// Built with the DEFAULT comparer, matching what System.Text.Json actually hands the client: it
@@ -120,8 +122,8 @@ public class SettingsFaultSurfaceTests
                 (Window, SettingFaultKind.Unreadable),
                 (Charges, SettingFaultKind.Unreadable),
                 (Fetch, SettingFaultKind.Unreadable),
-                (InsuranceWindow, SettingFaultKind.Unreadable),
-                (InsuranceMax, SettingFaultKind.Unreadable)),
+                (EarlyFirst, SettingFaultKind.Unreadable),
+                (EarlySecond, SettingFaultKind.Unreadable)),
             Settings.AllItems);
 
         Assert.NotNull(announcement);
@@ -141,12 +143,12 @@ public class SettingsFaultSurfaceTests
     [Fact]
     public void Unreadable_settings_are_named_before_clamped_ones()
     {
-        // The insurance rows come FIRST in the catalogue, so catalogue order alone would name them; the
+        // The calendar rows come FIRST in the catalogue, so catalogue order alone would name them; the
         // kind has to outrank it.
         var announcement = Settings.FaultAnnouncement(
             Faults(
-                (InsuranceWindow, SettingFaultKind.Clamped),
-                (InsuranceMax, SettingFaultKind.Clamped),
+                (EarlyFirst, SettingFaultKind.Clamped),
+                (EarlySecond, SettingFaultKind.Clamped),
                 (Window, SettingFaultKind.Unreadable),
                 (Fetch, SettingFaultKind.Unreadable)),
             Settings.AllItems);
@@ -209,10 +211,10 @@ public class SettingsFaultSurfaceTests
             Faults(
                 (Window, SettingFaultKind.Unreadable),
                 (Charges, SettingFaultKind.Clamped),
-                (InsuranceMax, SettingFaultKind.Clamped)),
+                (EarlySecond, SettingFaultKind.Clamped)),
             Settings.Sections,
             // Matches the Contracts group name, so the two contract rows stay visible and the
-            // insurance one is hidden.
+            // calendar one is hidden.
             "Contracts");
 
         Assert.Equal(
@@ -226,8 +228,8 @@ public class SettingsFaultSurfaceTests
         var summary = Settings.FaultSummaryText(
             Faults(
                 (Window, SettingFaultKind.Unreadable),
-                (InsuranceWindow, SettingFaultKind.Clamped),
-                (InsuranceMax, SettingFaultKind.Clamped)),
+                (EarlyFirst, SettingFaultKind.Clamped),
+                (EarlySecond, SettingFaultKind.Clamped)),
             Settings.Sections,
             "Contracts");
 

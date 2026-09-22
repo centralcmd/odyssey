@@ -8,7 +8,7 @@ namespace Odyssey.Dtos.Application;
 /// <see langword="null"/> means "leave this field unchanged" — not zero/false: no claim check, no
 /// validation, no comparison against the current stored value, and that key's row is left completely
 /// untouched (its <c>UpdatedAt</c>/<c>UpdatedBy</c> included). A non-null value means "set this field",
-/// which requires the matching write claim (<c>system-settings.update</c> for the two Insurance fields,
+/// which requires the matching write claim (<c>system-settings.update</c> for the cosmetic fields,
 /// <c>system-settings.security.update</c> for the three perimeter fields) and passes normal validation.
 ///
 /// This is what makes per-field authorization safe under a whole-resource-shaped <c>PUT</c> without a
@@ -24,18 +24,6 @@ public sealed record SystemSettingsUpdate
     public bool? RegistrationRequireAdminApproval { get; set; }
 
     public bool? EmailRequireConfirmation { get; set; }
-
-    [Range(SystemSettingsBounds.InsuranceExpiringSoonWindowDaysMin,
-        SystemSettingsBounds.InsuranceExpiringSoonWindowDaysMax, ErrorMessage =
-        "The \"expiring soon\" window must be between 1 and 365 days. It is also the bound the read "
-        + "path clamps a stored value into, so the two cannot disagree.")]
-    public int? InsuranceExpiringSoonWindowDays { get; set; }
-
-    [Range(SystemSettingsBounds.InsuranceMaxSummaryPoliciesMin,
-        SystemSettingsBounds.InsuranceMaxSummaryPoliciesMax, ErrorMessage =
-        "Policies read for the summary must be between 1 and 100000. Above the cap the roll-up covers "
-        + "the most recent policies only.")]
-    public int? InsuranceMaxSummaryPolicies { get; set; }
 
     // ---------------------------------------------------------------------------------------------
     // Import/export volume caps (issue #343 §6/§9, extended post-#343 with a "maximum export file
@@ -230,22 +218,6 @@ public sealed record SystemSettingsUpdate
         "Next charges shown in the summary must be between 1 and 50. Each one is a separate rendered "
         + "block in the page header, so this is deliberately bounded well below the other summary caps.")]
     public int? ContractMaxSummaryCharges { get; set; }
-
-    [Range(SystemSettingsBounds.InsuranceMaxRenewalsPerPolicyMin,
-        SystemSettingsBounds.InsuranceMaxRenewalsPerPolicyMax, ErrorMessage =
-        "Renewals per policy must be between 1 and 100000.")]
-    public int? InsuranceMaxRenewalsPerPolicy { get; set; }
-
-    [Range(SystemSettingsBounds.InsuranceMaxFilesPerParentMin,
-        SystemSettingsBounds.InsuranceMaxFilesPerParentMax, ErrorMessage =
-        "Files per policy or renewal must be between 1 and 100000.")]
-    public int? InsuranceMaxFilesPerParent { get; set; }
-
-    [Range(SystemSettingsBounds.InsuranceMaxLinksPerPolicyMin,
-        SystemSettingsBounds.InsuranceMaxLinksPerPolicyMax, ErrorMessage =
-        "Links per policy collection must be between 1 and 100000. The effective ceiling is lower: "
-        + "the compile-time limit on the request DTOs rejects a longer array before the setting is read.")]
-    public int? InsuranceMaxLinksPerPolicy { get; set; }
 
     [Range(1, 100000)]
     public int? PhotoMaxLinksPerKind { get; set; }

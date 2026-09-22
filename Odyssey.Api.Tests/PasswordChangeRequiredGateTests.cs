@@ -39,7 +39,6 @@ public class PasswordChangeRequiredGateTests
     [InlineData("GET", "/api/calendars")]
     [InlineData("GET", "/api/files")]
     [InlineData("GET", "/api/tax-statements")]
-    [InlineData("GET", "/api/insurance-policies")]
     [InlineData("GET", "/api/user-preferences/accounts-page")]
     [InlineData("GET", "/api/users")]
     [InlineData("GET", "/api/system-settings")]

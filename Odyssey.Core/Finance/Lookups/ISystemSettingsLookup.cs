@@ -1,14 +1,6 @@
 namespace Odyssey.Core.Finance;
 
 /// <summary>
-/// The two Insurance settings migrated off <c>appsettings.json</c> and into the database-backed
-/// system-settings store (issue #349). Cosmetic/policy fields — cached with a bounded TTL by the
-/// implementation, unlike the authentication-perimeter fields (which are always read live and have
-/// no lookup surface here at all).
-/// </summary>
-public sealed record InsurancePolicySettings(int ExpiringSoonWindowDays, int MaxSummaryPolicies);
-
-/// <summary>
 /// Narrow cross-domain lookup (issue #349), following the established pattern (<see cref="IContactLookup"/>,
 /// <see cref="IFileLookup"/>) rather than a direct reference to <c>Odyssey.Context</c>: the
 /// interface lives here so <c>Odyssey.Core.Tests</c> (EF InMemory, no dependency on that context)
@@ -18,17 +10,14 @@ public sealed record InsurancePolicySettings(int ExpiringSoonWindowDays, int Max
 /// </summary>
 public interface ISystemSettingsLookup
 {
-    Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default);
-
     /// <summary>
-    /// The finance-side per-request caps (issue #421 Wave 3). Added here rather than as a third
-    /// Finance interface: these are consumed by the same project, and the insurance pair shares the
-    /// existing cache entry, so one eviction point covers it.
+    /// The finance-side per-request caps (issue #421 Wave 3). Added here rather than as a second
+    /// Finance interface: these are consumed by the same project, so one eviction point covers them.
     /// </summary>
     Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The Contracts page-header windows. A third method here rather than folding the two windows
+    /// The Contracts page-header windows. A second method here rather than folding the two windows
     /// into <see cref="GetRequestCapsAsync"/>: that record's entry is evicted by a per-request-cap
     /// change, and <c>SystemSettingDescriptor.CacheKeyToEvict</c> is a single string per descriptor,
     /// so sharing it would cross-evict.
@@ -53,15 +42,12 @@ public sealed record ContractSummarySettings(
     int MaxSummaryCharges);
 
 /// <summary>
-/// Per-request caps for contracts and insurance, migrated out of POCO defaults nobody could change
-/// (issue #421 Wave 3) — the <c>Contracts</c> and <c>Insurance</c> configuration sections had no
+/// Per-request caps for contracts, migrated out of POCO defaults nobody could change
+/// (issue #421 Wave 3) — the <c>Contracts</c> configuration section had no
 /// <c>appsettings.json</c> entry and no environment plumbing at all.
 /// </summary>
 public sealed record FinanceRequestCaps(
     int MaxPartiesPerContract,
     int MaxFilesPerContract,
     int MaxTermsPerContract,
-    int MaxSummaryContracts,
-    int MaxRenewalsPerPolicy,
-    int MaxFilesPerParent,
-    int MaxLinksPerPolicy);
+    int MaxSummaryContracts);

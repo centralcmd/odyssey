@@ -9,7 +9,7 @@ namespace Odyssey.Context;
 ///
 /// <para>
 /// Used by the authentication-perimeter fields (issue #349): registration/sign-in volume is far below
-/// the threshold the Insurance-field cache exists to protect, and a stale read there would let a
+/// the threshold the cached settings lookups exist to protect, and a stale read there would let a
 /// disabled gate keep admitting users. Extended by issue #421 Wave 2 to the transactional-email
 /// settings, for the same reason in a different shape — the per-recipient throttle is a security
 /// control on the anonymous mail path, so lowering a limit under active abuse must bind on the very

@@ -198,7 +198,7 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
         await using (var context = new OdysseyContext(options))
         {
             // The guard refuses partway through, INSIDE the transaction the delete opened — the shape
-            // of a real refusal (a contact named on an insurance policy) without needing one.
+            // of a real refusal (a contact named as a contract beneficiary) without needing one.
             var service = new ContactService(context, new ThrowingReferenceGuard(), logger: NullLogger<ContactService>.Instance);
 
             await Assert.ThrowsAsync<DomainConflictException>(() => service.Delete(contactId));
@@ -599,7 +599,7 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
 
     /// <summary>
     /// Refuses partway through the delete, inside the transaction it opened — the shape of a real
-    /// refusal (a contact named on an insurance policy) without needing one.
+    /// refusal (a contact named as a contract beneficiary) without needing one.
     /// </summary>
     private sealed class ThrowingReferenceGuard : IContactReferenceGuard
     {
@@ -614,7 +614,7 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
             Guid contactId, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Odyssey.Dtos.Finance.DetachedInsuranceLinks StageLinkDetach(ContactLinkDetachPlan plan) =>
+        public Odyssey.Dtos.Finance.DetachedContactLinks StageLinkDetach(ContactLinkDetachPlan plan) =>
             throw new NotSupportedException();
 
         public Task ClearAndCascadeReferencesAsync(Guid contactId, CancellationToken cancellationToken = default) =>

@@ -3,7 +3,7 @@ using Odyssey.Client.Components;
 namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
-/// How a budget's money reads on the record card — the sibling of <see cref="InsuranceHeadline"/>.
+/// How a budget's money reads on the record card.
 ///
 /// <para>
 /// <b>Two vocabularies, deliberately, and they differ at zero.</b> The record card's balances carry the

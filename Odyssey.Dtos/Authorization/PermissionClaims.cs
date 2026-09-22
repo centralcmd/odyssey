@@ -89,11 +89,6 @@ public static class PermissionClaims
     public const string TaxesUpdate = "taxes.update";
     public const string TaxesDelete = "taxes.delete";
 
-    public const string InsuranceCreate = "insurance.create";
-    public const string InsuranceRead = "insurance.read";
-    public const string InsuranceUpdate = "insurance.update";
-    public const string InsuranceDelete = "insurance.delete";
-
     public const string ContractsCreate = "contracts.create";
     public const string ContractsRead = "contracts.read";
     public const string ContractsUpdate = "contracts.update";
@@ -187,7 +182,7 @@ public static class PermissionClaims
 
     // System settings (issue #349). Admin-only across all three — never granted to Owner/User/Guest.
     // Read is uniform sensitivity (no PII, no IDOR surface); the write claim is split by sensitivity:
-    // Update covers the two cosmetic/policy fields (Insurance), SecurityUpdate covers the three
+    // Update covers the cosmetic/policy fields, SecurityUpdate covers the three
     // authentication-perimeter fields (2FA persistence, registration approval, email confirmation).
     public const string SystemSettingsRead = "system-settings.read";
     public const string SystemSettingsUpdate = "system-settings.update";

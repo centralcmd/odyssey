@@ -63,9 +63,8 @@ public enum ContractPartyRole
     Insured = 11,
 
     /// <summary>
-    /// The party that receives on the agreement. <b>Blocks deletion of the linked contact</b> with the
-    /// same 409 and the same transactional detach valve as an insurance-policy beneficiary
-    /// (issue #157 §7.4).
+    /// The party that receives on the agreement. <b>Blocks deletion of the linked contact</b>, with a
+    /// 409 and a transactional detach valve as the supported way out (issue #157 §7.4).
     /// </summary>
     Beneficiary = 12,
 

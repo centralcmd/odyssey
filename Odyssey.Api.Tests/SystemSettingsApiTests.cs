@@ -17,7 +17,7 @@ namespace Odyssey.Api.Tests;
 /// <summary>
 /// HTTP-level coverage for GET/PUT <c>/api/system-settings</c> (issue #349): the read-claim gate on
 /// both verbs, the per-field write-claim split (reject wholesale, no partial apply), the nullable
-/// "leave unchanged" write contract, range validation on the two Insurance fields, and that audit
+/// "leave unchanged" write contract, range validation on the two Contracts summary fields, and that audit
 /// fields are never accepted from the request body.
 /// </summary>
 public class SystemSettingsApiTests
@@ -109,8 +109,8 @@ public class SystemSettingsApiTests
         Assert.False(dto.TwoFactorEnforced);
         Assert.True(dto.RegistrationRequireAdminApproval);
         Assert.True(dto.EmailRequireConfirmation);
-        Assert.Equal(30, dto.InsuranceExpiringSoonWindowDays);
-        Assert.Equal(1000, dto.InsuranceMaxSummaryPolicies);
+        Assert.Equal(45, dto.ContractEndingWindowDays);
+        Assert.Equal(1000, dto.ContractMaxSummaryContracts);
 
         // Import/export volume caps (issue #343 §6/§13, AC 1) — count defaults are behavior-preserving;
         // the size (MB) defaults were later unified to 64 across all eight fields by a follow-up.
@@ -146,7 +146,7 @@ public class SystemSettingsApiTests
     }
 
     [Fact]
-    public async Task MigrationSeed_ProducesExactlySeventyTwoKnownKeyRows()
+    public async Task MigrationSeed_ProducesExactlyTheKnownKeyRows()
     {
         await using var factory = new ApiFactory(ReadOnly);
         using var scope = factory.Services.CreateScope();
@@ -155,11 +155,11 @@ public class SystemSettingsApiTests
 
         var rows = await context.SystemSettings.AsNoTracking().ToListAsync();
         // 59 before issue #437, +3 for the Subscriptions summary limits, +4 for the mail transport
-        // and the public link origin (issue #8), +1 for the insurance link cap (issue #27), +1 for
-        // the per-contract term cap (issue #135), +3 for the Contracts summary windows and its
-        // next-charge row cap, +1 for the per-contract smart-tag cap (issue #166), then -3 when the
-        // standalone subscriptions feature was removed.
-        Assert.Equal(69, rows.Count);
+        // and the public link origin (issue #8), +1 for the per-contract term cap (issue #135), +3
+        // for the Contracts summary windows and its next-charge row cap, +1 for the per-contract
+        // smart-tag cap (issue #166), then -3 when the standalone subscriptions feature was removed
+        // and -5 when the standalone insurance-policy feature was.
+        Assert.Equal(64, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 
@@ -171,7 +171,7 @@ public class SystemSettingsApiTests
         await using var factory = new ApiFactory([PermissionClaims.SystemSettingsUpdate, PermissionClaims.SystemSettingsSecurityUpdate]);
         using var client = factory.CreateClient();
 
-        var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { InsuranceExpiringSoonWindowDays = 45 });
+        var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractEndingWindowDays = 60 });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -187,8 +187,8 @@ public class SystemSettingsApiTests
         response.EnsureSuccessStatusCode();
         var dto = await response.Content.ReadFromJsonAsync<SystemSettingsDto>();
         Assert.NotNull(dto);
-        Assert.Equal(30, dto!.InsuranceExpiringSoonWindowDays);
-        Assert.Equal(1000, dto.InsuranceMaxSummaryPolicies);
+        Assert.Equal(45, dto!.ContractEndingWindowDays);
+        Assert.Equal(1000, dto.ContractMaxSummaryContracts);
 
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -198,21 +198,21 @@ public class SystemSettingsApiTests
     // ── PUT — split write claim: reject wholesale, no partial apply ───────────
 
     [Fact]
-    public async Task Put_InsuranceOnly_Succeeds_ForCosmeticClaim_WithoutSecurityClaim()
+    public async Task Put_CosmeticOnly_Succeeds_ForCosmeticClaim_WithoutSecurityClaim()
     {
         await using var factory = new ApiFactory(ReadAndCosmeticUpdate);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
         {
-            InsuranceExpiringSoonWindowDays = 45,
-            InsuranceMaxSummaryPolicies = 250,
+            ContractEndingWindowDays = 60,
+            ContractMaxSummaryContracts = 250,
         });
 
         response.EnsureSuccessStatusCode();
         var dto = await response.Content.ReadFromJsonAsync<SystemSettingsDto>();
-        Assert.Equal(45, dto!.InsuranceExpiringSoonWindowDays);
-        Assert.Equal(250, dto.InsuranceMaxSummaryPolicies);
+        Assert.Equal(60, dto!.ContractEndingWindowDays);
+        Assert.Equal(250, dto.ContractMaxSummaryContracts);
     }
 
     [Fact]
@@ -223,7 +223,7 @@ public class SystemSettingsApiTests
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
         {
-            InsuranceExpiringSoonWindowDays = 45, // this caller CAN set this…
+            ContractEndingWindowDays = 60, // this caller CAN set this…
             EmailRequireConfirmation = false,      // …but not this — must reject the whole request.
         });
 
@@ -231,7 +231,7 @@ public class SystemSettingsApiTests
         var problem = await response.Content.ReadAsStringAsync();
         Assert.Contains("EmailRequireConfirmation", problem);
 
-        // Nothing persisted — including the Insurance field this caller did have permission for.
+        // Nothing persisted — including the cosmetic field this caller did have permission for.
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         Assert.Empty(await context.SystemSettings.ToListAsync());
@@ -267,7 +267,7 @@ public class SystemSettingsApiTests
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
         {
             EmailRequireConfirmation = false,
-            InsuranceMaxSummaryPolicies = 250, // this caller lacks system-settings.update for this.
+            ContractMaxSummaryContracts = 250, // this caller lacks system-settings.update for this.
         });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -294,8 +294,8 @@ public class SystemSettingsApiTests
         await service.UpdateAsync(securityAdmin, "security-admin", new SystemSettingsUpdate { EmailRequireConfirmation = false });
 
         // Cosmetic-only admin's client sends null for every field it structurally cannot edit (§3) —
-        // never a copy of the value it loaded — and saves an unrelated Insurance edit.
-        await service.UpdateAsync(cosmeticAdmin, "cosmetic-admin", new SystemSettingsUpdate { InsuranceExpiringSoonWindowDays = 45 });
+        // never a copy of the value it loaded — and saves an unrelated cosmetic edit.
+        await service.UpdateAsync(cosmeticAdmin, "cosmetic-admin", new SystemSettingsUpdate { ContractEndingWindowDays = 60 });
 
         // Asserts the STORED value, not just a 200 — an unconfigured Adapt-style mapper would have
         // silently written "false"-turned-"true"/overwritten this and still returned 200.
@@ -317,9 +317,9 @@ public class SystemSettingsApiTests
         var service = scope.ServiceProvider.GetRequiredService<SystemSettingsService>();
 
         var cosmeticAdmin = PrincipalWith(PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate);
-        var dto = await service.UpdateAsync(cosmeticAdmin, "cosmetic-admin", new SystemSettingsUpdate { InsuranceMaxSummaryPolicies = 500 });
+        var dto = await service.UpdateAsync(cosmeticAdmin, "cosmetic-admin", new SystemSettingsUpdate { ContractMaxSummaryContracts = 500 });
 
-        Assert.Equal(500, dto.InsuranceMaxSummaryPolicies);
+        Assert.Equal(500, dto.ContractMaxSummaryContracts);
         var registrationRow = await context.SystemSettings.AsNoTracking()
             .FirstOrDefaultAsync(setting => setting.Key == SystemSettingsKeys.RegistrationRequireAdminApproval);
         Assert.Null(registrationRow); // never touched — the caller sent null, not a loaded value.
@@ -328,34 +328,34 @@ public class SystemSettingsApiTests
     // ── Validation (DataAnnotations at the model-binding boundary) ─────────────
 
     [Fact]
-    public async Task Put_InsuranceFieldBelowRange_ReturnsBadRequest()
+    public async Task Put_CosmeticFieldBelowRange_ReturnsBadRequest()
     {
         await using var factory = new ApiFactory(FullAccess);
         using var client = factory.CreateClient();
 
-        var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { InsuranceExpiringSoonWindowDays = 0 });
+        var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractEndingWindowDays = 0 });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task Put_InsuranceFieldAboveRange_ReturnsBadRequest()
+    public async Task Put_CosmeticFieldAboveRange_ReturnsBadRequest()
     {
         await using var factory = new ApiFactory(FullAccess);
         using var client = factory.CreateClient();
 
-        var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { InsuranceMaxSummaryPolicies = 100001 });
+        var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractMaxSummaryContracts = 100001 });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task Put_NullInsuranceField_NeverTriggersRangeCheck()
+    public async Task Put_NullCosmeticField_NeverTriggersRangeCheck()
     {
         await using var factory = new ApiFactory(FullAccess);
         using var client = factory.CreateClient();
 
-        // Only RequireTwoFactor is set; both Insurance fields are null and must pass through untouched.
+        // Only RequireTwoFactor is set; both cosmetic fields are null and must pass through untouched.
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { RequireTwoFactor = true });
 
         response.EnsureSuccessStatusCode();

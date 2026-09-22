@@ -34,7 +34,7 @@ qualifier. The backend work is *not* a Non-Goal — it is the counterpart issue.
 
 The heart of this spec. Three subsections:
 
-- **Entry points** — where the feature appears. Name the route (plural noun: `/insurance-policies`),
+- **Entry points** — where the feature appears. Name the route (plural noun: `/tax-statements`),
   the page region, the menu, or the row action. If it is a new page, give its route and where it sits
   in the nav.
 - **UI states** — a numbered list of *every* state the user can land in, each named as developers will

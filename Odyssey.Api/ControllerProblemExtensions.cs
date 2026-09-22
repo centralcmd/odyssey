@@ -28,7 +28,7 @@ public static class ControllerProblemExtensions
 
     /// <summary>
     /// A conflict that carries structured detail the client needs in order to recover — the blocked
-    /// contact delete names which insurance link kinds block it, and (claims permitting) which policies
+    /// contact delete says how many contract beneficiary rows block it, and (claims permitting) which contracts
     /// (issue #27 §7 #5). The extensions ride alongside the standard problem members.
     /// </summary>
     public static ObjectResult ConflictProblem(

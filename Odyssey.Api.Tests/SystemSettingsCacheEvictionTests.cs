@@ -11,11 +11,11 @@ namespace Odyssey.Api.Tests;
 /// (issue #28).
 ///
 /// <para>
-/// <strong>Registry-wide rather than per-setting, deliberately.</strong> The two insurance caps that
-/// prompted this each had round-trip, ceiling, range and claim coverage and still evicted the wrong
-/// entry for months, because every one of those tests asks "what does the API return?" and none asks
-/// "which entry did the write drop?". The settings recipe is followed by hand for each new key, so the
-/// failure worth closing is the next slip, not these two.
+/// <strong>Registry-wide rather than per-setting, deliberately.</strong> The two caps that prompted
+/// this each had round-trip, ceiling, range and claim coverage and still evicted the wrong entry for
+/// months, because every one of those tests asks "what does the API return?" and none asks "which
+/// entry did the write drop?". The settings recipe is followed by hand for each new key, so the
+/// failure worth closing is the next slip, not those two.
 /// </para>
 ///
 /// <para>
@@ -30,7 +30,6 @@ public class SystemSettingsCacheEvictionTests
     /// <summary>Which cache entry serves which settings keys — the pairing every descriptor must agree with.</summary>
     private static readonly (string CacheKey, IReadOnlyList<string> Keys)[] ServedBy =
     [
-        (SystemSettingsService.InsuranceCacheKey, KeysOf<SystemSettingsLookup>("InsuranceKeys")),
         (SystemSettingsService.FinanceCapsCacheKey, KeysOf<SystemSettingsLookup>("FinanceCapKeys")),
         (SystemSettingsService.ContractSummaryCacheKey, KeysOf<SystemSettingsLookup>("ContractSummaryKeys")),
         (JournalLimitsLookup.CacheKey, KeysOf<JournalLimitsLookup>("Keys")),

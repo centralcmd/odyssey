@@ -623,7 +623,7 @@ public class ContractEventAutomationTests
         await using var context = TestContextFactory.Create();
         var caps = new FakeSystemSettingsLookup
         {
-            Caps = new FinanceRequestCaps(25, 50, MaxTermsPerContract: 1, 1000, 100, 50, 50),
+            Caps = new FinanceRequestCaps(25, 50, MaxTermsPerContract: 1, 1000),
         };
         var created = await Contracts(context, caps: caps).Create(New(), TestUserId);
         var log = new RecordingLogger<TermService>();

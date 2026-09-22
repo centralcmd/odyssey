@@ -10,8 +10,8 @@ namespace Odyssey.ApiClient.Tests;
 /// Route coverage for the write surfaces added when the read-only clients were completed.
 /// </summary>
 /// <remarks>
-/// The point of these is the <b>parent scoping</b>. Insurance and contract sub-resources (renewals,
-/// parties, attachments) are addressed through their parent id — never by their own id alone — which
+/// The point of these is the <b>parent scoping</b>. Contract sub-resources (parties, attachments,
+/// events) are addressed through their parent id — never by their own id alone — which
 /// is what keeps the IDOR-free guarantee the scoped downloads already had. A refactor that quietly
 /// flattened one of these routes would not otherwise fail anything.
 /// </remarks>
@@ -42,9 +42,6 @@ public class ScopedWriteRouteTests
     public static TheoryData<string, string, string> ScopedRoutes() => new()
     {
         // label                       expected path                                                    method
-        { "insurance renewal update",  $"/api/insurance-policies/{Parent}/renewals/{Child}",            "PUT" },
-        { "insurance renewal delete",  $"/api/insurance-policies/{Parent}/renewals/{Child}",            "DELETE" },
-        { "insurance renewal file",    $"/api/insurance-policies/{Parent}/renewals/{Child}/files/{Grandchild}", "DELETE" },
         { "contract party remove",     $"/api/contracts/{Parent}/parties/{Child}",                      "DELETE" },
         { "contract file list",        $"/api/contracts/{Parent}/files",                                "GET" },
         { "contract file update",      $"/api/contracts/{Parent}/files/{Child}",                        "PUT" },
@@ -68,7 +65,6 @@ public class ScopedWriteRouteTests
     public async Task Sub_resource_operations_are_addressed_through_their_parent(string label, string expectedPath, string method)
     {
         var (api, handler) = Create();
-        var insurance = new InsuranceApiClient(api);
         var contracts = new ContractsApiClient(api);
         var tax = new TaxStatementsApiClient(api);
         var transactions = new TransactionsApiClient(api);
@@ -77,9 +73,6 @@ public class ScopedWriteRouteTests
         // awaited as a bare Task and the assertion is on the recorded request.
         Task call = label switch
         {
-            "insurance renewal update" => insurance.UpdateRenewalAsync(Parent, Child, SampleRenewalUpdate()),
-            "insurance renewal delete" => insurance.DeleteRenewalAsync(Parent, Child),
-            "insurance renewal file" => insurance.DetachRenewalFileAsync(Parent, Child, Grandchild),
             "contract party remove" => contracts.RemovePartyAsync(Parent, Child),
             "contract file list" => contracts.ListFilesAsync(Parent),
             "contract file update" => contracts.UpdateFileAsync(Parent, Child, SampleFileUpdate()),
@@ -137,14 +130,6 @@ public class ScopedWriteRouteTests
         Type = ContractEventType.Amended,
         Title = "Pets permitted by amendment",
         OccurredAt = new DateTime(2026, 6, 14, 9, 31, 0, DateTimeKind.Utc),
-    };
-
-    private static UpdatePolicyRenewal SampleRenewalUpdate() => new()
-    {
-        FromDate = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        ToDate = new DateTime(2031, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        Premium = 100m,
-        CoverageAmount = 1000m,
     };
 
     /// <summary>

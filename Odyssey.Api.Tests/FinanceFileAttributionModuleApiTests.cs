@@ -8,7 +8,6 @@ using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Xunit;
 using ContractFileType = Odyssey.Context.ContractFileType;
-using PolicyFileType = Odyssey.Context.PolicyFileType;
 using TaxStatementFileType = Odyssey.Context.TaxStatementFileType;
 
 namespace Odyssey.Api.Tests;
@@ -86,28 +85,6 @@ public sealed class FinanceFileAttributionModuleApiTests
         Assert.Equal(UploaderUserId, file.AttachedByUserId);
     }
 
-    [Fact]
-    public async Task GetInsurancePolicy_ResolvesFileAttributionOnBothRenewalViews()
-    {
-        // A policy exposes its renewals twice — the Renewals list and the CurrentRenewal shortcut —
-        // and the service builds two separate DTOs from the same row. Enriching only one leaves the
-        // other's files unlabelled, which is exactly the half-fix this asserts against.
-        await using var factory = new OdysseyApiFactory([PermissionClaims.InsuranceRead]);
-        using var client = factory.CreateClient();
-        var policyId = await SeedInsurancePolicyAsync(factory);
-
-        var policy = await client.GetFromJsonAsync<ExistingInsurancePolicy>($"/api/insurance-policies/{policyId}");
-
-        var listed = Assert.Single(Assert.Single(policy!.Renewals).Files);
-        Assert.Equal(DisplayName, listed.AttachedByName);
-        Assert.Equal(DisplayName, listed.FileMetadata.UploadedByName);
-
-        Assert.NotNull(policy.CurrentRenewal);
-        var current = Assert.Single(policy.CurrentRenewal.Files);
-        Assert.Equal(DisplayName, current.AttachedByName);
-        Assert.Equal(DisplayName, current.FileMetadata.UploadedByName);
-    }
-
     private static async Task<Guid> SeedTaxStatementAsync(OdysseyApiFactory factory, string? displayName = DisplayName)
     {
         using var scope = factory.Services.CreateScope();
@@ -159,42 +136,6 @@ public sealed class FinanceFileAttributionModuleApiTests
         });
         await db.SaveChangesAsync();
         return contract.ContractId;
-    }
-
-    private static async Task<Guid> SeedInsurancePolicyAsync(OdysseyApiFactory factory)
-    {
-        using var scope = factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        SeedUploader(db, DisplayName);
-
-        var policy = new InsurancePolicy { Name = "Home", CreatedAtUtc = DateTime.UtcNow };
-        db.InsurancePolicies.Add(policy);
-        await db.SaveChangesAsync();
-
-        // In force today, so the policy's CurrentRenewal shortcut resolves to this same row.
-        var renewal = new PolicyRenewal
-        {
-            InsurancePolicyId = policy.InsurancePolicyId,
-            FromDate = DateTime.UtcNow.Date.AddDays(-30),
-            ToDate = DateTime.UtcNow.Date.AddDays(300),
-            Premium = 1200m,
-            CoverageAmount = 500_000m,
-            CreatedAtUtc = DateTime.UtcNow,
-        };
-        db.PolicyRenewals.Add(renewal);
-        var metadata = AddFile(db, "policy.pdf", "hash-policy");
-        await db.SaveChangesAsync();
-
-        db.PolicyRenewalFiles.Add(new PolicyRenewalFile
-        {
-            PolicyRenewalId = renewal.PolicyRenewalId,
-            FileMetadataId = metadata.Id,
-            AttachedByUserId = UploaderUserId,
-            AttachedAtUtc = DateTime.UtcNow,
-            FileType = PolicyFileType.PolicyDocument,
-        });
-        await db.SaveChangesAsync();
-        return policy.InsurancePolicyId;
     }
 
     private static void SeedUploader(OdysseyContext db, string? displayName)

@@ -331,8 +331,7 @@ public class ContractTermServiceTests
         {
             Caps = new FinanceRequestCaps(
                 MaxPartiesPerContract: 25, MaxFilesPerContract: 50, MaxTermsPerContract: 2,
-                MaxSummaryContracts: 1000, MaxRenewalsPerPolicy: 100, MaxFilesPerParent: 50,
-                MaxLinksPerPolicy: 50),
+                MaxSummaryContracts: 1000),
         };
         var contractId = await SeedContractAsync(context, settings: null);
         var service = Terms(context, settings);
@@ -354,7 +353,7 @@ public class ContractTermServiceTests
         await using var context = TestContextFactory.Create();
         var settings = new FakeSystemSettingsLookup
         {
-            Caps = new FinanceRequestCaps(25, 50, 1, 1000, 100, 50, 50),
+            Caps = new FinanceRequestCaps(25, 50, 1, 1000),
         };
         var accountId = await SeedAccountAsync(context);
         var service = Terms(context, settings);

@@ -42,10 +42,6 @@ public class SystemSettingsRegistryTests
         // Server-computed hard ceilings, not stored settings (issue #421 Wave 3).
         nameof(SystemSettingsDto.PhotoMaxLinksPerKindCeiling),
         nameof(SystemSettingsDto.PhotoMaxAlbumMembersCeiling),
-        // Same shape, for the insurance link cap (issue #27): the compile-time
-        // InsuranceLinkLimits.MaxLinksPerPolicy that feeds [MaxLength] on the write DTOs' eight link
-        // arrays, published so the settings field can bound itself.
-        nameof(SystemSettingsDto.InsuranceMaxLinksPerPolicyCeiling),
         // Same, for the upload cap (Wave 4) — computed from startup configuration rather than stored.
         nameof(SystemSettingsDto.UploadMegabytesCeiling),
         // The six issue #434 bound projections. Five ceilings and one floor, all server-computed rather
@@ -209,21 +205,25 @@ public class SystemSettingsRegistryTests
     }
 
     /// <summary>
-    /// <c>TouchOnPresenceOnly</c> is the asymmetry issue #349 shipped and issue #343 depends on: the five
-    /// original keys bump <c>UpdatedAt</c> on presence, every key added since only on an actual change.
-    /// <c>ImportExportSettingsApiTests</c>' GET→PUT no-op assertion excludes exactly those five, so a new
-    /// descriptor setting this flag would break it — from a different file, confusingly.
+    /// <c>TouchOnPresenceOnly</c> is the asymmetry issue #349 shipped and issue #343 depends on: the
+    /// original perimeter keys bump <c>UpdatedAt</c> on presence, every key added since only on an
+    /// actual change. <c>ImportExportSettingsApiTests</c>' GET→PUT no-op assertion excludes exactly
+    /// those, so a new descriptor setting this flag would break it — from a different file,
+    /// confusingly.
+    ///
+    /// <para>
+    /// It was five keys until the standalone insurance-policy feature was removed; its two cosmetic
+    /// knobs carried the flag, and the three authentication-perimeter toggles are what remain.
+    /// </para>
     /// </summary>
     [Fact]
-    public void Only_the_five_original_keys_touch_on_presence()
+    public void Only_the_original_perimeter_keys_touch_on_presence()
     {
         string[] legacy =
         [
             SystemSettingsKeys.RequireTwoFactor,
             SystemSettingsKeys.RegistrationRequireAdminApproval,
             SystemSettingsKeys.EmailRequireConfirmation,
-            SystemSettingsKeys.InsuranceExpiringSoonWindowDays,
-            SystemSettingsKeys.InsuranceMaxSummaryPolicies,
         ];
 
         Assert.Equal(

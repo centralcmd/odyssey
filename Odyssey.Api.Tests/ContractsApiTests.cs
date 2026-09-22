@@ -12,7 +12,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 using Odyssey.Api.Tests.Infrastructure;
 using ContextAccountType = Odyssey.Context.AccountType;
-using ContextInsurancePolicyType = Odyssey.Context.InsurancePolicyType;
 using ContractType = Odyssey.Dtos.Finance.ContractType;
 // Both halves of the aligned pair are in scope here (Odyssey.Context for the seed, Odyssey.Dtos.Finance
 // for the wire), so the wire one is named explicitly — the same shape ContractType already needed.
@@ -213,7 +212,7 @@ public class ContractsApiTests
     public async Task AddParty_RequiresExactlyOneTarget()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, contactId, _) = await SeedTargetsAsync(factory);
+        var (accountId, contactId) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -261,7 +260,7 @@ public class ContractsApiTests
     public async Task AddParty_Duplicate_Returns409()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -281,7 +280,7 @@ public class ContractsApiTests
         // left this test asserting a 422 that the shipped default of 20 would never produce.
         await using var factory = new ApiFactory(ReadWrite);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.ContractMaxPartiesPerContract, "1");
-        var (accountId, contactId, _) = await SeedTargetsAsync(factory);
+        var (accountId, contactId) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -301,7 +300,7 @@ public class ContractsApiTests
     public async Task AddParty_OnArchivedContract_Succeeds()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -323,7 +322,7 @@ public class ContractsApiTests
     public async Task AddParty_WithRoleAndTerm_EchoesBoth_AndAppearsOnTheContract()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -364,7 +363,7 @@ public class ContractsApiTests
     public async Task AddParty_WithoutRole_Returns400NamingRoleAsRequired()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -390,7 +389,7 @@ public class ContractsApiTests
     public async Task UpdateParty_ChangingOnlyRole_KeepsTheSamePartyId()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -419,7 +418,7 @@ public class ContractsApiTests
     public async Task UpdateParty_OmittingToDate_ClearsIt()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -450,7 +449,7 @@ public class ContractsApiTests
     public async Task AddParty_SameTargetInTwoRoles_Succeeds_SameRoleTwiceConflicts()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (_, contactId, _) = await SeedTargetsAsync(factory);
+        var (_, contactId) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -479,7 +478,7 @@ public class ContractsApiTests
     public async Task UpdateAndDeleteParty_WithForeignPartyId_Return404_AndLeaveThatPartyUntouched()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var owner = await CreateAsync(client);
@@ -504,7 +503,7 @@ public class ContractsApiTests
     public async Task AddParty_TermRules_Return400_WithTheOffendingFieldKey()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var start = FixedToday.AddDays(-30);
@@ -538,7 +537,7 @@ public class ContractsApiTests
     public async Task AddParty_OnContractWithNoStartDate_AcceptsAnyFromDate()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(Path, new NewContract
@@ -566,7 +565,7 @@ public class ContractsApiTests
     public async Task AddParty_UnbindableRole_Returns400FromModelValidation()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -586,7 +585,7 @@ public class ContractsApiTests
     public async Task UpdateAndDetachParty_OnArchivedContract_BothSucceed()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -614,7 +613,7 @@ public class ContractsApiTests
     public async Task PartyNotFoundClasses_AreDistinguishableByFieldKey()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, contactId, _) = await SeedTargetsAsync(factory);
+        var (accountId, contactId) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -650,7 +649,7 @@ public class ContractsApiTests
     public async Task UpdateParty_NestedTargetObject_IsIgnored_NoMutation()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (_, contactId, _) = await SeedTargetsAsync(factory);
+        var (_, contactId) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -699,7 +698,7 @@ public class ContractsApiTests
     {
         await using var factory = new ApiFactory(ReadWrite);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.ContractMaxPartiesPerContract, "1");
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -720,7 +719,7 @@ public class ContractsApiTests
     public async Task UpdateParty_ChangingOnlyDates_IsNotASelfConflict()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -749,7 +748,7 @@ public class ContractsApiTests
     public async Task UpdateParty_TwiceInSequence_LastWriteWins_NoConflict()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -774,7 +773,7 @@ public class ContractsApiTests
     public async Task AddParty_NestedTargetObject_IsIgnored_NoMutation()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (_, contactId, _) = await SeedTargetsAsync(factory);
+        var (_, contactId) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -802,7 +801,7 @@ public class ContractsApiTests
     public async Task Get_PartyReferences_OmitCrossClaimFields()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, contactId, _) = await SeedTargetsAsync(factory);
+        var (accountId, contactId) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -871,7 +870,7 @@ public class ContractsApiTests
     public async Task Delete_CascadesLinks_LeavesTargetsAndFiles()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         var pdfId = await SeedFileAsync(factory, "contract.pdf", "application/pdf");
         using var client = factory.CreateClient();
 
@@ -897,7 +896,7 @@ public class ContractsApiTests
     public async Task DeleteParty_DetachesOnly()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var id = await CreateAsync(client);
@@ -1065,7 +1064,7 @@ public class ContractsApiTests
     public async Task List_InstitutionName_IsTheFirstContactPartyOrNull()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, contactId, _) = await SeedTargetsAsync(factory);
+        var (accountId, contactId) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
 
         var withInstitution = await CreateAsync(client);
@@ -1352,7 +1351,7 @@ public class ContractsApiTests
     public async Task NeitherPauseNorArchive_BlocksPartyTermOrFileWrites()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var (accountId, _, _) = await SeedTargetsAsync(factory);
+        var (accountId, _) = await SeedTargetsAsync(factory);
         var fileId = await SeedFileAsync(factory, "contract.pdf", "application/pdf");
         using var client = factory.CreateClient();
 
@@ -1394,7 +1393,7 @@ public class ContractsApiTests
     public async Task Put_WithNestedCollectionsAlongsideIsPaused_MutatesNone()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        var (accountId, contactId, _) = await SeedTargetsAsync(factory);
+        var (accountId, contactId) = await SeedTargetsAsync(factory);
         using var client = factory.CreateClient();
         var id = await CreateAsync(client);
 
@@ -1555,7 +1554,7 @@ public class ContractsApiTests
     private static async Task<ExistingContract> GetAsync(HttpClient client, Guid id) =>
         (await client.GetFromJsonAsync<ExistingContract>($"{Path}/{id}"))!;
 
-    private static async Task<(Guid AccountId, Guid ContactId, Guid PolicyId)> SeedTargetsAsync(
+    private static async Task<(Guid AccountId, Guid ContactId)> SeedTargetsAsync(
         WebApplicationFactory<Program> factory)
     {
         using var scope = factory.Services.CreateScope();
@@ -1587,21 +1586,9 @@ public class ContractsApiTests
             OrganizationDetails = new() { LegalName = "Acme Corp", OrganizationNumber = "ORG-12345" },
         });
 
-        var policyId = Guid.NewGuid();
-        context.InsurancePolicies.Add(new InsurancePolicy
-        {
-            InsurancePolicyId = policyId,
-            Name = "Liability cover",
-            PolicyNumber = "POL-SECRET-9",
-            Type = ContextInsurancePolicyType.Liability,
-            Insurers = [new InsurancePolicyInsurer { ContactId = contactId }],
-            Notes = "secret policy notes",
-            CreatedAtUtc = DateTime.UtcNow,
-        });
-
         await context.SaveChangesAsync();
         await journalContext.SaveChangesAsync();
-        return (accountId, contactId, policyId);
+        return (accountId, contactId);
     }
 
     private static async Task<Guid> SeedFileAsync(WebApplicationFactory<Program> factory, string fileName, string contentType)

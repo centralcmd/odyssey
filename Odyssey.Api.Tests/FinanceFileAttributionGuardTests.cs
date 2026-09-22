@@ -106,7 +106,6 @@ public sealed class FinanceFileAttributionGuardTests
                 "AccountController",
                 "BudgetController",
                 "ContractController",
-                "InsuranceController",
                 "TaxStatementController",
                 "TransactionController",
             ],

@@ -8,7 +8,6 @@ using ContextContractFileType = Odyssey.Context.ContractFileType;
 using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoContractType = Odyssey.Dtos.Finance.ContractType;
 using DtoContractFileType = Odyssey.Dtos.Finance.ContractFileType;
-using DtoInsurancePolicyType = Odyssey.Dtos.Finance.InsurancePolicyType;
 using Odyssey.Dtos.Finance;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
@@ -1013,7 +1012,7 @@ public class ContractService
         EnsurePartyTargetXor(request);
 
         // Only a NEW target is validated for existence, so re-dating a party whose contact was deleted
-        // meanwhile does not fail — the same rule the insurance party edit applies.
+        // meanwhile does not fail.
         if (party.AccountId != request.AccountId || party.ContactId != request.ContactId)
         {
             await EnsureTargetExists(request, cancellationToken);
@@ -1087,7 +1086,7 @@ public class ContractService
     /// <summary>
     /// One structured <c>Information</c> line per party write (issue #121 §7.7). <c>ContractParty</c>
     /// deliberately carries no <c>CreatedByUserId</c> column — no v1 role confers or transfers an
-    /// entitlement the way an insurance beneficiary designation does — but the <c>PUT</c> is a full
+    /// entitlement that must not vanish silently — but the <c>PUT</c> is a full
     /// replacement in which an omitted <c>role</c> silently resets to <c>Unspecified</c>, so without
     /// this line an accidental employment-relationship downgrade would leave no trace anywhere.
     /// </summary>
@@ -1272,7 +1271,7 @@ public class ContractService
             {
                 ContractPartyId = p.ContractPartyId,
                 Role = p.Role.Adapt<DtoContractPartyRole>(),
-                // An unresolvable target keeps its row and loses its name — the rule the insurance
+                // An unresolvable target keeps its row and loses its name — the rule the link
                 // link collections already follow.
                 DisplayName = p.ContactId is { } contactId
                     ? contacts.GetValueOrDefault(contactId)?.Name
@@ -1314,7 +1313,7 @@ public class ContractService
     /// </summary>
     /// <remarks>
     /// The anchor is checked at party-write time only: editing the contract's <c>StartDate</c> later
-    /// neither re-validates nor re-dates its parties, mirroring insurance, where a renewal never
+    /// neither re-validates nor re-dates its parties: a renewal never
     /// re-dates a party.
     /// </remarks>
     private static (DateTime? FromDate, DateTime? ToDate) NormalizePartyTerm(
