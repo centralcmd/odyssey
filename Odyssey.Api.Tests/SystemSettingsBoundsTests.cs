@@ -87,21 +87,22 @@ public class SystemSettingsBoundsTests
     /// 38 int keys before issue #437, 41 after, 42 once issue #8 added the SMTP port, 43 once issue #27
     /// added the insurance link cap, 44 once issue #135 added the per-contract term cap, 47 once the
     /// Contracts summary gained its two windows and its next-charge row cap, 48 once issue #166 added
-    /// the per-contract smart-tag cap.
+    /// the per-contract smart-tag cap, and 45 once the standalone subscriptions feature was removed
+    /// and took its three summary limits with it.
     /// </summary>
     [Fact]
-    public void The_int_key_census_is_forty_eight()
+    public void The_int_key_census_is_forty_five()
     {
-        Assert.Equal(48, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
-        Assert.Equal(48, IntProperties.Count);
+        Assert.Equal(45, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
+        Assert.Equal(45, IntProperties.Count);
 
         // …and the whole registry equals the persisted key catalogue, which is the check that the
         // per-kind counts are right rather than merely consistent with each other. Issue #8 added four:
         // one int (the SMTP port), one bool (STARTTLS) and two strings (the host and the link origin).
         // Issue #27 added one more int, InsuranceMaxLinksPerPolicy; issue #135 another,
         // ContractMaxTermsPerContract; the Contracts summary windows added three more; issue #166 the
-        // per-contract smart-tag cap.
-        Assert.Equal(72, SystemSettingsRegistry.All.Count);
+        // per-contract smart-tag cap. Removing the subscriptions feature took three int keys back out.
+        Assert.Equal(69, SystemSettingsRegistry.All.Count);
         Assert.Equal(5, SystemSettingsRegistry.All.OfType<BoolSetting>().Count());
         Assert.Equal(8, SystemSettingsRegistry.All.OfType<CapacitySetting>().Count());
         Assert.Equal(10, SystemSettingsRegistry.All.OfType<StringSetting>().Count());

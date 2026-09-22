@@ -7,7 +7,7 @@ namespace Odyssey.Client.Components;
 /// pills and the status filter (issue #174). Mirrors the design-system contract status vocabulary: the
 /// status meaning lives in the visible <see cref="Label"/>, never in colour or glyph alone (the
 /// dot/icon is decorative). Tone follows the finance vocabulary — Active = income (mint),
-/// Upcoming = info (sea), Expired = expense (coral), Paused = pending (amber, the tone Subscriptions
+/// Upcoming = info (sea), Expired = expense (coral), Paused = pending (amber, the tone a paused record
 /// already gives a pause), Ready = pending (the same amber: it is waiting on something), Draft and
 /// Archived = neutral outline. No new hue enters for the two signature states (issue #145).
 /// </summary>

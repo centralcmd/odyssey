@@ -36,7 +36,6 @@ public class OdsTypeRegistriesTests
         { nameof(OdsTypeRegistries.ContractFileTypes), typeof(ContractFileType) },
         { nameof(OdsTypeRegistries.ContractPartyRoles), typeof(ContractPartyRole) },
         { nameof(OdsTypeRegistries.ContractEventTypes), typeof(ContractEventType) },
-        { nameof(OdsTypeRegistries.BillingIntervals), typeof(BillingInterval) },
         { nameof(OdsTypeRegistries.BudgetCategoryTypes), typeof(BudgetCategoryType) },
     };
 
@@ -122,7 +121,6 @@ public class OdsTypeRegistriesTests
     {
         AssertResolvesEveryMember<BudgetCategoryType>(OdsTypeRegistries.BudgetCategoryTypeOf);
         AssertResolvesEveryMember<InsurancePolicyType>(OdsTypeRegistries.InsurancePolicyTypeOf);
-        AssertResolvesEveryMember<BillingInterval>(OdsTypeRegistries.BillingIntervalOf);
         AssertResolvesEveryMember<ContractType>(OdsTypeRegistries.ContractTypeOf);
         AssertResolvesEveryMember<ContractFileType>(OdsTypeRegistries.ContractFileTypeOf);
         AssertResolvesEveryMember<ContractEventType>(OdsTypeRegistries.ContractEventTypeOf);
@@ -151,7 +149,6 @@ public class OdsTypeRegistriesTests
     public void An_unknown_enum_value_falls_back_to_the_documented_entry()
     {
         Assert.Equal("Expense", OdsTypeRegistries.BudgetCategoryTypeOf((BudgetCategoryType)99).Key);
-        Assert.Equal("Monthly", OdsTypeRegistries.BillingIntervalOf((BillingInterval)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.InsurancePolicyTypeOf((InsurancePolicyType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.ContractTypeOf((ContractType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.ContractFileTypeOf((ContractFileType)99).Key);
@@ -314,7 +311,6 @@ public class OdsTypeRegistriesTests
         { "ContractOptions", OdsTypeRegistries.ContractOptions, OdsTypeRegistries.ContractTypes },
         { "ContractFileOptions", OdsTypeRegistries.ContractFileOptions, OdsTypeRegistries.ContractFileTypes },
         { "ContractPartyRoleOptions", OdsTypeRegistries.ContractPartyRoleOptions, OdsTypeRegistries.ContractPartyRoles },
-        { "BillingIntervalOptions", OdsTypeRegistries.BillingIntervalOptions, OdsTypeRegistries.BillingIntervals },
     };
 
     [Theory]
@@ -333,19 +329,6 @@ public class OdsTypeRegistriesTests
     public void The_sex_options_match_the_Sex_enum()
     {
         Assert.Equal(Enum.GetNames<Sex>(), OdsTypeRegistries.SexOptions.Select(o => o.Value));
-    }
-
-    /// <summary>
-    /// <c>BillingIntervals</c> documents its order as the enum's numeric order, because the
-    /// subscriptions list sorts by "Frequency" against it. A reordered registry would silently
-    /// reorder that column.
-    /// </summary>
-    [Fact]
-    public void Billing_intervals_are_in_enum_numeric_order()
-    {
-        Assert.Equal(
-            Enum.GetValues<BillingInterval>().OrderBy(v => (int)v).Select(v => v.ToString()),
-            OdsTypeRegistries.BillingIntervals.Select(t => t.Key));
     }
 
     // ── The budget category's DIRECTION projection (issue #159 / #162) ───────

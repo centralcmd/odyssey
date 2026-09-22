@@ -16,7 +16,7 @@ public partial class OdsRecordCard
 
     /// <summary>Material Icons ligature for the record's TYPE, or its type-equivalent — a
     /// categorical registry the record always has exactly one of (Accounts: account type;
-    /// Subscriptions: billing interval). Never derived state.</summary>
+    /// Contracts: term cadence). Never derived state.</summary>
     [Parameter] public string? Icon { get; set; }
 
     /// <summary>

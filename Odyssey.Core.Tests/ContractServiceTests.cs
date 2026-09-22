@@ -74,11 +74,6 @@ public class ContractServiceTests
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(Caps);
 
-        // The subscriptions limits joined the interface in issue #437. Not used by ContractService —
-        // present because the interface is one seam for the whole finance domain.
-        public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new SubscriptionSettings(45, 6, 1000));
-
         /// <summary>The summary windows: a 45-day ending window, a 45-day charge window, six rows.</summary>
         public ContractSummarySettings ContractSummary { get; set; } = new(45, 45, 6);
 

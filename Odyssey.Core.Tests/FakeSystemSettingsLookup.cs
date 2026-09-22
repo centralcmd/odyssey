@@ -19,17 +19,11 @@ internal sealed class FakeSystemSettingsLookup : ISystemSettingsLookup
 
     public FinanceRequestCaps Caps { get; set; } = new(25, 50, 500, 1000, 100, 50, 50);
 
-    /// <summary>The issue #437 defaults: a 45-day window, six renewal rows, a 1000-row summary fetch.</summary>
-    public SubscriptionSettings Subscriptions { get; set; } = new(45, 6, 1000);
-
     public Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(InsurancePolicy);
 
     public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(Caps);
-
-    public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(Subscriptions);
 
     /// <summary>The shipped Contracts defaults: a 45-day ending window, a 45-day charge window, six rows.</summary>
     public ContractSummarySettings ContractSummary { get; set; } = new(45, 45, 6);

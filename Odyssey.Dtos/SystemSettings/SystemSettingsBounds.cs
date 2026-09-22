@@ -120,25 +120,27 @@ public static class SystemSettingsBounds
 
     // ── The Contracts summary windows ───────────────────────────────────────────────────────────
     //
-    // Mirrors the Subscriptions trio above in shape and in bound: the same kind of window, the same
-    // kind of header-rendered row cap.
+    // Two look-ahead windows and a header-rendered row cap. The row cap is bounded far below its
+    // materialised-fetch siblings, for the reason stated on it.
 
     public const int ContractEndingWindowDaysMin = 1;
 
-    /// <summary>Matches <see cref="SubscriptionRenewalWindowDaysMax"/> — the same shape of window.</summary>
+    /// <summary>Matches <see cref="InsuranceExpiringSoonWindowDaysMax"/> — the same shape of window.</summary>
     public const int ContractEndingWindowDaysMax = 365;
 
     public const int ContractChargeWindowDaysMin = 1;
 
-    /// <summary>Matches <see cref="SubscriptionRenewalWindowDaysMax"/> — the same shape of window.</summary>
+    /// <summary>Matches <see cref="InsuranceExpiringSoonWindowDaysMax"/> — the same shape of window.</summary>
     public const int ContractChargeWindowDaysMax = 365;
 
     public const int ContractMaxSummaryChargesMin = 1;
 
     /// <summary>
-    /// <strong>50, not 100000</strong> — the same reasoning as
-    /// <see cref="SubscriptionMaxSummaryRenewalsMax"/>: each charge is its own rendered block in the
-    /// page-header panel, which is open by default.
+    /// <strong>50, not 100000.</strong> Unlike the materialised-fetch caps above, each charge is its
+    /// own rendered block in the page-header panel, which is open by default and has no
+    /// <c>max-height</c> or scroll container of its own (that component fix is issue #443). 50 is ~8x
+    /// the shipped default — ample for a header roll-up — and tightening the global bound is what
+    /// removes the need for a separate surface constant.
     /// </summary>
     public const int ContractMaxSummaryChargesMax = 50;
 
@@ -264,28 +266,4 @@ public static class SystemSettingsBounds
     /// </para>
     /// </summary>
     public const int ContractMaxSmartTagsPerContractMax = ListDefaults.MaxFilterArrayLength;
-
-    // ── The Subscriptions summary limits (issue #437) ────────────────────────────────────────────
-    //
-    // Declared HERE first and named by the [Range] rather than transcribed from it — the sourcing
-    // runs the other way for these three, unlike the 38 keys above.
-
-    public const int SubscriptionRenewalWindowDaysMin = 1;
-
-    /// <summary>Matches <see cref="InsuranceExpiringSoonWindowDaysMax"/> — the same shape of window.</summary>
-    public const int SubscriptionRenewalWindowDaysMax = 365;
-
-    public const int SubscriptionMaxSummaryRenewalsMin = 1;
-
-    /// <summary>
-    /// <strong>50, not 100000.</strong> Each renewal is rendered as its own block in the page-header
-    /// roll-up, which is open by default and has no <c>max-height</c> or scroll container of its own
-    /// (that component fix is issue #443). 50 is ~8x the shipped default — ample for a header roll-up
-    /// — and tightening the global bound is what removes the need for a separate surface constant.
-    /// </summary>
-    public const int SubscriptionMaxSummaryRenewalsMax = 50;
-
-    public const int SubscriptionMaxSummarySubscriptionsMin = 1;
-
-    public const int SubscriptionMaxSummarySubscriptionsMax = 100000;
 }

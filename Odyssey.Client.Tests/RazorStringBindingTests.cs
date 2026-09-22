@@ -9,7 +9,7 @@ namespace Odyssey.Client.Tests;
 /// <c>"_field"</c>, not the C# field — Razor only treats a bare attribute as a C# expression for
 /// non-string parameter types (bool, enum, DateTime, …). For <c>string</c> parameters you need
 /// <c>Value="@_field"</c> or <c>@bind-Value</c>. This has shipped at least four times (Insurance
-/// policy type, Subscription billing interval, Contract type, Calendar view/export-scope segmented
+/// policy type, Contract type, Calendar view/export-scope segmented
 /// controls) — always invisible in code review because the file still compiles and the "wrong" value
 /// only shows up as a placeholder at runtime. No bUnit needed: this is a pure source-text check.
 /// </summary>

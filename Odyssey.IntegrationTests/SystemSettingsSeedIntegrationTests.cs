@@ -28,9 +28,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
     private const string Database = "odyssey_system_settings_seed";
 
     /// <summary>
-    /// Spot-checks that carry a behavioural contract beyond "a row exists": the three Subscriptions
-    /// limits replace <c>private const</c>s on <c>SubscriptionService</c>, so a drifting seed silently
-    /// changes what every deployment's Subscriptions page shows.
+    /// Spot-checks that carry a behavioural contract beyond "a row exists": the Contracts windows
+    /// replace a client <c>const 45</c>, so a drifting seed silently changes what every deployment's
+    /// Contracts page shows.
     ///
     /// <para>
     /// The four mail transport rows are here for a sharper reason (issue #8, AC 17). Two of them seed
@@ -47,16 +47,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
         (SystemSettingsKeys.EmailSmtpPort, $"{SystemSettingsDefaults.EmailSmtpPort}"),
         (SystemSettingsKeys.EmailUseStartTls, SystemSettingsDefaults.EmailUseStartTls ? "true" : "false"),
         (SystemSettingsKeys.EmailClientBaseUrl, SystemSettingsDefaults.EmailClientBaseUrl),
-        (SystemSettingsKeys.SubscriptionRenewalWindowDays,
-            $"{SystemSettingsDefaults.SubscriptionRenewalWindowDays}"),
-        (SystemSettingsKeys.SubscriptionMaxSummaryRenewals,
-            $"{SystemSettingsDefaults.SubscriptionMaxSummaryRenewals}"),
-        (SystemSettingsKeys.SubscriptionMaxSummarySubscriptions,
-            $"{SystemSettingsDefaults.SubscriptionMaxSummarySubscriptions}"),
-        // The Contracts windows, spot-checked for the same reason as the Subscriptions trio above: the
-        // ending-soon window replaces a client `const 45` and is SERVED to the page, which interpolates
-        // it into a row label, so a drifting seed would caption one number while the server counted by
-        // another.
+        // The Contracts windows: the ending-soon window replaces a client `const 45` and is SERVED to
+        // the page, which interpolates it into a row label, so a drifting seed would caption one
+        // number while the server counted by another.
         (SystemSettingsKeys.ContractEndingWindowDays,
             $"{SystemSettingsDefaults.ContractEndingWindowDays}"),
         (SystemSettingsKeys.ContractChargeWindowDays,
@@ -85,8 +78,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             // 62 before issue #8, +4 for the mail transport and the public link origin, +1 for the
             // insurance link cap (issue #27), +1 for the per-contract term cap (issue #135), +3 for the
             // Contracts summary windows and its next-charge row cap, +1 for the per-contract smart-tag
-            // cap (issue #166).
-            Assert.Equal(72, rows.Count);
+            // cap (issue #166), then -3 when the standalone subscriptions feature was removed and its
+            // migration deleted the three summary-limit rows.
+            Assert.Equal(69, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)

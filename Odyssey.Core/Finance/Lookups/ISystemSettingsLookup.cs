@@ -28,16 +28,7 @@ public interface ISystemSettingsLookup
     Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The Subscriptions summary limits (issue #437). A third method here rather than a fourth Finance
-    /// lookup interface, following <see cref="GetRequestCapsAsync"/>'s precedent — but on its own cache
-    /// key in the implementation, which is forced rather than chosen:
-    /// <c>SystemSettingDescriptor.CacheKeyToEvict</c> is a single string per descriptor, so sharing one
-    /// entry would make a subscriptions change evict the insurance settings and vice versa.
-    /// </summary>
-    Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// The Contracts page-header windows. A fourth method here rather than folding the two windows
+    /// The Contracts page-header windows. A third method here rather than folding the two windows
     /// into <see cref="GetRequestCapsAsync"/>: that record's entry is evicted by a per-request-cap
     /// change, and <c>SystemSettingDescriptor.CacheKeyToEvict</c> is a single string per descriptor,
     /// so sharing it would cross-evict.
@@ -50,7 +41,7 @@ public interface ISystemSettingsLookup
 ///
 /// <para>
 /// <see cref="EndingWindowDays"/> is returned to the CLIENT on <c>ContractSummary</c>, unlike the
-/// Subscriptions trio, because the client renders it: the "Ending soon · Nd" summary row interpolates
+/// other settings here, because the client renders it: the "Ending soon · Nd" summary row interpolates
 /// it and the record headline reads "ending soon" against it. A client-side <c>const 45</c> beside an
 /// admin-editable server value is the copy CLAUDE.md forbids, so the number travels rather than being
 /// duplicated.
@@ -60,24 +51,6 @@ public sealed record ContractSummarySettings(
     int EndingWindowDays,
     int ChargeWindowDays,
     int MaxSummaryCharges);
-
-/// <summary>
-/// The Subscriptions page-header roll-up's three limits (issue #437). Two replace <c>private const</c>s
-/// on <c>SubscriptionService</c>; the third is new, because that summary's fetch was <strong>unbounded</strong>
-/// — unlike its Insurance and Contracts siblings.
-///
-/// <para>
-/// There is no <c>IsDegraded</c> flag and no <c>503</c> path, unlike <c>UploadLimits</c>/
-/// <c>AccountLimits</c>: that machinery exists on those because their values are also served by
-/// claim-free lookup endpoints that must fail closed. These three have no such endpoint — the
-/// Subscriptions page holds no client-side copy of any of them — so every read path yields usable
-/// numbers and the summary never fails because of a settings read.
-/// </para>
-/// </summary>
-public sealed record SubscriptionSettings(
-    int RenewalWindowDays,
-    int MaxSummaryRenewals,
-    int MaxSummarySubscriptions);
 
 /// <summary>
 /// Per-request caps for contracts and insurance, migrated out of POCO defaults nobody could change

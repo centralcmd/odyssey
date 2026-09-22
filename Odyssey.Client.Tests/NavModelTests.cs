@@ -52,7 +52,7 @@ public class NavModelTests
 
     // ── ModuleOf ────────────────────────────────────────────────────────────────
     [Theory]
-    [InlineData("subscriptions", "finance")]
+    [InlineData("contracts", "finance")]
     [InlineData("insurance-policies", "finance")]
     // Contacts was relocated from its standalone module into the Journal module (design-system app shell).
     [InlineData("contacts", "journal")]
@@ -110,8 +110,8 @@ public class NavModelTests
     [Fact]
     public void VisibleGroups_drops_a_fully_gated_group()
     {
-        // Finance "Commitments" (tax/insurance/contracts/subscriptions) is entirely claim-gated → a
-        // non-admin sees only the Money + Reference groups.
+        // Finance "Commitments" (tax/insurance/contracts) is entirely claim-gated → a non-admin sees
+        // only the Money + Reference groups.
         var groups = NavModel.VisibleGroups(Module("finance"), NonAdmin);
         Assert.DoesNotContain("Commitments", groups.Select(g => g.Label));
         Assert.Contains("Money", groups.Select(g => g.Label));
@@ -152,8 +152,8 @@ public class NavModelTests
         var adminKeys = NavModel.AllVisiblePages(Admin).Select(h => h.Page.Key).ToList();
         var nonAdminKeys = NavModel.AllVisiblePages(NonAdmin).Select(h => h.Page.Key).ToList();
 
-        Assert.Contains("subscriptions", adminKeys);
-        Assert.DoesNotContain("subscriptions", nonAdminKeys); // subscriptions.read gated
+        Assert.Contains("contracts", adminKeys);
+        Assert.DoesNotContain("contracts", nonAdminKeys);     // contracts.read gated
         Assert.DoesNotContain("users", nonAdminKeys);         // users.read gated
         Assert.Contains("accounts", nonAdminKeys);            // ungated
 

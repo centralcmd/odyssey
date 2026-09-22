@@ -54,11 +54,6 @@ public class InsuranceServiceTests
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(Caps);
 
-        // The subscriptions limits joined the interface in issue #437. Not used by InsuranceService —
-        // present because the interface is one seam for the whole finance domain.
-        public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new SubscriptionSettings(45, 6, 1000));
-
         // Likewise the contracts summary windows — unused here, present because the interface is one
         // seam for the whole finance domain.
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>

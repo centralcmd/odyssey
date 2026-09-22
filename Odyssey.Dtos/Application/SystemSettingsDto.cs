@@ -29,17 +29,6 @@ public sealed record SystemSettingsDto
     public int InsuranceMaxSummaryPolicies { get; set; }
 
     // ---------------------------------------------------------------------------------------------
-    // The Subscriptions summary limits (issue #437). Instance policy, not records — three integers,
-    // no PII, nothing reachable today only under another claim.
-    // ---------------------------------------------------------------------------------------------
-
-    public int SubscriptionRenewalWindowDays { get; set; }
-
-    public int SubscriptionMaxSummaryRenewals { get; set; }
-
-    public int SubscriptionMaxSummarySubscriptions { get; set; }
-
-    // ---------------------------------------------------------------------------------------------
     // Import/export volume caps (issue #343 §6). Count fields are null = no limit; size fields are
     // always a finite number of megabytes.
     // ---------------------------------------------------------------------------------------------

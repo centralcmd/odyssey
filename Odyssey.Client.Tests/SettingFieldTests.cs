@@ -506,7 +506,7 @@ public class SettingFieldTests
         foreach (var key in new[]
                  {
                      "calendarMaxWindowDays", "calendarMaxEventDurationDays",
-                     "subscriptionRenewalWindowDays", "insurance-window",
+                     "contractEndingWindowDays", "insurance-window",
                  })
         {
             var start = catalogue.IndexOf($"new(\"{key}\"", StringComparison.Ordinal);

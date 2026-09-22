@@ -26,9 +26,9 @@ namespace Odyssey.Client.Tests;
 /// </summary>
 public class SettingsFaultSurfaceTests
 {
-    private const string Window = nameof(SystemSettingsUpdate.SubscriptionRenewalWindowDays);
-    private const string Renewals = nameof(SystemSettingsUpdate.SubscriptionMaxSummaryRenewals);
-    private const string Fetch = nameof(SystemSettingsUpdate.SubscriptionMaxSummarySubscriptions);
+    private const string Window = nameof(SystemSettingsUpdate.ContractEndingWindowDays);
+    private const string Charges = nameof(SystemSettingsUpdate.ContractMaxSummaryCharges);
+    private const string Fetch = nameof(SystemSettingsUpdate.ContractMaxSummaryContracts);
     private const string InsuranceWindow = nameof(SystemSettingsUpdate.InsuranceExpiringSoonWindowDays);
     private const string InsuranceMax = nameof(SystemSettingsUpdate.InsuranceMaxSummaryPolicies);
 
@@ -61,7 +61,7 @@ public class SettingsFaultSurfaceTests
             Faults((Window, SettingFaultKind.Unreadable)), Settings.AllItems);
 
         Assert.Equal(
-            "1 setting isn't using its stored value: Upcoming renewals window (couldn't be read). "
+            "1 setting isn't using its stored value: “Ending soon” window (couldn't be read). "
             + "Use Go to first fault to reach it.",
             announcement);
     }
@@ -80,8 +80,8 @@ public class SettingsFaultSurfaceTests
             Settings.AllItems);
 
         Assert.Equal(
-            "2 settings aren't using their stored value: Upcoming renewals window (couldn't be read), "
-            + "Max subscriptions read for summary (is outside its allowed range). "
+            "2 settings aren't using their stored value: “Ending soon” window (couldn't be read), "
+            + "Max contracts in summary (is outside its allowed range). "
             + "Use Go to first fault to reach them.",
             announcement);
     }
@@ -92,14 +92,14 @@ public class SettingsFaultSurfaceTests
         var announcement = Settings.FaultAnnouncement(
             Faults(
                 (Window, SettingFaultKind.Unreadable),
-                (Renewals, SettingFaultKind.Clamped),
+                (Charges, SettingFaultKind.Clamped),
                 (Fetch, SettingFaultKind.Clamped)),
             Settings.AllItems);
 
         Assert.Equal(
-            "3 settings aren't using their stored value: Upcoming renewals window (couldn't be read), "
-            + "Max renewals shown in summary (is outside its allowed range), "
-            + "Max subscriptions read for summary (is outside its allowed range). "
+            "3 settings aren't using their stored value: “Ending soon” window (couldn't be read), "
+            + "Max contracts in summary (is outside its allowed range), "
+            + "Max next charges shown in summary (is outside its allowed range). "
             + "Use Go to first fault to reach them.",
             announcement);
     }
@@ -118,7 +118,7 @@ public class SettingsFaultSurfaceTests
         var announcement = Settings.FaultAnnouncement(
             Faults(
                 (Window, SettingFaultKind.Unreadable),
-                (Renewals, SettingFaultKind.Unreadable),
+                (Charges, SettingFaultKind.Unreadable),
                 (Fetch, SettingFaultKind.Unreadable),
                 (InsuranceWindow, SettingFaultKind.Unreadable),
                 (InsuranceMax, SettingFaultKind.Unreadable)),
@@ -153,8 +153,8 @@ public class SettingsFaultSurfaceTests
 
         Assert.NotNull(announcement);
         Assert.StartsWith(
-            "4 settings aren't using their stored value: Upcoming renewals window (couldn't be read), "
-            + "Max subscriptions read for summary (couldn't be read), ",
+            "4 settings aren't using their stored value: Max contracts in summary (couldn't be read), "
+            + "“Ending soon” window (couldn't be read), ",
             announcement,
             StringComparison.Ordinal);
     }
@@ -208,12 +208,12 @@ public class SettingsFaultSurfaceTests
         var summary = Settings.FaultSummaryText(
             Faults(
                 (Window, SettingFaultKind.Unreadable),
-                (Renewals, SettingFaultKind.Clamped),
+                (Charges, SettingFaultKind.Clamped),
                 (InsuranceMax, SettingFaultKind.Clamped)),
             Settings.Sections,
-            // Matches the Subscriptions group name, so the two subscription rows stay visible and the
+            // Matches the Contracts group name, so the two contract rows stay visible and the
             // insurance one is hidden.
-            "Subscriptions");
+            "Contracts");
 
         Assert.Equal(
             "3 settings aren't using their stored value. 1 of them is hidden by the current search.",
@@ -229,7 +229,7 @@ public class SettingsFaultSurfaceTests
                 (InsuranceWindow, SettingFaultKind.Clamped),
                 (InsuranceMax, SettingFaultKind.Clamped)),
             Settings.Sections,
-            "Subscriptions");
+            "Contracts");
 
         Assert.Equal(
             "3 settings aren't using their stored value. 2 of them are hidden by the current search.",

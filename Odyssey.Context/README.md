@@ -2,7 +2,7 @@
 
 `OdysseyContext` is the single application-domain `DbContext`. It owns:
 
-- **Finance** — accounts, transactions, budgets, tags, subscriptions, contracts, insurance policies,
+- **Finance** — accounts, transactions, budgets, tags, contracts, insurance policies,
   tax statements, the Files store (`FileMetadata`/`FileBlob`) and the file-analysis tables, plus the
   `Currencies` reference table (164 ISO-4217 rows seeded from `HasData` in `OnModelCreating`, so the
   initial migration carries them and nothing needs to seed them at runtime).
@@ -25,7 +25,7 @@ nothing stopping a write path that forgot to call either. One context makes them
 
 | Reference | On delete |
 |---|---|
-| `Transaction.ContactId`, `Subscription.ContactId`, `Account.CustodianId`, `AccountFile.IssuedBy`, `FileAnalysisCandidateTransaction.MatchedContactId` → `Contact` | `SET NULL` |
+| `Transaction.ContactId`, `Account.CustodianId`, `AccountFile.IssuedBy`, `FileAnalysisCandidateTransaction.MatchedContactId` → `Contact` | `SET NULL` |
 | `ContractParty.ContactId` → `Contact` | `CASCADE` |
 | `InsurancePolicyInsurer.ContactId`, `InsurancePolicyInsuredContact.ContactId`, `InsurancePolicyBeneficiary.ContactId` → `Contact` | `RESTRICT` |
 | `InsurancePolicyInsuredAccount.AccountId` → `Account` | `CASCADE` |

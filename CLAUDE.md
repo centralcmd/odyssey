@@ -357,10 +357,9 @@ charges" the header panel lists. Four things about it are easy to get backwards:
   currency and over-reports a weak one, and either reads as a whole figure rather than a partial one.
   The exclusion applies to the per-type split too, so the rows always sum to the totals.
 - **Nothing is scheduled.** A charge date is a term's cadence anchor (`AnchorDate`, else
-  `EffectiveFrom`) stepped forward at read time and never written back, exactly as
-  `SubscriptionService` projects a billing interval. Month steps are measured from the *original*
-  anchor, so a fee anchored on the 31st recovers its day-of-month after a short February instead of
-  drifting to the 28th forever.
+  `EffectiveFrom`) stepped forward at read time and never written back. Month steps are measured from
+  the *original* anchor, so a fee anchored on the 31st recovers its day-of-month after a short
+  February instead of drifting to the 28th forever.
 
 **"Ending soon" is a slice of Active, not a fifth status** — it is already counted in `Active`, so the
 four real buckets still sum to `TotalContracts` and this one deliberately does not. Its window and the

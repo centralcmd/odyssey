@@ -11,7 +11,7 @@ public sealed record InsurancePolicyListItem
     public required string Name { get; set; }
 
     /// <summary>Included because it is shown on the row's meta line — the same reason
-    /// <c>SubscriptionListItem.ExternalId</c> is. A plain scalar off the same row, so no extra query.</summary>
+    /// <c>ContractListItem.ExternalId</c> is. A plain scalar off the same row, so no extra query.</summary>
     public string? PolicyNumber { get; set; }
 
     public InsurancePolicyType Type { get; set; }

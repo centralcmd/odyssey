@@ -56,7 +56,7 @@ public class ContractService
         this.timeProvider = timeProvider;
         this.systemSettingsLookup = systemSettingsLookup;
         this.logger = logger;
-        // Optional-defaulted like SubscriptionService's: the run rate is the only thing that needs it,
+        // Optional-defaulted: the run rate is the only thing that needs it,
         // and a direct construction in a unit test should not have to supply one to exercise the rest.
         this.conversion = conversion ?? new CurrencyConversionService(context);
     }
@@ -661,7 +661,7 @@ public class ContractService
     /// Month and year steps are always measured from the ORIGINAL anchor rather than from a prior
     /// clamped result, so an anchor on the 31st recovers its day-of-month in longer months instead of
     /// drifting permanently to the 28th after one short February — the same rule
-    /// <c>SubscriptionService.NextBilling</c> follows.
+    /// <c>RecurrenceOccurrenceGenerator</c> follows on the journal side.
     /// </para>
     /// </summary>
     private static DateTime? NextOccurrence(DateTime anchor, ContextInterval interval, int intervalCount, DateTime from)

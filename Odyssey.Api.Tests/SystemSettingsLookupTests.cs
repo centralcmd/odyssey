@@ -36,7 +36,7 @@ public class SystemSettingsLookupTests
 {
     private const string InsuranceCacheKey = "system-settings:insurance-policy-settings";
     private const string FinanceCapsCacheKey = "system-settings:finance-request-caps";
-    private const string SubscriptionCacheKey = "system-settings:subscription-settings";
+    private const string ContractSummaryCacheKey = "system-settings:contract-summary-settings";
 
     private static OdysseyContext CreateContext(string dbName)
     {
@@ -78,13 +78,13 @@ public class SystemSettingsLookupTests
         var logs = new RecordingLogger();
         await using var context = CreateContext(Guid.NewGuid().ToString());
 
-        var subscriptions = await CreateLookup(context, cache, logs).GetSubscriptionSettingsAsync();
+        var contracts = await CreateLookup(context, cache, logs).GetContractSummarySettingsAsync();
         var insurance = await CreateLookup(context, cache, logs).GetInsurancePolicySettingsAsync();
         var caps = await CreateLookup(context, cache, logs).GetRequestCapsAsync();
 
-        Assert.Equal(SystemSettingsDefaults.SubscriptionRenewalWindowDays, subscriptions.RenewalWindowDays);
-        Assert.Equal(SystemSettingsDefaults.SubscriptionMaxSummaryRenewals, subscriptions.MaxSummaryRenewals);
-        Assert.Equal(SystemSettingsDefaults.SubscriptionMaxSummarySubscriptions, subscriptions.MaxSummarySubscriptions);
+        Assert.Equal(SystemSettingsDefaults.ContractEndingWindowDays, contracts.EndingWindowDays);
+        Assert.Equal(SystemSettingsDefaults.ContractChargeWindowDays, contracts.ChargeWindowDays);
+        Assert.Equal(SystemSettingsDefaults.ContractMaxSummaryCharges, contracts.MaxSummaryCharges);
         Assert.Equal(SystemSettingsDefaults.InsuranceExpiringSoonWindowDays, insurance.ExpiringSoonWindowDays);
         Assert.Equal(SystemSettingsDefaults.InsuranceMaxSummaryPolicies, insurance.MaxSummaryPolicies);
         Assert.Equal(SystemSettingsDefaults.ContractMaxSummaryContracts, caps.MaxSummaryContracts);
@@ -98,11 +98,11 @@ public class SystemSettingsLookupTests
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
         await using var context = CreateContext(Guid.NewGuid().ToString());
-        await SetAsync(context, SystemSettingsKeys.SubscriptionRenewalWindowDays, "90");
+        await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "90");
         await SetAsync(context, SystemSettingsKeys.InsuranceExpiringSoonWindowDays, "120");
         await SetAsync(context, SystemSettingsKeys.ContractMaxSummaryContracts, "42");
 
-        Assert.Equal(90, (await CreateLookup(context, cache).GetSubscriptionSettingsAsync()).RenewalWindowDays);
+        Assert.Equal(90, (await CreateLookup(context, cache).GetContractSummarySettingsAsync()).EndingWindowDays);
         Assert.Equal(120, (await CreateLookup(context, cache).GetInsurancePolicySettingsAsync()).ExpiringSoonWindowDays);
         Assert.Equal(42, (await CreateLookup(context, cache).GetRequestCapsAsync()).MaxSummaryContracts);
     }
@@ -114,7 +114,7 @@ public class SystemSettingsLookupTests
     /// <para>
     /// The below-floor direction is asserted, not assumed. It is the one that is load-bearing on a
     /// raise-only key whose floor is the control, and it is also the case a previous draft sent to the
-    /// degraded fallback instead — which on the renewals window differs by up to 45 days and is the
+    /// degraded fallback instead — which on a look-ahead window differs by up to 45 days and is the
     /// OVER-reporting direction.
     /// </para>
     /// </summary>
@@ -126,22 +126,22 @@ public class SystemSettingsLookupTests
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
         await using var context = CreateContext(Guid.NewGuid().ToString());
-        await SetAsync(context, SystemSettingsKeys.SubscriptionMaxSummarySubscriptions, stored);
+        await SetAsync(context, SystemSettingsKeys.ContractMaxSummaryContracts, stored);
 
-        var settings = await CreateLookup(context, cache).GetSubscriptionSettingsAsync();
+        var caps = await CreateLookup(context, cache).GetRequestCapsAsync();
 
-        Assert.Equal(expected, settings.MaxSummarySubscriptions);
+        Assert.Equal(expected, caps.MaxSummaryContracts);
     }
 
-    /// <summary>The renewals cap's maximum is 50, not the 100000 its sibling caps carry.</summary>
+    /// <summary>The next-charges cap's maximum is 50, not the 100000 its sibling caps carry.</summary>
     [Fact]
-    public async Task TheRenewalsCap_IsClampedAtFifty()
+    public async Task TheNextChargesCap_IsClampedAtFifty()
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
         await using var context = CreateContext(Guid.NewGuid().ToString());
-        await SetAsync(context, SystemSettingsKeys.SubscriptionMaxSummaryRenewals, "5000");
+        await SetAsync(context, SystemSettingsKeys.ContractMaxSummaryCharges, "5000");
 
-        Assert.Equal(50, (await CreateLookup(context, cache).GetSubscriptionSettingsAsync()).MaxSummaryRenewals);
+        Assert.Equal(50, (await CreateLookup(context, cache).GetContractSummarySettingsAsync()).MaxSummaryCharges);
     }
 
     /// <summary>
@@ -173,11 +173,11 @@ public class SystemSettingsLookupTests
         var cache = new MemoryCache(new MemoryCacheOptions());
         var logs = new RecordingLogger();
         await using var context = CreateContext(Guid.NewGuid().ToString());
-        await SetAsync(context, SystemSettingsKeys.SubscriptionRenewalWindowDays, "abc");
+        await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "abc");
 
-        var settings = await CreateLookup(context, cache, logs).GetSubscriptionSettingsAsync();
+        var settings = await CreateLookup(context, cache, logs).GetContractSummarySettingsAsync();
 
-        Assert.Equal(SystemSettingsDefaults.SubscriptionRenewalWindowDays, settings.RenewalWindowDays);
+        Assert.Equal(SystemSettingsDefaults.ContractEndingWindowDays, settings.EndingWindowDays);
         Assert.Contains(logs.Entries, entry => entry.Level == LogLevel.Error);
     }
 
@@ -210,9 +210,9 @@ public class SystemSettingsLookupTests
         var context = CreateContext(Guid.NewGuid().ToString());
         await context.DisposeAsync(); // the settings store is unreachable
 
-        var settings = await CreateLookup(context, cache, logs).GetSubscriptionSettingsAsync();
+        var settings = await CreateLookup(context, cache, logs).GetContractSummarySettingsAsync();
 
-        Assert.Equal(SystemSettingsDefaults.SubscriptionRenewalWindowDays, settings.RenewalWindowDays);
+        Assert.Equal(SystemSettingsDefaults.ContractEndingWindowDays, settings.EndingWindowDays);
         Assert.Contains(logs.Entries, entry => entry.Level == LogLevel.Error);
     }
 
@@ -222,29 +222,29 @@ public class SystemSettingsLookupTests
     /// AC 26. The two policies are the point of this test, so it fails if either flips.
     ///
     /// <para>
-    /// The subscriptions path must NOT cache a degraded answer — one summary read path, so recovery
+    /// The contract-summary path must NOT cache a degraded answer — one summary read path, so recovery
     /// should be immediate. The other two must, for different reasons: the request caps gate
     /// create/update validation on paths with no limiter in front of them, and the insurance pair is
     /// the highest-traffic settings lookup in the codebase.
     /// </para>
     /// </summary>
     [Fact]
-    public async Task ADegradedSubscriptionsRead_IsNotCached_SoRecoveryIsImmediate()
+    public async Task ADegradedContractSummaryRead_IsNotCached_SoRecoveryIsImmediate()
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
         var dbName = Guid.NewGuid().ToString();
 
         var broken = CreateContext(dbName);
         await broken.DisposeAsync();
-        await CreateLookup(broken, cache).GetSubscriptionSettingsAsync();
+        await CreateLookup(broken, cache).GetContractSummarySettingsAsync();
 
-        Assert.False(cache.TryGetValue(SubscriptionCacheKey, out _));
+        Assert.False(cache.TryGetValue(ContractSummaryCacheKey, out _));
 
         // …and the very next read, against a healthy store, sees the real value with no TTL wait.
         await using var healthy = CreateContext(dbName);
-        await SetAsync(healthy, SystemSettingsKeys.SubscriptionRenewalWindowDays, "120");
+        await SetAsync(healthy, SystemSettingsKeys.ContractEndingWindowDays, "120");
 
-        Assert.Equal(120, (await CreateLookup(healthy, cache).GetSubscriptionSettingsAsync()).RenewalWindowDays);
+        Assert.Equal(120, (await CreateLookup(healthy, cache).GetContractSummarySettingsAsync()).EndingWindowDays);
     }
 
     [Fact]
@@ -275,7 +275,7 @@ public class SystemSettingsLookupTests
 
     /// <summary>
     /// AC 28. A corrupt row logs at most one line per window <strong>per settings key</strong>, so a
-    /// corrupt insurance row cannot consume the subscriptions fault's line. Without the per-key unit,
+    /// corrupt insurance row cannot consume the contracts fault's line. Without the per-key unit,
     /// one persistently bad row on an endpoint with no rate limiter is one line per request.
     /// </summary>
     [Fact]
@@ -284,13 +284,14 @@ public class SystemSettingsLookupTests
         var cache = new MemoryCache(new MemoryCacheOptions());
         var logs = new RecordingLogger();
         await using var context = CreateContext(Guid.NewGuid().ToString());
-        await SetAsync(context, SystemSettingsKeys.SubscriptionRenewalWindowDays, "abc");
+        await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "abc");
         await SetAsync(context, SystemSettingsKeys.InsuranceExpiringSoonWindowDays, "abc");
 
-        // The subscriptions path does not cache, so three calls really are three reads.
+        // The contract-summary path does not cache a degraded read, so three calls really are three
+        // reads.
         for (var i = 0; i < 3; i++)
         {
-            await CreateLookup(context, cache, logs).GetSubscriptionSettingsAsync();
+            await CreateLookup(context, cache, logs).GetContractSummarySettingsAsync();
         }
 
         Assert.Single(logs.Entries);
@@ -316,15 +317,15 @@ public class SystemSettingsLookupTests
 
         await using (var context = CreateContext(Guid.NewGuid().ToString()))
         {
-            await SetAsync(context, SystemSettingsKeys.SubscriptionRenewalWindowDays, "abc");
-            await CreateLookup(context, cache, unparseable).GetSubscriptionSettingsAsync();
+            await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "abc");
+            await CreateLookup(context, cache, unparseable).GetContractSummarySettingsAsync();
         }
 
         await using (var context = CreateContext(Guid.NewGuid().ToString()))
         {
-            await SetAsync(context, SystemSettingsKeys.SubscriptionRenewalWindowDays, "5000");
+            await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "5000");
             await CreateLookup(context, new MemoryCache(new MemoryCacheOptions()), outOfBound)
-                .GetSubscriptionSettingsAsync();
+                .GetContractSummarySettingsAsync();
         }
 
         Assert.Equal(LogLevel.Error, Assert.Single(unparseable.Entries).Level);
@@ -338,9 +339,9 @@ public class SystemSettingsLookupTests
         var cache = new MemoryCache(new MemoryCacheOptions());
         var logs = new RecordingLogger();
         await using var context = CreateContext(Guid.NewGuid().ToString());
-        await SetAsync(context, SystemSettingsKeys.SubscriptionRenewalWindowDays, "s3cr3t-looking-garbage");
+        await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "s3cr3t-looking-garbage");
 
-        await CreateLookup(context, cache, logs).GetSubscriptionSettingsAsync();
+        await CreateLookup(context, cache, logs).GetContractSummarySettingsAsync();
 
         Assert.DoesNotContain(
             logs.Entries, entry => entry.Message.Contains("s3cr3t", StringComparison.Ordinal));
@@ -369,7 +370,7 @@ public class SystemSettingsLookupTests
 
     /// <summary>
     /// A degraded read resolves against the watermark when one exists, and <c>min</c> is the direction:
-    /// every key on this class is a cap, or (the renewals window) prefers under-reporting.
+    /// every key on this class is a cap, or (the look-ahead windows) prefers under-reporting.
     /// </summary>
     [Fact]
     public async Task ADegradedRead_NeverExceedsTheShippedDefault_EvenWithAHigherWatermark()
@@ -379,21 +380,21 @@ public class SystemSettingsLookupTests
 
         await using (var healthy = CreateContext(dbName))
         {
-            await SetAsync(healthy, SystemSettingsKeys.SubscriptionRenewalWindowDays, "300");
-            Assert.Equal(300, (await CreateLookup(healthy, cache).GetSubscriptionSettingsAsync()).RenewalWindowDays);
+            await SetAsync(healthy, SystemSettingsKeys.ContractEndingWindowDays, "300");
+            Assert.Equal(300, (await CreateLookup(healthy, cache).GetContractSummarySettingsAsync()).EndingWindowDays);
         }
 
         // Evict only the 30s resolved-value entry, so the next read is forced to hit the (broken)
         // context rather than serving the healthy result the phase above cached.
-        cache.Remove(SubscriptionCacheKey);
+        cache.Remove(ContractSummaryCacheKey);
 
         var broken = CreateContext(dbName);
         await broken.DisposeAsync();
 
-        var degraded = await CreateLookup(broken, cache).GetSubscriptionSettingsAsync();
+        var degraded = await CreateLookup(broken, cache).GetContractSummarySettingsAsync();
 
         // min(last-known-good 300, shipped default 45) — a degraded read must never LOOSEN a bound.
-        Assert.Equal(SystemSettingsDefaults.SubscriptionRenewalWindowDays, degraded.RenewalWindowDays);
+        Assert.Equal(SystemSettingsDefaults.ContractEndingWindowDays, degraded.EndingWindowDays);
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────────────────────────

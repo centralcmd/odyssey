@@ -13,7 +13,7 @@ namespace Odyssey.Api.Tests;
 /// the right design; what it must not do is grow a hole in silence, which is exactly what happened
 /// to insurance: seven tables that were in neither the export nor
 /// <see cref="DataExportExclusions.ExcludedTables"/>, so nothing anywhere said they were missing.
-/// Contracts, tax statements, subscriptions and the two account side-tables were in the same state.
+/// Contracts, tax statements and the two account side-tables were in the same state.
 ///
 /// So every table on <see cref="OdysseyContext"/> must be accounted for in one of three ways, and a
 /// new one fails this test until someone says which. That is the point: the decision is cheap when

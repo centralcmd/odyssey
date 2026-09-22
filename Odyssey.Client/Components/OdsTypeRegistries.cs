@@ -429,17 +429,6 @@ public static class OdsTypeRegistries
         new() { Key = "Other",          Label = "Other",          Icon = "insert_drive_file", Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
-    /// <summary>BillingInterval — Daily · Weekly · Monthly · Yearly (issue #293). Mirrors the DS
-    /// BILLING_INTERVALS registry and the C# BillingInterval enum. Order is the enum's numeric order
-    /// (Daily &lt; Weekly &lt; Monthly &lt; Yearly), which is also how the list sorts by "Frequency".</summary>
-    public static readonly IReadOnlyList<OdsTypeOption> BillingIntervals =
-    [
-        new() { Key = "Daily",   Label = "Daily",   Icon = "today",          Color = "oklch(0.79 0.13 205)", Soft = "oklch(0.79 0.13 205 / 0.16)" },
-        new() { Key = "Weekly",  Label = "Weekly",  Icon = "view_week",      Color = "oklch(0.78 0.14 168)", Soft = "oklch(0.78 0.14 168 / 0.16)" },
-        new() { Key = "Monthly", Label = "Monthly", Icon = "calendar_month", Color = "oklch(0.72 0.14 255)", Soft = "oklch(0.72 0.14 255 / 0.16)" },
-        new() { Key = "Yearly",  Label = "Yearly",  Icon = "event_repeat",   Color = "oklch(0.72 0.16 295)", Soft = "oklch(0.72 0.16 295 / 0.16)" },
-    ];
-
     /// <summary>BudgetCategoryType — the two directions a budget line can take: Expense (money out)
     /// and Income (money in). Mirrors the DS BUDGET_CATEGORY_TYPES and the C# BudgetCategoryType enum
     /// (Expense = 0, Income = 1). Expense reads as a debit (warm red), Income as a credit (green).</summary>
@@ -510,10 +499,6 @@ public static class OdsTypeRegistries
     /// <summary>The InsurancePolicyType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption InsurancePolicyTypeOf(InsurancePolicyType type) =>
         InsurancePolicyTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? InsurancePolicyTypes[^1];
-
-    /// <summary>The BillingInterval descriptor for an enum value (falls back to "Monthly").</summary>
-    public static OdsTypeOption BillingIntervalOf(BillingInterval interval) =>
-        BillingIntervals.FirstOrDefault(t => t.Key == interval.ToString()) ?? BillingIntervals[2];
 
     /// <summary>The ContractType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption ContractTypeOf(ContractType type) =>
@@ -673,7 +658,7 @@ public static class OdsTypeRegistries
     /// <summary>
     /// The create rows every contact picker offers — <b>Organization first</b>, then Person.
     ///
-    /// <para>A contact linked from a transaction, a file, a subscription or a statement merchant is a
+    /// <para>A contact linked from a transaction, a file, a contract or a statement merchant is a
     /// company far more often than a person, so the organization row leads and is what a one-click
     /// "create from the extracted name" affordance uses. The order is the design system's
     /// <c>CONTACT_CREATE_KINDS</c>, not <see cref="ContactTypes"/>'s (which reads Person first for
@@ -704,7 +689,6 @@ public static class OdsTypeRegistries
     public static readonly IReadOnlyList<OdsOption> ContractOptions = ToOptions(ContractTypes);
     public static readonly IReadOnlyList<OdsOption> ContractFileOptions = ToOptions(ContractFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractPartyRoleOptions = ToOptions(ContractPartyRoles);
-    public static readonly IReadOnlyList<OdsOption> BillingIntervalOptions = ToOptions(BillingIntervals);
 }
 
 /// <summary>

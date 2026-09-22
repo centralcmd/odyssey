@@ -136,7 +136,6 @@ public sealed class FinanceDatabaseExport
     public IReadOnlyList<ContractFileExport> ContractFiles { get; init; } = [];
     public IReadOnlyList<ContractEventExport> ContractEvents { get; init; } = [];
     public IReadOnlyList<ContractSmartTagExport> ContractSmartTags { get; init; } = [];
-    public IReadOnlyList<SubscriptionExport> Subscriptions { get; init; } = [];
 }
 
 public sealed class AccountExport
@@ -552,28 +551,5 @@ public sealed class ContractEventExport
     public string? Notes { get; init; }
     public DateTime OccurredAt { get; init; }
     public string? CreatedByUserId { get; init; }
-    public DateTime CreatedAtUtc { get; init; }
-}
-
-/// <summary>
-/// A recurring billing commitment. Nothing else in the export reconstructs one: the transactions it
-/// produces carry no link back to it.
-/// </summary>
-public sealed class SubscriptionExport
-{
-    public Guid SubscriptionId { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string? ExternalId { get; init; }
-    public Guid? ContactId { get; init; }
-    public DateOnly StartDate { get; init; }
-    public DateOnly? EndDate { get; init; }
-    public decimal Amount { get; init; }
-    public string CurrencyCode { get; init; } = string.Empty;
-    public BillingInterval Interval { get; init; }
-    public int IntervalCount { get; init; }
-    public DateOnly FirstBillingDate { get; init; }
-    public string? Notes { get; init; }
-    public DateTime? Paused { get; init; }
-    public DateTime? Archived { get; init; }
     public DateTime CreatedAtUtc { get; init; }
 }

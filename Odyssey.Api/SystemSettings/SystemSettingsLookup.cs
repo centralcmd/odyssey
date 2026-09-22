@@ -62,11 +62,11 @@ namespace Odyssey.Api.SystemSettings;
 /// an uncached degraded path is the largest amplification available.
 /// </item>
 /// <item>
-/// <see cref="GetSubscriptionSettingsAsync"/> does <strong>not</strong> cache, matching
-/// <see cref="AccountLimitsLookup"/>: a degraded answer must not outlive the fault by 30 seconds. One
-/// summary READ path, so recovery should be immediate and the extra query is bounded — a three-row
-/// primary-key lookup on a request that already fetches up to a thousand rows plus a currency-rate
-/// batch.
+/// <see cref="GetContractSummarySettingsAsync"/> caches a healthy result but does <strong>not</strong>
+/// cache a degraded one, matching <see cref="AccountLimitsLookup"/>: a degraded answer must not
+/// outlive the fault by 30 seconds. One summary READ path, so recovery should be immediate and the
+/// extra query is bounded — a three-row primary-key lookup on a request that already fetches many
+/// rows plus a currency-rate batch.
 /// </item>
 /// </list>
 ///
@@ -100,13 +100,6 @@ public sealed class SystemSettingsLookup(
         SystemSettingsKeys.InsuranceMaxRenewalsPerPolicy,
         SystemSettingsKeys.InsuranceMaxFilesPerParent,
         SystemSettingsKeys.InsuranceMaxLinksPerPolicy,
-    ];
-
-    private static readonly string[] SubscriptionKeys =
-    [
-        SystemSettingsKeys.SubscriptionRenewalWindowDays,
-        SystemSettingsKeys.SubscriptionMaxSummaryRenewals,
-        SystemSettingsKeys.SubscriptionMaxSummarySubscriptions,
     ];
 
     private static readonly string[] ContractSummaryKeys =
@@ -199,9 +192,10 @@ public sealed class SystemSettingsLookup(
     }
 
     /// <summary>
-    /// The Contracts summary windows, on their own cache key for the same forced reason as
-    /// <see cref="GetSubscriptionSettingsAsync"/>. A degraded result is likewise <strong>not</strong>
-    /// cached: one summary read path, so recovery should be immediate.
+    /// The Contracts summary windows, on their own cache key rather than sharing the insurance entry:
+    /// <c>SystemSettingDescriptor.CacheKeyToEvict</c> is a single string per descriptor, so a shared
+    /// entry would cross-evict. A degraded result is <strong>not</strong> cached: one summary read
+    /// path, so recovery should be immediate.
     /// </summary>
     public async Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default)
     {
@@ -214,9 +208,9 @@ public sealed class SystemSettingsLookup(
         var (values, readFailed) = await ReadAsync(ContractSummaryKeys, "contract summary settings", cancellationToken);
 
         var settings = new ContractSummarySettings(
-            // min on both windows, for the correctness reason SubscriptionRenewalWindowDays records:
-            // neither drives any work — both only decide which already-fetched rows are surfaced — so
-            // the preference is to under-report a cliff or a charge rather than to invent one.
+            // min on both windows, for a CORRECTNESS reason rather than a load one: neither drives any
+            // work — both only decide which already-fetched rows are surfaced — so the preference is to
+            // under-report a cliff or a charge rather than to invent one.
             Resolve(values, readFailed, SystemSettingsKeys.ContractEndingWindowDays,
                 SystemSettingsDefaults.ContractEndingWindowDays,
                 SystemSettingsBounds.ContractEndingWindowDaysMin,
@@ -238,52 +232,6 @@ public sealed class SystemSettingsLookup(
         return settings;
     }
 
-    /// <summary>
-    /// The Subscriptions summary limits (issue #437). A third method on this interface rather than a
-    /// fourth Finance lookup — the precedent is <see cref="GetRequestCapsAsync"/> — but on its own
-    /// cache key, which is forced: <c>CacheKeyToEvict</c> is a single string per descriptor.
-    ///
-    /// <para>
-    /// <strong>A degraded result is deliberately not cached here.</strong> This is the one read path
-    /// of the three, so recovery should be immediate rather than lingering for the TTL, and the extra
-    /// query while degraded is well under 1x of the request's existing cost.
-    /// </para>
-    /// </summary>
-    public async Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default)
-    {
-        if (cache.TryGetValue(SystemSettingsService.SubscriptionCacheKey, out SubscriptionSettings? cached)
-            && cached is not null)
-        {
-            return cached;
-        }
-
-        var (values, readFailed) = await ReadAsync(SubscriptionKeys, "subscription summary settings", cancellationToken);
-
-        var settings = new SubscriptionSettings(
-            // min on a degraded read, but for a CORRECTNESS reason rather than a load one: the window
-            // drives no work at all — BuildRenewals iterates an already-fetched list and the window only
-            // decides which iterations continue — so the preference is to under-report renewals rather
-            // than over-report them. Unlike the other two, this key has no availability dimension.
-            Resolve(values, readFailed, SystemSettingsKeys.SubscriptionRenewalWindowDays,
-                SystemSettingsDefaults.SubscriptionRenewalWindowDays,
-                SystemSettingsBounds.SubscriptionRenewalWindowDaysMin,
-                SystemSettingsBounds.SubscriptionRenewalWindowDaysMax),
-            Resolve(values, readFailed, SystemSettingsKeys.SubscriptionMaxSummaryRenewals,
-                SystemSettingsDefaults.SubscriptionMaxSummaryRenewals,
-                SystemSettingsBounds.SubscriptionMaxSummaryRenewalsMin,
-                SystemSettingsBounds.SubscriptionMaxSummaryRenewalsMax),
-            Resolve(values, readFailed, SystemSettingsKeys.SubscriptionMaxSummarySubscriptions,
-                SystemSettingsDefaults.SubscriptionMaxSummarySubscriptions,
-                SystemSettingsBounds.SubscriptionMaxSummarySubscriptionsMin,
-                SystemSettingsBounds.SubscriptionMaxSummarySubscriptionsMax));
-
-        if (!readFailed)
-        {
-            cache.Set(SystemSettingsService.SubscriptionCacheKey, settings, CacheTtl);
-        }
-
-        return settings;
-    }
 
     /// <summary>
     /// Reads the rows for one key set, returning an explicit <c>readFailed</c> signal alongside them.
@@ -385,7 +333,7 @@ public sealed class SystemSettingsLookup(
     /// <summary>
     /// One line per faulted key per TTL window. The endpoint in front of these paths has no rate
     /// limiter, so an unthrottled line would be one per request for as long as the row stays corrupt —
-    /// and a corrupt insurance row must not consume the subscriptions fault's line.
+    /// and a corrupt insurance row must not consume the contracts fault's line.
     /// </summary>
     private void LogThrottled(string key, LogLevel level, string message)
     {

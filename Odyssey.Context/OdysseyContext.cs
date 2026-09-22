@@ -419,20 +419,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<Subscription>(entity =>
-        {
-            entity.Property(s => s.Interval)
-                .IsRequired()
-                .HasDefaultValue(BillingInterval.Monthly)
-                .HasSentinel(BillingInterval.Monthly)
-                .HasConversion<int>();
-
-            // Cadence multiplier, always >= 1; DB default 1 so a value-omitting insert reads as
-            // "every unit" rather than an invalid 0.
-            entity.Property(s => s.IntervalCount)
-                .IsRequired()
-                .HasDefaultValue(1);
-        });
         // ── Journal, tasks, photos, calendars and contacts ────────────────────────────────────────
         modelBuilder.Entity<JournalEntryTag>(entity =>
         {
@@ -712,12 +698,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .HasOne<Contact>()
             .WithMany()
             .HasForeignKey(transaction => transaction.ContactId)
-            .OnDelete(DeleteBehavior.SetNull);
-
-        modelBuilder.Entity<Subscription>()
-            .HasOne<Contact>()
-            .WithMany()
-            .HasForeignKey(subscription => subscription.ContactId)
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<Account>()
@@ -1016,16 +996,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisEnabled, Value = "false", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisModel, Value = SystemSettingsDefaults.FileAnalysisModel, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisBaseUrl, Value = SystemSettingsDefaults.FileAnalysisBaseUrl, UpdatedAt = seededAt },
-            // The Subscriptions summary limits (issue #437). The first two seed the `private const`s
-            // they replace exactly, so a default install is behaviourally identical; the third is the
-            // one behaviour change — the summary's fetch was unbounded and is now capped at 1000,
-            // matching InsuranceMaxSummaryPolicies and ContractMaxSummaryContracts.
-            //
-            // Like every key here, they have no configuration surface at all: the seed is the only
-            // writer besides an administrator at /settings.
-            new SystemSetting { Key = SystemSettingsKeys.SubscriptionRenewalWindowDays, Value = "45", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.SubscriptionMaxSummaryRenewals, Value = "6", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.SubscriptionMaxSummarySubscriptions, Value = "1000", UpdatedAt = seededAt },
             // The Contracts summary windows. The ending-soon window seeds the client `const 45` it
             // replaces exactly, so a default install is behaviourally identical; the other two are new
             // and seed the design system's own defaults (a 45-day look-ahead, six rendered rows).
@@ -1374,7 +1344,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<ContractFile> ContractFiles { get; set; }
     public DbSet<ContractEvent> ContractEvents { get; set; }
     public DbSet<ContractSmartTag> ContractSmartTags { get; set; }
-    public DbSet<Subscription> Subscriptions { get; set; }
 
     // ── Journal, tasks, photos, calendars and contacts ────────────────────────────────────────
     public DbSet<JournalEntry> JournalEntries { get; set; }

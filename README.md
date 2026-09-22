@@ -2,8 +2,8 @@
 
 **A self-hosted personal finance and life-admin application.** Odyssey tracks accounts,
 transactions and budgets across multiple currencies, and keeps the paperwork that goes with
-them — contracts, subscriptions, insurance policies, tax statements and the source documents
-themselves — in one place, alongside a journal, task board, calendar and photo library.
+them — contracts, insurance policies, tax statements and the source documents themselves — in one
+place, alongside a journal, task board, calendar and photo library.
 
 It is a full-stack .NET 10 application: an ASP.NET Core API, a Blazor WebAssembly frontend,
 and MariaDB. You run it yourself; there is no hosted service and your financial data stays on
@@ -28,8 +28,8 @@ your own infrastructure.
 - **Budgets** — per-year budgets broken down by tag, reported against actual spend.
 - **Multi-currency** — explicit exchange rates per directed currency pair, so cross-currency
   accounts convert without silent guesswork.
-- **Contracts, subscriptions and insurance policies** — recurring commitments with terms,
-  renewal and derived status.
+- **Contracts and insurance policies** — recurring commitments with terms, parties, fee run-rate,
+  renewal and derived status. A subscription is a contract of that type.
 - **Tax statements** — with a reconciliation report that flags what does not line up.
 
 **Documents and everything else**
@@ -78,9 +78,9 @@ per-status rollups.
 <td width="50%">
 
 ![The Transactions page with its overview and filter regions open: status and direction
-breakdown tiles above a search box and account, status, tag and direction filters, over a
-paged table of 2,743 transactions showing description, contact, account, tag, status, amount
-and date.](docs/images/transactions.png)
+breakdown tiles above a search box and account, status, merchant, tag and direction filters,
+over a paged table of 2,743 transactions showing description, merchant, account, tag, status,
+amount and date.](docs/images/transactions.png)
 
 **Transactions** — server-paged, searchable, and filterable by account, status, tag and
 direction.
@@ -114,21 +114,23 @@ accounts and tags, with every variance called out.
 <tr>
 <td width="50%">
 
-![The Subscriptions page with its renewals and overview regions open: three upcoming-renewal
-rows for Weekly Meal Kit, Spotify Family and Netflix, then monthly and yearly run-rate tiles
-reading kr 1,786.27 and kr 21,435.24, and counts by interval and
-status.](docs/images/subscriptions.png)
+![The Contracts page with its upcoming and overview regions open: an amber awaiting-signature
+alert and a paused-contract notice, then next charges falling due on Oct 15 and Oct 19 and a
+next receipt on Oct 13, monthly and yearly run-rate tiles reading 23,693.64 and 284,323.69 NOK
+out against 67,391.30 and 808,695.64 NOK in, and counts by contract type and
+status.](docs/images/contracts.png)
 
-**Subscriptions** — recurring commitments with a monthly and yearly run rate, and what
-renews next.
+**Contracts** — agreements with their parties and terms, a monthly and yearly run rate, and
+what is charged next.
 
 </td>
 <td width="50%">
 
 ![The Insurance page with its renewals and overview regions open: two red alerts for lapsed
-Auto and Home cover, then current premium of $4,380 USD shown as approximately kr 47,608.69
-in total and coverage of $1M USD as approximately kr 10.9M insured, with counts by type and
-status.](docs/images/insurance.png)
+Auto and Home cover, then a current premium of 260.00 GBP plus 4,920.00 USD shown as
+approximately 57,056.09 NOK in total, coverage of 50k GBP plus 1.75M USD as approximately
+19.71M NOK insured, and counts by type and status over six
+policies.](docs/images/insurance.png)
 
 **Insurance** — policies with per-currency premium and coverage subtotals, converted into a
 single figure.

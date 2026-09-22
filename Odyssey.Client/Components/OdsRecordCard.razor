@@ -2,7 +2,7 @@
     OdsRecordCard — THE expandable record card behind every record list (Odyssey Design
     System · components/RecordCard, components/record-card-rules.html).
 
-    Accounts, Contracts, Insurance policies, Subscriptions, Tax statements, Budgets,
+    Accounts, Contracts, Insurance policies, Tax statements, Budgets,
     Journal entries and Exchange rates all render their rows through this one component.
     A dense, scannable header that expands a body in place. It is the product's ONLY
     record-detail surface — there are no record pages — so a body carries whatever the
@@ -23,7 +23,7 @@
 
     ONE ACCENT PER RECORD, for what belongs to THIS record. Accent / AccentSoft come from
     the record's TYPE colour — or its type-equivalent: a categorical registry the record
-    always has exactly one of (a subscription's billing interval, a budget item's
+    always has exactly one of (a contract term's cadence, a budget item's
     category). NEVER derived state (paused / ended / overdue), which stays with the status
     chip. They are set as --rec / --rec-soft on the card, so the header mark, the
     OdsInfoTileGrid icon chips inside Details and any single-series chart inherit the same

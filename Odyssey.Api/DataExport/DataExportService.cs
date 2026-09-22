@@ -31,7 +31,7 @@ public sealed record DataExportSummary(long ByteCount, IReadOnlyDictionary<strin
 /// Issue #33: the covered set is a deliberate list, not every table in the context — the contact
 /// detail tables have their own vCard export and the journal side has its own surfaces. What that
 /// list must not do is omit a Finance table silently, which is what it was doing for insurance,
-/// contracts, tax statements, subscriptions and the two account side-tables. Anything genuinely left
+/// contracts, tax statements and the two account side-tables. Anything genuinely left
 /// out belongs in <see cref="DataExportExclusions.ExcludedTables"/> with its reason; an omission that
 /// is stated is a different thing from one that is merely absent.
 ///
@@ -161,7 +161,6 @@ public sealed class DataExportService
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractFiles), ContractFilesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractEvents), ContractEventsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractSmartTags), ContractSmartTagsQuery(), cancellationToken);
-        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Subscriptions), SubscriptionsQuery(), cancellationToken);
     }
 
     /// <summary>
@@ -672,28 +671,6 @@ public sealed class DataExportService
                 OccurredAt = contractEvent.OccurredAt,
                 CreatedByUserId = contractEvent.CreatedByUserId,
                 CreatedAtUtc = contractEvent.CreatedAtUtc,
-            });
-
-    private IQueryable<SubscriptionExport> SubscriptionsQuery() =>
-        context.Subscriptions.AsNoTracking()
-            .OrderBy(subscription => subscription.SubscriptionId)
-            .Select(subscription => new SubscriptionExport
-            {
-                SubscriptionId = subscription.SubscriptionId,
-                Name = subscription.Name,
-                ExternalId = subscription.ExternalId,
-                ContactId = subscription.ContactId,
-                StartDate = subscription.StartDate,
-                EndDate = subscription.EndDate,
-                Amount = subscription.Amount,
-                CurrencyCode = subscription.CurrencyCode,
-                Interval = (FinanceDtos.BillingInterval)subscription.Interval,
-                IntervalCount = subscription.IntervalCount,
-                FirstBillingDate = subscription.FirstBillingDate,
-                Notes = subscription.Notes,
-                Paused = subscription.Paused,
-                Archived = subscription.Archived,
-                CreatedAtUtc = subscription.CreatedAtUtc,
             });
 }
 

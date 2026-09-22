@@ -11,7 +11,7 @@ namespace Odyssey.Core.Journal;
 /// <summary>
 /// Mapster does not reliably auto-map between two structurally-identical-but-distinct enum types
 /// (confirmed by <c>Odyssey.Core.Finance/MapsterConfig.cs</c>'s equivalent registrations for
-/// <c>BillingInterval</c> et al.) — <c>RecurrenceFrequency</c>/<c>DaysOfWeekFlags</c> are each defined
+/// <c>Interval</c> et al.) — <c>RecurrenceFrequency</c>/<c>DaysOfWeekFlags</c> are each defined
 /// once in <c>Odyssey.Context</c> (for the entity) and once in <c>Odyssey.Dtos.Journal</c>
 /// (for the DTOs), kept byte-identical by hand, so both conversions are a plain numeric cast.
 /// </summary>

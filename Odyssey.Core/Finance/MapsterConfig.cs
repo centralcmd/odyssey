@@ -9,8 +9,6 @@ using ContextTransactionFileType = Odyssey.Context.TransactionFileType;
 using ContextTaxStatementFileType = Odyssey.Context.TaxStatementFileType;
 using ContextInsurancePolicyType = Odyssey.Context.InsurancePolicyType;
 using ContextPolicyFileType = Odyssey.Context.PolicyFileType;
-using ContextBillingInterval = Odyssey.Context.BillingInterval;
-using DtoBillingInterval = Odyssey.Dtos.Finance.BillingInterval;
 using DtoInsurancePolicyType = Odyssey.Dtos.Finance.InsurancePolicyType;
 using DtoPolicyFileType = Odyssey.Dtos.Finance.PolicyFileType;
 using DtoAccountFileType = Odyssey.Dtos.Finance.AccountFileType;
@@ -110,14 +108,6 @@ public static class MapsterConfig
                 .MapWith(src => ConvertContextToDto(src));
 
             TypeAdapterConfig<DtoPolicyFileType, ContextPolicyFileType>
-                .NewConfig()
-                .MapWith(src => ConvertDtoToContext(src));
-
-            TypeAdapterConfig<ContextBillingInterval, DtoBillingInterval>
-                .NewConfig()
-                .MapWith(src => ConvertContextToDto(src));
-
-            TypeAdapterConfig<DtoBillingInterval, ContextBillingInterval>
                 .NewConfig()
                 .MapWith(src => ConvertDtoToContext(src));
 
@@ -379,22 +369,6 @@ public static class MapsterConfig
         _ => ContextPolicyFileType.Other,
     };
 
-    private static DtoBillingInterval ConvertContextToDto(ContextBillingInterval src) => src switch
-    {
-        ContextBillingInterval.Daily => DtoBillingInterval.Daily,
-        ContextBillingInterval.Weekly => DtoBillingInterval.Weekly,
-        ContextBillingInterval.Yearly => DtoBillingInterval.Yearly,
-        _ => DtoBillingInterval.Monthly,
-    };
-
-    private static ContextBillingInterval ConvertDtoToContext(DtoBillingInterval src) => src switch
-    {
-        DtoBillingInterval.Daily => ContextBillingInterval.Daily,
-        DtoBillingInterval.Weekly => ContextBillingInterval.Weekly,
-        DtoBillingInterval.Yearly => ContextBillingInterval.Yearly,
-        _ => ContextBillingInterval.Monthly,
-    };
-
     private static DtoTermKind ConvertContextToDto(ContextTermKind src) => src switch
     {
         ContextTermKind.InterestRate => DtoTermKind.InterestRate,
@@ -423,9 +397,9 @@ public static class MapsterConfig
         _ => ContextTermValueUnit.Percentage,
     };
 
-    // Exhaustive and explicit, never a blanket Adapt: Odyssey.Dtos.Finance now holds TWO cadence
-    // enums (this one and the subscriptions' BillingInterval) whose member names overlap while no
-    // ordinal does, so a convention-mapped conversion between them would silently change meaning.
+    // Exhaustive and explicit, never a blanket Adapt: the context and DTO copies of this cadence enum
+    // are separate declarations, so a convention-mapped conversion could silently change meaning if
+    // the two ever drift.
     //
     // There is deliberately NO arm for the retired ordinal 4 (was Quarterly): after the migration no
     // row holds it, and an arm mapping it would keep a retired value alive on the read path. The

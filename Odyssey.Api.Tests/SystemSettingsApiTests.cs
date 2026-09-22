@@ -157,8 +157,9 @@ public class SystemSettingsApiTests
         // 59 before issue #437, +3 for the Subscriptions summary limits, +4 for the mail transport
         // and the public link origin (issue #8), +1 for the insurance link cap (issue #27), +1 for
         // the per-contract term cap (issue #135), +3 for the Contracts summary windows and its
-        // next-charge row cap, +1 for the per-contract smart-tag cap (issue #166).
-        Assert.Equal(72, rows.Count);
+        // next-charge row cap, +1 for the per-contract smart-tag cap (issue #166), then -3 when the
+        // standalone subscriptions feature was removed.
+        Assert.Equal(69, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 

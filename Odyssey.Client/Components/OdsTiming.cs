@@ -24,7 +24,7 @@ public static class OdsTiming
 
     /// <summary>
     /// How long a record card stays highlighted after the page scrolls to it (the jump-to-record
-    /// ring on the Accounts / Contracts / Insurance / Subscriptions / Tax statements lists).
+    /// ring on the Accounts / Contracts / Insurance / Tax statements lists).
     /// </summary>
     /// <remarks>
     /// MUST stay in step with the <c>--duration-flash</c> token that drives the <c>acct-flash</c>

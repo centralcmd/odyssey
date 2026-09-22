@@ -148,16 +148,17 @@ public static class SystemSettingsDefaults
     public const int ContractEndingWindowDays = 45;
 
     /// <summary>
-    /// How many days ahead a contract's next recurring charge is surfaced. Same shape and same
-    /// shipped value as <see cref="SubscriptionRenewalWindowDays"/>, and for the same reason — a
-    /// contract's Fee terms in force are read forward exactly as a subscription's billing interval is.
+    /// How many days ahead a contract's next recurring charge is surfaced. Same shipped value as
+    /// <see cref="ContractEndingWindowDays"/>: the in-force Fee terms are stepped forward at read
+    /// time and never written back, so a degraded read resolves to <c>min</c> — under-reporting a
+    /// charge rather than inventing one.
     /// </summary>
     public const int ContractChargeWindowDays = 45;
 
     /// <summary>
-    /// Next-charge rows the page-header panel lists. Bounded like
-    /// <see cref="SubscriptionMaxSummaryRenewals"/> rather than like the materialised-fetch caps:
-    /// each row is a separate rendered block in an always-open header region.
+    /// Next-charge rows the page-header panel lists. Bounded far below the materialised-fetch caps
+    /// (see <c>SystemSettingsBounds.ContractMaxSummaryChargesMax</c>): each row is a separate
+    /// rendered block in an always-open header region.
     /// </summary>
     public const int ContractMaxSummaryCharges = 6;
     public const int InsuranceMaxRenewalsPerPolicy = 100;
@@ -306,34 +307,4 @@ public static class SystemSettingsDefaults
     /// to Anthropic when the administrator had deliberately pointed the deployment at a gateway.
     /// </summary>
     public const string FileAnalysisBaseUrl = "https://api.anthropic.com";
-
-    // ─────────────────────────────────────────────────────────────────────────────────────────────
-    // The Subscriptions summary limits (issue #437). The first two seed the `private const`s they
-    // replace exactly, so a default install is behaviourally identical. The third is new: the
-    // summary's fetch was UNBOUNDED, and 1000 matches its two shipped siblings
-    // (InsuranceMaxSummaryPolicies, ContractMaxSummaryContracts).
-    //
-    // None of the three is single-direction — none is a write amplifier and none is a security
-    // control that fails open — so no [Range] end is pinned at one of these constants.
-    // ─────────────────────────────────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// How many days ahead a subscription's next billing date is surfaced as an upcoming renewal.
-    /// A degraded read resolves to <c>min</c>, but for a correctness reason rather than a load one:
-    /// the window drives no work at all (<c>BuildRenewals</c> iterates an already-fetched list), so
-    /// the preference is to <strong>under-report</strong> renewals rather than over-report them.
-    /// </summary>
-    public const int SubscriptionRenewalWindowDays = 45;
-
-    /// <summary>
-    /// Renewal rows the page-header roll-up lists. Each is a separate rendered block above the list,
-    /// which is why its bound is 50 rather than the 100000 its sibling caps carry.
-    /// </summary>
-    public const int SubscriptionMaxSummaryRenewals = 6;
-
-    /// <summary>
-    /// Subscriptions read to compute the roll-up. Conservative direction for a degraded read is
-    /// <c>min</c> — it is a cap on a materialised fetch.
-    /// </summary>
-    public const int SubscriptionMaxSummarySubscriptions = 1000;
 }

@@ -56,7 +56,7 @@ public interface IContactReferenceGuard
 
     /// <summary>
     /// Applies the FK on-delete behaviours for a contact being deleted, in one OdysseyContext
-    /// unit of work: null out the <c>SetNull</c> links (transactions, subscriptions, account custodians,
+    /// unit of work: null out the <c>SetNull</c> links (transactions, account custodians,
     /// account-file issuers, file-analysis matched contacts) and delete the <c>Cascade</c> contract-party
     /// rows. Call <see cref="IsReferencedByRestrictedLinkAsync"/> first — this does not touch the
     /// restricted links.

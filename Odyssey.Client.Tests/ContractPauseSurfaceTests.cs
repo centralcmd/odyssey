@@ -36,7 +36,7 @@ public class ContractPauseSurfaceTests
         var paused = OdsContractStatus.Meta(ContractStatus.Paused);
 
         Assert.Equal("Paused", paused.Label);
-        // Pending (amber) — the tone Subscriptions already gives a pause, so no new status hue enters.
+        // Pending (amber) — the tone a paused record already carries, so no new status hue enters.
         Assert.Equal("pending", paused.Tone);
         Assert.Equal("pause_circle", paused.Icon);
         Assert.False(paused.Unknown);

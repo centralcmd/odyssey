@@ -153,8 +153,8 @@ public sealed record ContractRunRate
 /// falls past the contract's own end date.
 ///
 /// <para>
-/// <b>Nothing is scheduled or stored.</b> This is the term history read forward, the way
-/// <c>SubscriptionRenewal</c> reads a billing interval forward — the anchor is never advanced.
+/// <b>Nothing is scheduled or stored.</b> This is the term history read forward at request time —
+/// the anchor is never advanced.
 /// </para>
 /// </summary>
 public sealed record ContractUpcomingCharge

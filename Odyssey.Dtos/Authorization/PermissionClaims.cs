@@ -99,11 +99,6 @@ public static class PermissionClaims
     public const string ContractsUpdate = "contracts.update";
     public const string ContractsDelete = "contracts.delete";
 
-    public const string SubscriptionsCreate = "subscriptions.create";
-    public const string SubscriptionsRead = "subscriptions.read";
-    public const string SubscriptionsUpdate = "subscriptions.update";
-    public const string SubscriptionsDelete = "subscriptions.delete";
-
     // Journal module (issue #311). Guest is granted none of these — the whole module is 403 for Guest.
     public const string JournalCreate = "journal.create";
     public const string JournalRead = "journal.read";
