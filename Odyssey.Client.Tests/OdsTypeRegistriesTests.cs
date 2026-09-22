@@ -30,8 +30,6 @@ public class OdsTypeRegistriesTests
         { nameof(OdsTypeRegistries.AccountFileTypes), typeof(AccountFileType) },
         { nameof(OdsTypeRegistries.TransactionFileTypes), typeof(TransactionFileType) },
         { nameof(OdsTypeRegistries.TaxStatementFileTypes), typeof(TaxStatementFileType) },
-        { nameof(OdsTypeRegistries.InsurancePolicyTypes), typeof(InsurancePolicyType) },
-        { nameof(OdsTypeRegistries.PolicyFileTypes), typeof(PolicyFileType) },
         { nameof(OdsTypeRegistries.ContractTypes), typeof(ContractType) },
         { nameof(OdsTypeRegistries.ContractFileTypes), typeof(ContractFileType) },
         { nameof(OdsTypeRegistries.ContractPartyRoles), typeof(ContractPartyRole) },
@@ -120,11 +118,9 @@ public class OdsTypeRegistriesTests
     public void Every_typed_lookup_resolves_each_enum_member_to_its_own_entry()
     {
         AssertResolvesEveryMember<BudgetCategoryType>(OdsTypeRegistries.BudgetCategoryTypeOf);
-        AssertResolvesEveryMember<InsurancePolicyType>(OdsTypeRegistries.InsurancePolicyTypeOf);
         AssertResolvesEveryMember<ContractType>(OdsTypeRegistries.ContractTypeOf);
         AssertResolvesEveryMember<ContractFileType>(OdsTypeRegistries.ContractFileTypeOf);
         AssertResolvesEveryMember<ContractEventType>(OdsTypeRegistries.ContractEventTypeOf);
-        AssertResolvesEveryMember<PolicyFileType>(OdsTypeRegistries.PolicyFileTypeOf);
         AssertResolvesEveryMember<AccountFileType>(OdsTypeRegistries.AccountFileTypeOf);
         AssertResolvesEveryMember<TransactionFileType>(OdsTypeRegistries.TransactionFileTypeOf);
         AssertResolvesEveryMember<TaxStatementFileType>(OdsTypeRegistries.TaxStatementFileTypeOf);
@@ -149,11 +145,9 @@ public class OdsTypeRegistriesTests
     public void An_unknown_enum_value_falls_back_to_the_documented_entry()
     {
         Assert.Equal("Expense", OdsTypeRegistries.BudgetCategoryTypeOf((BudgetCategoryType)99).Key);
-        Assert.Equal("Other", OdsTypeRegistries.InsurancePolicyTypeOf((InsurancePolicyType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.ContractTypeOf((ContractType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.ContractFileTypeOf((ContractFileType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.ContractEventTypeOf((ContractEventType)99).Key);
-        Assert.Equal("Other", OdsTypeRegistries.PolicyFileTypeOf((PolicyFileType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.AccountFileTypeOf((AccountFileType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.TransactionFileTypeOf((TransactionFileType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.TaxStatementFileTypeOf((TaxStatementFileType)99).Key);
@@ -306,8 +300,6 @@ public class OdsTypeRegistriesTests
         { "AccountFileOptions", OdsTypeRegistries.AccountFileOptions, OdsTypeRegistries.AccountFileTypes },
         { "TransactionFileOptions", OdsTypeRegistries.TransactionFileOptions, OdsTypeRegistries.TransactionFileTypes },
         { "TaxStatementFileOptions", OdsTypeRegistries.TaxStatementFileOptions, OdsTypeRegistries.TaxStatementFileTypes },
-        { "InsurancePolicyOptions", OdsTypeRegistries.InsurancePolicyOptions, OdsTypeRegistries.InsurancePolicyTypes },
-        { "PolicyFileOptions", OdsTypeRegistries.PolicyFileOptions, OdsTypeRegistries.PolicyFileTypes },
         { "ContractOptions", OdsTypeRegistries.ContractOptions, OdsTypeRegistries.ContractTypes },
         { "ContractFileOptions", OdsTypeRegistries.ContractFileOptions, OdsTypeRegistries.ContractFileTypes },
         { "ContractPartyRoleOptions", OdsTypeRegistries.ContractPartyRoleOptions, OdsTypeRegistries.ContractPartyRoles },

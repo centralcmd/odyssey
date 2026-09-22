@@ -39,11 +39,9 @@ public class ContractSignatureTests
 
     private sealed class Caps : ISystemSettingsLookup
     {
-        public Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new InsurancePolicySettings(30, 1000));
 
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new FinanceRequestCaps(25, 50, 500, 1000, 100, 50, 50));
+            Task.FromResult(new FinanceRequestCaps(25, 50, 500, 1000));
 
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ContractSummarySettings(45, 45, 6));

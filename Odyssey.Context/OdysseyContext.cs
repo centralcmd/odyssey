@@ -50,7 +50,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
     // The require-admin-approval rule (issue #349) moved from static config (RegistrationOptions,
     // now removed) into a live read of the SystemSetting row — no cache, since registration volume
-    // is far below the threshold the Insurance-field cache exists to protect, and a stale read here
+    // is far below the threshold the cached settings lookups exist to protect, and a stale read here
     // would be a security-relevant gap, not a cosmetic one. Split sync/async so the synchronous
     // SaveChanges() override (this repo's own tests call it directly — NewUserApprovalTests,
     // RegistrationGrantsNoPrivilegeTests, TestContextFactory) gets a genuine synchronous EF query
@@ -315,24 +315,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .HasConversion<int>();
         });
 
-        modelBuilder.Entity<InsurancePolicy>(entity =>
-        {
-            entity.Property(p => p.Type)
-                .IsRequired()
-                .HasDefaultValue(InsurancePolicyType.Other)
-                .HasSentinel(InsurancePolicyType.Other)
-                .HasConversion<int>();
-        });
-
-        modelBuilder.Entity<PolicyRenewalFile>(entity =>
-        {
-            entity.Property(f => f.FileType)
-                .IsRequired()
-                .HasDefaultValue(PolicyFileType.Other)
-                .HasSentinel(PolicyFileType.Other)
-                .HasConversion<int>();
-        });
-
         modelBuilder.Entity<Contract>(entity =>
         {
             entity.Property(c => c.Type)
@@ -572,9 +554,8 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Aliases (issue #48): the fourth child collection. CASCADE like its three siblings — an
-            // alias has no independent existence and no cross-module referent, so neither the
-            // SET NULL of the optional cross-module links nor the RESTRICT of the insurance ones
-            // applies. Declared BEFORE the unique (ContactId, Value) index is considered so EF's
+            // alias has no independent existence and no cross-module referent, so the SET NULL of the
+            // optional cross-module links does not apply. Declared BEFORE the unique (ContactId, Value) index is considered so EF's
             // FK-index suppression sees the composite and emits no redundant IX_ContactAliases_ContactId.
             entity.HasMany(c => c.Aliases)
                 .WithOne(a => a.Contact)
@@ -748,67 +729,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(party => party.ContactId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // The three insurance CONTACT link tables (issue #27). Each restricts on the contact: a contact
-        // named as an insurer, an insured contact or a beneficiary cannot be deleted, because a
-        // beneficiary designation vanishing silently on contact deletion would lose it without trace.
-        // ContactService keeps calling IContactReferenceGuard first so the caller gets a 409 that
-        // explains itself rather than a raw FK violation surfacing as a 500, and the supported release
-        // valve is the transactional detach path (?detachInsuranceLinks=true), not a loosened FK.
-        // These three are the complete blocker set: they are the only Restrict FKs to Contact in the
-        // model.
-        modelBuilder.Entity<InsurancePolicyInsurer>()
-            .HasOne<Contact>()
-            .WithMany()
-            .HasForeignKey(link => link.ContactId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<InsurancePolicyInsuredContact>()
-            .HasOne<Contact>()
-            .WithMany()
-            .HasForeignKey(link => link.ContactId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<InsurancePolicyBeneficiary>()
-            .HasOne<Contact>()
-            .WithMany()
-            .HasForeignKey(link => link.ContactId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // The ACCOUNT link cascades on both sides. On the account side that preserves the former
-        // scalar InsuredAccountId's SET NULL behaviour exactly: the policy survives, minus the account.
-        // SET NULL has no meaning on a link table — nulling the only target leaves a row pointing at
-        // nothing.
-        modelBuilder.Entity<InsurancePolicyInsuredAccount>()
-            .HasOne<Account>()
-            .WithMany()
-            .HasForeignKey(link => link.AccountId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // Policy side: all four links die with the policy.
-        modelBuilder.Entity<InsurancePolicyInsurer>()
-            .HasOne(link => link.InsurancePolicy)
-            .WithMany(policy => policy.Insurers)
-            .HasForeignKey(link => link.InsurancePolicyId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<InsurancePolicyInsuredAccount>()
-            .HasOne(link => link.InsurancePolicy)
-            .WithMany(policy => policy.InsuredAccounts)
-            .HasForeignKey(link => link.InsurancePolicyId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<InsurancePolicyInsuredContact>()
-            .HasOne(link => link.InsurancePolicy)
-            .WithMany(policy => policy.InsuredContacts)
-            .HasForeignKey(link => link.InsurancePolicyId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<InsurancePolicyBeneficiary>()
-            .HasOne(link => link.InsurancePolicy)
-            .WithMany(policy => policy.Beneficiaries)
-            .HasForeignKey(link => link.InsurancePolicyId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         // FileMetadata ← journal/photo. Cascade matches how every in-module attachment row already
         // references the Files store (TransactionFile, AccountFile, TaxStatementFile, …): the link is
         // meaningless without its file. A library Photo is a wrapper around exactly one file, so it goes
@@ -891,8 +811,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             new SystemSetting { Key = SystemSettingsKeys.RequireTwoFactor, Value = "false", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.RegistrationRequireAdminApproval, Value = "true", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.EmailRequireConfirmation, Value = "true", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.InsuranceExpiringSoonWindowDays, Value = "30", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.InsuranceMaxSummaryPolicies, Value = "1000", UpdatedAt = seededAt },
             // Import/export volume caps (issue #343 §6/§15) — seeded to today's effective values so
             // out-of-the-box behavior is unchanged. The two vCard count caps seed "unlimited" (today's
             // effective int.MaxValue); the three ICS surfaces keep their existing 2,000-derived count
@@ -952,9 +870,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             new SystemSetting { Key = SystemSettingsKeys.ContractMaxFilesPerContract, Value = "50", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.ContractMaxTermsPerContract, Value = "500", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.ContractMaxSummaryContracts, Value = "1000", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.InsuranceMaxRenewalsPerPolicy, Value = "100", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.InsuranceMaxFilesPerParent, Value = "50", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.InsuranceMaxLinksPerPolicy, Value = "50", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.PhotoMaxLinksPerKind, Value = "50", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.PhotoMaxAlbumMembers, Value = "1000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalEntryMaxLinksPerKind, Value = "50", UpdatedAt = seededAt },
@@ -1109,8 +1024,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<ContractFile>(modelBuilder, nameof(ContractFile.AttachedByUserId));
         DeclareUserAttribution<TransactionFile>(modelBuilder, nameof(TransactionFile.AttachedByUserId));
         DeclareUserAttribution<TaxStatementFile>(modelBuilder, nameof(TaxStatementFile.AttachedByUserId));
-        DeclareUserAttribution<PolicyRenewalFile>(modelBuilder, nameof(PolicyRenewalFile.AttachedByUserId));
-        DeclareUserAttribution<InsurancePolicyBeneficiary>(modelBuilder, nameof(InsurancePolicyBeneficiary.CreatedByUserId));
         DeclareUserAttribution<ContractEvent>(modelBuilder, nameof(ContractEvent.CreatedByUserId));
 
         DeclareUserAttribution<FileMetadata>(modelBuilder, nameof(Odyssey.Context.FileMetadata.UploadedByUserId));
@@ -1332,13 +1245,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<TaxStatement> TaxStatements { get; set; }
     public DbSet<TaxStatementTag> TaxStatementTags { get; set; }
     public DbSet<TaxStatementFile> TaxStatementFiles { get; set; }
-    public DbSet<InsurancePolicy> InsurancePolicies { get; set; }
-    public DbSet<InsurancePolicyInsurer> InsurancePolicyInsurers { get; set; }
-    public DbSet<InsurancePolicyInsuredAccount> InsurancePolicyInsuredAccounts { get; set; }
-    public DbSet<InsurancePolicyInsuredContact> InsurancePolicyInsuredContacts { get; set; }
-    public DbSet<InsurancePolicyBeneficiary> InsurancePolicyBeneficiaries { get; set; }
-    public DbSet<PolicyRenewal> PolicyRenewals { get; set; }
-    public DbSet<PolicyRenewalFile> PolicyRenewalFiles { get; set; }
     public DbSet<Contract> Contracts { get; set; }
     public DbSet<ContractParty> ContractParties { get; set; }
     public DbSet<ContractFile> ContractFiles { get; set; }

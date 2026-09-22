@@ -61,8 +61,6 @@ public class DemoDataSeederTests
         Assert.Equal(expected.Budgets.Count, await finance.Budgets.CountAsync());
         Assert.Equal(expected.Transactions.Count, await finance.Transactions.CountAsync());
         Assert.Equal(expected.TransactionTagLinks.Count, await finance.TransactionTagLinks.CountAsync());
-        Assert.Equal(expected.InsurancePolicies.Count, await finance.InsurancePolicies.CountAsync());
-        Assert.Equal(expected.PolicyRenewals.Count, await finance.PolicyRenewals.CountAsync());
         Assert.Equal(expected.TaxStatements.Count, await finance.TaxStatements.CountAsync());
         Assert.Equal(expected.TaxStatementTags.Count, await finance.TaxStatementTags.CountAsync());
         Assert.Equal(expected.TaxStatementFiles.Count, await finance.TaxStatementFiles.CountAsync());
@@ -405,20 +403,12 @@ public class DemoDataSeederTests
     /// </summary>
     private sealed class AnchorSettingsLookup : ISystemSettingsLookup
     {
-        public Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new InsurancePolicySettings(
-                SystemSettingsDefaults.InsuranceExpiringSoonWindowDays,
-                SystemSettingsDefaults.InsuranceMaxSummaryPolicies));
-
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new FinanceRequestCaps(
                 SystemSettingsDefaults.ContractMaxPartiesPerContract,
                 SystemSettingsDefaults.ContractMaxFilesPerContract,
                 SystemSettingsDefaults.ContractMaxTermsPerContract,
-                SystemSettingsDefaults.ContractMaxSummaryContracts,
-                SystemSettingsDefaults.InsuranceMaxRenewalsPerPolicy,
-                SystemSettingsDefaults.InsuranceMaxFilesPerParent,
-                SystemSettingsDefaults.InsuranceMaxLinksPerPolicy));
+                SystemSettingsDefaults.ContractMaxSummaryContracts));
 
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ContractSummarySettings(

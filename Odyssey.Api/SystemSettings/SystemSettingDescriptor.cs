@@ -218,9 +218,9 @@ internal sealed class BoolSetting : SystemSettingDescriptor
 }
 
 /// <summary>
-/// An <see cref="int"/>-valued setting stored as an invariant-culture decimal integer. Covers both the
-/// two Insurance knobs (which set <see cref="SystemSettingDescriptor.TouchOnPresenceOnly"/>) and the
-/// eight import/export megabyte caps (which do not).
+/// An <see cref="int"/>-valued setting stored as an invariant-culture decimal integer. Covers the
+/// eight import/export megabyte caps and the per-request caps, none of which set
+/// <see cref="SystemSettingDescriptor.TouchOnPresenceOnly"/>.
 /// </summary>
 internal sealed class IntSetting : SystemSettingDescriptor
 {

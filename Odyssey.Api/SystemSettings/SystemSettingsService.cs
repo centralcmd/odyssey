@@ -38,15 +38,12 @@ public sealed class SystemSettingsService(
     SecretSettingsService secrets,
     ILogger<SystemSettingsService> logger)
 {
-    // Shared with SystemSettingsLookup, which reads the same two cosmetic/policy fields under this
-    // key with a 30s TTL — a PUT that actually changes either one evicts it immediately so the
-    // writing instance never serves its own stale value.
-    internal const string InsuranceCacheKey = "system-settings:insurance-policy-settings";
-
     /// <summary>
-    /// The finance-side per-request caps (issue #421 Wave 3). Its own key, not folded into
-    /// <see cref="InsuranceCacheKey"/>: sharing one entry would make a contracts change evict the
-    /// insurance settings and vice versa, which is the mistake that argued against reusing an existing
+    /// The finance-side per-request caps (issue #421 Wave 3). Shared with SystemSettingsLookup, which
+    /// reads the same fields under this key with a 30s TTL — a PUT that actually changes one evicts it
+    /// immediately so the writing instance never serves its own stale value. Its own key, not shared
+    /// with <see cref="ContractSummaryCacheKey"/>: one entry would make a window change evict the
+    /// per-request caps and vice versa, which is the mistake that argued against reusing an existing
     /// lookup for the file-analysis settings too.
     /// </summary>
     internal const string FinanceCapsCacheKey = "system-settings:finance-request-caps";
@@ -61,8 +58,8 @@ public sealed class SystemSettingsService(
 
     /// <summary>
     /// One log line per faulted settings key per window, rather than one per request on an endpoint
-    /// with no rate limiter (issue #437 §11, AC 28). Per <em>key</em>, so a corrupt insurance row
-    /// cannot consume the contracts fault's line.
+    /// with no rate limiter (issue #437 §11, AC 28). Per <em>key</em>, so a corrupt row in one group
+    /// cannot consume another group's fault line.
     /// </summary>
     private static readonly TimeSpan ProjectionLogThrottle = TimeSpan.FromSeconds(30);
 
@@ -256,7 +253,7 @@ public sealed class SystemSettingsService(
         // Phase 2 — every claim/shape/round-trip check passed; now mutate. Not a Mapster Adapt call:
         // IgnoreNullValues defaults to false, so a bare Adapt would write false/0 for every null
         // source field, silently disabling both auth-perimeter gates on a cosmetic-only admin's
-        // insurance-only save.
+        // single-field save.
         var now = timeProvider.GetUtcNow().UtcDateTime;
 
         // `anyPresent` decides whether to call SaveChanges at all, and is presence-based rather than
@@ -634,7 +631,6 @@ public sealed class SystemSettingsService(
             // from the compile-time constants that also drive [MaxLength] on the photo request DTOs,
             // so the client can bound its control instead of offering a value the API will reject.
             PhotoMaxLinksPerKindCeiling = RequestCapCeilings.PhotoLinksPerKind,
-            InsuranceMaxLinksPerPolicyCeiling = RequestCapCeilings.InsuranceLinksPerPolicy,
             PhotoMaxAlbumMembersCeiling = RequestCapCeilings.PhotoAlbumMembers,
 
             // The upload cap's ceiling is startup configuration, not a constant (issue #421 Wave 4):

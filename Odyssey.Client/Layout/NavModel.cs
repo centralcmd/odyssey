@@ -54,7 +54,6 @@ public static class NavModel
             new("Commitments",
             [
                 new("tax-statements", "Tax Statements", "request_quote", "tax-statements", PermissionClaims.TaxesRead),
-                new("insurance", "Insurance", "shield", "insurance-policies", PermissionClaims.InsuranceRead),
                 new("contracts", "Contracts", "handshake", "contracts", PermissionClaims.ContractsRead),
             ]),
             new("Documents",

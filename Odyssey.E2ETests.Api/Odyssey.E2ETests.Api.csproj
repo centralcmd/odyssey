@@ -13,7 +13,7 @@
     <ProjectReference Include="..\Odyssey.ApiClient\Odyssey.ApiClient.csproj" />
     <ProjectReference Include="..\Odyssey.TestData\Odyssey.TestData.csproj" />
     <ProjectReference Include="..\Odyssey.Context\Odyssey.Context.csproj" />
-    <!-- Enum values (ContactType/AccountType/InsurancePolicyType) for building request bodies. -->
+    <!-- Enum values (ContactType/AccountType) for building request bodies. -->
     <ProjectReference Include="..\Odyssey.Dtos\Odyssey.Dtos.csproj" />
   </ItemGroup>
 

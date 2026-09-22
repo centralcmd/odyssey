@@ -53,7 +53,7 @@ public interface IContactLookup
 
     /// <summary>
     /// The ids of contacts whose resolved display name contains <paramref name="term"/> (case-insensitive).
-    /// Used by Finance list endpoints that filter/sort by a linked contact's name (e.g. insurance by
+    /// Used by Finance list endpoints that filter/sort by a linked contact's name (e.g. contracts by
     /// insurer) — the caller pre-resolves ids here, then filters its own table by <c>Contains(id)</c>.
     /// A JOIN would also work now that finance and journal share one context; see the call sites for why
     /// swapping to one is a separate change.

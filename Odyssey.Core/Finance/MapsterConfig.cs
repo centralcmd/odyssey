@@ -7,10 +7,6 @@ using ContextAccountType = Odyssey.Context.AccountType;
 using ContextBudgetCategoryType = Odyssey.Context.BudgetCategoryType;
 using ContextTransactionFileType = Odyssey.Context.TransactionFileType;
 using ContextTaxStatementFileType = Odyssey.Context.TaxStatementFileType;
-using ContextInsurancePolicyType = Odyssey.Context.InsurancePolicyType;
-using ContextPolicyFileType = Odyssey.Context.PolicyFileType;
-using DtoInsurancePolicyType = Odyssey.Dtos.Finance.InsurancePolicyType;
-using DtoPolicyFileType = Odyssey.Dtos.Finance.PolicyFileType;
 using DtoAccountFileType = Odyssey.Dtos.Finance.AccountFileType;
 using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoBudgetCategoryType = Odyssey.Dtos.Finance.BudgetCategoryType;
@@ -92,22 +88,6 @@ public static class MapsterConfig
                 .MapWith(src => ConvertContextToDto(src));
 
             TypeAdapterConfig<DtoTaxStatementFileType, ContextTaxStatementFileType>
-                .NewConfig()
-                .MapWith(src => ConvertDtoToContext(src));
-
-            TypeAdapterConfig<ContextInsurancePolicyType, DtoInsurancePolicyType>
-                .NewConfig()
-                .MapWith(src => ConvertContextToDto(src));
-
-            TypeAdapterConfig<DtoInsurancePolicyType, ContextInsurancePolicyType>
-                .NewConfig()
-                .MapWith(src => ConvertDtoToContext(src));
-
-            TypeAdapterConfig<ContextPolicyFileType, DtoPolicyFileType>
-                .NewConfig()
-                .MapWith(src => ConvertContextToDto(src));
-
-            TypeAdapterConfig<DtoPolicyFileType, ContextPolicyFileType>
                 .NewConfig()
                 .MapWith(src => ConvertDtoToContext(src));
 
@@ -315,58 +295,6 @@ public static class MapsterConfig
         DtoTaxStatementFileType.TaxAssessment => ContextTaxStatementFileType.TaxAssessment,
         DtoTaxStatementFileType.SupportingDocument => ContextTaxStatementFileType.SupportingDocument,
         _ => ContextTaxStatementFileType.Other,
-    };
-
-    private static DtoInsurancePolicyType ConvertContextToDto(ContextInsurancePolicyType src) => src switch
-    {
-        ContextInsurancePolicyType.Home => DtoInsurancePolicyType.Home,
-        ContextInsurancePolicyType.Contents => DtoInsurancePolicyType.Contents,
-        ContextInsurancePolicyType.Building => DtoInsurancePolicyType.Building,
-        ContextInsurancePolicyType.Vehicle => DtoInsurancePolicyType.Vehicle,
-        ContextInsurancePolicyType.Travel => DtoInsurancePolicyType.Travel,
-        ContextInsurancePolicyType.Life => DtoInsurancePolicyType.Life,
-        ContextInsurancePolicyType.Health => DtoInsurancePolicyType.Health,
-        ContextInsurancePolicyType.Accident => DtoInsurancePolicyType.Accident,
-        ContextInsurancePolicyType.Liability => DtoInsurancePolicyType.Liability,
-        ContextInsurancePolicyType.Pet => DtoInsurancePolicyType.Pet,
-        ContextInsurancePolicyType.Property => DtoInsurancePolicyType.Property,
-        _ => DtoInsurancePolicyType.Other,
-    };
-
-    private static ContextInsurancePolicyType ConvertDtoToContext(DtoInsurancePolicyType src) => src switch
-    {
-        DtoInsurancePolicyType.Home => ContextInsurancePolicyType.Home,
-        DtoInsurancePolicyType.Contents => ContextInsurancePolicyType.Contents,
-        DtoInsurancePolicyType.Building => ContextInsurancePolicyType.Building,
-        DtoInsurancePolicyType.Vehicle => ContextInsurancePolicyType.Vehicle,
-        DtoInsurancePolicyType.Travel => ContextInsurancePolicyType.Travel,
-        DtoInsurancePolicyType.Life => ContextInsurancePolicyType.Life,
-        DtoInsurancePolicyType.Health => ContextInsurancePolicyType.Health,
-        DtoInsurancePolicyType.Accident => ContextInsurancePolicyType.Accident,
-        DtoInsurancePolicyType.Liability => ContextInsurancePolicyType.Liability,
-        DtoInsurancePolicyType.Pet => ContextInsurancePolicyType.Pet,
-        DtoInsurancePolicyType.Property => ContextInsurancePolicyType.Property,
-        _ => ContextInsurancePolicyType.Other,
-    };
-
-    private static DtoPolicyFileType ConvertContextToDto(ContextPolicyFileType src) => src switch
-    {
-        ContextPolicyFileType.Contract => DtoPolicyFileType.Contract,
-        ContextPolicyFileType.Invoice => DtoPolicyFileType.Invoice,
-        ContextPolicyFileType.TermsAndConditions => DtoPolicyFileType.TermsAndConditions,
-        ContextPolicyFileType.PolicyDocument => DtoPolicyFileType.PolicyDocument,
-        ContextPolicyFileType.ClaimDocument => DtoPolicyFileType.ClaimDocument,
-        _ => DtoPolicyFileType.Other,
-    };
-
-    private static ContextPolicyFileType ConvertDtoToContext(DtoPolicyFileType src) => src switch
-    {
-        DtoPolicyFileType.Contract => ContextPolicyFileType.Contract,
-        DtoPolicyFileType.Invoice => ContextPolicyFileType.Invoice,
-        DtoPolicyFileType.TermsAndConditions => ContextPolicyFileType.TermsAndConditions,
-        DtoPolicyFileType.PolicyDocument => ContextPolicyFileType.PolicyDocument,
-        DtoPolicyFileType.ClaimDocument => ContextPolicyFileType.ClaimDocument,
-        _ => ContextPolicyFileType.Other,
     };
 
     private static DtoTermKind ConvertContextToDto(ContextTermKind src) => src switch

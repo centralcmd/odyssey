@@ -2,7 +2,7 @@
 
 **A self-hosted personal finance and life-admin application.** Odyssey tracks accounts,
 transactions and budgets across multiple currencies, and keeps the paperwork that goes with
-them — contracts, insurance policies, tax statements and the source documents themselves — in one
+them — contracts, tax statements and the source documents themselves — in one
 place, alongside a journal, task board, calendar and photo library.
 
 It is a full-stack .NET 10 application: an ASP.NET Core API, a Blazor WebAssembly frontend,
@@ -28,8 +28,8 @@ your own infrastructure.
 - **Budgets** — per-year budgets broken down by tag, reported against actual spend.
 - **Multi-currency** — explicit exchange rates per directed currency pair, so cross-currency
   accounts convert without silent guesswork.
-- **Contracts and insurance policies** — recurring commitments with terms, parties, fee run-rate,
-  renewal and derived status. A subscription is a contract of that type.
+- **Contracts** — recurring commitments with terms, parties, fee run-rate, renewal and derived
+  status. A subscription and an insurance policy are each a contract of that type.
 - **Tax statements** — with a reconciliation report that flags what does not line up.
 
 **Documents and everything else**
@@ -125,16 +125,6 @@ what is charged next.
 
 </td>
 <td width="50%">
-
-![The Insurance page with its renewals and overview regions open: two red alerts for lapsed
-Auto and Home cover, then a current premium of 260.00 GBP plus 4,920.00 USD shown as
-approximately 57,056.09 NOK in total, coverage of 50k GBP plus 1.75M USD as approximately
-19.71M NOK insured, and counts by type and status over six
-policies.](docs/images/insurance.png)
-
-**Insurance** — policies with per-currency premium and coverage subtotals, converted into a
-single figure.
-
 </td>
 </tr>
 </table>
@@ -254,9 +244,9 @@ administrator enables it (Users admin page → enable). This is the email-confir
 companion gate and is independent of it, and it now applies to every account without exception.
 
 > Configured at runtime in **System Settings**, not `appsettings.json`: the registration-approval and
-> email-confirmation gates, the insurance summary knobs, the sixteen import/export volume caps, and the
+> email-confirmation gates, the Contracts summary knobs, the sixteen import/export volume caps, and the
 > AI-analysis processor disclosure and policy, the transactional-email sender identity and
-> per-recipient send throttle, the nine per-request caps on contracts, insurance, photos and
+> per-recipient send throttle, the per-request caps on contracts, photos and
 > journal links, and the maximum upload size. Secrets, connection strings and the SMTP transport stay
 > in environment configuration — see issue #421's Non-Goals for why each one does. A value you had
 > configured for one of the migrated settings is carried into the store on upgrade and keeps applying

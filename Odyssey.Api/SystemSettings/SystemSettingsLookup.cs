@@ -30,9 +30,9 @@ namespace Odyssey.Api.SystemSettings;
 /// </item>
 /// <item>
 /// <strong>Real bounds.</strong> The old <c>Cap()</c> ended in <c>Math.Min(parsed, int.MaxValue)</c>
-/// — a no-op — so none of the five keys using it had a read-path bound at all. The insurance pair did
-/// not even use it: both went through a throwing <c>int.Parse</c>, so a corrupt
-/// <c>InsuranceExpiringSoonWindowDays</c> row was a live <c>500</c>.
+/// — a no-op — so none of the five keys using it had a read-path bound at all. Some keys did not
+/// even use it: they went through a throwing <c>int.Parse</c>, so a corrupt row was a live
+/// <c>500</c>.
 /// </item>
 /// <item>
 /// <strong>A last-known-good watermark carrying the TTL.</strong> Written <em>with</em> the 30-second
@@ -54,12 +54,6 @@ namespace Odyssey.Api.SystemSettings;
 /// create/update validation on paths with no limiter in front of them, so re-querying per request
 /// while the database is already unhealthy is a thundering herd at the worst possible moment —
 /// <see cref="JournalLimitsLookup"/>'s rationale.
-/// </item>
-/// <item>
-/// <see cref="GetInsurancePolicySettingsAsync"/> <strong>caches</strong> too, but for a different
-/// reason: these two keys gate no validation at all. It is frequency — five call sites across list,
-/// get, update, delete and summary make this the highest-traffic settings lookup in the codebase, so
-/// an uncached degraded path is the largest amplification available.
 /// </item>
 /// <item>
 /// <see cref="GetContractSummarySettingsAsync"/> caches a healthy result but does <strong>not</strong>
@@ -85,21 +79,12 @@ public sealed class SystemSettingsLookup(
 
     private const string LastKnownGoodPrefix = "system-settings:lookup:lkg:";
 
-    private static readonly string[] InsuranceKeys =
-    [
-        SystemSettingsKeys.InsuranceExpiringSoonWindowDays,
-        SystemSettingsKeys.InsuranceMaxSummaryPolicies,
-    ];
-
     private static readonly string[] FinanceCapKeys =
     [
         SystemSettingsKeys.ContractMaxPartiesPerContract,
         SystemSettingsKeys.ContractMaxFilesPerContract,
         SystemSettingsKeys.ContractMaxTermsPerContract,
         SystemSettingsKeys.ContractMaxSummaryContracts,
-        SystemSettingsKeys.InsuranceMaxRenewalsPerPolicy,
-        SystemSettingsKeys.InsuranceMaxFilesPerParent,
-        SystemSettingsKeys.InsuranceMaxLinksPerPolicy,
     ];
 
     private static readonly string[] ContractSummaryKeys =
@@ -109,37 +94,9 @@ public sealed class SystemSettingsLookup(
         SystemSettingsKeys.ContractMaxSummaryCharges,
     ];
 
-    public async Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default)
-    {
-        if (cache.TryGetValue(SystemSettingsService.InsuranceCacheKey, out InsurancePolicySettings? cached)
-            && cached is not null)
-        {
-            return cached;
-        }
-
-        var (values, readFailed) = await ReadAsync(InsuranceKeys, "insurance policy settings", cancellationToken);
-
-        var settings = new InsurancePolicySettings(
-            // min for both, but for opposite reasons — recorded so a later change does not "harmonise"
-            // them on the assumption that one rationale covers both. The window resolving DOWN means
-            // UNDER-warning about an expiring policy, a cost accepted for conservatism; the cap
-            // resolving down is the ordinary less-work direction.
-            Resolve(values, readFailed, SystemSettingsKeys.InsuranceExpiringSoonWindowDays,
-                SystemSettingsDefaults.InsuranceExpiringSoonWindowDays,
-                SystemSettingsBounds.InsuranceExpiringSoonWindowDaysMin,
-                SystemSettingsBounds.InsuranceExpiringSoonWindowDaysMax),
-            Resolve(values, readFailed, SystemSettingsKeys.InsuranceMaxSummaryPolicies,
-                SystemSettingsDefaults.InsuranceMaxSummaryPolicies,
-                SystemSettingsBounds.InsuranceMaxSummaryPoliciesMin,
-                SystemSettingsBounds.InsuranceMaxSummaryPoliciesMax));
-
-        cache.Set(SystemSettingsService.InsuranceCacheKey, settings, CacheTtl);
-        return settings;
-    }
-
     /// <summary>
-    /// The finance-side per-request caps (issue #421 Wave 3), under their own cache key so a contracts
-    /// change does not evict the insurance entry or vice versa.
+    /// The finance-side per-request caps (issue #421 Wave 3), under their own cache key so a
+    /// per-request-cap change does not evict the Contracts summary entry or vice versa.
     ///
     /// <para>
     /// Every one of these is a cap, so the conservative direction on a degraded read is <c>min</c> —
@@ -173,26 +130,14 @@ public sealed class SystemSettingsLookup(
             Resolve(values, readFailed, SystemSettingsKeys.ContractMaxSummaryContracts,
                 SystemSettingsDefaults.ContractMaxSummaryContracts,
                 SystemSettingsBounds.ContractMaxSummaryContractsMin,
-                SystemSettingsBounds.ContractMaxSummaryContractsMax),
-            Resolve(values, readFailed, SystemSettingsKeys.InsuranceMaxRenewalsPerPolicy,
-                SystemSettingsDefaults.InsuranceMaxRenewalsPerPolicy,
-                SystemSettingsBounds.InsuranceMaxRenewalsPerPolicyMin,
-                SystemSettingsBounds.InsuranceMaxRenewalsPerPolicyMax),
-            Resolve(values, readFailed, SystemSettingsKeys.InsuranceMaxFilesPerParent,
-                SystemSettingsDefaults.InsuranceMaxFilesPerParent,
-                SystemSettingsBounds.InsuranceMaxFilesPerParentMin,
-                SystemSettingsBounds.InsuranceMaxFilesPerParentMax),
-            Resolve(values, readFailed, SystemSettingsKeys.InsuranceMaxLinksPerPolicy,
-                SystemSettingsDefaults.InsuranceMaxLinksPerPolicy,
-                SystemSettingsBounds.InsuranceMaxLinksPerPolicyMin,
-                SystemSettingsBounds.InsuranceMaxLinksPerPolicyMax));
+                SystemSettingsBounds.ContractMaxSummaryContractsMax));
 
         cache.Set(SystemSettingsService.FinanceCapsCacheKey, caps, CacheTtl);
         return caps;
     }
 
     /// <summary>
-    /// The Contracts summary windows, on their own cache key rather than sharing the insurance entry:
+    /// The Contracts summary windows, on their own cache key rather than sharing the caps entry:
     /// <c>SystemSettingDescriptor.CacheKeyToEvict</c> is a single string per descriptor, so a shared
     /// entry would cross-evict. A degraded result is <strong>not</strong> cached: one summary read
     /// path, so recovery should be immediate.
@@ -333,7 +278,7 @@ public sealed class SystemSettingsLookup(
     /// <summary>
     /// One line per faulted key per TTL window. The endpoint in front of these paths has no rate
     /// limiter, so an unthrottled line would be one per request for as long as the row stays corrupt —
-    /// and a corrupt insurance row must not consume the contracts fault's line.
+    /// and a corrupt row in one group must not consume another group's fault line.
     /// </summary>
     private void LogThrottled(string key, LogLevel level, string message)
     {

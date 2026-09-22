@@ -4,8 +4,7 @@ namespace Odyssey.Dtos.Application;
 /// The effective, read-only projection of the import/export volume caps (issue #343 §7 item 3,
 /// extended post-#343 with a "maximum export file size" per surface and a Tasks export row cap),
 /// served by <c>GET /api/import-limits</c> to any authenticated caller — no permission claim, no
-/// <c>UpdatedAt</c>/<c>UpdatedBy</c>/<c>UpdatedByDisplayName</c>, none of the five Security/Insurance
-/// fields. Deliberately not a reuse of <see cref="SystemSettingsDto"/> (admin-gated, carries an
+/// <c>UpdatedAt</c>/<c>UpdatedBy</c>/<c>UpdatedByDisplayName</c>, none of the Security fields. Deliberately not a reuse of <see cref="SystemSettingsDto"/> (admin-gated, carries an
 /// administrator's identity via <c>UpdatedByDisplayName</c> — issue #343 §10 item 2). Count fields are
 /// <see langword="null"/> when unlimited.
 /// </summary>

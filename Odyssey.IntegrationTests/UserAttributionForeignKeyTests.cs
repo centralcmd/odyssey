@@ -45,20 +45,10 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         ("ContractFiles", "AttachedByUserId"),
         ("TransactionFiles", "AttachedByUserId"),
         ("TaxStatementFiles", "AttachedByUserId"),
-        ("PolicyRenewalFiles", "AttachedByUserId"),
-        // The one insurance link that records its author (issue #27 §6). Only the beneficiary table:
-        // a beneficiary designation is the highest-consequence link the feature adds, and "who named
-        // this person, and when" is the question a beneficiary dispute actually asks.
-        ("InsurancePolicyBeneficiaries", "CreatedByUserId"),
         // The contract event log (issue #138 §4). An event is the household's shared record of what
         // happened to an agreement, not the author's personal data, so it must outlive their account
         // with only the name dropped.
         ("ContractEvents", "CreatedByUserId"),
-        // The relocation ledger from issue #26. It is not an EF entity — it is an operational record
-        // of what the migration did — but its attribution column follows the same rule as the other
-        // twenty-four, and for the same reason: the ledger must outlive the departure of whoever
-        // attached the document it records.
-        ("_InsurancePolicyFileRelocation", "AttachedByUserId"),
         ("FileMetadata", "UploadedByUserId"),
         ("FileAnalysisJobs", "RequestedByUserId"),
         ("FileAnalysisCandidateTransactions", "ReviewedByUserId"),

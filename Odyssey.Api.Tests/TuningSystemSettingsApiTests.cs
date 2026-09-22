@@ -494,10 +494,9 @@ public class TuningSystemSettingsApiTests
     /// No <c>RequestCapCeilings</c> validator exists for any of the fifteen. Their bounds are static
     /// constants, so they belong in the attribute — and because model validation runs FIRST, a validator
     /// repeating the same number would be unreachable through the API, which is the "decorative ceiling"
-    /// flaw this feature faults its own earlier drafts for. The photo-link, album-member, upload and
-    /// insurance-link ceilings stay, because those are runtime- or cross-assembly-derived and genuinely
-    /// cannot live in an attribute — the insurance one (issue #27) is the compile-time constant on the
-    /// Odyssey.Dtos write DTOs, which the settings [Range] cannot name without pinning the two together.
+    /// flaw this feature faults its own earlier drafts for. The photo-link, album-member and upload
+    /// ceilings stay, because those are runtime- or cross-assembly-derived and genuinely cannot live in
+    /// an attribute.
     /// </summary>
     [Fact]
     public void RequestCapCeilings_ValidatorSurface_IsUnchanged()
@@ -511,7 +510,7 @@ public class TuningSystemSettingsApiTests
             .ToList();
 
         Assert.Equal(
-            ["ValidateInsuranceLinksPerPolicy", "ValidatePhotoAlbumMembers", "ValidatePhotoLinksPerKind", "ValidateUploadMegabytes"],
+            ["ValidatePhotoAlbumMembers", "ValidatePhotoLinksPerKind", "ValidateUploadMegabytes"],
             validators);
     }
 

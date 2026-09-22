@@ -46,8 +46,6 @@ public class RequestCapSystemSettingsApiTests
         Assert.Equal(SystemSettingsDefaults.ContractMaxPartiesPerContract, dto!.ContractMaxPartiesPerContract);
         Assert.Equal(SystemSettingsDefaults.ContractMaxFilesPerContract, dto.ContractMaxFilesPerContract);
         Assert.Equal(SystemSettingsDefaults.ContractMaxSummaryContracts, dto.ContractMaxSummaryContracts);
-        Assert.Equal(SystemSettingsDefaults.InsuranceMaxRenewalsPerPolicy, dto.InsuranceMaxRenewalsPerPolicy);
-        Assert.Equal(SystemSettingsDefaults.InsuranceMaxFilesPerParent, dto.InsuranceMaxFilesPerParent);
         Assert.Equal(SystemSettingsDefaults.PhotoMaxLinksPerKind, dto.PhotoMaxLinksPerKind);
         Assert.Equal(SystemSettingsDefaults.PhotoMaxAlbumMembers, dto.PhotoMaxAlbumMembers);
         Assert.Equal(SystemSettingsDefaults.JournalEntryMaxLinksPerKind, dto.JournalEntryMaxLinksPerKind);
@@ -81,8 +79,6 @@ public class RequestCapSystemSettingsApiTests
             ContractMaxPartiesPerContract = 10,
             ContractMaxFilesPerContract = 11,
             ContractMaxSummaryContracts = 12,
-            InsuranceMaxRenewalsPerPolicy = 13,
-            InsuranceMaxFilesPerParent = 14,
             PhotoMaxLinksPerKind = 15,
             PhotoMaxAlbumMembers = 16,
             JournalEntryMaxLinksPerKind = 17,
@@ -93,7 +89,7 @@ public class RequestCapSystemSettingsApiTests
         var dto = await response.Content.ReadFromJsonAsync<SystemSettingsDto>();
 
         Assert.Equal(10, dto!.ContractMaxPartiesPerContract);
-        Assert.Equal(14, dto.InsuranceMaxFilesPerParent);
+        Assert.Equal(11, dto.ContractMaxFilesPerContract);
         Assert.Equal(15, dto.PhotoMaxLinksPerKind);
         Assert.Equal(18, dto.JournalTaskMaxLinksPerKind);
     }

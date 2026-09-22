@@ -57,7 +57,7 @@ public class ImportExportSettingsApiTests
         // A second, unrelated PUT omits the field entirely (null) — must not touch it.
         (await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
         {
-            InsuranceMaxSummaryPolicies = 42,
+            ContractMaxSummaryContracts = 42,
         })).EnsureSuccessStatusCode();
 
         var after = await context.SystemSettings.AsNoTracking()
@@ -246,8 +246,8 @@ public class ImportExportSettingsApiTests
         var importExportKeys = SystemSettingsKeys.AllKeys.Except(
         [
             SystemSettingsKeys.RequireTwoFactor, SystemSettingsKeys.RegistrationRequireAdminApproval,
-            SystemSettingsKeys.EmailRequireConfirmation, SystemSettingsKeys.InsuranceExpiringSoonWindowDays,
-            SystemSettingsKeys.InsuranceMaxSummaryPolicies,
+            SystemSettingsKeys.EmailRequireConfirmation, SystemSettingsKeys.ContractEndingWindowDays,
+            SystemSettingsKeys.ContractMaxSummaryContracts,
         ]).ToList();
         var before = await context.SystemSettings.AsNoTracking()
             .Where(s => importExportKeys.Contains(s.Key))
@@ -504,7 +504,7 @@ public class ImportExportSettingsApiTests
         [
             "updatedAt", "updatedBy", "updatedByDisplayName",
             "requireTwoFactor", "registrationRequireAdminApproval", "emailRequireConfirmation",
-            "insuranceExpiringSoonWindowDays", "insuranceMaxSummaryPolicies",
+            "contractEndingWindowDays", "contractMaxSummaryContracts",
         ];
         foreach (var property in mustNotAppear)
         {

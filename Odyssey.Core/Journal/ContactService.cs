@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 using Odyssey.Context;
 using Odyssey.Dtos.Journal;
 // Aliased rather than a plain using: Odyssey.Dtos.Finance also declares ArchivalStatus.
-using DetachedInsuranceLinks = Odyssey.Dtos.Finance.DetachedInsuranceLinks;
+using DetachedContactLinks = Odyssey.Dtos.Finance.DetachedContactLinks;
 using ContactDeleteBlockerClass = Odyssey.Dtos.Finance.ContactDeleteBlockerClass;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Core.Journal.Interop;
@@ -326,12 +326,11 @@ public class ContactService
     /// Deletes a contact, applying the Finance-side on-delete behaviours first.
     ///
     /// <para>
-    /// With <paramref name="detachInsuranceLinks"/> the contact's insurer, insured-contact and
-    /// beneficiary link rows — and, since issue #157, its <c>Beneficiary</c> contract-party rows — are
-    /// removed <b>in the same transaction</b> instead of blocking the delete: the supported release
-    /// valve for an erasure request (issue #27 §7 #6, §10 #5). Without it a contact named on any policy
-    /// or as a contract beneficiary is refused, which is the deliberate default: a beneficiary
-    /// designation vanishing silently on contact deletion would lose it without trace.
+    /// With <paramref name="detachBlockingLinks"/> the contact's <c>Beneficiary</c> contract-party
+    /// rows are removed <b>in the same transaction</b> instead of blocking the delete: the supported
+    /// release valve for an erasure request (issue #157 §5.4). Without it a contact named as a
+    /// contract beneficiary is refused, which is the deliberate default: a beneficiary designation
+    /// vanishing silently on contact deletion would lose it without trace.
     /// </para>
     /// </summary>
     /// <param name="permittedDetachClasses">
@@ -347,8 +346,8 @@ public class ContactService
     /// The detach was requested but <paramref name="permittedDetachClasses"/> does not cover a class
     /// present in the snapshot. Nothing is written — never a silent downgrade to the refused delete.
     /// </exception>
-    public async Task<DetachedInsuranceLinks?> Delete(
-        Guid id, bool detachInsuranceLinks = false,
+    public async Task<DetachedContactLinks?> Delete(
+        Guid id, bool detachBlockingLinks = false,
         IReadOnlySet<ContactDeleteBlockerClass>? permittedDetachClasses = null,
         CancellationToken cancellationToken = default)
     {
@@ -360,22 +359,19 @@ public class ContactService
         }
 
         // The finance references to a contact are real FKs again now that both halves share one context,
-        // so the database would apply the SET NULL / CASCADE / RESTRICT behaviours on its own. The
-        // application-level guard below is kept in front of them for two reasons: it turns the insurance
-        // RESTRICT into a 409 with an explanation rather than a raw FK violation surfacing as a 500, and
+        // so the database would apply the SET NULL / CASCADE behaviours on its own. The
+        // application-level guard below is kept in front of them for two reasons: it turns a constraint
+        // violation into a 409 with an explanation rather than a raw FK error surfacing as a 500, and
         // it is the only implementation of those behaviours under the EF InMemory provider the fast test
         // tiers run on.
         //
-        // There is no advisory lock any more (issue #27 §5). The three link tables carry real Restrict
-        // FKs, so the DATABASE arbitrates the check-and-write race the lock was written for, and the
-        // residual loser surfaces as a 409 rather than a 500. The lock's own counterparty — the
-        // insurance write path — no longer takes it, which left it a mutex with nothing to contend with,
-        // holding a pinned connection and a 10-second timeout per delete.
-        DetachedInsuranceLinks? detached = null;
+        // There is no advisory lock any more (issue #27 §5): it was a mutex with nothing to contend
+        // with, holding a pinned connection and a 10-second timeout per delete.
+        DetachedContactLinks? detached = null;
 
         await ExecuteAtomicallyAsync(async () =>
         {
-            if (detachInsuranceLinks)
+            if (detachBlockingLinks)
             {
                 // ONE snapshot, read inside this transaction, drives both decisions below (issue #157
                 // §7.3). Reading it here rather than pre-flighting in the controller is the whole
@@ -393,14 +389,13 @@ public class ContactService
             }
             else if (await referenceGuard.IsReferencedByRestrictedLinkAsync(id, cancellationToken))
             {
-                // Restrict: a contact named as an insurer, an insured contact or a beneficiary on a
-                // policy — or as a Beneficiary party on a contract — blocks the delete. The controller
-                // re-checks first and shapes a claim-conditional payload; this stays as
-                // defence-in-depth for direct (non-HTTP) callers, and for the contract-beneficiary
-                // half it is the ONLY enforcement, since that FK stays CASCADE (issue #157 §5.5).
+                // A contact named as a Beneficiary party on a contract blocks the delete. The
+                // controller re-checks first and shapes a claim-conditional payload; this stays as
+                // defence-in-depth for direct (non-HTTP) callers, and it is the ONLY enforcement,
+                // since that FK stays CASCADE (issue #157 §5.5).
                 throw new DomainConflictException(
-                    "This contact is named as a beneficiary or on one or more insurance policies and "
-                    + "cannot be deleted. Detach those links, or remove it from those records first.");
+                    "This contact is named as a beneficiary on one or more contracts and cannot be "
+                    + "deleted. Detach those links, or remove it from those records first.");
             }
 
             // Clear/cascade the Finance-side references (SetNull + contract-party Cascade), then delete
@@ -451,7 +446,6 @@ public class ContactService
         // Names the capability, not the rows: what the caller has to go and obtain.
         var capabilities = missing.Select(blocker => blocker switch
         {
-            ContactDeleteBlockerClass.InsuranceLink => "update insurance policies",
             ContactDeleteBlockerClass.ContractBeneficiary => "update contracts",
             _ => blocker.ToString(),
         });

@@ -15,12 +15,9 @@ namespace Odyssey.Core.Tests;
 /// </summary>
 internal sealed class FakeSystemSettingsLookup : ISystemSettingsLookup
 {
-    public InsurancePolicySettings InsurancePolicy { get; set; } = new(30, 1000);
 
-    public FinanceRequestCaps Caps { get; set; } = new(25, 50, 500, 1000, 100, 50, 50);
+    public FinanceRequestCaps Caps { get; set; } = new(25, 50, 500, 1000);
 
-    public Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(InsurancePolicy);
 
     public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(Caps);

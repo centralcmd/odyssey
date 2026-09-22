@@ -33,13 +33,11 @@ public static class SystemSettingsDefaults
     /// </summary>
     public const string Unlimited = "unlimited";
 
-    // ── The three authentication-perimeter toggles and the two insurance knobs (issue #349) ──────
+    // ── The three authentication-perimeter toggles (issue #349) ──────────────────────────────────
 
     public const bool RequireTwoFactor = false;
     public const bool RegistrationRequireAdminApproval = true;
     public const bool EmailRequireConfirmation = true;
-    public const int InsuranceExpiringSoonWindowDays = 30;
-    public const int InsuranceMaxSummaryPolicies = 1000;
 
     // ── Import/export volume caps (issue #343 and follow-ups) ────────────────────────────────────
     //
@@ -161,15 +159,6 @@ public static class SystemSettingsDefaults
     /// rendered block in an always-open header region.
     /// </summary>
     public const int ContractMaxSummaryCharges = 6;
-    public const int InsuranceMaxRenewalsPerPolicy = 100;
-    public const int InsuranceMaxFilesPerParent = 50;
-
-    /// <summary>
-    /// Members in each of a policy's four link collections (issue #27). Equal to
-    /// <c>InsuranceLinkLimits.MaxLinksPerPolicy</c>, the compile-time ceiling that pre-empts it: the
-    /// shipped default is the ceiling, so the setting can only ever tighten.
-    /// </summary>
-    public const int InsuranceMaxLinksPerPolicy = Finance.InsuranceLinkLimits.MaxLinksPerPolicy;
     public const int PhotoMaxLinksPerKind = 50;
     public const int PhotoMaxAlbumMembers = 1000;
     public const int JournalEntryMaxLinksPerKind = 50;

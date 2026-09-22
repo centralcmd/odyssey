@@ -2,7 +2,7 @@
 
 `OdysseyContext` is the single application-domain `DbContext`. It owns:
 
-- **Finance** — accounts, transactions, budgets, tags, contracts, insurance policies,
+- **Finance** — accounts, transactions, budgets, tags, contracts,
   tax statements, the Files store (`FileMetadata`/`FileBlob`) and the file-analysis tables, plus the
   `Currencies` reference table (164 ISO-4217 rows seeded from `HasData` in `OnModelCreating`, so the
   initial migration carries them and nothing needs to seed them at runtime).
@@ -27,8 +27,6 @@ nothing stopping a write path that forgot to call either. One context makes them
 |---|---|
 | `Transaction.ContactId`, `Account.CustodianId`, `AccountFile.IssuedBy`, `FileAnalysisCandidateTransaction.MatchedContactId` → `Contact` | `SET NULL` |
 | `ContractParty.ContactId` → `Contact` | `CASCADE` |
-| `InsurancePolicyInsurer.ContactId`, `InsurancePolicyInsuredContact.ContactId`, `InsurancePolicyBeneficiary.ContactId` → `Contact` | `RESTRICT` |
-| `InsurancePolicyInsuredAccount.AccountId` → `Account` | `CASCADE` |
 | `Photo.FileId`, `JournalEntryAttachment.FileId`, `JournalTaskAttachment.FileId` → `FileMetadata` | `CASCADE` |
 | `Contact.AvatarFileId` → `FileMetadata` | `SET NULL` |
 
@@ -54,32 +52,28 @@ and it shares one release rule with the two other paths that let go of an avatar
 `DELETE`, and the replace half of an upload). That rule refuses to delete a file whose content type is
 not a permitted contact image: a mis-pointed reference is detached and logged, never destroyed.
 
-### The three insurance contact links are the complete blocker set
+### One contract party role blocks a contact delete, with no key behind it
 
-Issue #27 replaced `InsurancePolicy.InsurerId` and `.InsuredAccountId` with four link tables. The three
-**contact** ones restrict, widening the posture the single required insurer already had: a contact
-named as an insurer, an insured contact or a beneficiary cannot be deleted, because a beneficiary
-designation vanishing silently on contact deletion would lose it without trace. They are the only
-`RESTRICT` keys to `Contact` in the whole model, so they are the complete set a blocked delete has to
-report — which is what lets `IContactReferenceGuard` answer "why is this refused?" exhaustively.
+A contact named as a **`Beneficiary`** party on a contract cannot be deleted: a beneficiary designation
+vanishing silently on contact deletion would lose it without trace. The `ContractParty → Contact` key
+stays `CASCADE`, because the seventeen other roles should keep cascading and converting it to
+`RESTRICT` would block them too — so `IContactReferenceGuard` is the **only** enforcement, not a
+friendlier face on a constraint. There are no `RESTRICT` keys to `Contact` anywhere in the model.
 
-The **account** link cascades on both sides, and that preserves the former scalar column's behaviour
-rather than changing it: `InsuredAccountId` was `SET NULL`, so deleting the account left the policy
-standing with no insured account — which on a link table is expressed by removing the row. `SET NULL`
-has no meaning here; nulling the only target would leave a row pointing at nothing.
+That is why the rule has to reach `IsReferencedByRestrictedLinkAsync` (the defence-in-depth probe for a
+direct, non-HTTP caller) and not just the blocker query the `409` payload reads, and why
+`ClearAndCascadeReferencesAsync` must **exclude** that role: otherwise the cascade and the staged
+detach hit one row inside one `SaveChangesAsync` and EF raises `DbUpdateConcurrencyException` on the
+ordinary success path.
 
-All four carry an optional `FromDate`/`ToDate` — the party's term in the role. Both null is the
-**default** (the policy's own extent), not an unset value, so a renewal never re-dates a party. The
-columns are on the link row rather than anywhere else because the term is the *relationship's* fact,
-not the contact's or the account's.
+A refusal alone is not an acceptable answer for a natural person exercising erasure, so
+`DELETE /api/contacts/{id}?detachBlockingLinks=true` removes every blocking link row and the contact
+**in one transaction**. It composes `contacts.delete` with `contracts.update` rather than adding a
+claim, and the presence determination and the destruction read one snapshot inside that transaction
+(CWE-367).
 
-`RESTRICT` alone is not an acceptable answer for a natural person exercising erasure, so
-`DELETE /api/contacts/{id}?detachInsuranceLinks=true` removes every link row and the contact **in one
-transaction**. It composes `contacts.delete` with `insurance.update` rather than adding a claim.
-
-There is **no advisory lock** on any of these paths. `IContactMutationLock` existed only because the
-insurer key had been removed; with three real `RESTRICT` keys back, the database arbitrates the race,
-and its violation maps to a `409` rather than surfacing as a `500`. A source-lint keeps it retired.
+There is **no advisory lock** on any of these paths. `IContactMutationLock` was a mutex with no
+counterparty once the write path it serialized against was gone, and a source-lint keeps it retired.
 
 ### A library photo and its file are deleted together, both ways
 
@@ -139,35 +133,6 @@ own.
 
 `Odyssey.IntegrationTests/UserAttributionForeignKeyTests` pins all of this at the database; EF InMemory
 enforces no foreign keys, so the fast tiers never exercise it.
-
-The rule reaches one table that is **not** an entity: `_InsurancePolicyFileRelocation` (below) carries
-`AttachedByUserId` with the same `SET NULL` key, because a ledger recording who attached a document
-must outlive that person's account exactly as the document does.
-
-### The insurance relocation ledger
-
-`_InsurancePolicyFileRelocation` is not part of the EF model. It is an operational record, written by
-the `MoveInsurancePolicyFilesToRenewals` migration (issue #26), of every `InsurancePolicyFiles` row it
-moved onto a renewal period before `DropInsurancePolicyFiles` removed that table.
-
-It carries the **full source payload**, not just ids, because it is the only surviving record of those
-rows and the sole basis for `Down`. It has the same three foreign keys the dropped table had —
-`CASCADE` to `InsurancePolicies` and `FileMetadata`, `SET NULL` to `AspNetUsers` — which is what lets
-`Down` reinsert into a table that has those keys without ever violating one: a parent deleted since
-`Up` has already cascaded its ledger row away, so there is nothing stale to restore.
-`DestinationPolicyRenewalFileId` and `DestinationPolicyRenewalId` deliberately carry no key, because
-they must survive a detach or a period deletion.
-
-**Retention: indefinite, and deliberately so.** It is small, it is the reversibility mechanism, and
-there is no later phase that would dispose of it — a ledger deleted on a schedule stops being a basis
-for `Down` on exactly the day someone needs one. The personal data it holds is a single column,
-`AttachedByUserId`, and that is `SET NULL`-ed by `users.delete` along with every other attribution
-column (GDPR Art. 17), so the record survives erasure without the identifier. It holds no file
-content, no filenames and no file metadata — only ids — which is the data-minimisation posture
-(Art. 5(1)(c)) that made a table preferable to a log stream that may be shipped off-box.
-
-**Do not add an entity type for it** — the tables an EF model owns are the ones the application reads
-and writes, and nothing outside the migration touches this one.
 
 ### Permission claims are not seeded here
 

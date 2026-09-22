@@ -11,8 +11,8 @@ namespace Odyssey.IntegrationTests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Raw SQL, for the reason <see cref="InsurancePolicyFileRelocationTests"/> already states about its
-/// policy seed: the seed has to describe <b>the schema under test</b>, not whatever the current model
+/// Raw SQL, deliberately: the seed has to describe <b>the schema under test</b>, not whatever the
+/// current model
 /// happens to be. An EF insert names every column of today's entity, so the moment a later migration
 /// adds one — issue #48 added <c>EstablishedDate</c> and <c>DissolvedDate</c> to
 /// <c>OrganizationDetails</c> — every baseline seed breaks with

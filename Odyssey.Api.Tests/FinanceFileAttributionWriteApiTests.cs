@@ -9,8 +9,6 @@ using AccountType = Odyssey.Context.AccountType;
 using BudgetCategoryType = Odyssey.Context.BudgetCategoryType;
 using ContractFileType = Odyssey.Context.ContractFileType;
 using ContractType = Odyssey.Dtos.Finance.ContractType;
-using InsurancePolicyType = Odyssey.Dtos.Finance.InsurancePolicyType;
-using PolicyFileType = Odyssey.Context.PolicyFileType;
 using TaxStatementFileType = Odyssey.Context.TaxStatementFileType;
 
 namespace Odyssey.Api.Tests;
@@ -28,7 +26,7 @@ namespace Odyssey.Api.Tests;
 /// </para>
 /// <para>
 /// CREATE endpoints are deliberately absent, and that is not an omission: no create DTO
-/// (<c>NewContract</c>, <c>NewTaxStatement</c>, <c>NewInsurancePolicy</c>, <c>NewPolicyRenewal</c>)
+/// (<c>NewContract</c>, <c>NewTaxStatement</c>)
 /// accepts a file, so a created record's file collection is necessarily empty and no assertion over
 /// it could distinguish an enriched response from an unenriched one. They are covered structurally
 /// instead, by the per-action source guard in <see cref="FinanceFileAttributionGuardTests"/>.
@@ -122,107 +120,6 @@ public sealed class FinanceFileAttributionWriteApiTests
         Assert.Equal(DisplayName, file.FileMetadata.UploadedByName);
     }
 
-    [Fact]
-    public async Task PutInsurancePolicy_ResolvesFileAttributionOnBothRenewalViews()
-    {
-        await using var factory = new OdysseyApiFactory(
-            [PermissionClaims.InsuranceRead, PermissionClaims.InsuranceUpdate]);
-        using var client = factory.CreateClient();
-        var (policyId, _) = await SeedInsurancePolicyAsync(factory);
-
-        var response = await client.PutAsJsonAsync(
-            $"/api/insurance-policies/{policyId}",
-            new UpdateInsurancePolicy { Name = "Home (revised)", Type = InsurancePolicyType.Other });
-        response.EnsureSuccessStatusCode();
-        var policy = await response.Content.ReadFromJsonAsync<ExistingInsurancePolicy>();
-
-        var listed = Assert.Single(Assert.Single(policy!.Renewals).Files);
-        Assert.Equal(DisplayName, listed.AttachedByName);
-        Assert.Equal(DisplayName, listed.FileMetadata.UploadedByName);
-
-        Assert.NotNull(policy.CurrentRenewal);
-        var current = Assert.Single(policy.CurrentRenewal.Files);
-        Assert.Equal(DisplayName, current.AttachedByName);
-        Assert.Equal(DisplayName, current.FileMetadata.UploadedByName);
-    }
-
-    [Fact]
-    public async Task PutPolicyRenewal_ResolvesFileAttribution()
-    {
-        await using var factory = new OdysseyApiFactory(
-            [PermissionClaims.InsuranceRead, PermissionClaims.InsuranceUpdate]);
-        using var client = factory.CreateClient();
-        var (policyId, renewalId) = await SeedInsurancePolicyAsync(factory);
-
-        var response = await client.PutAsJsonAsync(
-            $"/api/insurance-policies/{policyId}/renewals/{renewalId}",
-            new UpdatePolicyRenewal
-            {
-                FromDate = DateTime.UtcNow.Date.AddDays(-30),
-                ToDate = DateTime.UtcNow.Date.AddDays(330),
-                Premium = 1300m,
-                CoverageAmount = 500_000m,
-            });
-        response.EnsureSuccessStatusCode();
-        var renewal = await response.Content.ReadFromJsonAsync<ExistingPolicyRenewal>();
-
-        var file = Assert.Single(renewal!.Files);
-        Assert.Equal(DisplayName, file.AttachedByName);
-        Assert.Equal(DisplayName, file.FileMetadata.UploadedByName);
-    }
-
-    [Fact]
-    public async Task PostInsurancePolicyParty_ResolvesFileAttribution()
-    {
-        // The party endpoints return the WHOLE policy, renewals and files included, so they carry the
-        // same disclosure as a read even though the caller is writing a link.
-        await using var factory = new OdysseyApiFactory(
-            [PermissionClaims.InsuranceRead, PermissionClaims.InsuranceUpdate]);
-        using var client = factory.CreateClient();
-        var (policyId, _) = await SeedInsurancePolicyAsync(factory);
-        var contactId = await SeedContactAsync(factory);
-
-        var response = await client.PostAsJsonAsync(
-            $"/api/insurance-policies/{policyId}/parties",
-            new InsurancePolicyPartyRequest { Role = InsurancePartyRole.Insurer, TargetId = contactId });
-        response.EnsureSuccessStatusCode();
-        var policy = await response.Content.ReadFromJsonAsync<ExistingInsurancePolicy>();
-
-        var file = Assert.Single(Assert.Single(policy!.Renewals).Files);
-        Assert.Equal(DisplayName, file.AttachedByName);
-        Assert.Equal(DisplayName, file.FileMetadata.UploadedByName);
-    }
-
-    [Fact]
-    public async Task PutInsurancePolicyParty_ResolvesFileAttribution()
-    {
-        await using var factory = new OdysseyApiFactory(
-            [PermissionClaims.InsuranceRead, PermissionClaims.InsuranceUpdate]);
-        using var client = factory.CreateClient();
-        var (policyId, _) = await SeedInsurancePolicyAsync(factory);
-        var contactId = await SeedContactAsync(factory);
-
-        (await client.PostAsJsonAsync(
-            $"/api/insurance-policies/{policyId}/parties",
-            new InsurancePolicyPartyRequest { Role = InsurancePartyRole.Insurer, TargetId = contactId }))
-            .EnsureSuccessStatusCode();
-
-        var response = await client.PutAsJsonAsync(
-            $"/api/insurance-policies/{policyId}/parties/{InsurancePartyRole.Insurer}/{contactId}",
-            new InsurancePolicyPartyRequest
-            {
-                Role = InsurancePartyRole.Insurer,
-                TargetId = contactId,
-                FromDate = DateTime.UtcNow.Date,
-            });
-        response.EnsureSuccessStatusCode();
-        var policy = await response.Content.ReadFromJsonAsync<ExistingInsurancePolicy>();
-
-        var file = Assert.Single(Assert.Single(policy!.Renewals).Files);
-        Assert.Equal(DisplayName, file.AttachedByName);
-        Assert.Equal(DisplayName, file.FileMetadata.UploadedByName);
-    }
-
     /// <summary>
     /// The budget report is wired for enrichment but cannot exercise it today, and this test pins BOTH
     /// halves of that so the surface stops being an undocumented latent risk.
@@ -307,41 +204,6 @@ public sealed class FinanceFileAttributionWriteApiTests
         });
         await db.SaveChangesAsync();
         return statement.TaxStatementId;
-    }
-
-    private static async Task<(Guid PolicyId, Guid RenewalId)> SeedInsurancePolicyAsync(OdysseyApiFactory factory)
-    {
-        using var scope = factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        SeedUploader(db);
-
-        var policy = new InsurancePolicy { Name = "Home", CreatedAtUtc = DateTime.UtcNow };
-        db.InsurancePolicies.Add(policy);
-        await db.SaveChangesAsync();
-
-        var renewal = new PolicyRenewal
-        {
-            InsurancePolicyId = policy.InsurancePolicyId,
-            FromDate = DateTime.UtcNow.Date.AddDays(-30),
-            ToDate = DateTime.UtcNow.Date.AddDays(300),
-            Premium = 1200m,
-            CoverageAmount = 500_000m,
-            CreatedAtUtc = DateTime.UtcNow,
-        };
-        db.PolicyRenewals.Add(renewal);
-        var metadata = AddFile(db, "policy.pdf", "hash-w-policy");
-        await db.SaveChangesAsync();
-
-        db.PolicyRenewalFiles.Add(new PolicyRenewalFile
-        {
-            PolicyRenewalId = renewal.PolicyRenewalId,
-            FileMetadataId = metadata.Id,
-            AttachedByUserId = UploaderUserId,
-            AttachedAtUtc = DateTime.UtcNow,
-            FileType = PolicyFileType.PolicyDocument,
-        });
-        await db.SaveChangesAsync();
-        return (policy.InsurancePolicyId, renewal.PolicyRenewalId);
     }
 
     private static async Task<Guid> SeedContactAsync(OdysseyApiFactory factory)

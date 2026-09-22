@@ -53,7 +53,6 @@ public class NavModelTests
     // ── ModuleOf ────────────────────────────────────────────────────────────────
     [Theory]
     [InlineData("contracts", "finance")]
-    [InlineData("insurance-policies", "finance")]
     // Contacts was relocated from its standalone module into the Journal module (design-system app shell).
     [InlineData("contacts", "journal")]
     [InlineData("account", "user")]
@@ -110,7 +109,7 @@ public class NavModelTests
     [Fact]
     public void VisibleGroups_drops_a_fully_gated_group()
     {
-        // Finance "Commitments" (tax/insurance/contracts) is entirely claim-gated → a non-admin sees
+        // Finance "Commitments" (tax/contracts) is entirely claim-gated → a non-admin sees
         // only the Money + Reference groups.
         var groups = NavModel.VisibleGroups(Module("finance"), NonAdmin);
         Assert.DoesNotContain("Commitments", groups.Select(g => g.Label));

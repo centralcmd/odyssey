@@ -47,8 +47,6 @@ public class DataExportDocumentBindingTests
     [InlineData(typeof(TransactionFileExport), nameof(TransactionFileExport.Type), typeof(Odyssey.Dtos.Finance.TransactionFileType))]
     // Issue #33.
     [InlineData(typeof(TaxStatementFileExport), nameof(TaxStatementFileExport.FileType), typeof(Odyssey.Dtos.Finance.TaxStatementFileType))]
-    [InlineData(typeof(InsurancePolicyExport), nameof(InsurancePolicyExport.Type), typeof(Odyssey.Dtos.Finance.InsurancePolicyType))]
-    [InlineData(typeof(PolicyRenewalFileExport), nameof(PolicyRenewalFileExport.FileType), typeof(Odyssey.Dtos.Finance.PolicyFileType))]
     [InlineData(typeof(ContractExport), nameof(ContractExport.Type), typeof(Odyssey.Dtos.Finance.ContractType))]
     [InlineData(typeof(ContractFileExport), nameof(ContractFileExport.FileType), typeof(Odyssey.Dtos.Finance.ContractFileType))]
     public void AnEnumProperty_BindsToTheDtosCopy(Type declaringType, string propertyName, Type expected) =>
@@ -70,8 +68,6 @@ public class DataExportDocumentBindingTests
     // Issue #33. TaxStatementStatus and TaxStatementTagRole are absent here on purpose: there is no
     // Odyssey.Context copy of either, so the export binds the one definition and casts nothing.
     [InlineData(typeof(Odyssey.Dtos.Finance.TaxStatementFileType), typeof(Odyssey.Context.TaxStatementFileType))]
-    [InlineData(typeof(Odyssey.Dtos.Finance.InsurancePolicyType), typeof(Odyssey.Context.InsurancePolicyType))]
-    [InlineData(typeof(Odyssey.Dtos.Finance.PolicyFileType), typeof(Odyssey.Context.PolicyFileType))]
     [InlineData(typeof(Odyssey.Dtos.Finance.ContractType), typeof(Odyssey.Context.ContractType))]
     [InlineData(typeof(Odyssey.Dtos.Finance.ContractFileType), typeof(Odyssey.Context.ContractFileType))]
     public void TheDtosAndEntityCopies_StillAgreeMemberForMember(Type dtosEnum, Type entityEnum) =>

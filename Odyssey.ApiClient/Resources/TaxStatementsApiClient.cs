@@ -9,7 +9,7 @@ namespace Odyssey.ApiClient.Resources;
 /// </summary>
 /// <remarks>
 /// Attachments are addressed through their parent statement (<c>{id}/files/{fileId}</c>), never by
-/// file id alone — the same scoping the account, insurance and contract clients use.
+/// file id alone — the same scoping the account and contract clients use.
 /// </remarks>
 public interface ITaxStatementsApiClient
 {

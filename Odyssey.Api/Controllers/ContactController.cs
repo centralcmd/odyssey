@@ -159,26 +159,24 @@ public class ContactController : ControllerBase
     [HttpDelete("{id}", Name = "DeleteContact")]
     [Authorize(Policy = PermissionClaims.ContactsDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DetachedInsuranceLinks))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DetachedContactLinks))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Delete a contact.",
-        Description = @"409 when the contact is named as an insurer, an insured contact or a beneficiary
-on any insurance policy, or as a Beneficiary party on any contract. With detachInsuranceLinks=true those
-link rows are removed and the contact deleted in ONE transaction; that needs insurance.update and/or
-contracts.update — whichever classes are actually present — in addition to contacts.delete, and the
+        Description = @"409 when the contact is named as a Beneficiary party on any contract. With
+detachBlockingLinks=true those link rows are removed and the contact deleted in ONE transaction; that
+needs contracts.update — when that class is actually present — in addition to contacts.delete, and the
 response is then 200 with a summary of what was destroyed.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the contact to delete.")] Guid id,
-        [FromQuery] [SwaggerParameter(Description = @"Remove the contact's blocking link rows — insurance
-links and Beneficiary contract parties alike — and delete it in one transaction, instead of refusing with
-a 409. Requires insurance.update and/or contracts.update for the classes actually present. The parameter
-keeps its original name: renaming it would break a published surface.")] bool detachInsuranceLinks = false,
+        [FromQuery] [SwaggerParameter(Description = @"Remove the contact's blocking link rows —
+Beneficiary contract parties — and delete it in one transaction, instead of refusing with a 409.
+Requires contracts.update when that class is actually present.")] bool detachBlockingLinks = false,
         CancellationToken cancellationToken = default)
     {
-        if (detachInsuranceLinks)
+        if (detachBlockingLinks)
         {
             // Composed from existing claims rather than a new one — no RolePermissions change, no
             // role-claim reconciliation, no sign-out/sign-in.
@@ -190,10 +188,9 @@ keeps its original name: renaming it would break a published surface.")] bool de
             // prove the claim for it. A caller missing a needed claim gets a 403 — never a silent
             // downgrade to the refused delete.
             var permitted = new HashSet<ContactDeleteBlockerClass>();
-            if (HasClaim(PermissionClaims.InsuranceUpdate)) permitted.Add(ContactDeleteBlockerClass.InsuranceLink);
             if (HasClaim(PermissionClaims.ContractsUpdate)) permitted.Add(ContactDeleteBlockerClass.ContractBeneficiary);
 
-            var detached = await contactService.Delete(id, detachInsuranceLinks: true, permitted, cancellationToken);
+            var detached = await contactService.Delete(id, detachBlockingLinks: true, permitted, cancellationToken);
             if (detached is null)
             {
                 // The contact did not exist; nothing was detached and nothing was deleted.
@@ -201,19 +198,15 @@ keeps its original name: renaming it would break a published surface.")] bool de
             }
 
             // Ids only, never names — the caller asked to erase a contact. This one line exists because
-            // the detach path's blast radius (every link across every policy, in one request) is
-            // materially larger than an ordinary per-policy edit; it is NOT an audit trail and §10 #12
-            // does not claim it is.
+            // the detach path's blast radius (every link across every contract, in one request) is
+            // materially larger than an ordinary per-contract edit; it is NOT an audit trail and
+            // §10 #12 does not claim it is.
             logger.LogInformation(
-                "Detached {LinkCount} insurance link(s) across {PolicyCount} policy/policies and "
-                + "{ContractLinkCount} contract beneficiary row(s) across {ContractCount} contract(s) "
-                + "for contact {ContactId} ({Kinds}) and deleted the contact.",
-                detached.TotalLinks,
-                detached.AffectedPolicyIds.Count,
+                "Detached {ContractLinkCount} contract beneficiary row(s) across {ContractCount} "
+                + "contract(s) for contact {ContactId} and deleted the contact.",
                 detached.ContractBeneficiaryLinks,
                 detached.AffectedContractIds.Count,
-                id,
-                string.Join(", ", detached.Kinds.Select(k => $"{k.Kind}={k.Count}")));
+                id);
 
             return Ok(detached);
         }
@@ -225,64 +218,39 @@ keeps its original name: renaming it would break a published surface.")] bool de
         var blockers = await referenceGuard.GetDeleteBlockersAsync(id, cancellationToken);
         if (blockers.Any)
         {
-            var extensions = new Dictionary<string, object?>();
-
-            if (blockers.AnyInsurance)
+            // The COUNT is unconditional and still makes the 409 actionable — it says how many links
+            // must go, and the detach valve does not require the caller to name them — while the
+            // contract NAMES need contracts.read. The boundary costs nothing today (every shipped role
+            // holding contacts.delete also holds contracts.read, asserted by a guard test) and is kept
+            // for a future role.
+            var canReadContracts = HasClaim(PermissionClaims.ContractsRead);
+            var extensions = new Dictionary<string, object?>
             {
-                var canReadInsurance = HasClaim(PermissionClaims.InsuranceRead);
-                extensions["insuranceLinks"] = new ContactInsuranceLinkBlockers
-                {
-                    Kinds = [.. blockers.InsuranceKinds],
-                    TotalLinks = blockers.TotalInsuranceLinks,
-                    PolicyCount = blockers.Policies.Count,
-                    // Names and ids only for a caller that could read them from the insurance surface
-                    // anyway. The boundary costs nothing today (every shipped role holding
-                    // contacts.delete also holds insurance.read, asserted by a guard test) and is kept
-                    // for a future role.
-                    Policies = canReadInsurance ? [.. blockers.Policies] : [],
-                };
-            }
-
-            if (blockers.AnyContractBeneficiary)
-            {
-                // Same boundary, same reason, one claim over: the COUNT is unconditional and still
-                // makes the 409 actionable — it says how many links must go, and the detach valve does
-                // not require the caller to name them — while the contract NAMES need contracts.read.
-                var canReadContracts = HasClaim(PermissionClaims.ContractsRead);
-                extensions["contractBeneficiaries"] = new ContactContractBeneficiaryBlockers
+                ["contractBeneficiaries"] = new ContactContractBeneficiaryBlockers
                 {
                     TotalLinks = blockers.ContractBeneficiaryLinks,
                     ContractCount = blockers.Contracts.Count,
                     Contracts = canReadContracts ? [.. blockers.Contracts] : [],
-                };
-            }
+                },
+            };
 
             return this.ConflictProblem(
                 DescribeDeleteBlockers(blockers)
-                + " Retry with detachInsuranceLinks=true to remove those links and delete it in one "
+                + " Retry with detachBlockingLinks=true to remove those links and delete it in one "
                 + "transaction, or remove it from those records first.",
                 extensions);
         }
 
-        await contactService.Delete(id, detachInsuranceLinks: false, null, cancellationToken);
+        await contactService.Delete(id, detachBlockingLinks: false, null, cancellationToken);
         return NoContent();
     }
 
     /// <summary>
-    /// The lead sentence of the blocked-delete 409, naming the classes that actually block. Counts and
-    /// class names only — never a policy or contract name, which the claim-gated payload above owns.
+    /// The lead sentence of the blocked-delete 409. Class name only — never a contract name, which
+    /// the claim-gated payload above owns.
     /// </summary>
     private static string DescribeDeleteBlockers(ContactDeleteBlockers blockers) =>
-        (blockers.AnyInsurance, blockers.AnyContractBeneficiary) switch
-        {
-            (true, true) =>
-                "This contact is named on one or more insurance policies and as a beneficiary on one or "
-                + "more contracts, and cannot be deleted.",
-            (true, false) =>
-                "This contact is named on one or more insurance policies and cannot be deleted.",
-            _ =>
-                "This contact is named as a beneficiary on one or more contracts and cannot be deleted.",
-        };
+        "This contact is named as a beneficiary on one or more contracts and cannot be deleted.";
 
     // ── Contact image (issue #86 §7) ──────────────────────────────────────────
     //

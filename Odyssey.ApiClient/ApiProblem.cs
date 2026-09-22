@@ -56,8 +56,9 @@ public sealed record ApiProblem
 
     /// <summary>
     /// Any further problem-details extension members, unparsed. RFC 7807 lets a response carry
-    /// arbitrary extensions, and a handful do — the blocked contact delete names which insurance link
-    /// kinds refuse it, and which policies when the caller may see them (issue #27 §7 #5). Read one
+    /// arbitrary extensions, and a handful do — the blocked contact delete says how many contract
+    /// beneficiary rows refuse it, and which contracts when the caller may see them (issue #157 §5.4).
+    /// Read one
     /// with <see cref="Extension{T}"/> rather than adding a typed property per feature, which would
     /// grow this shared shape for every consumer's private payload.
     /// </summary>

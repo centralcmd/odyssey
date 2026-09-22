@@ -116,37 +116,36 @@ public class AuthorizationPolicyTests
 
     /// <summary>
     /// Pins the premise the claim-conditional <c>409</c> on a blocked contact delete rests on
-    /// (issue #27 §10 #6).
+    /// (issue #157 §5.4).
     ///
     /// <para>
-    /// The refusal payload names the blocking policies only for a caller that also holds
-    /// <c>insurance.read</c>. Draft v1 withheld them from everyone, on the premise that a
-    /// <c>contacts.delete</c> holder might hold no <c>insurance.read</c> — which is false for every
-    /// shipped role, so the restriction protected nobody while making erasure harder for every real
-    /// caller. The conditional is kept for a future role that breaks the pairing; this test is what
-    /// makes that future loud instead of silent.
+    /// The refusal payload names the blocking contracts only for a caller that also holds
+    /// <c>contracts.read</c>. Withholding them from everyone would protect nobody — every shipped role
+    /// holding <c>contacts.delete</c> holds <c>contracts.read</c> too — while making erasure harder for
+    /// every real caller. The conditional is kept for a future role that breaks the pairing; this test
+    /// is what makes that future loud instead of silent.
     /// </para>
     ///
     /// <para>
     /// The same pairing makes the detach path's composed gate — <c>contacts.delete</c> <b>and</b>
-    /// <c>insurance.update</c> — satisfiable rather than a trap, so both are asserted here.
+    /// <c>contracts.update</c> — satisfiable rather than a trap, so both are asserted here.
     /// </para>
     /// </summary>
     [Fact]
-    public void No_role_holds_ContactsDelete_without_the_insurance_claims_it_is_paired_with()
+    public void No_role_holds_ContactsDelete_without_the_contract_claims_it_is_paired_with()
     {
         var roles = MappedRoles();
 
         var gaps = (from role in roles
                     where role.Claims.Contains(PermissionClaims.ContactsDelete, StringComparer.Ordinal)
-                    from paired in new[] { PermissionClaims.InsuranceRead, PermissionClaims.InsuranceUpdate }
+                    from paired in new[] { PermissionClaims.ContractsRead, PermissionClaims.ContractsUpdate }
                     where !role.Claims.Contains(paired, StringComparer.Ordinal)
                     select $"{role.Role} holds '{PermissionClaims.ContactsDelete}' without '{paired}'").ToList();
 
         Assert.True(gaps.Count == 0,
-            "Issue #27 §10 #6 relies on every ContactsDelete holder also holding the insurance claims: "
-            + "the 409's policy list is withheld without insurance.read, and the detach path composes "
-            + "insurance.update. Revisit that reasoning before granting these apart: "
+            "Issue #157 §5.4 relies on every ContactsDelete holder also holding the contract claims: "
+            + "the 409's contract list is withheld without contracts.read, and the detach path composes "
+            + "contracts.update. Revisit that reasoning before granting these apart: "
             + string.Join(", ", gaps));
     }
 

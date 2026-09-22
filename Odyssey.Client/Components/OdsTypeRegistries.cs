@@ -228,36 +228,6 @@ public static class OdsTypeRegistries
         new() { Key = "Other",              Label = "Other",               Icon = "insert_drive_file", Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
-    /// <summary>InsurancePolicyType — Home · Contents · Building · Vehicle · Travel · Life · Health ·
-    /// Accident · Liability · Pet · Property · Other (issue #175). Mirrors the DS INSURANCE_POLICY_TYPES.</summary>
-    public static readonly IReadOnlyList<OdsTypeOption> InsurancePolicyTypes =
-    [
-        new() { Key = "Home",      Label = "Home",      Icon = "house",             Color = "oklch(0.72 0.14 255)", Soft = "oklch(0.72 0.14 255 / 0.16)" },
-        new() { Key = "Contents",  Label = "Contents",  Icon = "chair",             Color = "oklch(0.72 0.16 295)", Soft = "oklch(0.72 0.16 295 / 0.16)" },
-        new() { Key = "Building",  Label = "Building",  Icon = "apartment",         Color = "oklch(0.76 0.13 225)", Soft = "oklch(0.76 0.13 225 / 0.16)" },
-        new() { Key = "Vehicle",   Label = "Vehicle",   Icon = "directions_car",    Color = "oklch(0.78 0.14 170)", Soft = "oklch(0.78 0.14 170 / 0.16)" },
-        new() { Key = "Travel",    Label = "Travel",    Icon = "flight",            Color = "oklch(0.77 0.13 205)", Soft = "oklch(0.77 0.13 205 / 0.16)" },
-        new() { Key = "Life",      Label = "Life",      Icon = "favorite",          Color = "oklch(0.72 0.16 8)",   Soft = "oklch(0.72 0.16 8 / 0.16)" },
-        new() { Key = "Health",    Label = "Health",    Icon = "health_and_safety", Color = "oklch(0.80 0.15 150)", Soft = "oklch(0.80 0.15 150 / 0.16)" },
-        new() { Key = "Accident",  Label = "Accident",  Icon = "personal_injury",   Color = "oklch(0.79 0.14 60)",  Soft = "oklch(0.79 0.14 60 / 0.16)" },
-        new() { Key = "Liability", Label = "Liability", Icon = "gavel",             Color = "oklch(0.72 0.15 265)", Soft = "oklch(0.72 0.15 265 / 0.16)" },
-        new() { Key = "Pet",       Label = "Pet",       Icon = "pets",              Color = "oklch(0.79 0.14 78)",  Soft = "oklch(0.79 0.14 78 / 0.16)" },
-        new() { Key = "Property",  Label = "Property",  Icon = "home_work",         Color = "oklch(0.75 0.16 330)", Soft = "oklch(0.75 0.16 330 / 0.16)" },
-        new() { Key = "Other",     Label = "Other",     Icon = "shield",            Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-    ];
-
-    /// <summary>PolicyFileType — the kind of document attached to an insurance policy or renewal
-    /// (issue #175). Mirrors the DS POLICY_FILE_TYPES and the C# PolicyFileType enum.</summary>
-    public static readonly IReadOnlyList<OdsTypeOption> PolicyFileTypes =
-    [
-        new() { Key = "Contract",           Label = "Contract",           Icon = "history_edu",       Color = "oklch(0.72 0.16 295)", Soft = "oklch(0.72 0.16 295 / 0.16)" },
-        new() { Key = "Invoice",            Label = "Invoice",            Icon = "receipt",           Color = "oklch(0.80 0.13 85)",  Soft = "oklch(0.80 0.13 85 / 0.16)" },
-        new() { Key = "TermsAndConditions", Label = "Terms & conditions", Icon = "menu_book",         Color = "oklch(0.77 0.14 110)", Soft = "oklch(0.77 0.14 110 / 0.16)" },
-        new() { Key = "PolicyDocument",     Label = "Policy document",    Icon = "shield",            Color = "oklch(0.72 0.16 282)", Soft = "oklch(0.72 0.16 282 / 0.16)" },
-        new() { Key = "ClaimDocument",      Label = "Claim document",     Icon = "assignment_late",   Color = "oklch(0.72 0.16 22)",  Soft = "oklch(0.72 0.16 22 / 0.16)" },
-        new() { Key = "Other",              Label = "Other",              Icon = "insert_drive_file", Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-    ];
-
     /// <summary>
     /// ContractType — Employment · Service · Rental · Insurance · Subscription · Purchase · Loan ·
     /// Membership · Other (issues #174, #157). Mirrors the DS <c>contractTypes</c> registry and the C#
@@ -496,10 +466,6 @@ public static class OdsTypeRegistries
             ? parsed
             : BudgetCategoryType.Expense;
 
-    /// <summary>The InsurancePolicyType descriptor for an enum value (falls back to "Other").</summary>
-    public static OdsTypeOption InsurancePolicyTypeOf(InsurancePolicyType type) =>
-        InsurancePolicyTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? InsurancePolicyTypes[^1];
-
     /// <summary>The ContractType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption ContractTypeOf(ContractType type) =>
         ContractTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? ContractTypes[^1];
@@ -547,10 +513,6 @@ public static class OdsTypeRegistries
     /// <summary>The ContractFileType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption ContractFileTypeOf(ContractFileType type) =>
         ContractFileTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? ContractFileTypes[^1];
-
-    /// <summary>The PolicyFileType descriptor for an enum value (falls back to "Other").</summary>
-    public static OdsTypeOption PolicyFileTypeOf(PolicyFileType type) =>
-        PolicyFileTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? PolicyFileTypes[^1];
 
     /// <summary>The ContactType descriptor for an enum key (falls back to "Organization").</summary>
     public static OdsTypeOption ContactTypeOf(string? key) =>
@@ -684,8 +646,6 @@ public static class OdsTypeRegistries
     public static readonly IReadOnlyList<OdsOption> AccountFileOptions = ToOptions(AccountFileTypes);
     public static readonly IReadOnlyList<OdsOption> TransactionFileOptions = ToOptions(TransactionFileTypes);
     public static readonly IReadOnlyList<OdsOption> TaxStatementFileOptions = ToOptions(TaxStatementFileTypes);
-    public static readonly IReadOnlyList<OdsOption> InsurancePolicyOptions = ToOptions(InsurancePolicyTypes);
-    public static readonly IReadOnlyList<OdsOption> PolicyFileOptions = ToOptions(PolicyFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractOptions = ToOptions(ContractTypes);
     public static readonly IReadOnlyList<OdsOption> ContractFileOptions = ToOptions(ContractFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractPartyRoleOptions = ToOptions(ContractPartyRoles);

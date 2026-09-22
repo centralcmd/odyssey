@@ -44,11 +44,11 @@ public class SystemSettingsCacheFreshnessApiTests
         return await scope.ServiceProvider.GetRequiredService<ISystemSettingsLookup>().GetRequestCapsAsync();
     }
 
-    private static async Task<InsurancePolicySettings> ReadInsuranceAsync(ApiFactory factory)
+    private static async Task<ContractSummarySettings> ReadSummaryAsync(ApiFactory factory)
     {
         using var scope = factory.Services.CreateScope();
         return await scope.ServiceProvider
-            .GetRequiredService<ISystemSettingsLookup>().GetInsurancePolicySettingsAsync();
+            .GetRequiredService<ISystemSettingsLookup>().GetContractSummarySettingsAsync();
     }
 
     private static async Task SaveAsync(HttpClient client, SystemSettingsUpdate update)
@@ -58,74 +58,59 @@ public class SystemSettingsCacheFreshnessApiTests
     }
 
     [Fact]
-    public async Task Saving_the_renewals_cap_is_in_force_on_the_next_request()
+    public async Task Saving_the_files_per_contract_cap_is_in_force_on_the_next_request()
     {
         await using var factory = new ApiFactory(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var before = await ReadCapsAsync(factory);
-        var wanted = before.MaxRenewalsPerPolicy - 1;
+        var wanted = before.MaxFilesPerContract - 1;
 
-        await SaveAsync(client, new SystemSettingsUpdate { InsuranceMaxRenewalsPerPolicy = wanted });
-
-        var after = await ReadCapsAsync(factory);
-        Assert.Equal(wanted, after.MaxRenewalsPerPolicy);
-    }
-
-    [Fact]
-    public async Task Saving_the_files_per_parent_cap_is_in_force_on_the_next_request()
-    {
-        await using var factory = new ApiFactory(ReadAndOrdinary);
-        using var client = factory.CreateClient();
-
-        var before = await ReadCapsAsync(factory);
-        var wanted = before.MaxFilesPerParent - 1;
-
-        await SaveAsync(client, new SystemSettingsUpdate { InsuranceMaxFilesPerParent = wanted });
+        await SaveAsync(client, new SystemSettingsUpdate { ContractMaxFilesPerContract = wanted });
 
         var after = await ReadCapsAsync(factory);
-        Assert.Equal(wanted, after.MaxFilesPerParent);
+        Assert.Equal(wanted, after.MaxFilesPerContract);
     }
 
     /// <summary>
     /// The other half of the original defect, and the reason the fix is not just "evict both entries".
-    /// A cap lives on a different record from the insurance snapshot, so saving one must leave the
-    /// other's warm entry alone — dropping it costs a needless re-read of two rows the save never
-    /// touched.
+    /// A per-request cap lives on a different record from the Contracts summary snapshot, so saving one
+    /// must leave the other's warm entry alone — dropping it costs a needless re-read of rows the save
+    /// never touched.
     /// </summary>
     [Fact]
-    public async Task Saving_a_cap_leaves_the_insurance_snapshot_entry_warm()
+    public async Task Saving_a_cap_leaves_the_summary_snapshot_entry_warm()
     {
         await using var factory = new ApiFactory(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
-        _ = await ReadCapsAsync(factory);
-        var insuranceBefore = await ReadInsuranceAsync(factory);
+        var capsBefore = await ReadCapsAsync(factory);
+        var summaryBefore = await ReadSummaryAsync(factory);
 
         await SaveAsync(client, new SystemSettingsUpdate
         {
-            InsuranceMaxRenewalsPerPolicy = insuranceBefore.MaxSummaryPolicies + 7,
+            ContractMaxFilesPerContract = capsBefore.MaxFilesPerContract - 1,
         });
 
         // Same instance back means the entry was never evicted: the lookup caches the record it built,
         // so a re-read after an eviction would hand back a different object with equal values.
-        Assert.Same(insuranceBefore, await ReadInsuranceAsync(factory));
+        Assert.Same(summaryBefore, await ReadSummaryAsync(factory));
     }
 
-    /// <summary>The converse: a genuine insurance-snapshot change must still land immediately.</summary>
+    /// <summary>The converse: a genuine summary-snapshot change must still land immediately.</summary>
     [Fact]
-    public async Task Saving_the_expiring_soon_window_is_in_force_on_the_next_request()
+    public async Task Saving_the_ending_window_is_in_force_on_the_next_request()
     {
         await using var factory = new ApiFactory(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
-        var before = await ReadInsuranceAsync(factory);
-        var wanted = before.ExpiringSoonWindowDays + 1;
+        var before = await ReadSummaryAsync(factory);
+        var wanted = before.EndingWindowDays + 1;
 
-        await SaveAsync(client, new SystemSettingsUpdate { InsuranceExpiringSoonWindowDays = wanted });
+        await SaveAsync(client, new SystemSettingsUpdate { ContractEndingWindowDays = wanted });
 
-        var after = await ReadInsuranceAsync(factory);
-        Assert.Equal(wanted, after.ExpiringSoonWindowDays);
+        var after = await ReadSummaryAsync(factory);
+        Assert.Equal(wanted, after.EndingWindowDays);
     }
 
     private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)

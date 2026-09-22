@@ -38,7 +38,6 @@ public class DtoValidationBoundaryTests
     [
         PermissionClaims.AccountsRead, PermissionClaims.AccountsCreate,
         PermissionClaims.ContractsRead, PermissionClaims.ContractsCreate,
-        PermissionClaims.InsuranceRead, PermissionClaims.InsuranceCreate, PermissionClaims.InsuranceUpdate,
         PermissionClaims.TransactionsRead, PermissionClaims.TransactionsCreate,
         PermissionClaims.BudgetsRead, PermissionClaims.BudgetsCreate,
         PermissionClaims.ContactsRead, PermissionClaims.ContactsCreate,
@@ -113,26 +112,6 @@ public class DtoValidationBoundaryTests
         EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
         BaseCurrencyCode = "USD",
         Archived = false,
-    };
-
-    private static NewPolicyRenewal ValidRenewal() => new()
-    {
-        FromDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        ToDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
-        Premium = 100m,
-        PremiumCurrencyCode = "USD",
-        CoverageAmount = 10_000m,
-        CoverageCurrencyCode = "USD",
-    };
-
-    private static UpdatePolicyRenewal ValidRenewalUpdate() => new()
-    {
-        FromDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        ToDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
-        Premium = 100m,
-        PremiumCurrencyCode = "USD",
-        CoverageAmount = 10_000m,
-        CoverageCurrencyCode = "USD",
     };
 
     private static NewBudgetItem ValidBudgetItem(Guid budgetId) => new()
@@ -250,37 +229,6 @@ public class DtoValidationBoundaryTests
         await PostExpectingBadRequest("/api/contracts", body);
     }
 
-    // ── NewInsurancePolicy ─────────────────────────────────────────────────────
-    // No positive control here: a successful create needs a seeded insurer. Model-binding validation
-    // runs before that lookup, so an over-length field still short-circuits to 400 — which is the
-    // contract under test. The InsuranceApiTests cover the seeded happy path.
-
-    [Fact]
-    public async Task CreateInsurancePolicy_NameOverStringLength_Returns400() =>
-        await PostExpectingBadRequest("/api/insurance-policies", new NewInsurancePolicy
-        {
-            Name = new string('x', 129), // [StringLength(128, MinimumLength = 1)]
-            InsurerIds = [Guid.NewGuid()],
-        });
-
-    [Fact]
-    public async Task CreateInsurancePolicy_LinkArrayOverCompileTimeCeiling_Returns400() =>
-        // The compile-time ceiling on each link collection (issue #27 §9). It runs in model validation,
-        // ahead of the service's live effective cap, so an over-length array never reaches the lookup.
-        await PostExpectingBadRequest("/api/insurance-policies", new NewInsurancePolicy
-        {
-            Name = "Home contents",
-            BeneficiaryIds = [.. Enumerable.Range(0, InsuranceLinkLimits.MaxLinksPerPolicy + 1).Select(_ => Guid.NewGuid())],
-        });
-
-    [Fact]
-    public async Task CreateInsurancePolicy_NotesOverStringLength_Returns400() =>
-        await PostExpectingBadRequest("/api/insurance-policies", new NewInsurancePolicy
-        {
-            Name = "Home contents",
-            InsurerIds = [Guid.NewGuid()],
-            Notes = new string('x', 1025), // [StringLength(1024)]
-        });
 
     // ── NewTransaction ─────────────────────────────────────────────────────────
     // As above, a successful create needs a seeded account; the annotation 400 precedes that.
@@ -523,123 +471,5 @@ public class DtoValidationBoundaryTests
         var body = ValidBudgetItem(Guid.NewGuid());
         body.CategoryType = (Odyssey.Dtos.Finance.BudgetCategoryType)999; // [EnumDataType]
         await PostExpectingBadRequest("/api/budget-items", body);
-    }
-
-    // ── NewPolicyRenewal ───────────────────────────────────────────────────────
-    // The currency codes carry [StringLength(3, Min = 3)] and Notes a [StringLength(512)].
-    // Premium/CoverageAmount deliberately carry NO lower bound — a refund or a correction to a
-    // period already recorded is a real figure — so the two cases below are the negative controls
-    // for that: they assert a negative amount gets PAST model validation, which the 404 (the policy
-    // id is unseeded, and that lookup runs after binding) is the only available proof of.
-    // No positive control: a successful add needs a seeded policy; the annotation 400 precedes it.
-
-    private static readonly string RenewalsPath = $"/api/insurance-policies/{Guid.NewGuid()}/renewals";
-
-    private static async Task PostExpectingPastModelValidation(string path, object body)
-    {
-        await using var factory = new ApiFactory(CreateClaims);
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync(path, body);
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task AddRenewal_NegativePremium_PassesModelValidation()
-    {
-        var body = ValidRenewal();
-        body.Premium = -1m; // no [Range] — negatives are a supported premium figure
-        await PostExpectingPastModelValidation(RenewalsPath, body);
-    }
-
-    [Fact]
-    public async Task AddRenewal_NegativeCoverageAmount_PassesModelValidation()
-    {
-        var body = ValidRenewal();
-        body.CoverageAmount = -1m; // no [Range] — a correcting term may reduce recorded cover
-        await PostExpectingPastModelValidation(RenewalsPath, body);
-    }
-
-    // ── UpdatePolicyRenewal ────────────────────────────────────────────────────
-    // A SEPARATE record with its own annotations, so nothing above covers it: the two types have
-    // drifted before and only a test on this path would notice. Same shape — the amounts carry no
-    // lower bound, the currency codes and Notes do carry limits.
-
-    private static readonly string RenewalPath =
-        $"/api/insurance-policies/{Guid.NewGuid()}/renewals/{Guid.NewGuid()}";
-
-    private static async Task PutExpectingBadRequest(string path, object body)
-    {
-        await using var factory = new ApiFactory(CreateClaims);
-        using var client = factory.CreateClient();
-
-        var response = await client.PutAsJsonAsync(path, body);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
-        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
-        Assert.Equal(StatusCodes.Status400BadRequest, problem?.Status);
-        Assert.NotEmpty(problem!.Errors);
-    }
-
-    private static async Task PutExpectingPastModelValidation(string path, object body)
-    {
-        await using var factory = new ApiFactory(CreateClaims);
-        using var client = factory.CreateClient();
-
-        var response = await client.PutAsJsonAsync(path, body);
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task UpdateRenewal_NegativePremium_PassesModelValidation()
-    {
-        var body = ValidRenewalUpdate();
-        body.Premium = -1m; // no [Range] — negatives are a supported premium figure
-        await PutExpectingPastModelValidation(RenewalPath, body);
-    }
-
-    [Fact]
-    public async Task UpdateRenewal_NegativeCoverageAmount_PassesModelValidation()
-    {
-        var body = ValidRenewalUpdate();
-        body.CoverageAmount = -1m; // no [Range] — a correcting term may reduce recorded cover
-        await PutExpectingPastModelValidation(RenewalPath, body);
-    }
-
-    [Fact]
-    public async Task UpdateRenewal_PremiumCurrencyTooShort_Returns400()
-    {
-        // The positive control for the two above: model validation IS running on this path, so their
-        // 404 means the amount got past it rather than that nothing was checked at all.
-        var body = ValidRenewalUpdate();
-        body.PremiumCurrencyCode = "US"; // [StringLength(3, MinimumLength = 3)]
-        await PutExpectingBadRequest(RenewalPath, body);
-    }
-
-    [Fact]
-    public async Task UpdateRenewal_NotesOverStringLength_Returns400()
-    {
-        var body = ValidRenewalUpdate();
-        body.Notes = new string('x', 513); // [StringLength(512)]
-        await PutExpectingBadRequest(RenewalPath, body);
-    }
-
-    [Fact]
-    public async Task AddRenewal_PremiumCurrencyTooShort_Returns400()
-    {
-        var body = ValidRenewal();
-        body.PremiumCurrencyCode = "US"; // [StringLength(3, MinimumLength = 3)]
-        await PostExpectingBadRequest(RenewalsPath, body);
-    }
-
-    [Fact]
-    public async Task AddRenewal_NotesOverStringLength_Returns400()
-    {
-        var body = ValidRenewal();
-        body.Notes = new string('x', 513); // [StringLength(512)]
-        await PostExpectingBadRequest(RenewalsPath, body);
     }
 }

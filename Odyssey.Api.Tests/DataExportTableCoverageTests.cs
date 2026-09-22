@@ -11,7 +11,7 @@ namespace Odyssey.Api.Tests;
 /// deliberate LIST of tables, not every table in the context — the contact detail tables have their
 /// own vCard export, the journal side has its own surfaces, and identity is out of scope. A list is
 /// the right design; what it must not do is grow a hole in silence, which is exactly what happened
-/// to insurance: seven tables that were in neither the export nor
+/// to the insurance tables before they were removed: tables that were in neither the export nor
 /// <see cref="DataExportExclusions.ExcludedTables"/>, so nothing anywhere said they were missing.
 /// Contracts, tax statements and the two account side-tables were in the same state.
 ///

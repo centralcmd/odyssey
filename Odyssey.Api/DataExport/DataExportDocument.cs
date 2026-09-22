@@ -115,22 +115,15 @@ public sealed class FinanceDatabaseExport
     public IReadOnlyList<TransactionFileExport> TransactionFiles { get; init; } = [];
 
     // Issue #33. Everything below was in the database but in neither the export nor
-    // ExcludedTables — a silent omission rather than a stated one. The four insurance party
-    // tables and ContractParties are (policy|contract, target) link rows: they export the
-    // relationship COLUMNS only and never a resolved name, matching the read path's posture for
-    // an archived link and the FK-column-only rule the rest of this document follows.
+    // ExcludedTables — a silent omission rather than a stated one. ContractParties are
+    // (contract, target) link rows: they export the relationship COLUMNS only and never a
+    // resolved name, matching the read path's posture for an archived link and the
+    // FK-column-only rule the rest of this document follows.
     public IReadOnlyList<AccountEstimateExport> AccountEstimates { get; init; } = [];
     public IReadOnlyList<AccountSmartTagExport> AccountSmartTags { get; init; } = [];
     public IReadOnlyList<TaxStatementExport> TaxStatements { get; init; } = [];
     public IReadOnlyList<TaxStatementTagExport> TaxStatementTags { get; init; } = [];
     public IReadOnlyList<TaxStatementFileExport> TaxStatementFiles { get; init; } = [];
-    public IReadOnlyList<InsurancePolicyExport> InsurancePolicies { get; init; } = [];
-    public IReadOnlyList<InsurancePolicyInsurerExport> InsurancePolicyInsurers { get; init; } = [];
-    public IReadOnlyList<InsurancePolicyInsuredAccountExport> InsurancePolicyInsuredAccounts { get; init; } = [];
-    public IReadOnlyList<InsurancePolicyInsuredContactExport> InsurancePolicyInsuredContacts { get; init; } = [];
-    public IReadOnlyList<InsurancePolicyBeneficiaryExport> InsurancePolicyBeneficiaries { get; init; } = [];
-    public IReadOnlyList<PolicyRenewalExport> PolicyRenewals { get; init; } = [];
-    public IReadOnlyList<PolicyRenewalFileExport> PolicyRenewalFiles { get; init; } = [];
     public IReadOnlyList<ContractExport> Contracts { get; init; } = [];
     public IReadOnlyList<ContractPartyExport> ContractParties { get; init; } = [];
     public IReadOnlyList<ContractFileExport> ContractFiles { get; init; } = [];
@@ -333,7 +326,7 @@ public sealed class ContractSmartTagExport
 
 /// <summary>
 /// A fiscal-year tax statement: the declared figures, the assessment and the settlement. Wholly
-/// user-authored financial data, and the strongest omission issue #33 found after insurance.
+/// user-authored financial data, and among the strongest omissions issue #33 found.
 /// </summary>
 public sealed class TaxStatementExport
 {
@@ -378,99 +371,6 @@ public sealed class TaxStatementFileExport
     public TaxStatementFileType FileType { get; init; }
 }
 
-/// <summary>
-/// The policy header. Its parties live in the four link tables below rather than on this row —
-/// <c>InsurerId</c> and <c>InsuredAccountId</c> were dropped by issue #27.
-/// </summary>
-public sealed class InsurancePolicyExport
-{
-    public Guid InsurancePolicyId { get; init; }
-    public string Name { get; init; } = string.Empty;
-    public string? PolicyNumber { get; init; }
-    public InsurancePolicyType Type { get; init; }
-    public string? Notes { get; init; }
-    public DateTime? Archived { get; init; }
-    public DateTime CreatedAtUtc { get; init; }
-}
-
-/// <summary>
-/// An insurer link. Like the three link tables that follow it, this exports the relationship
-/// <em>columns</em> — the policy id, the target id and the optional term — and never resolves the
-/// target's name. Two reasons, and the second is the one that matters: the rest of this document
-/// already references related entities by foreign-key column only, and the read path deliberately
-/// keeps an archived or unresolvable link's row while dropping its name, because the id is what
-/// keeps a round trip honest and the name is the personal data. A name resolved here would be the
-/// one place the export disclosed more than the API it mirrors.
-/// </summary>
-public sealed class InsurancePolicyInsurerExport
-{
-    public Guid Id { get; init; }
-    public Guid InsurancePolicyId { get; init; }
-    public Guid ContactId { get; init; }
-    public DateTime? FromDate { get; init; }
-    public DateTime? ToDate { get; init; }
-}
-
-/// <inheritdoc cref="InsurancePolicyInsurerExport"/>
-public sealed class InsurancePolicyInsuredAccountExport
-{
-    public Guid Id { get; init; }
-    public Guid InsurancePolicyId { get; init; }
-    public Guid AccountId { get; init; }
-    public DateTime? FromDate { get; init; }
-    public DateTime? ToDate { get; init; }
-}
-
-/// <inheritdoc cref="InsurancePolicyInsurerExport"/>
-public sealed class InsurancePolicyInsuredContactExport
-{
-    public Guid Id { get; init; }
-    public Guid InsurancePolicyId { get; init; }
-    public Guid ContactId { get; init; }
-    public DateTime? FromDate { get; init; }
-    public DateTime? ToDate { get; init; }
-}
-
-/// <summary>
-/// A beneficiary designation. Same ids-only projection as the other three link tables, plus the
-/// attribution columns that make this table structurally different from them (issue #27).
-/// </summary>
-public sealed class InsurancePolicyBeneficiaryExport
-{
-    public Guid Id { get; init; }
-    public Guid InsurancePolicyId { get; init; }
-    public Guid ContactId { get; init; }
-    public DateTime? FromDate { get; init; }
-    public DateTime? ToDate { get; init; }
-    public string? CreatedByUserId { get; init; }
-    public DateTime CreatedAtUtc { get; init; }
-}
-
-public sealed class PolicyRenewalExport
-{
-    public Guid PolicyRenewalId { get; init; }
-    public Guid InsurancePolicyId { get; init; }
-    public DateTime FromDate { get; init; }
-    public DateTime ToDate { get; init; }
-    public decimal Premium { get; init; }
-    public string PremiumCurrencyCode { get; init; } = string.Empty;
-    public decimal CoverageAmount { get; init; }
-    public string CoverageCurrencyCode { get; init; } = string.Empty;
-    public string? Notes { get; init; }
-    public DateTime CreatedAtUtc { get; init; }
-}
-
-public sealed class PolicyRenewalFileExport
-{
-    public Guid Id { get; init; }
-    public Guid PolicyRenewalId { get; init; }
-    public Guid FileMetadataId { get; init; }
-    public PolicyFileType FileType { get; init; }
-    public DateTime? EffectiveDate { get; init; }
-    public string? AttachedByUserId { get; init; }
-    public DateTime AttachedAtUtc { get; init; }
-}
-
 public sealed class ContractExport
 {
     public Guid ContractId { get; init; }
@@ -493,8 +393,8 @@ public sealed class ContractExport
 /// <summary>
 /// A contract party: one-of-two, an <see cref="AccountId"/> or a <see cref="ContactId"/>. The table
 /// carries no kind discriminator — which column is set is what says which — so both nullable
-/// relationship columns are exported and neither target's name is resolved, as with the insurance
-/// link tables above.
+/// relationship columns are exported and neither target's name is resolved, following the
+/// FK-column-only rule the rest of this document uses.
 /// </summary>
 public sealed class ContractPartyExport
 {

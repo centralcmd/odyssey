@@ -15,8 +15,8 @@ namespace Odyssey.Api.Tests;
 /// so every defect the hardening fixes had been invisible:
 ///
 /// <list type="bullet">
-/// <item>the insurance pair went through a throwing <c>int.Parse</c>, so a corrupt
-/// <c>InsuranceExpiringSoonWindowDays</c> row was a live <c>500</c> on the insurance summary;</item>
+/// <item>some keys went through a throwing <c>int.Parse</c>, so a corrupt row was a live
+/// <c>500</c> on the surface that read it;</item>
 /// <item>the five capped keys ended in <c>Math.Min(parsed, int.MaxValue)</c> — a no-op — so none had a
 /// read-path bound at all;</item>
 /// <item>a failed query returned <c>[]</c>, making "row absent" (healthy) and "query failed"
@@ -34,7 +34,6 @@ namespace Odyssey.Api.Tests;
 /// </summary>
 public class SystemSettingsLookupTests
 {
-    private const string InsuranceCacheKey = "system-settings:insurance-policy-settings";
     private const string FinanceCapsCacheKey = "system-settings:finance-request-caps";
     private const string ContractSummaryCacheKey = "system-settings:contract-summary-settings";
 
@@ -79,15 +78,13 @@ public class SystemSettingsLookupTests
         await using var context = CreateContext(Guid.NewGuid().ToString());
 
         var contracts = await CreateLookup(context, cache, logs).GetContractSummarySettingsAsync();
-        var insurance = await CreateLookup(context, cache, logs).GetInsurancePolicySettingsAsync();
         var caps = await CreateLookup(context, cache, logs).GetRequestCapsAsync();
 
         Assert.Equal(SystemSettingsDefaults.ContractEndingWindowDays, contracts.EndingWindowDays);
         Assert.Equal(SystemSettingsDefaults.ContractChargeWindowDays, contracts.ChargeWindowDays);
         Assert.Equal(SystemSettingsDefaults.ContractMaxSummaryCharges, contracts.MaxSummaryCharges);
-        Assert.Equal(SystemSettingsDefaults.InsuranceExpiringSoonWindowDays, insurance.ExpiringSoonWindowDays);
-        Assert.Equal(SystemSettingsDefaults.InsuranceMaxSummaryPolicies, insurance.MaxSummaryPolicies);
         Assert.Equal(SystemSettingsDefaults.ContractMaxSummaryContracts, caps.MaxSummaryContracts);
+        Assert.Equal(SystemSettingsDefaults.ContractMaxFilesPerContract, caps.MaxFilesPerContract);
 
         Assert.Empty(logs.Entries);
     }
@@ -99,11 +96,9 @@ public class SystemSettingsLookupTests
         var cache = new MemoryCache(new MemoryCacheOptions());
         await using var context = CreateContext(Guid.NewGuid().ToString());
         await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "90");
-        await SetAsync(context, SystemSettingsKeys.InsuranceExpiringSoonWindowDays, "120");
         await SetAsync(context, SystemSettingsKeys.ContractMaxSummaryContracts, "42");
 
         Assert.Equal(90, (await CreateLookup(context, cache).GetContractSummarySettingsAsync()).EndingWindowDays);
-        Assert.Equal(120, (await CreateLookup(context, cache).GetInsurancePolicySettingsAsync()).ExpiringSoonWindowDays);
         Assert.Equal(42, (await CreateLookup(context, cache).GetRequestCapsAsync()).MaxSummaryContracts);
     }
 
@@ -182,19 +177,19 @@ public class SystemSettingsLookupTests
     }
 
     /// <summary>
-    /// AC 27. The live <c>500</c> the throwing <c>int.Parse</c> on the insurance path caused today: a
-    /// corrupt <c>InsuranceExpiringSoonWindowDays</c> row must yield a usable value, not an exception.
+    /// AC 27. The live <c>500</c> a throwing <c>int.Parse</c> used to cause: a corrupt
+    /// <c>ContractEndingWindowDays</c> row must yield a usable value, not an exception.
     /// </summary>
     [Fact]
-    public async Task ACorruptInsuranceWindowRow_YieldsAUsableValue_RatherThanThrowing()
+    public async Task ACorruptWindowRow_YieldsAUsableValue_RatherThanThrowing()
     {
         var cache = new MemoryCache(new MemoryCacheOptions());
         await using var context = CreateContext(Guid.NewGuid().ToString());
-        await SetAsync(context, SystemSettingsKeys.InsuranceExpiringSoonWindowDays, "not-a-number");
+        await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "not-a-number");
 
-        var settings = await CreateLookup(context, cache).GetInsurancePolicySettingsAsync();
+        var settings = await CreateLookup(context, cache).GetContractSummarySettingsAsync();
 
-        Assert.Equal(SystemSettingsDefaults.InsuranceExpiringSoonWindowDays, settings.ExpiringSoonWindowDays);
+        Assert.Equal(SystemSettingsDefaults.ContractEndingWindowDays, settings.EndingWindowDays);
     }
 
     /// <summary>
@@ -223,9 +218,8 @@ public class SystemSettingsLookupTests
     ///
     /// <para>
     /// The contract-summary path must NOT cache a degraded answer — one summary read path, so recovery
-    /// should be immediate. The other two must, for different reasons: the request caps gate
-    /// create/update validation on paths with no limiter in front of them, and the insurance pair is
-    /// the highest-traffic settings lookup in the codebase.
+    /// should be immediate. The request caps must, because they gate create/update validation on paths
+    /// with no limiter in front of them.
     /// </para>
     /// </summary>
     [Fact]
@@ -259,23 +253,11 @@ public class SystemSettingsLookupTests
         Assert.True(cache.TryGetValue(FinanceCapsCacheKey, out _));
     }
 
-    [Fact]
-    public async Task ADegradedInsuranceRead_IsCached_BecauseItIsTheHighestTrafficLookup()
-    {
-        var cache = new MemoryCache(new MemoryCacheOptions());
-        var broken = CreateContext(Guid.NewGuid().ToString());
-        await broken.DisposeAsync();
-
-        await CreateLookup(broken, cache).GetInsurancePolicySettingsAsync();
-
-        Assert.True(cache.TryGetValue(InsuranceCacheKey, out _));
-    }
-
     // ── AC 28 — the throttle's unit differs by failure class ────────────────────────────────────
 
     /// <summary>
     /// AC 28. A corrupt row logs at most one line per window <strong>per settings key</strong>, so a
-    /// corrupt insurance row cannot consume the contracts fault's line. Without the per-key unit,
+    /// corrupt row in one group cannot consume another group's fault line. Without the per-key unit,
     /// one persistently bad row on an endpoint with no rate limiter is one line per request.
     /// </summary>
     [Fact]
@@ -285,7 +267,7 @@ public class SystemSettingsLookupTests
         var logs = new RecordingLogger();
         await using var context = CreateContext(Guid.NewGuid().ToString());
         await SetAsync(context, SystemSettingsKeys.ContractEndingWindowDays, "abc");
-        await SetAsync(context, SystemSettingsKeys.InsuranceExpiringSoonWindowDays, "abc");
+        await SetAsync(context, SystemSettingsKeys.ContractMaxSummaryContracts, "abc");
 
         // The contract-summary path does not cache a degraded read, so three calls really are three
         // reads.
@@ -297,7 +279,7 @@ public class SystemSettingsLookupTests
         Assert.Single(logs.Entries);
 
         // A different key gets its own line rather than being swallowed by the first key's throttle.
-        await CreateLookup(context, cache, logs).GetInsurancePolicySettingsAsync();
+        await CreateLookup(context, cache, logs).GetRequestCapsAsync();
         Assert.Equal(2, logs.Entries.Count);
     }
 

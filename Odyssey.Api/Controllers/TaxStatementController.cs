@@ -241,7 +241,7 @@ public class TaxStatementController : ControllerBase
         }
 
         // Force a download and forbid content-type sniffing so a mislabeled upload
-        // cannot be rendered/executed inline in the app origin (matches the insurance
+        // cannot be rendered/executed inline in the app origin (matches the account
         // and contract download handlers).
         Response.Headers.ContentDisposition = $"attachment; filename=\"{metadata.FileName}\"";
         Response.Headers.XContentTypeOptions = "nosniff";

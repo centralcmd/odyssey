@@ -32,10 +32,8 @@ public class ContractFileValidityTests
     private sealed class StubCaps(int maxFilesPerContract) : ISystemSettingsLookup
     {
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new FinanceRequestCaps(25, maxFilesPerContract, 500, 1000, 100, 50, 50));
+            Task.FromResult(new FinanceRequestCaps(25, maxFilesPerContract, 500, 1000));
 
-        public Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new InsurancePolicySettings(30, 1000));
 
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ContractSummarySettings(45, 45, 6));

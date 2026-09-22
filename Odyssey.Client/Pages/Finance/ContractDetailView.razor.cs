@@ -172,9 +172,8 @@ public partial class ContractDetailView : IAsyncDisposable
         /// target did not resolve and which therefore has no type to state.
         /// </summary>
         /// <remarks>
-        /// This is the same caption a policy party carries (<see cref="InsurancePolicyLinkTiles"/>
-        /// passes the bare type label), which is what the design system's <c>PartyTile</c> means by
-        /// <c>typeLabel || kindLabel</c>.
+        /// This is the same caption the party tiles carry — the bare type label when there is one —
+        /// which is what the design system's <c>PartyTile</c> means by <c>typeLabel || kindLabel</c>.
         /// </remarks>
         public string Caption => string.IsNullOrWhiteSpace(TypeLabel) ? KindLabel : TypeLabel;
     }

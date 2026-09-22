@@ -12,8 +12,8 @@ namespace Odyssey.Dtos.Finance;
 /// <remarks>
 /// <b><c>null</c> means the default term here, not "unchanged".</b> This is the one place the contract
 /// API departs from <see cref="UpdateContract"/>. A <c>PUT</c> on a party is a <b>full replacement</b>
-/// of that link — role, target and both dates — exactly as <c>PUT …/parties/{role}/{targetId}</c> is
-/// for an insurance party. A client that omits <see cref="ToDate"/> on an edit <b>clears</b> it. Every
+/// of that link — role, target and both dates. A client that omits <see cref="ToDate"/> on an edit
+/// <b>clears</b> it. Every
 /// party write is logged (issue #121 §7.7), which is what makes an accidental role change visible.
 ///
 /// <para>

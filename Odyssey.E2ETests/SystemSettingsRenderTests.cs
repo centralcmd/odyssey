@@ -40,9 +40,9 @@ namespace Odyssey.E2ETests;
 public sealed class SystemSettingsRenderTests(StackFixture fixture) : IAsyncLifetime
 {
     /// <summary>The row driven into an error: an int row with published bounds and a stable title.</summary>
-    private const string RowKey = "insurance-window";
+    private const string RowKey = "contractEndingWindowDays";
 
-    private const string RowTitle = "\"Expiring soon\" window";
+    private const string RowTitle = "“Ending soon” window";
 
     /// <summary>Comfortably outside the row's published maximum, so it reports out-of-range.</summary>
     private const string OutOfRangeValue = "999999";

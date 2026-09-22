@@ -340,23 +340,22 @@ builder.Services.AddScoped<Odyssey.Api.Preferences.UserPreferencesService>();
 
 builder.Services.AddScoped<TaxStatementService>();
 
-builder.Services.AddScoped<InsuranceService>();
 
 // Admin-configurable runtime settings store (issue #349). IMemoryCache isn't registered anywhere
-// else in the solution — it backs SystemSettingsLookup's 30s TTL over the two Insurance fields above,
+// else in the solution — it backs SystemSettingsLookup's 30s TTL over the Contracts fields,
 // the only cached (non-perimeter) reads this feature introduces.
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Odyssey.Api.SystemSettings.SystemSettingsService>();
 builder.Services.AddScoped<Odyssey.Core.Finance.ISystemSettingsLookup, Odyssey.Api.SystemSettings.SystemSettingsLookup>();
 
 // The sixteen import/export volume caps (issue #343 and a follow-up), same 30s-cached-lookup shape
-// as the Insurance settings above, just owned by Odyssey.Core.Journal (the four import/export services'
-// home) instead.
+// as the Contracts settings above, just owned by Odyssey.Core.Journal (the four import/export
+// services' home) instead.
 builder.Services.AddScoped<Odyssey.Core.Journal.IImportExportLimitsLookup, Odyssey.Api.SystemSettings.ImportExportLimitsLookup>();
 
 // The six AI file-analysis settings (issue #421 Wave 1), same 30s-cached-lookup shape. Its own cache
-// key rather than a method on ISystemSettingsLookup: that one's entry is shared with the Insurance
-// eviction path, so folding these in would make an insurance save evict the analysis settings.
+// key rather than a method on ISystemSettingsLookup: that one's entry is shared with the Contracts
+// eviction path, so folding these in would make a contracts save evict the analysis settings.
 builder.Services.AddScoped<Odyssey.Core.Finance.IFileAnalysisSettingsLookup, Odyssey.Api.SystemSettings.FileAnalysisSettingsLookup>();
 
 // The photo/journal per-request caps (issue #421 Wave 3). A second lookup rather than a method on

@@ -2,14 +2,13 @@ namespace Odyssey.Dtos.Finance;
 
 /// <summary>
 /// The contract half of a refused <c>DELETE /api/contacts/{id}</c>: the contracts naming the contact as
-/// a <see cref="ContractPartyRole.Beneficiary"/>, which block the delete exactly as an insurance-policy
-/// beneficiary designation does (issue #157 §5.4, §7.4).
+/// a <see cref="ContractPartyRole.Beneficiary"/>, which block the delete: a designation vanishing
+/// silently on contact deletion would lose it without trace (issue #157 §5.4, §7.4).
 /// </summary>
 /// <remarks>
 /// <b>The names are claim-gated and the counts are not.</b> <see cref="Contracts"/> is populated only
-/// for a caller that also holds <c>contracts.read</c> — the same boundary
-/// <see cref="ContactInsuranceLinkBlockers.Policies"/> applies for <c>insurance.read</c>, and applied
-/// in <c>ContactController</c> for the same reason: <c>DomainConflictException</c> carries a message
+/// for a caller that also holds <c>contracts.read</c>. The boundary is applied in
+/// <c>ContactController</c> rather than the service: <c>DomainConflictException</c> carries a message
 /// and nothing else, and the domain service has no <c>ClaimsPrincipal</c>.
 ///
 /// <para>

@@ -40,14 +40,6 @@ namespace Odyssey.Dtos;
 /// </summary>
 public static class SystemSettingsBounds
 {
-    // ── The two insurance knobs (issue #349) ─────────────────────────────────────────────────────
-
-    public const int InsuranceExpiringSoonWindowDaysMin = 1;
-    public const int InsuranceExpiringSoonWindowDaysMax = 365;
-
-    public const int InsuranceMaxSummaryPoliciesMin = 1;
-    public const int InsuranceMaxSummaryPoliciesMax = 100000;
-
     // ── The eight import/export size (MB) caps (issue #343 + follow-ups) ─────────────────────────
 
     public const int ContactVCardMaxImportMegabytesMin = 1;
@@ -125,12 +117,12 @@ public static class SystemSettingsBounds
 
     public const int ContractEndingWindowDaysMin = 1;
 
-    /// <summary>Matches <see cref="InsuranceExpiringSoonWindowDaysMax"/> — the same shape of window.</summary>
+    /// <summary>One year — the widest a look-ahead window is allowed to be.</summary>
     public const int ContractEndingWindowDaysMax = 365;
 
     public const int ContractChargeWindowDaysMin = 1;
 
-    /// <summary>Matches <see cref="InsuranceExpiringSoonWindowDaysMax"/> — the same shape of window.</summary>
+    /// <summary>Matches <see cref="ContractEndingWindowDaysMax"/> — the same shape of window.</summary>
     public const int ContractChargeWindowDaysMax = 365;
 
     public const int ContractMaxSummaryChargesMin = 1;
@@ -143,15 +135,6 @@ public static class SystemSettingsBounds
     /// removes the need for a separate surface constant.
     /// </summary>
     public const int ContractMaxSummaryChargesMax = 50;
-
-    public const int InsuranceMaxRenewalsPerPolicyMin = 1;
-    public const int InsuranceMaxRenewalsPerPolicyMax = 100000;
-
-    public const int InsuranceMaxFilesPerParentMin = 1;
-    public const int InsuranceMaxFilesPerParentMax = 100000;
-
-    public const int InsuranceMaxLinksPerPolicyMin = 1;
-    public const int InsuranceMaxLinksPerPolicyMax = 100000;
 
     public const int PhotoMaxLinksPerKindMin = 1;
     public const int PhotoMaxLinksPerKindMax = 100000;
