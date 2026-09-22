@@ -68,7 +68,6 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         Assert.Equal(expected.Transactions.Count, await finance.Transactions.CountAsync());
         Assert.Equal(expected.Contracts.Count, await finance.Contracts.CountAsync());
         Assert.Equal(expected.ContractParties.Count, await finance.ContractParties.CountAsync());
-        Assert.Equal(expected.Subscriptions.Count, await finance.Subscriptions.CountAsync());
         Assert.Equal(DemoUsers.All.Count, await users.Users.CountAsync());
 
         // Journal module (issue #311): schema migrates and the seeder persists the journal graph.
@@ -222,7 +221,6 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         var contactId = Guid.NewGuid();
         var accountId = Guid.NewGuid();
         var transactionId = Guid.NewGuid();
-        var subscriptionId = Guid.NewGuid();
         var contractId = Guid.NewGuid();
         var partyId = Guid.NewGuid();
         var blobId = Guid.NewGuid();
@@ -260,18 +258,6 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 Amount = -25m,
                 Description = "Constrained purchase",
                 TimeStamp = DateTime.UtcNow,
-                ContactId = contactId,
-            });
-            context.Subscriptions.Add(new Subscription
-            {
-                SubscriptionId = subscriptionId,
-                Name = "Constrained subscription",
-                Amount = 9m,
-                CurrencyCode = "USD",
-                Interval = Odyssey.Context.BillingInterval.Monthly,
-                StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
-                FirstBillingDate = DateOnly.FromDateTime(DateTime.UtcNow),
-                CreatedAtUtc = DateTime.UtcNow,
                 ContactId = contactId,
             });
             context.ContractParties.Add(new ContractParty
@@ -345,7 +331,6 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             // SET NULL: the rows survive with the reference cleared.
             Assert.Null((await context.Accounts.AsNoTracking().SingleAsync(a => a.AccountId == accountId)).CustodianId);
             Assert.Null((await context.Transactions.AsNoTracking().SingleAsync(x => x.TransactionId == transactionId)).ContactId);
-            Assert.Null((await context.Subscriptions.AsNoTracking().SingleAsync(s => s.SubscriptionId == subscriptionId)).ContactId);
             Assert.Null((await context.AccountFiles.AsNoTracking().SingleAsync(f => f.Id == accountFileId)).IssuedBy);
             Assert.Null((await context.FileAnalysisCandidateTransactions.AsNoTracking()
                 .SingleAsync(c => c.Id == candidateId)).MatchedContactId);
@@ -360,7 +345,6 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             await context.FileMetadata.Where(f => f.Id == fileId).ExecuteDeleteAsync();
             await context.FileBlob.Where(b => b.Id == blobId).ExecuteDeleteAsync();
             await context.Transactions.Where(x => x.TransactionId == transactionId).ExecuteDeleteAsync();
-            await context.Subscriptions.Where(s => s.SubscriptionId == subscriptionId).ExecuteDeleteAsync();
             await context.Contracts.Where(c => c.ContractId == contractId).ExecuteDeleteAsync();
             await context.Accounts.Where(a => a.AccountId == accountId).ExecuteDeleteAsync();
         }
@@ -1006,106 +990,56 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
     }
 
     [SkippableFact]
-    public async Task Deleting_a_linked_contact_sets_the_subscription_link_to_null()
+    public async Task DateOnly_columns_are_real_dates_and_round_trip_with_no_time()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await EnsureRelationalSchemaAsync();
-        await EnsureRelationalSchemaAsync();
 
+        // Assert both that a DateOnly property lands in a real MariaDB `date` column AND that the
+        // value round-trips with no time component. Kept separate from the decimal-fidelity test on
+        // purpose (§Rollout / architect finding #6).
         var contactId = Guid.NewGuid();
-        var subscriptionId = Guid.NewGuid();
-        await using (var journal = NewRelationalContext())
-        {
-            journal.Contacts.Add(NewOrganizationContact(contactId, "Streaming Co", "STREAMING CO"));
-            await journal.SaveChangesAsync();
-        }
+        var dateOfBirth = new DateOnly(1926, 3, 15);
+        var dateOfDeath = new DateOnly(2027, 3, 14);
+
         await using (var context = NewRelationalContext())
         {
-            context.Subscriptions.Add(new Subscription
+            context.Contacts.Add(new Contact
             {
-                SubscriptionId = subscriptionId,
-                Name = "Streaming",
                 ContactId = contactId,
-                StartDate = new DateOnly(2026, 1, 1),
-                Amount = 9.99m,
-                CurrencyCode = "USD",
-                Interval = Odyssey.Context.BillingInterval.Monthly,
-                FirstBillingDate = new DateOnly(2026, 1, 15),
-                CreatedAtUtc = DateTime.UtcNow,
-            });
-            await context.SaveChangesAsync();
-        }
-
-        // Deleting the linked contact must SET NULL the subscription link. ContactService.Delete →
-        // ContactReferenceGuard nulls the subscription's ContactId before removing the contact; the FK
-        // behind it would do the same.
-        await using (var journal = NewRelationalContext())
-        await using (var finance = NewRelationalContext())
-        {
-            var service = new ContactService(journal, new ContactReferenceGuard(finance), TimeProvider.System);
-            await service.Delete(contactId);
-        }
-
-        await using (var context = NewRelationalContext())
-        {
-            var subscription = await context.Subscriptions.AsNoTracking().SingleAsync(s => s.SubscriptionId == subscriptionId);
-            Assert.Null(subscription.ContactId);
-
-            // cleanup
-            await context.Subscriptions.Where(s => s.SubscriptionId == subscriptionId).ExecuteDeleteAsync();
-        }
-    }
-
-    [SkippableFact]
-    public async Task Subscription_date_columns_are_real_dates_and_round_trip_with_no_time()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await EnsureRelationalSchemaAsync();
-
-        // This is the schema's first DateOnly use, so assert both that the columns are real MariaDB
-        // `date` columns AND that the values round-trip with no time component. Kept separate from the
-        // decimal-fidelity test on purpose (§Rollout / architect finding #6).
-        var subscriptionId = Guid.NewGuid();
-        var startDate = new DateOnly(2026, 3, 15);
-        var endDate = new DateOnly(2027, 3, 14);
-        var firstBillingDate = new DateOnly(2026, 1, 31);
-
-        await using (var context = NewRelationalContext())
-        {
-            context.Subscriptions.Add(new Subscription
-            {
-                SubscriptionId = subscriptionId,
-                Name = "Date Round-trip",
-                StartDate = startDate,
-                EndDate = endDate,
-                Amount = 1m,
-                CurrencyCode = "USD",
-                Interval = Odyssey.Context.BillingInterval.Yearly,
-                FirstBillingDate = firstBillingDate,
-                CreatedAtUtc = DateTime.UtcNow,
+                ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
+                NormalizedName = "DATE ROUND-TRIP",
+                Type = ContactType.Person,
+                PersonDetails = new PersonDetails
+                {
+                    ContactId = contactId,
+                    FirstName = "Date",
+                    LastName = "Round-trip",
+                    DateOfBirth = dateOfBirth,
+                    DateOfDeath = dateOfDeath,
+                },
             });
             await context.SaveChangesAsync();
         }
 
         await using (var context = NewRelationalContext())
         {
-            // The three date fields land in real `date` columns (not datetime), so no time is stored.
+            // Both date fields land in real `date` columns (not datetime), so no time is stored.
             var columnTypes = await context.Database
                 .SqlQueryRaw<string>(
                     "SELECT DATA_TYPE AS Value FROM INFORMATION_SCHEMA.COLUMNS " +
-                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Subscriptions' " +
-                    "AND COLUMN_NAME IN ('StartDate', 'EndDate', 'FirstBillingDate')")
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'PersonDetails' " +
+                    "AND COLUMN_NAME IN ('DateOfBirth', 'DateOfDeath')")
                 .ToListAsync();
-            Assert.Equal(3, columnTypes.Count);
+            Assert.Equal(2, columnTypes.Count);
             Assert.All(columnTypes, type => Assert.Equal("date", type));
 
-            var stored = await context.Subscriptions.AsNoTracking().SingleAsync(s => s.SubscriptionId == subscriptionId);
-            Assert.Equal(startDate, stored.StartDate);
-            Assert.Equal(endDate, stored.EndDate);
-            Assert.Equal(firstBillingDate, stored.FirstBillingDate);
+            var stored = await context.PersonDetails.AsNoTracking().SingleAsync(d => d.ContactId == contactId);
+            Assert.Equal(dateOfBirth, stored.DateOfBirth);
+            Assert.Equal(dateOfDeath, stored.DateOfDeath);
 
             // cleanup so this database stays reusable
-            await context.Subscriptions.Where(s => s.SubscriptionId == subscriptionId).ExecuteDeleteAsync();
+            await context.Contacts.Where(c => c.ContactId == contactId).ExecuteDeleteAsync();
         }
     }
 

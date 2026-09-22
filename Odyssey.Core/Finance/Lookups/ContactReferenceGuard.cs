@@ -121,10 +121,6 @@ public sealed class ContactReferenceGuard(OdysseyContext context) : IContactRefe
             .Where(t => t.ContactId == contactId)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.ContactId, (Guid?)null), cancellationToken);
 
-        await context.Subscriptions
-            .Where(s => s.ContactId == contactId)
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.ContactId, (Guid?)null), cancellationToken);
-
         await context.Accounts
             .Where(a => a.CustodianId == contactId)
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.CustodianId, (Guid?)null), cancellationToken);

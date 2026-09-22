@@ -702,8 +702,8 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.ContractMaxSummaryContracts),
                 Load: (p, dto) => p.SetIntLoaded("contractMaxSummaryContracts", dto.ContractMaxSummaryContracts),
                 Write: (p, req) => req.ContractMaxSummaryContracts = p.IntRequest("contractMaxSummaryContracts")),
-            // The two windows sit in the Contracts group rather than beside their Subscriptions twins:
-            // an administrator looking for "how far ahead do contracts warn me" looks under Contracts.
+            // The two windows sit in the Contracts group rather than in a group of their own: an
+            // administrator looking for "how far ahead do contracts warn me" looks under Contracts.
             new("contractEndingWindowDays", "hourglass_bottom", "“Ending soon” window",
                 "How many days ahead an active contract's end date is flagged as ending soon. The same "
                 + "window defines the two groups either side of it — a term about to start, and one "
@@ -881,51 +881,6 @@ public partial class Settings
                     "accountMaxSmartTagsPerAccount", dto.AccountMaxSmartTagsPerAccount),
                 Write: (p, req) => req.AccountMaxSmartTagsPerAccount =
                     p.IntRequest("accountMaxSmartTagsPerAccount")),
-        ]),
-        // ── Subscriptions (issue #437) ────────────────────────────────────────────────────────────
-        // APPENDED, not filed beside the other two finance groups: this catalogue is ordered
-        // wave-chronologically (Insurance is group 3, Contracts group 10, with six unrelated groups
-        // between), so appending is the convention rather than a compromise.
-        //
-        // Min/Max name their SystemSettingsBounds pair rather than restating literals. A shared bound
-        // has FOUR ends, not two: the [Range], the descriptor, the read-path clamp, and the control's
-        // rendered max — the last resolving from item.Max via MaxFor, which is also what the page's own
-        // range check uses.
-        new("Subscriptions", Icons.Material.Filled.Subscriptions,
-        [
-            new("subscriptionRenewalWindowDays", "schedule", "Upcoming renewals window",
-                "How many days ahead a subscription's next billing date is surfaced as an upcoming renewal.",
-                SettingClaim.Count, SettingControl.Number,
-                Min: SystemSettingsBounds.SubscriptionRenewalWindowDaysMin,
-                Max: SystemSettingsBounds.SubscriptionRenewalWindowDaysMax,
-                Field: nameof(SystemSettingsUpdate.SubscriptionRenewalWindowDays),
-                Load: (p, dto) => p.SetIntLoaded("subscriptionRenewalWindowDays", dto.SubscriptionRenewalWindowDays),
-                Write: (p, req) => req.SubscriptionRenewalWindowDays = p.IntRequest("subscriptionRenewalWindowDays"),
-                Unit: "days"),
-            // The description says "a separate rendered block above the list" rather than "announced by
-            // screen readers" deliberately: the screen-reader phrasing goes false the moment the
-            // roll-up's per-row live regions become one, while the payload/render justification for the
-            // cap stays true either way.
-            new("subscriptionMaxSummaryRenewals", "format_list_numbered", "Max renewals shown in summary",
-                "Upper limit on the renewal rows listed in the page-header roll-up. Each row is a separate "
-                + "rendered block above the list, so this is deliberately bounded well below the other summary caps.",
-                SettingClaim.Count, SettingControl.Number,
-                Min: SystemSettingsBounds.SubscriptionMaxSummaryRenewalsMin,
-                Max: SystemSettingsBounds.SubscriptionMaxSummaryRenewalsMax,
-                Field: nameof(SystemSettingsUpdate.SubscriptionMaxSummaryRenewals),
-                Load: (p, dto) => p.SetIntLoaded("subscriptionMaxSummaryRenewals", dto.SubscriptionMaxSummaryRenewals),
-                Write: (p, req) => req.SubscriptionMaxSummaryRenewals = p.IntRequest("subscriptionMaxSummaryRenewals")),
-            // "inventory", not "subscriptions", which would duplicate the group icon — and it does not
-            // collide with the Subscriptions page's own Archived glyph, "inventory_2".
-            new("subscriptionMaxSummarySubscriptions", "inventory", "Max subscriptions read for summary",
-                "Upper limit on the subscriptions read to compute the roll-up. Beyond it the counts, run-rate "
-                + "AND the upcoming-renewals list cover the most recent subscriptions only.",
-                SettingClaim.Count, SettingControl.Number,
-                Min: SystemSettingsBounds.SubscriptionMaxSummarySubscriptionsMin,
-                Max: SystemSettingsBounds.SubscriptionMaxSummarySubscriptionsMax,
-                Field: nameof(SystemSettingsUpdate.SubscriptionMaxSummarySubscriptions),
-                Load: (p, dto) => p.SetIntLoaded("subscriptionMaxSummarySubscriptions", dto.SubscriptionMaxSummarySubscriptions),
-                Write: (p, req) => req.SubscriptionMaxSummarySubscriptions = p.IntRequest("subscriptionMaxSummarySubscriptions")),
         ]),
     ];
 

@@ -26,17 +26,16 @@ public class TermVocabularyGuardTests
     ];
 
     /// <summary>
-    /// AC 1 / AC 20 — both cadence enums pinned by LITERAL ordinal, in both directions.
+    /// AC 1 / AC 20 — the cadence enum pinned by LITERAL ordinal, in both directions.
     /// </summary>
     /// <remarks>
-    /// After this change <c>Odyssey.Dtos.Finance</c> holds two cadence enums whose member names
-    /// overlap while no ordinal does — adding <c>Weekly</c> made that worse, not better, since the
-    /// two now cover the same four periodic units. A mistaken cast or a copy-pasted literal between
-    /// them changes meaning silently rather than failing to compile, so the numbers are pinned here:
-    /// a later edit that "aligns" one to the other fails the build instead.
+    /// <c>Odyssey.Dtos.Finance</c> held a second cadence enum until the standalone subscriptions
+    /// feature was removed, and the two overlapped by member name while no ordinal did. A mistaken
+    /// cast or a copy-pasted literal changes meaning silently rather than failing to compile, so the
+    /// numbers stay pinned here: a later edit that renumbers one fails the build instead.
     /// </remarks>
     [Fact]
-    public void BothCadenceEnums_KeepTheirOrdinals()
+    public void TheCadenceEnum_KeepsItsOrdinals()
     {
         Assert.Equal(0, (int)DtoInterval.OneTime);
         Assert.Equal(1, (int)DtoInterval.PerOccurrence);
@@ -45,11 +44,6 @@ public class TermVocabularyGuardTests
         Assert.Equal(5, (int)DtoInterval.Annually);
         Assert.Equal(6, (int)DtoInterval.PerUnit);
         Assert.Equal(7, (int)DtoInterval.Weekly);
-
-        Assert.Equal(0, (int)Odyssey.Dtos.Finance.BillingInterval.Daily);
-        Assert.Equal(1, (int)Odyssey.Dtos.Finance.BillingInterval.Weekly);
-        Assert.Equal(2, (int)Odyssey.Dtos.Finance.BillingInterval.Monthly);
-        Assert.Equal(3, (int)Odyssey.Dtos.Finance.BillingInterval.Yearly);
     }
 
     /// <summary>

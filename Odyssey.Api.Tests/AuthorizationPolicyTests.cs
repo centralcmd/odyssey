@@ -62,11 +62,12 @@ public class AuthorizationPolicyTests
     /// The claim values are the wire contract: they are persisted in <c>AspNetRoleClaims</c> by
     /// migrations and baked into issued auth cookies, so renaming one silently de-authorizes existing
     /// users and rows. Pins the count so a drive-by rename or deletion has to be deliberate.
-    /// 102 = 98 + the three system-settings claims (issue #349) + profile-images.read (issue #94).
+    /// 102 before the standalone subscriptions feature was removed, taking its four
+    /// <c>subscriptions.*</c> claims with it.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(102, DeclaredClaims().Count());
+        Assert.Equal(98, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).

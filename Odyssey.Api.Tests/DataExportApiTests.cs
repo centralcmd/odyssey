@@ -168,7 +168,7 @@ public class DataExportApiTests
                      "taxStatementFiles", "insurancePolicies", "insurancePolicyInsurers",
                      "insurancePolicyInsuredAccounts", "insurancePolicyInsuredContacts",
                      "insurancePolicyBeneficiaries", "policyRenewals", "policyRenewalFiles",
-                     "contracts", "contractParties", "contractFiles", "subscriptions",
+                     "contracts", "contractParties", "contractFiles",
                      // Issue #166.
                      "contractSmartTags",
                  })
@@ -690,7 +690,7 @@ public class DataExportApiTests
     }
 
     [Fact]
-    public async Task Export_IncludesSubscriptionsAndAccountSideTables()
+    public async Task Export_IncludesTheAccountSideTables()
     {
         await using var factory = new ApiFactory([PermissionClaims.DataExport]);
         await SeedFinanceAsync(factory);
@@ -698,11 +698,6 @@ public class DataExportApiTests
 
         using var document = await GetExportDocumentAsync(client);
         var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
-
-        var subscription = Assert.Single(finance.GetProperty("subscriptions").EnumerateArray());
-        Assert.Equal("Streaming", subscription.GetProperty("name").GetString());
-        Assert.Equal(12.99m, subscription.GetProperty("amount").GetDecimal());
-        Assert.Equal(JsonValueKind.Number, subscription.GetProperty("interval").ValueKind);
 
         var estimate = Assert.Single(finance.GetProperty("accountEstimates").EnumerateArray());
         Assert.Equal(185_000m, estimate.GetProperty("value").GetDecimal());
@@ -722,8 +717,8 @@ public class DataExportApiTests
 
     /// <summary>
     /// The collections and the key columns each is ordered by, with the kind of comparison that
-    /// key uses. All 28 of them appear here — ordering was pinned for <c>accounts</c> alone, so a
-    /// dropped or wrong <c>OrderBy</c> on any of the other 27 queries passed the whole suite.
+    /// key uses. All 27 of them appear here — ordering was pinned for <c>accounts</c> alone, so a
+    /// dropped or wrong <c>OrderBy</c> on any of the other 26 queries passed the whole suite.
     /// Deterministic order is what makes two exports of unchanged data diffable, so it is a
     /// property of the format, not of one table.
     /// </summary>
@@ -761,7 +756,6 @@ public class DataExportApiTests
         { "contractFiles", ["contractFileId"], KeyKind.Guid },
         // Composite-keyed, like accountSmartTags: ordered by both key columns, in that order.
         { "contractSmartTags", ["contractId", "transactionTagId"], KeyKind.Guid },
-        { "subscriptions", ["subscriptionId"], KeyKind.Guid },
     };
 
     /// <summary>
@@ -984,13 +978,6 @@ public class DataExportApiTests
             context.ContractSmartTags.Add(new ContractSmartTag
             {
                 ContractId = id, TransactionTagId = tagId, AddedAt = now,
-            });
-
-            context.Subscriptions.Add(new Subscription
-            {
-                SubscriptionId = id, Name = $"Sub {sequence}",
-                StartDate = DateOnly.FromDateTime(now), Amount = 1m,
-                FirstBillingDate = DateOnly.FromDateTime(now), CreatedAtUtc = now,
             });
         }
 
@@ -1339,20 +1326,6 @@ public class DataExportApiTests
             FileMetadataId = fileMetadataId,
             AttachedByUserId = "uploader",
             AttachedAtUtc = DateTime.UtcNow,
-        });
-
-        context.Subscriptions.Add(new Subscription
-        {
-            SubscriptionId = Guid.NewGuid(),
-            Name = "Streaming",
-            ContactId = contactId,
-            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
-            Amount = 12.99m,
-            CurrencyCode = "USD",
-            Interval = BillingInterval.Monthly,
-            IntervalCount = 1,
-            FirstBillingDate = DateOnly.FromDateTime(DateTime.UtcNow),
-            CreatedAtUtc = DateTime.UtcNow,
         });
 
         // File-analysis records — must NOT appear in the export.

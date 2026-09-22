@@ -48,7 +48,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IFilesApiClient, FilesApiClient>();
         services.AddScoped<IInsuranceApiClient, InsuranceApiClient>();
         services.AddScoped<IContractsApiClient, ContractsApiClient>();
-        services.AddScoped<ISubscriptionApiClient, SubscriptionApiClient>();
         services.AddScoped<IJournalApiClient, JournalApiClient>();
         services.AddScoped<IJournalIcsApiClient, JournalIcsApiClient>();
         services.AddScoped<ITaskApiClient, TaskApiClient>();

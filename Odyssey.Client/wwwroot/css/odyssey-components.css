@@ -107,19 +107,6 @@
 .odc-typechip-group { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); white-space: nowrap; }
 .odc-typechip-group::before { content: "·"; margin-right: 6px; color: var(--mud-palette-text-disabled); }
 
-/* Subscription status cluster (issue #293) — Paused / Archived / Active chips, one per active state
-   (the two flags are orthogonal, so both can show). */
-.odc-substatus { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-
-/* A subscription price is a recurring expense — the amount input reads in the finance-expense hue.
-   Global (not page-scoped) so it applies in both the create dialog and the inline edit form. The
-   dialog's price is an OdsMoneyField now, so the money selectors carry it; the .odc-amount pair
-   stays for the inline edit form. The currency code is deliberately NOT tinted — it is the code,
-   not the amount, and coloring it would read as a second signed figure. */
-.sub-amount-expense .odc-amount-input,
-.sub-amount-expense .odc-amount-adorn,
-.sub-amount-expense .odc-money-input { color: var(--finance-expense); }
-
 /* ---------- Card composition slots ----------
    OdsCardBody pads a flush OdsCard; OdsCardHeader is the titled header row with a
    bottom divider (the action cluster sits at the end). */
@@ -3483,7 +3470,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* ── Expandable record card (issue #367) — Components/OdsExpandableCard.razor ──────────
    THE expand-in-place list row: Accounts, Contracts, Insurance policies, Tax statements,
-   Subscriptions, Budgets, Journal entries and the analysis log. Ported from the design
+   Budgets, Journal entries and the analysis log. Ported from the design
    system's kit.css `.acct-list` / `.acct-item` scaffold, which this file previously
    carried in eight scoped copies.
 

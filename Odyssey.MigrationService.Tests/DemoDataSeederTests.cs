@@ -420,12 +420,6 @@ public class DemoDataSeederTests
                 SystemSettingsDefaults.InsuranceMaxFilesPerParent,
                 SystemSettingsDefaults.InsuranceMaxLinksPerPolicy));
 
-        public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new SubscriptionSettings(
-                SystemSettingsDefaults.SubscriptionRenewalWindowDays,
-                SystemSettingsDefaults.SubscriptionMaxSummaryRenewals,
-                SystemSettingsDefaults.SubscriptionMaxSummarySubscriptions));
-
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ContractSummarySettings(
                 SystemSettingsDefaults.ContractEndingWindowDays,

@@ -416,13 +416,12 @@ public sealed class DemoDataSeeder(
         await context.FileBlob.AddRangeAsync(data.FileBlobs, cancellationToken);
         await context.FileMetadata.AddRangeAsync(data.FileMetadata, cancellationToken);
         await context.TaxStatementFiles.AddRangeAsync(data.TaxStatementFiles, cancellationToken);
-        await context.Subscriptions.AddRangeAsync(data.Subscriptions, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
-            "Seeded {Accounts} accounts, {Budgets} budgets, {Transactions} transactions, {Policies} insurance policies, {Contracts} contracts, {Subscriptions} subscriptions.",
-            data.Accounts.Count, data.Budgets.Count, data.Transactions.Count, data.InsurancePolicies.Count, data.Contracts.Count, data.Subscriptions.Count);
+            "Seeded {Accounts} accounts, {Budgets} budgets, {Transactions} transactions, {Policies} insurance policies, {Contracts} contracts.",
+            data.Accounts.Count, data.Budgets.Count, data.Transactions.Count, data.InsurancePolicies.Count, data.Contracts.Count);
     }
 
     private async Task SeedContactsAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)

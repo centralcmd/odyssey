@@ -98,15 +98,6 @@ public enum InsuranceSortBy
     Premium,
 }
 
-/// <summary>Sortable keys for the subscriptions list. <c>Interval</c> sorts by the enum's numeric order (Daily &lt; Weekly &lt; Monthly &lt; Yearly).</summary>
-public enum SubscriptionSortBy
-{
-    Name,
-    Amount,
-    StartDate,
-    Interval,
-}
-
 /// <summary>Sortable keys for the tax-statements list.</summary>
 public enum TaxStatementSortBy
 {

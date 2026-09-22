@@ -52,7 +52,7 @@ public class ContactPickerCreateRowTests : IAsyncLifetime
     // ── The create-row vocabularies ──────────────────────────────────────────
 
     /// <summary>
-    /// Organization leads. A contact linked from a transaction, a file, a subscription or a statement
+    /// Organization leads. A contact linked from a transaction, a file, a contract or a statement
     /// merchant is a company far more often than a person, and the leading row is what the one-click
     /// "create from the extracted name" affordance uses.
     /// </summary>

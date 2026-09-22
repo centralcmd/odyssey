@@ -455,38 +455,4 @@ public sealed record SystemSettingsUpdate
     [StringLength(256, ErrorMessage =
         "The provider base URL cannot exceed 256 characters.")]
     public string? FileAnalysisBaseUrl { get; set; }
-
-    // ---------------------------------------------------------------------------------------------
-    // The Subscriptions summary limits (issue #437). Each [Range] names its SystemSettingsBounds pair
-    // rather than restating a literal: the SAME pair is the descriptor's bound, the read-path clamp at
-    // both read sites, and the client catalogue's Min/Max, and AC 22 asserts all four agree.
-    //
-    // None of the three is single-direction — none is a write amplifier and none is a security control
-    // that fails open — so no end is pinned at a SystemSettingsDefaults constant, and there is no
-    // RequestCapCeilings entry: with no compile-time attribute ceiling and no startup limit upstream,
-    // a ceiling validator would be decorative (§9).
-    // ---------------------------------------------------------------------------------------------
-
-    [Range(SystemSettingsBounds.SubscriptionRenewalWindowDaysMin,
-        SystemSettingsBounds.SubscriptionRenewalWindowDaysMax, ErrorMessage =
-        "The upcoming-renewals window must be between 1 and 365 days. A window of 0 would still "
-        + "include same-day renewals, so it is rejected as out of range rather than as empty.")]
-    public int? SubscriptionRenewalWindowDays { get; set; }
-
-    /// <summary>
-    /// Renewal rows the page-header roll-up lists. Bounded at 50 rather than the 100000 its sibling
-    /// caps carry: each renewal is rendered as its own block above the list, in a region that is open
-    /// by default and has no scroll container of its own.
-    /// </summary>
-    [Range(SystemSettingsBounds.SubscriptionMaxSummaryRenewalsMin,
-        SystemSettingsBounds.SubscriptionMaxSummaryRenewalsMax, ErrorMessage =
-        "Renewals shown in the summary must be between 1 and 50. Each one is a separate rendered "
-        + "block in the page header, so this is deliberately bounded well below the other summary caps.")]
-    public int? SubscriptionMaxSummaryRenewals { get; set; }
-
-    [Range(SystemSettingsBounds.SubscriptionMaxSummarySubscriptionsMin,
-        SystemSettingsBounds.SubscriptionMaxSummarySubscriptionsMax, ErrorMessage =
-        "Subscriptions read for the summary must be between 1 and 100000. Above the cap the counts, "
-        + "the run-rate and the upcoming-renewals list all cover the most recent subscriptions only.")]
-    public int? SubscriptionMaxSummarySubscriptions { get; set; }
 }

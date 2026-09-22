@@ -37,9 +37,6 @@ public class ContractFileValidityTests
         public Task<InsurancePolicySettings> GetInsurancePolicySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new InsurancePolicySettings(30, 1000));
 
-        public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new SubscriptionSettings(45, 6, 1000));
-
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ContractSummarySettings(45, 45, 6));
     }

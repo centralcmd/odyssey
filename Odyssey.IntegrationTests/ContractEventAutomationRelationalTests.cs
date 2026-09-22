@@ -284,9 +284,6 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
         public Task<FinanceRequestCaps> GetRequestCapsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new FinanceRequestCaps(25, 50, 500, 1000, 100, 50, 50));
 
-        public Task<SubscriptionSettings> GetSubscriptionSettingsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new SubscriptionSettings(45, 6, 1000));
-
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ContractSummarySettings(45, 45, 6));
     }

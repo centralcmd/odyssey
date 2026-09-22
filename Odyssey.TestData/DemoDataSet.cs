@@ -45,7 +45,6 @@ public sealed class DemoDataSet
     public required IReadOnlyList<FileBlob> ContactAvatarBlobs { get; init; }
     public required IReadOnlyList<FileMetadata> ContactAvatarFiles { get; init; }
     public required IReadOnlyList<TaxStatementFile> TaxStatementFiles { get; init; }
-    public required IReadOnlyList<Subscription> Subscriptions { get; init; }
 
     // Journal module (issue #311). The backing photo/attachment Files-store records are merged into
     // FileBlobs/FileMetadata above, and are real FK principals for these rows — so the seeder has to
@@ -91,7 +90,6 @@ public sealed class DemoDataSet
         var (contracts, contractParties, contractTerms, contractEvents) = ContractGenerator.Build(anchor);
         var (taxStatements, taxStatementTags) = TaxStatementGenerator.Build();
         var (fileBlobs, fileMetadata, taxStatementFiles) = TaxStatementFileGenerator.Build();
-        var subscriptions = SubscriptionGenerator.Build(anchor);
 
         var journalTags = JournalTagGenerator.Generate(anchor);
         var taskTags = JournalTaskTagGenerator.Generate(anchor);
@@ -142,7 +140,6 @@ public sealed class DemoDataSet
             FileBlobs = allFileBlobs,
             FileMetadata = allFileMetadata,
             TaxStatementFiles = taxStatementFiles,
-            Subscriptions = subscriptions,
             JournalTags = journalTags,
             JournalTaskTags = taskTags,
             JournalEntries = journal.Entries,

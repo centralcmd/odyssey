@@ -52,16 +52,8 @@ public sealed class SystemSettingsService(
     internal const string FinanceCapsCacheKey = "system-settings:finance-request-caps";
 
     /// <summary>
-    /// The subscriptions summary limits (issue #437). Its own key for the same reason
-    /// <see cref="FinanceCapsCacheKey"/> has one: <see cref="SystemSettingDescriptor.CacheKeyToEvict"/>
-    /// is a single string, so a shared entry would make a subscriptions change evict the insurance
-    /// settings and vice versa.
-    /// </summary>
-    internal const string SubscriptionCacheKey = "system-settings:subscription-settings";
-
-    /// <summary>
-    /// The Contracts summary windows, on their own entry for the same forced reason as
-    /// <see cref="SubscriptionCacheKey"/> — one <see cref="SystemSettingDescriptor.CacheKeyToEvict"/>
+    /// The Contracts summary windows, on their own entry for the same forced reason
+    /// <see cref="FinanceCapsCacheKey"/> has one — one <see cref="SystemSettingDescriptor.CacheKeyToEvict"/>
     /// per descriptor, so sharing <see cref="FinanceCapsCacheKey"/> would make a window change evict
     /// the per-request caps and vice versa.
     /// </summary>
@@ -70,7 +62,7 @@ public sealed class SystemSettingsService(
     /// <summary>
     /// One log line per faulted settings key per window, rather than one per request on an endpoint
     /// with no rate limiter (issue #437 §11, AC 28). Per <em>key</em>, so a corrupt insurance row
-    /// cannot consume the subscriptions fault's line.
+    /// cannot consume the contracts fault's line.
     /// </summary>
     private static readonly TimeSpan ProjectionLogThrottle = TimeSpan.FromSeconds(30);
 
@@ -698,9 +690,9 @@ public sealed class SystemSettingsService(
         // Precedence: a non-Ok projection outcome REPLACES any Advise output for that field. The cost
         // advisory describes a value the administrator chose and can re-derive from the number in front
         // of them; the projection advisory reports a fault they did not cause and which is visible
-        // nowhere else in the product. The collision is not hypothetical — a SubscriptionMaxSummary-
-        // Renewals row stored as "5000" clamps to 50, and 50 is above the shipped default of 6, so it
-        // fires both.
+        // nowhere else in the product. The collision is not hypothetical — a ContractMaxSummaryCharges
+        // row stored as "5000" clamps to 50, and 50 is above the shipped default of 6, so it fires
+        // both.
         var warnings = new Dictionary<string, string>(BuildWarnings(dto), StringComparer.OrdinalIgnoreCase);
         foreach (var (field, message) in faultDetails)
         {

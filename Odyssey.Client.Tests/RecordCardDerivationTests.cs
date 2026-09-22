@@ -14,39 +14,6 @@ public class RecordCardDerivationTests
 {
     private static readonly DateTime Today = new(2026, 8, 31);
 
-    // ── Subscription status precedence ──────────────────────────────────────────
-    // This replaced a version that rendered several chips at once (Ended AND Archived, say). The
-    // lifecycle is ordered, so exactly one state may show; a regression back to stacking would
-    // otherwise only be visible by eye.
-
-    [Theory]
-    [InlineData(false, false, false, "Active")]
-    [InlineData(true, false, false, "Paused")]
-    [InlineData(false, true, false, "Ended")]
-    [InlineData(false, false, true, "Archived")]
-    // Archived outranks everything: only an ended subscription can be archived.
-    [InlineData(false, true, true, "Archived")]
-    [InlineData(true, true, true, "Archived")]
-    // Ended makes a pause moot.
-    [InlineData(true, true, false, "Ended")]
-    public void SubscriptionStatus_ResolvesExactlyOneState(bool paused, bool ended, bool archived, string expected)
-    {
-        var state = OdsSubscriptionStatus.Resolve(paused, ended, archived, showActive: true);
-
-        Assert.Equal(expected, state!.Label);
-    }
-
-    [Fact]
-    public void SubscriptionStatus_ShowsNothingForAPlainActiveRow_UnlessAsked()
-    {
-        // A list of untouched subscriptions should not carry a chip on every row.
-        Assert.Null(OdsSubscriptionStatus.Resolve(false, false, false, showActive: false));
-        Assert.Equal("Active", OdsSubscriptionStatus.Resolve(false, false, false, showActive: true)!.Label);
-
-        // A real state still shows even when the Active chip is suppressed.
-        Assert.Equal("Paused", OdsSubscriptionStatus.Resolve(true, false, false, showActive: false)!.Label);
-    }
-
     // ── Contract "has ended" ────────────────────────────────────────────────────
     // The client disables Archive on the same predicate the service refuses it on. Both call this one
     // implementation, so these assertions pin the boundary for the API as well as the menu.

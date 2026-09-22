@@ -31,7 +31,6 @@ public class ListPageContractTests
         "Pages/Finance/CurrenciesCard.razor",
         "Pages/Finance/ExchangeRatesCard.razor",
         "Pages/Finance/InsuranceCard.razor",
-        "Pages/Finance/SubscriptionCard.razor",
         "Pages/Finance/TaxStatementsCard.razor",
         "Pages/Finance/TransactionsCard.razor",
         "Pages/Journal/JournalCard.razor",

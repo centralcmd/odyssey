@@ -391,8 +391,6 @@ builder.Services.AddScoped<Odyssey.Context.Secrets.ISecretSettingsReader,
 builder.Services.AddScoped<ContractService>();
 builder.Services.AddScoped<ContractEventService>();
 
-builder.Services.AddScoped<SubscriptionService>();
-
 // Journal module (issue #311). The lookups keep the module boundary one-directional in code even though
 // finance and journal now share one DbContext. No feature toggle — capability is gated by claims only.
 builder.Services.AddScoped<Odyssey.Core.Finance.IContactLookup, Odyssey.Core.Journal.ContactLookup>();

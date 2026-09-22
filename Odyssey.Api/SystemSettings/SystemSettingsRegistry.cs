@@ -411,9 +411,18 @@ internal static class SystemSettingsRegistry
 
         // ── The Contracts summary windows ────────────────────────────────────────────────────────
         //
-        // The ordinary write claim, matching every other display bound (the Subscriptions trio below
-        // records the full rationale). Their own cache key rather than FinanceCapsCacheKey: one
-        // CacheKeyToEvict per descriptor, so sharing would cross-evict the per-request caps.
+        // All three take the ORDINARY write claim, matching the analogous display bounds above
+        // (InsuranceExpiringSoonWindowDays, InsuranceMaxSummaryPolicies, ContractMaxSummaryContracts):
+        // the established split puts the authentication perimeter and the import/export SIZE caps
+        // behind the stricter claim, and these are display bounds. The honest limit is that both
+        // system-settings claims are Admin-only today, so the choice's only operational effect is the
+        // derived AuditChanges — tracked as issue #438, which cannot ride along here because
+        // decoupling AuditChanges from the claim would require weakening the very assertion AC 15
+        // forbids weakening.
+        //
+        // Their own cache key rather than FinanceCapsCacheKey: one CacheKeyToEvict per descriptor, so
+        // sharing would cross-evict the per-request caps. TouchOnPresenceOnly stays false — that is
+        // reserved for the five original #349 keys.
         new IntSetting
         {
             Key = SystemSettingsKeys.ContractEndingWindowDays,
@@ -438,9 +447,9 @@ internal static class SystemSettingsRegistry
             Read = r => r.ContractChargeWindowDays,
             Write = (dto, v) => dto.ContractChargeWindowDays = v,
         },
-        // The one of the three with a cost advisory, matching SubscriptionMaxSummaryRenewals: the
-        // rows are rendered blocks in an always-open header region, so the cost of a raise is payload
-        // and render rather than query time.
+        // The one of the three with a cost advisory. AboveDefault already covers PAYLOAD/RENDER cost,
+        // not only memory, CPU and third-party spend — the rows are rendered blocks in an always-open
+        // header region, so the cost of a raise is payload and render rather than query time.
         new IntSetting
         {
             Key = SystemSettingsKeys.ContractMaxSummaryCharges,
@@ -857,66 +866,6 @@ internal static class SystemSettingsRegistry
             Write = (dto, v) => dto.ContractMaxSmartTagsPerContract = v,
         },
 
-        // ── The Subscriptions summary limits (issue #437) ─────────────────────────────────────────
-        //
-        // All three take the ORDINARY write claim, matching the three analogous keys above
-        // (InsuranceExpiringSoonWindowDays, InsuranceMaxSummaryPolicies, ContractMaxSummaryContracts):
-        // the established split puts the authentication perimeter and the import/export SIZE caps
-        // behind the stricter claim, and these are display bounds. The honest limit is that both
-        // system-settings claims are Admin-only today, so the choice's only operational effect is the
-        // derived AuditChanges — tracked as issue #438, which cannot ride along here because
-        // decoupling AuditChanges from the claim would require weakening the very assertion AC 15
-        // forbids weakening.
-        //
-        // One shared cache key, and NOT the insurance entry: SystemSettingDescriptor.CacheKeyToEvict
-        // is a single string, so a shared entry would make a subscriptions change evict the insurance
-        // settings and vice versa. TouchOnPresenceOnly stays false — that is reserved for the five
-        // original #349 keys.
-        new IntSetting
-        {
-            Key = SystemSettingsKeys.SubscriptionRenewalWindowDays,
-            Min = SystemSettingsBounds.SubscriptionRenewalWindowDaysMin,
-            Max = SystemSettingsBounds.SubscriptionRenewalWindowDaysMax,
-            FieldName = nameof(SystemSettingsUpdate.SubscriptionRenewalWindowDays),
-            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
-            DefaultValue = Int(SystemSettingsDefaults.SubscriptionRenewalWindowDays),
-            CacheKeyToEvict = SystemSettingsService.SubscriptionCacheKey,
-            Read = r => r.SubscriptionRenewalWindowDays,
-            Write = (dto, v) => dto.SubscriptionRenewalWindowDays = v,
-        },
-        // The only one of the three with a cost advisory. AboveDefault already covers PAYLOAD/RENDER
-        // cost, not only memory, CPU and third-party spend — ImportMaxSamplesPerSkipReason above is
-        // that exact shape.
-        new IntSetting
-        {
-            Key = SystemSettingsKeys.SubscriptionMaxSummaryRenewals,
-            Min = SystemSettingsBounds.SubscriptionMaxSummaryRenewalsMin,
-            Max = SystemSettingsBounds.SubscriptionMaxSummaryRenewalsMax,
-            FieldName = nameof(SystemSettingsUpdate.SubscriptionMaxSummaryRenewals),
-            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
-            DefaultValue = Int(SystemSettingsDefaults.SubscriptionMaxSummaryRenewals),
-            CacheKeyToEvict = SystemSettingsService.SubscriptionCacheKey,
-            Read = r => r.SubscriptionMaxSummaryRenewals,
-            Write = (dto, v) => dto.SubscriptionMaxSummaryRenewals = v,
-            Advise = SettingAdvisories.AboveDefault(
-                dto => dto.SubscriptionMaxSummaryRenewals, SystemSettingsDefaults.SubscriptionMaxSummaryRenewals,
-                "Each renewal is rendered as its own block above the list."),
-        },
-        // No cost advisory, deliberately: the value closest to today's behaviour is the UNBOUNDED one,
-        // so an "above the shipped default" advisory here would fire on the direction that changes
-        // least. The truncation consequence is stated on the row's description instead.
-        new IntSetting
-        {
-            Key = SystemSettingsKeys.SubscriptionMaxSummarySubscriptions,
-            Min = SystemSettingsBounds.SubscriptionMaxSummarySubscriptionsMin,
-            Max = SystemSettingsBounds.SubscriptionMaxSummarySubscriptionsMax,
-            FieldName = nameof(SystemSettingsUpdate.SubscriptionMaxSummarySubscriptions),
-            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
-            DefaultValue = Int(SystemSettingsDefaults.SubscriptionMaxSummarySubscriptions),
-            CacheKeyToEvict = SystemSettingsService.SubscriptionCacheKey,
-            Read = r => r.SubscriptionMaxSummarySubscriptions,
-            Write = (dto, v) => dto.SubscriptionMaxSummarySubscriptions = v,
-        },
     ];
 
     /// <summary>Descriptors by <see cref="SystemSettingDescriptor.Key"/>.</summary>

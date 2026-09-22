@@ -5,7 +5,7 @@ namespace Odyssey.Core.Finance;
 
 /// <summary>
 /// A slim, resolved projection of a contact used by Finance read paths (custodian, insurer,
-/// subscription/contract references, matched-contact names) to build their data-minimised DTOs without a
+/// contract references, matched-contact names) to build their data-minimised DTOs without a
 /// an <c>Include</c> — which is what keeps a finance entity free of a <c>Contact</c> navigation even
 /// though the reference is a real foreign key again.
 /// </summary>

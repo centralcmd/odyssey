@@ -115,17 +115,6 @@ public sealed class InsurancePoliciesQueryParams : QueryParams<InsuranceSortBy>
     public Guid[]? ContactIds { get; set; }
 }
 
-/// <summary>Subscriptions list query: filter by billing interval(s) and derived lifecycle status(es).</summary>
-public sealed class SubscriptionsQueryParams : QueryParams<SubscriptionSortBy>
-{
-    [MaxLength(ListDefaults.MaxFilterArrayLength)]
-    public BillingInterval[]? Intervals { get; set; }
-
-    /// <summary>Filter by the derived single lifecycle status (Active/Paused/Ended/Archived); empty = all.</summary>
-    [MaxLength(ListDefaults.MaxFilterArrayLength)]
-    public SubscriptionStatusFilter[]? Statuses { get; set; }
-}
-
 /// <summary>Tax-statements list query: filter by status(es), including the derived Archived bucket.</summary>
 public sealed class TaxStatementsQueryParams : QueryParams<TaxStatementSortBy>
 {

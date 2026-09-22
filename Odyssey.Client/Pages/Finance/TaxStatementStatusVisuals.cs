@@ -5,8 +5,8 @@ using Odyssey.Dtos.Finance;
 namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
-/// How a tax statement's review state reads — the sibling of <see cref="OdsSubscriptionStatus"/> and
-/// <see cref="OdsContractStatus"/>.
+/// How a tax statement's review state reads — the sibling of <see cref="OdsContractStatus"/> and
+/// <see cref="OdsCoverageStatus"/>.
 ///
 /// <para>
 /// A statement has exactly ONE state, and archiving outranks the review status: an archived year is

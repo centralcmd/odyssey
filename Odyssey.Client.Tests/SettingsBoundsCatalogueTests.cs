@@ -46,10 +46,11 @@ public class SettingsBoundsCatalogueTests
     }
 
     /// <summary>
-    /// Scope, stated rather than implied: 48 of the catalogue's 56 numeric rows (47 of 55 before issue
-    /// #166 added the per-contract smart-tag cap, 44 of 52 before the Contracts summary gained its two
-    /// windows and its next-charge row cap, 43 of 51 before issue #135 added the per-contract term
-    /// cap, 42 of 50 before issue #27 added the insurance link cap).
+    /// Scope, stated rather than implied: 45 of the catalogue's 53 numeric rows (48 of 56 before the
+    /// standalone subscriptions feature was removed with its three summary limits; 47 of 55 before
+    /// issue #166 added the per-contract smart-tag cap, 44 of 52 before the Contracts summary gained
+    /// its two windows and its next-charge row cap, 43 of 51 before issue #135 added the per-contract
+    /// term cap, 42 of 50 before issue #27 added the insurance link cap).
     /// The eight <c>CapacityLimit?</c> rows are correctly excluded by the
     /// <c>int?</c> selector — their properties carry no <c>[Range]</c> at all, so their
     /// <c>Min: 1, Max: 1_000_000</c> is a client-only invention with no server end to name.
@@ -57,7 +58,7 @@ public class SettingsBoundsCatalogueTests
     [Fact]
     public void The_guard_covers_every_int_row()
     {
-        Assert.Equal(48, NumericRows.Count);
+        Assert.Equal(45, NumericRows.Count);
         Assert.Equal(
             8,
             Settings.AllItems.Count(item => item.Control == Settings.SettingControl.Capacity));
@@ -176,31 +177,5 @@ public class SettingsBoundsCatalogueTests
         Assert.True(offenders.Count == 0,
             "Rows ignoring a bound the server publishes — the control offers a value the API rejects: "
             + string.Join("; ", offenders));
-    }
-
-    /// <summary>
-    /// The three Subscriptions rows exist, in their own group, with the bounds they advertise. Appended
-    /// rather than filed beside the other finance groups: this catalogue is ordered
-    /// wave-chronologically, so appending is the convention.
-    /// </summary>
-    [Fact]
-    public void The_subscriptions_group_carries_the_three_rows()
-    {
-        var section = Assert.Single(Settings.Sections, s => s.Group == "Subscriptions");
-
-        Assert.Equal(
-            new[]
-            {
-                "subscriptionRenewalWindowDays",
-                "subscriptionMaxSummaryRenewals",
-                "subscriptionMaxSummarySubscriptions",
-            },
-            section.Items.Select(item => item.Key).ToArray());
-
-        Assert.All(section.Items, item => Assert.Equal(Settings.SettingControl.Number, item.Control));
-        Assert.All(section.Items, item => Assert.Equal(Settings.SettingClaim.Count, item.Claim));
-
-        // The renewals cap is bounded at 50, not the 100000 its sibling summary caps carry.
-        Assert.Equal(50, section.Items.Single(item => item.Key == "subscriptionMaxSummaryRenewals").Max);
     }
 }

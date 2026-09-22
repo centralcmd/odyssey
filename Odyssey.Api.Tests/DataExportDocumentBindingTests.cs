@@ -51,7 +51,6 @@ public class DataExportDocumentBindingTests
     [InlineData(typeof(PolicyRenewalFileExport), nameof(PolicyRenewalFileExport.FileType), typeof(Odyssey.Dtos.Finance.PolicyFileType))]
     [InlineData(typeof(ContractExport), nameof(ContractExport.Type), typeof(Odyssey.Dtos.Finance.ContractType))]
     [InlineData(typeof(ContractFileExport), nameof(ContractFileExport.FileType), typeof(Odyssey.Dtos.Finance.ContractFileType))]
-    [InlineData(typeof(SubscriptionExport), nameof(SubscriptionExport.Interval), typeof(Odyssey.Dtos.Finance.BillingInterval))]
     public void AnEnumProperty_BindsToTheDtosCopy(Type declaringType, string propertyName, Type expected) =>
         Assert.Equal(expected, declaringType.GetProperty(propertyName)!.PropertyType);
 
@@ -75,7 +74,6 @@ public class DataExportDocumentBindingTests
     [InlineData(typeof(Odyssey.Dtos.Finance.PolicyFileType), typeof(Odyssey.Context.PolicyFileType))]
     [InlineData(typeof(Odyssey.Dtos.Finance.ContractType), typeof(Odyssey.Context.ContractType))]
     [InlineData(typeof(Odyssey.Dtos.Finance.ContractFileType), typeof(Odyssey.Context.ContractFileType))]
-    [InlineData(typeof(Odyssey.Dtos.Finance.BillingInterval), typeof(Odyssey.Context.BillingInterval))]
     public void TheDtosAndEntityCopies_StillAgreeMemberForMember(Type dtosEnum, Type entityEnum) =>
         Assert.Equal(Members(dtosEnum), Members(entityEnum));
 
