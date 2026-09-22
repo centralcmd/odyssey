@@ -220,7 +220,7 @@ public partial class ContractsCard
     private async Task LoadSummary()
     {
         // The run rate converts into the reader's own display currency, the same source the
-        // Subscriptions summary uses; blank lets the server pick the most common one.
+        // the summary uses; blank lets the server pick the most common one.
         _summary = await Contracts.GetSummaryAsync(UserPreferences.DefaultCurrency);
         StateHasChanged();
     }

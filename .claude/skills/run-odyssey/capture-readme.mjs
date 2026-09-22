@@ -52,10 +52,15 @@ async function ensureRegion(label, open = true) {
 }
 
 // Returns the record card, whose toggle label flips Expand -> Collapse once open.
+// Returns the record card for `name`, expanded. OdsRecordCard's trigger carries no aria-label — its
+// accessible name comes from the head content it wraps — so the card is found by its `.odc-record-name`
+// cell rather than by a "Expand <name>" button name, which is what the older OdsExpandableCard used.
 async function ensureExpanded(name) {
-  const toggle = new RegExp(`^(Expand|Collapse) ${name}$`, 'i');
-  const card = page.locator('.acct-item').filter({ has: page.getByRole('button', { name: toggle }) }).first();
-  const btn = card.getByRole('button', { name: toggle }).first();
+  const card = page
+    .locator('.odc-record')
+    .filter({ has: page.locator('.odc-record-name', { hasText: name }) })
+    .first();
+  const btn = card.locator('.odc-record-trigger').first();
   await btn.waitFor({ state: 'visible', timeout: 15000 });
   if ((await btn.getAttribute('aria-expanded')) !== 'true') { await btn.click(); }
   await page.waitForTimeout(1500);
@@ -118,14 +123,16 @@ const shots = {
     await frame(card, 8);
     await shoot('tax-reconciliation');
   },
-  async subscriptions() {
-    await page.goto('/subscriptions', { waitUntil: 'networkidle' });
+  async contracts() {
+    await page.goto('/contracts', { waitUntil: 'networkidle' });
     await settle();
-    await ensureRegion('Upcoming renewals', true);
+    // The header signal is labelled "Upcoming": it carries the ending/starting terms and the
+    // charges falling due under one toggle.
+    await ensureRegion('Upcoming', true);
     await ensureRegion('Overview', true);
     await ensureRegion('Search', false);
     await settle(1500);
-    await shoot('subscriptions');
+    await shoot('contracts');
   },
   async insurance() {
     await page.goto('/insurance-policies', { waitUntil: 'networkidle' });

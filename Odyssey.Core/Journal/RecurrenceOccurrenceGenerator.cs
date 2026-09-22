@@ -189,7 +189,8 @@ internal static class RecurrenceOccurrenceGenerator
                 // Anchor-relative stepping: each step's base month is computed from the ORIGINAL anchor
                 // (anchor.AddMonths(k*Interval)), never from the previously clamped occurrence — so an
                 // end-of-month anchor (e.g. the 31st) recovers its day in a longer month instead of
-                // permanently drifting to the 28th after a short month (mirrors SubscriptionService.NextBilling).
+                // permanently drifting to the 28th after a short month (mirrors ContractService's
+                // next-charge projection).
                 for (var k = 0; ; k++)
                 {
                     var baseMonth = new DateTime(anchor.Year, anchor.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(k * pattern.Interval);

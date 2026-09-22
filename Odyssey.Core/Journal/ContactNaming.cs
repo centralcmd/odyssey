@@ -11,7 +11,7 @@ namespace Odyssey.Core.Journal;
 /// else the type-appropriate fallback (<c>FirstName LastName</c> for a Person, <c>LegalName</c> for an
 /// Organization), collapsed/trimmed and truncated to <see cref="MaxLength"/>. Used both to build the
 /// stored <c>NormalizedName</c> and to project a display name for other read paths (custodian,
-/// subscription/insurer/contract references, transaction search/sort).
+/// insurer/contract references, transaction search/sort).
 /// </summary>
 public static class ContactNaming
 {

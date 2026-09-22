@@ -796,7 +796,7 @@ public partial class InsuranceCard
     }
 
     /// <summary>The row action menu, permission-gated. Archive stays ungated here: an insurance
-    /// policy's lifecycle is not ordered the way a subscription's or a contract's is — cover can be
+    /// policy's lifecycle is not ordered the way a contract's is — cover can be
     /// retired at any point, and the design system's policy menu offers it unconditionally.</summary>
     private IReadOnlyList<OdsMenuItem> RowActions(InsurancePolicyListItem p, bool archived)
     {
