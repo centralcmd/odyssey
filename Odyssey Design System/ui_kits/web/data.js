@@ -1327,19 +1327,18 @@ Object.assign(window.OdysseyHelpers, {
     if (t && t.accountId) return 'account';
     return 'account';
   },
-  /* Where direction MEANS something: a FEE term owned by a CONTRACT. A rate
-     kind is a percentage the roll-up never projects, and an account term has
-     no surface that reads a direction — both refuse Incoming with a 400, so
-     neither is offered one. One predicate, so the dialog's control, the read
-     surfaces and the refusal copy can never disagree. */
+  /* Where direction MEANS something: any term owned by a CONTRACT. An arrears
+     rate charges the tenant and a deposit rate pays them — the same fact a fee
+     carries, so it is asked the same way on both. An ACCOUNT term still has no
+     surface that reads a direction and refuses Incoming with a 400. One
+     predicate, so the dialog's control, the read surfaces and the refusal copy
+     can never disagree. */
   termDirectionApplies(t, owner) {
-    const kind = (t && typeof t === 'object') ? t.kind : t;
-    return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract' && kind === 'Fee';
+    return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract';
   },
   // Why direction is refused here, in the words the 400 uses. Null = allowed.
   termDirectionRefusal(kind, ownerKind) {
     if (ownerKind !== 'contract') return 'Direction applies to a contract term. An account term is always money out.';
-    if (kind !== 'Fee') return 'Direction applies to a fee term only — a rate is a percentage, not a movement.';
     return null;
   },
   /* Mint wherever an INCOMING term's own value is printed. Outgoing returns

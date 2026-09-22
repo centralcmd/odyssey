@@ -57,6 +57,14 @@ export interface ComboboxProps {
   ariaLabel?: string;
   /** id of an element describing the input (help / error line) — aria-describedby. */
   ariaDescribedBy?: string;
+  /**
+   * Suggest, don't constrain: the value is a free string and the options are
+   * recognised names, not the only legal answers. A value matching no option
+   * still displays, and the typed query commits on blur (and on Enter when no
+   * row is highlighted) so a typed name is never silently dropped. Pair with
+   * `onCreate` when the new name deserves a visible row of its own.
+   */
+  freeText?: boolean;
   /** Flip the input to aria-invalid (paired with an error message). */
   invalid?: boolean;
   /** Mark the input aria-required — the visible marker belongs to the FieldShell. */

@@ -1,0 +1,38 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="TermHistoryChart" subtitle="StepChart with its head as the controls: a quiet § Terms multi-select (what is plotted) and a Change / Value axis toggle (how it reads). Owns the comparison rules — one unit per axis, colours that never repaint, a four-line cap." viewport="900x980" -->
+<html lang="en" data-theme="dark">
+<head>
+<title>Odyssey · TermHistoryChart</title>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="../components.css" />
+<style>html,body{margin:0;background:var(--mud-palette-background)}body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:28px 30px}.block{display:flex;flex-direction:column;gap:14px;margin-bottom:26px}.cap{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary)}.cap code{font-family:var(--font-mono);text-transform:none;letter-spacing:0;color:var(--brand-text)}</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+</head>
+<body>
+<div class="block"><div class="cap">Several terms <code>&lt;TermHistoryChart series /&gt;</code> — pick lines from § Terms; a percentage term replaces the selection rather than sharing a money axis</div><div id="root-a"></div></div>
+<div class="block"><div class="cap">One term <code>series.length === 1</code> — no picker, the axis toggle still applies</div><div id="root-b"></div></div>
+<script>
+(function () {
+  var e = React.createElement;
+  var T = (window.OdysseyDesignSystem_d5aa51 || {}).TermHistoryChart;
+  if (!T) { console.warn('TermHistoryChart missing from _ds_bundle.js — bundle not yet recompiled'); return; }
+  var usd = function (n) { return Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USD'; };
+  var usdAxis = function (n) { return (n < 0 ? '\u2212' : '') + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 10 ? 0 : 2 }); };
+  var pct = function (n) { return (n * 100).toFixed(2) + '%'; };
+  var OUT = { label: 'Outgoing', color: 'var(--finance-expense)' };
+  var money = function (s) { return Object.assign({ tone: OUT, color: OUT.color, group: 'amt:USD', format: usd, axisFormat: usdAxis }, s); };
+  var series = [
+    money({ key: 'rent', label: 'Monthly rent', value: '2,250.00 USD', points: [{ date: '2024-09-01', value: 2150 }, { date: '2025-09-01', value: 2250 }, { date: '2026-10-01', value: 2350 }] }),
+    money({ key: 'park', label: 'Parking space', value: '95.00 USD', points: [{ date: '2024-09-01', value: 85 }, { date: '2026-03-01', value: 95 }] }),
+    money({ key: 'clean', label: 'End-of-tenancy cleaning', value: '340.00 USD', points: [{ date: '2024-09-01', value: 300 }, { date: '2026-03-01', value: 340 }] }),
+    { key: 'arrears', label: 'Interest rate', value: '9.25%', tone: OUT, color: OUT.color, group: 'pct', format: pct, axisFormat: pct, points: [{ date: '2025-09-01', value: 0.08 }, { date: '2026-03-01', value: 0.0925 }] },
+  ];
+  ReactDOM.createRoot(document.getElementById('root-a')).render(e(T, { series: series }));
+  ReactDOM.createRoot(document.getElementById('root-b')).render(e(T, { series: [series[0]] }));
+})();
+</script>
+</body>
+</html>

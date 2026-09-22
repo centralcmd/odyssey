@@ -1645,9 +1645,20 @@
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
 .odc-ms-trigger:hover { border-color: var(--mud-palette-text-secondary); }
+/* Quiet — for a trigger that is a heading as much as a control (a chart's own
+   series picker). The chrome is withheld until it is wanted: no border or fill
+   at rest, both on hover, focus and while open, so the affordance appears the
+   moment the pointer or keyboard arrives. Padding never changes, so the label
+   does not shift under the cursor. */
+.odc-ms-trigger.quiet { border-color: transparent; background: transparent; }
+.odc-ms-trigger.quiet:hover { background: var(--mud-palette-action-default-hover); border-color: var(--mud-palette-divider); }
+.odc-ms-trigger.quiet[aria-expanded="true"] { background: var(--mud-palette-surface); }
 .odc-ms-trigger[aria-expanded="true"] { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
 .odc-ms-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .odc-ms-trigger .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+/* A typeset mark where the icon font has no glyph (§, №). Sized and coloured
+   to sit in the icon's slot, so a trigger reads the same either way. */
+.odc-ms-glyph { font: var(--fw-medium) 18px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-ms-count {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill);
@@ -1871,11 +1882,20 @@
 .odc-lc-ttl { font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
 .odc-lc-sub { font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 5px; max-width: 62ch; text-wrap: pretty; }
 .odc-lc-sub .odc-lc-note { display: block; margin-top: 4px; }
-.odc-lc-figure { text-align: right; white-space: nowrap; }
+.odc-lc-figure { text-align: right; white-space: nowrap; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+.odc-lc-controls { margin-bottom: 4px; }
+.odc-lc-controls.end { margin-bottom: 0; }
+/* TermHistoryChart — an option row reads name · value · direction: the figure
+   in its direction's colour, the direction named after it, muted. */
+.odc-thc-val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.odc-thc-dir { color: var(--mud-palette-text-secondary); }
 .odc-lc-num { font: var(--fw-medium) var(--fs-h6)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); white-space: nowrap; }
-.odc-lc-delta { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); margin-top: 5px; white-space: nowrap; }
+.odc-lc-delta { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); white-space: nowrap; }
 .odc-lc-delta.income  { color: var(--finance-income); }
 .odc-lc-delta.expense { color: var(--finance-expense); }
+/* Neutral delta — for a head whose figure already carries the colour meaning.
+   Matches .odc-lc-sub, so the change reads as a note on the figure. */
+.odc-lc-delta.neutral { color: var(--mud-palette-text-secondary); }
 .odc-lc-empty { padding: 28px 4px; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-line-svg { width: 100%; height: auto; display: block; }
 .odc-lc-axis { font: var(--fw-regular) 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
@@ -1893,6 +1913,28 @@
    points. Shape + stroke, never colour, is what distinguishes them. */
 .odc-lc-marks { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
 .odc-lc-mark { display: inline-flex; align-items: center; gap: 7px; font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* StepChart — the dated-value sibling of LineChart. It reuses .odc-lc wholesale
+   (card, head, figure, axis type) and adds only what a step-on-a-time-axis
+   needs: the staircase stroke, the not-yet-true dash, and the now marker. */
+.odc-sc-line { stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.odc-sc-line.future { stroke-dasharray: 2 5; }
+/* Informational marker, not a value line: 2px in device space so the 3:1 of
+   --chart-axis-strong survives the scaled viewBox. See .odc-lc-zero. */
+.odc-sc-now { stroke: var(--chart-axis-strong); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 2 4; }
+.odc-sc-nowlabel { letter-spacing: 0.06em; text-transform: uppercase; }
+/* Legend — the readout when several lines share the axis. */
+/* Aligned to the PLOT, not the card: the y-axis gutter is 64 of the 1000-unit
+   viewBox and the plot ends at 968, so percentage padding tracks both edges as
+   the SVG scales. Left-aligned — the rows read as a list, not a caption. */
+.odc-sc-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 4px 3.2% 2px 6.4%; }
+.odc-sc-leg { display: inline-flex; align-items: center; gap: 7px; }
+.odc-sc-swatch { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.odc-sc-leg-name { font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-sc-leg-val { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.odc-sc-leg-idx { font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); }
+/* A series with no line in the plot: nothing here promises a mark to find. */
+.odc-sc-leg.off .odc-sc-leg-val { color: var(--mud-palette-text-secondary); }
 
 /* Donut allocation panel — ring + legend ("ledger") + total row, ported from
    the kit's DonutPanel. The TOTAL lives at the foot of the legend, NOT in the

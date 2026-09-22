@@ -1,0 +1,157 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="StepChart" subtitle="The dated-value card — LineChart's shell with what a held value needs: a real time axis (unequal gaps stay unequal), a staircase line, a today marker the line holds solid up to and dashes past, a hollow dot on a scheduled entry, latest-vs-previous delta, `lines` to compare several histories, a `scale` (auto · indexed · absolute) the reader can switch, and `controls` / `controlsEnd` slots for a head that is its own controls. Backs TermHistoryChart." viewport="900x1980" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · StepChart</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../components.css" />
+  <style>
+    html, body { margin: 0; background: var(--mud-palette-background); }
+    body { font-family: var(--font-sans); color: var(--mud-palette-text-primary); padding: 28px 30px; }
+    .block { display: flex; flex-direction: column; gap: 14px; margin-bottom: 26px; }
+    .block:last-child { margin-bottom: 0; }
+    .cap {
+      font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+      letter-spacing: var(--tracking-caps); text-transform: uppercase;
+      color: var(--mud-palette-text-secondary);
+    }
+    .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
+    /* Charts go full width: at 424px a 1000-unit viewBox scales the 10px axis
+       type to under 4px, which hides the one thing this card is showing. Only
+       the SVG-less empty states pair up. */
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .stack { display: grid; gap: 16px; }
+    @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <div class="block">
+    <div class="cap">StepChart <code>&lt;StepChart series format showDelta /&gt;</code> — a rent with a scheduled increase, and an APR that has never changed</div>
+    <div id="root-a" class="stack"></div>
+  </div>
+  <div class="block">
+    <div class="cap">The time axis earns its keep <code>series[].date</code> — eight months of hold, then two changes in one quarter: unequal gaps stay unequal</div>
+    <div id="root-b"></div>
+  </div>
+  <div class="block">
+    <div class="cap">Comparing several histories <code>lines scale</code> — indexed change by default, because a 2,250 rent and a 95 parking space share no useful absolute axis; <b>Value</b> plots the real figures. The legend's move follows the axis</div>
+    <div id="root-d"></div>
+  </div>
+  <div class="block">
+    <div class="cap">Head as controls <code>controls controlsEnd showFigure={false}</code> — no title or figure: a control on each side, the legend carries the values</div>
+    <div id="root-e"></div>
+  </div>
+  <div class="block">
+    <div class="cap">Empty <code>emptyLabel</code> — a price with no entries has no line, and the copy says why</div>
+    <div id="root-c" class="two"></div>
+  </div>
+
+  <script>
+    (function () {
+      var e = React.createElement;
+      var StepChart = (window.OdysseyDesignSystem_d5aa51 || {}).StepChart;
+      var usd = function (n) { return Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USD'; };
+      var usdAxis = function (n) { return (n < 0 ? '\u2212' : '') + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 10 ? 0 : 2 }); };
+      var pct = function (n) { return (n * 100).toFixed(2) + '%'; };
+
+      var rent = [
+        { date: '2023-09-01', value: 2040 },
+        { date: '2024-09-01', value: 2150 },
+        { date: '2025-09-01', value: 2250 },
+        { date: '2026-10-01', value: 2350 },
+      ];
+      var apr = [{ date: '2023-06-01', value: 0.0649 }];
+      var fx = [
+        { date: '2025-01-01', value: 18.5 },
+        { date: '2025-09-01', value: 18.5 },
+        { date: '2026-06-15', value: 24 },
+        { date: '2026-08-01', value: 29.5 },
+      ];
+
+      ReactDOM.createRoot(document.getElementById('root-a')).render(
+        e(React.Fragment, null,
+          e(StepChart, {
+            title: 'Monthly rent',
+            sub: 'Fee · Outgoing · monthly · 3 changes since Sep \u201923 · in force since Sep 01, 2025 · 2,350.00 USD from Oct 01, 2026',
+            series: rent, color: 'var(--finance-expense)',
+            format: usd, axisFormat: usdAxis,
+            showDelta: true, deltaSuffix: 'vs Sep \u201924',
+            deltaTone: 'neutral', figureColor: 'var(--finance-expense)',
+            ariaLabel: 'Monthly rent over time',
+          }),
+          e(StepChart, {
+            title: 'Interest rate',
+            sub: 'Fixed APR · 60-month term · no changes yet · in force since Jun 01, 2023',
+            series: apr, color: 'var(--chart-3)',
+            format: pct, showDelta: true,
+            ariaLabel: 'Interest rate over time',
+          })
+        )
+      );
+
+      ReactDOM.createRoot(document.getElementById('root-b')).render(
+        e(StepChart, {
+          title: 'Storage · per pallet',
+          sub: 'Fee · Outgoing · per unit · 3 changes since Jan \u201925 · in force since Aug 01, 2026',
+          series: fx, color: 'var(--finance-expense)',
+          format: usd, axisFormat: usdAxis,
+          showDelta: true,
+          deltaSuffix: 'vs Jun \u201926',
+          textEquivalent: true,
+          ariaLabel: 'Storage charge per pallet over time',
+        })
+      );
+
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var LINES = [
+            { id: 'rent', label: 'Monthly rent', color: 'var(--chart-1)', points: rent },
+            { id: 'svc', label: 'Service charge', color: 'var(--chart-2)', points: [
+              { date: '2023-09-01', value: 180 }, { date: '2025-03-01', value: 215 }, { date: '2026-03-01', value: 240 }] },
+            { id: 'park', label: 'Parking', color: 'var(--chart-4)', points: [
+              { date: '2024-01-01', value: 120 }, { date: '2026-01-01', value: 145 }] },
+      ];
+      function ScaleDemo() {
+        var st = React.useState('indexed'), scale = st[0], setScale = st[1];
+        return e(StepChart, {
+          controlsEnd: e(NS.SegmentedControl, { ariaLabel: 'Y-axis', value: scale, onChange: setScale,
+            options: [{ value: 'indexed', label: 'Change' }, { value: 'absolute', label: 'Value' }] }),
+          title: 'Rent, service charge, parking',
+          lines: LINES, scale: scale,
+          format: usd, axisFormat: usdAxis,
+          ariaLabel: 'Rent, service charge and parking over time',
+        });
+      }
+      ReactDOM.createRoot(document.getElementById('root-d')).render(e(ScaleDemo));
+      ReactDOM.createRoot(document.getElementById('root-e')).render(
+        e(StepChart, {
+          controls: e('span', { style: { font: 'var(--fw-medium) var(--fs-body)/1.4 var(--font-sans)' } }, 'Any control \u2014 a picker, a range'),
+          controlsEnd: e(NS.SegmentedControl, { ariaLabel: 'Y-axis', value: 'absolute', options: [{ value: 'indexed', label: 'Change' }, { value: 'absolute', label: 'Value' }] }),
+          showFigure: false,
+          lines: [LINES[0]],
+          format: usd, axisFormat: usdAxis,
+          ariaLabel: 'Monthly rent over time',
+        })
+      );
+
+      ReactDOM.createRoot(document.getElementById('root-c')).render(
+        e(React.Fragment, null,
+          e(StepChart, {
+            title: 'Monthly rent', sub: 'Fee · monthly · USD', series: [],
+            emptyLabel: 'No entries yet \u2014 record what this charge costs, effective from a date.',
+            ariaLabel: 'Monthly rent over time, no data',
+          }),
+          e(StepChart, {
+            title: 'Interest rate', sub: 'Annual · percentage', series: [],
+            emptyLabel: 'This contract carries no interest rate.',
+            ariaLabel: 'Interest rate over time, no data',
+          })
+        )
+      );
+    })();
+  </script>
+</body>
+</html>

@@ -6,6 +6,10 @@
  * active selections; the popover is a checkbox list with Clear / Done.
  * Outside-click and Esc close it.
  *
+ * An option's `label` may be a node when a row needs more than one voice (a
+ * coloured figure beside muted qualifying text); give such a row a plain
+ * `text` so search still has something to match.
+ *
  * The popover is portaled to <body> and positioned against the trigger, so it
  * escapes any overflow:hidden/auto ancestor (the filter card, a scrollable
  * header) instead of being clipped — and flips above the trigger when there
@@ -98,6 +102,10 @@ export function MultiSelect({
   onChange,
   options = [],
   icon,
+  /* A literal character used as the mark instead of an icon ligature — for
+     marks the icon font has no glyph for (§, №, ‰). Typeset, not drawn. */
+  glyph,
+  quiet = false,
   align = 'start',
   /* Search follows the same contract as TagMultiSelect's: the same box, the same
      row list beneath it. On by default once the list is long enough to be worth
@@ -114,7 +122,7 @@ export function MultiSelect({
   const [query, setQuery] = React.useState('');
   const searchOn = searchable != null ? searchable : opts.length > 8;
   const q = query.trim().toLowerCase();
-  const filtered = q ? opts.filter((o) => o.label.toLowerCase().includes(q)) : opts;
+  const filtered = q ? opts.filter((o) => (o.text != null ? String(o.text) : String(o.label || '')).toLowerCase().includes(q)) : opts;
 
   React.useEffect(() => { if (!open) setQuery(''); }, [open]);
 
@@ -200,12 +208,13 @@ export function MultiSelect({
     <div className="odc-ms" ref={anchorRef}>
       <button
         type="button"
-        className="odc-ms-trigger"
+        className={`odc-ms-trigger${quiet ? ' quiet' : ''}`}
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        {icon ? <span className="material-icons" aria-hidden="true">{icon}</span> : null}
+        {glyph ? <span className="odc-ms-glyph" aria-hidden="true">{glyph}</span>
+          : icon ? <span className="material-icons" aria-hidden="true">{icon}</span> : null}
         <span>{label}</span>
         {value.length ? <span className="odc-ms-count">{value.length}</span> : null}
         <span className="material-icons" aria-hidden="true">expand_more</span>

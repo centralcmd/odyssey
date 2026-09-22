@@ -443,8 +443,8 @@
         "message": "<MoneyCurrencyOption> doesn't accept that prop. Declared props: value, label."
       },
       {
-        "selector": "JSXOpeningElement[name.name='MultiSelectOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|icon|iconColor|key|ref|className|style|children)$/]",
-        "message": "<MultiSelectOption> doesn't accept that prop. Declared props: value, label, icon, iconColor."
+        "selector": "JSXOpeningElement[name.name='MultiSelectOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|text|icon|iconColor|key|ref|className|style|children)$/]",
+        "message": "<MultiSelectOption> doesn't accept that prop. Declared props: value, label, text, icon, iconColor."
       },
       {
         "selector": "JSXOpeningElement[name.name='NoteField'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|value|onChange|placeholder|maxLength|rows|showCount|help|error|required|optional|disabled|autoFocus|className|id|key|ref|className|style|children)$/]",
@@ -663,6 +663,10 @@
         "message": "<StatTile> valueClass must be one of '' | 'income' | 'expense'."
       },
       {
+        "selector": "JSXOpeningElement[name.name='StepChartPoint'] > JSXAttribute > JSXIdentifier[name!=/^(?:date|value|id|note|key|ref|className|style|children)$/]",
+        "message": "<StepChartPoint> doesn't accept that prop. Declared props: date, value, id, note."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='StepperField'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|value|onChange|unit|unitPlural|min|max|step|help|error|required|optional|disabled|autoFocus|className|id|key|ref|className|style|children)$/]",
         "message": "<StepperField> doesn't accept that prop. Declared props: label, value, onChange, unit, unitPlural, min, max, step, help, error, required, optional, disabled, autoFocus, className, id."
       },
@@ -705,6 +709,10 @@
       {
         "selector": "JSXOpeningElement[name.name='TaxStatementFileType'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|key|ref|className|style|children)$/]",
         "message": "<TaxStatementFileType> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='TermHistorySeries'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|value|tone|color|group|points|format|axisFormat|key|ref|className|style|children)$/]",
+        "message": "<TermHistorySeries> doesn't accept that prop. Declared props: key, label, value, tone, color, group, points, format, axisFormat."
       },
       {
         "selector": "JSXOpeningElement[name.name='TextInputField'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|value|onChange|placeholder|maxLength|showCount|inputMode|autoComplete|spellCheck|help|error|required|optional|disabled|autoFocus|className|id|ariaLabelledBy|ariaDescribedBy|key|ref|className|style|children)$/]",
@@ -1086,6 +1094,9 @@
       "StatTile": {
         "replaces": []
       },
+      "StepChartPoint": {
+        "replaces": []
+      },
       "StepperField": {
         "replaces": []
       },
@@ -1111,6 +1122,9 @@
         "replaces": []
       },
       "TaxStatementFileType": {
+        "replaces": []
+      },
+      "TermHistorySeries": {
         "replaces": []
       },
       "TextInputField": {

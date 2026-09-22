@@ -31,6 +31,62 @@ const CTM_CURRENCIES = (window.OdysseyData.currencies || [])
 
 const ctmFracToPctStr = (f) => String(Number((f * 100).toFixed(4)));
 
+/* ---- The name field's suggestions ----
+
+   There is no term-name table to read: a name is a free string, and the series
+   it keys — (owner, kind, labelKey) — exists only because entries share it. So
+   the list is DERIVED from this contract's own term history, one row per
+   distinct labelKey of the kind being written, and nothing else: a name from
+   another contract is not a name this one has used, and offering it invites a
+   series that starts by looking like a correction to something it isn't.
+
+   Each row carries what the reader needs to recognise the series rather than
+   the string — its value in force and its cadence ('2,250 USD · monthly'). The
+   note is derived from the LATEST entry on or before today; a series whose only
+   entries are future-dated reads 'scheduled', and a one-time charge already in
+   the past reads as the one-off it was. The design system has no "ended" flag
+   on a term, so nothing here claims one.
+
+   Picking a row and typing a new name are two different writes, and the help
+   line under the field says which one is about to happen. Both remain legal:
+   the field suggests, it never constrains. */
+const ctmNameOptions = (existing, kind, currentId) => {
+  const H = window.OdysseyHelpers;
+  const today = new Date().toISOString().slice(0, 10);
+  const bySeries = {};
+  for (const t of existing) {
+    if (t.kind !== kind || t.id === currentId) continue;
+    const key = t.labelKey || H.termLabelKey(t.label);
+    if (!key) continue;
+    const s = bySeries[key] || (bySeries[key] = { key, label: t.label, entries: [] });
+    s.entries.push(t);
+    // The display form follows the newest entry — a later spelling is the
+    // one the user last chose to write.
+    if (t.effectiveFrom >= (s.newest || '')) { s.newest = t.effectiveFrom; s.label = t.label; }
+  }
+  return Object.values(bySeries)
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .map(s => {
+      const sorted = s.entries.slice().sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? -1 : 1));
+      const inForce = sorted.filter(t => t.effectiveFrom <= today).pop();
+      const t = inForce || sorted[sorted.length - 1];
+      const amount = t.unit === 'Percentage'
+        ? `${ctmFracToPctStr(t.value)}%`
+        : H.money(t.value, t.currency || H.defaultCurrency());
+      const cadence = H.cadenceTextFor(t);
+      const parts = [amount];
+      if (cadence) parts.push(cadence);
+      else if (t.interval === 'OneTime') parts.push('one-time');
+      if (!inForce) parts.push(`from ${t.effectiveFrom}`);
+      return {
+        value: s.label,
+        label: s.label,
+        icon: inForce ? undefined : 'schedule',
+        note: parts.join(' · '),
+      };
+    });
+};
+
 const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }) => {
   const { useState } = React;
   const D = window.OdysseyData;
@@ -85,9 +141,9 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
       interval: ki.group === 'fee' ? (d.interval || D.defaultFeeInterval) : '',
       intervalCount: ki.group === 'fee' ? d.intervalCount : '',
       anchorDate: ki.group === 'fee' ? d.anchorDate : '',
-      // A rate carries no direction (a percentage is not a movement), so the
-      // answer is dropped rather than carried into a field that refuses it.
-      direction: ki.key === 'Fee' ? d.direction : 'Outgoing',
+      // Direction survives a kind change: an arrears rate and a late-payment
+      // fee are both money out, so the answer already given still holds.
+      direction: d.direction,
     }));
     setErrors({});
   };
@@ -137,7 +193,7 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
       ? `“${label}” already has an entry on that date.`
       : 'This contract already has an interest rate on that date.';
 
-    if (draft.direction === 'Incoming' && draft.kind !== 'Fee') {
+    if (draft.direction === 'Incoming' && !H.termDirectionApplies({ kind: draft.kind, contractId: contract.id }, null)) {
       next.direction = H.termDirectionRefusal(draft.kind, 'contract');
     }
 
@@ -154,13 +210,19 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
       interval: isRate ? null : (draft.interval || null),
       intervalCount: !isRate && periodic ? (count == null ? 1 : count) : null,
       anchorDate: isRate ? null : (draft.anchorDate || null),
-      direction: draft.kind === 'Fee' ? draft.direction : 'Outgoing',
+      direction: draft.direction,
       effectiveFrom: draft.effectiveFrom,
       label,
       labelKey: key,
       note: draft.note.trim() || null,
     }, term && term.id);
   };
+
+  /* The name field's two outcomes, resolved on the SAME key the duplicate guard
+     and the server use — so what the help line promises is what gets written. */
+  const nameOptions = labelRule === 'hidden' ? [] : ctmNameOptions(existing, draft.kind, term && term.id);
+  const draftKey = H.termLabelKey(draft.label);
+  const matchedSeries = draftKey ? nameOptions.find(o => H.termLabelKey(o.value) === draftKey) : null;
 
   const cadence = isRate ? null : H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
   const dirInfo = H.termDirectionInfo(draft.direction);
@@ -217,17 +279,41 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
         {errors.kind && <div className="helper aam-err">{errors.kind}</div>}
       </div>
 
-      {/* Name — the series label. Required on every fee; refused on a rate. */}
+      {/* Name — the series label. Required on every fee; refused on a rate.
+
+         A free string, but not an unaided one: the field suggests the names
+         this contract has already used for this kind, because the name is what
+         decides whether this entry JOINS an existing price history or STARTS
+         one. Typing it exactly was the only way to join before; now it is a
+         pick, and the help line names the consequence either way. `freeText`
+         keeps a new name a first-class answer rather than a fallback. */}
       {labelRule !== 'hidden' && (
-        <Field
+        <FieldShell
           label="Name"
+          htmlFor="ctm-label"
           required={labelRule === 'required'}
-          value={draft.label}
-          onChange={set('label')}
-          placeholder="e.g. Monthly rent"
           error={errors.label}
-          help="Names this charge so it keeps its own history, separate from the contract's other charges."
-        />
+          help={errors.label ? undefined : (matchedSeries
+            ? <React.Fragment>Joins the price history of <b>{matchedSeries.label}</b> — currently {matchedSeries.note}. This entry supersedes it from the effective date.</React.Fragment>
+            : (draft.label.trim()
+              ? <React.Fragment>Starts a <b>new charge</b> on this contract, with its own history separate from the others.</React.Fragment>
+              : 'Pick a charge this updates, or type a new name to start one.'))}>
+          <Combobox
+            id="ctm-label"
+            freeText
+            clearable
+            value={draft.label}
+            onChange={set('label')}
+            options={nameOptions}
+            onCreate={(text) => text}
+            createLabel="New charge"
+            placeholder="e.g. Monthly rent"
+            ariaLabel="Name"
+            required={labelRule === 'required'}
+            invalid={!!errors.label}
+            emptyText={nameOptions.length ? 'No matching charge — type to name a new one' : 'No charges yet — type a name'}
+          />
+        </FieldShell>
       )}
 
       {/* Direction — which way the money moves, from the HOUSEHOLD's side, not
@@ -235,16 +321,8 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
          slot a sign would occupy: the record stores a direction, not a sign, so
          the word is the sign (see MoneyField / AmountField `directionOptions`).
          Both units carry the same lead, so there is exactly ONE control for the
-         value whichever way it is priced. A rate kind gets the refusal instead. */}
-      {draft.kind !== 'Fee' ? (
-        <div className="field trm-dir-field">
-          <div className="label">Direction</div>
-          <div className="trm-dir-refused">
-            <MIcon name="block" size={15} />
-            <span>{H.termDirectionRefusal(draft.kind, 'contract')} It is recorded as <b>outgoing</b>, where it carries no meaning.</span>
-          </div>
-        </div>
-      ) : null}
+         value whichever way it is priced — and a rate is asked the same way a
+         fee is, because an arrears rate charges and a deposit rate pays. */}
 
       {/* Unit + Value */}
       <div className="trm-value-block">
@@ -275,19 +353,18 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
             autoFocus
             value={draft.valueStr}
             onChange={set('valueStr')}
-            /* A percentage fee is money too: it carries the same direction lead
-               as an amount, so the two units are one control with one unit
-               swapped rather than two differently-shaped questions. */
-            direction={draft.kind === 'Fee' ? draft.direction : undefined}
-            onDirectionChange={draft.kind === 'Fee' ? set('direction') : undefined}
+            /* A percentage is money too — a fee priced as a share, or a rate
+               that charges or pays — so it carries the same direction lead as
+               an amount: one control with one unit swapped, never two
+               differently-shaped questions. */
+            direction={draft.direction}
+            onDirectionChange={set('direction')}
             directionOptions={DIR_OPTIONS}
-            tone={draft.kind === 'Fee' ? dirInfo.tone : undefined}
+            tone={dirInfo.tone}
             error={errors.value}
             help={errors.value ? undefined : (
               <React.Fragment>
-                {draft.kind === 'Fee'
-                  ? <React.Fragment><b>{dirInfo.label}</b> — {dirInfo.sentence}. Click <b>{dirInfo.short}</b> to switch. </React.Fragment>
-                  : null}
+                <b>{dirInfo.label}</b> — {dirInfo.sentence}. Click <b>{dirInfo.short}</b> to switch.{' '}
                 Stored as a fraction: <b>{previewFrac == null ? '—' : previewFrac.toFixed(4)}</b>{isRate ? ' · annual' : ''}
               </React.Fragment>
             )}
@@ -301,12 +378,12 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
             value={draft.valueStr}
             onChange={set('valueStr')}
             /* The lead is the DIRECTION, not a sign: the amount stays positive
-               and the arrow carries the meaning — one control for the value, the
-               way it is one field on the record. Only a fee has one. */
-            direction={draft.kind === 'Fee' ? draft.direction : undefined}
-            onDirectionChange={draft.kind === 'Fee' ? set('direction') : undefined}
+               and the word carries the meaning — one control for the value, the
+               way it is one field on the record. */
+            direction={draft.direction}
+            onDirectionChange={set('direction')}
             directionOptions={DIR_OPTIONS}
-            tone={draft.kind === 'Fee' ? dirInfo.tone : undefined}
+            tone={dirInfo.tone}
             currency={draft.currency}
             onCurrencyChange={set('currency')}
             currencyOptions={CTM_CURRENCIES}

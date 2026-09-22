@@ -33,6 +33,9 @@
  * single caption string. `xTickEvery="auto"` picks a stride that never leaves
  * two adjacent labels at the tail.
  *
+ * For a value that HOLDS between dated changes — a price, a rate, a term — use
+ * `StepChart` instead: same card, real time axis, staircase, today marker.
+ *
  * Pure SVG + tokens (default stroke --chart-1) so it re-themes light/dark.
  * Styled by .odc-lc / .odc-line-svg in components.css.
  */
@@ -181,7 +184,7 @@ export function LineChart({
         <g className="odc-lc-axis">
           {gridVals.map((v, i) => (
             <text key={i} x={x0 - 12} y={(sy(v) + 4).toFixed(1)} textAnchor="end"
-              className={v === 0 ? 'odc-lc-axis-zero' : undefined}>{fmtAxis(Math.round(v))}</text>
+              className={v === 0 ? 'odc-lc-axis-zero' : undefined}>{fmtAxis(Math.abs(yMax) < 10 ? v : Math.round(v))}</text>
           ))}
         </g>
         <g className="odc-lc-axis">

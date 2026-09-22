@@ -74,6 +74,12 @@
 .trm-delta.flat { color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-default-hover); }
 
 .trm-chart-wrap { padding: 2px 12px 14px; }
+
+/* The DS TermHistoryChart above a contract's history table. */
+.trm-seriesplot { margin-bottom: 14px; }
+/* The chart card sits directly above the history table inside a contract
+   record's section, so the block owns the gap between them. */
+.con-section .odc-lc { margin-bottom: 0; }
 .trm-chart { display: block; width: 100%; height: auto; overflow: visible; }
 .trm-chart .grid { stroke: var(--chart-grid); stroke-width: 1; }
 .trm-chart .axis { font: 400 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }

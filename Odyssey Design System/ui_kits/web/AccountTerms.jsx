@@ -97,7 +97,11 @@ const clipPts = (pts, bound, keepBelow) => {
 };
 const ptsToPath = (pts) => pts.length ? 'M ' + pts.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ') : '';
 
-const TermStepChart = ({ series, color }) => {
+/* `fmtAxis` lets a caller label the value axis in its own unit — a contract's
+   terms are usually AMOUNTS, not rates, and an axis reading "2.7%" beside a
+   monthly rent is simply wrong. Percentage is the default, so the account hero
+   is unchanged. */
+const TermStepChart = ({ series, color, fmtAxis, ariaLabel }) => {
   const W = 680, Hh = 210;
   const padL = 48, padR = 18, padT = 16, padB = 28;
   const plotW = W - padL - padR;
@@ -114,7 +118,15 @@ const TermStepChart = ({ series, color }) => {
 
   const vals = series.map(s => s.value);
   let lo = Math.min(...vals), hi = Math.max(...vals);
-  if (lo === hi) { lo -= 0.005; hi += 0.005; }      // single value → centered band
+  /* One entry — a series that has never changed — has no range, so the band is
+     invented. It has to be invented PROPORTIONALLY: a fixed ±0.005 is half a
+     point around a rate (right) and two hundredths of a cent around a rent
+     (fake precision on a flat line). Rates are stored as fractions below 1, so
+     the magnitude rule leaves every rate chart exactly as it was. */
+  if (lo === hi) {
+    const band = Math.abs(lo) >= 1 ? Math.abs(lo) * 0.05 : 0.005;
+    lo -= band; hi += band;
+  }
   const padV = (hi - lo) * 0.35;
   lo = lo - padV; hi = hi + padV;   // no 0-clamp: a loan's rate range is negative
   const y = (v) => padT + plotH - ((v - lo) / (hi - lo)) * plotH;
@@ -143,7 +155,7 @@ const TermStepChart = ({ series, color }) => {
   const fillId = `trmfill-${series[0].id}`;
 
   return (
-    <svg className="trm-chart" viewBox={`0 0 ${W} ${Hh}`} role="img" aria-label="Rate history">
+    <svg className="trm-chart" viewBox={`0 0 ${W} ${Hh}`} role="img" aria-label={ariaLabel || 'Rate history'}>
       <defs>
         <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.20" />
@@ -155,7 +167,7 @@ const TermStepChart = ({ series, color }) => {
       {yticks.map((v, i) => (
         <g key={i}>
           <line className="grid" x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} />
-          <text className="axis" x={padL - 8} y={y(v) + 3} textAnchor="end">{(v < 0 ? '−' : '') + H.pctStr(Math.abs(v))}</text>
+          <text className="axis" x={padL - 8} y={y(v) + 3} textAnchor="end">{fmtAxis ? fmtAxis(v) : (v < 0 ? '−' : '') + H.pctStr(Math.abs(v))}</text>
         </g>
       ))}
 
@@ -588,5 +600,5 @@ const AccountTerms = ({ account, summaryStyle = 'tiles', historyStyle = 'table',
 
 Object.assign(window, {
   AccountTerms, TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermName, CadenceTag, TermDirectionTag,
-  trmCurrentFromList, trmSeriesFromList, trmKindInfo, trmToday, trmKey,
+  trmCurrentFromList, trmSeriesFromList, trmKindInfo, trmToday, trmKey, trmMonY,
 });

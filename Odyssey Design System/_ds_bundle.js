@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"531834823401","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"46b26ed2e8d0","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"548f677572e7","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"1339711416cc","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"b1b8f8d5a66f","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"aa97741b0573","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"8e5c6844d774","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"e9580b161e9b","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"dae784c8e0e1","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"92918d09c235","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"5c790e9006b9","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"247fb5488f6f","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"dec78e8f4c8d","ui_kits/web/Contracts.jsx":"a624c5933944","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5118424de926","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"80c686ed592f","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"f4d098849ff3","ui_kits/web/contracts-data.js":"c3c6b6e871c5","ui_kits/web/data.js":"abd2effadf45","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/system-settings-data.js":"b7eea7ed2b3c","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"46b26ed2e8d0","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"548f677572e7","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"77a2688a5486","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d56735c7fe2d","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"5a8b2c825711","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"0750ad0a7cc4","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"8e5c6844d774","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"e9580b161e9b","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"ecfd7d13a4df","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"92918d09c235","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"5c790e9006b9","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"247fb5488f6f","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"76653fd8e15b","ui_kits/web/Contracts.jsx":"a624c5933944","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5118424de926","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"80c686ed592f","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"f4d098849ff3","ui_kits/web/contracts-data.js":"2c266f32ebab","ui_kits/web/data.js":"e6ef05cc5fba","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/system-settings-data.js":"b7eea7ed2b3c","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -3013,6 +3013,12 @@ try { (() => {
  * operable clear (×) button once a value is chosen, clearing to '' via
  * onChange. `loading` shows an announced loading row in place of results.
  *
+ * `freeText` turns it into a SUGGEST-don't-constrain field: the value is a
+ * string the user may type freely, and the options are recognised names rather
+ * than the only legal answers. The typed query commits on blur and on Enter
+ * when no row is highlighted, so a name that is never explicitly picked is not
+ * silently dropped — the one behaviour a constrained select must NOT have.
+ *
  * The option list is portaled to <body> and positioned against the input, so
  * it escapes any overflow:hidden/auto ancestor (a modal body, card, or
  * scrollable form) instead of being clipped — and flips above the field when
@@ -3154,7 +3160,8 @@ function Combobox({
   ariaLabel,
   ariaDescribedBy,
   invalid = false,
-  required = false
+  required = false,
+  freeText = false
 }) {
   const autoId = React.useId();
   const fieldId = id || autoId;
@@ -3162,7 +3169,12 @@ function Combobox({
     value: o,
     label: o
   } : o);
-  const selected = opts.find(o => o.value === value);
+  // In freeText mode a value that matches no option is still the value — it is
+  // a name the user typed, not an invalid selection.
+  const selected = opts.find(o => o.value === value) || (freeText && value ? {
+    value,
+    label: value
+  } : undefined);
   const showClear = clearable && !!selected && !disabled;
   const {
     open,
@@ -3238,6 +3250,21 @@ function Combobox({
     }
     closeAndClear();
   };
+
+  // freeText: the query IS an answer. Committing it on blur is what separates
+  // "suggests" from "constrains".
+  const commitQuery = () => {
+    if (!freeText) return false;
+    const t = query.trim();
+    if (!t) return false;
+    const hit = opts.find(o => o.label.toLowerCase() === t.toLowerCase());
+    const opt = hit || {
+      value: t,
+      label: t
+    };
+    if (onChange && opt.value !== value) onChange(opt.value, opt);
+    return true;
+  };
   const onKey = e => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -3255,7 +3282,7 @@ function Combobox({
     } else if (e.key === 'Enter') {
       if (!open) return;
       e.preventDefault();
-      if (showCreate && active >= filtered.length) create(createRows[active - filtered.length]);else if (filtered[active]) pick(filtered[active]);
+      if (showCreate && active >= filtered.length) create(createRows[active - filtered.length]);else if (filtered[active]) pick(filtered[active]);else if (commitQuery()) closeAndClear();
     } else if (e.key === 'Escape') {
       // Stop propagation so Esc dismisses only the popover — an enclosing
       // Modal keeps its own Esc for the next press.
@@ -3303,7 +3330,10 @@ function Combobox({
       setOpen(true);
       setActive(0);
     },
-    onKeyDown: onKey
+    onKeyDown: onKey,
+    onBlur: () => {
+      if (commitQuery()) closeAndClear();else if (freeText) setOpen(false);
+    }
   }), showClear ? /*#__PURE__*/React.createElement("button", {
     type: "button",
     className: "odc-input-clear",
@@ -8559,6 +8589,9 @@ try { (() => {
  * single caption string. `xTickEvery="auto"` picks a stride that never leaves
  * two adjacent labels at the tail.
  *
+ * For a value that HOLDS between dated changes — a price, a rate, a term — use
+ * `StepChart` instead: same card, real time axis, staircase, today marker.
+ *
  * Pure SVG + tokens (default stroke --chart-1) so it re-themes light/dark.
  * Styled by .odc-lc / .odc-line-svg in components.css.
  */
@@ -8714,7 +8747,7 @@ function LineChart({
     y: (sy(v) + 4).toFixed(1),
     textAnchor: "end",
     className: v === 0 ? 'odc-lc-axis-zero' : undefined
-  }, fmtAxis(Math.round(v))))), /*#__PURE__*/React.createElement("g", {
+  }, fmtAxis(Math.abs(yMax) < 10 ? v : Math.round(v))))), /*#__PURE__*/React.createElement("g", {
     className: "odc-lc-axis"
   }, pts.map((p, i) => (i % every === 0 || i === pts.length - 1) && /*#__PURE__*/React.createElement("text", {
     key: i,
@@ -10054,6 +10087,10 @@ try { (() => {
  * active selections; the popover is a checkbox list with Clear / Done.
  * Outside-click and Esc close it.
  *
+ * An option's `label` may be a node when a row needs more than one voice (a
+ * coloured figure beside muted qualifying text); give such a row a plain
+ * `text` so search still has something to match.
+ *
  * The popover is portaled to <body> and positioned against the trigger, so it
  * escapes any overflow:hidden/auto ancestor (the filter card, a scrollable
  * header) instead of being clipped — and flips above the trigger when there
@@ -10181,6 +10218,10 @@ function MultiSelect({
   onChange,
   options = [],
   icon,
+  /* A literal character used as the mark instead of an icon ligature — for
+     marks the icon font has no glyph for (§, №, ‰). Typeset, not drawn. */
+  glyph,
+  quiet = false,
   align = 'start',
   /* Search follows the same contract as TagMultiSelect's: the same box, the same
      row list beneath it. On by default once the list is long enough to be worth
@@ -10208,7 +10249,7 @@ function MultiSelect({
   const [query, setQuery] = React.useState('');
   const searchOn = searchable != null ? searchable : opts.length > 8;
   const q = query.trim().toLowerCase();
-  const filtered = q ? opts.filter(o => o.label.toLowerCase().includes(q)) : opts;
+  const filtered = q ? opts.filter(o => (o.text != null ? String(o.text) : String(o.label || '')).toLowerCase().includes(q)) : opts;
   React.useEffect(() => {
     if (!open) setQuery('');
   }, [open]);
@@ -10294,11 +10335,14 @@ function MultiSelect({
     ref: anchorRef
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
-    className: "odc-ms-trigger",
+    className: `odc-ms-trigger${quiet ? ' quiet' : ''}`,
     "aria-haspopup": "true",
     "aria-expanded": open,
     onClick: () => setOpen(o => !o)
-  }, icon ? /*#__PURE__*/React.createElement("span", {
+  }, glyph ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-ms-glyph",
+    "aria-hidden": "true"
+  }, glyph) : icon ? /*#__PURE__*/React.createElement("span", {
     className: "material-icons",
     "aria-hidden": "true"
   }, icon) : null, /*#__PURE__*/React.createElement("span", null, label), value.length ? /*#__PURE__*/React.createElement("span", {
@@ -14469,6 +14513,475 @@ function StatTile({
 Object.assign(__ds_scope, { StatTile });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/StatTile.jsx", error: String((e && e.message) || e) }); }
 
+// components/StepChart.jsx
+try { (() => {
+/**
+ * Odyssey DS — StepChart
+ * The dated-value chart: a price, a rate, a term. Sibling of `LineChart`, and
+ * deliberately the same card — identical head (title · sub, figure · delta),
+ * viewBox, gridlines, axis type and typography, so a term chart and the
+ * dashboard's net worth read as one chart vocabulary. What differs is the two
+ * things a trend chart gets wrong about a held value:
+ *
+ *   • **A real time axis.** `LineChart` spaces its points evenly, which is
+ *     right for twelve monthly readings and wrong for a history whose entries
+ *     land whenever someone signed something: a rent held for eight months and
+ *     then twice in one quarter must not read as three equal steps.
+ *   • **Today.** A value in force continues to the present, and an entry dated
+ *     ahead has not happened yet. The line holds solid to the now marker and
+ *     dashes past it, so a scheduled increase is visibly not yet true.
+ *
+ * The line is a STAIRCASE by construction — the value holds until the day it
+ * changes, then jumps. There is no smoothing option, because a price does not
+ * drift.
+ *
+ * Data is `series: { date, value, id?, note? }[]` (ISO dates, oldest → newest),
+ * or `lines: { id, label, color, points }[]` to compare SEVERAL histories.
+ *
+ * `lines` mode plots **indexed change** by default — each series as its
+ * percentage move from its own first entry — rather than absolute values on a
+ * shared axis. A lease's rent is 2,250 and its parking is 95; on one absolute
+ * axis the largest series owns the domain and everything else collapses onto
+ * the floor, two lines 5px apart reading as one band. Indexing is usually the
+ * question being asked of several price histories at once: which is rising
+ * fastest. `scale` overrides that either way, for a reader who wants the
+ * magnitudes of several or the shape of one — the choice belongs to them, so
+ * expose it rather than deciding once. The legend carries each line's real
+ * value in force and its move whichever axis is showing, so the money is
+ * never lost, and its move is stated in whatever unit the axis is speaking.
+ * Callers must still only overlay series sharing a unit and a
+ * currency — the component cannot know that, and the legend's figures would
+ * mix.
+ *
+ * The head's single figure is replaced by that legend in `lines` mode, and the
+ * area fill is dropped: two translucent washes over each other read as a third
+ * value that isn't there. A series that has never changed still plots — flat
+ * at 0% beside a rising line is an answer to "which of these is moving" — and
+ * because indexed mode starts every line at 0%, all lines are fanned by a hair
+ * so shared spans never collapse into one visible stroke. The legend shows in both modes — with one series it adds the move
+ * since the first entry, which neither the head figure (today's value) nor the
+ * delta (the last change) states.
+ *
+ * `format` renders the headline figure and, absent `axisFormat`, the y ticks.
+ * Every figure the card states — head, delta, legend, text equivalent — is the
+ * value **in force**: the latest entry that has already taken effect. A
+ * scheduled entry is drawn (hollow dot, dashed line) and belongs in `sub`, but
+ * it is not what the thing costs, so it never headlines. The delta is
+ * **in-force vs the entry before it**, not vs the first: the question a price
+ * history answers is what just changed, and the earliest entry is often years
+ * of irrelevance away. A single-entry series is a flat hold, not an error — it
+ * is a value that has never changed.
+ *
+ * `figureColor` carries the figure's own meaning (a term's direction: money
+ * out is money out whether it rose or fell), which leaves the delta free to be
+ * `deltaTone="neutral"` grey. That pairing is usually right here: on an
+ * expense, an increase is not income-green, and colouring both fights over
+ * one meaning.
+ *
+ * Styled by .odc-lc (shared) + .odc-sc-* in components.css.
+ */
+const SC_DAY = 86400000;
+const scMs = iso => new Date(iso + 'T00:00:00').getTime();
+const scMonY = iso => {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-US', {
+    month: 'short'
+  }) + ' \u2019' + String(d.getFullYear()).slice(2);
+};
+
+/** Clip an axis-aligned polyline to x ≤ bound (or x ≥ bound), interpolating the
+ *  crossing so the solid/dashed split lands exactly on the now marker. */
+function scClip(pts, bound, keepBelow) {
+  const out = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const inside = keepBelow ? p.x <= bound : p.x >= bound;
+    if (i > 0) {
+      const prev = pts[i - 1];
+      const prevInside = keepBelow ? prev.x <= bound : prev.x >= bound;
+      if (inside !== prevInside) {
+        out.push(prev.x === p.x ? {
+          x: bound,
+          y: inside ? prev.y : p.y
+        } : {
+          x: bound,
+          y: prev.y + (p.y - prev.y) * ((bound - prev.x) / (p.x - prev.x))
+        });
+      }
+    }
+    if (inside) out.push(p);
+  }
+  return out;
+}
+const scPath = pts => pts.length ? 'M ' + pts.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ') : '';
+const scSort = pts => (pts || []).filter(p => p && p.value != null && p.date).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+function StepChart({
+  series = [],
+  lines,
+  scale = 'auto',
+  color = 'var(--chart-1)',
+  title,
+  sub,
+  format = n => n.toLocaleString(),
+  axisFormat,
+  showDelta = false,
+  showFigure = true,
+  deltaSuffix,
+  deltaTone = 'signed',
+  figure,
+  figureColor,
+  area = true,
+  controls,
+  controlsEnd,
+  nowLabel = 'Today',
+  textEquivalent = false,
+  textEquivalentLabel = 'Effective from',
+  ariaLabel,
+  className = '',
+  emptyLabel = 'No entries yet.'
+}) {
+  const uid = React.useId();
+  const fmtAxis = axisFormat || format;
+
+  /* `lines` says what to plot; the COUNT says how to read it. One line has a
+     headline figure and a real-value axis whether it arrived as `series` or as
+     a one-entry `lines`, so a caller can always pass `lines` and let the count
+     decide — which is what lets the legend name a lone series without the card
+     also carrying a title. */
+  const sets = (Array.isArray(lines) && lines.length ? lines : [{
+    id: '_',
+    label: title,
+    color,
+    points: series
+  }]).map((l, i) => ({
+    ...l,
+    id: l.id || `l${i}`,
+    color: l.color || color,
+    pts: scSort(l.points)
+  })).filter(l => l.pts.length > 0);
+  const multi = sets.length > 1;
+  const now = Date.now();
+  /* The one answer to "what does this cost": the latest entry that has already
+     taken effect. A scheduled increase is drawn (hollow dot, dashed line) and
+     said in `sub`, but it is not the value — it has not happened. The head
+     figure, the delta and the legend all resolve through this, so the card
+     never gives two answers to the same question. */
+  const inForceIdx = pts => {
+    const i = pts.map(p => scMs(p.date)).filter(t => t <= now).length - 1;
+    return i < 0 ? 0 : i; // entirely future: the soonest entry stands in
+  };
+  const primary = sets[0];
+  const pIdx = primary ? inForceIdx(primary.pts) : 0;
+  const last = primary && primary.pts[pIdx];
+  const prev = primary && pIdx > 0 ? primary.pts[pIdx - 1] : null;
+  const head = /*#__PURE__*/React.createElement("div", {
+    className: "odc-lc-head"
+  }, /*#__PURE__*/React.createElement("div", null, controls ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-lc-controls"
+  }, controls) : title ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-lc-ttl"
+  }, title) : null, sub ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-lc-sub"
+  }, sub) : null), (controlsEnd || showFigure && !multi && (figure != null || sets.length > 0)) && /*#__PURE__*/React.createElement("div", {
+    className: "odc-lc-figure"
+  }, controlsEnd ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-lc-controls end"
+  }, controlsEnd) : null, showFigure && !multi && (figure != null || sets.length > 0) && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "odc-lc-num",
+    style: figureColor ? {
+      color: figureColor
+    } : undefined
+  }, figure != null ? figure : format(last.value)), showDelta && prev && (() => {
+    const d = last.value - prev.value;
+    const tone = deltaTone === 'neutral' ? 'neutral' : d >= 0 ? 'income' : 'expense';
+    return /*#__PURE__*/React.createElement("div", {
+      className: `odc-lc-delta ${tone}`
+    }, d >= 0 ? '+' : '\u2212', format(Math.abs(d)), deltaSuffix ? ` ${deltaSuffix}` : '');
+  })())));
+  if (sets.length === 0) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: `odc-lc${className ? ' ' + className : ''}`
+    }, head, /*#__PURE__*/React.createElement("div", {
+      className: "odc-lc-empty"
+    }, emptyLabel));
+  }
+  const x0 = 64,
+    x1 = 968,
+    yTop = 28,
+    yBot = 212;
+  const allPts = sets.flatMap(s => s.pts);
+
+  /* A series' move from its own first entry. It is what `lines` mode PLOTS
+     (see below) and what every legend row states, in either mode. */
+  const moveOf = (s, v) => {
+    const base = s.pts[0].value;
+    return base ? (v - base) / Math.abs(base) : 0;
+  };
+  /* `auto` is the useful default rather than a fixed one: a comparison needs
+     indexing to stay legible, a lone series has an axis that can carry real
+     figures. Either can be forced — a reader may want the shape of a single
+     charge's rise, or the true magnitudes of several. */
+  const indexed = scale === 'auto' ? multi : scale === 'indexed';
+  /* What each line is PLOTTED as. One series, or an absolute comparison: the
+     value itself. An indexed comparison: the move, so unlike magnitudes stay
+     legible and the axis answers "which is rising fastest" rather than "which
+     is biggest". A zero first entry has no percentage change, so it is plotted
+     absolutely — rare for a price, and better than dividing by zero. */
+  const plotted = (s, v) => {
+    if (!indexed) return v;
+    return s.pts[0].value ? moveOf(s, v) : v;
+  };
+  const fmtIndexed = v => {
+    // Sign from the ROUNDED magnitude, not the raw value: a tick a thousandth
+    // above zero must not print "+0%".
+    const n = Math.round(Math.abs(v) * 100);
+    return `${n === 0 ? '' : v > 0 ? '+' : '\u2212'}${n}%`;
+  };
+  const t0 = Math.min(...allPts.map(p => scMs(p.date)));
+  const tLast = Math.max(...allPts.map(p => scMs(p.date)));
+  // The axis runs to whichever is later: the present, or the furthest entry a
+  // scheduled change reaches. One day of span is the floor, so a history whose
+  // only entry is dated today still has a plot to draw.
+  const tMax = Math.max(now, tLast, t0 + SC_DAY);
+  const sx = t => x0 + (t - t0) / (tMax - t0) * (x1 - x0);
+  const vals = sets.flatMap(s => s.pts.map(p => plotted(s, p.value)));
+  let lo = Math.min(...vals),
+    hi = Math.max(...vals);
+  if (lo === hi) {
+    /* A set that has never changed has no range, so the band is invented — in
+       whatever unit is being PLOTTED. Indexed mode plots fractions, where a
+       0.005 band is half a percent and every tick rounds to zero; absolute
+       mode needs it proportional, since a fixed step is half a point around a
+       rate (stored as a fraction) and fake precision around a rent. */
+    const band = indexed ? 0.02 : Math.abs(lo) >= 1 ? Math.abs(lo) * 0.05 : 0.005;
+    lo -= band;
+    hi += band;
+  }
+  const span = hi - lo;
+  const pad = span * 0.18;
+  // No zero clamp for data that goes negative — a rate can legitimately be below
+  // zero, and so can a credit. But padding an all-positive set down past zero
+  // invents a negative region the value could never occupy, so that floor sits
+  // at zero instead.
+  const yMin = lo >= 0 ? Math.max(0, lo - pad) : lo - pad;
+  const yMax = hi + pad;
+  const sy = v => yBot - (v - yMin) / (yMax - yMin || 1) * (yBot - yTop);
+  const nowX = sx(now);
+  const plots = sets.map(s => {
+    /* Every series is drawn, including one that has never changed: flat at 0%
+       beside a rising line is an answer to "which of these is moving", not an
+       absence of one. Coincidence is handled below, where it happens. */
+    const walk = [];
+    s.pts.forEach((p, i) => {
+      const px = sx(scMs(p.date)),
+        py = sy(plotted(s, p.value));
+      if (i === 0) walk.push({
+        x: px,
+        y: py
+      });else {
+        walk.push({
+          x: px,
+          y: walk[walk.length - 1].y
+        });
+        walk.push({
+          x: px,
+          y: py
+        });
+      }
+    });
+    walk.push({
+      x: sx(tMax),
+      y: walk[walk.length - 1].y
+    });
+    const solid = scClip(walk, nowX, true);
+    const dashed = scClip(walk, nowX, false);
+    return {
+      ...s,
+      solid,
+      dashed,
+      areaPath: solid.length > 1 ? `${scPath(solid)} L ${solid[solid.length - 1].x.toFixed(1)} ${yBot} L ${solid[0].x.toFixed(1)} ${yBot} Z` : ''
+    };
+  });
+
+  /* Coincident strokes: indexed mode starts EVERY series at 0%, so shared
+     spans are the normal case there (the run before the first change, a flat
+     never-changed line, two charges revised on the same date) — and absolute
+     mode has its own version whenever two charges simply cost the same. Left
+     alone, the last line painted stands for all of them and a legend swatch
+     points at nothing. So every line is fanned by a constant hair — about a
+     third of a percent of plot height, under the stroke width — which keeps
+     each colour findable across a shared span while moving no value the axis
+     could read. */
+  if (plots.length > 1) {
+    plots.forEach((s, i) => {
+      s.dodge = (i - (plots.length - 1) / 2) * 2.6;
+    });
+  }
+  const gridVals = [yMax, yMin + (yMax - yMin) * 2 / 3, yMin + (yMax - yMin) / 3, yMin];
+  const uidSafe = uid.replace(/[^a-zA-Z0-9_-]/g, '');
+  const axisRound = v => Math.abs(yMax) < 10 ? v : Math.round(v);
+  const tickFmt = indexed ? fmtIndexed : v => fmtAxis(axisRound(v));
+
+  // One label per change, dropped where two would collide, and never within
+  // reach of the now label — the marker's own date is what it says.
+  const xLabels = [];
+  let lastX = -Infinity;
+  Array.from(new Set(allPts.map(p => p.date))).sort().forEach(date => {
+    const px = sx(scMs(date));
+    if (px - lastX < 64 || Math.abs(px - nowX) < 48) return;
+    xLabels.push({
+      x: px,
+      label: scMonY(date)
+    });
+    lastX = px;
+  });
+  const autoAria = ariaLabel || (multi ? `${sets.map(s => s.label).filter(Boolean).join(', ')} — values over time` : title ? `${title} — value over time` : 'Value over time');
+  return /*#__PURE__*/React.createElement("div", {
+    className: `odc-lc${className ? ' ' + className : ''}`
+  }, head, /*#__PURE__*/React.createElement("svg", {
+    className: "odc-line-svg",
+    viewBox: "0 0 1000 252",
+    preserveAspectRatio: "xMidYMid meet",
+    role: "img",
+    "aria-label": autoAria
+  }, /*#__PURE__*/React.createElement("g", {
+    stroke: "var(--chart-grid)",
+    strokeWidth: "1"
+  }, gridVals.map((v, i) => /*#__PURE__*/React.createElement("line", {
+    key: i,
+    x1: x0,
+    y1: sy(v).toFixed(1),
+    x2: x1,
+    y2: sy(v).toFixed(1)
+  }))), /*#__PURE__*/React.createElement("g", {
+    className: "odc-lc-axis"
+  }, gridVals.map((v, i) => /*#__PURE__*/React.createElement("text", {
+    key: i,
+    x: x0 - 12,
+    y: (sy(v) + 4).toFixed(1),
+    textAnchor: "end"
+  }, tickFmt(v)))), /*#__PURE__*/React.createElement("g", {
+    className: "odc-lc-axis"
+  }, xLabels.map(t => /*#__PURE__*/React.createElement("text", {
+    key: t.x,
+    x: t.x.toFixed(1),
+    y: yBot + 26,
+    textAnchor: "middle"
+  }, t.label))), area && !multi && plots[0].areaPath && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("defs", null, /*#__PURE__*/React.createElement("linearGradient", {
+    id: `odc-sc-fill-${uidSafe}`,
+    x1: "0",
+    y1: "0",
+    x2: "0",
+    y2: "1"
+  }, /*#__PURE__*/React.createElement("stop", {
+    offset: "0%",
+    stopColor: plots[0].color,
+    stopOpacity: "0.26"
+  }), /*#__PURE__*/React.createElement("stop", {
+    offset: "100%",
+    stopColor: plots[0].color,
+    stopOpacity: "0"
+  }))), /*#__PURE__*/React.createElement("path", {
+    d: plots[0].areaPath,
+    fill: `url(#odc-sc-fill-${uidSafe})`
+  })), plots.map(s => /*#__PURE__*/React.createElement("g", {
+    key: s.id,
+    transform: s.dodge ? `translate(0 ${s.dodge.toFixed(2)})` : undefined
+  }, s.solid.length > 1 && /*#__PURE__*/React.createElement("path", {
+    className: "odc-sc-line",
+    d: scPath(s.solid),
+    fill: "none",
+    stroke: s.color
+  }), s.dashed.length > 1 && /*#__PURE__*/React.createElement("path", {
+    className: "odc-sc-line future",
+    d: scPath(s.dashed),
+    fill: "none",
+    stroke: s.color
+  }))), /*#__PURE__*/React.createElement("line", {
+    className: "odc-sc-now",
+    x1: nowX.toFixed(1),
+    y1: yTop - 14,
+    x2: nowX.toFixed(1),
+    y2: yBot
+  }), /*#__PURE__*/React.createElement("text", {
+    className: "odc-lc-axis odc-sc-nowlabel",
+    x: Math.min(nowX + 6, x1),
+    y: yTop - 18,
+    textAnchor: nowX > (x0 + x1) / 2 ? 'end' : 'start'
+  }, nowLabel), plots.map(s => /*#__PURE__*/React.createElement("g", {
+    key: s.id,
+    transform: s.dodge ? `translate(0 ${s.dodge.toFixed(2)})` : undefined
+  }, s.pts.map((p, i) => {
+    const fIdx = inForceIdx(s.pts);
+    const cx = sx(scMs(p.date)),
+      cy = sy(plotted(s, p.value));
+    return scMs(p.date) > now ? /*#__PURE__*/React.createElement("circle", {
+      key: `${s.id}-${p.id || i}`,
+      cx: cx.toFixed(1),
+      cy: cy.toFixed(1),
+      r: "4",
+      fill: "var(--mud-palette-surface)",
+      stroke: s.color,
+      strokeWidth: "1.8"
+    }) : /*#__PURE__*/React.createElement("circle", {
+      key: `${s.id}-${p.id || i}`,
+      cx: cx.toFixed(1),
+      cy: cy.toFixed(1),
+      r: i === fIdx ? 4 : 3,
+      fill: s.color
+    });
+  })))), sets.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "odc-sc-legend"
+  }, sets.map(s => {
+    const idx = inForceIdx(s.pts);
+    const cur = s.pts[idx];
+    /* The move, in the unit the AXIS is speaking: a percentage while
+       the chart plots change, real money while it plots value. The
+       legend and the plot answer the same question either way. */
+    const moved = indexed ? fmtIndexed(moveOf(s, cur.value)) : (() => {
+      const d = cur.value - s.pts[0].value;
+      return `${d > 0 ? '+' : d < 0 ? '\u2212' : ''}${format(Math.abs(d))}`;
+    })();
+    return /*#__PURE__*/React.createElement("span", {
+      className: "odc-sc-leg",
+      key: s.id
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "odc-sc-swatch",
+      style: {
+        background: s.color
+      }
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "odc-sc-leg-name"
+    }, s.label), /*#__PURE__*/React.createElement("span", {
+      className: "odc-sc-leg-val",
+      style: {
+        color: s.color
+      }
+    }, format(cur.value)), /*#__PURE__*/React.createElement("span", {
+      className: "odc-sc-leg-idx"
+    }, s.pts.length > 1 ? moved : 'no changes yet'));
+  })), textEquivalent && /*#__PURE__*/React.createElement("table", {
+    className: "odc-sr-only"
+  }, title ? /*#__PURE__*/React.createElement("caption", null, title) : null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, multi && /*#__PURE__*/React.createElement("th", {
+    scope: "col"
+  }, "Series"), /*#__PURE__*/React.createElement("th", {
+    scope: "col"
+  }, textEquivalentLabel), /*#__PURE__*/React.createElement("th", {
+    scope: "col"
+  }, "Value"), /*#__PURE__*/React.createElement("th", {
+    scope: "col"
+  }, "State"))), /*#__PURE__*/React.createElement("tbody", null, sets.map(s => {
+    const fIdx = inForceIdx(s.pts);
+    return s.pts.map((p, i) => /*#__PURE__*/React.createElement("tr", {
+      key: `${s.id}-${p.id || i}`
+    }, multi && /*#__PURE__*/React.createElement("td", null, s.label), /*#__PURE__*/React.createElement("th", {
+      scope: "row"
+    }, p.date), /*#__PURE__*/React.createElement("td", null, format(p.value)), /*#__PURE__*/React.createElement("td", null, scMs(p.date) > now ? 'Scheduled' : i === fIdx ? 'In force' : 'Superseded')));
+  }))));
+}
+Object.assign(__ds_scope, { StepChart });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/StepChart.jsx", error: String((e && e.message) || e) }); }
+
 // components/StepperField.jsx
 try { (() => {
 /**
@@ -15647,6 +16160,158 @@ function TaxStatementFileTypeSelect({
 }
 Object.assign(__ds_scope, { TAX_STATEMENT_FILE_TYPES, TaxStatementFileTypeSelect });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/TaxStatementFileTypeSelect.jsx", error: String((e && e.message) || e) }); }
+
+// components/TermHistoryChart.jsx
+try { (() => {
+/**
+ * Odyssey DS — TermHistoryChart
+ * ---------------------------------------------------------------------------
+ * The assembled "how has this charge changed" card: a `StepChart` whose head
+ * IS its controls. A quiet `MultiSelect` on the left says WHAT is plotted and
+ * stands in for the title; a Change / Value `SegmentedControl` on the right
+ * says HOW it reads. No title, no headline figure — the legend under the plot
+ * carries every line's name, value in force and move.
+ *
+ * Plain data in: the caller resolves its own records into `series` (ordered —
+ * the first is the default selection, normally the most recently changed) and
+ * this component owns every rule about comparing them:
+ *
+ * - **Never nothing plotted.** Removing the last line keeps it.
+ * - **One axis, one unit.** A series whose `group` differs from what is shown
+ *   REPLACES the selection instead of joining an axis true of neither.
+ * - **Stable colours.** Each series leases a hue, preferring its own `color`
+ *   (a direction hue — money out is money out) and falling back to `palette`
+ *   when that colour is already on screen. Leases outlive deselection, so a
+ *   line never repaints when another joins, leaves or returns.
+ * - **A cap.** `palette.length` lines at most — past it no hue is both neutral
+ *   and distinct.
+ *
+ * Atoms are read off the DS namespace at render time.
+ */
+const THC_PALETTE = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-4)', 'var(--chart-6)'];
+function TermHistoryChart({
+  series = [],
+  pickerLabel = 'Terms',
+  glyph = '§',
+  palette = THC_PALETTE,
+  searchLabel = 'Search terms',
+  emptyText = 'No matching term',
+  textEquivalentLabel = 'Effective from',
+  className
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    StepChart,
+    MultiSelect,
+    SegmentedControl
+  } = NS;
+  const [sel, setSel] = React.useState(null);
+  // Null until the reader chooses: StepChart's `auto` then indexes a
+  // comparison and shows real figures for one line. A choice sticks.
+  const [scale, setScale] = React.useState(null);
+  const leases = React.useRef({});
+  const list = series.filter(s => s && s.points && s.points.length);
+  if (!list.length || !StepChart || !SegmentedControl) return null;
+  const valid = keys => (keys || []).filter(k => list.some(x => x.key === k));
+  const chosen = valid(sel);
+  const active = chosen.length ? chosen : [list[0].key];
+  const picked = active.map(k => list.find(x => x.key === k)).filter(Boolean).slice(0, palette.length);
+  const multi = picked.length > 1;
+
+  // Renew held leases in selection order, then give newcomers their own hue
+  // if free, else the first free palette colour.
+  const held = leases.current;
+  const taken = new Set();
+  picked.forEach(x => {
+    const h = held[x.key];
+    if (!h) return;
+    if (taken.has(h)) held[x.key] = null;else taken.add(h);
+  });
+  picked.forEach(x => {
+    if (held[x.key]) return;
+    const own = x.color || palette[0];
+    const hue = !taken.has(own) ? own : palette.find(h => !taken.has(h)) || palette[0];
+    held[x.key] = hue;
+    taken.add(hue);
+  });
+  const colorOf = x => held[x.key] || x.color || palette[0];
+  const head = picked[0];
+  const lines = picked.map(x => ({
+    id: x.key,
+    label: x.label,
+    color: colorOf(x),
+    points: x.points
+  }));
+  const onPick = next => {
+    setSel(prevRaw => {
+      const prev = valid(prevRaw);
+      const cur = prev.length ? prev : [list[0].key];
+      const added = next.filter(k => !cur.includes(k));
+      if (!added.length) return next.length ? next : cur.slice(0, 1);
+      const x = list.find(y => y.key === added[added.length - 1]);
+      const first = list.find(y => y.key === cur[0]);
+      if ((x.group || '') !== (first.group || '')) return [x.key];
+      if (cur.length >= palette.length) return cur;
+      return [...cur, x.key];
+    });
+  };
+
+  // The dash means "this is the line", so only a selected row carries one.
+  const options = list.map(x => ({
+    value: x.key,
+    text: [x.label, x.value, x.tone && x.tone.label].filter(Boolean).join(' '),
+    label: /*#__PURE__*/React.createElement(React.Fragment, null, x.label, x.value ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", /*#__PURE__*/React.createElement("span", {
+      className: "odc-thc-val",
+      style: x.tone ? {
+        color: x.tone.color
+      } : undefined
+    }, x.value)) : null, x.tone ? /*#__PURE__*/React.createElement("span", {
+      className: "odc-thc-dir"
+    }, " \xB7 ", x.tone.label) : null),
+    icon: 'remove',
+    iconColor: active.includes(x.key) ? colorOf(x) : undefined
+  }));
+  const picker = list.length > 1 && MultiSelect ? /*#__PURE__*/React.createElement(MultiSelect, {
+    label: pickerLabel,
+    glyph: glyph,
+    align: "start",
+    quiet: true,
+    value: active,
+    onChange: onPick,
+    options: options,
+    searchLabel: searchLabel,
+    emptyText: emptyText
+  }) : null;
+  const axisToggle = /*#__PURE__*/React.createElement(SegmentedControl, {
+    ariaLabel: "Y-axis",
+    value: scale || (multi ? 'indexed' : 'absolute'),
+    onChange: setScale,
+    options: [{
+      value: 'indexed',
+      label: 'Change'
+    }, {
+      value: 'absolute',
+      label: 'Value'
+    }]
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    className: `odc-thc${className ? ` ${className}` : ''}`
+  }, /*#__PURE__*/React.createElement(StepChart, {
+    controls: picker,
+    controlsEnd: axisToggle,
+    lines: lines,
+    showFigure: false,
+    scale: scale || 'auto',
+    color: lines[0].color,
+    format: head.format,
+    axisFormat: head.axisFormat,
+    ariaLabel: `${picked.map(x => x.label).join(', ')} — value over time`,
+    textEquivalent: true,
+    textEquivalentLabel: textEquivalentLabel
+  }));
+}
+Object.assign(__ds_scope, { TermHistoryChart });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/TermHistoryChart.jsx", error: String((e && e.message) || e) }); }
 
 // components/TextInputField.jsx
 try { (() => {
@@ -19893,9 +20558,16 @@ const clipPts = (pts, bound, keepBelow) => {
   return out;
 };
 const ptsToPath = pts => pts.length ? 'M ' + pts.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ') : '';
+
+/* `fmtAxis` lets a caller label the value axis in its own unit — a contract's
+   terms are usually AMOUNTS, not rates, and an axis reading "2.7%" beside a
+   monthly rent is simply wrong. Percentage is the default, so the account hero
+   is unchanged. */
 const TermStepChart = ({
   series,
-  color
+  color,
+  fmtAxis,
+  ariaLabel
 }) => {
   const W = 680,
     Hh = 210;
@@ -19916,10 +20588,16 @@ const TermStepChart = ({
   const vals = series.map(s => s.value);
   let lo = Math.min(...vals),
     hi = Math.max(...vals);
+  /* One entry — a series that has never changed — has no range, so the band is
+     invented. It has to be invented PROPORTIONALLY: a fixed ±0.005 is half a
+     point around a rate (right) and two hundredths of a cent around a rent
+     (fake precision on a flat line). Rates are stored as fractions below 1, so
+     the magnitude rule leaves every rate chart exactly as it was. */
   if (lo === hi) {
-    lo -= 0.005;
-    hi += 0.005;
-  } // single value → centered band
+    const band = Math.abs(lo) >= 1 ? Math.abs(lo) * 0.05 : 0.005;
+    lo -= band;
+    hi += band;
+  }
   const padV = (hi - lo) * 0.35;
   lo = lo - padV;
   hi = hi + padV; // no 0-clamp: a loan's rate range is negative
@@ -19967,7 +20645,7 @@ const TermStepChart = ({
     className: "trm-chart",
     viewBox: `0 0 ${W} ${Hh}`,
     role: "img",
-    "aria-label": "Rate history"
+    "aria-label": ariaLabel || 'Rate history'
   }, /*#__PURE__*/React.createElement("defs", null, /*#__PURE__*/React.createElement("linearGradient", {
     id: fillId,
     x1: "0",
@@ -19995,7 +20673,7 @@ const TermStepChart = ({
     x: padL - 8,
     y: y(v) + 3,
     textAnchor: "end"
-  }, (v < 0 ? '−' : '') + H.pctStr(Math.abs(v))))), areaPath && /*#__PURE__*/React.createElement("path", {
+  }, fmtAxis ? fmtAxis(v) : (v < 0 ? '−' : '') + H.pctStr(Math.abs(v))))), areaPath && /*#__PURE__*/React.createElement("path", {
     d: areaPath,
     fill: `url(#${fillId})`
   }), /*#__PURE__*/React.createElement("path", {
@@ -20651,7 +21329,8 @@ Object.assign(window, {
   trmSeriesFromList,
   trmKindInfo,
   trmToday,
-  trmKey
+  trmKey,
+  trmMonY
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AccountTerms.jsx", error: String((e && e.message) || e) }); }
 
@@ -24631,6 +25310,64 @@ const CTM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.arch
   label: c.name
 }));
 const ctmFracToPctStr = f => String(Number((f * 100).toFixed(4)));
+
+/* ---- The name field's suggestions ----
+
+   There is no term-name table to read: a name is a free string, and the series
+   it keys — (owner, kind, labelKey) — exists only because entries share it. So
+   the list is DERIVED from this contract's own term history, one row per
+   distinct labelKey of the kind being written, and nothing else: a name from
+   another contract is not a name this one has used, and offering it invites a
+   series that starts by looking like a correction to something it isn't.
+
+   Each row carries what the reader needs to recognise the series rather than
+   the string — its value in force and its cadence ('2,250 USD · monthly'). The
+   note is derived from the LATEST entry on or before today; a series whose only
+   entries are future-dated reads 'scheduled', and a one-time charge already in
+   the past reads as the one-off it was. The design system has no "ended" flag
+   on a term, so nothing here claims one.
+
+   Picking a row and typing a new name are two different writes, and the help
+   line under the field says which one is about to happen. Both remain legal:
+   the field suggests, it never constrains. */
+const ctmNameOptions = (existing, kind, currentId) => {
+  const H = window.OdysseyHelpers;
+  const today = new Date().toISOString().slice(0, 10);
+  const bySeries = {};
+  for (const t of existing) {
+    if (t.kind !== kind || t.id === currentId) continue;
+    const key = t.labelKey || H.termLabelKey(t.label);
+    if (!key) continue;
+    const s = bySeries[key] || (bySeries[key] = {
+      key,
+      label: t.label,
+      entries: []
+    });
+    s.entries.push(t);
+    // The display form follows the newest entry — a later spelling is the
+    // one the user last chose to write.
+    if (t.effectiveFrom >= (s.newest || '')) {
+      s.newest = t.effectiveFrom;
+      s.label = t.label;
+    }
+  }
+  return Object.values(bySeries).sort((a, b) => a.label.localeCompare(b.label)).map(s => {
+    const sorted = s.entries.slice().sort((a, b) => a.effectiveFrom < b.effectiveFrom ? -1 : 1);
+    const inForce = sorted.filter(t => t.effectiveFrom <= today).pop();
+    const t = inForce || sorted[sorted.length - 1];
+    const amount = t.unit === 'Percentage' ? `${ctmFracToPctStr(t.value)}%` : H.money(t.value, t.currency || H.defaultCurrency());
+    const cadence = H.cadenceTextFor(t);
+    const parts = [amount];
+    if (cadence) parts.push(cadence);else if (t.interval === 'OneTime') parts.push('one-time');
+    if (!inForce) parts.push(`from ${t.effectiveFrom}`);
+    return {
+      value: s.label,
+      label: s.label,
+      icon: inForce ? undefined : 'schedule',
+      note: parts.join(' · ')
+    };
+  });
+};
 const AddContractTermModal = ({
   contract,
   term,
@@ -24694,9 +25431,9 @@ const AddContractTermModal = ({
       interval: ki.group === 'fee' ? d.interval || D.defaultFeeInterval : '',
       intervalCount: ki.group === 'fee' ? d.intervalCount : '',
       anchorDate: ki.group === 'fee' ? d.anchorDate : '',
-      // A rate carries no direction (a percentage is not a movement), so the
-      // answer is dropped rather than carried into a field that refuses it.
-      direction: ki.key === 'Fee' ? d.direction : 'Outgoing'
+      // Direction survives a kind change: an arrears rate and a late-payment
+      // fee are both money out, so the answer already given still holds.
+      direction: d.direction
     }));
     setErrors({});
   };
@@ -24735,7 +25472,10 @@ const AddContractTermModal = ({
     const key = H.termLabelKey(label);
     const dup = existing.some(t => t.id !== (term && term.id) && t.kind === draft.kind && (t.labelKey || H.termLabelKey(t.label) || null) === (key || null) && t.effectiveFrom === draft.effectiveFrom);
     if (dup) next.effectiveFrom = label ? `“${label}” already has an entry on that date.` : 'This contract already has an interest rate on that date.';
-    if (draft.direction === 'Incoming' && draft.kind !== 'Fee') {
+    if (draft.direction === 'Incoming' && !H.termDirectionApplies({
+      kind: draft.kind,
+      contractId: contract.id
+    }, null)) {
       next.direction = H.termDirectionRefusal(draft.kind, 'contract');
     }
     if (Object.keys(next).length) {
@@ -24753,13 +25493,19 @@ const AddContractTermModal = ({
       interval: isRate ? null : draft.interval || null,
       intervalCount: !isRate && periodic ? count == null ? 1 : count : null,
       anchorDate: isRate ? null : draft.anchorDate || null,
-      direction: draft.kind === 'Fee' ? draft.direction : 'Outgoing',
+      direction: draft.direction,
       effectiveFrom: draft.effectiveFrom,
       label,
       labelKey: key,
       note: draft.note.trim() || null
     }, term && term.id);
   };
+
+  /* The name field's two outcomes, resolved on the SAME key the duplicate guard
+     and the server use — so what the help line promises is what gets written. */
+  const nameOptions = labelRule === 'hidden' ? [] : ctmNameOptions(existing, draft.kind, term && term.id);
+  const draftKey = H.termLabelKey(draft.label);
+  const matchedSeries = draftKey ? nameOptions.find(o => H.termLabelKey(o.value) === draftKey) : null;
   const cadence = isRate ? null : H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
   const dirInfo = H.termDirectionInfo(draft.direction);
   /* The money field's lead flips between these two, showing each one's own
@@ -24832,24 +25578,27 @@ const AddContractTermModal = ({
     className: "trm-kind-ineligible"
   }, "A contract can carry a ", /*#__PURE__*/React.createElement("b", null, "fee"), " or an ", /*#__PURE__*/React.createElement("b", null, "interest rate"), ". Expected return prices invested principal, which a contract doesn\u2019t hold.")), errors.kind && /*#__PURE__*/React.createElement("div", {
     className: "helper aam-err"
-  }, errors.kind)), labelRule !== 'hidden' && /*#__PURE__*/React.createElement(Field, {
+  }, errors.kind)), labelRule !== 'hidden' && /*#__PURE__*/React.createElement(FieldShell, {
     label: "Name",
+    htmlFor: "ctm-label",
     required: labelRule === 'required',
+    error: errors.label,
+    help: errors.label ? undefined : matchedSeries ? /*#__PURE__*/React.createElement(React.Fragment, null, "Joins the price history of ", /*#__PURE__*/React.createElement("b", null, matchedSeries.label), " \u2014 currently ", matchedSeries.note, ". This entry supersedes it from the effective date.") : draft.label.trim() ? /*#__PURE__*/React.createElement(React.Fragment, null, "Starts a ", /*#__PURE__*/React.createElement("b", null, "new charge"), " on this contract, with its own history separate from the others.") : 'Pick a charge this updates, or type a new name to start one.'
+  }, /*#__PURE__*/React.createElement(Combobox, {
+    id: "ctm-label",
+    freeText: true,
+    clearable: true,
     value: draft.label,
     onChange: set('label'),
+    options: nameOptions,
+    onCreate: text => text,
+    createLabel: "New charge",
     placeholder: "e.g. Monthly rent",
-    error: errors.label,
-    help: "Names this charge so it keeps its own history, separate from the contract's other charges."
-  }), draft.kind !== 'Fee' ? /*#__PURE__*/React.createElement("div", {
-    className: "field trm-dir-field"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "label"
-  }, "Direction"), /*#__PURE__*/React.createElement("div", {
-    className: "trm-dir-refused"
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "block",
-    size: 15
-  }), /*#__PURE__*/React.createElement("span", null, H.termDirectionRefusal(draft.kind, 'contract'), " It is recorded as ", /*#__PURE__*/React.createElement("b", null, "outgoing"), ", where it carries no meaning."))) : null, /*#__PURE__*/React.createElement("div", {
+    ariaLabel: "Name",
+    required: labelRule === 'required',
+    invalid: !!errors.label,
+    emptyText: nameOptions.length ? 'No matching charge — type to name a new one' : 'No charges yet — type a name'
+  })), /*#__PURE__*/React.createElement("div", {
     className: "trm-value-block"
   }, /*#__PURE__*/React.createElement("div", {
     className: "trm-field-head"
@@ -24902,15 +25651,16 @@ const AddContractTermModal = ({
     autoFocus: true,
     value: draft.valueStr,
     onChange: set('valueStr')
-    /* A percentage fee is money too: it carries the same direction lead
-       as an amount, so the two units are one control with one unit
-       swapped rather than two differently-shaped questions. */,
-    direction: draft.kind === 'Fee' ? draft.direction : undefined,
-    onDirectionChange: draft.kind === 'Fee' ? set('direction') : undefined,
+    /* A percentage is money too — a fee priced as a share, or a rate
+       that charges or pays — so it carries the same direction lead as
+       an amount: one control with one unit swapped, never two
+       differently-shaped questions. */,
+    direction: draft.direction,
+    onDirectionChange: set('direction'),
     directionOptions: DIR_OPTIONS,
-    tone: draft.kind === 'Fee' ? dirInfo.tone : undefined,
+    tone: dirInfo.tone,
     error: errors.value,
-    help: errors.value ? undefined : /*#__PURE__*/React.createElement(React.Fragment, null, draft.kind === 'Fee' ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("b", null, dirInfo.label), " \u2014 ", dirInfo.sentence, ". Click ", /*#__PURE__*/React.createElement("b", null, dirInfo.short), " to switch. ") : null, "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), isRate ? ' · annual' : '')
+    help: errors.value ? undefined : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("b", null, dirInfo.label), " \u2014 ", dirInfo.sentence, ". Click ", /*#__PURE__*/React.createElement("b", null, dirInfo.short), " to switch.", ' ', "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), isRate ? ' · annual' : '')
   }) : /*#__PURE__*/React.createElement(MoneyField, {
     size: "lg",
     required: true,
@@ -24919,12 +25669,12 @@ const AddContractTermModal = ({
     value: draft.valueStr,
     onChange: set('valueStr')
     /* The lead is the DIRECTION, not a sign: the amount stays positive
-       and the arrow carries the meaning — one control for the value, the
-       way it is one field on the record. Only a fee has one. */,
-    direction: draft.kind === 'Fee' ? draft.direction : undefined,
-    onDirectionChange: draft.kind === 'Fee' ? set('direction') : undefined,
+       and the word carries the meaning — one control for the value, the
+       way it is one field on the record. */,
+    direction: draft.direction,
+    onDirectionChange: set('direction'),
     directionOptions: DIR_OPTIONS,
-    tone: draft.kind === 'Fee' ? dirInfo.tone : undefined,
+    tone: dirInfo.tone,
     currency: draft.currency,
     onCurrencyChange: set('currency'),
     currencyOptions: CTM_CURRENCIES,
@@ -37183,9 +37933,12 @@ try { (() => {
    table, under the same rules as an account's term — only the owner differs
    (exactly one of AccountId / ContractId). So this section reuses the account
    surface's pieces verbatim: CurrentTermsSummary (the GET …/terms/current view)
-   and TermHistory (the GET …/terms list, grouped, editable per row). What it
-   does NOT reuse is the hero rate chart: an agreement's price is usually an
-   amount, not a rate, so the section leads with the values in force.
+   and TermHistory (the GET …/terms list, grouped, editable per row). It reuses
+   the step chart too, but not as a hero and not as a rate: an agreement has
+   several named charges and no single line that stands for it, so the chart is
+   a CHOOSER above the history — one series at a time, opening on the one whose
+   latest entry is the most recent, with the value axis in that series' own
+   unit. The section still leads with the values in force.
 
    Three things here are contract-specific, and each is drawn, not assumed:
      • Kind eligibility — Fee and InterestRate on every ContractType;
@@ -37211,6 +37964,117 @@ const conTermOwner = contract => ({
   ...contract,
   ownerKind: 'contract'
 });
+
+/* =============================================================
+   Price history chart — one SERIES at a time
+   =============================================================
+   The account surface leads with a rate chart because an account has one rate
+   and the question is where it went. A contract is the other shape: several
+   named charges, each with its own history, and no single line that stands for
+   the agreement. So the chart is a chooser — and a MULTI-select one, because
+   the second question after "what did this change to" is "how does it compare
+   to the others". It opens on the series whose LATEST entry is the most
+   recent, because that is the change the reader came to look at.
+
+   Comparing is only honest between charges measured the same way, so the
+   chooser carries the constraint: same unit, and for money the same currency.
+   A pick that cannot share the axis switches to itself rather than stacking,
+   which keeps every series one click away and the axis never lying. Anything
+   else is selectable, including a charge that has never changed \u2014 flat at 0%
+   beside a rising line is an answer to "which of these is moving". Comparing
+   plots INDEXED change \u2014 each charge's move from its own first entry \u2014 since
+   a 2,250 rent and a 95 parking space share no useful absolute axis; the
+   legend keeps the real money beside each line.
+
+   Amounts, not rates, are the common case here, so the value axis is labelled
+   in the series' own unit and the currency is stated once in the header rather
+   than on every tick. The figure takes the direction's colour \u2014 money out is
+   money out whether it rose or fell \u2014 which frees the delta to be neutral grey
+   rather than income-green for a rent increase.
+
+   The plot itself is the DS `StepChart` — LineChart's card, head and
+   typography (the dashboard's chart vocabulary, at the dashboard's scale) with
+   the two things a term history needs and a trend chart refuses: a real TIME
+   axis, so eight months of hold and two changes in a quarter do not read as
+   three equal steps, and a TODAY marker the line holds solid up to and dashes
+   past, so a scheduled increase is visibly not yet true. */
+const conTermSeriesList = terms => {
+  const today = trmToday();
+  const by = {};
+  for (const t of terms) {
+    const key = trmKey(t);
+    const s = by[key] || (by[key] = {
+      key,
+      kind: t.kind,
+      labelKey: t.labelKey || CTRM_H.termLabelKey(t.label) || null,
+      latest: t,
+      inForce: null,
+      earliest: t,
+      count: 0
+    });
+    s.count += 1;
+    if (t.effectiveFrom > s.latest.effectiveFrom) s.latest = t;
+    if (t.effectiveFrom < s.earliest.effectiveFrom) s.earliest = t;
+    /* `latest` orders the list — "most recently changed" legitimately counts a
+       scheduled entry. `inForce` is what every READOUT shows: the newest entry
+       that has actually taken effect. A series still entirely in the future
+       falls back to its earliest, which is the only figure it has. */
+    if (t.effectiveFrom <= today && (!s.inForce || t.effectiveFrom > s.inForce.effectiveFrom)) s.inForce = t;
+  }
+  return Object.values(by).map(s => ({
+    ...s,
+    inForce: s.inForce || s.earliest
+  })).sort((a, b) => a.latest.effectiveFrom < b.latest.effectiveFrom ? 1 : a.latest.effectiveFrom > b.latest.effectiveFrom ? -1 : 0);
+};
+const conAxisFmt = latest => latest.unit === 'Percentage' ? v => (v < 0 ? '−' : '') + CTRM_H.pctStr(Math.abs(v))
+// No currency code on the tick: it is stated once, in the value. Whole units
+// above 10 — a rent axis reading "2,438.75" is noise.
+: v => (v < 0 ? '−' : '') + Math.abs(v).toLocaleString('en-US', {
+  maximumFractionDigits: Math.abs(v) >= 10 ? 0 : 2
+});
+
+/* Two series may share an axis only if they are the same UNIT and, for money,
+   the same CURRENCY — handed to the DS chart as each series' `group`. */
+const conCompatKey = t => t.unit === 'Percentage' ? 'pct' : `amt:${t.currency || CTRM_H.defaultCurrency()}`;
+
+/* The card itself is the DS `TermHistoryChart`: this only resolves contract
+   terms into its plain series. Everything each series states comes from the
+   entry IN FORCE, so the picker, the legend and the tiles above agree. */
+const ContractTermChart = ({
+  terms,
+  owner
+}) => {
+  const DS = window.OdysseyDesignSystem_d5aa51 || {};
+  const DSTermHistoryChart = DS.TermHistoryChart;
+  if (!DSTermHistoryChart) return null;
+  const series = conTermSeriesList(terms).map(x => {
+    const t = x.inForce;
+    const dir = CTRM_H.termDirectionApplies(t, owner) ? CTRM_H.termDirectionInfo(t) : null;
+    const pct = t.unit === 'Percentage';
+    return {
+      key: x.key,
+      label: CTRM_H.termDisplayName(t, owner),
+      value: CTRM_H.fmtTermValueFor(t, owner),
+      tone: dir ? {
+        label: dir.label,
+        color: dir.color
+      } : undefined,
+      color: dir ? dir.color : trmKindInfo(x.kind).color,
+      group: conCompatKey(t),
+      points: trmSeriesFromList(terms, x.kind, x.labelKey).map(p => ({
+        id: p.id,
+        date: p.date,
+        value: p.value
+      })),
+      format: v => pct ? CTRM_H.pctStr(v) : CTRM_H.money(v, t.currency || CTRM_H.defaultCurrency()),
+      axisFormat: conAxisFmt(t)
+    };
+  });
+  return /*#__PURE__*/React.createElement(DSTermHistoryChart, {
+    className: "trm-seriesplot",
+    series: series
+  });
+};
 const ContractTermsNotice = ({
   block
 }) => /*#__PURE__*/React.createElement("div", {
@@ -37302,6 +38166,9 @@ const ContractTerms = ({
   }, /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Term history",
     meta: `${terms.length} ${terms.length === 1 ? 'entry' : 'entries'}${terms.length >= limit ? ` · limit ${limit}` : ''}`
+  }), /*#__PURE__*/React.createElement(ContractTermChart, {
+    terms: terms,
+    owner: owner
   }), /*#__PURE__*/React.createElement(TermHistory, {
     terms: terms,
     currentIds: currentIds,
@@ -37313,6 +38180,7 @@ const ContractTerms = ({
 };
 Object.assign(window, {
   ContractTerms,
+  ContractTermChart,
   conTermOwner
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/ContractTerms.jsx", error: String((e && e.message) || e) }); }
@@ -56294,7 +57162,9 @@ try { (() => {
      currency when its unit is Amount — the contract rule, seeded as it writes. */
   D.contractTerms = {
     // Maple St lease — the rent as a dated series (a review, plus a scheduled
-    // increase), beside the charges the tenancy carries.
+    // increase), beside the charges the tenancy carries. Three of them were
+    // revised at the same mid-term review, so the terms chart has something
+    // real to compare; the arrears rate is the one term measured differently.
     'ct-lease': [{
       id: 'ctm-lease-1',
       contractId: 'ct-lease',
@@ -56354,6 +57224,24 @@ try { (() => {
       labelKey: 'parking space',
       note: null,
       createdAtUtc: '2025-08-14T10:00:00Z'
+    },
+    // Raised at the same mid-term review as the rent. A second CHANGED series
+    // is what makes the chart's comparison reachable at all — and at 95 beside
+    // a 2,250 rent it is exactly the unlike-magnitude case indexing exists for.
+    {
+      id: 'ctm-lease-4b',
+      contractId: 'ct-lease',
+      kind: 'Fee',
+      unit: 'Amount',
+      value: 95.00,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 1,
+      effectiveFrom: '2026-03-01',
+      label: 'Parking space',
+      labelKey: 'parking space',
+      note: null,
+      createdAtUtc: '2026-01-28T09:00:00Z'
     }, {
       id: 'ctm-lease-5',
       contractId: 'ct-lease',
@@ -56382,6 +57270,55 @@ try { (() => {
       labelKey: 'end-of-tenancy cleaning',
       note: null,
       createdAtUtc: '2025-08-14T10:00:00Z'
+    }, {
+      id: 'ctm-lease-6b',
+      contractId: 'ct-lease',
+      kind: 'Fee',
+      unit: 'Amount',
+      value: 340.00,
+      currency: 'USD',
+      interval: 'OneTime',
+      intervalCount: null,
+      effectiveFrom: '2026-03-01',
+      label: 'End-of-tenancy cleaning',
+      labelKey: 'end-of-tenancy cleaning',
+      note: 'Contractor rate revised.',
+      createdAtUtc: '2026-01-28T09:00:00Z'
+    },
+    // The one term here NOT measured in dollars — arrears interest, as a
+    // percentage. A lease carrying both is ordinary, and it is what makes
+    // the chart's "measured differently, so it shows on its own" rule
+    // something a reader can actually meet.
+    {
+      id: 'ctm-lease-7',
+      contractId: 'ct-lease',
+      kind: 'InterestRate',
+      unit: 'Percentage',
+      value: 0.08,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      effectiveFrom: '2025-09-01',
+      label: null,
+      labelKey: null,
+      direction: 'Outgoing',
+      note: 'Statutory rate on rent in arrears.',
+      createdAtUtc: '2025-08-14T10:00:00Z'
+    }, {
+      id: 'ctm-lease-7b',
+      contractId: 'ct-lease',
+      kind: 'InterestRate',
+      unit: 'Percentage',
+      value: 0.0925,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      effectiveFrom: '2026-03-01',
+      label: null,
+      labelKey: null,
+      direction: 'Outgoing',
+      note: 'Tracks the statutory rate.',
+      createdAtUtc: '2026-01-28T09:00:00Z'
     }],
     // Fiber service — a price rise on the monthly charge, plus two one-offs.
     'ct-fiber': [{
@@ -56455,6 +57392,7 @@ try { (() => {
       effectiveFrom: '2021-04-15',
       label: null,
       labelKey: null,
+      direction: 'Outgoing',
       note: 'Vendor financing on the balance of the purchase price.',
       createdAtUtc: '2021-04-15T09:00:00Z'
     }, {
@@ -56469,6 +57407,7 @@ try { (() => {
       effectiveFrom: '2024-05-01',
       label: null,
       labelKey: null,
+      direction: 'Outgoing',
       note: 'Renegotiated at the three-year review.',
       createdAtUtc: '2024-05-01T09:00:00Z'
     }],
@@ -60535,19 +61474,18 @@ Object.assign(window.OdysseyHelpers, {
     if (t && t.accountId) return 'account';
     return 'account';
   },
-  /* Where direction MEANS something: a FEE term owned by a CONTRACT. A rate
-     kind is a percentage the roll-up never projects, and an account term has
-     no surface that reads a direction — both refuse Incoming with a 400, so
-     neither is offered one. One predicate, so the dialog's control, the read
-     surfaces and the refusal copy can never disagree. */
+  /* Where direction MEANS something: any term owned by a CONTRACT. An arrears
+     rate charges the tenant and a deposit rate pays them — the same fact a fee
+     carries, so it is asked the same way on both. An ACCOUNT term still has no
+     surface that reads a direction and refuses Incoming with a 400. One
+     predicate, so the dialog's control, the read surfaces and the refusal copy
+     can never disagree. */
   termDirectionApplies(t, owner) {
-    const kind = t && typeof t === 'object' ? t.kind : t;
-    return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract' && kind === 'Fee';
+    return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract';
   },
   // Why direction is refused here, in the words the 400 uses. Null = allowed.
   termDirectionRefusal(kind, ownerKind) {
     if (ownerKind !== 'contract') return 'Direction applies to a contract term. An account term is always money out.';
-    if (kind !== 'Fee') return 'Direction applies to a fee term only — a rate is a percentage, not a movement.';
     return null;
   },
   /* Mint wherever an INCOMING term's own value is printed. Outgoing returns
@@ -64522,6 +65460,8 @@ __ds_ns.ProgressBar = __ds_scope.ProgressBar;
 
 __ds_ns.StatTile = __ds_scope.StatTile;
 
+__ds_ns.StepChart = __ds_scope.StepChart;
+
 __ds_ns.StepperField = __ds_scope.StepperField;
 
 __ds_ns.Switch = __ds_scope.Switch;
@@ -64541,6 +65481,8 @@ __ds_ns.TaxStatementFileTypeMultiSelect = __ds_scope.TaxStatementFileTypeMultiSe
 __ds_ns.TAX_STATEMENT_FILE_TYPES = __ds_scope.TAX_STATEMENT_FILE_TYPES;
 
 __ds_ns.TaxStatementFileTypeSelect = __ds_scope.TaxStatementFileTypeSelect;
+
+__ds_ns.TermHistoryChart = __ds_scope.TermHistoryChart;
 
 __ds_ns.TextInputField = __ds_scope.TextInputField;
 

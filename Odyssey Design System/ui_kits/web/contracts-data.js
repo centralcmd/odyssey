@@ -786,15 +786,28 @@
      currency when its unit is Amount — the contract rule, seeded as it writes. */
   D.contractTerms = {
     // Maple St lease — the rent as a dated series (a review, plus a scheduled
-    // increase), beside the charges the tenancy carries.
+    // increase), beside the charges the tenancy carries. Three of them were
+    // revised at the same mid-term review, so the terms chart has something
+    // real to compare; the arrears rate is the one term measured differently.
     'ct-lease': [
       { id: 'ctm-lease-1', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 2150.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-09-01', anchorDate: '2025-09-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Due on the 1st.', createdAtUtc: '2025-08-14T10:00:00Z' },
       { id: 'ctm-lease-2', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 2250.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-03-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Indexed to CPI at the mid-term review.', createdAtUtc: '2026-01-28T09:00:00Z' },
       // Future effective date → reads "Scheduled", not in force yet.
       { id: 'ctm-lease-3', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 2350.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-10-01', label: 'Monthly rent', labelKey: 'monthly rent', note: 'Notified 30 May 2026.', createdAtUtc: '2026-05-30T09:00:00Z' },
       { id: 'ctm-lease-4', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 85.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-09-01', label: 'Parking space', labelKey: 'parking space', note: null, createdAtUtc: '2025-08-14T10:00:00Z' },
+      // Raised at the same mid-term review as the rent. A second CHANGED series
+      // is what makes the chart's comparison reachable at all — and at 95 beside
+      // a 2,250 rent it is exactly the unlike-magnitude case indexing exists for.
+      { id: 'ctm-lease-4b', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 95.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2026-03-01', label: 'Parking space', labelKey: 'parking space', note: null, createdAtUtc: '2026-01-28T09:00:00Z' },
       { id: 'ctm-lease-5', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 50.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, effectiveFrom: '2025-09-01', label: 'Late payment', labelKey: 'late payment', note: 'Charged after five days in arrears.', createdAtUtc: '2025-08-14T10:00:00Z' },
       { id: 'ctm-lease-6', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 300.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-09-01', label: 'End-of-tenancy cleaning', labelKey: 'end-of-tenancy cleaning', note: null, createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-6b', contractId: 'ct-lease', kind: 'Fee', unit: 'Amount', value: 340.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2026-03-01', label: 'End-of-tenancy cleaning', labelKey: 'end-of-tenancy cleaning', note: 'Contractor rate revised.', createdAtUtc: '2026-01-28T09:00:00Z' },
+      // The one term here NOT measured in dollars — arrears interest, as a
+      // percentage. A lease carrying both is ordinary, and it is what makes
+      // the chart's "measured differently, so it shows on its own" rule
+      // something a reader can actually meet.
+      { id: 'ctm-lease-7', contractId: 'ct-lease', kind: 'InterestRate', unit: 'Percentage', value: 0.08, currency: null, interval: null, intervalCount: null, effectiveFrom: '2025-09-01', label: null, labelKey: null, direction: 'Outgoing', note: 'Statutory rate on rent in arrears.', createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-7b', contractId: 'ct-lease', kind: 'InterestRate', unit: 'Percentage', value: 0.0925, currency: null, interval: null, intervalCount: null, effectiveFrom: '2026-03-01', label: null, labelKey: null, direction: 'Outgoing', note: 'Tracks the statutory rate.', createdAtUtc: '2026-01-28T09:00:00Z' },
     ],
     // Fiber service — a price rise on the monthly charge, plus two one-offs.
     'ct-fiber': [
@@ -806,8 +819,8 @@
     // Vendor note on the house purchase — the one seeded InterestRate, which a
     // contract carries unlabelled exactly as an account does.
     'ct-house': [
-      { id: 'ctm-house-1', contractId: 'ct-house', kind: 'InterestRate', unit: 'Percentage', value: 0.0425, currency: null, interval: null, intervalCount: null, effectiveFrom: '2021-04-15', label: null, labelKey: null, note: 'Vendor financing on the balance of the purchase price.', createdAtUtc: '2021-04-15T09:00:00Z' },
-      { id: 'ctm-house-2', contractId: 'ct-house', kind: 'InterestRate', unit: 'Percentage', value: 0.0399, currency: null, interval: null, intervalCount: null, effectiveFrom: '2024-05-01', label: null, labelKey: null, note: 'Renegotiated at the three-year review.', createdAtUtc: '2024-05-01T09:00:00Z' },
+      { id: 'ctm-house-1', contractId: 'ct-house', kind: 'InterestRate', unit: 'Percentage', value: 0.0425, currency: null, interval: null, intervalCount: null, effectiveFrom: '2021-04-15', label: null, labelKey: null, direction: 'Outgoing', note: 'Vendor financing on the balance of the purchase price.', createdAtUtc: '2021-04-15T09:00:00Z' },
+      { id: 'ctm-house-2', contractId: 'ct-house', kind: 'InterestRate', unit: 'Percentage', value: 0.0399, currency: null, interval: null, intervalCount: null, effectiveFrom: '2024-05-01', label: null, labelKey: null, direction: 'Outgoing', note: 'Renegotiated at the three-year review.', createdAtUtc: '2024-05-01T09:00:00Z' },
     ],
     'ct-parking': [
       { id: 'ctm-parking-1', contractId: 'ct-parking', kind: 'Fee', unit: 'Amount', value: 165.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-11-01', label: 'Space licence', labelKey: 'space licence', note: 'Due on the 1st.', createdAtUtc: '2025-10-20T09:00:00Z' },

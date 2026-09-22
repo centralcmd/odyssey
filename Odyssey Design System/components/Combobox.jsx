@@ -14,6 +14,12 @@
  * operable clear (×) button once a value is chosen, clearing to '' via
  * onChange. `loading` shows an announced loading row in place of results.
  *
+ * `freeText` turns it into a SUGGEST-don't-constrain field: the value is a
+ * string the user may type freely, and the options are recognised names rather
+ * than the only legal answers. The typed query commits on blur and on Enter
+ * when no row is highlighted, so a name that is never explicitly picked is not
+ * silently dropped — the one behaviour a constrained select must NOT have.
+ *
  * The option list is portaled to <body> and positioned against the input, so
  * it escapes any overflow:hidden/auto ancestor (a modal body, card, or
  * scrollable form) instead of being clipped — and flips above the field when
@@ -119,11 +125,15 @@ export function Combobox({
   ariaDescribedBy,
   invalid = false,
   required = false,
+  freeText = false,
 }) {
   const autoId = React.useId();
   const fieldId = id || autoId;
   const opts = options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o));
-  const selected = opts.find((o) => o.value === value);
+  // In freeText mode a value that matches no option is still the value — it is
+  // a name the user typed, not an invalid selection.
+  const selected = opts.find((o) => o.value === value)
+    || (freeText && value ? { value, label: value } : undefined);
   const showClear = clearable && !!selected && !disabled;
 
   const { open, setOpen, anchorRef, popRef, floatStyle } = odcUsePopover({ matchWidth: true });
@@ -192,6 +202,18 @@ export function Combobox({
     closeAndClear();
   };
 
+  // freeText: the query IS an answer. Committing it on blur is what separates
+  // "suggests" from "constrains".
+  const commitQuery = () => {
+    if (!freeText) return false;
+    const t = query.trim();
+    if (!t) return false;
+    const hit = opts.find((o) => o.label.toLowerCase() === t.toLowerCase());
+    const opt = hit || { value: t, label: t };
+    if (onChange && opt.value !== value) onChange(opt.value, opt);
+    return true;
+  };
+
   const onKey = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -205,6 +227,7 @@ export function Combobox({
       e.preventDefault();
       if (showCreate && active >= filtered.length) create(createRows[active - filtered.length]);
       else if (filtered[active]) pick(filtered[active]);
+      else if (commitQuery()) closeAndClear();
     } else if (e.key === 'Escape') {
       // Stop propagation so Esc dismisses only the popover — an enclosing
       // Modal keeps its own Esc for the next press.
@@ -251,6 +274,7 @@ export function Combobox({
             setActive(0);
           }}
           onKeyDown={onKey}
+          onBlur={() => { if (commitQuery()) closeAndClear(); else if (freeText) setOpen(false); }}
         />
         {showClear ? (
           <button

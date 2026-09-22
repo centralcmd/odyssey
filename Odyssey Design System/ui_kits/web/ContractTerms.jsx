@@ -5,9 +5,12 @@
    table, under the same rules as an account's term — only the owner differs
    (exactly one of AccountId / ContractId). So this section reuses the account
    surface's pieces verbatim: CurrentTermsSummary (the GET …/terms/current view)
-   and TermHistory (the GET …/terms list, grouped, editable per row). What it
-   does NOT reuse is the hero rate chart: an agreement's price is usually an
-   amount, not a rate, so the section leads with the values in force.
+   and TermHistory (the GET …/terms list, grouped, editable per row). It reuses
+   the step chart too, but not as a hero and not as a rate: an agreement has
+   several named charges and no single line that stands for it, so the chart is
+   a CHOOSER above the history — one series at a time, opening on the one whose
+   latest entry is the most recent, with the value axis in that series' own
+   unit. The section still leads with the values in force.
 
    Three things here are contract-specific, and each is drawn, not assumed:
      • Kind eligibility — Fee and InterestRate on every ContractType;
@@ -30,6 +33,95 @@ const CTRM_D = window.OdysseyData;
    unlabelled InterestRate read "Interest rate" here and "Interest charged" on a
    loan, from one helper rather than two copies of the wording. */
 const conTermOwner = (contract) => ({ ...contract, ownerKind: 'contract' });
+
+/* =============================================================
+   Price history chart — one SERIES at a time
+   =============================================================
+   The account surface leads with a rate chart because an account has one rate
+   and the question is where it went. A contract is the other shape: several
+   named charges, each with its own history, and no single line that stands for
+   the agreement. So the chart is a chooser — and a MULTI-select one, because
+   the second question after "what did this change to" is "how does it compare
+   to the others". It opens on the series whose LATEST entry is the most
+   recent, because that is the change the reader came to look at.
+
+   Comparing is only honest between charges measured the same way, so the
+   chooser carries the constraint: same unit, and for money the same currency.
+   A pick that cannot share the axis switches to itself rather than stacking,
+   which keeps every series one click away and the axis never lying. Anything
+   else is selectable, including a charge that has never changed \u2014 flat at 0%
+   beside a rising line is an answer to "which of these is moving". Comparing
+   plots INDEXED change \u2014 each charge's move from its own first entry \u2014 since
+   a 2,250 rent and a 95 parking space share no useful absolute axis; the
+   legend keeps the real money beside each line.
+
+   Amounts, not rates, are the common case here, so the value axis is labelled
+   in the series' own unit and the currency is stated once in the header rather
+   than on every tick. The figure takes the direction's colour \u2014 money out is
+   money out whether it rose or fell \u2014 which frees the delta to be neutral grey
+   rather than income-green for a rent increase.
+
+   The plot itself is the DS `StepChart` — LineChart's card, head and
+   typography (the dashboard's chart vocabulary, at the dashboard's scale) with
+   the two things a term history needs and a trend chart refuses: a real TIME
+   axis, so eight months of hold and two changes in a quarter do not read as
+   three equal steps, and a TODAY marker the line holds solid up to and dashes
+   past, so a scheduled increase is visibly not yet true. */
+const conTermSeriesList = (terms) => {
+  const today = trmToday();
+  const by = {};
+  for (const t of terms) {
+    const key = trmKey(t);
+    const s = by[key] || (by[key] = { key, kind: t.kind, labelKey: t.labelKey || CTRM_H.termLabelKey(t.label) || null, latest: t, inForce: null, earliest: t, count: 0 });
+    s.count += 1;
+    if (t.effectiveFrom > s.latest.effectiveFrom) s.latest = t;
+    if (t.effectiveFrom < s.earliest.effectiveFrom) s.earliest = t;
+    /* `latest` orders the list — "most recently changed" legitimately counts a
+       scheduled entry. `inForce` is what every READOUT shows: the newest entry
+       that has actually taken effect. A series still entirely in the future
+       falls back to its earliest, which is the only figure it has. */
+    if (t.effectiveFrom <= today && (!s.inForce || t.effectiveFrom > s.inForce.effectiveFrom)) s.inForce = t;
+  }
+  return Object.values(by)
+    .map(s => ({ ...s, inForce: s.inForce || s.earliest }))
+    .sort((a, b) => (a.latest.effectiveFrom < b.latest.effectiveFrom ? 1 : a.latest.effectiveFrom > b.latest.effectiveFrom ? -1 : 0));
+};
+
+const conAxisFmt = (latest) => (latest.unit === 'Percentage'
+  ? (v) => (v < 0 ? '−' : '') + CTRM_H.pctStr(Math.abs(v))
+  // No currency code on the tick: it is stated once, in the value. Whole units
+  // above 10 — a rent axis reading "2,438.75" is noise.
+  : (v) => (v < 0 ? '−' : '') + Math.abs(v).toLocaleString('en-US', { maximumFractionDigits: Math.abs(v) >= 10 ? 0 : 2 }));
+
+/* Two series may share an axis only if they are the same UNIT and, for money,
+   the same CURRENCY — handed to the DS chart as each series' `group`. */
+const conCompatKey = (t) => (t.unit === 'Percentage' ? 'pct' : `amt:${t.currency || CTRM_H.defaultCurrency()}`);
+
+/* The card itself is the DS `TermHistoryChart`: this only resolves contract
+   terms into its plain series. Everything each series states comes from the
+   entry IN FORCE, so the picker, the legend and the tiles above agree. */
+const ContractTermChart = ({ terms, owner }) => {
+  const DS = window.OdysseyDesignSystem_d5aa51 || {};
+  const DSTermHistoryChart = DS.TermHistoryChart;
+  if (!DSTermHistoryChart) return null;
+  const series = conTermSeriesList(terms).map((x) => {
+    const t = x.inForce;
+    const dir = CTRM_H.termDirectionApplies(t, owner) ? CTRM_H.termDirectionInfo(t) : null;
+    const pct = t.unit === 'Percentage';
+    return {
+      key: x.key,
+      label: CTRM_H.termDisplayName(t, owner),
+      value: CTRM_H.fmtTermValueFor(t, owner),
+      tone: dir ? { label: dir.label, color: dir.color } : undefined,
+      color: dir ? dir.color : trmKindInfo(x.kind).color,
+      group: conCompatKey(t),
+      points: trmSeriesFromList(terms, x.kind, x.labelKey).map(p => ({ id: p.id, date: p.date, value: p.value })),
+      format: (v) => (pct ? CTRM_H.pctStr(v) : CTRM_H.money(v, t.currency || CTRM_H.defaultCurrency())),
+      axisFormat: conAxisFmt(t),
+    };
+  });
+  return <DSTermHistoryChart className="trm-seriesplot" series={series} />;
+};
 
 const ContractTermsNotice = ({ block }) => (
   <div className="odc-recordsection-notice">
@@ -110,6 +202,7 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
 
       <div className="con-section">
         <SectionDivider label="Term history" meta={`${terms.length} ${terms.length === 1 ? 'entry' : 'entries'}${terms.length >= limit ? ` · limit ${limit}` : ''}`} />
+        <ContractTermChart terms={terms} owner={owner} />
         <TermHistory
           terms={terms}
           currentIds={currentIds}
@@ -123,4 +216,4 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
   );
 };
 
-Object.assign(window, { ContractTerms, conTermOwner });
+Object.assign(window, { ContractTerms, ContractTermChart, conTermOwner });

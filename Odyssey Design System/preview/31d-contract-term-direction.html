@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Components" name="Contract term direction" subtitle="Which way the money moves. A required Direction (Outgoing · Incoming) on every contract fee term, stated from the household's perspective — the direction sitting where the sign would be in the money field, the word-only tag on every read surface, the refusal states where direction has no meaning, and the contracts header reporting out · in · net instead of one figure that mixed them. Live render of the kit." viewport="1240x2260" -->
+<!-- @dsCard group="Components" name="Contract term direction" subtitle="Which way the money moves. A required Direction (Outgoing · Incoming) on every contract term, stated from the household's perspective — the direction sitting where the sign would be in the money field, the word-only tag on every read surface, the refusal states where direction has no meaning, and the contracts header reporting out · in · net instead of one figure that mixed them. Live render of the kit." viewport="1240x2260" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -59,7 +59,7 @@
 <body>
   <div class="spec-doc">
     <h2>Contract term direction · <span style="color:var(--mud-palette-text-secondary);font-weight:400;">Outgoing · Incoming</span></h2>
-    <p class="spec-lead">A priced term used to have no way of saying <b>which way the money moves</b>, so every term was implicitly a cost: a landlord's rent summed into the same “what this file costs to run” figure as a streaming subscription, and a salary read as an expense. Every contract fee term now carries a required <b>Direction</b> — <code>Outgoing</code> or <code>Incoming</code>, stated from the <b>household's</b> perspective, never from either named party's — and the contracts header reports <b>what goes out</b>, <b>what comes in</b> and an explicit <b>net</b> instead of one figure that quietly mixed them. Nothing changes for a household that only records costs: every existing term is <code>Outgoing</code>, and every figure keeps its exact value.</p>
+    <p class="spec-lead">A priced term used to have no way of saying <b>which way the money moves</b>, so every term was implicitly a cost: a landlord's rent summed into the same “what this file costs to run” figure as a streaming subscription, and a salary read as an expense. Every contract term now carries a required <b>Direction</b> — <code>Outgoing</code> or <code>Incoming</code>, stated from the <b>household's</b> perspective, never from either named party's — and the contracts header reports <b>what goes out</b>, <b>what comes in</b> and an explicit <b>net</b> instead of one figure that quietly mixed them. Nothing changes for a household that only records costs: every existing term is <code>Outgoing</code>, and every figure keeps its exact value.</p>
     <div class="spec-src">
       <span class="pill">Enum <b>TermDirection</b> (0 · 1)</span>
       <span class="pill">DTO <b>NewTerm</b> · <b>ExistingTerm</b> · <b>CurrentTerm</b> · <b>AccountCurrentTerm</b></span>
@@ -71,14 +71,14 @@
     <table class="spec-tbl">
       <thead><tr><th>Surface</th><th>Field</th><th>Type</th><th>Treatment</th></tr></thead>
       <tbody>
-        <tr><td>New / Edit term dialog</td><td class="f">Direction</td><td class="t">enum</td><td>The lead of the <b>value control itself</b> — money field or percentage field, same slot, same short word where a sign would be, because the record stores a direction and not a sign. Required, defaulting to <b>Outgoing</b> — an omitted direction and a chosen <code>Outgoing</code> are the same fact. Offered on a <b>fee only</b>; a rate kind gets the refusal in its place.</td></tr>
-        <tr><td>Current terms · term history</td><td class="f">Direction</td><td class="t">enum</td><td>The <b>word</b>, as a muted mono sub-line under the tile's title (the slot a party tile gives its from–to dates) and under the name in a history row — with the <b>figure</b> carrying the hue, coral out and mint in. Stated on <b>every</b> fee term, both ways, so a reader never has to interpret its absence. No glyph — an arrow reads against value before it reads against the household, and the unambiguous marks (money bag, winged money) are emoji.</td></tr>
+        <tr><td>New / Edit term dialog</td><td class="f">Direction</td><td class="t">enum</td><td>The lead of the <b>value control itself</b> — money field or percentage field, same slot, same short word where a sign would be, because the record stores a direction and not a sign. Required, defaulting to <b>Outgoing</b> — an omitted direction and a chosen <code>Outgoing</code> are the same fact. Offered on <b>every contract term</b>, fee and rate alike — an arrears rate charges and a deposit rate pays, which is the same fact.</td></tr>
+        <tr><td>Current terms · term history</td><td class="f">Direction</td><td class="t">enum</td><td>The <b>word</b>, as a muted mono sub-line under the tile's title (the slot a party tile gives its from–to dates) and under the name in a history row — with the <b>figure</b> carrying the hue, coral out and mint in. Stated on <b>every</b> contract term, both ways, so a reader never has to interpret its absence. No glyph — an arrow reads against value before it reads against the household, and the unambiguous marks (money bag, winged money) are emoji.</td></tr>
         <tr><td>Header run rate</td><td class="f">Monthly · Yearly</td><td class="t">decimal?</td><td><b>Outgoing only.</b> Same name, same meaning, same value as before the field existed — because every pre-existing term is outgoing.</td></tr>
         <tr><td>Header run rate</td><td class="f">IncomingMonthly · IncomingYearly</td><td class="t">decimal?</td><td>The other side, in the same units and base currency. <code>null</code> when nothing on that side is priced.</td></tr>
         <tr><td>Header run rate</td><td class="f">NetMonthly · NetYearly</td><td class="t">decimal?</td><td>In <b>minus</b> out — the only <b>signed</b> figures in the payload, so the only ones that ever carry a leading <code>+</code>. Computed from the unrounded sums and rounded once. Read as the ruled <b>Net</b> row of each by-type tile rather than as tiles of their own.</td></tr>
         <tr><td>Header breakdowns</td><td class="f">ByType · IncomingByType</td><td class="t">rows</td><td>One tile per period, one figure per contract type: that type's <b>net</b>, signed and colored, closing with a ruled <b>Net</b> row for the whole file. The grosses are the three tiles above; a reader wants per type only which way it leaves them.</td></tr>
         <tr><td>Header signal</td><td class="f">UpcomingCharges · UpcomingReceipts</td><td class="t">rows</td><td>Two groups, one row shape. The <b>group heading names the direction</b>, so the row carries no direction field to drift. Collapse is per <b>(contract, direction)</b>; the cap applies <b>per list</b>.</td></tr>
-        <tr><td>Rate kinds · account terms</td><td class="f">Direction</td><td class="t">refused</td><td>A rate is a percentage, not a movement; an account surface reads no direction today. Both refuse anything but <code>Outgoing</code> (<code>400</code>), so the dialog states the refusal in place of the control rather than offering a choice the server rejects.</td></tr>
+        <tr><td>Account terms</td><td class="f">Direction</td><td class="t">refused</td><td>An account surface reads no direction today and refuses anything but <code>Outgoing</code> (<code>400</code>), so the dialog states the refusal in place of the control rather than offering a choice the server rejects.</td></tr>
       </tbody>
     </table>
 
@@ -133,7 +133,7 @@
       </div>
     );
 
-    /* The tag, at the three sizes it renders in, plus the two states where the
+    /* The tag, at the three sizes it renders in, plus the one state where the
        tag is deliberately absent. */
     const TagMatrix = () => {
       const salary = inForce.find(t => t.labelKey === 'base salary');
@@ -149,11 +149,11 @@
           </div>
           <div className="tag-row">
             <TermDirectionTag term={dues} owner={owner} both={true} />
-            <span className="cap">contract fee · outgoing — stated on every fee term, so its absence never has to be read</span>
+            <span className="cap">contract fee · outgoing — stated on every contract term, so its absence never has to be read</span>
           </div>
           <div className="tag-row">
-            <span className="cap" style={{ color: 'var(--mud-palette-text-disabled)' }}>— no tag —</span>
-            <span className="cap">interest rate on a contract: a percentage is not a movement {rate ? `(${H.fmtTermValueFor(rate, window.conTermOwner(byId['ct-house']))})` : ''}</span>
+            {rate ? <TermDirectionTag term={rate} owner={window.conTermOwner(byId['ct-house'])} both={true} /> : null}
+            <span className="cap">contract rate · outgoing — a rate carries a direction too: this one charges the household {rate ? `(${H.fmtTermValueFor(rate, window.conTermOwner(byId['ct-house']))})` : ''}</span>
           </div>
           <div className="tag-row">
             <span className="cap" style={{ color: 'var(--mud-palette-text-disabled)' }}>— no tag —</span>
@@ -172,7 +172,7 @@
           <div className="stage-label"><span className="material-icons">swap_vert</span>The enum · two members, ordinals frozen, Outgoing = 0 the default and the backfill</div>
           <RegistryCard />
 
-          <div className="stage-label"><span className="material-icons">label</span>The tag · the word, and the two places it is deliberately absent</div>
+          <div className="stage-label"><span className="material-icons">label</span>The tag · the word, and the one place it is deliberately absent</div>
           <TagMatrix />
 
           <div className="stage-label"><span className="material-icons">calculate</span>The header · the two grosses per period, and the net per contract type beside them</div>
@@ -234,7 +234,7 @@
             </p>
           </div>
 
-          <div className="stage-label"><span className="material-icons">edit_note</span>The control · both settings, and the refusals that stand in its place</div>
+          <div className="stage-label"><span className="material-icons">edit_note</span>The control · both settings, and the refusal that stands in its place</div>
           <div className="dir-grid">
             {['Outgoing', 'Incoming'].map(key => {
               const d = H.termDirectionInfo(key);
@@ -263,16 +263,6 @@
                 </div>
               );
             })}
-            <div className="panel">
-              <div className="field trm-dir-field">
-                <div className="label">Direction</div>
-                <div className="trm-dir-refused">
-                  <MIcon name="block" size={15} />
-                  <span>{H.termDirectionRefusal('InterestRate', 'contract')} It is recorded as <b>outgoing</b>, where it carries no meaning.</span>
-                </div>
-              </div>
-              <p className="dir-card-lead" style={{ margin: '10px 0 0' }}>Contract term, rate kind — the control is replaced by its reason rather than shown disabled.</p>
-            </div>
             <div className="panel">
               <div className="trm-dir-refused">
                 <MIcon name="block" size={15} />
