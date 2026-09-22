@@ -135,34 +135,6 @@
         "message": "<Badge> tone must be one of 'error' | 'primary' | 'neutral'."
       },
       {
-        "selector": "JSXOpeningElement[name.name='BillingIntervalChip'] > JSXAttribute > JSXIdentifier[name!=/^(?:interval|count|firstBillingDate|anchor|size|className|style|key|ref|className|style|children)$/]",
-        "message": "<BillingIntervalChip> doesn't accept that prop. Declared props: interval, count, firstBillingDate, anchor, size, className, style."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='BillingIntervalChip'] > JSXAttribute[name.name='interval'] > Literal[value!=/^(?:Daily|Weekly|Monthly|Yearly)$/]",
-        "message": "<BillingIntervalChip> interval must be one of 'Daily' | 'Weekly' | 'Monthly' | 'Yearly'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='BillingIntervalChip'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md)$/]",
-        "message": "<BillingIntervalChip> size must be one of 'sm' | 'md'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='BillingIntervalMultiSelect'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|onChange|label|icon|align|types|key|ref|className|style|children)$/]",
-        "message": "<BillingIntervalMultiSelect> doesn't accept that prop. Declared props: value, onChange, label, icon, align, types."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='BillingIntervalMultiSelect'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:start|end)$/]",
-        "message": "<BillingIntervalMultiSelect> align must be one of 'start' | 'end'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='BillingIntervalDef'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|key|ref|className|style|children)$/]",
-        "message": "<BillingIntervalDef> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='BillingIntervalDef'] > JSXAttribute[name.name='key'] > Literal[value!=/^(?:Daily|Weekly|Monthly|Yearly)$/]",
-        "message": "<BillingIntervalDef> key must be one of 'Daily' | 'Weekly' | 'Monthly' | 'Yearly'."
-      },
-      {
         "selector": "JSXOpeningElement[name.name='BrandMark'] > JSXAttribute > JSXIdentifier[name!=/^(?:size|withWordmark|key|ref|className|style|children)$/]",
         "message": "<BrandMark> doesn't accept that prop. Declared props: size, withWordmark."
       },
@@ -293,18 +265,6 @@
       {
         "selector": "JSXOpeningElement[name.name='Coordinate'] > JSXAttribute > JSXIdentifier[name!=/^(?:lat|lng|key|ref|className|style|children)$/]",
         "message": "<Coordinate> doesn't accept that prop. Declared props: lat, lng."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='CoverageStatusMeta'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|tone|dot|icon|key|ref|className|style|children)$/]",
-        "message": "<CoverageStatusMeta> doesn't accept that prop. Declared props: key, label, tone, dot, icon."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='CoverageStatusMeta'] > JSXAttribute[name.name='key'] > Literal[value!=/^(?:Active|ExpiringSoon|Lapsed|Upcoming|NoCoverage|Archived)$/]",
-        "message": "<CoverageStatusMeta> key must be one of 'Active' | 'ExpiringSoon' | 'Lapsed' | 'Upcoming' | 'NoCoverage' | 'Archived'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='CoverageStatusMeta'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:income|pending|expense|info|outline)$/]",
-        "message": "<CoverageStatusMeta> tone must be one of 'income' | 'pending' | 'expense' | 'info' | 'outline'."
       },
       {
         "selector": "JSXOpeningElement[name.name='CurrencyOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|key|ref|className|style|children)$/]",
@@ -443,10 +403,6 @@
         "message": "<InfoTileGrid> doesn't accept that prop. Declared props: dense, className, style, children."
       },
       {
-        "selector": "JSXOpeningElement[name.name='InsurancePolicyType'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|icon|color|soft|key|ref|className|style|children)$/]",
-        "message": "<InsurancePolicyType> doesn't accept that prop. Declared props: key, label, icon, color, soft."
-      },
-      {
         "selector": "JSXOpeningElement[name.name='JournalPhoto'] > JSXAttribute > JSXIdentifier[name!=/^(?:id|photoId|fileId|name|src|key|ref|className|style|children)$/]",
         "message": "<JournalPhoto> doesn't accept that prop. Declared props: id, photoId, fileId, name, src."
       },
@@ -525,18 +481,6 @@
       {
         "selector": "JSXOpeningElement[name.name='PasswordRule'] > JSXAttribute[name.name='key'] > Literal[value!=/^(?:len|upper|lower|digit|sym)$/]",
         "message": "<PasswordRule> key must be one of 'len' | 'upper' | 'lower' | 'digit' | 'sym'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='PolicyFileTypeMultiSelect'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|onChange|label|icon|align|types|className|key|ref|className|style|children)$/]",
-        "message": "<PolicyFileTypeMultiSelect> doesn't accept that prop. Declared props: value, onChange, label, icon, align, types, className."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='PolicyFileTypeMultiSelect'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:left|right)$/]",
-        "message": "<PolicyFileTypeMultiSelect> align must be one of 'left' | 'right'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='PolicyFileType'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|icon|color|soft|key|ref|className|style|children)$/]",
-        "message": "<PolicyFileType> doesn't accept that prop. Declared props: key, label, icon, color, soft."
       },
       {
         "selector": "JSXOpeningElement[name.name='ProblemAlert'] > JSXAttribute > JSXIdentifier[name!=/^(?:severity|title|detail|actionLabel|actionIcon|onAction|className|children|key|ref|className|style|children)$/]",
@@ -723,18 +667,6 @@
         "message": "<StepperField> doesn't accept that prop. Declared props: label, value, onChange, unit, unitPlural, min, max, step, help, error, required, optional, disabled, autoFocus, className, id."
       },
       {
-        "selector": "JSXOpeningElement[name.name='SubscriptionStateMeta'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|tone|dot|icon|key|ref|className|style|children)$/]",
-        "message": "<SubscriptionStateMeta> doesn't accept that prop. Declared props: key, label, tone, dot, icon."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='SubscriptionStateMeta'] > JSXAttribute[name.name='key'] > Literal[value!=/^(?:Paused|Ended|Archived|Active)$/]",
-        "message": "<SubscriptionStateMeta> key must be one of 'Paused' | 'Ended' | 'Archived' | 'Active'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='SubscriptionStateMeta'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:pending|expense|outline|income)$/]",
-        "message": "<SubscriptionStateMeta> tone must be one of 'pending' | 'expense' | 'outline' | 'income'."
-      },
-      {
         "selector": "JSXOpeningElement[name.name='Switch'] > JSXAttribute > JSXIdentifier[name!=/^(?:checked|onChange|label|disabled|id|key|ref|className|style|children)$/]",
         "message": "<Switch> doesn't accept that prop. Declared props: checked, onChange, label, disabled, id."
       },
@@ -884,15 +816,6 @@
       "Badge": {
         "replaces": []
       },
-      "BillingIntervalChip": {
-        "replaces": []
-      },
-      "BillingIntervalMultiSelect": {
-        "replaces": []
-      },
-      "BillingIntervalDef": {
-        "replaces": []
-      },
       "BrandMark": {
         "replaces": []
       },
@@ -968,9 +891,6 @@
       "Coordinate": {
         "replaces": []
       },
-      "CoverageStatusMeta": {
-        "replaces": []
-      },
       "CurrencyOption": {
         "replaces": []
       },
@@ -1037,9 +957,6 @@
       "InfoTileGrid": {
         "replaces": []
       },
-      "InsurancePolicyType": {
-        "replaces": []
-      },
       "JournalPhoto": {
         "replaces": []
       },
@@ -1086,12 +1003,6 @@
         "replaces": []
       },
       "PasswordRule": {
-        "replaces": []
-      },
-      "PolicyFileTypeMultiSelect": {
-        "replaces": []
-      },
-      "PolicyFileType": {
         "replaces": []
       },
       "ProblemAlert": {
@@ -1176,9 +1087,6 @@
         "replaces": []
       },
       "StepperField": {
-        "replaces": []
-      },
-      "SubscriptionStateMeta": {
         "replaces": []
       },
       "Switch": {
@@ -1336,9 +1244,6 @@
       "--ink-800",
       "--ink-900",
       "--ink-950",
-      "--ins-accent",
-      "--ins-accent-line",
-      "--ins-accent-soft",
       "--lh-loose",
       "--lh-normal",
       "--lh-snug",
@@ -1648,9 +1553,6 @@
       "--con-accent": "color",
       "--con-accent-soft": "color",
       "--con-accent-line": "color",
-      "--ins-accent": "color",
-      "--ins-accent-soft": "color",
-      "--ins-accent-line": "color",
       "--tkc-state": "color"
     },
     "fontFamilies": [

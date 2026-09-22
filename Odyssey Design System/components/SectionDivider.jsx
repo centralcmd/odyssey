@@ -2,8 +2,8 @@
  * Odyssey DS — SectionDivider
  * The divider that introduces a band or a section inside a record card body:
  * an uppercase letter-spaced label, a hairline rule that takes the remaining
- * width, and an optional mono meta note on the right. Promoted from the
- * Insurance page's .ins-sub treatment, which is now the one section divider.
+ * width, and an optional mono meta note on the right. The one section divider for a
+ * record's zones.
  *
  * No icon by design — the label carries it, and the record's sections are
  * already named by the header's counts. Styled by .odc-sectiondivider.

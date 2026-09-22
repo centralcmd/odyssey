@@ -29,6 +29,6 @@ export interface TodoStatusChipProps {
 
 /**
  * A to-do task's kanban status (Backlog / Doing / Done / Archived) as one chip,
- * meaning conveyed as visible text. Tasks' sibling of SubscriptionStatusChip.
+ * meaning conveyed as visible text.
  */
 export declare function TodoStatusChip(props: TodoStatusChipProps): JSX.Element;

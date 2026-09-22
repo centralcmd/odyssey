@@ -1,6 +1,6 @@
 /* Journal — /journal
    ----------------------------------------------------------------------------
-   The shared, searchable narrative journal. Sibling of Subscriptions / Contracts
+   The shared, searchable narrative journal. Sibling of Contracts
    on the expandable record-card scaffold: PageHeader + Overview + Search, an
    InfiniteList of entry cards (reverse-chron by EntryDate), expand-to-detail
    (full content, location, author + last-editor, tags, linked contacts,

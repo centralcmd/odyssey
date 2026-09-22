@@ -24,6 +24,6 @@ export interface RegistrySelectProps {
 /**
  * Shared engine behind every registry-backed single select — renders `TypeSelect`
  * (or the base `Select` as a fallback) from a registry. Domain wrappers
- * (AccountFileTypeSelect, InsurancePolicyTypeSelect, …) delegate to it.
+ * (AccountFileTypeSelect, ContractTypeSelect, …) delegate to it.
  */
 export declare function RegistrySelect(props: RegistrySelectProps): JSX.Element;

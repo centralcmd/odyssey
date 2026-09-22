@@ -4,7 +4,7 @@
  * **Backlog → Doing → Done**, plus a terminal **Archived**. One chip per call
  * (a task has exactly one status), the state **meaning carried in the visible
  * text label** — never colour or glyph alone (the leading dot/icon is
- * `aria-hidden`), matching SubscriptionStatusChip / CoverageStatusChip.
+ * `aria-hidden`).
  *
  * Tone follows the shared vocabulary: Backlog = neutral outline (not started),
  * Doing = info/sea (in progress — a cool, non-finance accent), Done = income

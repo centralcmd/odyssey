@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Dialogs" name="Blocked contact delete (409)" subtitle="ContactLinksBlockedModal — the refused DELETE /api/contacts/{id}, now widened past insurance: a contact named as a BENEFICIARY on a contract blocks the delete the same way a policy beneficiary does. Counts are always shown; the policy and contract NAMES are claim-gated (insurance.read / contracts.read), and the one-transaction detach valve demands contracts.update and insurance.update per blocker class actually present. Live." viewport="760x820" -->
+<!-- @dsCard group="Dialogs" name="Blocked contact delete (409)" subtitle="ContactLinksBlockedModal — the refused DELETE /api/contacts/{id}: a contact named as a BENEFICIARY on a contract blocks the delete. The count is always shown; the contract NAMES are claim-gated (contracts.read), and the one-transaction detach valve demands contracts.update. Live." viewport="760x820" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="../colors_and_type.css" />
   <link rel="stylesheet" href="../ui_kits/web/kit.css" />
   <link rel="stylesheet" href="../ui_kits/web/contacts.css" />
-  <link rel="stylesheet" href="../ui_kits/web/insurance.css" />
   <link rel="stylesheet" href="../ui_kits/web/contracts.css" />
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
@@ -16,7 +15,6 @@
 
   <script src="../_ds_bundle.js"></script>
   <script src="../ui_kits/web/data.js"></script>
-  <script src="../ui_kits/web/insurance-data.js"></script>
   <script src="../ui_kits/web/contracts-data.js"></script>
 
   <style>
@@ -44,12 +42,10 @@
   <script type="text/babel" data-presets="env,react">
     const H = window.OdysseyHelpers;
     const contact = (window.OdysseyData.contacts || []).find(c => c.id === 'c9') || { id: 'c9', name: 'Michael Chen' };
-    const blocking = (H.insPoliciesLinkingContact || (() => []))('c9');
     const conBen = H.conContractsWithBeneficiary('c9');
     ReactDOM.createRoot(document.getElementById('root')).render(
       <window.ContactLinksBlockedModal
         contact={contact}
-        blocking={blocking}
         contractBeneficiaries={{ count: conBen.length, contracts: conBen }}
         onClose={() => {}} onDetachAndDelete={() => {}} />
     );

@@ -29,7 +29,6 @@ const MODULES = [
       ] },
       { label: 'Commitments', items: [
         { key: 'tax-statements', label: 'Tax Statements', icon: 'request_quote' },
-        { key: 'insurance', label: 'Insurance', icon: 'shield' },
         { key: 'contracts', label: 'Contracts', icon: 'handshake' },
       ] },
       { label: 'Documents', items: [

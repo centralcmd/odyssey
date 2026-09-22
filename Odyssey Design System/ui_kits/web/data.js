@@ -90,42 +90,6 @@ window.OdysseyData = {
     { key: 'Other',              label: 'Other',               enumValue: 3, icon: 'insert_drive_file', color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)', desc: 'The enum default — anything that does not fit the categories above.' },
   ],
 
-  /* Canonical insurance-policy-type registry — single source of truth for the
-     InsurancePolicyType enum's label, Material icon, and fixed icon color (oklch
-     foreground + soft tint). Ordered to match the enum declaration
-     (Odyssey.Finance.Context/InsurancePolicyType); `Other` is the entity default
-     and always sorts last. The enum carries no icon/color — those are a
-     design-system decision, defined here so every surface (policy avatar, type
-     chip, picker) renders a type identically. Hues sit in the shared categorical
-     band with accountTypes / contactTypes / fileTypes so all the registries
-     read as one family; brand tide stays out of it. */
-  insurancePolicyTypes: [
-    { key: 'Home',      label: 'Home',           enumValue: 0,  icon: 'house',              color: 'oklch(0.72 0.14 255)',  soft: 'oklch(0.72 0.14 255 / 0.16)', desc: 'Buildings + contents cover for a primary residence.' },
-    { key: 'Contents',  label: 'Contents',       enumValue: 1,  icon: 'chair',              color: 'oklch(0.72 0.16 295)',  soft: 'oklch(0.72 0.16 295 / 0.16)', desc: 'Belongings and household contents, often a rider on a home policy.' },
-    { key: 'Building',  label: 'Building',       enumValue: 2,  icon: 'apartment',          color: 'oklch(0.76 0.13 225)',  soft: 'oklch(0.76 0.13 225 / 0.16)', desc: 'Structure-only cover for a building or dwelling.' },
-    { key: 'Vehicle',   label: 'Vehicle',        enumValue: 3,  icon: 'directions_car',     color: 'oklch(0.78 0.14 170)',  soft: 'oklch(0.78 0.14 170 / 0.16)', desc: 'Motor cover — car, motorcycle, or other vehicle.' },
-    { key: 'Travel',    label: 'Travel',         enumValue: 4,  icon: 'flight',             color: 'oklch(0.77 0.13 205)',  soft: 'oklch(0.77 0.13 205 / 0.16)', desc: 'Single-trip or annual multi-trip travel cover.' },
-    { key: 'Life',      label: 'Life',           enumValue: 5,  icon: 'favorite',           color: 'oklch(0.72 0.16 8)',    soft: 'oklch(0.72 0.16 8 / 0.16)',   desc: 'Term or whole-of-life assurance paying a death benefit.' },
-    { key: 'Health',    label: 'Health',         enumValue: 6,  icon: 'health_and_safety',  color: 'oklch(0.80 0.15 150)',  soft: 'oklch(0.80 0.15 150 / 0.16)', desc: 'Private medical / health cover.' },
-    { key: 'Accident',  label: 'Accident',       enumValue: 7,  icon: 'personal_injury',    color: 'oklch(0.79 0.14 60)',   soft: 'oklch(0.79 0.14 60 / 0.16)',  desc: 'Personal-accident / income-protection cover.' },
-    { key: 'Liability', label: 'Liability',      enumValue: 8,  icon: 'gavel',              color: 'oklch(0.72 0.15 265)',  soft: 'oklch(0.72 0.15 265 / 0.16)', desc: 'Third-party / public / professional liability cover.' },
-    { key: 'Pet',       label: 'Pet',            enumValue: 9,  icon: 'pets',               color: 'oklch(0.79 0.14 78)',   soft: 'oklch(0.79 0.14 78 / 0.16)',  desc: 'Veterinary and pet-health cover.' },
-    { key: 'Property',  label: 'Property',       enumValue: 10, icon: 'home_work',          color: 'oklch(0.75 0.16 330)',  soft: 'oklch(0.75 0.16 330 / 0.16)', desc: 'Cover for a secondary property — cabin, rental, or plot.' },
-    { key: 'Other',     label: 'Other',          enumValue: 11, icon: 'shield',             color: 'oklch(0.74 0.02 250)',  soft: 'oklch(0.74 0.02 250 / 0.16)', desc: 'The entity default — anything outside the categories above.' },
-  ],
-
-  /* Canonical policy-file-type registry — the PolicyFileType enum's label, icon
-     and color. Files attach to a policy AND to an individual renewal; both use
-     this one vocabulary. Enum order with `Other` (the default) pulled last. */
-  policyFileTypes: [
-    { key: 'Contract',           label: 'Contract',             enumValue: 0, icon: 'history_edu',       color: 'oklch(0.72 0.16 295)',  soft: 'oklch(0.72 0.16 295 / 0.16)', desc: 'The signed insurance contract / schedule of cover.' },
-    { key: 'Invoice',            label: 'Invoice',              enumValue: 1, icon: 'receipt',           color: 'oklch(0.80 0.13 85)',   soft: 'oklch(0.80 0.13 85 / 0.16)',  desc: 'A premium invoice or payment confirmation.' },
-    { key: 'TermsAndConditions', label: 'Terms & conditions',   enumValue: 2, icon: 'menu_book',         color: 'oklch(0.77 0.14 110)',  soft: 'oklch(0.77 0.14 110 / 0.16)', desc: 'The policy wording — terms, conditions, and exclusions.' },
-    { key: 'PolicyDocument',     label: 'Policy document',      enumValue: 3, icon: 'shield',            color: 'oklch(0.72 0.16 282)',  soft: 'oklch(0.72 0.16 282 / 0.16)', desc: 'The headline policy document / certificate of insurance.' },
-    { key: 'ClaimDocument',      label: 'Claim document',       enumValue: 4, icon: 'assignment_late',   color: 'oklch(0.72 0.16 22)',   soft: 'oklch(0.72 0.16 22 / 0.16)',  desc: 'Documents relating to a claim filed against the policy.' },
-    { key: 'Other',              label: 'Other',                enumValue: 5, icon: 'insert_drive_file', color: 'oklch(0.74 0.02 250)',  soft: 'oklch(0.74 0.02 250 / 0.16)', desc: 'The enum default — anything outside the categories above.' },
-  ],
-
   // AccountFile collection — keyed by accountId. Each file mirrors ExistingAccountFile:
   //   { id, name, kind, size, uploaded }  plus the optional validity metadata added
   //   on the join entity — validFrom / validTo (e.g. a policy period or warranty
@@ -821,8 +785,6 @@ window.OdysseyData.contactTypeByKey = Object.fromEntries(window.OdysseyData.cont
 window.OdysseyData.accountFileTypeByKey = Object.fromEntries(window.OdysseyData.accountFileTypes.map(t => [t.key, t]));
 window.OdysseyData.transactionFileTypeByKey = Object.fromEntries(window.OdysseyData.transactionFileTypes.map(t => [t.key, t]));
 window.OdysseyData.taxStatementFileTypeByKey = Object.fromEntries(window.OdysseyData.taxStatementFileTypes.map(t => [t.key, t]));
-window.OdysseyData.insurancePolicyTypeByKey = Object.fromEntries(window.OdysseyData.insurancePolicyTypes.map(t => [t.key, t]));
-window.OdysseyData.policyFileTypeByKey = Object.fromEntries(window.OdysseyData.policyFileTypes.map(t => [t.key, t]));
 /* Merged kind→icon/color lookup for rendering a file's avatar/chip on any surface,
    regardless of which enum it came from. Account types win the shared `Other`
    (identical icon/color anyway). Pickers use the per-context lists above. */

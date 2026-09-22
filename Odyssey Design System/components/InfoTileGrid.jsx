@@ -10,7 +10,7 @@
  * a repeat reads as a field rather than an echo. There is no tile ceiling.
  *
  * A field with no value renders NO tile. The exception is a field whose absence
- * is itself the fact (a subscription with no end date is open-ended) — decided
+ * is itself the fact (a contract with no end date is open-ended) — decided
  * per field, with the reason in a comment, never as the default.
  *
  * Tiles never condition on each other: each renders on its own field, never

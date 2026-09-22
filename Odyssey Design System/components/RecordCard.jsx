@@ -1,7 +1,7 @@
 /**
  * Odyssey DS — RecordCard
  * The expandable record card behind every record list: Accounts, Contracts,
- * Insurance policies, Subscriptions, Tax statements, Budgets, Journal entries,
+ * Tax statements, Budgets, Journal entries,
  * Exchange rates. A dense, scannable header that expands a body in place.
  *
  * ROW HEIGHT IS FIXED ACROSS EVERY RECORD LIST — at least 88px, owned by the
@@ -32,7 +32,7 @@
  *
  * `accent` / `accentSoft` come from the record's TYPE
  * colour — or its type-equivalent: a categorical registry the record always has
- * exactly one of (a subscription's billing interval, a budget item's category).
+ * exactly one of (a contract's type, a budget item's category).
  * Never derived state (paused/ended/overdue), which stays with the status chip and are set as --rec / --rec-soft on the card, so the header mark, the
  * InfoTile icon chips inside `details`, and any single-series chart inherit the
  * same hue. Omit them and the card falls back to the brand accent.

@@ -1103,9 +1103,6 @@
     },
   });
 
-  // Convenience index used by conResolveParty / policy options.
-  D.insurancePolicyById = Object.fromEntries((D.insurancePolicies || []).map(p => [p.id, p]));
-
   // Register the contract file-kinds in the shared file-type lookup so the
   // reused AfmUpload rows (which resolve icons via OdysseyData.fileTypeByKey)
   // render the correct glyph/color. Additive only — never overwrites an

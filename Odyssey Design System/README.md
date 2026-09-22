@@ -182,9 +182,6 @@ Consumable, typed components in `/components` (`.jsx` + `.d.ts`), exported on `w
 | `ContractTypeSelect` | `CONTRACT_TYPES` | `components/typeselect.html` |
 | `ContractPartyRoleSelect` | `CONTRACT_PARTY_ROLES`, `CONTRACT_PARTY_ROLE_MATRIX` | `preview/58c` |
 | `BudgetCategoryTypeSelect` | `BUDGET_CATEGORY_TYPES`, `BUDGET_CATEGORY_DIRECTION_OPTIONS` | `components/typeselect.html` |
-| `InsurancePolicyTypeSelect` | `INSURANCE_POLICY_TYPES` | `preview/35` |
-| `PolicyFileTypeSelect` / `-MultiSelect` | `POLICY_FILE_TYPES` | `preview/35` |
-| `BillingIntervalSelect` / `-MultiSelect` | `BILLING_INTERVALS` | `components/subscription-pickers.html` |
 
 **Data tables**
 
@@ -205,9 +202,7 @@ Consumable, typed components in `/components` (`.jsx` + `.d.ts`), exported on `w
 | `CustodianChip` · `CustodianSelect` | "Held at" link display · optional custodian picker (extends `Combobox`) | `components/custodian.html` |
 | `ContactChip` | Read display of a linked/tagged contact (type glyph + name; archived + Unavailable states). How tagged People — Contacts of type Person — Journal links, and merchants read | `components/contactchip.html` |
 | `ContactAliases` | The **Aliases** section of a contact record — the alternative-name tiles + their ⋯ menus, the add / edit dialog, the duplicate / cap rejections, one polite live region | `components/contact-aliases.html`, `preview/62` |
-| `CoverageStatusChip` | Derived insurance coverage status (sibling of `AccountStatusChip`) | `templates/insurance` |
-| `BillingIntervalChip` | A subscription's cadence + DERIVED per-cycle anchor ("Monthly · day 15") | `components/subscription-pickers.html` |
-| `SubscriptionStatusChip` | A subscription's Paused / Ended (derived) / Archived states as chips (registry `SUBSCRIPTION_STATES`) | `components/subscription-pickers.html` |
+| `ContractStatusChip` | A contract's DERIVED status (Draft / Ready / Upcoming / Active / Paused / Expired / Archived) as a chip | `templates/contracts` |
 | `AccountSmartTagsSection` | Per-account saved-filter watchlist disclosure | `components/accountsmarttags.html` |
 
 **Journal module** — the composites the Journal + Tasks pages add.
@@ -268,7 +263,6 @@ Every product screen has a reference build in `ui_kits/web/` and a copyable star
 | Transactions | `Transactions.jsx` | `templates/transactions` |
 | Budgets | `Budgets.jsx` | `templates/budgets` |
 | Tax Statements | `TaxStatements.jsx` | `templates/tax-statements` |
-| Insurance | `Insurance.jsx` | `templates/insurance` |
 | Contracts | `Contracts.jsx` | `templates/contracts` |
 | Journal | `Journal.jsx` (record cards + `JournalPhotoGallery`) | `templates/journal` |
 | Tasks | `Tasks.jsx` (`TaskBoard` kanban + list view) | `templates/tasks` |
@@ -841,7 +835,7 @@ Because they're nullable, existing attachments are unaffected — a document att
 
 The **Budgets page** is the planning screen at `/budgets`, the sister of the Accounts page. Specimen: `templates/budgets` (the whole page, the first budget expanded, static); reference build: `ui_kits/web/Budgets.jsx`. Like Accounts it composes the **Page header** + a list of expandable **records** (one per budget) — but the record holds a *plan*, not a ledger: a period (`StartDate`–`EndDate`, base currency) with **income and expense items**, each item a planned amount whose **actual is derived** from the transactions its tag matched in range.
 
-**It owns no new chrome — except the item table.** The page is a **`RecordCard`** rollout (as Accounts, Subscriptions, Tax statements are): each budget is one card whose body follows the fixed order — *details* (the full field set as `InfoTile`s) → *content* (Description) → *sections* (Allocation · Budget items · Transactions, each introduced by a `SectionDivider`). The list owns one `openId`, so opening a budget closes its siblings. The one Budgets-specific surface is the **planned-vs-actual item table** (with its `.bgt-*` rows, fill bars, and the *Edit multiple* batch grid). Unlike Accounts, the header has **no Overview or Problems region** — allocation lives inside each record and budgets carry no rate problems; its sub reads `N active · planned balance $…` (net planned, archived excluded).
+**It owns no new chrome — except the item table.** The page is a **`RecordCard`** rollout (as Accounts, Contracts, Tax statements are): each budget is one card whose body follows the fixed order — *details* (the full field set as `InfoTile`s) → *content* (Description) → *sections* (Allocation · Budget items · Transactions, each introduced by a `SectionDivider`). The list owns one `openId`, so opening a budget closes its siblings. The one Budgets-specific surface is the **planned-vs-actual item table** (with its `.bgt-*` rows, fill bars, and the *Edit multiple* batch grid). Unlike Accounts, the header has **no Overview or Problems region** — allocation lives inside each record and budgets carry no rate problems; its sub reads `N active · planned balance $…` (net planned, archived excluded).
 
 **Anatomy of an expanded budget** (`BudgetRecordCard` → `BudgetTiles` + `BudgetDetail`):
 
@@ -1034,51 +1028,6 @@ The **Tax Statements page** (`TaxStatements.jsx`) is the yearly-tax record scree
 
 > **Stack reality check.** Mirrors the *Yearly Tax Statement* backend: `TaxStatement` declared figures + `TaxStatementTag` (tax-payment / income roles) + `TaxStatementFile`, with the reconciliation `TaxStatementReport` computed on read. Derived net worth degrades gracefully (`derived.available=false`) when account balances aren't computed.
 
----
-
-## Reference data — Insurance policy & document types
-
-The **Insurance Policies** feature adds two enums, each with a canonical registry in `OdysseyData` (icon + color + label, same categorical band as the others) and a typed picker in `/components`.
-
-**`InsurancePolicyType`** (`OdysseyData.insurancePolicyTypes`; picker `InsurancePolicyTypeSelect`, registry export `INSURANCE_POLICY_TYPES`) — twelve members, `Other` last: **Home** (`house`) · **Contents** (`chair`) · **Building** (`apartment`) · **Vehicle** (`directions_car`) · **Travel** (`flight`) · **Life** (`favorite`) · **Health** (`health_and_safety`) · **Accident** (`personal_injury`) · **Liability** (`gavel`) · **Pet** (`pets`) · **Property** (`home_work`) · **Other** (`shield`). It drives the policy's leading avatar and the *Any type* filter.
-
-**`PolicyFileType`** (`OdysseyData.policyFileTypes`; pickers `PolicyFileTypeSelect` / `PolicyFileTypeMultiSelect`, registry export `POLICY_FILE_TYPES`) — the documents that attach to a policy **and** to a renewal: **Contract** (`history_edu`) · **Invoice** (`receipt`) · **Terms & conditions** (`menu_book`) · **Policy document** (`shield`, the indigo headline doc) · **Claim document** (`assignment_late`) · **Other** (`insert_drive_file`).
-
-**`CoverageStatusChip`** (registry export `COVERAGE_STATUSES`) renders the **derived** coverage status — the Insurance sibling of `AccountStatusChip`. The status meaning lives in the **visible text label** (the leading dot/icon is `aria-hidden`), on existing finance accents: **Active** = income mint · **Expiring soon** = pending amber · **Lapsed** = expense coral · **Upcoming** = info sea · **No coverage** = neutral outline. An optional muted `detail` segment carries the day count ("12 days left"). Brand tide never encodes status.
-
----
-
-## Components — Insurance Policies page
-
-The **Insurance page** (`Insurance.jsx`) is the insurance-portfolio screen at `/insurance` — one expandable record per policy, the sister of Accounts / Budgets / Tax Statements. Reference build: `ui_kits/web/Insurance.jsx` (seed + helpers in `ui_kits/web/insurance-data.js`, styles in `ui_kits/web/insurance.css`); template: `templates/insurance/`.
-
-**It reuses the record scaffold; its net-new pieces are coverage status and the renewal history.** Header, expandable `.acct-item` rows, collapsibles, the `AfmUpload` dropzone and the problem/signal system are all atoms documented for Accounts. A policy carries an ordered history of **renewal periods** (premium · coverage · validity window), and its **coverage status** + **current renewal** are *derived, never stored* — computed by the ordered rule in `insurance-data.js` (`insCoverageStatus` / `insCurrentRenewal`) against one request "today", with the latest-`FromDate` / latest-`CreatedAtUtc` overlap tie-break. The collapsed row's headline figure is the **coverage end date + a days-remaining word** (expires in N days / lapsed N days ago / starts in N days).
-
-**The renewal history follows the Terms pattern** (Accounts → account row → Terms): a **Current period** summary (premium · coverage · renews · documents) over a status'd **history table** — period · premium · coverage · status · **docs** · inline edit/delete — with **In force / Upcoming / Past** pills, the direct analog of the AccountTerms section. Each history row's **Docs** chip expands an inline panel showing that renewal's attached files (a `FilesTable`) with its own **Attach** action, so renewal-level documents are visible and managed in place — not just counted. The section leads with a **Premium** trend chart. The feature accent is **indigo** (oklch hue 282) — distinct from brand tide and from Tax's magenta.
-
-**Policy facts read as chip tiles.** Below the row, the scalar policy fields (policy number, type, insurer, insured account, total premium, notes) render as the DS **`InfoTile`** — an icon-chip + label + value + foot tile — with the **Type** tile carrying its own policy-type icon and color, and the grid re-tinting the other chips to the feature's indigo via `--odc-infotile-accent`. Directly under them sits the policy-level **Current period** snapshot (Premium · Coverage · Renews), also `InfoTile`s, lifted out of the history section so current state reads as a policy fact, not history.
-
-**The portfolio summary** rides in the header **Overview**: total policies, **counts-by-status pills**, and **current premium / coverage rolled up per currency** (the current renewal only). When a base currency is chosen (the `summaryBaseCurrency` tweak, sourced from the display-currency preference) it shows a converted total and lists any currency lacking a direct rate under an *excluded — no rate* note (never silently zeroed). The header **signal** rolls up policies that are *Expiring soon* (warning) or *Lapsed* (error) so the renewal cliff is never missed; clicking a signal row jumps to the policy.
-
-**Pickers reuse the accessible `Combobox`.** The insurer (required) and insured-account (optional, clearable) selectors are the DS `Combobox` — never a bespoke popover — fed scalar-id options with the contact/account type glyph. Create/edit pass **scalar ids only** (no nested entities), matching the spec's mass-assignment invariant. **A document's only home is a renewal period** — the upload dialog is always scoped to one. Opened from a period's own document panel the target is **fixed** and reads as an *Attaching to* line; opened from the row menu it is a **period picker defaulted to the resolved target** (the current period, else the latest-ending one), so a late-arriving document can still be filed against an earlier period. With no period there is nowhere to file a document, so the row menu's **Attach document** is `aria-disabled` with the reason *Add a renewal period first.* as its `aria-describedby` note — reachable by keyboard, never the dimmed state alone — and the renewal-history empty state carries the **New renewal period** button that unblocks it. Attach counts and the enable transition are announced through a polite live region.
-
-> **Stack reality check.** Mirrors the *Insurance Policies* backend: `InsurancePolicy` + ordered `PolicyRenewal`s + `PolicyRenewalFile` (the sole insurance-document join — policy-level attachments are gone), with `CoverageStatus`, `currentRenewal` and the portfolio summary computed on read against a single request clock. Read responses expose **minimal `{id,name,type}` projections** for the insurer and insured account (not the full contact/account record). Dialogs map to `NewInsurancePolicy` / `NewPolicyRenewal` / `AttachInsurancePolicyFileRequest` (the surviving per-period endpoint's body); the prototype computes status, current-renewal and the multi-currency summary client-side in `insurance-data.js`. A policy's document count is the sum across its periods.
-
----
-
-## Reference data — Contract & document types
-
-The **Contracts** feature adds two enums, each with a canonical registry in `OdysseyData` (icon + color + label, same categorical band as the others).
-
-**`ContractType`** (`OdysseyData.contractTypes`, helper `contractTypeInfo`; DS picker **`ContractTypeSelect`**, registry export `CONTRACT_TYPES`) — nine members, `Other` last: **Employment** (`work`, blue) · **Service** (`home_repair_service`, teal-green) · **Rental** (`cottage`, amber) · **Insurance** (`shield`, violet) · **Subscription** (`autorenew`, magenta) · **Purchase** (`shopping_bag`, green) · **Loan** (`account_balance`, olive) · **Membership** (`card_membership`, coral) · **Other** (`description`, neutral). **Loan** appends at ordinal **8** and sits between Purchase and Membership in *reading* order — before it existed a mortgage was filed as a Purchase with a Buyer and a Seller. Its hue (oklch 100) is the one wide gap left on the wheel, clearing Rental (60) and Purchase (140) by 40° at the same lightness and chroma. The later members append at ordinals 4–8 — **`Other` keeps ordinal 3**, because an ordinal is a wire and persistence contract and is never renumbered; only the *reading* order pulls it last. It drives the contract's leading avatar and the *Any type* filter; the create + inline-edit forms pick it via `ContractTypeSelect` (delegates to the shared `TypeSelect`).
-
-**`ContractFileType`** (`OdysseyData.contractFileTypes`, helper `contractFileTypeInfo`) — the documents that **upload** to a contract: **Signed** (`history_edu`, violet — the executed agreement of record) · **Amendment** (`edit_document`, amber) · **Correspondence** (`forum`, blue) · **Other** (`insert_drive_file`, neutral). Documents are uploaded straight from the user's machine through the shared `AfmUpload` dropzone; each becomes a `ContractFile` carrying its own name + size.
-
-**`ContractStatusChip`** (in `Contracts.jsx`, a `Chip` preset) renders the **derived** status — the Contracts sibling of `CoverageStatusChip`. The status meaning lives in the **visible text label** (the leading dot/icon is `aria-hidden`), on existing finance accents: **Active** = income mint · **Upcoming** = info sea · **Expired** = expense coral · **Ready** = pending amber · **Draft** = neutral outline · **Archived** = neutral outline. Brand tide never encodes status; no new hue enters for the two signature states.
-
-**Sort a contract status on `CONTRACT_STATUS_RANK`, never on the enum ordinal** — **Draft → Ready → Upcoming → Active → Paused → Expired → Archived**. `Draft = 5` and `Ready = 6` are *appended* members, so an ordinal sort puts the two earliest lifecycle states last, behind Archived. The rank is exported beside the chip (`contractStatusRank`), and `contractStatusIsUnsigned` is the single predicate every money surface gates on.
-
----
 
 ## Reference data — Contract party roles
 
@@ -1210,25 +1159,12 @@ The **Events** section (`ContractEvents.jsx`) is the **last** zone in the expand
 
 Nodes are **opaque and haloed in the surface colour**, so the line stops at each circle rather than striking through it, and neutral by default (`color` is available where the kind's hue is genuinely the fastest read). `capTop` / `capEnd` say whether this page holds the real newest / oldest end of the log; an **uncapped end fades** rather than cutting, because a paged middle genuinely continues. Row `actions` sit inline after the date rather than pinned to the card edge — they belong to the entry being read — and anything given the `.odc-er-meta` class (a provenance line, say) reveals on the same hover or keyboard focus. A **marker** takes the same provenance through its `meta` prop, for an endpoint with an author worth naming.
 
----
-
-## Reference data — Billing interval
-
-The **Subscriptions** feature adds one enum with a canonical registry in `OdysseyData` (icon + color + label, same categorical band as the others) and typed pickers in `/components`.
-
-**`BillingInterval`** (`OdysseyData.billingIntervals`, helper `subIntervalInfo`; pickers `BillingIntervalSelect` / `BillingIntervalMultiSelect`, registry export `BILLING_INTERVALS`) — four members in the enum's numeric order (which is also how the list sorts by "Frequency"): **Daily** (`today`, cyan) · **Weekly** (`view_week`, teal) · **Monthly** (`calendar_month`, blue — the DTO default) · **Yearly** (`event_repeat`, violet). Brand tide stays out of the ramp.
-
-**`BillingIntervalChip`** renders a subscription's cadence — the interval glyph + label + the **derived** per-cycle billing anchor as a muted trailing segment: "Monthly · day 15", "Yearly · 15 Jan", "Weekly · Wed", "Daily" (no anchor). It also honours the **`intervalCount`** multiplier (the `count` prop): count 1 shows the plain label, count > 1 shows "Every N months / years / weeks / days" (helper `billingIntervalLabel`, mirrored by `subIntervalLabel`). The anchor is computed from `firstBillingDate` + `interval` at render time, **never stored** (helper `subBillingAnchor`).
-
-**`SubscriptionStatusChip`** (registry export `SUBSCRIPTION_STATES`) renders a subscription's lifecycle states — **Paused** (pending/amber, stored flag) · **Ended** (expense/coral, **derived** from `endDate`) · **Archived** (neutral outline, stored flag) — one chip per active state, with an optional Active chip when none is set. Ended **supersedes** Paused (a pause is moot once the term is over); Archived stacks after either. The state meaning lives in the **visible text label**, never colour alone — the Subscriptions sibling of `CoverageStatusChip`.
-
----
 
 ## Components — Journal module (Journal + Tasks)
 
 The **Journal module** adds two shared surfaces reachable from a new **Journal** nav module (icon `menu_book`): a **Journal** (`/journal`) of dated narrative entries and a **Tasks** (`/tasks`) to-do list on a kanban board. Both are shared across all users (no per-user private journal); every entry/task records its **author** for display only (not an access boundary). Reference builds: `ui_kits/web/Journal.jsx` · `Tasks.jsx` (+ `journal-data.js`, `journal.css`); the module is wired into `AppShell.jsx`, whose switcher now **drops any module with zero viewable pages** (a Guest holding none of the Journal claims sees no Journal module at all). The **Contacts** page (`/contacts`) now also lives **under the Journal nav module** — relocated from its former standalone Contacts module (its route key and page build are unchanged) — so the module's page rail reads Journal · Calendar · Photos · Albums · Tasks · **Contacts**, plus the journal / task / photo tag pages.
 
-**Journal page** — the sister of Subscriptions/Contracts on the expandable **record-card** scaffold (`.acct-list` / `.acct-item`), reverse-chron by entry date. Each card shows a `menu_book` `Avatar`, the title (with an Archived chip when archived), a tag line of entry date · author · location, a two-line content snippet, tag chips, and **text-labelled** photo / file / contact **count indicators**. Expanding reveals full plain-text content, a `MetaTile` grid (entry date, location, written-by, last-edited, tags, linked contacts), a **`JournalPhotoGallery`**, and an attachment list; **Edit entry** now opens the **New / Edit entry** dialog (`AddJournalEntryModal`) reused in edit mode (`Save changes`), rather than an inline panel. The create and edit dialog both carry Title, `NoteField` content, entry date, location, a `TagMultiSelect` for tags, a `TagMultiSelect`-based multi-**contact** picker, and `FileUpload` for photos + attachments. Entries link contacts/files by **id only**; the client hydrates names, and a since-deleted / no-access contact renders a muted, text-labelled **“Unavailable”** chip (never errors the entry). All free text renders **escaped as plain text** — no Markdown/HTML.
+**Journal page** — the sister of Contracts on the expandable **record-card** scaffold (`.acct-list` / `.acct-item`), reverse-chron by entry date. Each card shows a `menu_book` `Avatar`, the title (with an Archived chip when archived), a tag line of entry date · author · location, a two-line content snippet, tag chips, and **text-labelled** photo / file / contact **count indicators**. Expanding reveals full plain-text content, a `MetaTile` grid (entry date, location, written-by, last-edited, tags, linked contacts), a **`JournalPhotoGallery`**, and an attachment list; **Edit entry** now opens the **New / Edit entry** dialog (`AddJournalEntryModal`) reused in edit mode (`Save changes`), rather than an inline panel. The create and edit dialog both carry Title, `NoteField` content, entry date, location, a `TagMultiSelect` for tags, a `TagMultiSelect`-based multi-**contact** picker, and `FileUpload` for photos + attachments. Entries link contacts/files by **id only**; the client hydrates names, and a since-deleted / no-access contact renders a muted, text-labelled **“Unavailable”** chip (never errors the entry). All free text renders **escaped as plain text** — no Markdown/HTML.
 
 **Tasks page** — a **Board** (default) / **List** view toggle (`SegmentedControl`). The board is **`TaskBoard`**: three landmark columns (Backlog · Doing · Done) with **dual-path** moves — drag a card, or use its keyboard move buttons (up / down / previous-column / next-column) — every move announced via a polite live region; moving to Done stamps `CompletedAt`, moving out clears it. Archived tasks are **off-board**, shown in a muted section only when the status filter includes Archived. The list view is a flat, status-`Select`-per-row rendering. Both views carry search (Title + Content), tag and status `MultiSelect` filters, and the **New task** dialog (`Create task`: Title, `NoteField` content, optional deadline, status, `TagMultiSelect` tags, `FileUpload` attachments). Deadlines render as a chip toned by urgency (overdue = expense, ≤3 days = pending) with the meaning in text.
 

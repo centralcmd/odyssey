@@ -47,7 +47,7 @@ code{font:400 12px/1.4 var(--font-mono);color:var(--mud-palette-text-primary)}
 
 <div>
 <h1>RecordCard — content rules</h1>
-<p>Every record list in the product uses one card: Accounts, Contracts, Insurance policies, Subscriptions, Tax statements, Budgets, Journal entries, Exchange rates. The shell is <code>RecordCard</code>; these rules govern what goes in it. They come out of the insurance policy card — the one page whose expanded body read as a record rather than a wall of wells, because its facts are small labelled tiles instead of two columns of large ones. The card is the product’s <b>only</b> record-detail surface — the pattern was weighed against modals, drawers and per-record pages, and expandable cards won.</p>
+<p>Every record list in the product uses one card: Accounts, Contracts, Tax statements, Budgets, Journal entries, Exchange rates. The shell is <code>RecordCard</code>; these rules govern what goes in it. They come out of the insurance policy card — the one page whose expanded body read as a record rather than a wall of wells, because its facts are small labelled tiles instead of two columns of large ones. The card is the product’s <b>only</b> record-detail surface — the pattern was weighed against modals, drawers and per-record pages, and expandable cards won.</p>
 </div>
 
 <div>
@@ -119,7 +119,7 @@ code{font:400 12px/1.4 var(--font-mono);color:var(--mud-palette-text-primary)}
 <div><span class="material-icons" style="color:var(--finance-income)">check_circle</span><span><b>The heavy sections stay in the card.</b> Estimates charts, term history, smart-tag tables and the file-analysis flow keep living in the body. There are no record pages, so nothing moves out.</span></div>
 <div><span class="material-icons" style="color:var(--finance-income)">check_circle</span><span><b>One card open at a time.</b> Opening a record closes its siblings — which is what makes an unbounded body height acceptable.</span></div>
 <div><span class="material-icons" style="color:var(--finance-income)">check_circle</span><span><b>The edit dialogs stay as they are.</b> No fields move into them and none move out; the card decides what it shows, the dialog keeps everything editable.</span></div>
-<div><span class="material-icons" style="color:var(--finance-income)">check_circle</span><span><b>Type colours are complete.</b> Audited: <code>ACCOUNT_TYPES</code>, <code>CONTRACT_TYPES</code>, <code>INSURANCE_POLICY_TYPES</code>, <code>CONTACT_TYPES</code> and <code>BUDGET_CATEGORY_TYPES</code> all carry <code>color</code> + <code>soft</code>, so the accent rule can be trusted. Subscriptions have no type field but do have a type-equivalent — <code>BILLING_INTERVALS</code>, which carries icon + colour — and use it. Tax statements, journal entries and exchange rates have neither and take the brand accent.</span></div>
+<div><span class="material-icons" style="color:var(--finance-income)">check_circle</span><span><b>Type colours are complete.</b> Audited: <code>ACCOUNT_TYPES</code>, <code>CONTRACT_TYPES</code>, <code>CONTACT_TYPES</code> and <code>BUDGET_CATEGORY_TYPES</code> all carry <code>color</code> + <code>soft</code>, so the accent rule can be trusted. Tax statements, journal entries and exchange rates have neither and take the brand accent.</span></div>
 </div>
 </div>
 

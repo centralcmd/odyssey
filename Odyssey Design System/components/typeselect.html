@@ -31,7 +31,7 @@
       var TypeSelect = NS.TypeSelect;
       var useState = React.useState;
       var ACCOUNT_TYPES = NS.ACCOUNT_TYPES, ACCOUNT_TYPE_GROUPS = NS.ACCOUNT_TYPE_GROUPS,
-          INSURANCE_POLICY_TYPES = NS.INSURANCE_POLICY_TYPES, CONTACT_TYPES = NS.CONTACT_TYPES,
+          CONTACT_TYPES = NS.CONTACT_TYPES,
           ACCOUNT_FILE_TYPES = NS.ACCOUNT_FILE_TYPES, CONTRACT_TYPES = NS.CONTRACT_TYPES;
 
       function Pick(props) {
@@ -44,9 +44,8 @@
           e('div', { className: 'row' },
             e(Pick, { key: 1, label: 'Account type', types: ACCOUNT_TYPES, groups: ACCOUNT_TYPE_GROUPS, init: 'SavingsAccount' }),
             e(Pick, { key: 2, label: 'Account type', types: ACCOUNT_TYPES, groups: ACCOUNT_TYPE_GROUPS, init: 'Mortgage' }))),
-        e('div', { key: 'b' }, e('div', { className: 'cap' }, 'Policy type · Contact type · Account file type (flat)'),
+        e('div', { key: 'b' }, e('div', { className: 'cap' }, 'Contact type · Contract type · Account file type (flat)'),
           e('div', { className: 'row' },
-            e(Pick, { key: 1, label: 'Policy type', types: INSURANCE_POLICY_TYPES, init: 'Home' }),
             e(Pick, { key: 2, label: 'Contact type', types: CONTACT_TYPES, init: 'Merchant' }),
             e(Pick, { key: 3, label: 'Contract type', types: CONTRACT_TYPES, init: 'Rental' }),
             e(Pick, { key: 4, label: 'Document type', types: ACCOUNT_FILE_TYPES, init: 'Statement' })))

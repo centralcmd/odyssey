@@ -48,7 +48,7 @@ export interface ContractStatusChipProps {
 
 /**
  * A contract's derived lifecycle status as ONE chip, meaning conveyed as
- * visible text. Contracts' sibling of SubscriptionStatusChip. Paused replaces
+ * visible text. Paused replaces
  * Active only — a terminal status (Archived / Upcoming / Expired) always wins,
  * and the signature states (Draft / Ready) outrank the whole date chain.
  */

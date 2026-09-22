@@ -291,27 +291,6 @@ const SS_GROUPS = [
     ],
   },
   {
-    group: 'Insurance', icon: 'health_and_safety',
-    rows: [
-      { key: 'insuranceExpiringSoonWindowDays', type: 'number', claim: 'count', icon: 'schedule',
-        title: '"Expiring soon" window',
-        desc: 'How many days ahead of expiry a policy is flagged as expiring soon.',
-        min: 1, max: 365, unit: 'days', meta: { by: 'Dana Whitfield', on: '5 Aug 2026, 11:30' } },
-      { key: 'insuranceMaxSummaryPolicies', type: 'number', claim: 'count', icon: 'format_list_numbered',
-        title: 'Max policies shown in summary',
-        desc: 'Upper limit on the policies listed in the summary roll-up.',
-        min: 1, max: 100000, meta: null },
-      { key: 'insuranceMaxRenewalsPerPolicy', type: 'number', claim: 'count', icon: 'autorenew',
-        title: 'Max renewals per policy',
-        desc: 'Upper limit on the renewal records one policy may carry.',
-        min: 1, max: 100000, meta: null },
-      { key: 'insuranceMaxFilesPerParent', type: 'number', claim: 'count', icon: 'attach_file',
-        title: 'Max files per policy or renewal',
-        desc: 'Upper limit on the documents attached to a single policy or renewal.',
-        min: 1, max: 100000, meta: null },
-    ],
-  },
-  {
     group: 'Contracts', icon: 'description',
     rows: [
       { key: 'contractMaxPartiesPerContract', type: 'number', claim: 'count', icon: 'groups',
@@ -325,31 +304,6 @@ const SS_GROUPS = [
       { key: 'contractMaxSummaryContracts', type: 'number', claim: 'count', icon: 'format_list_numbered',
         title: 'Max contracts in summary',
         desc: 'Upper limit on the contracts listed in the summary roll-up.',
-        min: 1, max: 100000, meta: null },
-    ],
-  },
-  {
-    // Round 4: the three subscriptions-summary limits. The first two were
-    // `private const` on SubscriptionService (45 / 6) and are seeded at exactly
-    // those values, so a default install is behaviourally identical. The third
-    // did not exist — the summary's fetch was unbounded — and seeds at 1000 to
-    // match insuranceMaxSummaryPolicies and contractMaxSummaryContracts.
-    // No advisory on any of the three: lowering is what reduces work here, so an
-    // "above the shipped default" band would fire on the value CLOSEST to
-    // today's unbounded read. All three take system-settings.update.
-    group: 'Subscriptions', icon: 'subscriptions',
-    rows: [
-      { key: 'subscriptionRenewalWindowDays', type: 'number', claim: 'count', icon: 'schedule',
-        title: 'Upcoming renewals window',
-        desc: 'How many days ahead a subscription’s next billing date is surfaced as an upcoming renewal.',
-        min: 1, max: 365, unit: 'days', meta: null },
-      { key: 'subscriptionMaxSummaryRenewals', type: 'number', claim: 'count', icon: 'format_list_numbered',
-        title: 'Max renewals shown in summary',
-        desc: 'Upper limit on the renewal rows listed in the summary roll-up.',
-        min: 1, max: 1000, meta: null },
-      { key: 'subscriptionMaxSummarySubscriptions', type: 'number', claim: 'count', icon: 'subscriptions',
-        title: 'Max subscriptions read for summary',
-        desc: 'Upper limit on the subscriptions read to compute the roll-up. Beyond it the counts and run-rate cover the most recent subscriptions only.',
         min: 1, max: 100000, meta: null },
     ],
   },
@@ -572,18 +526,9 @@ const SS_SAVED = {
 
   fileStorageMaxUploadMegabytes: 64,
 
-  insuranceExpiringSoonWindowDays: 30,
-  insuranceMaxSummaryPolicies: 1000,
-  insuranceMaxRenewalsPerPolicy: 100,
-  insuranceMaxFilesPerParent: 50,
-
   contractMaxPartiesPerContract: 25,
   contractMaxFilesPerContract: 50,
   contractMaxSummaryContracts: 1000,
-
-  subscriptionRenewalWindowDays: 45,
-  subscriptionMaxSummaryRenewals: 6,
-  subscriptionMaxSummarySubscriptions: 1000,
 
   photoMaxLinksPerKind: 50,
   photoMaxAlbumMembers: 1000,

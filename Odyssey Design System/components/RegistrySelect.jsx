@@ -8,7 +8,7 @@
  * error, required, disabled, id, …) passes straight through.
  *
  * Don't reach for this in product code — use the domain wrapper (AccountFileType-
- * Select, InsurancePolicyTypeSelect, …), each of which feeds its canonical
+ * Select, ContractTypeSelect, …), each of which feeds its canonical
  * registry in. Reads the base control off the DS namespace at render time (bundle
  * components can't import each other).
  */

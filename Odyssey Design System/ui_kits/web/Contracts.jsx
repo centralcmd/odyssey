@@ -110,7 +110,7 @@ const ContractFilesTable = ({ files, onDelete, onSave, empty, readOnly }) => {
 };
 
 /* ====================== One party tile ====================== */
-/* Same shape as a policy's Parties section (Insurance.jsx `InsLinkTiles`): one
+/* One
    InfoTile per linked record, drawn in that record's own type icon and colour.
    What changes with the role feature is the OVERLINE: it now names what the
    record DOES in the agreement (the ContractPartyRole), with the kind and the

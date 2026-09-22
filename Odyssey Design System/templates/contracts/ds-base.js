@@ -3,7 +3,7 @@
 // the project root, '../_ds/<folder>' one level down) — one line to edit.
 (() => {
   const base = '../..';
-  for (const p of ["components.css","colors_and_type.css","ui_kits/web/kit.css","ui_kits/web/account.css","ui_kits/web/account-signals.css","ui_kits/web/admin.css","ui_kits/web/account-estimates.css","ui_kits/web/account-terms.css","ui_kits/web/calendar.css","ui_kits/web/contacts.css","ui_kits/web/contracts.css","ui_kits/web/insurance.css","ui_kits/web/journal.css","ui_kits/web/legal.css","ui_kits/web/onboarding.css","ui_kits/web/photos.css","ui_kits/web/tax-statements.css","styles.css"]) {
+  for (const p of ["components.css","colors_and_type.css","ui_kits/web/kit.css","ui_kits/web/account.css","ui_kits/web/account-signals.css","ui_kits/web/admin.css","ui_kits/web/account-estimates.css","ui_kits/web/account-terms.css","ui_kits/web/calendar.css","ui_kits/web/contacts.css","ui_kits/web/contracts.css","ui_kits/web/journal.css","ui_kits/web/legal.css","ui_kits/web/onboarding.css","ui_kits/web/photos.css","ui_kits/web/tax-statements.css","styles.css"]) {
     const l = document.createElement('link');
     l.rel = 'stylesheet'; l.href = base + '/' + p;
     document.head.appendChild(l);

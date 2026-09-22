@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now opening on Contracts, where object parties (Object / Property / Collateral) name what the agreement is about and Guarantor is legal on every type — all decided by one shared matrix — Landlord/Tenant on a lease, Insurer/Policyholder/Insured/Beneficiary on insurance, Lender/Borrower on the new Loan type — with Unspecified and Service provider retired, a role required on every write, and a type change refused while it would orphan an existing party. Party tiles lead with the role, show a non-default term under it, and their ⋯ menu opens the edit-in-place dialog (role, record and both dates are replaced as one). Plus the contact import/export family across the productivity surfaces, Tasks, Budgets, the Calendar module, the User Profile, Insurance, Accounts, Tax and the rest." viewport="1440x1100" -->
+<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now opening on Contracts, where object parties (Object / Property / Collateral) name what the agreement is about and Guarantor is legal on every type — all decided by one shared matrix — Landlord/Tenant on a lease, Insurer/Policyholder/Insured/Beneficiary on insurance, Lender/Borrower on the new Loan type — with Unspecified and Service provider retired, a role required on every write, and a type change refused while it would orphan an existing party. Party tiles lead with the role, show a non-default term under it, and their ⋯ menu opens the edit-in-place dialog (role, record and both dates are replaced as one). Plus the contact import/export family across the productivity surfaces, Tasks, Budgets, the Calendar module, the User Profile, Accounts, Tax and the rest." viewport="1440x1100" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -15,7 +15,6 @@
   <link rel="stylesheet" href="account-terms.css" />
   <link rel="stylesheet" href="account-estimates.css" />
   <link rel="stylesheet" href="tax-statements.css" />
-  <link rel="stylesheet" href="insurance.css" />
   <link rel="stylesheet" href="legal.css" />
   <link rel="stylesheet" href="contracts.css" />
   <link rel="stylesheet" href="contract-events.css" />
@@ -35,7 +34,6 @@
 
   <script src="data.js"></script>
   <script src="tax-data.js"></script>
-  <script src="insurance-data.js"></script>
   <script src="contracts-data.js"></script>
   <script src="contract-events-data.js"></script>
   <script src="journal-data.js"></script>
@@ -81,11 +79,6 @@
   <script type="text/babel" src="tweaks-panel.jsx"></script>
   <script type="text/babel" src="AddTaxStatementModal.jsx"></script>
   <script type="text/babel" src="TaxStatements.jsx"></script>
-  <script type="text/babel" src="AddInsurancePolicyModal.jsx"></script>
-  <script type="text/babel" src="AddRenewalModal.jsx"></script>
-  <script type="text/babel" src="InsuranceUploadModal.jsx"></script>
-  <script type="text/babel" src="AddPolicyPartyModal.jsx"></script>
-  <script type="text/babel" src="Insurance.jsx"></script>
   <script type="text/babel" src="AddContractModal.jsx"></script>
   <script type="text/babel" src="AddContractPartyModal.jsx"></script>
   <script type="text/babel" src="AddContractFileModal.jsx"></script>
@@ -200,7 +193,6 @@
           {view === 'exchange-rates' && <ExchangeRates />}
           {view === 'budgets'      && <Budgets onNavigate={setView} tweaks={tweaks} />}
           {view === 'tax-statements' && <TaxStatements tweaks={tweaks} onNavigate={setView} />}
-          {view === 'insurance'    && <Insurance tweaks={tweaks} onNavigate={setView} />}
           {view === 'contracts'    && <Contracts tweaks={tweaks} onNavigate={setView} />}
           {view === 'journal'      && <Journal tweaks={tweaks} onNavigate={setView} />}
           {view === 'calendar'     && <Calendar />}
@@ -248,17 +240,6 @@
               <TweakRadio label="Layout" value={tweaks.reportLayout}
                           options={[{ value: 'table', label: 'Table' }, { value: 'tiles', label: 'Tiles' }]}
                           onChange={(v) => setTweak('reportLayout', v)} />
-            </React.Fragment>
-          )}
-          {view === 'insurance' && (
-            <React.Fragment>
-              <TweakSection label="Portfolio summary" />
-              <TweakSelect label="Base currency" value={tweaks.summaryBaseCurrency}
-                           options={[{ value: '', label: 'No conversion' }, { value: 'USD', label: 'USD' }, { value: 'EUR', label: 'EUR' }, { value: 'NOK', label: 'NOK' }]}
-                           onChange={(v) => setTweak('summaryBaseCurrency', v)} />
-              <TweakSection label="Parties (New party / edit party)" />
-              <TweakToggle label="Options still loading" value={tweaks.insOptionsLoading}
-                           onChange={(v) => setTweak('insOptionsLoading', v)} />
             </React.Fragment>
           )}
           {view === 'contracts' && (
@@ -310,11 +291,7 @@
                           onChange={(v) => setTweak('cpAvatarOutcome', v)} />
               <TweakToggle label="Stored image 404s (falls back to the glyph)" value={tweaks.cpAvatarBroken}
                            onChange={(v) => setTweak('cpAvatarBroken', v)} />
-              <TweakSection label="Blocked delete (insurance + contract links)" />
-              <TweakToggle label="Holds insurance.read (names blocking policies)" value={tweaks.cpCanReadInsurance}
-                           onChange={(v) => setTweak('cpCanReadInsurance', v)} />
-              <TweakToggle label="Holds insurance.update (can detach policies)" value={tweaks.cpCanUpdateInsurance}
-                           onChange={(v) => setTweak('cpCanUpdateInsurance', v)} />
+              <TweakSection label="Blocked delete (contract links)" />
               <TweakToggle label="Holds contracts.read (names blocking contracts)" value={tweaks.cpCanReadContracts}
                            onChange={(v) => setTweak('cpCanReadContracts', v)} />
               <TweakToggle label="Holds contracts.update (can detach contracts)" value={tweaks.cpCanUpdateContracts}

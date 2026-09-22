@@ -4,8 +4,8 @@
    instance, so the page lives in the admin nav alongside Users and Roles and
    carries an "Admin only" pill.
 
-   The catalogue itself is declared in system-settings-data.js — 67 rows across
-   sixteen sections. Six control types: OdsSwitch (booleans), OdsNumberField
+   The catalogue itself is declared in system-settings-data.js — 60 rows across
+   fourteen sections. Six control types: OdsSwitch (booleans), OdsNumberField
    (counts, windows, MB caps via `unit`), OdsNumberField with unit="%" (a stored
    0.0–1.0 fraction entered as a whole percent), OdsCapacityField (a finite
    number OR "No limit"), OdsTextInputField in the row's FOOTER well (free-text
@@ -41,7 +41,7 @@
      • a GROUP-LEVEL round-trip alert (focusable) when an export cap exceeds its
        import cap — placed at group level because the offending export row may
        be disabled (unlimited on) and so unfocusable;
-     • STICKY section heads, because at sixteen sections the group label is the
+     • STICKY section heads, because at fourteen sections the group label is the
        only thing saying where in the catalogue you are, and it scrolls away
        within one row;
      • a save bar that explains a disabled Save: an expandable ErrorSummary

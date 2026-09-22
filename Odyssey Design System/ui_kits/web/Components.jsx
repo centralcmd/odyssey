@@ -484,19 +484,6 @@ const TaxStatementFileTypeMultiSelect = ({ types, ...props }) => {
   return <DS.MultiSelect label="Any type" icon="request_quote" options={types ? optsFrom(types) : taxFileOpts()} {...props} />;
 };
 
-// Insurance pickers — typed, registry-backed (icon + color per option), same
-// fallback pattern as the other file-type selects. Insurer + insured-account
-// selectors reuse the accessible Combobox atom (see InsurerCombobox below).
-const policyFileOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.policyFileTypes);
-const insTypeOpts   = () => optsFrom(window.OdysseyData && window.OdysseyData.insurancePolicyTypes);
-const InsurancePolicyTypeSelect = ({ helper, types, ...props }) => {
-  if (DS.InsurancePolicyTypeSelect) return <DS.InsurancePolicyTypeSelect help={helper} types={types} {...props} />;
-  return <DS.Select help={helper} options={types ? optsFrom(types) : insTypeOpts()} {...props} />;
-};
-const PolicyFileTypeSelect = ({ helper, types, ...props }) => {
-  if (DS.PolicyFileTypeSelect) return <DS.PolicyFileTypeSelect help={helper} types={types} {...props} />;
-  return <DS.Select help={helper} options={types ? optsFrom(types) : policyFileOpts()} {...props} />;
-};
 const contractTypeOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.contractTypes);
 const ContractTypeSelect = ({ helper, types, ...props }) => {
   if (DS.ContractTypeSelect) return <DS.ContractTypeSelect help={helper} types={types} {...props} />;
@@ -522,75 +509,16 @@ const ContractPartyRoleSelect = ({ helper, roles, contractType, ...props }) => {
 
 // BudgetCategoryTypeSelect — Expense / Income, each with its category glyph + color.
 const BUDGET_CATEGORY_OPTS = [
-  { value: 'Expense', label: 'Expense', icon: 'trending_down', iconColor: 'oklch(0.72 0.16 22)' },
-  { value: 'Income',  label: 'Income',  icon: 'trending_up',   iconColor: 'oklch(0.80 0.15 150)' },
+  { value: 'Expense', label: 'Expense', icon: 'south_west', color: 'var(--finance-expense)' },
+  { value: 'Income',  label: 'Income',  icon: 'north_east', color: 'var(--finance-income)' },
 ];
 const BudgetCategoryTypeSelect = ({ helper, types, ...props }) => {
   if (DS.BudgetCategoryTypeSelect) return <DS.BudgetCategoryTypeSelect help={helper} types={types} {...props} />;
   return <DS.Select help={helper} options={types ? optsFrom(types) : BUDGET_CATEGORY_OPTS} {...props} />;
 };
-const PolicyFileTypeMultiSelect = ({ types, ...props }) => {
-  if (DS.PolicyFileTypeMultiSelect) return <DS.PolicyFileTypeMultiSelect types={types} {...props} />;
-  return <DS.MultiSelect label="Any type" icon="shield" options={types ? optsFrom(types) : policyFileOpts()} {...props} />;
-};
 
-// CoverageStatusChip — the derived insurance coverage status as a chip (status
-// word as text, tone-colored dot/icon aria-hidden). Typed DS component; the
-// fallback renders the same shell off the kit's status meta.
-const CoverageStatusChip = DS.CoverageStatusChip || (({ status = 'NoCoverage', detail, showIcon = false, size, className = '', style }) => {
-  const meta = (window.OdysseyHelpers && window.OdysseyHelpers.insCoverageStatusMeta(status)) || { label: status, tone: 'outline', dot: true, icon: 'shield' };
-  return (
-    <span className={`odc-chip ${meta.tone}${size === 'sm' ? ' sm' : ''} ${className}`.trim()} style={style}>
-      {showIcon ? <span className="material-icons" aria-hidden="true">{meta.icon}</span> : meta.dot ? <span className="odc-chip-dot" aria-hidden="true" /> : null}
-      {meta.label}
-      {detail ? <span className="odc-coverage-detail">{detail}</span> : null}
-    </span>
-  );
-});
-
-// Subscriptions — BillingInterval pickers + read chips. Typed DS components with
-// registry-fed / shipped-markup fallbacks (same pattern as the insurance atoms),
-// The kit-side registry/helper fallbacks are gone with the Subscriptions page —
-// these now resolve entirely from the compiled bundle.
-const subIntervalOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.billingIntervals);
-const BillingIntervalSelect = ({ helper, types, ...props }) => {
-  if (DS.BillingIntervalSelect) return <DS.BillingIntervalSelect help={helper} types={types} {...props} />;
-  return <DS.Select help={helper} options={types ? optsFrom(types) : subIntervalOpts()} {...props} />;
-};
-const BillingIntervalMultiSelect = ({ types, ...props }) => {
-  if (DS.BillingIntervalMultiSelect) return <DS.BillingIntervalMultiSelect types={types} {...props} />;
-  return <DS.MultiSelect label="Any interval" icon="autorenew" options={types ? optsFrom(types) : subIntervalOpts()} {...props} />;
-};
-const BillingIntervalChip = DS.BillingIntervalChip || (({ interval = 'Monthly', count = 1, firstBillingDate, anchor, size, className = '', style }) => {
-  const reg = (window.OdysseyData && window.OdysseyData.billingIntervalByKey) || {};
-  const meta = reg[interval] || { label: interval, icon: 'autorenew', color: 'var(--ink-300)' };
-  const n = Math.round(Number(count)); const every = Number.isFinite(n) && n > 0 ? n : 1;
-  const nouns = { Daily: 'day', Weekly: 'week', Monthly: 'month', Yearly: 'year' };
-  const label = every > 1 ? `Every ${every} ${nouns[interval] || 'cycle'}s` : meta.label;
-  const derived = anchor != null ? anchor : (window.OdysseyHelpers && window.OdysseyHelpers.subBillingAnchor({ interval, firstBillingDate }));
-  return (
-    <span className={`odc-typechip${size === 'sm' ? ' sm' : ''} ${className}`.trim()} style={style}>
-      <span className="material-icons odc-typechip-ic" style={{ color: meta.color }} aria-hidden="true">{meta.icon}</span>
-      <span className="odc-typechip-name">{label}</span>
-      {derived ? <span className="odc-typechip-group">{derived}</span> : null}
-    </span>
-  );
-});
-const SUB_STATE_META = { Paused: { label: 'Paused', tone: 'pending' }, Ended: { label: 'Ended', tone: 'expense' }, Archived: { label: 'Archived', tone: 'outline' }, Active: { label: 'Active', tone: 'income' } };
-const SubscriptionStatusChip = DS.SubscriptionStatusChip || (({ paused, ended, archived, showActive = false, size, className = '', style }) => {
-  // One state, by precedence: Archived → Ended → Paused → Active.
-  const key = archived ? 'Archived' : ended ? 'Ended' : paused ? 'Paused' : null;
-  if (!key && !showActive) return null;
-  const keys = [key || 'Active'];
-  return (
-    <span className={`odc-substatus ${className}`.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', ...style }}>
-      {keys.map((k) => { const m = SUB_STATE_META[k]; return <span key={k} className={`odc-chip ${m.tone}${size === 'sm' ? ' sm' : ''}`}>{m.label}</span>; })}
-    </span>
-  );
-});
-
-// Combobox — the accessible searchable single-select (insurer / insured-account
-// pickers). Aliased straight from the bundle.
+// Combobox — the accessible searchable single-select (contact / account pickers).
+// Aliased straight from the bundle.
 const Combobox = DS.Combobox;
 
 // ContactSelect — THE contact picker (Combobox + per-type glyphs + optional
@@ -624,8 +552,8 @@ const ContactSelect = ({ allowCreate, onCreate, ...rest }) => (
 const SegmentedControl = DS.SegmentedControl;
 
 // CardSelect — icon-over-label card picker for the "what kind is this?" question
-// at the top of a create dialog (contract party kind, policy party role, term
-// kind). Aliased straight from the bundle.
+// at the top of a create dialog (contract party kind, term kind). Aliased
+// straight from the bundle.
 const CardSelect = DS.CardSelect;
 
 // ---- Overview breakdown helpers (shared by every page's header Overview) ----
@@ -1463,8 +1391,7 @@ Object.assign(window, {
   AccountFileTypeSelect, AccountFileTypeMultiSelect,
   TransactionFileTypeSelect, TransactionFileTypeMultiSelect,
   TaxStatementFileTypeSelect, TaxStatementFileTypeMultiSelect,
-  InsurancePolicyTypeSelect, PolicyFileTypeSelect, PolicyFileTypeMultiSelect, CoverageStatusChip, Combobox, MatchIndicator,
-  BillingIntervalSelect, BillingIntervalMultiSelect, BillingIntervalChip, SubscriptionStatusChip,
+  Combobox, MatchIndicator,
   SegmentedControl, CardSelect, ContactSelect, TransactionTagPicker,
   ODC_TONE, odcTypeRows, odcStatusRows,
   ContractTypeSelect, ContractPartyRoleSelect,

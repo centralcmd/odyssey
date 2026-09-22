@@ -1,5 +1,5 @@
 /* Contracts — page styles for Contracts.jsx.
-   Sits on top of kit.css: the page reuses the Accounts/Insurance expandable-
+   Sits on top of kit.css: the page reuses the Accounts expandable-
    record scaffold (.acct-list / .acct-item / .acct-head / .acct-detail / the DS
    InfoTile + Collapsible) wholesale. Only the portfolio summary strip, the
    status headline, and the parties list are new and live here. Tokens come from
@@ -200,7 +200,7 @@
 /* Archived card dimming uses the existing .acct-item.dimmed rule from kit.css */
 
 /* Status tile — the value carries the header chip's hue, with the date that
-   state began as its foot (matching the Subscriptions status tile). */
+   state began as its foot. */
 .con-status-tile.income .odc-infotile-v { color: var(--finance-income); }
 .con-status-tile.info .odc-infotile-v { color: var(--mud-palette-info); }
 .con-status-tile.expense .odc-infotile-v { color: var(--finance-expense); }

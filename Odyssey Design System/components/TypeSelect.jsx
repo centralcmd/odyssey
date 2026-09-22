@@ -9,7 +9,7 @@
  * separators (e.g. Assets / Liabilities).
  *
  * Don't use this directly in product code — reach for the domain-typed wrapper
- * (AccountTypeSelect, InsurancePolicyTypeSelect, …), each of which feeds its
+ * (AccountTypeSelect, ContractTypeSelect, …), each of which feeds its
  * canonical registry in. This is the shared engine they delegate to.
  *
  * Each `types` entry: `{ key|value, label, icon, color|iconColor, group? }`.

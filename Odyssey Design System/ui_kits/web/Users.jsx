@@ -29,9 +29,7 @@ const UA_CATEGORIES = [
   { cat: 'transactions',        icon: 'receipt_long',           actions: ['create', 'read', 'update', 'delete'] },
   { cat: 'transactions.tags',   icon: 'local_offer',            actions: ['create', 'read', 'update', 'delete'] },
   { cat: 'taxes',               icon: 'request_quote',          actions: ['create', 'read', 'update', 'delete'] },
-  { cat: 'insurance',           icon: 'shield',                 actions: ['create', 'read', 'update', 'delete'] },
   { cat: 'contracts',           icon: 'handshake',              actions: ['create', 'read', 'update', 'delete'] },
-  { cat: 'subscriptions',       icon: 'subscriptions',          actions: ['create', 'read', 'update', 'delete'] },
   { cat: 'contacts',      icon: 'store',                  actions: ['create', 'read', 'update', 'delete'] },
   { cat: 'currencies',          icon: 'attach_money',           actions: ['create', 'read', 'update', 'delete'] },
   { cat: 'exchangerates',       icon: 'currency_exchange',      actions: ['create', 'read', 'delete'] },
@@ -70,7 +68,7 @@ const UA_ROLES = [
     'budgets.read',
     'transactions.create', 'transactions.read', 'transactions.update', 'transactions.delete',
     'transactions.tags.read',
-    'taxes.read', 'insurance.read', 'contracts.read', 'subscriptions.read',
+    'taxes.read', 'contracts.read',
     'contacts.read', 'currencies.read', 'exchangerates.read',
     'user-preferences.create', 'user-preferences.read', 'user-preferences.update', 'user-preferences.delete',
     'files.create', 'files.read', 'files.update', 'files.delete',
@@ -81,7 +79,7 @@ const UA_ROLES = [
     'tasks.tags.create', 'tasks.tags.read', 'tasks.tags.update', 'tasks.tags.delete',
   ] },
   // Guest = read-only finance data + personal preferences. Mirrors GuestClaims
-  // (no Journal/Tasks module, no file-analysis, no insurance/contracts/subscriptions).
+  // (no Journal/Tasks module, no file-analysis, no contracts).
   { name: 'Guest', permissions: [
     'accounts.read', 'accounts.terms.read', 'accounts.estimates.read',
     'budgets.read', 'transactions.read', 'transactions.tags.read',
