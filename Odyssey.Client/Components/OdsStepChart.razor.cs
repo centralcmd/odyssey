@@ -163,7 +163,7 @@ public partial class OdsStepChart
             // A set that has never changed has no range, so the band is invented — in whatever unit is
             // being PLOTTED: indexed fractions need a visible band, a rate (a fraction) half a point, a
             // rent a proportional one rather than fake precision.
-            var band = _indexed ? 0.02 : (Math.Abs(lo) >= 1 ? Math.Abs(lo) * 0.05 : 0.005);
+            var band = _indexed ? 0.02 : FlatBand(lo);
             lo -= band;
             hi += band;
         }
@@ -236,6 +236,15 @@ public partial class OdsStepChart
     // A zero first entry has no percentage change, so it is plotted absolutely — better than dividing by zero.
     private double Plotted(IReadOnlyList<(DateOnly Date, double Value, string? PointId)> pts, double v) =>
         !_indexed ? v : pts[0].Value != 0 ? MoveOf(pts, v) : v;
+
+    /// <summary>
+    /// The half-band invented around a never-changed ABSOLUTE value, which has no range of its own. It
+    /// is proportional, because a fixed ±0.005 is half a point around a rate (right, since rates are
+    /// stored as fractions below 1) and fake precision around a rent. Shared with the account rate
+    /// chart so the two cannot drift.
+    /// </summary>
+    internal static double FlatBand(double value) =>
+        Math.Abs(value) >= 1 ? Math.Abs(value) * 0.05 : 0.005;
 
     /// <summary>Signed whole percent; the sign comes from the ROUNDED magnitude, so a hair above zero never prints "+0%".</summary>
     internal static string FormatIndexed(double v)

@@ -191,7 +191,8 @@ public partial class ContractTermsSection
     /// Everything a series STATES comes from its entry in force — the newest already taken effect, or
     /// for an entirely-scheduled series its earliest — so the picker, the legend and the tiles above
     /// agree. Two series may share an axis only if they are the same unit and, for money, the same
-    /// currency, which is what <see cref="OdsTermHistorySeries.Group"/> carries.
+    /// currency, which is what <see cref="OdsTermHistorySeries.Group"/> carries — and within one
+    /// series only the entries measured like the in-force one are plotted.
     /// </remarks>
     internal static List<OdsTermHistorySeries> BuildChartSeries(
         IReadOnlyList<ExistingTerm> terms, DateTime asOf, Func<decimal, string?, string> formatMoney) =>
@@ -226,7 +227,13 @@ public partial class ContractTermsSection
             ToneColor = direction?.Color,
             Color = direction?.Color ?? TermKindVisuals.Info(key.Kind).Color,
             Group = pct ? "pct" : $"amt:{currency}",
+            // One line is one unit and one currency. A series repriced into another currency keeps
+            // its name (the series key is kind + label, as on the server) but only the entries
+            // measured like the one in force are plotted: an axis cannot read EUR and USD at once,
+            // and joining them would draw a currency change as a price move.
             Points = entries
+                .Where(t => t.ValueUnit == inForce.ValueUnit
+                            && (pct || string.Equals(t.CurrencyCode, currency, StringComparison.OrdinalIgnoreCase)))
                 .Select(t => new OdsStepPoint(DateOnly.FromDateTime(t.EffectiveFrom), t.Value) { Id = t.TermId.ToString() })
                 .ToList(),
             Format = pct

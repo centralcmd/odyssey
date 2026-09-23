@@ -469,6 +469,56 @@ public class ContractTermSurfaceTests
     }
 
     /// <summary>
+    /// The help line names which of the two writes is about to happen: an empty field prompts, a
+    /// name matching one of this contract's series JOINS its history (and says what it is now), and
+    /// any other name STARTS a new charge.
+    /// </summary>
+    [Fact]
+    public void The_name_help_line_says_whether_the_entry_joins_or_starts_a_history()
+    {
+        var cut = RenderDialog(Lease(), [Fee("Monthly rent", 2150m, Past(30), Interval.Monthly)]);
+
+        Assert.Contains("Pick a charge this updates", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal);
+
+        cut.Find("#trm-label").Input("  monthly RENT ");
+        cut.Find("#trm-label").Blur();
+        var joins = cut.Find("#trm-label-help");
+        Assert.Contains("Joins the price history of", joins.TextContent, StringComparison.Ordinal);
+        Assert.Equal("Monthly rent", joins.QuerySelector("b")!.TextContent);
+        Assert.Contains("2,150.00 NOK · monthly", joins.TextContent, StringComparison.Ordinal);
+
+        cut.Find("#trm-label").Input("Water");
+        cut.Find("#trm-label").Blur();
+        Assert.Contains("Starts a new charge", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("  Water  ", "Water")]
+    [InlineData("   ", null)]
+    [InlineData("", null)]
+    public void The_new_charge_row_trims_its_name_and_refuses_a_blank(string typed, string? expected) =>
+        Assert.Equal(expected, AddTermDialog.CreateNameOption(typed, null)?.Value);
+
+    /// <summary>
+    /// A series repriced into another currency keeps its name, but a line is one currency: only the
+    /// entries measured like the one in force are plotted, so a currency change never reads as a
+    /// price move.
+    /// </summary>
+    [Fact]
+    public void A_series_repriced_in_another_currency_plots_only_its_in_force_currency()
+    {
+        var old = Fee("Licence", 100m, Past(300), Interval.Annually);
+        old.CurrencyCode = "EUR";
+        var terms = new List<ExistingTerm> { old, Fee("Licence", 1200m, Past(30), Interval.Annually) };
+
+        var series = Assert.Single(ContractTermsSection.BuildChartSeries(
+            terms, DateTime.UtcNow.Date, (v, c) => $"{v} {c}"));
+
+        Assert.Equal("amt:NOK", series.Group);
+        Assert.Equal(1200m, Assert.Single(series.Points).Value);
+    }
+
+    /// <summary>
     /// The name field's error must land on the id its input's aria-describedby names. Help and error
     /// are therefore mutually exclusive: with the help line withdrawn, the error takes
     /// <c>trm-label-help</c> rather than a separate <c>-error</c> id nothing points at.
@@ -528,11 +578,12 @@ public class ContractTermSurfaceTests
         return cut;
     }
 
-    private static IRenderedComponent<DialogHost> RenderDialog(ExistingContract contract) =>
-        RenderDialogWithClient(contract).Cut;
+    private static IRenderedComponent<DialogHost> RenderDialog(
+        ExistingContract contract, IReadOnlyList<ExistingTerm>? existing = null) =>
+        RenderDialogWithClient(contract, existing).Cut;
 
     private static (IRenderedComponent<DialogHost> Cut, Mock<IContractsApiClient> Client) RenderDialogWithClient(
-        ExistingContract contract)
+        ExistingContract contract, IReadOnlyList<ExistingTerm>? existing = null)
     {
         var ctx = NewContext();
         var client = new Mock<IContractsApiClient>();
@@ -541,7 +592,7 @@ public class ContractTermSurfaceTests
             .ReturnsAsync(ApiResult.Success(HttpStatusCode.Created));
         ctx.Services.AddSingleton(client.Object);
 
-        var cut = ctx.Render<DialogHost>(p => p.Add(h => h.Contract, contract));
+        var cut = ctx.Render<DialogHost>(p => p.Add(h => h.Contract, contract).Add(h => h.Existing, existing ?? []));
         return (cut, client);
     }
 
@@ -563,6 +614,7 @@ public class ContractTermSurfaceTests
     public sealed class DialogHost : ComponentBase
     {
         [Parameter] public ExistingContract Contract { get; set; } = default!;
+        [Parameter] public IReadOnlyList<ExistingTerm> Existing { get; set; } = [];
 
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
         {
@@ -573,7 +625,7 @@ public class ContractTermSurfaceTests
             builder.OpenComponent<AddTermDialog>(2);
             builder.AddComponentParameter(3, nameof(AddTermDialog.Contract), Contract);
             builder.AddComponentParameter(4, nameof(AddTermDialog.Open), true);
-            builder.AddComponentParameter(5, nameof(AddTermDialog.Existing), (IReadOnlyList<ExistingTerm>)[]);
+            builder.AddComponentParameter(5, nameof(AddTermDialog.Existing), Existing);
             builder.CloseComponent();
         }
     }

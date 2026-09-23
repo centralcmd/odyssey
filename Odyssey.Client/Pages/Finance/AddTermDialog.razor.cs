@@ -409,7 +409,7 @@ public partial class AddTermDialog
     };
 
     // The combobox's "New charge" row writes the typed text as the name — a new series, not a record.
-    private static OdsOption? CreateNameOption(string text, string? _) =>
+    internal static OdsOption? CreateNameOption(string text, string? _) =>
         string.IsNullOrWhiteSpace(text) ? null : OdsOption.From(text.Trim());
 
     private void OnUnitChanged(string value)

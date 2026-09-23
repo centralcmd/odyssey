@@ -218,10 +218,10 @@ public partial class AccountTermsSection
         double lo = vals.Min(), hi = vals.Max();
         if (lo == hi)
         {
-            // One entry has no range, so the band is invented — PROPORTIONALLY: a fixed ±0.005 is half
-            // a point around a rate (right) and fake precision around an amount. Rates are stored as
-            // fractions below 1, so every rate chart keeps its old band.
-            var band = Math.Abs(lo) >= 1 ? Math.Abs(lo) * 0.05 : 0.005;
+            // One entry has no range, so the band is invented — proportionally, by the one rule the
+            // design-system step chart uses. Rates are fractions below 1, so every rate chart keeps
+            // its old band.
+            var band = Odyssey.Client.Components.OdsStepChart.FlatBand(lo);
             lo -= band;
             hi += band;
         }

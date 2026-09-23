@@ -224,6 +224,55 @@ public class OdsStepChartTests
         Assert.Single(cut.FindAll(".odc-sc-leg"));
     }
 
+    /// <summary>
+    /// An option row reads name · value · direction, the value in its direction's colour — the
+    /// OptionContent the chart hands its multi-select, rendered by opening the picker.
+    /// </summary>
+    [Fact]
+    public async Task A_picker_row_reads_name_value_and_direction()
+    {
+        await using var ctx = NewContext();
+        var cut = ctx.Render<PickerHost>();
+
+        cut.Find(".odc-ms-trigger").Click();
+
+        var rows = cut.FindAll(".odc-ms-opt");
+        Assert.Equal(2, rows.Count);
+        Assert.Contains("Monthly rent", rows[0].TextContent, StringComparison.Ordinal);
+        var value = rows[0].QuerySelector(".odc-thc-val")!;
+        Assert.Equal("2,250.00 USD", value.TextContent);
+        Assert.Contains("color:var(--finance-expense)", value.GetAttribute("style"), StringComparison.Ordinal);
+        Assert.Contains("Outgoing", rows[0].QuerySelector(".odc-thc-dir")!.TextContent, StringComparison.Ordinal);
+        // Only the plotted row's dash carries its line colour.
+        Assert.NotNull(rows[0].QuerySelector(".odc-opt-icon")!.GetAttribute("style"));
+        Assert.Null(rows[1].QuerySelector(".odc-opt-icon")!.GetAttribute("style"));
+    }
+
+    private sealed class PickerHost : Microsoft.AspNetCore.Components.ComponentBase
+    {
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+        {
+            builder.OpenComponent<MudBlazor.MudPopoverProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<OdsTermHistoryChart>(1);
+            builder.AddComponentParameter(2, nameof(OdsTermHistoryChart.Series), (IReadOnlyList<OdsTermHistorySeries>)
+            [
+                S("rent", "amt:USD") with { Label = "Monthly rent", Value = "2,250.00 USD", ToneLabel = "Outgoing", ToneColor = "var(--finance-expense)", Color = "var(--finance-expense)" },
+                S("parking", "amt:USD") with { Label = "Parking space", Value = "95.00 USD" },
+            ]);
+            builder.AddComponentParameter(3, nameof(OdsTermHistoryChart.Now), (DateTime?)Now);
+            builder.CloseComponent();
+        }
+    }
+
+    [Theory]
+    [InlineData(2150, 107.5)]
+    [InlineData(1, 0.05)]
+    [InlineData(0.08, 0.005)]
+    [InlineData(-0.5, 0.005)]
+    public void A_flat_series_gets_a_band_proportional_to_its_value(double value, double expected) =>
+        Assert.Equal(expected, OdsStepChart.FlatBand(value), 6);
+
     [Fact]
     public void Nothing_renders_when_no_series_has_a_point()
     {
