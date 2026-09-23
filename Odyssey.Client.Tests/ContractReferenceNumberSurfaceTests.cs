@@ -174,7 +174,8 @@ public class ContractReferenceNumberSurfaceTests : IAsyncLifetime
         Assert.Empty(cut.FindAll(".odc-refnum-icon"));
         cut.Find(".odc-refnum-copy").Click();
 
-        clipboard.Verify(c => c.CopyAsync("PHI-BC-2026-0098812", It.IsAny<string?>()), Times.Once);
+        // With a success message, so the Snackbar announces the copy (WCAG 4.1.3).
+        clipboard.Verify(c => c.CopyAsync("PHI-BC-2026-0098812", "Reference number copied."), Times.Once);
     }
 
     // ── The dialog ───────────────────────────────────────────────────────────

@@ -75,7 +75,10 @@
 
     private async Task CopyAsync()
     {
-        if (Value is null || !await Clipboard.CopyAsync(Value))
+        // The toast is the announcement: swapping the focused button's aria-label is not reliably
+        // read out, so the checkmark alone would leave a screen-reader user without a status
+        // (WCAG 4.1.3) — the same path every other copy action in the client takes.
+        if (Value is null || !await Clipboard.CopyAsync(Value, "Reference number copied."))
             return;
 
         _copied = true;
