@@ -77,18 +77,12 @@ public class ContractTermDirectionApiTests
     }
 
     /// <summary>
-    /// AC 3 — direction is a fee-only field. A rate is a percentage, is already excluded from the
-    /// roll-up, and belongs to the account-side question this issue defers.
+    /// AC 3, revised — a contract's RATE carries a direction too: an arrears rate charges the household
+    /// and a deposit rate pays it, which is the same fact a fee carries. The roll-up still projects no
+    /// percentage, so accepting it changes no figure.
     /// </summary>
-    /// <remarks>
-    /// <c>InterestRate</c> is the only rate kind reachable here: a contract may not be priced in
-    /// <c>ExpectedReturn</c> at all (issue #135), so that request is refused a step earlier, by kind
-    /// eligibility, and never reaches the direction rule. The rule still covers it — a third rate kind
-    /// added to the contract set would be refused by this same check — which is why it is written
-    /// against <c>isRateKind</c> rather than against <c>InterestRate</c> alone.
-    /// </remarks>
     [Fact]
-    public async Task Post_IncomingOnARateKind_Returns400NamingTheField()
+    public async Task Post_IncomingOnARateKind_IsAcceptedAndReturned()
     {
         await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
@@ -103,9 +97,9 @@ public class ContractTermDirectionApiTests
             EffectiveFrom = FixedToday.AddDays(-30),
         });
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<ApiProblemBody>();
-        Assert.True(problem!.Errors!.ContainsKey(nameof(NewTerm.Direction)));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<ExistingTerm>();
+        Assert.Equal(TermDirection.Incoming, created!.Direction);
     }
 
     /// <summary>
