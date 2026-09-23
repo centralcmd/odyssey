@@ -28,6 +28,7 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
 | `MudMenu` with custom `ActivatorContent` | Menu never opens | Add `@onclick="@context.ToggleAsync"` |
 | `ShowMessageBox` | Removed | Use `ShowMessageBoxAsync` |
 | `MudAutocomplete` free text discarded | Typed value lost on blur | Set `CoerceValue="true"` |
+| `MudAutocomplete<T>` over a record type (`OdsCombobox`) reading typed text in `OnBlur` | Text is already empty: `CoerceText` (default on) resets it to the old value *before* `OnBlur` fires, so a free-text commit sees nothing | Turn `CoerceText`/`CoerceValue` off and commit from `OnBlur` yourself — `OdsCombobox FreeText="true"` does exactly this; read the text with `GetState(x => x.Text)` (analyzer MUD0012 forbids `.Text`) |
 | `OdsModal` head/content/foot CSS override ignored | Base MudBlazor rule wins on source order | Prefix the selector with `.mud-dialog ` |
 | `@*…*@` **inside a component's attribute list** | Attributes after it are silently dropped | Put the comment on the line *above* the tag (`RazorAttributeCommentTests` fails the build on this) |
 | `continue` / `break` **inside an `@foreach` body** | Razor parse error, or control flow that does not compile | Restructure as `@if`/`else` — a code block in a markup region cannot jump out of the loop |
@@ -36,7 +37,7 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
 
 ## Project conventions
 
-- **Component library:** `Odyssey.Client/Components/` — 141 `Ods*.razor` atoms today. Shared model
+- **Component library:** `Odyssey.Client/Components/` — 136 `Ods*.razor` atoms today. Shared model
   types live in `OdsModels.cs`; enum icon/colour/label metadata belongs in `OdsTypeRegistries.cs`
   (and the `*Visuals` types beside it), never hardcoded at a call site.
 - **Foundation tokens:** `Odyssey.Client/wwwroot/css/app.css`. Global component CSS:

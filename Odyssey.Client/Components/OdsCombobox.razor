@@ -21,6 +21,15 @@
 
     CoerceValue is left at its default (true) so a typed-but-unselected value
     isn't silently discarded.
+
+    FreeText turns it into a SUGGEST-don't-constrain field: the value is a string
+    the user may type freely, and the options are recognised names rather than the
+    only legal answers. A value matching no option still displays, and the typed
+    query commits on blur, so a name that is never explicitly picked is not
+    silently dropped — the one behaviour a constrained select must NOT have. It
+    switches MudAutocomplete's CoerceText / CoerceValue OFF: coercing the text to
+    the (still old) value on blur would wipe the typed name before OnBlur could
+    read it, so the commit is this component's own.
 *@
 
 @inject IJSRuntime Js
@@ -37,7 +46,7 @@
     {
         <span class="material-icons odc-combo-lead" style="@SelectedIconStyle" aria-hidden="true">@SelectedIcon</span>
     }
-    <MudAutocomplete T="OdsOption"
+    <MudAutocomplete T="OdsOption" @ref="_autocomplete"
                      Value="@Selected"
                      ValueChanged="OnSelected"
                      SearchFunc="Search"
@@ -52,6 +61,9 @@
                      InputId="@InputId"
                      ItemDisabledFunc="@(o => o?.Disabled == true)"
                      Error="@Error"
+                     OnBlur="OnBlurAsync"
+                     CoerceText="@(!FreeText)"
+                     CoerceValue="@(!FreeText)"
                      @attributes="UserAttributes">
         <ItemTemplate Context="option">
             @* aria-disabled rides on this span rather than on the row MudAutocomplete gives

@@ -8,6 +8,13 @@
     list with Clear / Done. Built on MudMenu so the popover is portaled out of
     any overflow:hidden ancestor (the filter card), flips above when there isn't
     room below, and closes on outside-click / Esc. Bind via @bind-Values.
+
+    Glyph typesets a literal mark (§, №, ‰) in the icon's slot for marks the icon
+    font has no glyph for; it wins over Icon. Quiet withholds the trigger's border
+    and fill until hover, focus or open — for a trigger that is a heading as much
+    as a control (a chart's own series picker). OptionContent renders a row that
+    needs more than one voice (a coloured figure beside muted qualifying text);
+    the option's plain Label stays its text form.
 *@
 
 <MudMenu @ref="_menu"
@@ -23,12 +30,16 @@
            ToggleAsync or the popover never opens. *@
         <button type="button"
                 id="@Id"
-                class="odc-ms-trigger"
+                class="@(Quiet ? "odc-ms-trigger quiet" : "odc-ms-trigger")"
                 aria-haspopup="true"
                 aria-expanded="@(_open ? "true" : "false")"
                 aria-describedby="@DescribedBy"
                 @onclick="@context.ToggleAsync">
-            @if (!string.IsNullOrEmpty(Icon))
+            @if (!string.IsNullOrEmpty(Glyph))
+            {
+                <span class="odc-ms-glyph" aria-hidden="true">@Glyph</span>
+            }
+            else if (!string.IsNullOrEmpty(Icon))
             {
                 <span class="material-icons" aria-hidden="true">@Icon</span>
             }
@@ -55,7 +66,16 @@
                     {
                         <span class="material-icons odc-opt-icon" style="@IconStyle(option)" aria-hidden="true">@option.Icon</span>
                     }
-                    <span class="odc-check-label">@option.Label</span>
+                    <span class="odc-check-label">
+                        @if (OptionContent is not null)
+                        {
+                            @OptionContent(option)
+                        }
+                        else
+                        {
+                            @option.Label
+                        }
+                    </span>
                 </label>
             }
             <div class="odc-ms-foot">
@@ -80,6 +100,26 @@
 
     /// <summary>Leading Material Icons ligature on the trigger.</summary>
     [Parameter] public string? Icon { get; set; }
+
+    /// <summary>
+    /// A literal character used as the trigger's mark instead of an icon ligature — for marks the icon
+    /// font has no glyph for (§, №, ‰). Typeset in the UI font at icon size; wins over <see cref="Icon"/>.
+    /// </summary>
+    [Parameter] public string? Glyph { get; set; }
+
+    /// <summary>
+    /// Withhold the trigger's border and fill until hover, focus or open — for a trigger that is a
+    /// heading as much as a control (a chart's own series picker). Padding is unchanged, so nothing
+    /// shifts when the chrome appears.
+    /// </summary>
+    [Parameter] public bool Quiet { get; set; }
+
+    /// <summary>
+    /// The row's content when it needs more than one voice (a coloured figure beside muted qualifying
+    /// text) — the DS <c>label</c>-as-node. The option's <see cref="OdsOption.Label"/> stays its plain
+    /// text form (the DS <c>text</c>).
+    /// </summary>
+    [Parameter] public RenderFragment<OdsOption>? OptionContent { get; set; }
 
     /// <summary>Which edge the popover anchors to.</summary>
     [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;

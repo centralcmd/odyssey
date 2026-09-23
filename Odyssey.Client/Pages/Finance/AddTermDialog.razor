@@ -75,14 +75,49 @@
                be told apart. It is the existing OdsField, so the label / helper / error / required
                semantics — and the aria-invalid wiring MudBlazor does from ErrorText — are the
                established ones; this introduces no new widget and no new ARIA contract. *@
-            @if (TakesLabel)
+            @* On a CONTRACT the name also decides whether this entry JOINS an existing price history
+               or STARTS one, so the field suggests the names this contract already uses for the kind
+               — a free-text combobox, never a constrained select: a new name is a first-class answer,
+               and the help line names which of the two writes is about to happen. *@
+            @if (TakesLabel && IsContractOwner)
+            {
+                var labelError = _errors.TryGetValue("label", out var contractLabelErr) ? contractLabelErr : null;
+                <OdsFieldShell Label="Name" HtmlFor="trm-label" Required="true" Error="@labelError">
+                    <HelpContent>
+                        @if (labelError is null)
+                        {
+                            @if (MatchedSeries is { } matched)
+                            {
+                                <text>Joins the price history of <b>@matched.Label</b> — currently @matched.Note. This entry supersedes it from the effective date.</text>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(_label))
+                            {
+                                <text>Starts a <b>new charge</b> on this contract, with its own history separate from the others.</text>
+                            }
+                            else
+                            {
+                                <text>Pick a charge this updates, or type a new name to start one.</text>
+                            }
+                        }
+                    </HelpContent>
+                    <ChildContent>
+                        <OdsCombobox InputId="trm-label" FreeText="true" Clearable="true"
+                                     Value="@_label" ValueChanged="OnLabelChanged"
+                                     Options="NameOptions"
+                                     OnCreate="CreateNameOption" CreateLabel="New charge"
+                                     Placeholder="e.g. Monthly rent"
+                                     AriaDescribedBy="trm-label-help"
+                                     Required="true" Error="@(labelError is not null)"
+                                     EmptyText="@(NameOptions.Count > 0 ? "No matching charge — type to name a new one" : "No charges yet — type a name")" />
+                    </ChildContent>
+                </OdsFieldShell>
+            }
+            else if (TakesLabel)
             {
                 <OdsField Label="Name" Required="true" MaxLength="TermLabelMaxLength"
                           Value="@_label" ValueChanged="OnLabelChanged"
-                          Placeholder="@(IsContractOwner ? "e.g. Monthly rent" : "e.g. ATM withdrawal · abroad")"
-                          Help="@(IsContractOwner
-                                    ? "Names this charge so it keeps its own history, separate from the contract’s other charges."
-                                    : "Names this fee so it keeps its own history, separate from the account’s other fees.")"
+                          Placeholder="e.g. ATM withdrawal · abroad"
+                          Help="Names this fee so it keeps its own history, separate from the account’s other fees."
                           Error="@(_errors.TryGetValue("label", out var labelErr) ? labelErr : null)" />
             }
 
@@ -90,28 +125,17 @@
                named party's. It rides in the VALUE control itself, in the slot a sign would occupy:
                the record stores a direction, not a sign, so the word IS the sign. Both units carry
                the same lead, so there is exactly ONE control for the value whichever way it is
-               priced. Where direction has no meaning the control is replaced by its REASON rather
-               than shown disabled — a disabled control invites a user to work out how to enable it,
-               and there is nothing to work out. *@
+               priced — and a rate is asked the same way a fee is, because an arrears rate charges and
+               a deposit rate pays. Only an ACCOUNT term refuses it, and there the control is replaced
+               by one muted line stating the asymmetry, so the missing field reads as a decision
+               rather than an omission. No label: on an account the field never exists at all, so a
+               label would imply a missing field rather than an absent one. *@
             @if (DirectionRefusal is { Length: > 0 } refusal)
             {
                 <div class="trm-field trm-dir-field">
-                    @if (IsContractOwner)
-                    {
-                        @* On a contract the field exists and this kind refuses it, so the block is
-                           labelled like the control it stands in for. On an account it never exists
-                           at all, so a label would imply a missing field rather than an absent one. *@
-                        <div class="trm-label">Direction</div>
-                    }
                     <div class="trm-dir-refused">
                         <span class="material-icons" aria-hidden="true">block</span>
-                        <span>
-                            @refusal
-                            @if (IsContractOwner)
-                            {
-                                <text> It is recorded as <b>outgoing</b>, where it carries no meaning.</text>
-                            }
-                        </span>
+                        <span>@refusal</span>
                     </div>
                 </div>
             }
@@ -135,17 +159,18 @@
                 {
                     @* The caption is the "Value" heading above, beside the unit toggle — not a label
                        element — so the input carries its own accessible name. *@
-                    @* A percentage FEE is money too: it carries the same direction lead as an
-                       amount, so the two units are one control with one unit swapped rather than two
-                       differently-shaped questions. A rate gets no lead — see the refusal above. *@
+                    @* A percentage is money too — a fee priced as a share, or a contract rate that
+                       charges or pays — so it carries the same direction lead as an amount: one
+                       control with one unit swapped, never two differently-shaped questions. An
+                       account rate gets no lead — see the refusal above. *@
                     @* AllowNegative follows the DIRECTION: where the lead carries which way the money
                        moves, a typed minus would be a second and contradictory encoding of the same
-                       fact — the defect this feature exists to prevent. A rate keeps its sign, where
-                       a negative genuinely means something (negative-rate deposits and mortgages both
-                       exist). Note the consequence on EDIT: a pre-existing negative percentage FEE on
-                       a contract loses its minus on the next keystroke. That is a nudge toward the
-                       invariant rather than away from it, and the server still accepts the stored
-                       value untouched if nothing is typed. *@
+                       fact — the defect this feature exists to prevent. An account rate keeps its
+                       sign, where a negative genuinely means something (negative-rate deposits and
+                       mortgages both exist). Note the consequence on EDIT: a pre-existing negative
+                       percentage on a contract term loses its minus on the next keystroke. That is a
+                       nudge toward the invariant rather than away from it, and the server still
+                       accepts the stored value untouched if nothing is typed. *@
                     <OdsAmountField Size="lg" Required="true" AllowNegative="@(!DirectionApplies)" Suffix="%"
                                     Value="@_valueStr" ValueChanged="OnValueChanged"
                                     Direction="@DirectionValue"

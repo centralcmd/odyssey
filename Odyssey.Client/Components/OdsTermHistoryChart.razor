@@ -1,0 +1,65 @@
+@*
+    OdsTermHistoryChart — the assembled "how has this charge changed" card
+    (Odyssey Design System · components/TermHistoryChart).
+
+    An OdsStepChart whose head IS its controls: a quiet OdsMultiSelect on the left says WHAT is
+    plotted and stands in for the title; a Change / Value OdsSegmentedControl on the right says HOW it
+    reads. No title, no headline figure — the legend under the plot carries every line's name, value in
+    force and move.
+
+    Plain data in: the caller resolves its own records into Series (ordered — the FIRST is the default
+    selection, normally the most recently changed) and this component owns every rule about comparing
+    them:
+      • Never nothing plotted. Removing the last line keeps it.
+      • One axis, one unit. A series whose Group differs from what is shown REPLACES the selection
+        instead of joining an axis true of neither.
+      • Stable colours. Each series leases a hue, preferring its own Color (a direction hue — money
+        out is money out) and falling back to Palette when that colour is already on screen. Leases
+        outlive deselection, so a line never repaints when another joins, leaves or returns.
+      • A cap. Palette.Count lines at most — past it no hue is both neutral and distinct.
+
+    Renders nothing when no series has a point.
+*@
+
+@if (_list.Count > 0)
+{
+    <div class="@($"odc-thc{(string.IsNullOrEmpty(Class) ? "" : " " + Class)}")">
+        <OdsStepChart Controls="@(_list.Count > 1 ? Picker : null)"
+                      ControlsEnd="AxisToggle"
+                      Lines="_lines"
+                      ShowFigure="false"
+                      Scale="@(_scale ?? OdsStepScale.Auto)"
+                      Color="@(_lines[0].Color ?? "var(--chart-1)")"
+                      Format="@(_picked[0].Format ?? DefaultFormat)"
+                      AxisFormat="_picked[0].AxisFormat"
+                      AriaLabel="@($"{string.Join(", ", _picked.Select(x => x.Label))} — value over time")"
+                      TextEquivalent="true"
+                      TextEquivalentLabel="@TextEquivalentLabel"
+                      Now="Now" />
+    </div>
+}
+
+@code {
+    private RenderFragment Picker => @<OdsMultiSelect Label="@PickerLabel" Glyph="@Glyph" Quiet="true"
+                                                      Align="OdsAlign.Start"
+                                                      Values="_active" ValuesChanged="OnPick"
+                                                      Options="_options">
+        <OptionContent Context="option">
+            @{ var x = _list.First(s => s.Key == option.Value); }
+            @x.Label
+            @if (!string.IsNullOrEmpty(x.Value))
+            {
+                <text> · </text><span class="odc-thc-val" style="@(x.ToneColor is null ? null : $"color:{x.ToneColor};")">@x.Value</span>
+            }
+            @if (!string.IsNullOrEmpty(x.ToneLabel))
+            {
+                <span class="odc-thc-dir"> · @x.ToneLabel</span>
+            }
+        </OptionContent>
+    </OdsMultiSelect>;
+
+    private RenderFragment AxisToggle => @<OdsSegmentedControl AriaLabel="Y-axis"
+                                                               Value="@ScaleValue"
+                                                               ValueChanged="OnScale"
+                                                               Options="ScaleOptions" />;
+}

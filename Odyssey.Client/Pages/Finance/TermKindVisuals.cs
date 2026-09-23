@@ -241,17 +241,19 @@ public static class TermKindVisuals
     // ---- Direction (issue #159) -------------------------------------------------------------
 
     /// <summary>
-    /// Whether direction MEANS something here: a <see cref="TermKind.Fee"/> owned by a CONTRACT.
-    /// A rate kind is a percentage the roll-up never projects, and an account term has no surface
-    /// that reads a direction — the server refuses <see cref="TermDirection.Incoming"/> on both with
-    /// a <c>400</c>, so neither is offered one.
+    /// Whether direction MEANS something here: any term owned by a CONTRACT — fee and rate alike. An
+    /// arrears rate charges the tenant and a deposit rate pays them, which is the same fact a fee
+    /// carries, so both are asked the same way. An account term has no surface that reads a direction
+    /// and the server refuses <see cref="TermDirection.Incoming"/> there with a <c>400</c>, so it is
+    /// not offered one.
     /// </summary>
     /// <remarks>
     /// ONE predicate, so the dialog's control, the read surfaces and the refusal copy can never
-    /// disagree about where a direction is a fact and where it is noise.
+    /// disagree about where a direction is a fact and where it is noise. The <paramref name="kind"/>
+    /// no longer decides it; it stays in the signature so every caller keeps asking about a specific
+    /// term rather than an owner in the abstract.
     /// </remarks>
-    public static bool DirectionApplies(TermKind kind, bool isContractOwned) =>
-        isContractOwned && kind == TermKind.Fee;
+    public static bool DirectionApplies(TermKind kind, bool isContractOwned) => isContractOwned;
 
     /// <inheritdoc cref="DirectionApplies(TermKind, bool)"/>
     public static bool DirectionApplies(ExistingTerm term) =>
@@ -265,9 +267,7 @@ public static class TermKindVisuals
     public static string? DirectionRefusal(TermKind kind, bool isContractOwned) =>
         !isContractOwned
             ? "Direction applies to a contract term. An account term is always money out."
-            : kind != TermKind.Fee
-                ? "Direction applies to a fee term only — a rate is a percentage, not a movement."
-                : null;
+            : null;
 
     /// <summary>
     /// Whether this term brings money IN — direction applies here AND it is

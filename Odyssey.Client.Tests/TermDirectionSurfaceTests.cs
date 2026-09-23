@@ -115,18 +115,18 @@ public class TermDirectionSurfaceTests
     // ── Where direction means something ──────────────────────────────────────
 
     /// <summary>
-    /// ONE predicate: a FEE on a CONTRACT. A rate is a percentage the roll-up never projects, and no
-    /// account surface reads a direction — the server refuses <c>Incoming</c> on both with a 400, so
-    /// neither is offered one. If this and the refusal copy could disagree, a user would meet a
-    /// rejection the dialog never predicted.
+    /// ONE predicate: any term on a CONTRACT, fee and rate alike — an arrears rate charges and a
+    /// deposit rate pays, which is the same fact a fee carries. No account surface reads a direction,
+    /// so the server refuses <c>Incoming</c> there with a 400 and it is not offered one. If this and
+    /// the refusal copy could disagree, a user would meet a rejection the dialog never predicted.
     /// </summary>
     [Theory]
     [InlineData(TermKind.Fee, true, true)]
-    [InlineData(TermKind.InterestRate, true, false)]
-    [InlineData(TermKind.ExpectedReturn, true, false)]
+    [InlineData(TermKind.InterestRate, true, true)]
     [InlineData(TermKind.Fee, false, false)]
     [InlineData(TermKind.InterestRate, false, false)]
-    public void Direction_applies_only_to_a_fee_on_a_contract(TermKind kind, bool onContract, bool applies)
+    [InlineData(TermKind.ExpectedReturn, false, false)]
+    public void Direction_applies_to_every_contract_term_and_no_account_term(TermKind kind, bool onContract, bool applies)
     {
         Assert.Equal(applies, TermKindVisuals.DirectionApplies(kind, onContract));
         Assert.Equal(applies, TermKindVisuals.DirectionRefusal(kind, onContract) is null);
@@ -141,18 +141,16 @@ public class TermDirectionSurfaceTests
     }
 
     /// <summary>
-    /// The two refusals say DIFFERENT things, because the reasons are different: an account term has
-    /// no direction at all, while a contract's rate kind has one that carries no meaning.
+    /// The one refusal left names its reason — an account term has no direction at all — and a
+    /// contract's rate is no longer refused: the retired "fee term only" copy must not survive.
     /// </summary>
     [Fact]
-    public void Each_refusal_names_its_own_reason()
+    public void The_only_refusal_is_the_account_one()
     {
         var account = TermKindVisuals.DirectionRefusal(TermKind.Fee, isContractOwned: false);
-        var rate = TermKindVisuals.DirectionRefusal(TermKind.InterestRate, isContractOwned: true);
 
         Assert.Contains("account term", account, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("fee term", rate, StringComparison.OrdinalIgnoreCase);
-        Assert.NotEqual(account, rate);
+        Assert.Null(TermKindVisuals.DirectionRefusal(TermKind.InterestRate, isContractOwned: true));
     }
 
     /// <summary>
@@ -161,13 +159,14 @@ public class TermDirectionSurfaceTests
     /// half of the same compatibility promise the backend makes about the figures.
     /// </summary>
     [Fact]
-    public void Only_an_incoming_contract_fee_takes_the_income_hue()
+    public void Only_an_incoming_contract_term_takes_the_income_hue()
     {
         Assert.Equal("var(--finance-income)", TermKindVisuals.DirectionColor(Fee(TermDirection.Incoming)));
         Assert.Null(TermKindVisuals.DirectionColor(Fee()));
         // An account term stores Outgoing and would not be re-coloured even if it did not.
         Assert.Null(TermKindVisuals.DirectionColor(Fee(TermDirection.Incoming, onContract: false)));
-        Assert.Null(TermKindVisuals.DirectionColor(Fee(TermDirection.Incoming, kind: TermKind.InterestRate)));
+        // A contract rate carries a direction too, so an incoming one — a deposit rate — is mint.
+        Assert.Equal("var(--finance-income)", TermKindVisuals.DirectionColor(Fee(TermDirection.Incoming, kind: TermKind.InterestRate)));
     }
 
     // ── The field lead ───────────────────────────────────────────────────────

@@ -65,7 +65,7 @@ for understanding what the designer intended by the change.
 | `components/<Name>.jsx` (new or revised atom) | `Components/Ods<Name>.razor` (+ scoped `Ods<Name>.razor.css`) — create it if the atom is new |
 | Rules in `components.css` | `wwwroot/css/odyssey-components.css` (global) or the relevant scoped `.razor.css` |
 | A new/changed `preview/*.html` page or state | The consuming page/component that renders that pattern |
-| `_ds_manifest.json` gained a component | A new `Ods*` wrapper is owed — confirm none of the 135 existing atoms already covers it |
+| `_ds_manifest.json` gained a component | A new `Ods*` wrapper is owed — confirm none of the 136 existing atoms already covers it |
 
 ```bash
 ls Odyssey.Client/Components/Ods*.razor

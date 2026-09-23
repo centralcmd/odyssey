@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Odyssey.Client.Components;
 using MudBlazor;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
@@ -55,6 +56,7 @@ public partial class ContractTermsSection
     private List<ExistingTerm> _terms = [];
     private List<ExistingTerm> _current = [];
     private HashSet<Guid> _currentIds = [];
+    private List<OdsTermHistorySeries> _chartSeries = [];
 
     private bool _isLoading;
 
@@ -177,7 +179,69 @@ public partial class ContractTermsSection
             .ThenBy(t => TermLabel.Key(t.Label) ?? "", StringComparer.Ordinal)
             .ToList();
         _currentIds = _current.Select(t => t.TermId).ToHashSet();
+        _chartSeries = BuildChartSeries(_terms, asOf, FormatMoney);
     }
+
+    /// <summary>
+    /// Resolves the contract's terms into the chart's plain series — one per (kind, label) series,
+    /// ordered by whose LATEST entry is most recent (a scheduled one counts: it is the change the
+    /// reader came to look at), so the first is the default selection.
+    /// </summary>
+    /// <remarks>
+    /// Everything a series STATES comes from its entry in force — the newest already taken effect, or
+    /// for an entirely-scheduled series its earliest — so the picker, the legend and the tiles above
+    /// agree. Two series may share an axis only if they are the same unit and, for money, the same
+    /// currency, which is what <see cref="OdsTermHistorySeries.Group"/> carries.
+    /// </remarks>
+    internal static List<OdsTermHistorySeries> BuildChartSeries(
+        IReadOnlyList<ExistingTerm> terms, DateTime asOf, Func<decimal, string?, string> formatMoney) =>
+        terms
+            .GroupBy(t => (t.TermKind, LabelKey: TermLabel.Key(t.Label)))
+            .Select(group =>
+            {
+                var entries = group.OrderBy(t => t.EffectiveFrom).ThenBy(t => t.CreatedAtUtc).ToList();
+                var inForce = entries.LastOrDefault(t => t.EffectiveFrom.Date <= asOf) ?? entries[0];
+                return (Latest: entries[^1].EffectiveFrom, Series: ToSeries(group.Key, entries, inForce, formatMoney));
+            })
+            .OrderByDescending(x => x.Latest)
+            .Select(x => x.Series)
+            .ToList();
+
+    private static OdsTermHistorySeries ToSeries(
+        (TermKind Kind, string? LabelKey) key,
+        List<ExistingTerm> entries,
+        ExistingTerm inForce,
+        Func<decimal, string?, string> formatMoney)
+    {
+        var pct = inForce.ValueUnit == TermValueUnit.Percentage;
+        var currency = inForce.CurrencyCode;
+        var direction = TermKindVisuals.DirectionApplies(inForce) ? TermDirectionVisuals.Info(inForce.Direction) : null;
+
+        return new OdsTermHistorySeries
+        {
+            Key = $"{key.Kind}|{key.LabelKey}",
+            Label = TermKindVisuals.DisplayName(inForce, null),
+            Value = TermKindVisuals.FormatValue(inForce, formatMoney),
+            ToneLabel = direction?.Label,
+            ToneColor = direction?.Color,
+            Color = direction?.Color ?? TermKindVisuals.Info(key.Kind).Color,
+            Group = pct ? "pct" : $"amt:{currency}",
+            Points = entries
+                .Select(t => new OdsStepPoint(DateOnly.FromDateTime(t.EffectiveFrom), t.Value) { Id = t.TermId.ToString() })
+                .ToList(),
+            Format = pct
+                ? v => (v < 0 ? "−" : "") + TermKindVisuals.PctStr(Math.Abs(v))
+                : v => formatMoney(v, currency),
+            AxisFormat = pct ? PercentTick : AmountTick,
+        };
+    }
+
+    private static string PercentTick(decimal v) => (v < 0 ? "−" : "") + TermKindVisuals.PctStr(Math.Abs(v));
+
+    // No currency code on the tick — it is stated once, in the value. Whole units at 10 and above: a
+    // rent axis reading "2,438.75" is noise.
+    private static string AmountTick(decimal v) =>
+        (v < 0 ? "−" : "") + Math.Abs(v).ToString(Math.Abs(v) >= 10 ? "#,##0" : "#,##0.##", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// The tile's foot: the kind wording where the term carries its own name (otherwise the name IS

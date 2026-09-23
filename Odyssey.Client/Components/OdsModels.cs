@@ -51,6 +51,98 @@ public enum OdsLinePointKind
 /// </summary>
 public sealed record OdsLinePoint(string Label, decimal? Value, OdsLinePointKind Kind = OdsLinePointKind.Normal);
 
+/// <summary>
+/// One dated entry of an <see cref="OdsStepChart"/> (mirrors the DS <c>StepChartPoint</c>): the value
+/// that holds from <see cref="Date"/> until the next entry. May be negative; a null
+/// <see cref="Value"/> is skipped.
+/// </summary>
+public sealed record OdsStepPoint(DateOnly Date, decimal? Value)
+{
+    /// <summary>Stable key for the dot; falls back to the index.</summary>
+    public string? Id { get; init; }
+
+    public string? Note { get; init; }
+}
+
+/// <summary>
+/// One history in an <see cref="OdsStepChart"/> comparison (mirrors the DS <c>StepChartLine</c>).
+/// Give overlaid lines DISTINCT colours — two red expense lines are two unidentifiable lines.
+/// </summary>
+public sealed record OdsStepLine
+{
+    public required string Id { get; init; }
+
+    /// <summary>Legend name.</summary>
+    public required string Label { get; init; }
+
+    /// <summary>This line's colour; falls back to the chart's <c>Color</c>.</summary>
+    public string? Color { get; init; }
+
+    public required IReadOnlyList<OdsStepPoint> Points { get; init; }
+}
+
+/// <summary>How an <see cref="OdsStepChart"/> plots its y-axis (mirrors the DS <c>scale</c>).</summary>
+public enum OdsStepScale
+{
+    /// <summary>Indexes a comparison of several lines, shows real figures for one.</summary>
+    Auto = 0,
+
+    /// <summary>Every series as its percentage move from its own first entry.</summary>
+    Indexed = 1,
+
+    /// <summary>The real figures on one shared axis.</summary>
+    Absolute = 2,
+}
+
+/// <summary>How a chart's head delta is coloured (mirrors the DS <c>deltaTone</c>).</summary>
+public enum OdsDeltaTone
+{
+    /// <summary>Income-green / expense-red by sign.</summary>
+    Signed = 0,
+
+    /// <summary>Secondary grey — for a head whose figure already carries the colour meaning.</summary>
+    Neutral = 1,
+}
+
+/// <summary>
+/// One history an <see cref="OdsTermHistoryChart"/> reader can plot — plain data, already resolved
+/// (mirrors the DS <c>TermHistorySeries</c>).
+/// </summary>
+public sealed record OdsTermHistorySeries
+{
+    /// <summary>Stable key. Colour leases are held against it for the life of the view.</summary>
+    public required string Key { get; init; }
+
+    /// <summary>Display name, e.g. "Monthly rent". Names the legend row and the option.</summary>
+    public required string Label { get; init; }
+
+    /// <summary>The value in force, already formatted ("2,250.00 USD", "9.25%").</summary>
+    public string? Value { get; init; }
+
+    /// <summary>Direction word, stated after the value in the option.</summary>
+    public string? ToneLabel { get; init; }
+
+    /// <summary>Colour of the value in the option — normally the direction hue.</summary>
+    public string? ToneColor { get; init; }
+
+    /// <summary>Preferred line hue. Used unless another line on screen already holds it.</summary>
+    public string? Color { get; init; }
+
+    /// <summary>
+    /// Axis-compatibility key (unit + currency). Series in different groups never share an axis:
+    /// picking one replaces the selection.
+    /// </summary>
+    public string? Group { get; init; }
+
+    public required IReadOnlyList<OdsStepPoint> Points { get; init; }
+
+    /// <summary>Value formatter (legend, text table). Taken from the first selected series.</summary>
+    public Func<decimal, string>? Format { get; init; }
+
+    /// <summary>Tick formatter for the absolute axis.</summary>
+    public Func<decimal, string>? AxisFormat { get; init; }
+}
+
 /// <summary>A single slice of a <see cref="OdsDonut"/> / <see cref="OdsDonutLegend"/>.</summary>
 public sealed record OdsDonutSlice
 {

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using MudBlazor.Extensions;
 
 namespace Odyssey.Client.Components;
 
@@ -76,6 +77,15 @@ public partial class OdsCombobox
     /// </remarks>
     [Parameter] public bool Required { get; set; }
 
+    /// <summary>
+    /// Suggest, don't constrain: the value is a free string and the options are recognised names, not
+    /// the only legal answers. A value matching no option still displays, and the typed query commits
+    /// on blur so a typed name is never silently dropped. A typed name matching an option's label
+    /// (case-insensitively) commits that option's value. Pair with <see cref="OnCreate"/> when the new
+    /// name deserves a visible row of its own.
+    /// </summary>
+    [Parameter] public bool FreeText { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
@@ -105,7 +115,36 @@ public partial class OdsCombobox
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
 
-    private OdsOption? Selected => Options.FirstOrDefault(o => o.Value == Value);
+    // In FreeText mode a value that matches no option is still the value — it is a name the user
+    // typed, not an invalid selection.
+    private OdsOption? Selected =>
+        Options.FirstOrDefault(o => o.Value == Value)
+        ?? (FreeText && !string.IsNullOrEmpty(Value) ? new OdsOption(Value, Value) : null);
+
+    private MudBlazor.MudAutocomplete<OdsOption>? _autocomplete;
+
+    // FreeText: the query IS an answer. Committing it on blur is what separates "suggests" from
+    // "constrains". An empty query commits nothing — clearing is the ✕ affordance's job.
+    private Task OnBlurAsync(Microsoft.AspNetCore.Components.Web.FocusEventArgs _)
+    {
+        if (!FreeText)
+            return Task.CompletedTask;
+        // Read off the input itself: the text a blur commits is whatever the field shows now.
+        var text = _autocomplete?.GetState(x => x.Text)?.Trim();
+        // The text MudAutocomplete shows for a picked row is that row's label, and a picked create row
+        // briefly shows its own "Create …" caption — neither is something the user typed.
+        if (string.IsNullOrEmpty(text)
+            || string.Equals(text, Selected?.Label, StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith($"{CreateLabel} \"", StringComparison.Ordinal))
+            return Task.CompletedTask;
+        var hit = Options.FirstOrDefault(o => !o.Disabled
+                                              && string.Equals(o.Label, text, StringComparison.OrdinalIgnoreCase));
+        var next = hit?.Value ?? text;
+        if (string.Equals(next, Value, StringComparison.Ordinal))
+            return Task.CompletedTask;
+        Value = next;
+        return ValueChanged.InvokeAsync(Value);
+    }
 
     // Leading glyph on the trigger once a real value is selected (mirrors the DS .odc-input-icon).
     private string? SelectedIcon => Selected?.Icon;

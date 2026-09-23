@@ -1,0 +1,174 @@
+@*
+    OdsStepChart — the dated-value card (Odyssey Design System · components/StepChart).
+    OdsLineChart's sibling, deliberately in the same card — identical head (title · sub, figure ·
+    delta), viewBox, gridlines, axis type and typography — so a term chart and the dashboard's net
+    worth read as one chart vocabulary. What differs is what a trend chart gets wrong about a HELD
+    value:
+      • A REAL TIME AXIS. Entries land whenever someone signed something, so a rent held for eight
+        months and then twice in one quarter must not read as three equal steps.
+      • TODAY. The line holds solid up to the now marker and dashes past it, with a hollow dot on a
+        scheduled entry, so a future increase is visibly not yet true.
+
+    The line is a staircase by construction — a price does not drift. Every figure the card states
+    (head, delta, legend, text equivalent) is the value IN FORCE: the latest entry already taken
+    effect. The delta is in-force vs the entry BEFORE it, not vs the first.
+
+    Lines compares several histories, plotted as INDEXED change from each series' own first entry by
+    default (Scale="Auto"), because on one absolute axis a 95 parking space collapses onto the floor
+    beside a 2,250 rent. The legend keeps each line's real value in force either way. Callers must only
+    overlay series sharing a unit and a currency.
+
+    Controls takes the title's place (a picker that names what is plotted IS the title) and
+    ControlsEnd sits where the figure does (a toggle that changes how the chart reads).
+
+    Parameters and geometry live in OdsStepChart.razor.cs. Styled by the shared .odc-lc rules plus
+    .odc-sc-* in the global sheet.
+*@
+
+<div class="@($"odc-lc{(string.IsNullOrEmpty(Class) ? "" : " " + Class)}")">
+    <div class="odc-lc-head">
+        <div>
+            @if (Controls is not null)
+            {
+                <div class="odc-lc-controls">@Controls</div>
+            }
+            else if (!string.IsNullOrEmpty(Title))
+            {
+                <div class="odc-lc-ttl">@Title</div>
+            }
+            @if (Sub is not null)
+            {
+                <div class="odc-lc-sub">@Sub</div>
+            }
+        </div>
+        @if (ControlsEnd is not null || FigureShown)
+        {
+            <div class="odc-lc-figure">
+                @if (ControlsEnd is not null)
+                {
+                    <div class="odc-lc-controls end">@ControlsEnd</div>
+                }
+                @if (FigureShown)
+                {
+                    var head = Headline;
+                    <div class="odc-lc-num" style="@(FigureColor is null ? null : $"color:{FigureColor};")">
+                        @(Figure ?? (head is { } h ? Format((decimal)h.Value) : ""))
+                    </div>
+                    @if (ShowDelta && head is { Prev: { } prev } hd)
+                    {
+                        var d = hd.Value - prev;
+                        <div class="@DeltaClass(d)">@DeltaText(d)</div>
+                    }
+                }
+            </div>
+        }
+    </div>
+
+    @if (!HasData)
+    {
+        <OdsEmptyLine Align="OdsEmptyLineAlign.Center" Text="@EmptyLabel" />
+    }
+    else
+    {
+        <svg class="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
+             role="img" aria-label="@EffectiveAriaLabel">
+            <g stroke="var(--chart-grid)" stroke-width="1">
+                @foreach (var v in _gridVals)
+                {
+                    <line x1="@F(X0)" y1="@F(Sy(v))" x2="@F(X1)" y2="@F(Sy(v))" />
+                }
+            </g>
+            <g class="odc-lc-axis">@((MarkupString)YAxisMarkup)</g>
+            <g class="odc-lc-axis">@((MarkupString)XAxisMarkup)</g>
+
+            @* Area only for a lone line — stacked washes read as a third value. *@
+            @if (Area && !_multi && !string.IsNullOrEmpty(_plots[0].AreaPath))
+            {
+                <defs>
+                    <linearGradient id="@_fillId" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="@_plots[0].Color" stop-opacity="0.26" />
+                        <stop offset="100%" stop-color="@_plots[0].Color" stop-opacity="0" />
+                    </linearGradient>
+                </defs>
+                <path d="@_plots[0].AreaPath" fill="url(#@_fillId)" />
+            }
+
+            @foreach (var p in _plots)
+            {
+                <g @key="p.Id" transform="@DodgeTransform(p)">
+                    @if (!string.IsNullOrEmpty(p.Solid))
+                    {
+                        <path class="odc-sc-line" d="@p.Solid" fill="none" stroke="@p.Color" />
+                    }
+                    @if (!string.IsNullOrEmpty(p.Dashed))
+                    {
+                        <path class="odc-sc-line future" d="@p.Dashed" fill="none" stroke="@p.Color" />
+                    }
+                </g>
+            }
+
+            <line class="odc-sc-now" x1="@F(NowX)" y1="@F(YTop - 14)" x2="@F(NowX)" y2="@F(YBot)" />
+            @((MarkupString)NowMarkup)
+
+            @foreach (var p in _plots)
+            {
+                <g transform="@DodgeTransform(p)">@((MarkupString)DotsMarkup(p))</g>
+            }
+        </svg>
+
+        @* The legend IS the readout when several lines share the axis, and it still earns its place
+           with one: the swatch ties the line to its name, and the move since the first entry is a
+           fact the head figure (today's value) and the delta (the last change) both leave out. *@
+        <div class="odc-sc-legend">
+            @foreach (var p in _plots)
+            {
+                <span class="odc-sc-leg" @key="p.Id">
+                    <span class="odc-sc-swatch" style="background:@p.Color;"></span>
+                    <span class="odc-sc-leg-name">@p.Label</span>
+                    <span class="odc-sc-leg-val" style="color:@p.Color;">@Format((decimal)p.Pts[p.InForce].Value)</span>
+                    <span class="odc-sc-leg-idx">@LegendMove(p)</span>
+                </span>
+            }
+        </div>
+
+        @if (TextEquivalent)
+        {
+            <table class="odc-sr-only">
+                @if (!string.IsNullOrEmpty(Title))
+                {
+                    <caption>@Title</caption>
+                }
+                <thead>
+                    <tr>
+                        @if (_multi)
+                        {
+                            <th scope="col">Series</th>
+                        }
+                        <th scope="col">@TextEquivalentLabel</th>
+                        <th scope="col">Value</th>
+                        <th scope="col">State</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in _plots)
+                    {
+                        for (var i = 0; i < p.Pts.Count; i++)
+                        {
+                            var pt = p.Pts[i];
+                            var state = StateOf(p, i);
+                            <tr>
+                                @if (_multi)
+                                {
+                                    <td>@p.Label</td>
+                                }
+                                <th scope="row">@pt.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)</th>
+                                <td>@Format((decimal)pt.Value)</td>
+                                <td>@state</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</div>

@@ -217,7 +217,14 @@ public partial class AccountTermsSection
         var vals = series.Select(s => s.Value).ToList();
         double lo = vals.Min(), hi = vals.Max();
         if (lo == hi)
-        { lo -= 0.005; hi += 0.005; }
+        {
+            // One entry has no range, so the band is invented — PROPORTIONALLY: a fixed ±0.005 is half
+            // a point around a rate (right) and fake precision around an amount. Rates are stored as
+            // fractions below 1, so every rate chart keeps its old band.
+            var band = Math.Abs(lo) >= 1 ? Math.Abs(lo) * 0.05 : 0.005;
+            lo -= band;
+            hi += band;
+        }
         var padV = (hi - lo) * 0.35;
         lo -= padV;
         hi += padV;

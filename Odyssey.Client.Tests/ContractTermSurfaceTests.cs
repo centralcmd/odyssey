@@ -86,11 +86,12 @@ public class ContractTermSurfaceTests
         var tiles = cut.FindAll(".odc-infotile");
         Assert.Equal(2, tiles.Count);
 
-        var markup = cut.Markup;
-        Assert.Contains("14,500", markup, StringComparison.Ordinal);
-        // The superseded entry keeps its row and loses only its in-force badge.
-        Assert.Equal(1, CountOccurrences(markup, "Superseded"));
-        Assert.Equal(2, CountOccurrences(markup, "In force"));
+        Assert.Contains("14,500", cut.Markup, StringComparison.Ordinal);
+        // The superseded entry keeps its row and loses only its in-force badge. Counted in the history
+        // table alone: the chart's text equivalent states every entry's state too.
+        var history = cut.Find(".con-tbl-frame").InnerHtml;
+        Assert.Equal(1, CountOccurrences(history, "Superseded"));
+        Assert.Equal(2, CountOccurrences(history, "In force"));
     }
 
     [Fact]
@@ -352,7 +353,11 @@ public class ContractTermSurfaceTests
         var nameFor = cut.FindAll("label")
             .First(l => l.TextContent.Contains("Name", StringComparison.Ordinal))
             .GetAttribute("for");
-        cut.Find($"#{nameFor}").Input("Late-payment interest");
+        // The contract's name field SUGGESTS rather than constrains: a typed name commits on blur, so
+        // a new charge is written without ever being picked from the list.
+        var name = cut.Find($"#{nameFor}");
+        name.Input("Late-payment interest");
+        cut.Find($"#{nameFor}").Blur();
 
         var value = cut.FindAll("input")
             .First(i => i.GetAttribute("aria-label")?.Contains("Value", StringComparison.Ordinal) == true);
@@ -369,6 +374,98 @@ public class ContractTermSurfaceTests
         client.Verify(
             c => c.AddTermAsync(It.IsAny<Guid>(), It.IsAny<NewTerm>(), It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    // ── The terms chart (design system · TermHistoryChart) ──────────────────
+
+    /// <summary>
+    /// The history leads with the chart, opening on the series whose LATEST entry is the most recent —
+    /// a scheduled entry counts, because it is the change the reader came to look at.
+    /// </summary>
+    [Fact]
+    public void The_history_leads_with_a_chart_opening_on_the_most_recently_changed_series()
+    {
+        var cut = RenderSection(Lease(),
+        [
+            Fee("Monthly rent", 2150m, Past(300), Interval.Monthly),
+            Fee("Parking space", 85m, Past(300), Interval.Monthly),
+            Fee("Parking space", 95m, Past(20), Interval.Monthly),
+        ]);
+
+        Assert.Single(cut.FindAll(".odc-thc.trm-seriesplot"));
+        var legend = cut.FindAll(".odc-sc-leg");
+        Assert.Single(legend);
+        Assert.Contains("Parking space", legend[0].TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Chart_series_group_by_unit_and_currency_and_state_the_value_in_force()
+    {
+        var eur = Fee("Service", 40m, Past(100), Interval.Monthly);
+        eur.CurrencyCode = "EUR";
+        var terms = new List<ExistingTerm>
+        {
+            Fee("Monthly rent", 2150m, Past(300), Interval.Monthly),
+            Fee("Monthly rent", 2350m, DateTime.UtcNow.Date.AddDays(60), Interval.Monthly),
+            Rate(0.08m, Past(200)),
+            eur,
+        };
+
+        var series = ContractTermsSection.BuildChartSeries(
+            terms, DateTime.UtcNow.Date, (v, c) => $"{v.ToString("0.##", CultureInfo.InvariantCulture)} {c}");
+
+        // The rent's latest entry is scheduled, so it leads — but it STATES the entry in force.
+        Assert.Equal("Monthly rent", series[0].Label);
+        Assert.Equal("2150 NOK", series[0].Value);
+        Assert.Equal(2, series[0].Points.Count);
+        Assert.Equal("amt:NOK", series[0].Group);
+        Assert.Equal("amt:EUR", series.Single(s => s.Label == "Service").Group);
+        Assert.Equal("pct", series.Single(s => s.Label == "Interest rate").Group);
+        // A contract rate states its direction, like a fee.
+        Assert.Equal("Outgoing", series.Single(s => s.Label == "Interest rate").ToneLabel);
+    }
+
+    // ── The name field's suggestions ─────────────────────────────────────────
+
+    [Fact]
+    public void The_name_field_suggests_this_contracts_own_series_of_the_kind_being_written()
+    {
+        var editing = Fee("Monthly rent", 2150m, Past(300), Interval.Monthly);
+        var terms = new List<ExistingTerm>
+        {
+            editing,
+            Fee("Monthly rent", 2250m, Past(30), Interval.Monthly),
+            Fee("Water", 40m, DateTime.UtcNow.Date.AddDays(30), Interval.Monthly),
+            Rate(0.08m, Past(200)),
+        };
+
+        var suggestions = AddTermDialog.NameSuggestions(terms, TermKind.Fee, editing.TermId, DateTime.UtcNow.Date);
+
+        Assert.Equal(["Monthly rent", "Water"], suggestions.Select(s => s.Label));
+        Assert.StartsWith("2,250.00 NOK · monthly", suggestions[0].Note, StringComparison.Ordinal);
+        Assert.False(suggestions[0].Scheduled);
+        // A series still entirely ahead says when it starts.
+        Assert.True(suggestions[1].Scheduled);
+        Assert.Contains("from ", suggestions[1].Note, StringComparison.Ordinal);
+        // A rate is unlabelled, so it offers no name.
+        Assert.Empty(AddTermDialog.NameSuggestions(terms, TermKind.InterestRate, null, DateTime.UtcNow.Date));
+    }
+
+    /// <summary>
+    /// A contract RATE carries a direction too — an arrears rate charges, a deposit rate pays — so the
+    /// value control keeps its direction lead and no refusal stands in its place.
+    /// </summary>
+    [Fact]
+    public void A_contract_rate_is_asked_its_direction_like_a_fee()
+    {
+        var cut = RenderDialog(Lease());
+
+        cut.FindAll(".odc-cardsel-opt")
+            .Single(o => o.TextContent.Contains("Interest rate", StringComparison.Ordinal))
+            .Click();
+
+        Assert.Empty(cut.FindAll(".trm-dir-refused"));
+        Assert.Contains("money leaves the household", cut.Markup, StringComparison.Ordinal);
     }
 
     // ── Harness ──────────────────────────────────────────────────────────────
