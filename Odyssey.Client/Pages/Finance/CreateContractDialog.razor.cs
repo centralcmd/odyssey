@@ -218,6 +218,7 @@ public partial class CreateContractDialog
                 Name = name,
                 Type = type,
                 Description = description,
+                ReferenceNumber = Contract!.ReferenceNumber,
                 StartDate = startDate,
                 EndDate = endDate,
                 CompletionDate = completionDate,

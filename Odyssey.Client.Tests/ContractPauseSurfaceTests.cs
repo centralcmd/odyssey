@@ -222,10 +222,11 @@ public class ContractPauseSurfaceTests
     }
 
     /// <summary>
-    /// The four stamps every <c>UpdateContract</c> has to carry, and what omitting each one does. The
-    /// last two are issue #145's: a write that omits them clears both signature stamps, flips a
+    /// The members every <c>UpdateContract</c> has to carry, and what omitting each one does. The
+    /// signature pair is issue #145's: a write that omits them clears both signature stamps, flips a
     /// signed contract to <c>Draft</c> and drops it out of the run rate — for a reader who only
-    /// clicked Archive or Pause.
+    /// clicked Archive or Pause. <c>ReferenceNumber</c> is issue #181's: not a stamp, but cleared by
+    /// an omission all the same.
     /// </summary>
     private static readonly (string Member, string Consequence)[] RequiredStamps =
     [
@@ -233,6 +234,7 @@ public class ContractPauseSurfaceTests
         ("IsPaused", "resume"),
         ("Ready", "clear the ready date"),
         ("Signed", "unsign the contract"),
+        ("ReferenceNumber", "clear the reference number"),
     ];
 
     private static IReadOnlyList<string> UpdateContractBlocks(string source) =>
@@ -255,6 +257,7 @@ public class ContractPauseSurfaceTests
                         IsPaused = d.Paused is not null,
                         Ready = d.Ready,
                         Signed = d.Signed,
+                        ReferenceNumber = d.ReferenceNumber,
                     };
             """;
 

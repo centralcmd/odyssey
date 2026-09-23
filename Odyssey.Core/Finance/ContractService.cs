@@ -102,6 +102,7 @@ public class ContractService
             q = q.Where(c =>
                 EF.Functions.Like(c.Name, pattern) ||
                 (c.Description != null && EF.Functions.Like(c.Description, pattern)) ||
+                (c.ReferenceNumber != null && EF.Functions.Like(c.ReferenceNumber, pattern)) ||
                 c.Parties.Any(p => p.ContactId != null && contactMatchIds.Contains(p.ContactId.Value)));
         }
 
@@ -149,6 +150,7 @@ public class ContractService
             Name = x.Contract.Name,
             Type = x.Contract.Type.Adapt<DtoContractType>(),
             Description = x.Contract.Description,
+            ReferenceNumber = x.Contract.ReferenceNumber,
             StartDate = x.Contract.StartDate,
             EndDate = x.Contract.EndDate,
             CompletionDate = x.Contract.CompletionDate,
@@ -173,7 +175,7 @@ public class ContractService
             items = items.Where(i => statusFilter.Contains(i.Status));
         }
 
-        var ascending = ListQuery.Ascending(query.SortDir, naturalDefaultAscending: query.SortBy is null or ContractSortBy.Name or ContractSortBy.Type or ContractSortBy.Status);
+        var ascending = ListQuery.Ascending(query.SortDir, naturalDefaultAscending: query.SortBy is null or ContractSortBy.Name or ContractSortBy.Type or ContractSortBy.Status or ContractSortBy.ReferenceNumber);
         IOrderedEnumerable<ContractListItem> sorted = query.SortBy switch
         {
             ContractSortBy.StartDate => ascending
@@ -182,6 +184,9 @@ public class ContractService
             ContractSortBy.EndDate => ascending
                 ? items.OrderBy(i => i.EndDate is null).ThenBy(i => i.EndDate)
                 : items.OrderBy(i => i.EndDate is null).ThenByDescending(i => i.EndDate),
+            ContractSortBy.ReferenceNumber => ascending
+                ? items.OrderBy(i => i.ReferenceNumber is null).ThenBy(i => i.ReferenceNumber)
+                : items.OrderBy(i => i.ReferenceNumber is null).ThenByDescending(i => i.ReferenceNumber),
             ContractSortBy.Type => ascending ? items.OrderBy(i => i.Type) : items.OrderByDescending(i => i.Type),
             // The shared LIFECYCLE rank, not the enum ordinal (issue #145 §8): Draft = 5 and
             // Ready = 6 are APPENDED members — an ordinal is a wire and persistence contract and is
@@ -773,6 +778,7 @@ public class ContractService
             Name = request.Name,
             Type = request.Type.Adapt<ContextContractType>(),
             Description = request.Description,
+            ReferenceNumber = NormalizeReferenceNumber(request.ReferenceNumber),
             StartDate = startDate,
             EndDate = endDate,
             CompletionDate = completionDate,
@@ -841,6 +847,7 @@ public class ContractService
         contract.Name = request.Name;
         contract.Type = request.Type.Adapt<ContextContractType>();
         contract.Description = request.Description;
+        contract.ReferenceNumber = NormalizeReferenceNumber(request.ReferenceNumber);
         contract.StartDate = startDate;
         contract.EndDate = endDate;
         contract.CompletionDate = completionDate;
@@ -1680,6 +1687,13 @@ public class ContractService
     // ── Validation helpers ─────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Trim, then blank to null (issue #181). Called from <c>Create</c> and <c>Update</c> alike, so
+    /// "no reference number" has one stored representation on both write paths.
+    /// </summary>
+    private static string? NormalizeReferenceNumber(string? referenceNumber) =>
+        ContractReferenceNumber.Normalize(referenceNumber);
+
+    /// <summary>
     /// Validates the term/one-off dates and returns the normalized triple: a one-off (completion set)
     /// clears the term dates; a term validates <c>end ≥ start</c> when both are present.
     /// </summary>
@@ -2010,6 +2024,7 @@ public class ContractService
             Name = contract.Name,
             Type = contract.Type.Adapt<DtoContractType>(),
             Description = contract.Description,
+            ReferenceNumber = contract.ReferenceNumber,
             StartDate = contract.StartDate,
             EndDate = contract.EndDate,
             CompletionDate = contract.CompletionDate,

@@ -377,6 +377,13 @@ public sealed class ContractExport
     public string Name { get; init; } = string.Empty;
     public ContractType Type { get; init; }
     public string? Description { get; init; }
+
+    /// <summary>
+    /// The number printed on the paperwork, or null (issue #181). Exported for the same reason
+    /// <see cref="Paused"/> is — a stored fact the export omitted would be an incomplete
+    /// subject-access response, and the table-level coverage guard cannot see a missing field.
+    /// </summary>
+    public string? ReferenceNumber { get; init; }
     public DateTime? StartDate { get; init; }
     public DateTime? EndDate { get; init; }
     public DateTime? CompletionDate { get; init; }

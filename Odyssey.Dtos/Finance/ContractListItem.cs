@@ -14,6 +14,9 @@ public sealed record ContractListItem
 
     public string? Description { get; set; }
 
+    /// <summary>The number printed on the paperwork, or null when none is on file (issue #181).</summary>
+    public string? ReferenceNumber { get; set; }
+
     public DateTime? StartDate { get; set; }
 
     public DateTime? EndDate { get; set; }

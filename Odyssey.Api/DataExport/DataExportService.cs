@@ -514,6 +514,7 @@ public sealed class DataExportService
                 Name = contract.Name,
                 Type = (FinanceDtos.ContractType)contract.Type,
                 Description = contract.Description,
+                ReferenceNumber = contract.ReferenceNumber,
                 StartDate = contract.StartDate,
                 EndDate = contract.EndDate,
                 CompletionDate = contract.CompletionDate,

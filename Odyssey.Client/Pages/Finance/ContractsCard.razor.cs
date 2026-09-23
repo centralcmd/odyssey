@@ -542,6 +542,8 @@ public partial class ContractsCard
             Name = d.Name,
             Type = d.Type,
             Description = d.Description,
+            // PUT is a full replacement: omitted, the reference number would be cleared (issue #181).
+            ReferenceNumber = d.ReferenceNumber,
             StartDate = d.StartDate,
             EndDate = d.EndDate,
             CompletionDate = d.CompletionDate,
@@ -581,6 +583,8 @@ public partial class ContractsCard
             Name = d.Name,
             Type = d.Type,
             Description = d.Description,
+            // PUT is a full replacement: omitted, the reference number would be cleared (issue #181).
+            ReferenceNumber = d.ReferenceNumber,
             StartDate = d.StartDate,
             EndDate = d.EndDate,
             CompletionDate = d.CompletionDate,
@@ -674,6 +678,8 @@ public partial class ContractsCard
             Name = d.Name,
             Type = d.Type,
             Description = d.Description,
+            // PUT is a full replacement: omitted, the reference number would be cleared (issue #181).
+            ReferenceNumber = d.ReferenceNumber,
             StartDate = d.StartDate,
             EndDate = d.EndDate,
             CompletionDate = d.CompletionDate,

@@ -64,6 +64,24 @@ namespace Odyssey.TestData.Generators;
 /// </summary>
 public static class ContractGenerator
 {
+    /// <summary>
+    /// The counterparty's reference number on part of the set (issue #181), keyed by contract name so
+    /// the seed stays deterministic. Both halves are deliberate: rows WITH a number give the search
+    /// and sort paths data in the dev stack and both E2E tiers, and rows WITHOUT one exercise the
+    /// nulls-last sort and the healthy absent state. One value is non-Latin on purpose, and two share
+    /// a prefix so a substring search has more than one hit to rank.
+    /// </summary>
+    private static readonly Dictionary<string, string> ReferenceNumbers = new(StringComparer.Ordinal)
+    {
+        ["Apartment Lease"] = "AGR-2025/114-B.2",
+        ["Harbor Point Parking — Space 14"] = "HP-S14/25",
+        ["Northwind Energy — Fixed Tariff"] = "NWE-Ω-2026.№114",
+        ["Home Insurance — Policy Agreement"] = "PHI-BC-2026-0098812",
+        ["Cloud Storage — Business Plan"] = "CUST-5508217",
+        ["Maple St Residence — Purchase"] = "Title WA-2021-118804",
+        ["Car Loan (Volvo XC60) — 60 Month"] = "CAL 7730 1142 09",
+    };
+
     private enum PartyKind { Account, Contact }
 
     /// <summary>
@@ -370,6 +388,7 @@ public static class ContractGenerator
                 Name = spec.Name,
                 Type = spec.Type,
                 Description = spec.Description,
+                ReferenceNumber = ReferenceNumbers.GetValueOrDefault(spec.Name),
                 StartDate = spec.StartDate,
                 EndDate = spec.EndDate,
                 Archived = spec.Archived ? createdAt.AddYears(1) : null,
