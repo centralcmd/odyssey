@@ -62,10 +62,10 @@ public class OdsComboboxFreeTextTests
         await using var ctx = NewContext();
         var cut = ctx.Render<Host>(p => p.Add(h => h.FreeText, true));
 
-        await cut.Find("#name").InputAsync(new ChangeEventArgs { Value = "Water" });
-        await cut.Find("#name").FocusOutAsync(new FocusEventArgs());
+        await cut.InvokeAsync(() => cut.Find("#name").InputAsync(new ChangeEventArgs { Value = "Water" }));
+        await cut.InvokeAsync(() => cut.Find("#name").FocusOutAsync(new FocusEventArgs()));
 
-        Assert.Equal("Water", cut.Instance.Value);
+        cut.WaitForAssertion(() => Assert.Equal("Water", cut.Instance.Value));
     }
 
     [Fact]
@@ -74,10 +74,10 @@ public class OdsComboboxFreeTextTests
         await using var ctx = NewContext();
         var cut = ctx.Render<Host>(p => p.Add(h => h.FreeText, true));
 
-        await cut.Find("#name").InputAsync(new ChangeEventArgs { Value = "  monthly RENT " });
-        await cut.Find("#name").FocusOutAsync(new FocusEventArgs());
+        await cut.InvokeAsync(() => cut.Find("#name").InputAsync(new ChangeEventArgs { Value = "  monthly RENT " }));
+        await cut.InvokeAsync(() => cut.Find("#name").FocusOutAsync(new FocusEventArgs()));
 
-        Assert.Equal("Monthly rent", cut.Instance.Value);
+        cut.WaitForAssertion(() => Assert.Equal("Monthly rent", cut.Instance.Value));
     }
 
     [Fact]
@@ -95,8 +95,8 @@ public class OdsComboboxFreeTextTests
         await using var ctx = NewContext();
         var cut = ctx.Render<Host>(p => p.Add(h => h.FreeText, false));
 
-        await cut.Find("#name").InputAsync(new ChangeEventArgs { Value = "Water" });
-        await cut.Find("#name").FocusOutAsync(new FocusEventArgs());
+        await cut.InvokeAsync(() => cut.Find("#name").InputAsync(new ChangeEventArgs { Value = "Water" }));
+        await cut.InvokeAsync(() => cut.Find("#name").FocusOutAsync(new FocusEventArgs()));
 
         Assert.Null(cut.Instance.Value);
     }

@@ -356,16 +356,22 @@ public class ContractTermSurfaceTests
             .GetAttribute("for");
         // The contract's name field SUGGESTS rather than constrains: a typed name commits on blur, so
         // a new charge is written without ever being picked from the list.
-        await cut.Find($"#{nameFor}").InputAsync(new ChangeEventArgs { Value = "Late-payment interest" });
-        await cut.Find($"#{nameFor}").FocusOutAsync(new FocusEventArgs());
+        await cut.InvokeAsync(() => cut.Find($"#{nameFor}").InputAsync(new ChangeEventArgs { Value = "Late-payment interest" }));
+        await cut.InvokeAsync(() => cut.Find($"#{nameFor}").FocusOutAsync(new FocusEventArgs()));
 
-        var value = cut.FindAll("input")
-            .First(i => i.GetAttribute("aria-label")?.Contains("Value", StringComparison.Ordinal) == true);
-        await value.InputAsync(new ChangeEventArgs { Value = "3.25" });
+        // Find and dispatch inside one InvokeAsync, so a re-render the combobox schedules cannot land
+        // between them and retire the handler id the element was found with.
+        await cut.InvokeAsync(() => cut.FindAll("input")
+            .First(i => i.GetAttribute("aria-label")?.Contains("Value", StringComparison.Ordinal) == true)
+            .InputAsync(new ChangeEventArgs { Value = "3.25" }));
 
-        await cut.FindAll("button")
+        await cut.InvokeAsync(() => cut.FindAll("button")
             .Single(b => b.TextContent.Contains("Create term", StringComparison.Ordinal))
-            .ClickAsync(new MouseEventArgs());
+            .ClickAsync(new MouseEventArgs()));
+
+        cut.WaitForAssertion(() => client.Verify(
+            c => c.AddTermAsync(It.IsAny<Guid>(), It.IsAny<NewTerm>(), It.IsAny<CancellationToken>()),
+            Times.Once));
 
         var errors = cut.FindAll(".odc-field-error, .mud-input-error, [aria-invalid='true']");
         Assert.DoesNotContain("archived", cut.Markup, StringComparison.OrdinalIgnoreCase);
@@ -480,16 +486,22 @@ public class ContractTermSurfaceTests
 
         Assert.Contains("Pick a charge this updates", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal);
 
-        await cut.Find("#trm-label").InputAsync(new ChangeEventArgs { Value = "  monthly RENT " });
-        await cut.Find("#trm-label").FocusOutAsync(new FocusEventArgs());
-        var joins = cut.Find("#trm-label-help");
-        Assert.Contains("Joins the price history of", joins.TextContent, StringComparison.Ordinal);
-        Assert.Equal("Monthly rent", joins.QuerySelector("b")!.TextContent);
-        Assert.Contains("2,150.00 NOK · monthly", joins.TextContent, StringComparison.Ordinal);
+        await cut.InvokeAsync(() => cut.Find("#trm-label").InputAsync(new ChangeEventArgs { Value = "  monthly RENT " }));
+        await cut.InvokeAsync(() => cut.Find("#trm-label").FocusOutAsync(new FocusEventArgs()));
+        // WaitForAssertion: the help line re-renders on the commit, and on a loaded runner that
+        // render can complete a beat after the dispatch returns.
+        cut.WaitForAssertion(() =>
+        {
+            var joins = cut.Find("#trm-label-help");
+            Assert.Contains("Joins the price history of", joins.TextContent, StringComparison.Ordinal);
+            Assert.Equal("Monthly rent", joins.QuerySelector("b")!.TextContent);
+            Assert.Contains("2,150.00 NOK · monthly", joins.TextContent, StringComparison.Ordinal);
+        });
 
-        await cut.Find("#trm-label").InputAsync(new ChangeEventArgs { Value = "Water" });
-        await cut.Find("#trm-label").FocusOutAsync(new FocusEventArgs());
-        Assert.Contains("Starts a new charge", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal);
+        await cut.InvokeAsync(() => cut.Find("#trm-label").InputAsync(new ChangeEventArgs { Value = "Water" }));
+        await cut.InvokeAsync(() => cut.Find("#trm-label").FocusOutAsync(new FocusEventArgs()));
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Starts a new charge", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal));
     }
 
     [Theory]

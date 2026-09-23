@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MudBlazor;
@@ -645,20 +646,26 @@ public class TermSeriesSurfaceTests
             .Select(id => cut.FindAll($"input#{id}").SingleOrDefault())
             .FirstOrDefault(input => input is not null);
 
-    private static void Type(IRenderedComponent<DialogHost> cut, string label, string value)
-    {
-        var input = FindInput(cut, label)
-            ?? throw new InvalidOperationException($"No input labelled '{label}'. Markup: {cut.Markup}");
-        input.Input(value);
-    }
+    // Every dispatch finds its element and fires the event inside ONE renderer InvokeAsync, and the
+    // test thread waits for the handler to finish. bUnit's plain Input()/Click() are fire-and-forget:
+    // a handler that yields (MudBlazor's inputs do) could finish after the next step, so on a loaded
+    // runner Submit read a stale field and posted nothing. Finding inside the same InvokeAsync also
+    // stops a re-render retiring the handler id between the find and the dispatch.
+    private static void Type(IRenderedComponent<DialogHost> cut, string label, string value) =>
+        cut.InvokeAsync(() =>
+        {
+            var input = FindInput(cut, label)
+                ?? throw new InvalidOperationException($"No input labelled '{label}'. Markup: {cut.Markup}");
+            return input.InputAsync(new ChangeEventArgs { Value = value });
+        }).GetAwaiter().GetResult();
 
     private static void PickKind(IRenderedComponent<DialogHost> cut, string kindLabel) =>
-        cut.FindAll(".odc-cardsel-opt")
+        cut.InvokeAsync(() => cut.FindAll(".odc-cardsel-opt")
             .Single(b => b.TextContent.Contains(kindLabel, StringComparison.Ordinal))
-            .Click();
+            .ClickAsync(new MouseEventArgs())).GetAwaiter().GetResult();
 
     private static void Submit(IRenderedComponent<DialogHost> cut) =>
-        cut.FindAll("button")
+        cut.InvokeAsync(() => cut.FindAll("button")
             .Single(b => b.TextContent.Contains("Create term", StringComparison.Ordinal))
-            .Click();
+            .ClickAsync(new MouseEventArgs())).GetAwaiter().GetResult();
 }
