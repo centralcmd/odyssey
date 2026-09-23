@@ -23,8 +23,9 @@ public sealed record NewTerm
     /// <summary>
     /// Which way the money moves, from the household's perspective (issue #159). Non-nullable, so an
     /// omitted <c>direction</c> deserializes to <see cref="TermDirection.Outgoing"/> — which is
-    /// exactly what omitting it means. Refused as <see cref="TermDirection.Incoming"/> on the two rate
-    /// kinds and on an account-owned term, where it would record a fact no surface reads.
+    /// exactly what omitting it means. Accepted on every contract-owned term, fee and rate alike;
+    /// refused as <see cref="TermDirection.Incoming"/> on an account-owned term, where it would record
+    /// a fact no surface reads.
     ///
     /// <para>
     /// <b>This is a full-replace field on <c>PUT</c>.</b> Omitting it on an update resets the term to

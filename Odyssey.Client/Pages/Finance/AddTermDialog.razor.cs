@@ -77,7 +77,7 @@ public partial class AddTermDialog
     // ---- direction (issue #159) ---------------------------------------------------------------
 
     /// <summary>
-    /// Whether this dialog offers a direction at all — a FEE on a CONTRACT. Read from the one shared
+    /// Whether this dialog offers a direction at all — any term on a CONTRACT. Read from the one shared
     /// predicate, so the control, the read surfaces and the refusal copy cannot disagree.
     /// </summary>
     private bool DirectionApplies => TermKindVisuals.DirectionApplies(_kind, IsContractOwner);
@@ -179,6 +179,8 @@ public partial class AddTermDialog
             _interval = DefaultIntervalFor(_kind);
             _effectiveFrom = DateTime.UtcNow.Date;
         }
+
+        RefreshNameSuggestions();
     }
 
     protected override async Task OnInitializedAsync()
@@ -289,8 +291,9 @@ public partial class AddTermDialog
         // invisibly into a request the server would reject.
         if (TermLabel.RuleFor(kind) != TermLabelRule.Required)
             _label = "";
-        // A rate carries no direction — a percentage is not a movement — so the answer is dropped
-        // rather than carried invisibly into a field the server refuses.
+        // Direction survives a kind change on a contract: an arrears rate and a late-payment fee are
+        // both money out, so the answer already given still holds. Only an owner that refuses one
+        // (an account) drops it, rather than carrying it invisibly into a field the server rejects.
         if (!DirectionApplies)
             _direction = TermDirection.Outgoing;
         // A rate is not billed, so it carries NEITHER half of a billing description, nor an anchor.
@@ -306,13 +309,108 @@ public partial class AddTermDialog
             _anchorDate = null;
         }
         _errors.Clear();
+        RefreshNameSuggestions();
     }
 
-    private void OnLabelChanged(string value)
+    private void OnLabelChanged(string? value)
     {
-        _label = value;
+        _label = value ?? "";
         _errors.Remove("label");
     }
+
+    /// <summary>
+    /// The contract name field's suggestions: one row per distinct series of the kind being written,
+    /// DERIVED from this contract's own history. There is no term-name table — a name is a free string
+    /// and a series exists only because entries share it — and a name from another contract is not a
+    /// name this one has used, so nothing else is offered.
+    /// </summary>
+    /// <remarks>
+    /// Each row carries what a reader needs to recognise the series rather than the string: its value
+    /// in force and its cadence ("2,250.00 USD · monthly"), read off the latest entry on or before
+    /// today. A series whose entries are all future-dated says when it starts and carries a
+    /// <c>schedule</c> glyph. The option's value IS its display label, so picking a row writes the
+    /// same name the series already carries.
+    /// </remarks>
+    internal static List<NameSuggestion> NameSuggestions(
+        IReadOnlyList<ExistingTerm> existing, TermKind kind, Guid? currentId, DateTime today)
+    {
+        return existing
+            .Where(t => t.TermKind == kind && t.TermId != currentId)
+            .Select(t => (Term: t, Key: TermLabel.Key(t.Label)))
+            .Where(x => x.Key is not null)
+            .GroupBy(x => x.Key!, StringComparer.Ordinal)
+            .Select(group =>
+            {
+                var sorted = group.Select(x => x.Term).OrderBy(t => t.EffectiveFrom).ThenBy(t => t.CreatedAtUtc).ToList();
+                // The display form follows the newest entry — a later spelling is the one the user
+                // last chose to write.
+                var label = TermLabel.Normalize(sorted[^1].Label)!;
+                var inForce = sorted.LastOrDefault(t => t.EffectiveFrom.Date <= today.Date);
+                var t = inForce ?? sorted[^1];
+                var parts = new List<string>(3)
+                {
+                    t.ValueUnit == TermValueUnit.Percentage
+                        ? TermKindVisuals.PctStr(t.Value)
+                        : OdsMoney.Format(t.Value, t.CurrencyCode),
+                };
+                if (TermKindVisuals.CadenceText(t) is { } cadence)
+                    parts.Add(cadence);
+                if (inForce is null)
+                    parts.Add($"from {t.EffectiveFrom:yyyy-MM-dd}");
+                return new NameSuggestion(group.Key, label, string.Join(" · ", parts), Scheduled: inForce is null);
+            })
+            .OrderBy(s => s.Label, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    internal sealed record NameSuggestion(string Key, string Label, string Note, bool Scheduled);
+
+    private List<NameSuggestion> _nameSuggestions = [];
+    private List<OdsOption> _nameOptions = [];
+
+    private IReadOnlyList<OdsOption> NameOptions => _nameOptions;
+
+    private void RefreshNameSuggestions()
+    {
+        _nameSuggestions = TakesLabel && IsContractOwner
+            ? NameSuggestions(Existing, _kind, Term?.TermId, DateTime.UtcNow)
+            : [];
+        _nameOptions = _nameSuggestions
+            .Select(s => new OdsOption(s.Label, s.Label) { Note = s.Note, Icon = s.Scheduled ? "schedule" : null })
+            .ToList();
+    }
+
+    /// <summary>
+    /// The series the typed name would JOIN, resolved on the same normalized, case-folded key the
+    /// duplicate guard and the server use — so what the help line promises is what gets written.
+    /// </summary>
+    private NameSuggestion? MatchedSeries =>
+        TermLabel.Key(_label) is { } key ? _nameSuggestions.FirstOrDefault(s => s.Key == key) : null;
+
+    /// <summary>The name field's help line: which of the two writes — join or start — is about to happen.</summary>
+    private RenderFragment NameHelp => builder =>
+    {
+        if (MatchedSeries is { } matched)
+        {
+            builder.AddMarkupContent(0, "Joins the price history of ");
+            builder.OpenElement(1, "b");
+            builder.AddContent(2, matched.Label);
+            builder.CloseElement();
+            builder.AddContent(3, $" — currently {matched.Note}. This entry supersedes it from the effective date.");
+        }
+        else if (!string.IsNullOrWhiteSpace(_label))
+        {
+            builder.AddMarkupContent(4, "Starts a <b>new charge</b> on this contract, with its own history separate from the others.");
+        }
+        else
+        {
+            builder.AddContent(5, "Pick a charge this updates, or type a new name to start one.");
+        }
+    };
+
+    // The combobox's "New charge" row writes the typed text as the name — a new series, not a record.
+    internal static OdsOption? CreateNameOption(string text, string? _) =>
+        string.IsNullOrWhiteSpace(text) ? null : OdsOption.From(text.Trim());
 
     private void OnUnitChanged(string value)
     {

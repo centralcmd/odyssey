@@ -89,7 +89,7 @@ The short form:
 ## Step 4 — Self-check before you output code
 
 - [ ] Read the DS `SKILL.md` + the Quick reference entry for this pattern — not the whole folder
-- [ ] Checked the 135 existing `Ods*` atoms — not creating a duplicate
+- [ ] Checked the 136 existing `Ods*` atoms — not creating a duplicate
 - [ ] Read `docs/frontend-mudblazor-gotchas.md`; string params prefixed with `@`; icons are SVG
       constants or `material-icons` spans
 - [ ] Colours are semantic tokens, valid in dark **and** light

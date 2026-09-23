@@ -217,7 +217,11 @@ public partial class OdsLineChart
     // Razor reserves <text> as a control keyword, so the axis labels are emitted as raw SVG markup.
     private string YAxisMarkup => string.Concat(_gridVals.Select(v =>
         $"<text x=\"{Fmt(X0 - 12)}\" y=\"{Fmt(Sy(v) + 4)}\" text-anchor=\"end\""
-        + $"{(v == 0 ? " class=\"odc-lc-axis-zero\"" : "")}>{Enc(FmtAxis((decimal)Math.Round(v)))}</text>"));
+        + $"{(v == 0 ? " class=\"odc-lc-axis-zero\"" : "")}>{Enc(FmtAxis((decimal)AxisRound(v)))}</text>"));
+
+    // A domain under 10 keeps its fractions: rounding a 0–4 axis to whole numbers prints "1, 1, 3, 4"
+    // for four distinct gridlines.
+    private double AxisRound(double v) => Math.Abs(_yMax) < 10 ? v : Math.Round(v);
 
     private string XAxisMarkup => string.Concat(Enumerable.Range(0, _pts.Count)
         .Where(i => i % _every == 0 || i == _pts.Count - 1)

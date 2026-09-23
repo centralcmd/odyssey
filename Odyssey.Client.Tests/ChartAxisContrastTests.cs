@@ -43,6 +43,7 @@ public class ChartAxisContrastTests
     public static TheoryData<string> InformationalRules() =>
     [
         ".odc-lc-zero",      // OdsLineChart's zero baseline
+        ".odc-sc-now",       // OdsStepChart's today marker
         ".trm-chart .nowline",
         ".est-chart .nowline",
     ];

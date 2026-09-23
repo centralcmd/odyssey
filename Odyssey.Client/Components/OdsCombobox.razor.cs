@@ -76,6 +76,15 @@ public partial class OdsCombobox
     /// </remarks>
     [Parameter] public bool Required { get; set; }
 
+    /// <summary>
+    /// Suggest, don't constrain: the value is a free string and the options are recognised names, not
+    /// the only legal answers. A value matching no option still displays, and the typed query commits
+    /// on blur so a typed name is never silently dropped. A typed name matching an option's label
+    /// (case-insensitively) commits that option's value. Pair with <see cref="OnCreate"/> when the new
+    /// name deserves a visible row of its own.
+    /// </summary>
+    [Parameter] public bool FreeText { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
@@ -105,7 +114,44 @@ public partial class OdsCombobox
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
 
-    private OdsOption? Selected => Options.FirstOrDefault(o => o.Value == Value);
+    // In FreeText mode a value that matches no option is still the value — it is a name the user
+    // typed, not an invalid selection.
+    private OdsOption? Selected =>
+        Options.FirstOrDefault(o => o.Value == Value)
+        ?? (FreeText && !string.IsNullOrEmpty(Value) ? new OdsOption(Value, Value) : null);
+
+    // The text as last typed into the input — what a FreeText blur commits. Null once a row is picked
+    // or the typed text has been committed, so a stale keystroke is never committed twice.
+    private string? _typed;
+
+    private void OnTyped(ChangeEventArgs e)
+    {
+        if (FreeText)
+            _typed = e.Value?.ToString();
+    }
+
+    // FreeText: the query IS an answer. Committing it on blur is what separates "suggests" from
+    // "constrains". An empty query commits nothing — clearing is the ✕ affordance's job.
+    private Task CommitTyped(Microsoft.AspNetCore.Components.Web.FocusEventArgs _)
+    {
+        if (!FreeText)
+            return Task.CompletedTask;
+        var text = _typed?.Trim();
+        // Typing the current value's own label again is not a change, and a "Create …" caption is never
+        // a name.
+        if (string.IsNullOrEmpty(text)
+            || string.Equals(text, Selected?.Label, StringComparison.OrdinalIgnoreCase)
+            || text.StartsWith($"{CreateLabel} \"", StringComparison.Ordinal))
+            return Task.CompletedTask;
+        var hit = Options.FirstOrDefault(o => !o.Disabled
+                                              && string.Equals(o.Label, text, StringComparison.OrdinalIgnoreCase));
+        var next = hit?.Value ?? text;
+        if (string.Equals(next, Value, StringComparison.Ordinal))
+            return Task.CompletedTask;
+        _typed = null;
+        Value = next;
+        return ValueChanged.InvokeAsync(Value);
+    }
 
     // Leading glyph on the trigger once a real value is selected (mirrors the DS .odc-input-icon).
     private string? SelectedIcon => Selected?.Icon;
@@ -177,6 +223,9 @@ public partial class OdsCombobox
         // selection where it was rather than silently accepting a row the user was told they can't pick.
         if (option is { Disabled: true })
             return;
+
+        // A pick supersedes whatever was typed to find it.
+        _typed = null;
 
         if (option is not null && IsCreateRow(option))
         {

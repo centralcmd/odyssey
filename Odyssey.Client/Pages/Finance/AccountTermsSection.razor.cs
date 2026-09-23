@@ -217,7 +217,14 @@ public partial class AccountTermsSection
         var vals = series.Select(s => s.Value).ToList();
         double lo = vals.Min(), hi = vals.Max();
         if (lo == hi)
-        { lo -= 0.005; hi += 0.005; }
+        {
+            // One entry has no range, so the band is invented — proportionally, by the one rule the
+            // design-system step chart uses. Rates are fractions below 1, so every rate chart keeps
+            // its old band.
+            var band = Odyssey.Client.Components.OdsStepChart.FlatBand(lo);
+            lo -= band;
+            hi += band;
+        }
         var padV = (hi - lo) * 0.35;
         lo -= padV;
         hi += padV;

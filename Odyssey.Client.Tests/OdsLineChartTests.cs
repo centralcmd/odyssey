@@ -348,4 +348,35 @@ public class OdsLineChartTests
 
         Assert.Empty(cut.FindAll(".odc-lc-marks"));
     }
+
+    // ── Small domains keep their fractions ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// A y-axis whose top is under 10 keeps fractional ticks: rounding a 0–3.5 axis to whole numbers
+    /// would print repeated or misleading labels for four distinct gridlines.
+    /// </summary>
+    [Fact]
+    public void A_small_domain_keeps_fractional_ticks()
+    {
+        using var ctx = NewContext();
+        var cut = ctx.Render<OdsLineChart>(p => p
+            .Add(c => c.Series, [new OdsLinePoint("a", 1m), new OdsLinePoint("b", 2m), new OdsLinePoint("c", 3m)])
+            .Add(c => c.Format, static n => n.ToString("0.##", CultureInfo.InvariantCulture)));
+
+        var ticks = cut.FindAll("g.odc-lc-axis").First().QuerySelectorAll("text").Select(t => t.TextContent).ToList();
+        Assert.Equal(4, ticks.Distinct().Count());
+        Assert.Contains(ticks, t => t.Contains('.', StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_large_domain_still_rounds_its_ticks()
+    {
+        using var ctx = NewContext();
+        var cut = ctx.Render<OdsLineChart>(p => p
+            .Add(c => c.Series, [new OdsLinePoint("a", 1000m), new OdsLinePoint("b", 1333m)])
+            .Add(c => c.Format, static n => n.ToString("0.##", CultureInfo.InvariantCulture)));
+
+        var ticks = cut.FindAll("g.odc-lc-axis").First().QuerySelectorAll("text").Select(t => t.TextContent);
+        Assert.DoesNotContain(ticks, t => t.Contains('.', StringComparison.Ordinal));
+    }
 }

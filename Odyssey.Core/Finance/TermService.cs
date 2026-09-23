@@ -700,14 +700,11 @@ public class TermService
 
         var direction = source.Direction.Adapt<ContextTermDirection>();
 
-        // V1 (issue #159) — direction is a FEE-only field. A rate is a percentage, is already excluded
-        // from the roll-up, and belongs to the account-side question direction on account terms is
-        // deferred to. Stored as Outgoing there, where it carries no meaning.
-        if (direction != ContextTermDirection.Outgoing && isRateKind)
-            throw new DomainValidationException(
-                $"Direction applies to a fee term only, not to term kind '{source.TermKind}'.",
-                code: null,
-                field: nameof(NewTerm.Direction));
+        // V1 (issue #159) is RETIRED: direction was once refused on a rate kind, but an arrears rate
+        // charges the household and a deposit rate pays it — the same fact a fee carries — so every
+        // CONTRACT term now carries one. The roll-up still projects no percentage, so a rate's
+        // direction changes no figure; it is record-keeping and the "money in" marker. What remains
+        // is V4 below, which keeps every ACCOUNT term Outgoing whatever its kind.
 
         // V4 (issue #159) — an account-owned term may not carry a non-default direction. A savings
         // account's interest is incoming and a loan's is outgoing, but no account surface READS a
@@ -719,7 +716,7 @@ public class TermService
                 code: null,
                 field: nameof(NewTerm.Direction));
 
-        // V2 is the ABSENCE of a rule: every other fee accepts a direction, including the ones the
+        // V2 is the ABSENCE of a rule: every contract term accepts a direction, including the fees the
         // roll-up ignores — a percentage-unit fee, a OneTime/PerOccurrence/PerUnit fee, and a fee with
         // no interval at all. A one-off signing bonus is legitimate incoming record-keeping; the
         // roll-up's exclusions are about having no rate to PROJECT, not about direction.

@@ -11,8 +11,11 @@
     a single current number. These are the same Term rows, in the same table, under the same domain
     rules as an account's rate & fee history — only the owner differs. So the surface reuses the
     account treatment: the values in force as the record's own tiles, then the editable history
-    through the shared TermHistoryTable. What it drops is the hero rate chart: an agreement's price is
-    usually an amount, not a rate.
+    through the shared TermHistoryTable. The account surface's step chart comes across too, but not as
+    a hero and not as a rate: an agreement carries several named charges and no single line stands for
+    it, so the chart (OdsTermHistoryChart) sits above the history as a multi-select CHOOSER — opening
+    on the series whose latest entry is the most recent, letting the reader add up to four charges
+    measured the same way, and plotting indexed change by default with a Change / Value toggle.
 
     Two sections, not one with sub-headings: what the contract costs TODAY and how it got there are
     separate questions, and they sit at the same level as Parties and Documents. Sections carry no
@@ -97,6 +100,7 @@
 {
     <div class="con-section">
         <OdsSectionDivider Label="Term history" Meta="@($"{_terms.Count} {(_terms.Count == 1 ? "entry" : "entries")}")" />
+        <OdsTermHistoryChart Class="trm-seriesplot" Series="_chartSeries" />
         <div class="con-tbl-frame">
             <TermHistoryTable Terms="_terms"
                               CurrentIds="_currentIds"

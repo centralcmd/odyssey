@@ -826,13 +826,13 @@ public class TermServiceTests
     }
 
     /// <summary>
-    /// V1 — direction is a FEE-only field. Tested directly against the service, not only over HTTP:
-    /// this file's convention is one unit test per eligibility rule (see the Interval-on-a-rate case),
-    /// and the API tier proves the STATUS CODE rather than that the rule lives in the service every
-    /// non-HTTP caller also goes through.
+    /// V1 is retired: a contract's RATE carries a direction too — an arrears rate charges, a deposit
+    /// rate pays. Tested directly against the service, not only over HTTP: this file's convention is
+    /// one unit test per eligibility rule, and the API tier proves the STATUS CODE rather than that
+    /// the rule lives in the service every non-HTTP caller also goes through.
     /// </summary>
     [Fact]
-    public async Task Create_IncomingOnAContractRateKind_Throws()
+    public async Task Create_IncomingOnAContractRateKind_IsStored()
     {
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
@@ -841,9 +841,10 @@ public class TermServiceTests
         var term = InterestRate(0.0325m, new DateTime(2026, 1, 1));
         term.Direction = TermDirection.Incoming;
 
-        await Assert.ThrowsAsync<DomainValidationException>(
-            () => service.CreateForContract(contractId, term, userId: null));
-        Assert.Empty(context.Terms);
+        await service.CreateForContract(contractId, term, userId: null);
+
+        Assert.Equal(Odyssey.Context.TermDirection.Incoming,
+            (await context.Terms.AsNoTracking().SingleAsync()).Direction);
     }
 
     /// <summary>
