@@ -152,7 +152,8 @@ public class DemoDataSeederTests
     public async Task Seeds_a_travel_card_whose_six_named_fees_are_all_in_force()
     {
         // Before the term label these were four fee kinds that resolved to TWO in-force values, with
-        // the rest silently superseded. Named, each is its own series — which is the whole point.
+        // the rest silently superseded. Named, each is its own series — which is the whole point. The
+        // card's purchase APR is a seventh labelled term, and is left out here.
         await using var provider = BuildProvider(out var seeder);
 
         await seeder.ExecuteAsync(CancellationToken.None);
@@ -163,7 +164,7 @@ public class DemoDataSeederTests
         var cardId = TestData.Catalog.Accounts.IdFor(TestData.Catalog.Accounts.TravelRewardsCard);
         var fees = await context.Terms
             .AsNoTracking()
-            .Where(t => t.AccountId == cardId && t.TermKind == TermKind.Fee)
+            .Where(t => t.AccountId == cardId && t.LabelKey != "interest rate")
             .ToListAsync();
 
         // Every fee is named, and the names are what tell them apart.

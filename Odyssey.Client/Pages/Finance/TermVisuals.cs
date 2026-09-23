@@ -4,26 +4,13 @@ using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
 
-/// <summary>A term kind's high-level grouping: an interest/return rate, or a service fee.</summary>
-public enum TermGroup
-{
-    Rate,
-    Fee,
-}
-
-/// <summary>How one <see cref="TermKind"/> renders everywhere — the summary tiles, the rate chart,
-/// the history table, and the create/edit picker — so a term reads identically across the surface.
-/// Mirrors the canonical term-kind registry in the Odyssey Design System (data.js · termKinds).
-/// The category hues are deliberate oklch literals from the design system: they sit in the shared
-/// categorical band (L~0.74–0.80) chosen to read in both light and dark themes, so — like the other
-/// type registries (account / file / contact) — they are NOT tokenized.</summary>
-public sealed record TermKindInfo(
-    string Label,
-    TermGroup Group,
-    string Icon,
-    string Color,
-    string Soft,
-    TermValueUnit DefaultUnit);
+/// <summary>How a term renders everywhere — the summary tiles, the history table and the
+/// create/edit dialog — so a term reads identically across the surface. Every term is one labelled
+/// series; there is no kind taxonomy left to pick a glyph or hue from, so there is one of each. The hue
+/// is the design system's former fee hue, a deliberate oklch literal in the shared categorical band
+/// (L~0.74–0.80) chosen to read in both light and dark themes, so — like the other type registries
+/// (account / file / contact) — it is NOT tokenized.</summary>
+public sealed record TermInfo(string Label, string Icon, string Color, string Soft);
 
 /// <summary>
 /// Display context for an <see cref="Interval"/> — the picker label, whether the unit is
@@ -35,28 +22,15 @@ public sealed record TermKindInfo(
 /// Mirrors the design system's <c>OdysseyData.intervals</c> registry (data.js). <c>Chip</c> and
 /// <c>Suffix</c> are gone with <c>BillingPeriod</c>: a cadence is now two fields, and "/mo" cannot
 /// say "every 3 months", so every surface words it through
-/// <see cref="TermKindVisuals.CadenceText"/> instead.
+/// <see cref="TermVisuals.CadenceText"/> instead.
 /// </remarks>
 public sealed record IntervalInfo(string Label, bool Periodic, string Adverb, string One, string Many);
 
-public static class TermKindVisuals
+public static class TermVisuals
 {
-    private static readonly IReadOnlyDictionary<TermKind, TermKindInfo> Registry = new Dictionary<TermKind, TermKindInfo>
-    {
-        // ---- Rates: each is a distinct quoted number some surface must single out ----
-        [TermKind.InterestRate]   = new("Interest rate",   TermGroup.Rate, "percent",      "oklch(0.78 0.13 200)", "oklch(0.78 0.13 200 / 0.15)", TermValueUnit.Percentage),
-        [TermKind.ExpectedReturn] = new("Expected return", TermGroup.Rate, "trending_up",  "oklch(0.72 0.16 295)", "oklch(0.72 0.16 295 / 0.15)", TermValueUnit.Percentage),
-        // ---- Fee: one kind, named by the term's own label ----
-        [TermKind.Fee]            = new("Fee",             TermGroup.Fee,  "receipt_long", "oklch(0.77 0.14 55)",  "oklch(0.77 0.14 55 / 0.15)",  TermValueUnit.Amount),
-    };
-
-    /// <summary>Term kinds in registry order (rates first), excluding <see cref="TermKind.Unknown"/>.</summary>
-    public static readonly IReadOnlyList<TermKind> All = Registry.Keys.ToArray();
-
-    public static TermKindInfo Info(TermKind kind) =>
-        Registry.TryGetValue(kind, out var info)
-            ? info
-            : new TermKindInfo(kind.ToString(), TermGroup.Fee, "sell", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-default-hover)", TermValueUnit.Amount);
+    /// <summary>The one glyph, hue and noun every term renders with.</summary>
+    public static readonly TermInfo Info =
+        new("Term", "receipt_long", "oklch(0.77 0.14 55)", "oklch(0.77 0.14 55 / 0.15)");
 
     /// <summary>
     /// The cadence units, in READING order rather than ordinal order — the occasions first, then the
@@ -122,100 +96,13 @@ public static class TermKindVisuals
     /// <summary>The cadence of a term as stored — the shape every read surface calls.</summary>
     public static string? CadenceText(ExistingTerm term) => CadenceText(term.Interval, term.IntervalCount);
 
-    /// <summary>The cadence unit a new fee opens on. One honest default: with a single fee kind
-    /// there is nothing left to guess from, and the four kind-specific guesses were wrong three times
-    /// in four.</summary>
-    public const Interval DefaultFeeInterval = Interval.Monthly;
+    /// <summary>The cadence unit a new term opens on.</summary>
+    public const Interval DefaultInterval = Interval.Monthly;
 
-    // Eligibility matrix — mirrors the backend (TermService): interest only on
-    // interest-bearing accounts, expected return on investment/pension, Fee on every type.
-    private static readonly IReadOnlySet<AccountType> InterestRateTypes = new HashSet<AccountType>
-    {
-        AccountType.CheckingAccount, AccountType.SavingsAccount, AccountType.PensionAccount,
-        AccountType.CreditCard, AccountType.Mortgage, AccountType.StudentLoan,
-        AccountType.PersonalLoan, AccountType.CarLoan, AccountType.TaxDebt,
-    };
-
-    private static readonly IReadOnlySet<AccountType> ExpectedReturnTypes = new HashSet<AccountType>
-    {
-        AccountType.InvestmentAccount, AccountType.PensionAccount,
-    };
-
-    public static bool IsEligible(TermKind kind, AccountType accountType) => kind switch
-    {
-        TermKind.InterestRate => InterestRateTypes.Contains(accountType),
-        TermKind.ExpectedReturn => ExpectedReturnTypes.Contains(accountType),
-        TermKind.Fee => true,
-        _ => false,
-    };
-
-    /// <summary>The term kinds permitted for an account type, in registry order.</summary>
-    public static IReadOnlyList<TermKind> EligibleKinds(AccountType accountType) =>
-        All.Where(k => IsEligible(k, accountType)).ToArray();
-
-    /// <summary>
-    /// The term kinds permitted on a CONTRACT, in registry order — <see cref="TermKind.Fee"/> and
-    /// <see cref="TermKind.InterestRate"/> on every contract type. Mirrors the backend
-    /// (<c>TermService.ContractTermKinds</c>): <see cref="TermKind.ExpectedReturn"/> prices invested
-    /// principal, which a contract does not hold, so it is not offered and would be a 400 if posted.
-    /// There is no per-<c>ContractType</c> matrix — the four values are coarse and none of them is
-    /// financing-specific, so one would be arbitrary rather than informative.
-    /// </summary>
-    public static readonly IReadOnlyList<TermKind> ContractEligibleKinds =
-        All.Where(k => k is TermKind.Fee or TermKind.InterestRate).ToArray();
-
-    /// <summary>Whether a kind may be written on a contract.</summary>
-    public static bool IsEligibleOnContract(TermKind kind) => ContractEligibleKinds.Contains(kind);
-
-    public static bool IsLiability(AccountType accountType) =>
-        AccountTypeVisuals.Group(accountType) == AccountGroup.Liability;
-
-    /// <summary>Interest charged on a liability is a cost, so its rate is expense-colored — but only
-    /// its color. The rate itself is never re-signed: a term renders with the sign the user entered,
-    /// so a genuinely negative rate stays distinguishable from an ordinary one.</summary>
-    /// <remarks>
-    /// <paramref name="account"/> is nullable because the same helpers serve a CONTRACT-owned term
-    /// (issue #135), which has no account type and therefore no liability notion: a contract's
-    /// interest rate is never re-worded as a cost. One nullable context rather than a second copy of
-    /// the wording — an unlabelled rate must read identically wherever it is shown.
-    /// </remarks>
-    public static bool IsCostRate(ExistingTerm term, ExistingAccount? account) =>
-        account is not null
-        && term.ValueUnit == TermValueUnit.Percentage
-        && term.TermKind == TermKind.InterestRate
-        && IsLiability(account.AccountType);
-
-    /// <summary>Expense color for a cost-rate, else <c>null</c> (the caller keeps its own color).</summary>
-    public static string? CostColor(ExistingTerm term, ExistingAccount? account) =>
-        IsCostRate(term, account) ? "var(--finance-expense)" : null;
-
-    /// <summary>A term's kind label in the context of its account: a cost-rate reads "Interest
-    /// charged", every other term keeps its registry label. The expense color must never be the only
-    /// cue that a liability's interest is money out (WCAG 1.4.1 Use of Color) — the sign used to be
-    /// the second cue, so the word carries it now. Pair this with <see cref="CostColor"/> wherever a
-    /// value is tinted, the way a balance pairs its color with a signed amount.</summary>
-    public static string LabelFor(ExistingTerm term, ExistingAccount? account) =>
-        IsCostRate(term, account) ? "Interest charged" : Info(term.TermKind).Label;
-
-    /// <summary>What a term is CALLED: its own label where it has one, else its kind wording. The
-    /// fallback is <see cref="LabelFor"/> and not the bare registry label, so an unlabelled interest
-    /// rate on a liability still reads "Interest charged" — reaching for <c>Info(kind).Label</c> here
-    /// would undo that non-colour cue silently, on a surface that still looks right for every other
-    /// term. A rate is refused a label, so a cost rate can only ever take the fallback arm.</summary>
-    public static string DisplayName(ExistingTerm term, ExistingAccount? account) =>
-        TermLabel.Normalize(term.Label) ?? LabelFor(term, account);
-
-    /// <summary>Whether a term carries a label, and so renders its kind wording as a caption beneath
-    /// its name rather than as the name itself.</summary>
-    public static bool IsLabelled(ExistingTerm term) =>
-        TermLabel.Normalize(term.Label) is not null;
-
-    /// <summary>The direction glyph for a rate change, from the rate as stored. A liability's rising
-    /// APR trends <em>up</em>: nothing re-signs a cost rate, which is what used to invert this.</summary>
-    public static string DeltaIcon(decimal current, decimal previous) =>
-        current > previous ? "arrow_upward"
-        : current < previous ? "arrow_downward"
-        : "remove";
+    /// <summary>What a term is CALLED: its own label. Every term carries one; a row predating that
+    /// rule reads as the plain noun rather than as blank.</summary>
+    public static string DisplayName(ExistingTerm term) =>
+        TermLabel.Normalize(term.Label) ?? Info.Label;
 
     /// <summary>0.0340 → "3.40%", 0.0003 → "0.03%" (trailing zeros trimmed above 1%).</summary>
     public static string PctStr(decimal frac)
@@ -227,9 +114,9 @@ public static class TermKindVisuals
         return $"{s}%";
     }
 
-    /// <summary>A term's value as a display string, carrying the stored sign as entered: "6.49%" on a
-    /// loan, "3.40%" on savings, "−0.5%" for a genuinely negative rate, or a money amount for fee
-    /// amounts (formatted via <paramref name="money"/>).</summary>
+    /// <summary>A term's value as a display string, carrying the stored sign as entered: "6.49%",
+    /// "−0.5%" for a genuinely negative percentage, or a money amount (formatted via
+    /// <paramref name="money"/>).</summary>
     public static string FormatValue(ExistingTerm term, Func<decimal, string?, string> money)
     {
         if (term.ValueUnit != TermValueUnit.Percentage)
@@ -241,33 +128,28 @@ public static class TermKindVisuals
     // ---- Direction (issue #159) -------------------------------------------------------------
 
     /// <summary>
-    /// Whether direction MEANS something here: any term owned by a CONTRACT — fee and rate alike. An
-    /// arrears rate charges the tenant and a deposit rate pays them, which is the same fact a fee
-    /// carries, so both are asked the same way. An account term has no surface that reads a direction
-    /// and the server refuses <see cref="TermDirection.Incoming"/> there with a <c>400</c>, so it is
-    /// not offered one.
+    /// Whether direction MEANS something here: a term owned by a CONTRACT. An account term has no
+    /// surface that reads a direction — the server refuses <see cref="TermDirection.Incoming"/> there
+    /// with a <c>400</c>, so it is not offered one.
     /// </summary>
     /// <remarks>
     /// ONE predicate, so the dialog's control, the read surfaces and the refusal copy can never
-    /// disagree about where a direction is a fact and where it is noise. The <paramref name="kind"/>
-    /// no longer decides it; it stays in the signature so every caller keeps asking about a specific
-    /// term rather than an owner in the abstract.
+    /// disagree about where a direction is a fact and where it is noise.
     /// </remarks>
-    public static bool DirectionApplies(TermKind kind, bool isContractOwned) => isContractOwned;
+    public static bool DirectionApplies(bool isContractOwned) => isContractOwned;
 
-    /// <inheritdoc cref="DirectionApplies(TermKind, bool)"/>
-    public static bool DirectionApplies(ExistingTerm term) =>
-        DirectionApplies(term.TermKind, term.ContractId is not null);
+    /// <inheritdoc cref="DirectionApplies(bool)"/>
+    public static bool DirectionApplies(ExistingTerm term) => DirectionApplies(term.ContractId is not null);
 
     /// <summary>
     /// Why direction is refused here, in the words the <c>400</c> uses; <c>null</c> when it is
     /// allowed. The copy is the server's rule restated, so a user never meets a refusal the dialog
     /// did not predict.
     /// </summary>
-    public static string? DirectionRefusal(TermKind kind, bool isContractOwned) =>
-        !isContractOwned
-            ? "Direction applies to a contract term. An account term is always money out."
-            : null;
+    public static string? DirectionRefusal(bool isContractOwned) =>
+        isContractOwned
+            ? null
+            : "Direction applies to a contract term. An account term is always money out.";
 
     /// <summary>
     /// Whether this term brings money IN — direction applies here AND it is

@@ -8,7 +8,6 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using ContextAccountType = Odyssey.Context.AccountType;
 using ContextInterval = Odyssey.Context.Interval;
 using ContextTermKind = Odyssey.Context.TermKind;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
@@ -67,38 +66,13 @@ public class TermService
         this.logger = logger ?? NullLogger<TermService>.Instance;
     }
 
-    // The eligibility matrix lives in code (not the database) so it can evolve without a migration.
-    // Unknown is never permitted; Fee is permitted on every account type.
-    private static readonly IReadOnlySet<ContextAccountType> InterestRateAccountTypes = new HashSet<ContextAccountType>
-    {
-        ContextAccountType.CheckingAccount,
-        ContextAccountType.SavingsAccount,
-        ContextAccountType.PensionAccount,
-        ContextAccountType.CreditCard,
-        ContextAccountType.Mortgage,
-        ContextAccountType.StudentLoan,
-        ContextAccountType.PersonalLoan,
-        ContextAccountType.CarLoan,
-        ContextAccountType.TaxDebt,
-    };
-
-    private static readonly IReadOnlySet<ContextAccountType> ExpectedReturnAccountTypes = new HashSet<ContextAccountType>
-    {
-        ContextAccountType.InvestmentAccount,
-        ContextAccountType.PensionAccount,
-    };
-
     /// <summary>
-    /// What a contract may be priced in (issue #135 §8). <c>Fee</c> and <c>InterestRate</c> on every
-    /// contract type — <c>ContractType</c>'s four values (Employment, Service, Rental, Other) are
-    /// coarse and none of them is financing-specific, so a per-type matrix would be arbitrary rather
-    /// than informative. <c>ExpectedReturn</c> is refused: it prices invested principal, which a
-    /// contract does not hold.
+    /// The one kind either owner accepts. The two rate kinds were folded into labelled fees, so
+    /// nothing but <c>Fee</c> may be written; the enum itself is removed in a follow-up.
     /// </summary>
-    private static readonly IReadOnlySet<ContextTermKind> ContractTermKinds = new HashSet<ContextTermKind>
+    private static readonly IReadOnlySet<ContextTermKind> PermittedTermKinds = new HashSet<ContextTermKind>
     {
         ContextTermKind.Fee,
-        ContextTermKind.InterestRate,
     };
 
     // ── Owner resolution ─────────────────────────────────────────────────────────
@@ -118,18 +92,12 @@ public class TermService
         if (account is null)
             return null;
 
-        var permitted = new HashSet<ContextTermKind> { ContextTermKind.Fee };
-        if (InterestRateAccountTypes.Contains(account.AccountType))
-            permitted.Add(ContextTermKind.InterestRate);
-        if (ExpectedReturnAccountTypes.Contains(account.AccountType))
-            permitted.Add(ContextTermKind.ExpectedReturn);
-
         return new TermOwnerFacts(
             TermOwnerKind.Account,
             account.AccountId,
             "account",
-            permitted,
-            $"accounts of type '{account.AccountType}'",
+            PermittedTermKinds,
+            "accounts",
             // An amount term on an account defaults to the account's own currency, which is the
             // pre-#135 behaviour and stays unchanged.
             DefaultCurrencyCode: account.CurrencyCode,
@@ -153,7 +121,7 @@ public class TermService
             TermOwnerKind.Contract,
             contract.ContractId,
             "contract",
-            ContractTermKinds,
+            PermittedTermKinds,
             "contracts",
             // A contract has no currency of its own, which is what makes an explicit code REQUIRED for
             // an amount term (issue #135 §8 rule 2) rather than merely recommended.
@@ -678,33 +646,7 @@ public class TermService
 
         var unit = source.ValueUnit.Adapt<ContextTermValueUnit>();
 
-        // Rate kinds are percentages by definition; an amount unit would store a rate as a currency
-        // value, which is semantically invalid history.
-        if (unit != ContextTermValueUnit.Percentage
-            && (kind == ContextTermKind.InterestRate || kind == ContextTermKind.ExpectedReturn))
-            throw new DomainValidationException(
-                $"Term kind '{source.TermKind}' must be expressed as a percentage, not an amount.");
-
-        var isRateKind = kind == ContextTermKind.InterestRate || kind == ContextTermKind.ExpectedReturn;
-
-        if (source.Interval is not null && isRateKind)
-            throw new DomainValidationException(
-                $"Interval is not allowed for term kind '{source.TermKind}'.");
-
-        // A rate is not billed, so a rate row must not be able to carry half a billing description.
-        // The rule is KIND-based, not interval-based: a one-time fee charged on a known date is
-        // precisely a case worth recording.
-        if (source.AnchorDate is not null && isRateKind)
-            throw new DomainValidationException(
-                $"AnchorDate is not allowed for term kind '{source.TermKind}'.");
-
         var direction = source.Direction.Adapt<ContextTermDirection>();
-
-        // V1 (issue #159) is RETIRED: direction was once refused on a rate kind, but an arrears rate
-        // charges the household and a deposit rate pays it — the same fact a fee carries — so every
-        // CONTRACT term now carries one. The roll-up still projects no percentage, so a rate's
-        // direction changes no figure; it is record-keeping and the "money in" marker. What remains
-        // is V4 below, which keeps every ACCOUNT term Outgoing whatever its kind.
 
         // V4 (issue #159) — an account-owned term may not carry a non-default direction. A savings
         // account's interest is incoming and a loan's is outgoing, but no account surface READS a

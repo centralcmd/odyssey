@@ -9,7 +9,7 @@ namespace Odyssey.TestData.Generators;
 
 /// <summary>
 /// Deterministic time-versioned account terms (issue #172): interest rates, expected returns and
-/// bank fees. The set deliberately exercises every <see cref="TermKind"/>, both
+/// bank fees, every one of them a labelled term. The set deliberately exercises both
 /// <see cref="TermValueUnit"/>s and several <see cref="Interval"/>s, and includes a couple of
 /// rate histories (a savings rate climbing over the years) so the "current value" resolution and the
 /// history listing both have something to show.
@@ -22,10 +22,9 @@ namespace Odyssey.TestData.Generators;
 /// </para>
 ///
 /// The shape mirrors the API's validation rules so the seeded data is one the service itself would
-/// accept: rate kinds (InterestRate/ExpectedReturn) are percentages in the fraction range [-1, 1]
-/// with no interval, no currency and no label; every <see cref="TermKind.Fee"/> carries a
-/// label; fee amounts carry a supported currency (defaulting to the account currency) and may carry a
-/// cadence; eligibility per account type matches <c>TermService</c>. Accounts are
+/// accept: every term carries a label; percentages are fractions in the range [-1, 1] with no
+/// currency; amounts carry a supported currency (defaulting to the account currency) and may carry a
+/// cadence. Accounts are
 /// referenced by their stable deterministic ids; none is created here.
 /// </summary>
 public static class TermGenerator
@@ -56,25 +55,25 @@ public static class TermGenerator
         var specs = new List<TermSpec>
         {
             // Savings interest rate climbing over three years → demonstrates rate history + current resolution.
-            new(Catalog.Accounts.EmergencyFund, TermKind.InterestRate, TermValueUnit.Percentage, 0.0150m, D(2023, 1, 1), Note: "Introductory savings rate."),
-            new(Catalog.Accounts.EmergencyFund, TermKind.InterestRate, TermValueUnit.Percentage, 0.0250m, D(2024, 1, 1), Note: "Rate rise."),
-            new(Catalog.Accounts.EmergencyFund, TermKind.InterestRate, TermValueUnit.Percentage, 0.0410m, D(2025, 6, 1), Note: "Current rate."),
+            new(Catalog.Accounts.EmergencyFund, TermKind.Fee, TermValueUnit.Percentage, 0.0150m, D(2023, 1, 1), Label: "Interest rate", Note: "Introductory savings rate."),
+            new(Catalog.Accounts.EmergencyFund, TermKind.Fee, TermValueUnit.Percentage, 0.0250m, D(2024, 1, 1), Label: "Interest rate", Note: "Rate rise."),
+            new(Catalog.Accounts.EmergencyFund, TermKind.Fee, TermValueUnit.Percentage, 0.0410m, D(2025, 6, 1), Label: "Interest rate", Note: "Current rate."),
 
             // High-yield savings (EUR): a single, higher current rate.
-            new(Catalog.Accounts.HighYieldSavings, TermKind.InterestRate, TermValueUnit.Percentage, 0.0325m, D(2025, 11, 1), Note: "Promotional high-yield rate."),
+            new(Catalog.Accounts.HighYieldSavings, TermKind.Fee, TermValueUnit.Percentage, 0.0325m, D(2025, 11, 1), Label: "Interest rate", Note: "Promotional high-yield rate."),
 
             // Mortgage: a fixed rate set at origination.
-            new(Catalog.Accounts.HomeMortgage, TermKind.InterestRate, TermValueUnit.Percentage, 0.0395m, D(2017, 9, 1), Note: "30-year fixed."),
+            new(Catalog.Accounts.HomeMortgage, TermKind.Fee, TermValueUnit.Percentage, 0.0395m, D(2017, 9, 1), Label: "Interest rate", Note: "30-year fixed."),
 
             // Loans: interest rates.
-            new(Catalog.Accounts.CarLoanVolvo, TermKind.InterestRate, TermValueUnit.Percentage, 0.0690m, D(2023, 2, 15), Note: "Auto loan APR."),
-            new(Catalog.Accounts.RenovationPersonalLoan, TermKind.InterestRate, TermValueUnit.Percentage, 0.0810m, D(2024, 9, 1), Note: "Personal loan APR."),
+            new(Catalog.Accounts.CarLoanVolvo, TermKind.Fee, TermValueUnit.Percentage, 0.0690m, D(2023, 2, 15), Label: "Interest rate", Note: "Auto loan APR."),
+            new(Catalog.Accounts.RenovationPersonalLoan, TermKind.Fee, TermValueUnit.Percentage, 0.0810m, D(2024, 9, 1), Label: "Interest rate", Note: "Personal loan APR."),
 
             // Credit card: the purchase APR plus SIX named fees. Under one fee kind per category these
             // collapsed to two in-force values; named, they are six independent series — which is the
             // whole point of the label. "ATM withdrawal · abroad" carries two dates, so its later
             // entry supersedes only itself and the domestic charge beside it is untouched.
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.InterestRate, TermValueUnit.Percentage, 0.1999m, D(2018, 5, 20), Note: "Purchase APR."),
+            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Percentage, 0.1999m, D(2018, 5, 20), Label: "Interest rate", Note: "Purchase APR."),
             new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 95m, D(2018, 5, 20), Label: "Annual card fee", Currency: Currencies.Usd, Billing: Interval.Annually, Note: "Membership fee."),
             new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Percentage, 0.0275m, D(2018, 5, 20), Label: "Currency conversion", Billing: Interval.PerOccurrence, Note: "Markup on the network rate."),
             new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 5m, D(2018, 5, 20), Label: "ATM withdrawal · domestic", Currency: Currencies.Usd, Billing: Interval.PerOccurrence),
@@ -84,15 +83,15 @@ public static class TermGenerator
             new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 2m, D(2018, 5, 20), Label: "Paper statement", Currency: Currencies.Usd, Billing: Interval.Monthly),
 
             // Brokerage (investment): expected return + a percentage platform fee.
-            new(Catalog.Accounts.BrokerageAccount, TermKind.ExpectedReturn, TermValueUnit.Percentage, 0.0700m, D(2016, 7, 1), Note: "Long-run expected annual return."),
+            new(Catalog.Accounts.BrokerageAccount, TermKind.Fee, TermValueUnit.Percentage, 0.0700m, D(2016, 7, 1), Label: "Expected return", Note: "Long-run expected annual return."),
             new(Catalog.Accounts.BrokerageAccount, TermKind.Fee, TermValueUnit.Percentage, 0.0025m, D(2016, 7, 1), Label: "Platform fee", Billing: Interval.Annually, Note: "Blended expense ratio."),
 
             // Pension: expected return + a scheme management charge.
-            new(Catalog.Accounts.WorkplacePension, TermKind.ExpectedReturn, TermValueUnit.Percentage, 0.0500m, D(2016, 2, 10), Note: "Expected annual return."),
+            new(Catalog.Accounts.WorkplacePension, TermKind.Fee, TermValueUnit.Percentage, 0.0500m, D(2016, 2, 10), Label: "Expected return", Note: "Expected annual return."),
             new(Catalog.Accounts.WorkplacePension, TermKind.Fee, TermValueUnit.Percentage, 0.0040m, D(2016, 2, 10), Label: "Management charge", Billing: Interval.Annually, Note: "Scheme management charge."),
 
             // Stocks portfolio (SEK investment): percentage terms only (no currency needed).
-            new(Catalog.Accounts.StocksPortfolio, TermKind.ExpectedReturn, TermValueUnit.Percentage, 0.0650m, D(2019, 11, 5), Note: "Expected annual return."),
+            new(Catalog.Accounts.StocksPortfolio, TermKind.Fee, TermValueUnit.Percentage, 0.0650m, D(2019, 11, 5), Label: "Expected return", Note: "Expected annual return."),
             new(Catalog.Accounts.StocksPortfolio, TermKind.Fee, TermValueUnit.Percentage, 0.0030m, D(2019, 11, 5), Label: "Custody fee", Billing: Interval.Annually),
 
             // Per-unit custody charge — the unit itself is named by the label, not by a field.

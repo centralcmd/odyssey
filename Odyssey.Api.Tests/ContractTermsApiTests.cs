@@ -137,30 +137,12 @@ public class ContractTermsApiTests
         Assert.Empty(await context.Terms.Where(t => t.ContractId == otherContractId).ToListAsync());
     }
 
-    [Fact]
-    public async Task Post_ExpectedReturn_Returns400()
-    {
-        await using var factory = await NewFactoryAsync(ReadWrite);
-        using var client = factory.CreateClient();
-        var contractId = await CreateContractAsync(client);
-
-        var response = await client.PostAsJsonAsync(Terms(contractId), new NewTerm
-        {
-            TermKind = TermKind.ExpectedReturn,
-            ValueUnit = TermValueUnit.Percentage,
-            Value = 0.07m,
-            EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        });
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
     [Theory]
     [InlineData(ContractType.Employment)]
     [InlineData(ContractType.Service)]
     [InlineData(ContractType.Rental)]
     [InlineData(ContractType.Other)]
-    public async Task Post_FeeAndInterestRate_SucceedOnEveryContractType(ContractType type)
+    public async Task Post_AmountAndPercentageTerms_SucceedOnEveryContractType(ContractType type)
     {
         await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
@@ -315,9 +297,9 @@ public class ContractTermsApiTests
         Assert.Equal(450m, current.Single(t => t.Label == "Service charge").Value);
     }
 
-    /// <summary>AC 4 — the two query filters behave as on the account endpoint.</summary>
+    /// <summary>AC 4 — the as-of filter behaves as on the account endpoint.</summary>
     [Fact]
-    public async Task Get_History_FiltersByKindAndAsOf()
+    public async Task Get_History_FiltersByAsOf()
     {
         await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
@@ -326,11 +308,8 @@ public class ContractTermsApiTests
         await PostTermAsync(client, contractId, Rent(14000m, new DateTime(2024, 1, 1)));
         await PostTermAsync(client, contractId, InterestRate(0.05m, new DateTime(2026, 1, 1)));
 
-        Assert.Single((await client.GetFromJsonAsync<List<ExistingTerm>>($"{Terms(contractId)}?kind={TermKind.Fee}"))!);
+        Assert.Equal(2, (await client.GetFromJsonAsync<List<ExistingTerm>>(Terms(contractId)))!.Count);
         Assert.Single((await client.GetFromJsonAsync<List<ExistingTerm>>($"{Terms(contractId)}?asOf=2024-06-01"))!);
-
-        // An unbindable kind is model-validation's 400, before any query runs.
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"{Terms(contractId)}?kind=NotAKind")).StatusCode);
     }
 
     [Fact]
@@ -690,7 +669,8 @@ public class ContractTermsApiTests
 
     private static NewTerm InterestRate(decimal value, DateTime effectiveFrom) => new()
     {
-        TermKind = TermKind.InterestRate,
+        TermKind = TermKind.Fee,
+        Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = value,
         EffectiveFrom = DateTime.SpecifyKind(effectiveFrom, DateTimeKind.Utc),

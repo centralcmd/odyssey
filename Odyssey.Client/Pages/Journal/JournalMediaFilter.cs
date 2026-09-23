@@ -15,7 +15,7 @@ namespace Odyssey.Client.Pages.Journal;
 /// <para>
 /// It is a static helper rather than two expression-bodied properties on the page because this is the
 /// single site that produces the value the API and ApiClient tiers go to some length to pin below it,
-/// and a page-private property cannot be tested. Same shape as <c>TermKindVisuals</c>, which was
+/// and a page-private property cannot be tested. Same shape as <c>TermVisuals</c>, which was
 /// extracted off its page for the same reason.
 /// </para>
 /// </summary>

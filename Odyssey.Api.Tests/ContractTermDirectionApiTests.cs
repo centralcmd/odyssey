@@ -77,12 +77,11 @@ public class ContractTermDirectionApiTests
     }
 
     /// <summary>
-    /// AC 3, revised — a contract's RATE carries a direction too: an arrears rate charges the household
-    /// and a deposit rate pays it, which is the same fact a fee carries. The roll-up still projects no
-    /// percentage, so accepting it changes no figure.
+    /// A percentage term on a contract carries a direction like any other: the rate kinds that
+    /// refused one were folded into labelled terms.
     /// </summary>
     [Fact]
-    public async Task Post_IncomingOnARateKind_IsAcceptedAndReturned()
+    public async Task Post_IncomingOnAPercentageTerm_IsAccepted()
     {
         await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
@@ -90,7 +89,8 @@ public class ContractTermDirectionApiTests
 
         var response = await client.PostAsJsonAsync(Terms(contractId), new NewTerm
         {
-            TermKind = TermKind.InterestRate,
+            TermKind = TermKind.Fee,
+            Label = "Interest rate",
             ValueUnit = TermValueUnit.Percentage,
             Value = 0.0325m,
             Direction = TermDirection.Incoming,

@@ -594,21 +594,7 @@ public partial class AccountsCard
         _ => OdsInfoTileTone.Muted,
     };
 
-    /// <summary>The single in-force rate the collapsed row headlines on, rebuilt as a term so the
-    /// shared TermKindVisuals formatting (sign, cost colour, unit) applies unchanged.</summary>
-    private static ExistingTerm? RateTermOf(ExistingAccount a) =>
-        a.CurrentInterestRateKind is { } kind
-            ? new ExistingTerm
-            {
-                TermId = Guid.Empty,
-                AccountId = a.AccountId,
-                TermKind = kind,
-                ValueUnit = TermValueUnit.Percentage,
-                Value = a.CurrentInterestRate ?? 0m,
-            }
-            : null;
-
-    /// <summary>Adapts a current-term projection to the shape TermKindVisuals formats, so the Current
+    /// <summary>Adapts a current-term projection to the shape TermVisuals formats, so the Current
     /// band's tiles read exactly like the same term does in the Terms section.</summary>
     private static ExistingTerm ToTerm(ExistingAccount a, AccountCurrentTerm term) => new()
     {
@@ -616,7 +602,7 @@ public partial class AccountsCard
         AccountId = a.AccountId,
         TermKind = term.TermKind,
         // Carried, because the card renders one tile per in-force series: without the label a travel
-        // card's six fees would be six identical "Fee" tiles.
+        // card's six fees would be six identical tiles.
         Label = term.Label,
         ValueUnit = term.ValueUnit,
         Value = term.Value,
@@ -644,22 +630,17 @@ public partial class AccountsCard
             ? "No transactions"
             : $"{a.TransactionCount} transaction{(a.TransactionCount == 1 ? "" : "s")} · secondary";
 
-    /// <summary>A term's tile foot: the kind wording for a labelled term (whose name is its label),
-    /// when it took effect, plus its cadence where it has one. The kind is text here rather than only
-    /// the tile's glyph and hue, and the cadence is what separates a 695 annual fee from a 695
-    /// monthly one, so both ride along.</summary>
-    // internal rather than private so the caption composition can be asserted directly: it is what
-    // carries the kind wording as TEXT on the record card, which is a WCAG 1.4.1 commitment rather
-    // than a formatting detail. Odyssey.Client already grants InternalsVisibleTo to its test project.
-    internal static string TermFoot(ExistingTerm term, ExistingAccount account)
+    /// <summary>A term's tile foot: when it took effect, plus its cadence where it has one. The
+    /// cadence is what separates a 695 annual fee from a 695 monthly one, so it rides along.</summary>
+    // internal rather than private so the caption composition can be asserted directly.
+    // Odyssey.Client already grants InternalsVisibleTo to its test project.
+    internal static string TermFoot(ExistingTerm term)
     {
         var since = $"since {term.EffectiveFrom.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture)}";
-        if (TermKindVisuals.IsLabelled(term))
-            since = $"{TermKindVisuals.LabelFor(term, account)} · {since}";
 
         // The one cadence helper every surface reads, so the card's foot and the Terms section's
         // tile cannot word the same term differently. A one-time charge carries no cadence.
-        return TermKindVisuals.CadenceText(term) is { } cadence
+        return TermVisuals.CadenceText(term) is { } cadence
             ? $"{since} · {cadence}"
             : since;
     }

@@ -16,8 +16,8 @@ namespace Odyssey.Client.Pages.Finance;
 /// single <c>ApplyAndValidate</c>, with the owner-specific facts supplied as data. A second dialog
 /// would be a second copy of the value bounds, the label rule, the cadence pair and the duplicate
 /// guard — and two copies of a validator diverge, with the copy that has fewer eyes on it being the
-/// one that will. What the owner decides, and all it decides, is: which kinds are eligible, whether
-/// an amount may fall back to an owner currency, and which typed client the write goes to.
+/// one that will. What the owner decides, and all it decides, is: whether a direction applies,
+/// whether an amount may fall back to an owner currency, and which typed client the write goes to.
 /// </remarks>
 public partial class AddTermDialog
 {
@@ -33,8 +33,8 @@ public partial class AddTermDialog
     /// <summary>The term being edited, or <c>null</c> to create a new one.</summary>
     [Parameter] public ExistingTerm? Term { get; set; }
 
-    /// <summary>The account's existing terms — for the client-side (kind, label, effectiveFrom)
-    /// duplicate guard.</summary>
+    /// <summary>The owner's existing terms — for the client-side (label, effectiveFrom) duplicate
+    /// guard.</summary>
     [Parameter] public IReadOnlyList<ExistingTerm> Existing { get; set; } = [];
 
     [Parameter] public bool Open { get; set; }
@@ -44,7 +44,6 @@ public partial class AddTermDialog
     [Parameter] public EventCallback OnSaved { get; set; }
 
     private bool IsEdit => Term is not null;
-    private bool IsRate => TermKindVisuals.Info(_kind).Group == TermGroup.Rate;
     private bool IsPercentage => _unit == TermValueUnit.Percentage;
 
     /// <summary>Whether this dialog is writing against a contract rather than an account.</summary>
@@ -71,19 +70,16 @@ public partial class AddTermDialog
     /// </summary>
     private bool CurrencyRequired => OwnerCurrency is null;
 
-    /// <summary>Whether the Name field is rendered: a fee takes a label, a rate is refused one.</summary>
-    private bool TakesLabel => TermLabel.RuleFor(_kind) == TermLabelRule.Required;
-
     // ---- direction (issue #159) ---------------------------------------------------------------
 
     /// <summary>
-    /// Whether this dialog offers a direction at all — any term on a CONTRACT. Read from the one shared
+    /// Whether this dialog offers a direction at all — a term on a CONTRACT. Read from the one shared
     /// predicate, so the control, the read surfaces and the refusal copy cannot disagree.
     /// </summary>
-    private bool DirectionApplies => TermKindVisuals.DirectionApplies(_kind, IsContractOwner);
+    private bool DirectionApplies => TermVisuals.DirectionApplies(IsContractOwner);
 
     /// <summary>Why it is refused here, in the words the server's <c>400</c> uses; null when allowed.</summary>
-    private string? DirectionRefusal => TermKindVisuals.DirectionRefusal(_kind, IsContractOwner);
+    private string? DirectionRefusal => TermVisuals.DirectionRefusal(IsContractOwner);
 
     private TermDirectionInfo DirectionInfo => TermDirectionVisuals.Info(_direction);
 
@@ -100,15 +96,13 @@ public partial class AddTermDialog
     private void OnDirectionChanged(string value)
     {
         _direction = TermDirectionVisuals.Parse(value);
-        // A direction is never the reason a value is invalid, so nothing is re-validated here; the
-        // refusals it could trip are decided by the KIND, which has its own handler.
+        // A direction is never the reason a value is invalid, so nothing is re-validated here.
     }
 
     private const int TermLabelMaxLength = TermLabel.MaxLength;
 
-    private TermKind _kind;
     private string _label = "";
-    private TermValueUnit _unit;
+    private TermValueUnit _unit = TermValueUnit.Amount;
     private string _valueStr = "";
     private string _currency = "";
     private string _interval = "";
@@ -131,28 +125,22 @@ public partial class AddTermDialog
         new() { Value = nameof(TermValueUnit.Amount), Label = "Amount", Icon = "payments" },
     ];
 
-    private IReadOnlyList<TermKind> _eligibleKinds = [];
     private List<OdsOption> _currencyOptions = [];
     private List<OdsOption> _intervalOptions = [];
     private readonly Dictionary<string, string> _errors = new();
 
     protected override void OnInitialized()
     {
-        _eligibleKinds = IsContractOwner
-            ? TermKindVisuals.ContractEligibleKinds
-            : TermKindVisuals.EligibleKinds(Account!.AccountType);
-
         // Reading order, not ordinal order: the ordinals are deliberately out of sequence
         // (PerUnit is 6, Weekly is 7, and 4 stays retired), so the registry decides the order.
         _intervalOptions =
         [
             new OdsOption("", "Not specified"),
-            .. TermKindVisuals.AllIntervals.Select(i => new OdsOption(i.ToString(), TermKindVisuals.InfoFor(i)!.Label)),
+            .. TermVisuals.AllIntervals.Select(i => new OdsOption(i.ToString(), TermVisuals.InfoFor(i)!.Label)),
         ];
 
         if (Term is not null)
         {
-            _kind = Term.TermKind;
             _label = Term.Label ?? "";
             _unit = Term.ValueUnit;
             _valueStr = Term.ValueUnit == TermValueUnit.Percentage ? FractionToPercentString(Term.Value) : Term.Value.ToString(CultureInfo.InvariantCulture);
@@ -166,17 +154,11 @@ public partial class AddTermDialog
         }
         else
         {
-            // A contract opens on Fee — the overwhelmingly common case, and the one whose extra
-            // required field (the name) is worth showing first. An account keeps its registry-order
-            // default, where the eligible set is what narrows the choice.
-            _kind = IsContractOwner
-                ? TermKind.Fee
-                : _eligibleKinds.Count > 0 ? _eligibleKinds[0] : TermKind.Fee;
-            _unit = TermKindVisuals.Info(_kind).DefaultUnit;
+            _unit = TermValueUnit.Amount;
             // Empty on a contract: an unset currency is the honest starting state when nothing can
             // supply one, and it is what makes the answer required rather than silently assigned.
             _currency = OwnerCurrency ?? "";
-            _interval = DefaultIntervalFor(_kind);
+            _interval = TermVisuals.DefaultInterval.ToString();
             _effectiveFrom = DateTime.UtcNow.Date;
         }
 
@@ -209,12 +191,6 @@ public partial class AddTermDialog
         StateHasChanged();
     }
 
-    // One default for a fee — there is no longer a fee kind to guess from.
-    private static string DefaultIntervalFor(TermKind kind) =>
-        TermKindVisuals.Info(kind).Group == TermGroup.Fee
-            ? TermKindVisuals.DefaultFeeInterval.ToString()
-            : "";
-
     /// <summary>The selected cadence unit, or <c>null</c> when it is left unspecified.</summary>
     private Interval? SelectedInterval =>
         Enum.TryParse<Interval>(_interval, out var interval) ? interval : null;
@@ -224,18 +200,18 @@ public partial class AddTermDialog
     /// periodic unit, so for anything else the field is ABSENT rather than disabled: the answer is
     /// not merely unknown there, it has no meaning, and the request carries null.
     /// </summary>
-    private bool IsPeriodicInterval => TermKindVisuals.IsPeriodic(SelectedInterval);
+    private bool IsPeriodicInterval => TermVisuals.IsPeriodic(SelectedInterval);
 
     /// <summary>The plural unit noun the count reads in ("every 3 <b>months</b>").</summary>
-    private string IntervalUnitNoun => TermKindVisuals.InfoFor(SelectedInterval)?.Many ?? "";
+    private string IntervalUnitNoun => TermVisuals.InfoFor(SelectedInterval)?.Many ?? "";
 
     /// <summary>The cadence in words, as the request would store it — blank counts as the identity
     /// cadence, which is exactly what the service writes.</summary>
     private string? CadenceEcho =>
-        TermKindVisuals.CadenceText(SelectedInterval, EffectiveIntervalCount);
+        TermVisuals.CadenceText(SelectedInterval, EffectiveIntervalCount);
 
     private string? IntervalCountHelp =>
-        TermKindVisuals.InfoFor(SelectedInterval) is { } info ? $"Leave blank for {info.Adverb}" : null;
+        TermVisuals.InfoFor(SelectedInterval) is { } info ? $"Leave blank for {info.Adverb}" : null;
 
     /// <summary>
     /// The interval picker's own description. The non-periodic units say what they mean here, since
@@ -250,10 +226,10 @@ public partial class AddTermDialog
             if (IsPeriodicInterval || SelectedInterval is not { } interval || interval == Interval.OneTime)
                 return null;
 
-            var charged = $"Charged {TermKindVisuals.InfoFor(interval)!.Adverb}";
+            var charged = $"Charged {TermVisuals.InfoFor(interval)!.Adverb}";
 
             return interval == Interval.PerUnit
-                ? $"{charged} — name the unit in the fee\u2019s name, e.g. \u201cCustody \u00b7 per share\u201d"
+                ? $"{charged} — name the unit in the term\u2019s name, e.g. \u201cCustody \u00b7 per share\u201d"
                 : charged;
         }
     }
@@ -270,48 +246,6 @@ public partial class AddTermDialog
     private int EffectiveIntervalCount =>
         _intervalCount is { } count ? (int)count : TermIntervalCount.Min;
 
-    // Each kind keeps its registry hue on the card, as it does on every tile and history row.
-    private IReadOnlyList<OdsCardSelectOption> KindOptions =>
-        [.. _eligibleKinds.Select(KindOption)];
-
-    private static OdsCardSelectOption KindOption(TermKind kind)
-    {
-        var info = TermKindVisuals.Info(kind);
-        return new OdsCardSelectOption { Value = kind.ToString(), Label = info.Label, Icon = info.Icon, Color = info.Color, Soft = info.Soft };
-    }
-
-    private void OnKindPicked(string value) => PickKind(Enum.Parse<TermKind>(value));
-
-    private void PickKind(TermKind kind)
-    {
-        _kind = kind;
-        var info = TermKindVisuals.Info(kind);
-        _unit = info.DefaultUnit;
-        // A rate kind refuses a label, so a typed one is discarded on the switch rather than carried
-        // invisibly into a request the server would reject.
-        if (TermLabel.RuleFor(kind) != TermLabelRule.Required)
-            _label = "";
-        // Direction survives a kind change on a contract: an arrears rate and a late-payment fee are
-        // both money out, so the answer already given still holds. Only an owner that refuses one
-        // (an account) drops it, rather than carrying it invisibly into a field the server rejects.
-        if (!DirectionApplies)
-            _direction = TermDirection.Outgoing;
-        // A rate is not billed, so it carries NEITHER half of a billing description, nor an anchor.
-        if (info.Group == TermGroup.Fee)
-        {
-            if (string.IsNullOrEmpty(_interval))
-                _interval = DefaultIntervalFor(kind);
-        }
-        else
-        {
-            _interval = "";
-            _intervalCount = null;
-            _anchorDate = null;
-        }
-        _errors.Clear();
-        RefreshNameSuggestions();
-    }
-
     private void OnLabelChanged(string? value)
     {
         _label = value ?? "";
@@ -319,7 +253,7 @@ public partial class AddTermDialog
     }
 
     /// <summary>
-    /// The contract name field's suggestions: one row per distinct series of the kind being written,
+    /// The contract name field's suggestions: one row per distinct series,
     /// DERIVED from this contract's own history. There is no term-name table — a name is a free string
     /// and a series exists only because entries share it — and a name from another contract is not a
     /// name this one has used, so nothing else is offered.
@@ -332,10 +266,10 @@ public partial class AddTermDialog
     /// same name the series already carries.
     /// </remarks>
     internal static List<NameSuggestion> NameSuggestions(
-        IReadOnlyList<ExistingTerm> existing, TermKind kind, Guid? currentId, DateTime today)
+        IReadOnlyList<ExistingTerm> existing, Guid? currentId, DateTime today)
     {
         return existing
-            .Where(t => t.TermKind == kind && t.TermId != currentId)
+            .Where(t => t.TermId != currentId)
             .Select(t => (Term: t, Key: TermLabel.Key(t.Label)))
             .Where(x => x.Key is not null)
             .GroupBy(x => x.Key!, StringComparer.Ordinal)
@@ -350,10 +284,10 @@ public partial class AddTermDialog
                 var parts = new List<string>(3)
                 {
                     t.ValueUnit == TermValueUnit.Percentage
-                        ? TermKindVisuals.PctStr(t.Value)
+                        ? TermVisuals.PctStr(t.Value)
                         : OdsMoney.Format(t.Value, t.CurrencyCode),
                 };
-                if (TermKindVisuals.CadenceText(t) is { } cadence)
+                if (TermVisuals.CadenceText(t) is { } cadence)
                     parts.Add(cadence);
                 if (inForce is null)
                     parts.Add($"from {t.EffectiveFrom:yyyy-MM-dd}");
@@ -372,8 +306,8 @@ public partial class AddTermDialog
 
     private void RefreshNameSuggestions()
     {
-        _nameSuggestions = TakesLabel && IsContractOwner
-            ? NameSuggestions(Existing, _kind, Term?.TermId, DateTime.UtcNow)
+        _nameSuggestions = IsContractOwner
+            ? NameSuggestions(Existing, Term?.TermId, DateTime.UtcNow)
             : [];
         _nameOptions = _nameSuggestions
             .Select(s => new OdsOption(s.Label, s.Label) { Note = s.Note, Icon = s.Scheduled ? "schedule" : null })
@@ -512,16 +446,6 @@ public partial class AddTermDialog
 
         _errors.Clear();
 
-        var eligible = IsContractOwner
-            ? TermKindVisuals.IsEligibleOnContract(_kind)
-            : TermKindVisuals.IsEligible(_kind, Account!.AccountType);
-        if (!eligible)
-        {
-            _errors["kind"] = IsContractOwner
-                ? "Not available on a contract."
-                : "Not available for this account type.";
-        }
-
         // The contract rule: an amount needs a currency, and nothing supplies one.
         if (!IsPercentage && CurrencyRequired && string.IsNullOrWhiteSpace(_currency))
         {
@@ -541,7 +465,7 @@ public partial class AddTermDialog
         }
         else if (raw < 0m)
         {
-            _errors["value"] = "A fee amount can’t be negative.";
+            _errors["value"] = "An amount can’t be negative.";
         }
 
         if (_effectiveFrom is null)
@@ -549,7 +473,7 @@ public partial class AddTermDialog
 
         // The same bound the DTO's [Range] carries and the service re-checks — named from the one
         // constant pair, so the message cannot quote a number the server would not enforce.
-        if (!IsRate && IsPeriodicInterval && _intervalCount is { } count
+        if (IsPeriodicInterval && _intervalCount is { } count
             && (count != Math.Truncate(count) || count < TermIntervalCount.Min || count > TermIntervalCount.Max))
         {
             _errors["intervalCount"] =
@@ -562,31 +486,28 @@ public partial class AddTermDialog
         if ((_note?.Length ?? 0) > 512)
             _errors["note"] = "Keep the note under 512 characters.";
 
-        // Label — refused on a rate kind (the field isn't rendered), required on every fee.
-        var label = TakesLabel ? TermLabel.Normalize(_label) : null;
-        if (TakesLabel && label is null)
+        // Label — required on every term.
+        var label = TermLabel.Normalize(_label);
+        if (label is null)
         {
             _errors["label"] = IsContractOwner
                 ? "Name this charge so it keeps its own history."
-                : "Name this fee so it keeps its own history.";
+                : "Name this term so it keeps its own history.";
         }
         else if (label is { Length: > TermLabel.MaxLength })
             _errors["label"] = $"Keep the name under {TermLabel.MaxLength} characters.";
 
-        // Duplicate (kind, label, effectiveFrom) → the server's 409, excluding the row being edited.
+        // Duplicate (label, effectiveFrom) → the server's 409, excluding the row being edited.
         // Compared on the SAME normalized, case-folded key the server writes, so "ATM abroad" and
         // "  atm   Abroad " collide here exactly as they would there.
         var labelKey = TermLabel.Key(label);
-        if (_effectiveFrom is { } date && Existing.Any(t =>
+        if (label is not null && _effectiveFrom is { } date && Existing.Any(t =>
                 t.TermId != (Term?.TermId ?? Guid.Empty)
-                && t.TermKind == _kind
                 && TermLabel.Key(t.Label) == labelKey
                 && t.EffectiveFrom.Date == date.Date))
         {
-            _errors["effectiveFrom"] = label is null
-                ? "This kind already has an entry on that date."
-                : $"“{label}” already has an entry on that date.";
-            // An account term with the same kind, label and date is a DIFFERENT series and never
+            _errors["effectiveFrom"] = $"“{label}” already has an entry on that date.";
+            // An account term with the same label and date is a DIFFERENT series and never
             // collides with a contract's — which is why the guard runs over `Existing`, the owner's
             // own rows, rather than over every term the client has seen.
         }
@@ -600,17 +521,17 @@ public partial class AddTermDialog
 
         var dto = new NewTerm
         {
-            TermKind = _kind,
+            TermKind = TermKind.Fee,
             // LabelKey is derived server-side and is on no request DTO — only Label is sent.
             Label = label,
             ValueUnit = _unit,
             Value = value,
             CurrencyCode = IsPercentage ? null : _currency,
-            Interval = IsRate ? null : SelectedInterval,
+            Interval = SelectedInterval,
             // The identity cadence when a periodic unit is left blank, and null — never a
             // meaningless 1 — in every other case, matching what the service persists.
-            IntervalCount = !IsRate && IsPeriodicInterval ? EffectiveIntervalCount : null,
-            AnchorDate = IsRate || _anchorDate is null
+            IntervalCount = IsPeriodicInterval ? EffectiveIntervalCount : null,
+            AnchorDate = _anchorDate is null
                 ? null
                 : DateTime.SpecifyKind(_anchorDate.Value.Date, DateTimeKind.Utc),
             // Sent only where it means something. Everywhere else the request carries the default,

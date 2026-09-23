@@ -32,9 +32,11 @@ public class TermServiceTests
         return account.AccountId;
     }
 
+    /// <summary>A percentage term named like the former rate kind — now an ordinary labelled series.</summary>
     private static NewTerm InterestRate(decimal value, DateTime effectiveFrom) => new()
     {
-        TermKind = TermKind.InterestRate,
+        TermKind = TermKind.Fee,
+        Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = value,
         EffectiveFrom = effectiveFrom,
@@ -58,7 +60,7 @@ public class TermServiceTests
 
         var created = await service.Create(accountId, InterestRate(0.0325m, new DateTime(2026, 1, 1)));
 
-        Assert.Equal(TermKind.InterestRate, created.TermKind);
+        Assert.Equal("Interest rate", created.Label);
         Assert.Equal(0.0325m, created.Value);
         Assert.Null(created.CurrencyCode);
         Assert.NotEqual(Guid.Empty, created.TermId);
@@ -106,55 +108,20 @@ public class TermServiceTests
     }
 
     [Theory]
-    [InlineData(DtoAccountType.Cash)]
-    [InlineData(DtoAccountType.Property)]
-    [InlineData(DtoAccountType.Vehicle)]
-    public async Task Create_InterestRateOnIneligibleAccount_Throws(DtoAccountType accountType)
+    [InlineData(TermKind.Unknown)]
+    [InlineData(TermKind.InterestRate)]
+    [InlineData(TermKind.ExpectedReturn)]
+    public async Task Create_AnyKindButFee_IsRefused(TermKind kind)
     {
         await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, accountType);
+        var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
         var service = new TermService(context);
 
-        await Assert.ThrowsAsync<DomainValidationException>(
-            () => service.Create(accountId, InterestRate(0.05m, new DateTime(2026, 1, 1))));
-    }
+        var term = InterestRate(0.03m, new DateTime(2026, 1, 1));
+        term.TermKind = kind;
 
-    [Fact]
-    public async Task Create_InterestRateOnCheckingAccount_Persists()
-    {
-        await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, DtoAccountType.CheckingAccount);
-        var service = new TermService(context);
-
-        var created = await service.Create(accountId, InterestRate(0.001m, new DateTime(2026, 1, 1)));
-
-        Assert.Equal(TermKind.InterestRate, created.TermKind);
-    }
-
-    [Fact]
-    public async Task Create_ExpectedReturn_AllowedOnInvestmentRejectedOnChecking()
-    {
-        await using var context = TestContextFactory.Create();
-        var investmentId = await SeedAccountAsync(context, DtoAccountType.InvestmentAccount);
-        var checkingId = await SeedAccountAsync(context, DtoAccountType.CheckingAccount);
-        var service = new TermService(context);
-
-        var created = await service.Create(investmentId, new NewTerm
-        {
-            TermKind = TermKind.ExpectedReturn,
-            ValueUnit = TermValueUnit.Percentage,
-            Value = 0.07m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        });
-        Assert.Equal(TermKind.ExpectedReturn, created.TermKind);
-
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(checkingId, new NewTerm
-        {
-            TermKind = TermKind.ExpectedReturn,
-            ValueUnit = TermValueUnit.Percentage,
-            Value = 0.07m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        }));
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, term));
+        Assert.Empty(context.Terms);
     }
 
     [Fact]
@@ -195,41 +162,6 @@ public class TermServiceTests
         var created = await service.Create(accountId, InterestRate(-0.005m, new DateTime(2026, 1, 1)));
 
         Assert.Equal(-0.005m, created.Value);
-    }
-
-    [Fact]
-    public async Task Create_IntervalOnInterestRate_Throws()
-    {
-        await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new TermService(context);
-
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewTerm
-        {
-            TermKind = TermKind.InterestRate,
-            ValueUnit = TermValueUnit.Percentage,
-            Value = 0.03m,
-            Interval = Interval.Monthly,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        }));
-    }
-
-    [Theory]
-    [InlineData(TermKind.InterestRate, DtoAccountType.SavingsAccount)]
-    [InlineData(TermKind.ExpectedReturn, DtoAccountType.InvestmentAccount)]
-    public async Task Create_RateKindWithAmountUnit_Throws(TermKind kind, DtoAccountType accountType)
-    {
-        await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, accountType);
-        var service = new TermService(context);
-
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewTerm
-        {
-            TermKind = kind,
-            ValueUnit = TermValueUnit.Amount,
-            Value = 100m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        }));
     }
 
     [Fact]
@@ -315,7 +247,7 @@ public class TermServiceTests
     }
 
     [Fact]
-    public async Task GetCurrent_OnePerSeries_AcrossKinds()
+    public async Task GetCurrent_OnePerSeries_AcrossLabels()
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
@@ -333,30 +265,7 @@ public class TermServiceTests
 
         var current = await service.GetCurrent(accountId);
         Assert.Equal(2, current!.Count);
-        Assert.Contains(current, t => t.TermKind == TermKind.InterestRate);
-        Assert.Contains(current, t => t.TermKind == TermKind.Fee);
-    }
-
-    [Fact]
-    public async Task GetHistory_FiltersByKind()
-    {
-        await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new TermService(context);
-
-        await service.Create(accountId, InterestRate(0.03m, new DateTime(2026, 1, 1)));
-        await service.Create(accountId, new NewTerm
-        {
-            TermKind = TermKind.Fee,
-            Label = "Account fee",
-            ValueUnit = TermValueUnit.Amount,
-            Value = 5m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        });
-
-        var rates = await service.GetHistory(accountId, TermKind.InterestRate);
-        var entry = Assert.Single(rates!);
-        Assert.Equal(TermKind.InterestRate, entry.TermKind);
+        Assert.Equal(new[] { "Account fee", "Interest rate" }, current.Select(t => t.Label));
     }
 
     [Fact]
@@ -470,22 +379,6 @@ public class TermServiceTests
         Assert.Equal(5m, current.Single(t => t.Label == "ATM · domestic").Value);
     }
 
-    [Fact]
-    public async Task GetCurrent_UnlabelledRateAndLabelledFeeAreSeparateSeries()
-    {
-        await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, DtoAccountType.CreditCard);
-        var service = new TermService(context);
-
-        await service.Create(accountId, InterestRate(0.22m, new DateTime(2026, 1, 1)));
-        await service.Create(accountId, Fee("Annual card fee", 95m, new DateTime(2026, 1, 1)));
-
-        var current = await service.GetCurrent(accountId, new DateTime(2026, 2, 1));
-        Assert.Equal(2, current!.Count);
-        Assert.Null(current.Single(t => t.TermKind == TermKind.InterestRate).Label);
-        Assert.Equal("Annual card fee", current.Single(t => t.TermKind == TermKind.Fee).Label);
-    }
-
     [Theory]
     [InlineData("atm · abroad")]
     [InlineData("  ATM   ·   abroad  ")]
@@ -518,8 +411,8 @@ public class TermServiceTests
     }
 
     /// <summary>
-    /// Criterion 5, stated over the WHOLE enum rather than a hand-picked sample: there is no fee kind
-    /// for which a label is optional, so there is no account type on which one is. Enumerating the
+    /// Criterion 5, stated over the WHOLE enum rather than a hand-picked sample: a label is required on
+    /// every term, so there is no account type on which one is optional. Enumerating the
     /// enum is the point — a future account type is covered the day it is added, where a list of
     /// InlineData would silently leave it out.
     /// </summary>
@@ -539,16 +432,12 @@ public class TermServiceTests
         var accountId = await SeedAccountAsync(context, accountType);
         var service = new TermService(context);
 
-        // Fee is eligible everywhere, so this can only ever fail on the label rule — which is what
-        // makes the assertion about the rule rather than about eligibility.
-        Assert.True(TermLabel.RuleFor(TermKind.Fee) == TermLabelRule.Required);
-
         await Assert.ThrowsAsync<DomainValidationException>(
             () => service.Create(accountId, Fee(null, 25m, new DateTime(2026, 1, 1))));
     }
 
-    /// <summary>The other half of the same criterion: a NAMED fee is accepted on every account type,
-    /// so the rule above is refusing the missing label and not the kind.</summary>
+    /// <summary>The other half of the same criterion: a NAMED term is accepted on every account type,
+    /// so the rule above is refusing the missing label and not the account.</summary>
     [Theory]
     [MemberData(nameof(EveryAccountType))]
     public async Task Create_NamedFee_IsAcceptedOnEveryAccountType(DtoAccountType accountType)
@@ -560,25 +449,6 @@ public class TermServiceTests
         var created = await service.Create(accountId, Fee("Account fee", 25m, new DateTime(2026, 1, 1)));
 
         Assert.Equal("Account fee", created.Label);
-    }
-
-    [Theory]
-    [InlineData(TermKind.InterestRate, DtoAccountType.SavingsAccount)]
-    [InlineData(TermKind.ExpectedReturn, DtoAccountType.InvestmentAccount)]
-    public async Task Create_RateKindWithLabel_Throws(TermKind kind, DtoAccountType accountType)
-    {
-        await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, accountType);
-        var service = new TermService(context);
-
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewTerm
-        {
-            TermKind = kind,
-            Label = "Headline",
-            ValueUnit = TermValueUnit.Percentage,
-            Value = 0.03m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        }));
     }
 
     [Fact]
@@ -644,9 +514,9 @@ public class TermServiceTests
     }
 
     [Fact]
-    public async Task GetCurrent_UnlabelledRateResolvesExactlyAsBefore()
+    public async Task GetCurrent_AnUnlabelledLegacyRowResolvesAsItsOwnSeries()
     {
-        // A term written before labels existed carries a null label, which IS the unnamed series.
+        // A row written before labels were required carries a null label, which IS the unnamed series.
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
         var service = new TermService(context);
@@ -656,7 +526,7 @@ public class TermServiceTests
             new Term
             {
                 AccountId = account.AccountId,
-                TermKind = Odyssey.Context.TermKind.InterestRate,
+                TermKind = Odyssey.Context.TermKind.Fee,
                 ValueUnit = Odyssey.Context.TermValueUnit.Percentage,
                 Value = 0.03m,
                 EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -665,7 +535,7 @@ public class TermServiceTests
             new Term
             {
                 AccountId = account.AccountId,
-                TermKind = Odyssey.Context.TermKind.InterestRate,
+                TermKind = Odyssey.Context.TermKind.Fee,
                 ValueUnit = Odyssey.Context.TermValueUnit.Percentage,
                 Value = 0.02m,
                 EffectiveFrom = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -826,13 +696,13 @@ public class TermServiceTests
     }
 
     /// <summary>
-    /// V1 is retired: a contract's RATE carries a direction too — an arrears rate charges, a deposit
-    /// rate pays. Tested directly against the service, not only over HTTP: this file's convention is
+    /// A contract's percentage term carries a direction like any other — an arrears rate charges, a
+    /// deposit rate pays. Tested directly against the service, not only over HTTP: this file's convention is
     /// one unit test per eligibility rule, and the API tier proves the STATUS CODE rather than that
     /// the rule lives in the service every non-HTTP caller also goes through.
     /// </summary>
     [Fact]
-    public async Task Create_IncomingOnAContractRateKind_IsStored()
+    public async Task Create_IncomingOnAContractPercentageTerm_IsStored()
     {
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
@@ -848,22 +718,22 @@ public class TermServiceTests
     }
 
     /// <summary>
-    /// V4 — an account-owned term may not carry a non-default direction, whichever kind it is. No
+    /// V4 — an account-owned term may not carry a non-default direction, whatever its unit. No
     /// account surface reads a direction, so accepting one would let a user record a fact the product
     /// then contradicts.
     /// </summary>
     [Theory]
-    [InlineData(TermKind.Fee)]
-    [InlineData(TermKind.InterestRate)]
-    public async Task Create_IncomingOnAnAccountTerm_Throws(TermKind kind)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Create_IncomingOnAnAccountTerm_Throws(bool percentage)
     {
         await using var context = TestContextFactory.Create();
         var accountId = await SeedAccountAsync(context);
         var service = new TermService(context);
 
-        var term = kind == TermKind.Fee
-            ? Fee("Interest received", 12m, new DateTime(2026, 1, 1))
-            : InterestRate(0.0325m, new DateTime(2026, 1, 1));
+        var term = percentage
+            ? InterestRate(0.0325m, new DateTime(2026, 1, 1))
+            : Fee("Interest received", 12m, new DateTime(2026, 1, 1));
         term.Direction = TermDirection.Incoming;
 
         await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, term));

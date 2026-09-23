@@ -22,7 +22,7 @@ public class TermCadenceTextTests
     [InlineData(Interval.PerUnit, null, "per unit")]
     public void A_cadence_reads_as_its_adverb_or_as_every_n_units(Interval interval, int? count, string expected)
     {
-        Assert.Equal(expected, TermKindVisuals.CadenceText(interval, count));
+        Assert.Equal(expected, TermVisuals.CadenceText(interval, count));
     }
 
     /// <summary>
@@ -35,8 +35,8 @@ public class TermCadenceTextTests
     [InlineData(null)]
     public void A_one_time_or_unset_interval_has_no_cadence(Interval? interval)
     {
-        Assert.Null(TermKindVisuals.CadenceText(interval, null));
-        Assert.Null(TermKindVisuals.CadenceText(interval, 3));
+        Assert.Null(TermVisuals.CadenceText(interval, null));
+        Assert.Null(TermVisuals.CadenceText(interval, 3));
     }
 
     /// <summary>
@@ -53,13 +53,13 @@ public class TermCadenceTextTests
     [InlineData(Interval.PerUnit, false)]
     public void The_periodic_set_matches_the_servers(Interval interval, bool periodic)
     {
-        Assert.Equal(periodic, TermKindVisuals.IsPeriodic(interval));
+        Assert.Equal(periodic, TermVisuals.IsPeriodic(interval));
     }
 
     [Fact]
     public void An_unset_interval_is_not_periodic()
     {
-        Assert.False(TermKindVisuals.IsPeriodic(null));
+        Assert.False(TermVisuals.IsPeriodic(null));
     }
 
     /// <summary>
@@ -75,7 +75,7 @@ public class TermCadenceTextTests
                 Interval.OneTime, Interval.PerOccurrence, Interval.PerUnit,
                 Interval.Daily, Interval.Weekly, Interval.Monthly, Interval.Annually,
             ],
-            TermKindVisuals.AllIntervals);
+            TermVisuals.AllIntervals);
     }
 
     /// <summary>Every defined unit has display context — a picker entry with no label, or a periodic
@@ -85,7 +85,7 @@ public class TermCadenceTextTests
     {
         foreach (var interval in Enum.GetValues<Interval>())
         {
-            var info = TermKindVisuals.InfoFor(interval);
+            var info = TermVisuals.InfoFor(interval);
 
             Assert.NotNull(info);
             Assert.NotEmpty(info!.Label);
@@ -98,7 +98,7 @@ public class TermCadenceTextTests
             }
         }
 
-        Assert.Equal(Enum.GetValues<Interval>().Length, TermKindVisuals.AllIntervals.Count);
+        Assert.Equal(Enum.GetValues<Interval>().Length, TermVisuals.AllIntervals.Count);
     }
 
     /// <summary>The retired ordinal has no display context either — a stale row reaching the client
@@ -106,15 +106,15 @@ public class TermCadenceTextTests
     [Fact]
     public void The_retired_quarterly_ordinal_has_no_display_context()
     {
-        Assert.Null(TermKindVisuals.InfoFor((Interval)4));
-        Assert.Null(TermKindVisuals.CadenceText((Interval)4, 1));
-        Assert.False(TermKindVisuals.IsPeriodic((Interval)4));
+        Assert.Null(TermVisuals.InfoFor((Interval)4));
+        Assert.Null(TermVisuals.CadenceText((Interval)4, 1));
+        Assert.False(TermVisuals.IsPeriodic((Interval)4));
     }
 
     [Fact]
     public void A_new_fee_opens_on_the_monthly_default()
     {
-        Assert.Equal(Interval.Monthly, TermKindVisuals.DefaultFeeInterval);
-        Assert.True(TermKindVisuals.IsPeriodic(TermKindVisuals.DefaultFeeInterval));
+        Assert.Equal(Interval.Monthly, TermVisuals.DefaultInterval);
+        Assert.True(TermVisuals.IsPeriodic(TermVisuals.DefaultInterval));
     }
 }

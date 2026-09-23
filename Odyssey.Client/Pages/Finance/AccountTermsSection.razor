@@ -1,5 +1,4 @@
 @using System.Globalization
-@using System.Text
 @using Odyssey.Dtos.Finance
 @inject IDialogService DialogService
 @inject IAccountsApiClient Accounts
@@ -8,8 +7,7 @@
 @*
     AccountTermsSection — the "Terms" section inside an expanded account record
     (Accounts → account detail), beside Files & Transactions. Renders the AccountTerm
-    history (GET …/terms): a step-line rate chart, the current-terms summary, and the
-    grouped, editable history table. Owns the create / edit / delete flow (write-gated).
+    history (GET …/terms): the current-terms summary and the editable history table. Owns the create / edit / delete flow (write-gated).
 *@
 
 <OdsCollapsible Chrome="Chrome" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="§">
@@ -29,9 +27,9 @@
         else if (_terms.Count == 0)
         {
             <OdsEmptyState Icon="percent">
-                <Title>No rates or fees recorded yet</Title>
+                <Title>No terms recorded yet</Title>
                 <Description>
-                    Track this account’s interest rate over time and the prices of its services.
+                    Track this account’s rates and the prices of its services over time.
                     @if (CanWrite)
                     {
                         <text>Add the first term to start the history.</text>
@@ -49,39 +47,6 @@
         {
             <div class="trm-section">
 
-                @* HERO — interest-rate (or expected-return) step chart *@
-                @if (_hero is not null)
-                {
-                    <div class="trm-hero">
-                        <div class="trm-hero-head">
-                            <span class="trm-kind-ic lg" style="background:@_hero.Info.Soft;color:@_hero.Info.Color;">
-                                <span class="material-icons" style="font-size:22px;">@_hero.Info.Icon</span>
-                            </span>
-                            <div class="trm-hero-titles">
-                                <div class="trm-hero-kind">
-                                    @_hero.KindLabel
-                                    <span style="color:var(--mud-palette-text-secondary);font-weight:400;">· history</span>
-                                </div>
-                                <div class="trm-hero-sub">@_hero.SubLine</div>
-                            </div>
-                            <div class="trm-hero-figs">
-                                <div class="trm-hero-value" style="color:@_hero.Color;">@_hero.CurrentLabel</div>
-                                @if (_hero.DeltaLabel is not null)
-                                {
-                                    <span class="trm-delta flat">
-                                        <span class="material-icons">@_hero.DeltaIcon</span>@_hero.DeltaLabel
-                                    </span>
-                                }
-                            </div>
-                        </div>
-                        <div class="trm-chart-wrap">
-                            <svg class="trm-chart" viewBox="0 0 680 210" role="img" aria-label="Rate history">
-                                @((MarkupString)_hero.Svg)
-                            </svg>
-                        </div>
-                    </div>
-                }
-
                 @* CURRENT TERMS *@
                 @* Dropped when the host lifted these values into the record card's own
                    Current band, so they are not stated twice in one body. *@
@@ -96,20 +61,20 @@
                     <div class="trm-summary tiles">
                         @foreach (var t in _current)
                         {
-                            var info = TermKindVisuals.Info(t.TermKind);
+                            var info = TermVisuals.Info;
                             @* The cadence in words, from the one helper every surface reads — so a
                                tile, a history row and the dialog can never word a term differently.
                                A one-time charge and an unset interval carry none and render nothing. *@
-                            var cadence = TermKindVisuals.CadenceText(t);
+                            var cadence = TermVisuals.CadenceText(t);
                             <div class="trm-tile">
                                 <div class="trm-tile-top">
                                     <span class="trm-kind-ic md" style="background:@info.Soft;color:@info.Color;">
                                         <span class="material-icons" style="font-size:18px;">@info.Icon</span>
                                     </span>
-                                    @RenderTermName(t, TermKindVisuals.IsLabelled(t) ? "trm-tile-name" : "trm-tile-kind")
+                                    <span class="trm-name"><span class="trm-tile-name">@TermVisuals.DisplayName(t)</span></span>
                                 </div>
-                                <div class="trm-tile-value" style="color:@(TermKindVisuals.CostColor(t, Account) ?? info.Color);">
-                                    @TermKindVisuals.FormatValue(t, FormatMoney)
+                                <div class="trm-tile-value" style="color:@info.Color;">
+                                    @TermVisuals.FormatValue(t, FormatMoney)
                                 </div>
                                 <div class="trm-tile-foot">
                                     <span>since @MonthYear(t.EffectiveFrom)</span>
@@ -124,7 +89,7 @@
                 </div>
                 }
 
-                @* HISTORY — grouped Rate then Fees *@
+                @* HISTORY *@
                 <div>
                     @* The sub-divider is dropped only when the host supplied its own section
                        divider, which would otherwise repeat it. *@
@@ -137,8 +102,14 @@
                         </div>
                     }
                     <div class="trm-history">
-                        @RenderGroup("trending_up", "Rate history", _terms.Where(t => TermKindVisuals.Info(t.TermKind).Group == TermGroup.Rate).ToList())
-                        @RenderGroup("sell", "Fees", _terms.Where(t => TermKindVisuals.Info(t.TermKind).Group == TermGroup.Fee).ToList())
+                        @* The rows come from TermHistoryTable, shared with the contract surface, so a
+                           term row can never be worded or coloured differently by owner. *@
+                        <TermHistoryTable Terms="_terms"
+                                          CurrentIds="_currentIds"
+                                          FormatMoney="FormatMoney"
+                                          CanWrite="CanWrite"
+                                          OnEdit="OpenEdit"
+                                          OnDelete="DeleteAsync" />
                     </div>
                 </div>
             </div>
@@ -154,47 +125,4 @@
                    Term="_editingTerm"
                    Existing="_terms"
                    OnSaved="OnTermChanged" />
-}
-
-@code {
-    // ── A term's NAME ─────────────────────────────────────────────────────────
-    // Its own label where it has one, with the kind wording as a caption beneath; otherwise the kind
-    // wording is the name. Both are plain text, so nothing is carried by the glyph or its hue alone
-    // (WCAG 1.1.1 / 1.4.1) — and an unlabelled cost rate still reads "Interest charged", because
-    // DisplayName falls back to LabelFor rather than the bare registry label.
-    private RenderFragment RenderTermName(ExistingTerm t, string nameClass) => __builder =>
-    {
-        <span class="trm-name">
-            <span class="@nameClass">@TermKindVisuals.DisplayName(t, Account)</span>
-            @if (TermKindVisuals.IsLabelled(t))
-            {
-                <span class="trm-kind-caption">@TermKindVisuals.LabelFor(t, Account)</span>
-            }
-        </span>
-    };
-
-    // ── History group ─────────────────────────────────────────────────────────
-    // The group heading is this surface's own (a rate history and a fee list are different
-    // questions on an account); the rows themselves come from TermHistoryTable, shared with the
-    // contract surface, so a term row can never be worded or coloured differently by owner.
-    private RenderFragment RenderGroup(string icon, string label, List<ExistingTerm> rows) => __builder =>
-    {
-        if (rows.Count == 0) return;
-
-        <div>
-            <div class="trm-group-label">
-                <span class="material-icons" style="font-size:16px;color:var(--mud-palette-text-secondary);">@icon</span>
-                @label
-                <span class="trm-group-count">@rows.Count</span>
-            </div>
-            <TermHistoryTable Terms="rows"
-                              CurrentIds="_currentIds"
-                              Account="Account"
-                              FormatMoney="FormatMoney"
-                              CanWrite="CanWrite"
-                              OnEdit="OpenEdit"
-                              OnDelete="DeleteAsync" />
-        </div>
-    };
-
 }

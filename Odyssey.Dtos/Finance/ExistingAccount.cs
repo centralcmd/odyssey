@@ -34,16 +34,6 @@ public sealed record ExistingAccount
     /// <summary>Sum of this account's signed transaction amounts (computed server-side).</summary>
     public decimal Balance { get; set; }
 
-    /// <summary>The currently-effective interest rate or expected return as a percentage fraction
-    /// (e.g. 0.0325 = 3.25%), or <c>null</c> when no rate term is in force. Computed server-side
-    /// from the account's term history — the latest <c>InterestRate</c> (preferred) or
-    /// <c>ExpectedReturn</c> entry on or before now.</summary>
-    public decimal? CurrentInterestRate { get; set; }
-
-    /// <summary>Which rate kind <see cref="CurrentInterestRate"/> represents (InterestRate or
-    /// ExpectedReturn), for the header label and color; <c>null</c> when there is no rate in force.</summary>
-    public TermKind? CurrentInterestRateKind { get; set; }
-
     /// <summary>The currently-effective estimated value for this account (e.g. a property's appraised
     /// worth), or <c>null</c> when no estimate is in force. Computed server-side from the account's
     /// estimate history — the latest entry on or before now. Always expressed in the account currency
@@ -59,14 +49,11 @@ public sealed record ExistingAccount
     public DateTime? CurrentEstimatedValueEffectiveFrom { get; set; }
 
     /// <summary>
-    /// Every in-force term, one per kind, for the record card's "Current" band.
-    /// <see cref="CurrentInterestRate"/> / <see cref="CurrentInterestRateKind"/> stay as the single
-    /// rate the collapsed row headlines on; this is the full set the expanded body shows.
+    /// Every in-force term, one per series, for the record card's "Current" band.
     ///
     /// <para>
-    /// It costs no extra query: the enrichment already runs one pass over the term composite index for
-    /// every account on the page, and this widens that pass from two rate kinds to all of them rather
-    /// than adding a per-account follow-up.
+    /// It costs no extra query: the enrichment runs one pass over the term composite index for every
+    /// account on the page rather than a per-account follow-up.
     /// </para>
     /// </summary>
     public List<AccountCurrentTerm> CurrentTerms { get; set; } = new();

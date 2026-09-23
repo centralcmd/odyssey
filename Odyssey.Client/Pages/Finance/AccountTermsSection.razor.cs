@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.Client.Services;
@@ -33,7 +32,7 @@ public partial class AccountTermsSection
     [Parameter] public bool BareAction { get; set; } = true;
 
     /// <summary>Raised after a term is created/edited/deleted so the host can refresh the account
-    /// list (the header subtitle shows the in-force rate).</summary>
+    /// list (the record card's Current band shows the in-force terms).</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
     /// <summary>Formats a fee amount in its currency — supplied by the host (per-account currency).</summary>
@@ -42,7 +41,6 @@ public partial class AccountTermsSection
     private List<ExistingTerm> _terms = [];
     private List<ExistingTerm> _current = [];
     private HashSet<Guid> _currentIds = [];
-    private HeroModel? _hero;
 
     private bool _isLoading;
     private bool _isOpen;
@@ -85,26 +83,20 @@ public partial class AccountTermsSection
         // Newest first for the history table.
         _terms = _terms.OrderByDescending(t => t.EffectiveFrom).ThenByDescending(t => t.CreatedAtUtc).ToList();
 
-        // One entry per SERIES — (kind, label) — not per kind: a card charging a domestic and a
-        // foreign ATM fee has two in force, and the later of them supersedes only its own series.
-        // Ordered kind (registry order) then label, so tiles keep a stable order across loads.
+        // One entry per SERIES — its label: a card charging a domestic and a foreign ATM fee has two
+        // in force, and the later of them supersedes only its own series. Ordered by label, so tiles
+        // keep a stable order across loads.
         var asOf = DateTime.UtcNow.Date;
-        var kindOrder = TermKindVisuals.All
-            .Select((kind, index) => (kind, index))
-            .ToDictionary(x => x.kind, x => x.index);
 
         _current = _terms
             .Where(t => t.EffectiveFrom.Date <= asOf)
-            .GroupBy(t => (t.TermKind, LabelKey: TermLabel.Key(t.Label)))
+            .GroupBy(t => TermLabel.Key(t.Label))
             .Select(group => group
                 .OrderByDescending(t => t.EffectiveFrom).ThenByDescending(t => t.CreatedAtUtc)
                 .First())
-            .OrderBy(t => kindOrder.TryGetValue(t.TermKind, out var i) ? i : int.MaxValue)
-            .ThenBy(t => TermLabel.Key(t.Label) ?? "", StringComparer.Ordinal)
+            .OrderBy(t => TermLabel.Key(t.Label) ?? "", StringComparer.Ordinal)
             .ToList();
         _currentIds = _current.Select(t => t.TermId).ToHashSet();
-
-        _hero = BuildHero();
     }
 
     private void OpenNew()
@@ -126,7 +118,7 @@ public partial class AccountTermsSection
         // Named by what the user called it, so a card with several fees says which one is going.
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete term?",
-            $"Remove the {TermKindVisuals.DisplayName(term, Account)} entry effective {term.EffectiveFrom:MMM dd, yyyy}? This can’t be undone.",
+            $"Remove the {TermVisuals.DisplayName(term)} entry effective {term.EffectiveFrom:MMM dd, yyyy}? This can’t be undone.",
             yesText: "Delete", cancelText: "Cancel");
 
         if (confirmed != true)
@@ -141,197 +133,4 @@ public partial class AccountTermsSection
 
     private static string MonthYear(DateTime date) =>
         date.ToString("MMM", CultureInfo.InvariantCulture) + " ’" + (date.Year % 100).ToString("00");
-
-    // ── Hero step-line chart ────────────────────────────────────────────────
-    private sealed record HeroModel(
-        TermKindInfo Info, string KindLabel, string Color, string CurrentLabel, string SubLine,
-        string? DeltaLabel, string DeltaIcon, string Svg);
-
-    private HeroModel? BuildHero()
-    {
-        // Prefer the interest rate; fall back to expected return. Need ≥ 1 entry.
-        var kind = _terms.Any(t => t.TermKind == TermKind.InterestRate) ? TermKind.InterestRate
-            : _terms.Any(t => t.TermKind == TermKind.ExpectedReturn) ? TermKind.ExpectedReturn
-            : (TermKind?)null;
-        if (kind is null)
-            return null;
-
-        // A rate is refused a label, so its kind IS its series — there is never a second rate series
-        // to choose between here.
-        var info = TermKindVisuals.Info(kind.Value);
-        var ascending = _terms
-            .Where(t => t.TermKind == kind.Value)
-            .OrderBy(t => t.EffectiveFrom).ThenBy(t => t.CreatedAtUtc)
-            .ToList();
-        if (ascending.Count == 0)
-            return null;
-
-        // A liability's interest rate is a cost, so the panel is expense-colored — but the series is
-        // the stored rate as entered. Nothing is re-signed, so the delta follows the real rate: a rise
-        // reads as a rise.
-        var cost = kind.Value == TermKind.InterestRate && TermKindVisuals.IsLiability(Account.AccountType);
-        var color = cost ? "var(--finance-expense)" : info.Color;
-        var points = ascending
-            .Select(t => (Date: t.EffectiveFrom.Date, Value: (double)t.Value))
-            .ToList();
-
-        var currentTerm = ascending[^1];
-        var previousTerm = ascending.Count > 1 ? ascending[^2] : null;
-
-        string Fmt(decimal v) => (v < 0 ? "−" : "") + TermKindVisuals.PctStr(Math.Abs(v));
-
-        string? deltaLabel = null;
-        var deltaIcon = "remove";
-        if (previousTerm is not null)
-        {
-            deltaIcon = TermKindVisuals.DeltaIcon(currentTerm.Value, previousTerm.Value);
-            deltaLabel = $"{TermKindVisuals.PctStr(Math.Abs(currentTerm.Value - previousTerm.Value))} vs {MonthYear(previousTerm.EffectiveFrom.Date)}";
-        }
-
-        var subLine = $"{points.Count} change{(points.Count == 1 ? "" : "s")} since {MonthYear(points[0].Date)} · in force since {currentTerm.EffectiveFrom.Date:MMM dd, yyyy}";
-
-        return new HeroModel(
-            info, TermKindVisuals.LabelFor(currentTerm, Account), color, Fmt(currentTerm.Value),
-            subLine, deltaLabel, deltaIcon, BuildChartSvg(points, color));
-    }
-
-    private static string F(double d) => d.ToString("0.0", CultureInfo.InvariantCulture);
-
-    private static string BuildChartSvg(List<(DateTime Date, double Value)> series, string color)
-    {
-        const double W = 680, H = 210, padL = 48, padR = 18, padT = 16, padB = 28;
-        var plotW = W - padL - padR;
-        var plotH = H - padT - padB;
-        var baseY = padT + plotH;
-
-        var epoch = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        double Days(DateTime d) => (DateTime.SpecifyKind(d, DateTimeKind.Utc) - epoch).TotalDays;
-
-        var now = (DateTime.UtcNow - epoch).TotalDays;
-        var t0 = Days(series[0].Date);
-        var tLast = Days(series[^1].Date);
-        var tMax = Math.Max(now, tLast);
-        var span = Math.Max(tMax - t0, 1);
-        double X(double t) => padL + (t - t0) / span * plotW;
-
-        var vals = series.Select(s => s.Value).ToList();
-        double lo = vals.Min(), hi = vals.Max();
-        if (lo == hi)
-        {
-            // One entry has no range, so the band is invented — proportionally, by the one rule the
-            // design-system step chart uses. Rates are fractions below 1, so every rate chart keeps
-            // its old band.
-            var band = Odyssey.Client.Components.OdsStepChart.FlatBand(lo);
-            lo -= band;
-            hi += band;
-        }
-        var padV = (hi - lo) * 0.35;
-        lo -= padV;
-        hi += padV;
-        double Y(double v) => padT + plotH - (v - lo) / (hi - lo) * plotH;
-
-        // Staircase: hold flat to each change, then jump.
-        var step = new List<(double X, double Y)>();
-        for (var i = 0; i < series.Count; i++)
-        {
-            var sx = X(Days(series[i].Date));
-            var sy = Y(series[i].Value);
-            if (i == 0)
-                step.Add((sx, sy));
-            else
-            { step.Add((sx, step[^1].Y)); step.Add((sx, sy)); }
-        }
-        var nowX = X(now);
-        var endX = X(tMax);
-        step.Add((endX, step[^1].Y));
-
-        var solid = ClipPts(step, nowX, keepBelow: true);
-        var dashed = ClipPts(step, nowX, keepBelow: false);
-
-        var sb = new StringBuilder();
-
-        // Gradient fill under the solid line.
-        var fillId = $"trmfill-{Math.Abs(series[0].Date.GetHashCode())}";
-        sb.Append($"<defs><linearGradient id=\"{fillId}\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">");
-        sb.Append($"<stop offset=\"0%\" stop-color=\"{color}\" stop-opacity=\"0.20\" />");
-        sb.Append($"<stop offset=\"100%\" stop-color=\"{color}\" stop-opacity=\"0\" /></linearGradient></defs>");
-
-        // Gridlines + y labels (3 lines).
-        var yticks = new[] { hi, (hi + lo) / 2, lo };
-        foreach (var v in yticks)
-        {
-            sb.Append($"<line class=\"grid\" x1=\"{F(padL)}\" y1=\"{F(Y(v))}\" x2=\"{F(W - padR)}\" y2=\"{F(Y(v))}\" />");
-            var label = (v < 0 ? "−" : "") + TermKindVisuals.PctStr((decimal)Math.Abs(v));
-            sb.Append($"<text class=\"axis\" x=\"{F(padL - 8)}\" y=\"{F(Y(v) + 3)}\" text-anchor=\"end\">{label}</text>");
-        }
-
-        // Area + step line (solid past, dashed future).
-        if (solid.Count > 0)
-        {
-            var area = PtsToPath(solid) + $" L {F(solid[^1].X)} {F(baseY)} L {F(solid[0].X)} {F(baseY)} Z";
-            sb.Append($"<path d=\"{area}\" fill=\"url(#{fillId})\" />");
-        }
-        sb.Append($"<path class=\"step\" d=\"{PtsToPath(solid)}\" stroke=\"{color}\" />");
-        if (dashed.Count > 1)
-            sb.Append($"<path class=\"step future\" d=\"{PtsToPath(dashed)}\" stroke=\"{color}\" />");
-
-        // Today marker.
-        sb.Append($"<line class=\"nowline\" x1=\"{F(nowX)}\" y1=\"{F(padT - 4)}\" x2=\"{F(nowX)}\" y2=\"{F(baseY)}\" />");
-        sb.Append($"<text class=\"nowlabel\" x=\"{F(Math.Min(nowX, W - padR))}\" y=\"{F(padT - 7)}\" text-anchor=\"end\">Today</text>");
-
-        // Change-point dots.
-        foreach (var s in series)
-        {
-            var cx = X(Days(s.Date));
-            var cy = Y(s.Value);
-            sb.Append($"<circle class=\"dot-halo\" cx=\"{F(cx)}\" cy=\"{F(cy)}\" r=\"5\" />");
-            sb.Append($"<circle cx=\"{F(cx)}\" cy=\"{F(cy)}\" r=\"3.4\" fill=\"{color}\" />");
-        }
-
-        // X labels — skip when two land within 44px.
-        double? last = null;
-        foreach (var s in series)
-        {
-            var px = X(Days(s.Date));
-            if (last is null || px - last > 44)
-            {
-                sb.Append($"<text class=\"axis\" x=\"{F(px)}\" y=\"{F(H - 8)}\" text-anchor=\"middle\">{MonthYear(s.Date)}</text>");
-                last = px;
-            }
-        }
-
-        return sb.ToString();
-    }
-
-    // Clip an axis-aligned polyline to x ≤ bound (keepBelow) or x ≥ bound, interpolating
-    // the crossing so the solid/dashed split lands exactly on the "today" marker.
-    private static List<(double X, double Y)> ClipPts(List<(double X, double Y)> pts, double bound, bool keepBelow)
-    {
-        var outPts = new List<(double X, double Y)>();
-        for (var i = 0; i < pts.Count; i++)
-        {
-            var p = pts[i];
-            var inside = keepBelow ? p.X <= bound : p.X >= bound;
-            if (i > 0)
-            {
-                var prev = pts[i - 1];
-                var prevInside = keepBelow ? prev.X <= bound : prev.X >= bound;
-                if (inside != prevInside && prev.X != p.X)
-                {
-                    var t = (bound - prev.X) / (p.X - prev.X);
-                    outPts.Add((bound, prev.Y + (p.Y - prev.Y) * t));
-                }
-                else if (inside != prevInside)
-                {
-                    outPts.Add((bound, inside ? prev.Y : p.Y));
-                }
-            }
-            if (inside)
-                outPts.Add(p);
-        }
-        return outPts;
-    }
-
-    private static string PtsToPath(List<(double X, double Y)> pts) =>
-        pts.Count == 0 ? "" : "M " + string.Join(" L ", pts.Select(p => $"{F(p.X)} {F(p.Y)}"));
 }

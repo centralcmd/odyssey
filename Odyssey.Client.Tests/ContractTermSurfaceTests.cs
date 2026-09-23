@@ -47,23 +47,23 @@ public class ContractTermSurfaceTests
         TermId = Guid.NewGuid(),
         ContractId = ContractId,
         AccountId = null,
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
         CurrencyCode = "NOK",
         Interval = interval,
-        IntervalCount = interval is not null && TermKindVisuals.IsPeriodic(interval) ? 1 : null,
+        IntervalCount = interval is not null && TermVisuals.IsPeriodic(interval) ? 1 : null,
         EffectiveFrom = effectiveFrom,
         CreatedAtUtc = effectiveFrom,
     };
 
+    /// <summary>A percentage term named like the former rate kind — now an ordinary labelled series.</summary>
     private static ExistingTerm Rate(decimal value, DateTime effectiveFrom) => new()
     {
         TermId = Guid.NewGuid(),
         ContractId = ContractId,
         AccountId = null,
-        TermKind = TermKind.InterestRate,
+        Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = value,
         EffectiveFrom = effectiveFrom,
@@ -126,20 +126,6 @@ public class ContractTermSurfaceTests
 
         Assert.Contains("No terms yet", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Term history", cut.Markup, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// An unlabelled interest rate on a contract reads as its registry wording — never as the
-    /// account surface's "Interest charged", which is a LIABILITY's cost-rate wording and has no
-    /// meaning here. One helper, one nullable owner context.
-    /// </summary>
-    [Fact]
-    public void An_unlabelled_rate_reads_as_the_plain_kind_and_not_as_a_cost_rate()
-    {
-        var cut = RenderSection(Lease(), [Rate(0.0325m, Past(100))]);
-
-        Assert.Contains("Interest rate", cut.Markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("Interest charged", cut.Markup, StringComparison.Ordinal);
     }
 
     /// <summary>The cadence comes from the one helper every surface reads.</summary>
@@ -271,23 +257,15 @@ public class ContractTermSurfaceTests
     // ── The dialog's contract-specific rules ─────────────────────────────────
 
     /// <summary>
-    /// Expected return prices invested principal, which a contract does not hold — so it is not
-    /// offered at all, rather than offered and refused.
+    /// Every term is one kind of thing, so the dialog offers no kind picker at all — the name is the
+    /// first question.
     /// </summary>
     [Fact]
-    public void The_dialog_offers_fee_and_interest_rate_only()
+    public void The_dialog_offers_no_kind_picker()
     {
         var cut = RenderDialog(Lease());
 
-        var offered = cut.FindAll(".odc-cardsel-opt").Select(o => o.TextContent).ToList();
-
-        Assert.Contains(offered, o => o.Contains("Fee", StringComparison.Ordinal));
-        Assert.Contains(offered, o => o.Contains("Interest rate", StringComparison.Ordinal));
-        // Not merely refused on submit — not offered at all.
-        Assert.DoesNotContain(offered, o => o.Contains("Expected return", StringComparison.Ordinal));
-
-        // And the omission is explained rather than silent.
-        Assert.Contains("Expected return prices invested principal", cut.Markup, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".odc-cardsel-opt"));
     }
 
     /// <summary>
@@ -434,7 +412,7 @@ public class ContractTermSurfaceTests
     // ── The name field's suggestions ─────────────────────────────────────────
 
     [Fact]
-    public void The_name_field_suggests_this_contracts_own_series_of_the_kind_being_written()
+    public void The_name_field_suggests_this_contracts_own_series()
     {
         var editing = Fee("Monthly rent", 2150m, Past(300), Interval.Monthly);
         var terms = new List<ExistingTerm>
@@ -445,29 +423,29 @@ public class ContractTermSurfaceTests
             Rate(0.08m, Past(200)),
         };
 
-        var suggestions = AddTermDialog.NameSuggestions(terms, TermKind.Fee, editing.TermId, DateTime.UtcNow.Date);
+        var suggestions = AddTermDialog.NameSuggestions(terms, editing.TermId, DateTime.UtcNow.Date);
 
-        Assert.Equal(["Monthly rent", "Water"], suggestions.Select(s => s.Label));
-        Assert.StartsWith("2,250.00 NOK · monthly", suggestions[0].Note, StringComparison.Ordinal);
-        Assert.False(suggestions[0].Scheduled);
+        // Every labelled series is offered — a former rate is a term like any other.
+        Assert.Equal(["Interest rate", "Monthly rent", "Water"], suggestions.Select(s => s.Label));
+        Assert.StartsWith("8%", suggestions[0].Note, StringComparison.Ordinal);
+        Assert.StartsWith("2,250.00 NOK · monthly", suggestions[1].Note, StringComparison.Ordinal);
+        Assert.False(suggestions[1].Scheduled);
         // A series still entirely ahead says when it starts.
-        Assert.True(suggestions[1].Scheduled);
-        Assert.Contains("from ", suggestions[1].Note, StringComparison.Ordinal);
-        // A rate is unlabelled, so it offers no name.
-        Assert.Empty(AddTermDialog.NameSuggestions(terms, TermKind.InterestRate, null, DateTime.UtcNow.Date));
+        Assert.True(suggestions[2].Scheduled);
+        Assert.Contains("from ", suggestions[2].Note, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// A contract RATE carries a direction too — an arrears rate charges, a deposit rate pays — so the
-    /// value control keeps its direction lead and no refusal stands in its place.
+    /// A contract PERCENTAGE carries a direction too — an arrears rate charges, a deposit rate pays —
+    /// so the value control keeps its direction lead and no refusal stands in its place.
     /// </summary>
     [Fact]
-    public void A_contract_rate_is_asked_its_direction_like_a_fee()
+    public void A_contract_percentage_is_asked_its_direction_like_an_amount()
     {
         var cut = RenderDialog(Lease());
 
-        cut.FindAll(".odc-cardsel-opt")
-            .Single(o => o.TextContent.Contains("Interest rate", StringComparison.Ordinal))
+        cut.FindAll("button[role=radio]")
+            .Single(o => o.TextContent.Contains("Percentage", StringComparison.Ordinal))
             .Click();
 
         Assert.Empty(cut.FindAll(".trm-dir-refused"));

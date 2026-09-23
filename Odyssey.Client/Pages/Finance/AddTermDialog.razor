@@ -7,14 +7,13 @@
 
 @*
     AddTermDialog — New / Edit dialog for a term on either of the two owners the Term table
-    serves: an ACCOUNT (interest-rate & fee history) or a CONTRACT (its price history, issue
+    serves: an ACCOUNT (its rate & fee history) or a CONTRACT (its price history, issue
     #135). Built on the shared OdsModal shell like every other create/edit dialog. The field
-    set mirrors the NewTerm DTO and the TermService validation: eligibility-gated kind, the
-    series name (required on a fee, refused on a rate), percentage-or-amount value,
-    currency (amount only), effective date, the two-part cadence and the anchor date
-    (fees only), and a note. The body a contract POSTs is byte-identical to the one an
+    set mirrors the NewTerm DTO and the TermService validation: the series name (required),
+    percentage-or-amount value, currency (amount only), effective date, the two-part cadence
+    and the anchor date, and a note. The body a contract POSTs is byte-identical to the one an
     account POSTs — the owner is never in it, it comes from the route.
-    Rejects a (kind, label, effectiveFrom) duplicate client-side on the SAME normalized,
+    Rejects a (label, effectiveFrom) duplicate client-side on the SAME normalized,
     case-folded key the server writes — the shared TermLabel delegate, not a second
     implementation. The API still has the final say (400 / 409 surfaced as a toast).
 *@
@@ -25,61 +24,15 @@
     <ChildContent>
         <div class="ods-modal-body">
 
-            @* Term kind — eligibility-gated OdsCardSelect, each kind in its own hue (new) · locked
-               tile (edit) · nothing at all when the account type leaves one eligible kind. Dropping a
-               one-option card row removes a control, not information: the kind it would have selected
-               is still written out on every tile and history row. *@
-            @if (IsEdit || _eligibleKinds.Count > 1)
-            {
-            <div class="trm-field">
-                <div class="trm-label" id="trm-kind-label">Term<span class="odc-field-req" aria-hidden="true">*</span></div>
-                @if (IsEdit)
-                {
-                    var info = TermKindVisuals.Info(_kind);
-                    <div class="trm-kind-opt on" style="cursor:default;">
-                        <span class="trm-kind-ic md" style="background:@info.Soft;color:@info.Color;">
-                            <span class="material-icons" style="font-size:18px;">@info.Icon</span>
-                        </span>
-                        <span class="trm-kind-opt-txt">
-                            <span class="trm-kind-opt-name">@info.Label</span>
-                            <span class="trm-kind-opt-grp">@(info.Group == TermGroup.Rate ? "Rate" : "Fee")</span>
-                        </span>
-                    </div>
-                }
-                else
-                {
-                    <OdsCardSelect AriaLabelledBy="trm-kind-label" Required="true" Value="@_kind.ToString()" ValueChanged="OnKindPicked"
-                                   Options="KindOptions" />
-                    @if (IsContractOwner)
-                    {
-                        <div class="trm-kind-ineligible">
-                            A contract can carry a <b>fee</b> or an <b>interest rate</b>. Expected return prices invested principal, which a contract doesn’t hold.
-                        </div>
-                    }
-                    else if (_eligibleKinds.Count < TermKindVisuals.All.Count)
-                    {
-                        <div class="trm-kind-ineligible">
-                            Some kinds don’t apply to a <b>@AccountTypeVisuals.Label(Account!.AccountType)</b> account and are hidden.
-                        </div>
-                    }
-                }
-                @if (_errors.TryGetValue("kind", out var kindErr))
-                {
-                    <div class="trm-err">@kindErr</div>
-                }
-            </div>
-            }
-
-            @* Name — the series label. Not rendered on a rate kind (the headline rate stays
-               unambiguous); required on every fee, since with one fee kind two unnamed fees could not
-               be told apart. It is the existing OdsField, so the label / helper / error / required
+            @* Name — the series label, required on every term, since two unnamed terms could not be
+               told apart. It is the existing OdsField, so the label / helper / error / required
                semantics — and the aria-invalid wiring MudBlazor does from ErrorText — are the
                established ones; this introduces no new widget and no new ARIA contract. *@
             @* On a CONTRACT the name also decides whether this entry JOINS an existing price history
-               or STARTS one, so the field suggests the names this contract already uses for the kind
+               or STARTS one, so the field suggests the names this contract already uses
                — a free-text combobox, never a constrained select: a new name is a first-class answer,
                and the help line names which of the two writes is about to happen. *@
-            @if (TakesLabel && IsContractOwner)
+            @if (IsContractOwner)
             {
                 var labelError = _errors.TryGetValue("label", out var contractLabelErr) ? contractLabelErr : null;
                 @* Help and error are mutually exclusive, as in AddContractPartyDialog: with no help
@@ -100,12 +53,12 @@
                     </ChildContent>
                 </OdsFieldShell>
             }
-            else if (TakesLabel)
+            else
             {
                 <OdsField Label="Name" Required="true" MaxLength="TermLabelMaxLength"
                           Value="@_label" ValueChanged="OnLabelChanged"
-                          Placeholder="e.g. ATM withdrawal · abroad"
-                          Help="Names this fee so it keeps its own history, separate from the account’s other fees."
+                          Placeholder="e.g. Interest rate"
+                          Help="Names this term so it keeps its own history, separate from the account’s other terms."
                           Error="@(_errors.TryGetValue("label", out var labelErr) ? labelErr : null)" />
             }
 
@@ -132,33 +85,29 @@
             <div class="trm-value-block">
                 <div class="trm-field-head">
                     <div class="trm-label" style="margin-bottom:0;">Value<span class="odc-field-req" aria-hidden="true">*</span></div>
-                    @if (!IsRate)
-                    {
-                        <div style="margin-left:auto;">
-                            <OdsSegmentedControl Value="@_unit.ToString()" ValueChanged="OnUnitChanged"
-                                                 Options="_unitOptions" AriaLabel="Unit" />
-                        </div>
-                    }
+                    <div style="margin-left:auto;">
+                        <OdsSegmentedControl Value="@_unit.ToString()" ValueChanged="OnUnitChanged"
+                                             Options="_unitOptions" AriaLabel="Unit" />
+                    </div>
                 </div>
 
-                @* A rate has no currency, so it stays on OdsAmountField with a "%" suffix; a flat
-                   amount is money, and money carries its code inside the control. *@
+                @* A percentage has no currency, so it stays on OdsAmountField with a "%" suffix; a
+                   flat amount is money, and money carries its code inside the control. *@
                 @if (IsPercentage)
                 {
                     @* The caption is the "Value" heading above, beside the unit toggle — not a label
                        element — so the input carries its own accessible name. *@
-                    @* A percentage is money too — a fee priced as a share, or a contract rate that
-                       charges or pays — so it carries the same direction lead as an amount: one
-                       control with one unit swapped, never two differently-shaped questions. An
-                       account rate gets no lead — see the refusal above. *@
+                    @* A percentage term carries the same direction lead as an amount, so the two
+                       units are one control with one unit swapped rather than two
+                       differently-shaped questions. *@
                     @* AllowNegative follows the DIRECTION: where the lead carries which way the money
                        moves, a typed minus would be a second and contradictory encoding of the same
-                       fact — the defect this feature exists to prevent. An account rate keeps its
-                       sign, where a negative genuinely means something (negative-rate deposits and
+                       fact — the defect this feature exists to prevent. On an account term the sign
+                       is kept, where a negative genuinely means something (negative-rate deposits and
                        mortgages both exist). Note the consequence on EDIT: a pre-existing negative
-                       percentage on a contract term loses its minus on the next keystroke. That is a
-                       nudge toward the invariant rather than away from it, and the server still
-                       accepts the stored value untouched if nothing is typed. *@
+                       percentage on a contract loses its minus on the next keystroke. That is a nudge toward the
+                       invariant rather than away from it, and the server still accepts the stored
+                       value untouched if nothing is typed. *@
                     <OdsAmountField Size="lg" Required="true" AllowNegative="@(!DirectionApplies)" Suffix="%"
                                     Value="@_valueStr" ValueChanged="OnValueChanged"
                                     Direction="@DirectionValue"
@@ -171,7 +120,7 @@
                             {
                                 <text><b>@DirectionInfo.Label</b> — @DirectionInfo.Sentence. Click <b>@DirectionInfo.Short</b> to switch. </text>
                             }
-                            <text>Stored as a fraction: <b>@PreviewFraction</b>@(IsRate ? " · annual" : "")</text>
+                            <text>Stored as a fraction: <b>@PreviewFraction</b></text>
                         </HelpContent>
                     </OdsAmountField>
                 }
@@ -221,8 +170,8 @@
                 }
             </div>
 
-            @* Effective date — the currency lives inside the money field (amount mode); a rate has no
-               currency, so nothing about it is shown here. *@
+            @* Effective date — the currency lives inside the money field (amount mode); a percentage
+               has no currency, so nothing about it is shown here. *@
             <OdsFormRow Cols="1">
                 <OdsDatePicker Value="_effectiveFrom" ValueChanged="OnEffectiveFromChanged"
                                Label="Effective from" Required="true" />
@@ -232,49 +181,46 @@
                 <div class="trm-err" style="margin-top:-6px;">@dateErr</div>
             }
 
-            @* Cadence — fees only. The unit picker always; the count ONLY once the unit is periodic,
+            @* Cadence — the unit picker always; the count ONLY once the unit is periodic,
                so a "how many" question is never asked about a one-time or per-occurrence charge. The
                field is absent rather than disabled because the answer is not merely unknown there —
                it has no meaning, and the request writes null. Beneath them, the anchor date: when the
                term is first actually charged, which is a different fact from when its price took
                effect. *@
-            @if (!IsRate)
-            {
-                <div class="trm-cadence">
-                    <OdsFormRow Cols="@(IsPeriodicInterval ? 2 : 1)">
-                        @* The unit carries its own label, and the non-periodic branch's guidance
-                           rides its Help slot rather than a loose sibling — MudSelect wires that
-                           into aria-describedby, which a bare <div> beside the control is not. *@
-                        <OdsSelect Label="Billing interval" Help="@IntervalHelp"
-                                   Value="@_interval" ValueChanged="OnIntervalChanged" Options="_intervalOptions" />
-                        @if (IsPeriodicInterval)
-                        {
-                            @* The echo below is named here, not left beside the field: it is what the
-                               typed count MEANS, so a screen-reader user landing on this control has
-                               to receive it the same way a sighted one sees it appear (WCAG 1.3.1).
-                               AriaDescribedBy appends to the field's own help and unit ids. *@
-                            <OdsNumberField Label="Every"
-                                            Min="TermIntervalCount.Min" Max="TermIntervalCount.Max" Step="1"
-                                            Unit="@IntervalUnitNoun" Placeholder="1"
-                                            Value="_intervalCount" ValueChanged="OnIntervalCountChanged"
-                                            Help="@IntervalCountHelp"
-                                            AriaDescribedBy="@(ShowsCadenceEcho ? CadenceEchoId : null)"
-                                            Error="@(_errors.TryGetValue("intervalCount", out var countErr) ? countErr : null)" />
-                        }
-                    </OdsFormRow>
-
-                    @* The cadence echoed in words, from the one helper every surface reads — so what
-                       the dialog promises and what the tile later shows cannot diverge. *@
-                    @if (ShowsCadenceEcho)
+            <div class="trm-cadence">
+                <OdsFormRow Cols="@(IsPeriodicInterval ? 2 : 1)">
+                    @* The unit carries its own label, and the non-periodic branch's guidance
+                       rides its Help slot rather than a loose sibling — MudSelect wires that
+                       into aria-describedby, which a bare <div> beside the control is not. *@
+                    <OdsSelect Label="Billing interval" Help="@IntervalHelp"
+                               Value="@_interval" ValueChanged="OnIntervalChanged" Options="_intervalOptions" />
+                    @if (IsPeriodicInterval)
                     {
-                        <div class="trm-cadence-echo" id="@CadenceEchoId">Charged @CadenceEcho.</div>
+                        @* The echo below is named here, not left beside the field: it is what the
+                           typed count MEANS, so a screen-reader user landing on this control has
+                           to receive it the same way a sighted one sees it appear (WCAG 1.3.1).
+                           AriaDescribedBy appends to the field's own help and unit ids. *@
+                        <OdsNumberField Label="Every"
+                                        Min="TermIntervalCount.Min" Max="TermIntervalCount.Max" Step="1"
+                                        Unit="@IntervalUnitNoun" Placeholder="1"
+                                        Value="_intervalCount" ValueChanged="OnIntervalCountChanged"
+                                        Help="@IntervalCountHelp"
+                                        AriaDescribedBy="@(ShowsCadenceEcho ? CadenceEchoId : null)"
+                                        Error="@(_errors.TryGetValue("intervalCount", out var countErr) ? countErr : null)" />
                     }
+                </OdsFormRow>
 
-                    <OdsDatePicker Value="_anchorDate" ValueChanged="OnAnchorDateChanged"
-                                   Label="First billed on" Clearable="true"
-                                   HelperText="When this is first actually charged, if that isn’t the effective date" />
-                </div>
-            }
+                @* The cadence echoed in words, from the one helper every surface reads — so what
+                   the dialog promises and what the tile later shows cannot diverge. *@
+                @if (ShowsCadenceEcho)
+                {
+                    <div class="trm-cadence-echo" id="@CadenceEchoId">Charged @CadenceEcho.</div>
+                }
+
+                <OdsDatePicker Value="_anchorDate" ValueChanged="OnAnchorDateChanged"
+                               Label="First billed on" Clearable="true"
+                               HelperText="When this is first actually charged, if that isn’t the effective date" />
+            </div>
 
             @* Note *@
             <OdsNoteField Label="Note" MaxLength="512"
@@ -298,8 +244,8 @@
     private RenderFragment SubtitleFragment => IsEdit
         ? (IsContractOwner
             ? @<text>Correct this entry in the contract’s price history.</text>
-            : @<text>Correct this rate or fee entry.</text>)
+            : @<text>Correct this term entry.</text>)
         : (IsContractOwner
             ? @<text>Record what @OwnerName costs, effective from a date.</text>
-            : @<text>Record a rate or fee on @OwnerName, effective from a date.</text>);
+            : @<text>Record a term on @OwnerName, effective from a date.</text>);
 }

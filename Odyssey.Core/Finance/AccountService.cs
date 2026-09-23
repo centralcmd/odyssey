@@ -301,11 +301,6 @@ public class AccountService
             if (currentTermsByAccount.TryGetValue(dto.AccountId, out var currentTerms))
             {
                 dto.CurrentTerms = [.. currentTerms.Select(ToCurrentTerm)];
-                if (RateTermOf(currentTerms) is { } rateTerm)
-                {
-                    dto.CurrentInterestRate = rateTerm.Value;
-                    dto.CurrentInterestRateKind = rateTerm.TermKind.Adapt<DtoTermKind>();
-                }
             }
 
             if (estimateByAccount.TryGetValue(dto.AccountId, out var estimate))
@@ -352,11 +347,6 @@ public class AccountService
         if (currentTermsByAccount.TryGetValue(accountId, out var currentTerms))
         {
             dto.CurrentTerms = [.. currentTerms.Select(ToCurrentTerm)];
-            if (RateTermOf(currentTerms) is { } rateTerm)
-            {
-                dto.CurrentInterestRate = rateTerm.Value;
-                dto.CurrentInterestRateKind = rateTerm.TermKind.Adapt<DtoTermKind>();
-            }
         }
 
         var estimateByAccount = await GetCurrentEstimates([accountId], cancellationToken);
@@ -408,12 +398,6 @@ public class AccountService
     }
 
     /// <summary>
-    /// Resolves the currently-effective rate term for each of the given accounts: the latest
-    /// <see cref="ContextTermKind.InterestRate"/> entry on or before now, or the latest
-    /// <see cref="ContextTermKind.ExpectedReturn"/> if there is no interest rate. Returns only
-    /// accounts that have a rate in force. Backs the account-header rate subtitle.
-    /// </summary>
-    /// <summary>
     /// The in-force terms per account — one per SERIES, <c>(TermKind, LabelKey)</c>, ordered by kind
     /// (registry order) then label so the card's Current band reads the same way on every load. One
     /// kind contributes one tile per label: a card charging four named fees shows four.
@@ -445,14 +429,6 @@ public class AccountService
                 group => group.Key,
                 group => TermSeries.Current(group));
     }
-
-    /// <summary>
-    /// The single rate the collapsed row headlines on, picked out of the in-force set: interest rate
-    /// wins over expected return when both apply (registry order).
-    /// </summary>
-    private static Term? RateTermOf(IReadOnlyList<Term> currentTerms) =>
-        currentTerms.FirstOrDefault(t => t.TermKind == ContextTermKind.InterestRate)
-        ?? currentTerms.FirstOrDefault(t => t.TermKind == ContextTermKind.ExpectedReturn);
 
     private static AccountCurrentTerm ToCurrentTerm(Term term) => new()
     {
