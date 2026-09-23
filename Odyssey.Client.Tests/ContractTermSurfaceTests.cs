@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MudBlazor;
@@ -337,7 +338,7 @@ public class ContractTermSurfaceTests
     /// </para>
     /// </summary>
     [Fact]
-    public void The_dialog_posts_a_term_on_an_archived_contract()
+    public async Task The_dialog_posts_a_term_on_an_archived_contract()
     {
         var (cut, client) = RenderDialogWithClient(Lease(archived: Past(5)));
 
@@ -355,17 +356,16 @@ public class ContractTermSurfaceTests
             .GetAttribute("for");
         // The contract's name field SUGGESTS rather than constrains: a typed name commits on blur, so
         // a new charge is written without ever being picked from the list.
-        var name = cut.Find($"#{nameFor}");
-        name.Input("Late-payment interest");
-        cut.Find($"#{nameFor}").Blur();
+        await cut.Find($"#{nameFor}").InputAsync(new ChangeEventArgs { Value = "Late-payment interest" });
+        await cut.Find($"#{nameFor}").FocusOutAsync(new FocusEventArgs());
 
         var value = cut.FindAll("input")
             .First(i => i.GetAttribute("aria-label")?.Contains("Value", StringComparison.Ordinal) == true);
-        value.Input("3.25");
+        await value.InputAsync(new ChangeEventArgs { Value = "3.25" });
 
-        cut.FindAll("button")
+        await cut.FindAll("button")
             .Single(b => b.TextContent.Contains("Create term", StringComparison.Ordinal))
-            .Click();
+            .ClickAsync(new MouseEventArgs());
 
         var errors = cut.FindAll(".odc-field-error, .mud-input-error, [aria-invalid='true']");
         Assert.DoesNotContain("archived", cut.Markup, StringComparison.OrdinalIgnoreCase);
@@ -474,21 +474,21 @@ public class ContractTermSurfaceTests
     /// any other name STARTS a new charge.
     /// </summary>
     [Fact]
-    public void The_name_help_line_says_whether_the_entry_joins_or_starts_a_history()
+    public async Task The_name_help_line_says_whether_the_entry_joins_or_starts_a_history()
     {
         var cut = RenderDialog(Lease(), [Fee("Monthly rent", 2150m, Past(30), Interval.Monthly)]);
 
         Assert.Contains("Pick a charge this updates", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal);
 
-        cut.Find("#trm-label").Input("  monthly RENT ");
-        cut.Find("#trm-label").Blur();
+        await cut.Find("#trm-label").InputAsync(new ChangeEventArgs { Value = "  monthly RENT " });
+        await cut.Find("#trm-label").FocusOutAsync(new FocusEventArgs());
         var joins = cut.Find("#trm-label-help");
         Assert.Contains("Joins the price history of", joins.TextContent, StringComparison.Ordinal);
         Assert.Equal("Monthly rent", joins.QuerySelector("b")!.TextContent);
         Assert.Contains("2,150.00 NOK · monthly", joins.TextContent, StringComparison.Ordinal);
 
-        cut.Find("#trm-label").Input("Water");
-        cut.Find("#trm-label").Blur();
+        await cut.Find("#trm-label").InputAsync(new ChangeEventArgs { Value = "Water" });
+        await cut.Find("#trm-label").FocusOutAsync(new FocusEventArgs());
         Assert.Contains("Starts a new charge", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal);
     }
 

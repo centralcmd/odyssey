@@ -28,16 +28,17 @@
     query commits on blur, so a name that is never explicitly picked is not
     silently dropped — the one behaviour a constrained select must NOT have. It
     switches MudAutocomplete's CoerceText / CoerceValue OFF: coercing the text to
-    the (still old) value on blur would wipe the typed name before OnBlur could
-    read it, so the commit is this component's own.
+    the (still old) value on blur would wipe the typed name, so the commit is this
+    component's own, made on focus leaving the field.
 *@
 
 @inject IJSRuntime Js
 
-@* FreeText captures what is typed from the bubbled input event: MudAutocomplete updates its own Text
-   asynchronously, so reading it back in OnBlur can see the previous keystroke's value when the blur
-   follows quickly (a fast Tab, a slow machine). *@
-<div class="@WrapClass" @oninput="OnTyped">
+@* FreeText owns both halves of its commit on this wrapper, through events Blazor dispatches
+   synchronously: the typed text from the bubbled input event, and the commit from the bubbled
+   focusout. MudAutocomplete updates its Text, and invokes its OnBlur, asynchronously, so relying on
+   either let a fast Tab (or a slow machine) move on before the typed name was committed. *@
+<div class="@WrapClass" @oninput="OnTyped" @onfocusout="CommitTyped">
     @* A real <label for> beats a splatted aria-label: MudAutocomplete renders unmatched attributes on
        its root wrapper, not the inner role="combobox" input, so an aria-label there never names the
        control. With an explicit InputId the visually-hidden label associates with the actual input. *@
@@ -64,7 +65,6 @@
                      InputId="@InputId"
                      ItemDisabledFunc="@(o => o?.Disabled == true)"
                      Error="@Error"
-                     OnBlur="OnBlurAsync"
                      CoerceText="@(!FreeText)"
                      CoerceValue="@(!FreeText)"
                      @attributes="UserAttributes">

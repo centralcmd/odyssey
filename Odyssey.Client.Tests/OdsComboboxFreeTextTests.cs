@@ -1,5 +1,6 @@
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
@@ -12,6 +13,13 @@ namespace Odyssey.Client.Tests;
 /// OdsCombobox's FreeText mode (Odyssey Design System · Combobox <c>freeText</c>): the field SUGGESTS
 /// rather than constrains, so a typed name commits on blur and a value matching no option still
 /// displays.
+///
+/// <para>
+/// Events are dispatched with the AWAITED bUnit helpers. The synchronous <c>Input()</c> /
+/// <c>FocusOut()</c> are fire-and-forget: MudAutocomplete's own input handler yields, so the bubbled
+/// handlers this mode relies on can complete after the test has moved on, which a loaded runner turns
+/// into an intermittent failure.
+/// </para>
 /// </summary>
 public class OdsComboboxFreeTextTests
 {
@@ -54,8 +62,8 @@ public class OdsComboboxFreeTextTests
         await using var ctx = NewContext();
         var cut = ctx.Render<Host>(p => p.Add(h => h.FreeText, true));
 
-        cut.Find("#name").Input("Water");
-        cut.Find("#name").Blur();
+        await cut.Find("#name").InputAsync(new ChangeEventArgs { Value = "Water" });
+        await cut.Find("#name").FocusOutAsync(new FocusEventArgs());
 
         Assert.Equal("Water", cut.Instance.Value);
     }
@@ -66,8 +74,8 @@ public class OdsComboboxFreeTextTests
         await using var ctx = NewContext();
         var cut = ctx.Render<Host>(p => p.Add(h => h.FreeText, true));
 
-        cut.Find("#name").Input("  monthly RENT ");
-        cut.Find("#name").Blur();
+        await cut.Find("#name").InputAsync(new ChangeEventArgs { Value = "  monthly RENT " });
+        await cut.Find("#name").FocusOutAsync(new FocusEventArgs());
 
         Assert.Equal("Monthly rent", cut.Instance.Value);
     }
@@ -87,8 +95,8 @@ public class OdsComboboxFreeTextTests
         await using var ctx = NewContext();
         var cut = ctx.Render<Host>(p => p.Add(h => h.FreeText, false));
 
-        cut.Find("#name").Input("Water");
-        cut.Find("#name").Blur();
+        await cut.Find("#name").InputAsync(new ChangeEventArgs { Value = "Water" });
+        await cut.Find("#name").FocusOutAsync(new FocusEventArgs());
 
         Assert.Null(cut.Instance.Value);
     }

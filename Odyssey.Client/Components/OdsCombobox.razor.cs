@@ -132,7 +132,7 @@ public partial class OdsCombobox
 
     // FreeText: the query IS an answer. Committing it on blur is what separates "suggests" from
     // "constrains". An empty query commits nothing — clearing is the ✕ affordance's job.
-    private Task OnBlurAsync(Microsoft.AspNetCore.Components.Web.FocusEventArgs _)
+    private Task CommitTyped(Microsoft.AspNetCore.Components.Web.FocusEventArgs _)
     {
         if (!FreeText)
             return Task.CompletedTask;
