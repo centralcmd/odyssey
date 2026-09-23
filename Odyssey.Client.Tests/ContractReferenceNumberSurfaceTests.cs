@@ -211,6 +211,32 @@ public class ContractReferenceNumberSurfaceTests : IAsyncLifetime
             It.Is<UpdateContract>(u => u.ReferenceNumber == null), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    /// <summary>
+    /// The create write path carries the field too, normalised — the parallel branch to the edit
+    /// tests above, so dropping the assignment from the NewContract block fails here.
+    /// </summary>
+    [Fact]
+    public void Create_sends_the_normalised_reference_number()
+    {
+        var (dialog, client) = RenderDialog(null);
+
+        dialog.FindAll("input[type=text]")[0].Input("Storage unit B12");
+        RefInput(dialog).Input("  B12-1001  ");
+        // The type is required; pick it through the select's own trigger and option, the path a
+        // user takes. The popover portals into the host's provider, so re-render before querying.
+        dialog.Find("button.odc-select-trigger").Click();
+        dialog.Render();
+        dialog.FindAll("[role='menuitemradio']")
+            .Single(o => o.TextContent.Contains("Rental", StringComparison.Ordinal))
+            .Click();
+        ClickFooter(dialog, "Create contract");
+
+        // Choosing an option closes a popover first, so the save lands a tick later; wait for it.
+        dialog.WaitForAssertion(() => client.Verify(c => c.CreateAsync(
+            It.Is<NewContract>(n => n.ReferenceNumber == "B12-1001" && n.Name == "Storage unit B12"),
+            It.IsAny<CancellationToken>()), Times.Once));
+    }
+
     [Fact]
     public void A_broken_rule_blocks_the_save()
     {
