@@ -34,7 +34,10 @@
 
 @inject IJSRuntime Js
 
-<div class="@WrapClass">
+@* FreeText captures what is typed from the bubbled input event: MudAutocomplete updates its own Text
+   asynchronously, so reading it back in OnBlur can see the previous keystroke's value when the blur
+   follows quickly (a fast Tab, a slow machine). *@
+<div class="@WrapClass" @oninput="OnTyped">
     @* A real <label for> beats a splatted aria-label: MudAutocomplete renders unmatched attributes on
        its root wrapper, not the inner role="combobox" input, so an aria-label there never names the
        control. With an explicit InputId the visually-hidden label associates with the actual input. *@
@@ -46,7 +49,7 @@
     {
         <span class="material-icons odc-combo-lead" style="@SelectedIconStyle" aria-hidden="true">@SelectedIcon</span>
     }
-    <MudAutocomplete T="OdsOption" @ref="_autocomplete"
+    <MudAutocomplete T="OdsOption"
                      Value="@Selected"
                      ValueChanged="OnSelected"
                      SearchFunc="Search"

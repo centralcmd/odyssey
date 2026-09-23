@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
-using MudBlazor.Extensions;
 
 namespace Odyssey.Client.Components;
 
@@ -121,7 +120,15 @@ public partial class OdsCombobox
         Options.FirstOrDefault(o => o.Value == Value)
         ?? (FreeText && !string.IsNullOrEmpty(Value) ? new OdsOption(Value, Value) : null);
 
-    private MudBlazor.MudAutocomplete<OdsOption>? _autocomplete;
+    // The text as last typed into the input — what a FreeText blur commits. Null once a row is picked
+    // or the typed text has been committed, so a stale keystroke is never committed twice.
+    private string? _typed;
+
+    private void OnTyped(ChangeEventArgs e)
+    {
+        if (FreeText)
+            _typed = e.Value?.ToString();
+    }
 
     // FreeText: the query IS an answer. Committing it on blur is what separates "suggests" from
     // "constrains". An empty query commits nothing — clearing is the ✕ affordance's job.
@@ -129,10 +136,9 @@ public partial class OdsCombobox
     {
         if (!FreeText)
             return Task.CompletedTask;
-        // Read off the input itself: the text a blur commits is whatever the field shows now.
-        var text = _autocomplete?.GetState(x => x.Text)?.Trim();
-        // The text MudAutocomplete shows for a picked row is that row's label, and a picked create row
-        // briefly shows its own "Create …" caption — neither is something the user typed.
+        var text = _typed?.Trim();
+        // Typing the current value's own label again is not a change, and a "Create …" caption is never
+        // a name.
         if (string.IsNullOrEmpty(text)
             || string.Equals(text, Selected?.Label, StringComparison.OrdinalIgnoreCase)
             || text.StartsWith($"{CreateLabel} \"", StringComparison.Ordinal))
@@ -142,6 +148,7 @@ public partial class OdsCombobox
         var next = hit?.Value ?? text;
         if (string.Equals(next, Value, StringComparison.Ordinal))
             return Task.CompletedTask;
+        _typed = null;
         Value = next;
         return ValueChanged.InvokeAsync(Value);
     }
@@ -216,6 +223,9 @@ public partial class OdsCombobox
         // selection where it was rather than silently accepting a row the user was told they can't pick.
         if (option is { Disabled: true })
             return;
+
+        // A pick supersedes whatever was typed to find it.
+        _typed = null;
 
         if (option is not null && IsCreateRow(option))
         {
