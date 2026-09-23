@@ -219,3 +219,7 @@
    the tile stays the same shape as a counterparty's. */
 .con-role.object { display: inline-flex; align-items: center; gap: 3px; }
 .con-role-mark { font-size: 13px; line-height: 1; opacity: .8; }
+
+/* Reference number — the fallback text form (the DS ReferenceNumber carries the real treatment). */
+.con-ref-inline { font-family: var(--font-mono); font-size: var(--fs-caption); letter-spacing: 0.02em; }
+.con-ref-tile .odc-infotile-v, .con-ref-tile .odc-refnum { max-width: 100%; }

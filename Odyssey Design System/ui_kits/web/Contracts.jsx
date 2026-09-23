@@ -248,6 +248,12 @@ const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite =
 };
 
 /* ====================== Expanded detail ====================== */
+/* The DS reference-number display, read at render so the page still draws
+   (as plain text) in the turn the bundle is recompiling. */
+const RefNum = (props) => {
+  const C = (window.OdysseyDesignSystem_d5aa51 || {}).ReferenceNumber;
+  return C ? <C {...props} /> : <span className="con-ref-inline">{props.value}</span>;
+};
 const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, smartTagIds, setSmartTagIds, smartTagCap, smartTagsDegraded, canWriteSmartTags, onNavigate, onNewTerm, onEditTerm, onDeleteTerm, events, onEditEvent, onDeleteEvent, onAnnounceEvent }) => {
   const typeInfo = CON_H.contractTypeInfo(contract.type);
   const parties = contract.parties || [];
@@ -287,6 +293,13 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
           instead of a term, so those tiles are alternatives, not omissions. */}
       <InfoTileGrid>
         <InfoTile icon="handshake" label="Name" value={contract.name} valueVariant="text" className="wrapvalue" />
+        {/* Present only when on file — a contract without a number is ordinary,
+            so absence adds no tile rather than a "None" one. */}
+        {contract.referenceNumber ? (
+          <InfoTile icon="tag" label="Reference number" valueVariant="text" className="wrapvalue con-ref-tile"
+            value={<RefNum value={contract.referenceNumber} />}
+            foot="as printed on the paperwork" />
+        ) : null}
         <InfoTile icon={typeInfo.icon} label="Type" value={typeInfo.label} valueVariant="text" foot={oneOff ? 'One-off' : 'Term'} />
         {oneOff ? (
           <InfoTile icon="event_available" label={completionPast ? 'Completed on' : 'Completes on'}
@@ -399,7 +412,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
 };
 
 /* ====================== One contract list item ====================== */
-const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smartTagsDegraded, canWriteSmartTags = true, onNavigate, open: openProp, onToggle, highlight, onDelete }) => {
+const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smartTagsDegraded, canWriteSmartTags = true, onNavigate, open: openProp, onToggle, highlight, onDelete, searchTerm }) => {
   const { useState, useRef, useEffect } = React;
   // Terms hang off the record like parties and files do — seeded from the
   // contract-scoped history (GET /api/contracts/{id}/terms).
@@ -457,6 +470,11 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
       ...prev,
       name: draft.name.trim() || prev.name,
       type: draft.type,
+      /* Carried forward like the signature stamps below — PUT is a full
+         replacement, so an omitted referenceNumber would CLEAR it. The kit's
+         pause / archive / sign writes spread `prev`, which is the same
+         guarantee the four client UpdateContract sites must make explicitly. */
+      referenceNumber: draft.referenceNumber === undefined ? prev.referenceNumber : draft.referenceNumber,
       description: draft.description.trim() || null,
       startDate: draft.mode === 'oneoff' ? null : (draft.startDate || null),
       endDate: draft.mode === 'oneoff' ? null : (draft.endDate || null),
@@ -608,6 +626,12 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
         chips={<ContractStatusChip status={status} />}
         meta={[
           typeInfo.label,
+          /* The reference sits beside the type — it is what a user reading
+             off a letter is scanning for. Marked when it is what the search
+             matched, so a row found only by its number says why. */
+          ...(c.referenceNumber ? [RefNum
+            ? <RefNum value={c.referenceNumber} size="sm" highlight={searchTerm} />
+            : <span className="con-ref-inline">{c.referenceNumber}</span>] : []),
           <span className="con-sub-inst"><MIcon name="groups" size={14} /><span>{contact ? contact.name : 'No contact'}</span></span>,
           ...(hasIncoming ? [<span className="trm-dir in">Money in</span>] : []),
         ]}
@@ -649,13 +673,16 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
           // Refused writes are offered with their reason rather than hidden —
           // the cap is the only thing that refuses one.
           termBlock
-            ? { icon: 'sell', label: 'New term', disabled: true }
-            : { icon: 'sell', label: 'New term', onClick: () => { setOpen(true); setModal('term'); } },
+            ? { icon: '§', label: 'New term', disabled: true }
+            : { icon: '§', label: 'New term', onClick: () => { setOpen(true); setModal('term'); } },
           { icon: 'attach_file', label: 'Upload document', onClick: () => { setOpen(true); setModal('file'); } },
           /* Creating an event lives HERE rather than in the section: it is one
              of the things you do to a contract, and the log below stays a
              read surface. Offered on an archived contract too — §8.6. */
           { icon: 'history', label: 'New event', onClick: () => { setOpen(true); setModal('event'); } },
+          /* Beside Copy ID, and only when a number is on file — the item is
+             absent, not disabled, for a contract without one. */
+          ...(c.referenceNumber ? [{ icon: 'tag', label: 'Copy reference number', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.referenceNumber); } }] : []),
           { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.id); } },
           { divider: true },
           /* An ENDED or an UNSIGNED contract can be archived — the lifecycle is
@@ -853,6 +880,10 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
     { key: 'endDate',   label: 'End date',   type: 'date',   sortValue: (c) => c.endDate || null },
     { key: 'type',      label: 'Type',       type: 'status', sortValue: (c) => { const i = CON_D.contractTypes.findIndex(t => t.key === c.type); return i < 0 ? CON_D.contractTypes.length : i; } },
     { key: 'status',    label: 'Status',     type: 'status', sortValue: (c) => { const i = CON_STATUS_ORDER.indexOf(CON_H.conStatus(c, today)); return i < 0 ? CON_STATUS_ORDER.length : i; } },
+    /* ContractSortBy.ReferenceNumber — appended, ascending by default, nulls
+       LAST in both directions (sortRows' rule, the server's too). Case-folded
+       to match the utf8mb4_*_ci collation the list endpoint sorts under. */
+    { key: 'referenceNumber', label: 'Reference number', type: 'text', sortValue: (c) => (c.referenceNumber ? c.referenceNumber.toLowerCase() : null) },
   ];
 
   const jumpTo = (id) => {
@@ -871,7 +902,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
     if (q) {
       const needle = q.toLowerCase();
       const partyNames = (c.parties || []).map(p => CON_H.conResolveParty(p).name).join(' ');
-      const hay = `${c.name} ${CON_H.contractTypeInfo(c.type).label} ${c.description || ''} ${partyNames}`.toLowerCase();
+      const hay = `${c.name} ${c.referenceNumber || ''} ${CON_H.contractTypeInfo(c.type).label} ${c.description || ''} ${partyNames}`.toLowerCase();
       if (!hay.includes(needle)) return false;
     }
     return true;
@@ -1057,7 +1088,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
         search={
           <div className="row gap-3 acct-filter-bar" style={{ flexWrap: 'wrap' }}>
             <div style={{ minWidth: 280, flex: 1 }}>
-              <SearchField placeholder="Search name, type, party, description…" value={q} onChange={setQ} />
+              <SearchField placeholder="Search name, reference, party…" value={q} onChange={setQ} />
             </div>
             <div style={{ minWidth: 170 }}>
               <MultiSelect allLabel="Any type" value={typeFilter} onChange={setTypeFilter}
@@ -1097,6 +1128,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
                 open={openId === c.id}
                 onToggle={(o) => setOpenId(o ? c.id : null)}
                 highlight={jumpId === c.id}
+                searchTerm={q}
                 onDelete={deleteContract} />
             )}
             empty={(

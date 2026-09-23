@@ -1,9 +1,14 @@
 /* Seed data + helpers for the Contracts feature (Contracts.jsx).
    ----------------------------------------------------------------------------
    Shapes mirror the spec's Odyssey.Finance.Context entities (Draft v4):
-     • Contract       { name, type, description?, startDate?, endDate?,
+     • Contract       { name, type, referenceNumber?, description?, startDate?, endDate?,
                         completionDate?, paused?, archived?, createdAtUtc,
                         parties[], files[] }
+                        — `referenceNumber` is the COUNTERPARTY's identifier
+                        (≤64, trimmed, blank → null). Nullable is the healthy
+                        steady state: the seed holds it on most contracts and
+                        not on the rest, so search and the nulls-last sort both
+                        have data. Not unique — nothing here dedupes it.
                         — a contract is either TERM-based (startDate/endDate, either
                         optional) or ONE-OFF (a single completionDate, no term).
      • ContractParty  { id, accountId? | contactId?, role, fromDate?, toDate? }
@@ -164,7 +169,7 @@
      Archived record. ---- */
   D.contracts = [
     {
-      id: 'ct-employment', name: 'ACME Co — Employment', type: 'Employment',
+      id: 'ct-employment', name: 'ACME Co — Employment', type: 'Employment', referenceNumber: 'EMP-00481',
       description: 'Permanent, full-time. Salary paid monthly into the Chase Checking account. 3-month notice either side.',
       startDate: '2024-03-01', endDate: null, ready: '2024-02-20T09:00:00Z', signed: '2024-02-24T09:00:00Z', paused: null, archived: null, createdAtUtc: '2024-02-20T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
@@ -180,7 +185,7 @@
       ],
     },
     {
-      id: 'ct-lease', name: 'Maple St Residence — Lease', type: 'Rental',
+      id: 'ct-lease', name: 'Maple St Residence — Lease', type: 'Rental', referenceNumber: 'AGR-2025/114-B.2',
       description: 'Twelve-month assured shorthold tenancy on the Maple St residence. Rent due on the 1st. Pets permitted by amendment.',
       startDate: '2025-09-01', endDate: '2026-08-31', ready: '2025-08-14T09:00:00Z', signed: '2025-08-20T09:00:00Z', paused: null, archived: null, createdAtUtc: '2025-08-14T10:00:00Z', createdByUserId: 'u-jane',
       parties: [
@@ -199,7 +204,7 @@
       ],
     },
     {
-      id: 'ct-house', name: 'Maple St Residence — Purchase', type: 'Purchase',
+      id: 'ct-house', name: 'Maple St Residence — Purchase', type: 'Purchase', referenceNumber: 'Title WA-2021-118804',
       description: 'Purchase of the Maple St property — a one-off agreement recorded by its completion (closing) date, not a term. Kept as the deed of record for the property.',
       startDate: null, endDate: null, completionDate: '2021-04-15', ready: '2021-03-02T09:00:00Z', signed: '2021-03-30T09:00:00Z', paused: null, archived: null, createdAtUtc: '2021-03-02T09:00:00Z', createdByUserId: null,
       parties: [
@@ -216,7 +221,7 @@
        was filed as a Purchase with a Buyer and a Seller. All three of its
        parties come from the Loan column of the matrix. */
     {
-      id: 'ct-auto-loan', name: 'Citi Auto Loan — 60 Month', type: 'Loan',
+      id: 'ct-auto-loan', name: 'Citi Auto Loan — 60 Month', type: 'Loan', referenceNumber: 'CAL 7730 1142 09',
       description: 'Fixed-rate 60-month auto loan against the vehicle. Monthly repayment by direct debit; early settlement permitted without penalty after month 12.',
       startDate: '2023-06-01', endDate: '2028-05-31', ready: '2023-05-20T09:00:00Z', signed: '2023-05-26T09:00:00Z', paused: null, archived: null, createdAtUtc: '2023-05-20T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
@@ -233,7 +238,7 @@
        link collections on an insurance policy. The Beneficiary here is the
        party whose contact can no longer be deleted silently. */
     {
-      id: 'ct-home-cover', name: 'Pacific Home Insurance — Buildings & Contents', type: 'Insurance',
+      id: 'ct-home-cover', name: 'Pacific Home Insurance — Buildings & Contents', type: 'Insurance', referenceNumber: 'PHI-BC-2026-0098812',
       description: 'Buildings and contents cover on the Maple St residence. Annual premium, paid in one instalment on renewal.',
       startDate: '2026-04-01', endDate: '2027-03-31', ready: '2026-03-10T09:00:00Z', signed: '2026-03-18T09:00:00Z', paused: null, archived: null, createdAtUtc: '2026-03-10T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
@@ -246,7 +251,7 @@
       files: [],
     },
     {
-      id: 'ct-fiber', name: 'Fiber Internet — 24 Month', type: 'Service',
+      id: 'ct-fiber', name: 'Fiber Internet — 24 Month', type: 'Service', referenceNumber: 'CUST-5508217',
       description: 'Symmetric 1 Gbps fiber. 24-month term, early-termination fee applies. Auto-renews monthly at term end.',
       startDate: '2025-02-01', endDate: '2027-01-31', ready: '2025-01-22T09:00:00Z', signed: '2025-01-24T09:00:00Z', paused: null, archived: null, createdAtUtc: '2025-01-22T09:00:00Z', createdByUserId: 'u-sam',
       parties: [
@@ -258,7 +263,7 @@
       ],
     },
     {
-      id: 'ct-gym', name: 'FitZone — Membership', type: 'Membership',
+      id: 'ct-gym', name: 'FitZone — Membership', type: 'Membership', referenceNumber: null,
       description: 'Annual gym membership. Direct debit, monthly. Frozen over the winter — resuming in the spring.',
       startDate: '2026-09-01', endDate: '2027-08-31', ready: '2026-06-10T09:00:00Z', signed: '2026-06-12T09:00:00Z', paused: '2026-09-14T10:30:00Z', archived: null, createdAtUtc: '2026-06-10T09:00:00Z', createdByUserId: 'u-mira',
       parties: [
@@ -271,7 +276,7 @@
     {
       // The ending-soon case: Active today, term inside the 45-day window, so it
       // populates the header signal's warning group beside the next charges.
-      id: 'ct-parking', name: 'Harbor Point Parking — Space 14', type: 'Rental',
+      id: 'ct-parking', name: 'Harbor Point Parking — Space 14', type: 'Rental', referenceNumber: 'HP-S14/25',
       description: 'Twelve-month parking licence on space 14. Renews only by a fresh agreement — give notice 30 days before the end date.',
       startDate: '2025-11-01', endDate: '2026-10-31', ready: '2025-10-20T09:00:00Z', signed: '2025-10-22T09:00:00Z', paused: null, archived: null, createdAtUtc: '2025-10-20T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
@@ -284,7 +289,7 @@
     {
       // Signed but not yet begun — the Upcoming case, inside the window, so it
       // populates the header signal's "Starting soon" group.
-      id: 'ct-energy', name: 'Northwind Energy — Fixed Tariff', type: 'Service',
+      id: 'ct-energy', name: 'Northwind Energy — Fixed Tariff', type: 'Service', referenceNumber: 'NWE-Ω-2026.№114',
       description: 'Twelve-month fixed electricity tariff. Switch completes on the start date; the standing charge and unit rate are fixed for the term.',
       startDate: '2026-10-15', endDate: '2027-10-14', ready: '2026-09-02T09:00:00Z', signed: '2026-09-04T09:00:00Z', paused: null, archived: null, createdAtUtc: '2026-09-02T09:00:00Z', createdByUserId: 'u-sam',
       parties: [
@@ -295,7 +300,7 @@
       ],
     },
     {
-      id: 'ct-storage', name: 'Storage Unit B12 — Rental', type: 'Rental',
+      id: 'ct-storage', name: 'Storage Unit B12 — Rental', type: 'Rental', referenceNumber: 'B12-1001',
       description: 'Self-storage unit, 50 sq ft. Twelve-month term, not renewed — kept for record.',
       startDate: '2024-01-01', endDate: '2025-12-31', ready: '2024-01-03T09:00:00Z', signed: '2024-01-03T09:00:00Z', paused: null, archived: null, createdAtUtc: '2024-01-03T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
@@ -308,7 +313,7 @@
       ],
     },
     {
-      id: 'ct-solar', name: 'Solar Panel Lease', type: 'Other',
+      id: 'ct-solar', name: 'Solar Panel Lease', type: 'Other', referenceNumber: null,
       description: 'Twenty-year rooftop solar lease — transferred to the new owner on sale of the property. Retained for reference.',
       startDate: '2023-06-01', endDate: '2025-10-31', ready: '2023-05-28T09:00:00Z', signed: '2023-05-30T09:00:00Z', paused: null, archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
@@ -325,7 +330,7 @@
        describe a term nobody has agreed to. It carries a priced Fee term and
        contributes nothing to the run rate or the upcoming charges. */
     {
-      id: 'ct-cleaning', name: 'Beacon Home Services — Cleaning', type: 'Service',
+      id: 'ct-cleaning', name: 'Beacon Home Services — Cleaning', type: 'Service', referenceNumber: null,
       description: 'Fortnightly whole-house clean. Quote received; terms still under discussion — nothing has been marked ready for signature yet.',
       startDate: '2026-11-01', endDate: '2027-10-31', ready: null, signed: null, paused: null, archived: null, createdAtUtc: '2026-09-12T11:00:00Z', createdByUserId: 'u-jane',
       parties: [
@@ -338,7 +343,7 @@
        before it begins, and the thing to act on is an abandoned negotiation,
        not a retired agreement. Archivable under the widened rule. */
     {
-      id: 'ct-tutoring', name: 'Westbrook Tutoring — Weekly Sessions', type: 'Service',
+      id: 'ct-tutoring', name: 'Westbrook Tutoring — Weekly Sessions', type: 'Service', referenceNumber: null,
       description: 'Weekly maths tuition over the school year. Sent for signature in August 2025 and never returned — the term it describes has since run out.',
       startDate: '2025-09-01', endDate: '2026-06-30', ready: '2025-08-20T15:30:00Z', signed: null, paused: null, archived: null, createdAtUtc: '2025-08-18T09:00:00Z', createdByUserId: 'u-mira',
       parties: [

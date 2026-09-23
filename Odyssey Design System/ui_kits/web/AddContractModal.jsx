@@ -2,6 +2,14 @@
    + the dashed add-row). Fields mirror the NewContract creation DTO (§6/§9):
      • name         (required, ≤256)
      • type         (ContractType — Employment / Service / Rental / Other)
+     • referenceNumber (optional, ≤64) — the COUNTERPARTY's number off the
+                    paperwork. DS ReferenceNumberField: live length and
+                    hidden-character checks (the DTO's [StringLength] and
+                    Cc/Cf/Co/Cn deny-list), trim on blur, blank → null. Not
+                    unique, so there is no "already in use" state to draw.
+                    Full-replacement PUT: on edit the loaded value is
+                    pre-filled and sent back, so saving an unrelated change
+                    never clears it; emptying the field is how it is cleared.
      • description  (optional, ≤1024)
      • term         a contract is either TERM-based or ONE-OFF:
          – Term:    startDate (optional) + endDate (optional; ≥ startDate)
@@ -35,6 +43,7 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null, initialT
   const [mode, setMode] = useState(contract && contract.completionDate ? 'oneoff' : 'term'); // 'term' | 'oneoff'
   const [draft, setDraft] = useState({
     name: contract?.name || '', type: initialType || contract?.type || '', description: contract?.description || '',
+    referenceNumber: contract?.referenceNumber || '',
     startDate: contract ? (H.conDateOnly(contract.startDate) || '') : H.conToday(),
     endDate: contract ? (H.conDateOnly(contract.endDate) || '') : '',
     completionDate: contract ? (H.conDateOnly(contract.completionDate) || '') : '',
@@ -50,10 +59,17 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null, initialT
   const orphans = typeChanged ? H.conPartiesRejectedByType(contract.parties, draft.type) : [];
   const blockedByParties = orphans.length > 0;
 
+  const normRef = (v) => { const t = (v || '').trim(); return t === '' ? null : t; };
+  const DSNS = window.OdysseyDesignSystem_d5aa51 || {};
+  const RefField = DSNS.ReferenceNumberField;
+
   const submit = () => {
     const next = {};
     if (!draft.name.trim()) next.name = 'Give the contract a name.';
     if (!draft.type) next.type = 'Pick a contract type.';
+    const RN = (window.OdysseyDesignSystem_d5aa51 || {}).REFERENCE_NUMBER_RULES;
+    const refErr = RN && RN.validate(draft.referenceNumber);
+    if (refErr) next.referenceNumber = refErr.message;
     if (blockedByParties) next.type = `This type rejects ${orphans.length} existing part${orphans.length === 1 ? 'y' : 'ies'}.`;
     if (mode === 'oneoff') {
       if (!draft.completionDate) next.completionDate = 'Set a completion date.';
@@ -68,12 +84,13 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null, initialT
     if (Object.keys(next).length) { setErrors(next); return; }
     if (editing) {
       // Parity with the list item's saveEdit patch shape.
-      onSave && onSave({ ...draft, name: draft.name.trim(), mode });
+      onSave && onSave({ ...draft, name: draft.name.trim(), referenceNumber: normRef(draft.referenceNumber), mode });
     } else {
       onCreate && onCreate({
         id: `ct-new-${Date.now()}`,
         name: draft.name.trim(),
         type: draft.type,
+        referenceNumber: normRef(draft.referenceNumber),
         description: draft.description.trim() || null,
         startDate: mode === 'oneoff' ? null : (draft.startDate || null),
         endDate: mode === 'oneoff' ? null : (draft.endDate || null),
@@ -90,7 +107,7 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null, initialT
     <Modal
       title={editing ? 'Edit contract' : 'New contract'}
       subtitle={editing
-        ? 'Update the agreement’s name, type, term and signature dates. Parties and documents are managed from the contract.'
+        ? 'Update the agreement’s name, reference, type, term and signature dates. Parties and documents are managed from the contract.'
         : 'Record the agreement’s name, type and dates — a term or a one-off. It starts as a draft; mark it ready and signed from the contract itself.'}
       icon="handshake"
       onClose={onClose}
@@ -103,6 +120,14 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null, initialT
         </React.Fragment>
       }>
       <Field label="Contract name" required value={draft.name} onChange={set('name')} placeholder="e.g. Maple St Residence — Lease" error={errors.name} autoFocus />
+
+      {RefField ? (
+        <RefField value={draft.referenceNumber} onChange={set('referenceNumber')}
+          error={errors.referenceNumber && !DSNS.REFERENCE_NUMBER_RULES ? errors.referenceNumber : undefined} />
+      ) : (
+        <Field label="Reference number" value={draft.referenceNumber} onChange={set('referenceNumber')}
+          placeholder="e.g. AGR-2026/114-B.2" error={errors.referenceNumber} />
+      )}
 
       <FormRow>
         <ContractTypeSelect required value={draft.type} onChange={set('type')} error={errors.type} placeholder="Choose a type…" />

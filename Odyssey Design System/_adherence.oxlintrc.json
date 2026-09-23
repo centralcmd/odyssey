@@ -523,6 +523,18 @@
         "message": "<RecordCellContext> doesn't accept that prop. Declared props: expanded, editing, justSaved."
       },
       {
+        "selector": "JSXOpeningElement[name.name='ReferenceNumber'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|highlight|copyable|size|showIcon|className|key|ref|className|style|children)$/]",
+        "message": "<ReferenceNumber> doesn't accept that prop. Declared props: value, highlight, copyable, size, showIcon, className."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ReferenceNumber'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md)$/]",
+        "message": "<ReferenceNumber> size must be one of 'sm' | 'md'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ReferenceNumberField'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|value|onChange|onBlur|placeholder|help|error|disabled|autoFocus|className|id|key|ref|className|style|children)$/]",
+        "message": "<ReferenceNumberField> doesn't accept that prop. Declared props: label, value, onChange, onBlur, placeholder, help, error, disabled, autoFocus, className, id."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='RegistryMultiSelect'] > JSXAttribute > JSXIdentifier[name!=/^(?:types|value|onChange|label|icon|align|key|ref|className|style|children)$/]",
         "message": "<RegistryMultiSelect> doesn't accept that prop. Declared props: types, value, onChange, label, icon, align."
       },
@@ -1032,6 +1044,12 @@
         "replaces": []
       },
       "RecordCellContext": {
+        "replaces": []
+      },
+      "ReferenceNumber": {
+        "replaces": []
+      },
+      "ReferenceNumberField": {
         "replaces": []
       },
       "RegistryMultiSelect": {

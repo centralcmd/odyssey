@@ -1,0 +1,85 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="ReferenceNumberField · ReferenceNumber" subtitle="A contract's counterparty reference number. The field mirrors the DTO rules: ≤64 characters (the counter goes red and the save is refused, and a paste is never cut short), no Cc/Cf/Co/Cn character (it names the code point and offers one-click removal), trimmed on blur, blank stored as null. The display draws nothing when there is no number, marks the part a search matched, and can copy the value." viewport="980x900" -->
+<html lang="en" data-theme="dark">
+<head>
+  <title>Odyssey · ReferenceNumberField</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="../colors_and_type.css" />
+  <style>
+    html,body{margin:0;background:var(--mud-palette-background)}
+    body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:30px 32px}
+    h1{font:var(--fw-bold) var(--fs-h6)/1 var(--font-sans);margin:0 0 22px}
+    h1 code{font-family:var(--font-mono);font-size:.8em;color:var(--brand-text)}
+    .stack{display:flex;flex-direction:column;gap:26px;max-width:900px}
+    .cap{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary);margin-bottom:14px}
+    .row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 28px;align-items:start}
+    .demo{border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);padding:16px 18px;background:var(--mud-palette-surface)}
+    .demo-sub{font:var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans);color:var(--mud-palette-text-secondary);margin-top:10px}
+    .sep{height:1px;background:var(--mud-palette-divider)}
+    .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font:var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans);color:var(--mud-palette-text-secondary)}
+    .meta .dot{width:3px;height:3px;border-radius:50%;background:currentColor;opacity:.6}
+    .name{font:var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans);margin-bottom:5px}
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="../_ds_bundle.js"></script>
+</head>
+<body>
+  <h1>ReferenceNumberField · ReferenceNumber — <code>&lt;ReferenceNumberField value onChange&gt;</code> <code>&lt;ReferenceNumber value highlight copyable size&gt;</code></h1>
+  <div id="root" class="stack"></div>
+  <script>
+    (function () {
+      var e = React.createElement;
+      var NS = window.OdysseyDesignSystem_d5aa51 || {};
+      var F = NS.ReferenceNumberField, R = NS.ReferenceNumber, InfoTile = NS.InfoTile;
+      if (!F || !R) { document.getElementById('root').textContent = 'Bundle not compiled yet — reload.'; return; }
+
+      function Demo(p) {
+        var s = React.useState(p.value); 
+        return e('div', { className: 'demo' },
+          e(F, { value: s[0], onChange: s[1], error: p.error }),
+          e('div', { className: 'demo-sub' }, p.sub));
+      }
+      var long = 'LEASE-2026-MAPLE-STREET-RESIDENCE-UNIT-4B-ADDENDUM-PETS-AND-PARKING-REV3';
+
+      function MetaRow(p) {
+        return e('div', { className: 'demo' },
+          e('div', { className: 'name' }, p.name),
+          e('div', { className: 'meta' }, 'Rental', e('span', { className: 'dot' }),
+            e(R, { value: p.value, size: 'sm', highlight: p.q }),
+            p.value ? e('span', { className: 'dot' }) : null, 'Harbor Point Ltd'),
+          e('div', { className: 'demo-sub' }, p.sub));
+      }
+
+      var root = [
+        e('div', { key: 'a' }, e('div', { className: 'cap' }, 'Field · valid states'),
+          e('div', { className: 'row' },
+            e(Demo, { key: 1, value: '', sub: 'Empty: 0/64. An empty field is stored as null, the same as leaving it out. There is no "Optional" label; the missing asterisk already says it.' }),
+            e(Demo, { key: 2, value: 'AGR-2026/114-B.2', sub: 'Letters, digits, separators and spaces are all accepted. Case and spacing are kept exactly as typed.' }),
+            e(Demo, { key: 3, value: 'NWE-Ω-2026.№114 (rev/2)', sub: 'Non-Latin letters and symbols are accepted. Rare CJK and emoji above U+FFFF are accepted too, because Cs is not on the deny-list.' }),
+            e(Demo, { key: 4, value: '   REF-1   ', sub: 'Leading and trailing spaces are trimmed on blur (click in, then out), so the field shows the value that will be stored.' }))),
+        e('div', { className: 'sep', key: 's1' }),
+        e('div', { key: 'b' }, e('div', { className: 'cap' }, 'Field · refused states (the save stays blocked)'),
+          e('div', { className: 'row' },
+            e(Demo, { key: 1, value: long, sub: 'Pasted at 72 characters. The whole paste is kept, the counter turns red and the error gives the limit and the length. A silent cut would save a different number.' }),
+            e(Demo, { key: 2, value: 'INV-2026\u202E-0041', sub: 'A bidi override pasted from a PDF. The error names the character and its code point, and "Remove it" deletes only the hidden characters.' }),
+            e(Demo, { key: 3, value: 'CUST\t55082\u200B17', sub: 'Two hidden characters (a tab and a zero-width space). The error names the first and counts the rest.' }),
+            e(Demo, { key: 4, value: 'AGR-2026/114-B.2', error: 'Must be 64 characters or fewer.', sub: 'A server 400 keyed on referenceNumber, shown in the field. The message never repeats the value.' }))),
+        e('div', { className: 'sep', key: 's2' }),
+        e('div', { key: 'c' }, e('div', { className: 'cap' }, 'Display · list-row meta line (size="sm")'),
+          e('div', { className: 'row' },
+            e(MetaRow, { key: 1, name: 'Harbor Point Parking — Space 14', value: 'HP-S14/25', sub: 'The number sits beside the type.' }),
+            e(MetaRow, { key: 2, name: 'Harbor Point Parking — Space 14', value: 'HP-S14/25', q: 's14', sub: 'Search "s14": the match is marked, so a row found only by its number shows why it is listed.' }),
+            e(MetaRow, { key: 3, name: 'Beacon Home Services — Cleaning', value: null, sub: 'No number on file draws nothing: no dash and no "None". This is a normal record.' }),
+            e(MetaRow, { key: 4, name: 'Maple St Residence — Lease', value: long.slice(0, 64), sub: 'At 64 characters the line ellipsizes and the full value is in the tooltip.' }))),
+        e('div', { className: 'sep', key: 's3' }),
+        e('div', { key: 'd' }, e('div', { className: 'cap' }, 'Display · detail tile (size="md"). The Contracts page copies from the row menu; copyable is available for surfaces without one'),
+          e('div', { className: 'row' },
+            e(InfoTile, { key: 1, icon: 'tag', label: 'Reference number', valueVariant: 'text', value: e(R, { value: 'PHI-BC-2026-0098812' }), foot: 'as printed on the paperwork' }),
+            e(InfoTile, { key: 2, icon: 'tag', label: 'Reference number', valueVariant: 'text', value: e(R, { value: long.slice(0, 64) }), foot: 'long values wrap' })))
+      ];
+      ReactDOM.createRoot(document.getElementById('root')).render(e(React.Fragment, null, root));
+    })();
+  </script>
+</body>
+</html>
