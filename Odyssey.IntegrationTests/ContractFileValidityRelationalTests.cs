@@ -152,7 +152,7 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
                 Assert.False(await ColumnExistsAsync(context, "IssuedBy"));
 
                 await AttributionUsers.EnsureAsync(context, "doc-attacher");
-                var contractId = await SeedContractAsync(context, "Pre-existing agreement");
+                var contractId = await SeedBaselineContractAsync(context, "Pre-existing agreement");
                 var fileId = await SeedFileMetadataAsync(context, "doc-attacher");
 
                 // Raw SQL, so the row is written exactly as one existed before the columns did.
@@ -221,6 +221,22 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
         context.Contracts.Add(contract);
         await context.SaveChangesAsync();
         return contract.ContractId;
+    }
+
+    /// <summary>
+    /// A contract written as raw SQL naming only the columns the baseline has. Through EF it would
+    /// name every column the CURRENT model maps, and a column added by a later migration
+    /// (<c>ReferenceNumber</c>, issue #181) fails with <c>Unknown column … in 'INSERT INTO'</c> on
+    /// a schema that predates it — the trap <c>BaselineContacts</c> records for contacts.
+    /// </summary>
+    private static async Task<Guid> SeedBaselineContractAsync(OdysseyContext context, string name)
+    {
+        var contractId = Guid.NewGuid();
+        var anchor = Anchor.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
+        await context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO `Contracts` (`ContractId`, `Name`, `Type`, `StartDate`, `CreatedAtUtc`) VALUES ({0}, {1}, {2}, {3}, {4})",
+            contractId, name, (int)ContextContractType.Rental, anchor, anchor);
+        return contractId;
     }
 
     private static async Task<Guid> SeedFileMetadataAsync(OdysseyContext context, string uploaderId)

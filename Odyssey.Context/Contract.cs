@@ -23,6 +23,15 @@ public class Contract
     public string? Description { get; set; }
 
     /// <summary>
+    /// The number printed on the paperwork — a policy, agreement, customer or order number (issue
+    /// #181). The <b>counterparty's</b> identifier, so deliberately not unique; null is the healthy
+    /// steady state. No index: search is a leading-wildcard <c>LIKE</c> and sorting happens in memory
+    /// after projection, so neither access path could use one.
+    /// </summary>
+    [StringLength(64)]
+    public string? ReferenceNumber { get; set; }
+
+    /// <summary>
     /// Start of a <b>term</b> contract. Optional — an open-started ongoing agreement leaves it null.
     /// Mutually exclusive with <see cref="CompletionDate"/>: a contract is either term-based
     /// (<see cref="StartDate"/>/<see cref="EndDate"/>) or a one-off (<see cref="CompletionDate"/>).

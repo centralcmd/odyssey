@@ -14,6 +14,23 @@ public sealed record UpdateContract
     [StringLength(1024)]
     public string? Description { get; set; }
 
+    /// <summary>
+    /// The number printed on the paperwork (issue #181) — optional. Trimmed, and blank collapses to
+    /// null. Any printable character is accepted, non-Latin and non-BMP included; only Unicode
+    /// control, format, private-use and unassigned characters are refused. The pattern names those
+    /// four categories rather than <c>\p{C}</c>, which also holds <c>Cs</c> and would reject every
+    /// surrogate pair — .NET regex matches UTF-16 code units.
+    ///
+    /// <para>
+    /// <b>Full-replacement semantics</b>, like <see cref="Description"/>: null or omitted
+    /// <b>clears</b> it. Every caller that rebuilds this DTO from a loaded record must carry it forward;
+    /// <c>ContractPauseSurfaceTests.RequiredStamps</c> keeps that a build failure.
+    /// </para>
+    /// </summary>
+    [StringLength(ContractReferenceNumber.MaxLength)]
+    [RegularExpression(ContractReferenceNumber.Pattern, ErrorMessage = ContractReferenceNumber.InvalidCharactersMessage)]
+    public string? ReferenceNumber { get; set; }
+
     /// <summary>Start of a term contract (optional). Null when this is a one-off (see <see cref="CompletionDate"/>).</summary>
     public DateTime? StartDate { get; set; }
 

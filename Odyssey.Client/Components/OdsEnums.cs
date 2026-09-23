@@ -24,6 +24,12 @@ public enum OdsSize { Sm, Md, Lg }
 /// <summary>OdsInfoTile value typography — Mono (numbers/dates) · Text (names/labels) · Sm (dates).</summary>
 public enum OdsInfoTileVariant { Mono, Text, Sm }
 
+/// <summary>
+/// <c>OdsReferenceNumber</c>'s two sizes (design system: <c>size="sm" | "md"</c>): Sm is the list-row
+/// meta line (caption, ellipsized, glyph on), Md the detail tile (body, wraps, glyph off).
+/// </summary>
+public enum OdsReferenceNumberSize { Sm, Md }
+
 /// <summary>Button intent — filled (primary CTA) · outlined (secondary) · text (tertiary/nav) · danger (destructive).</summary>
 public enum OdsButtonVariant { Filled, Outlined, Text, Danger }
 

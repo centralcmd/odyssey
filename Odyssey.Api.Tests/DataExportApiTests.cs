@@ -447,6 +447,48 @@ public class DataExportApiTests
     }
 
     /// <summary>
+    /// Issue #181 AC 21. <c>DataExportTableCoverageTests</c> guards TABLE coverage and would pass with
+    /// this column missing, so the field is asserted on the export document itself — present with its
+    /// value on one contract and present as <c>null</c> on the other.
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesContractReferenceNumber_OrNull()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            context.Contracts.AddRange(
+                new Contract
+                {
+                    Name = "Numbered",
+                    Type = Odyssey.Context.ContractType.Rental,
+                    ReferenceNumber = "AGR-2026/114-B.2",
+                    CreatedAtUtc = DateTime.UtcNow,
+                },
+                new Contract
+                {
+                    Name = "Unnumbered",
+                    Type = Odyssey.Context.ContractType.Rental,
+                    CreatedAtUtc = DateTime.UtcNow,
+                });
+            await context.SaveChangesAsync();
+        }
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var contracts = document.RootElement.GetProperty("databases").GetProperty("finance")
+            .GetProperty("contracts").EnumerateArray().ToList();
+
+        var numbered = Assert.Single(contracts, c => c.GetProperty("name").GetString() == "Numbered");
+        Assert.Equal("AGR-2026/114-B.2", numbered.GetProperty("referenceNumber").GetString());
+
+        var unnumbered = Assert.Single(contracts, c => c.GetProperty("name").GetString() == "Unnumbered");
+        Assert.True(unnumbered.TryGetProperty("referenceNumber", out var absent));
+        Assert.Equal(JsonValueKind.Null, absent.ValueKind);
+    }
+
+    /// <summary>
     /// Issue #138 AC 18's CONTENT half. <c>DataExportTableCoverageTests</c> is a reflection guard that
     /// only proves the table is accounted for somewhere; it passes the moment a collection property
     /// exists and says nothing about what the rows carry. This seeds an event and reads the exported

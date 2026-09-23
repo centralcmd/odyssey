@@ -55,7 +55,12 @@ public class ContractController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContractsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ContractListItem>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "List contracts (lean projection with derived status), with search, filtering, sorting and pagination.")]
+    [SwaggerOperation(
+        Summary = "List contracts (lean projection with derived status), with search, filtering, sorting and pagination.",
+        Description = @"'search' matches the name, the description, the reference number and linked contact-party
+                        names (case-insensitive substring). 'sortBy' accepts Name (default), StartDate, EndDate,
+                        Type, Status and ReferenceNumber; ReferenceNumber sorts ascending by default with
+                        contracts that have none last in both directions (issue #181).")]
     public async Task<IActionResult> Get(
         [FromQuery] ContractsQueryParams query,
         CancellationToken cancellationToken = default)

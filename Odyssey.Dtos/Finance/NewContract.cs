@@ -15,6 +15,17 @@ public sealed record NewContract
     public string? Description { get; set; }
 
     /// <summary>
+    /// The number printed on the paperwork (issue #181) — optional. Trimmed, and blank collapses to
+    /// null. Any printable character is accepted, non-Latin and non-BMP included; only Unicode
+    /// control, format, private-use and unassigned characters are refused. The pattern names those
+    /// four categories rather than <c>\p{C}</c>, which also holds <c>Cs</c> and would reject every
+    /// surrogate pair — .NET regex matches UTF-16 code units.
+    /// </summary>
+    [StringLength(ContractReferenceNumber.MaxLength)]
+    [RegularExpression(ContractReferenceNumber.Pattern, ErrorMessage = ContractReferenceNumber.InvalidCharactersMessage)]
+    public string? ReferenceNumber { get; set; }
+
+    /// <summary>
     /// Start of a term contract (optional — null is an open-started ongoing agreement). Leave this and
     /// <see cref="EndDate"/> null when <see cref="CompletionDate"/> is set (a one-off).
     /// </summary>

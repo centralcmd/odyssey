@@ -295,6 +295,39 @@ public class DemoDataSeederTests
     }
 
     /// <summary>
+    /// Issue #181 AC 19 — the demo set carries contract reference numbers on SOME contracts and not
+    /// others, deterministically. Rows with a number give the search and sort paths data in the dev
+    /// stack and both E2E tiers; rows without one are what the nulls-last sort has to place.
+    /// </summary>
+    [Fact]
+    public async Task Seeds_contracts_both_with_and_without_a_reference_number()
+    {
+        await using var provider = BuildProvider(out var seeder);
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var contracts = await context.Contracts.AsNoTracking().ToListAsync();
+
+        Assert.Contains(contracts, c => c.ReferenceNumber is not null);
+        Assert.Contains(contracts, c => c.ReferenceNumber is null);
+
+        // Every seeded value is one the API itself would accept — already normalised, within the
+        // cap and free of the refused character categories — so demo data never holds a row a PUT
+        // carrying it forward would then refuse.
+        Assert.All(contracts.Where(c => c.ReferenceNumber is not null), c =>
+        {
+            Assert.Equal(Odyssey.Dtos.Finance.ContractReferenceNumber.Normalize(c.ReferenceNumber), c.ReferenceNumber);
+            Assert.True(c.ReferenceNumber!.Length <= Odyssey.Dtos.Finance.ContractReferenceNumber.MaxLength);
+            Assert.Matches(Odyssey.Dtos.Finance.ContractReferenceNumber.Pattern, c.ReferenceNumber);
+        });
+
+        var expected = DemoDataSet.Build().Contracts.ToDictionary(c => c.ContractId);
+        Assert.All(contracts, c => Assert.Equal(expected[c.ContractId].ReferenceNumber, c.ReferenceNumber));
+    }
+
+    /// <summary>
     /// Issue #138 — the demo set carries contract event logs, and carries the states the surface has
     /// to draw differently. Without them the rail, the year markers and the "Unknown user" attribution
     /// would all be unreachable in the demo stack, so the feature would look absent rather than empty.

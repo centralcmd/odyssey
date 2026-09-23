@@ -1,0 +1,106 @@
+@*
+    OdsReferenceNumberField — the single-line input for a counterparty's identifier, a contract's
+    referenceNumber (Odyssey Design System · components/ReferenceNumberField).
+
+    The rules are the DTO's, read through OdsReferenceNumberRules rather than restated: ≤ 64
+    characters and no Unicode Cc / Cf / Co / Cn character, with trim and blank → null on the way out.
+    The field trims on blur so what the user sees is what will be stored; interior spacing, case and
+    separators are kept verbatim.
+
+    No native maxlength, on purpose: a pasted 70-character number would be silently cut to 64 and
+    saved as a DIFFERENT number. The field takes the whole paste, the counter turns red, and the error
+    names the limit; the dialog refuses to save until it is fixed.
+
+    A hidden character is named by code point and offered a one-click removal, because the user cannot
+    see what they are being asked to delete — it almost always arrives with a paste from a PDF or an
+    email. No message ever echoes the value, matching the server's 400 bodies.
+
+    Controlled: bind via @bind-Value.
+*@
+
+<OdsFieldShell Label="@Label" HtmlFor="@FieldId"
+               Help="@(string.IsNullOrEmpty(ShownError) ? Help : null)" Error="@ShownError"
+               Class="@ShellClass" Aside="@Counter">
+    <div class="odc-refnum-field">
+        <div class="odc-input-wrap">
+            <span class="material-icons odc-input-icon" aria-hidden="true">tag</span>
+            <input id="@FieldId"
+                   class="odc-input has-icon odc-refnum-input"
+                   type="text"
+                   value="@Value"
+                   placeholder="@Placeholder"
+                   disabled="@Disabled"
+                   autofocus="@AutoFocus"
+                   spellcheck="false"
+                   autocomplete="off"
+                   aria-invalid="@(string.IsNullOrEmpty(ShownError) ? null : "true")"
+                   aria-describedby="@($"{FieldId}-help")"
+                   @oninput="OnInput"
+                   @onblur="OnBlur" />
+        </div>
+        @if (Live?.Hidden is { } hidden && !Disabled)
+        {
+            <button type="button" class="odc-refnum-strip" @onclick="StripHidden">
+                <span class="material-icons" aria-hidden="true">cleaning_services</span>
+                Remove @(hidden.Count > 1 ? $"all {hidden.Count}" : "it")
+            </button>
+        }
+    </div>
+</OdsFieldShell>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Reference number";
+
+    /// <summary>The raw value as typed. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    [Parameter] public string Placeholder { get; set; } = "e.g. AGR-2026/114-B.2";
+
+    [Parameter] public string Help { get; set; } =
+        "The number printed on the paperwork — enter it exactly as the other side quotes it.";
+
+    /// <summary>An error from outside the field (a server refusal). Wins over the live check.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public bool AutoFocus { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    private string FieldId = default!;
+
+    protected override void OnInitialized() => FieldId = Id ?? $"odc-refnum-{Guid.NewGuid():N}";
+
+    private OdsReferenceNumberRules.Violation? Live => OdsReferenceNumberRules.Validate(Value);
+
+    private string? ShownError => !string.IsNullOrEmpty(Error) ? Error : Live?.Message;
+
+    private int Length => (Value ?? string.Empty).Trim().Length;
+
+    private string ShellClass => string.IsNullOrEmpty(Class) ? "odc-refnum-shell" : $"odc-refnum-shell {Class}";
+
+    private RenderFragment Counter =>
+        @<span class="odc-field-count @(Length > OdsReferenceNumberRules.MaxLength ? "over" : null)" aria-hidden="true">@Length/@OdsReferenceNumberRules.MaxLength</span>;
+
+    private Task OnInput(ChangeEventArgs e) => SetAsync(e.Value?.ToString() ?? string.Empty);
+
+    private Task OnBlur()
+    {
+        var value = Value ?? string.Empty;
+        var trimmed = value.Trim();
+        return trimmed == value ? Task.CompletedTask : SetAsync(trimmed);
+    }
+
+    private Task StripHidden() => SetAsync(OdsReferenceNumberRules.StripHidden(Value));
+
+    private Task SetAsync(string value)
+    {
+        Value = value;
+        return ValueChanged.InvokeAsync(value);
+    }
+}

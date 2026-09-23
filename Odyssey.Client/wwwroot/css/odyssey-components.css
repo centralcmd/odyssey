@@ -1277,6 +1277,32 @@
 .odc-field-count { margin-left: auto; flex: none; font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); font-variant-numeric: tabular-nums; }
 .odc-field-count.over { color: var(--mud-palette-error); }
 
+/* ---------- ReferenceNumberField / ReferenceNumber — a counterparty identifier (issue #181).
+   Mirrors the DS components.css block of the same name, plus the leading-icon input rule
+   (.odc-input-icon / .has-icon) the field is the first raw-input consumer of. ---------- */
+.odc-input-icon { position: absolute; left: 12px; pointer-events: none; color: var(--mud-palette-text-secondary); font-size: 20px; }
+.odc-input.has-icon { padding-left: 38px; }
+.odc-refnum-field { display: flex; flex-direction: column; gap: var(--space-2); }
+.odc-refnum-input { font-family: var(--font-mono); letter-spacing: 0.02em; }
+.odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--mud-palette-lines-inputs); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
+.odc-refnum-strip:hover { background: var(--mud-palette-action-default-hover); }
+.odc-refnum-strip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.odc-refnum-strip .material-icons { font-size: 15px; color: var(--mud-palette-text-secondary); }
+.odc-refnum { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; max-width: 100%; color: var(--mud-palette-text-primary); }
+.odc-refnum-icon { flex: none; font-size: 15px; color: var(--mud-palette-text-secondary); }
+.odc-refnum-text { min-width: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.odc-refnum.md .odc-refnum-text { font-size: var(--fs-body1); line-height: 1.35; overflow-wrap: anywhere; }
+.odc-refnum.sm .odc-refnum-text { font-size: var(--fs-caption); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mud-palette-text-secondary); }
+.odc-refnum.sm .odc-refnum-icon { font-size: 13px; }
+.odc-refnum-mark { background: var(--brand-soft); color: var(--mud-palette-text-primary); border-radius: 2px; padding: 0 1px; }
+.odc-refnum-copy { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; margin-left: 2px; border: none; border-radius: var(--radius-pill, 999px); background: transparent; cursor: pointer; color: var(--mud-palette-text-secondary); transition: background var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard); }
+.odc-refnum-copy:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-refnum-copy:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.odc-refnum-copy .material-icons { font-size: 16px; }
+.odc-refnum-copy.done { color: var(--finance-income); }
+/* A detail tile holds the display rather than plain text, so let it fill and wrap. */
+.con-ref-tile .odc-infotile-v, .con-ref-tile .odc-refnum { max-width: 100%; }
+
 /* ---------- FormRow (paired-field column grid) ---------- */
 .odc-form-row { display: grid; }
 /* MudBlazor's dense fields carry an 8px top margin that the DS field wrappers

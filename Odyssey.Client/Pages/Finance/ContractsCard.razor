@@ -50,7 +50,7 @@
             <div class="ph-filter-bar">
                 <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
                                 DebounceInterval="300" OnSearch="LoadContracts"
-                                Placeholder="Search name, party, description…"
+                                Placeholder="Search name, reference, party…"
                                 Class="ph-search" />
                 <OdsMultiSelect Label="Any type" Icon="handshake" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged"
                                 Options="OdsTypeRegistries.ContractOptions" Class="ph-select" />
@@ -89,6 +89,11 @@
                     var meta = new List<RenderFragment?>
                     {
                         OdsRecordMeta.Text(typeInfo.Label),
+                        @* The reference sits beside the type — it is what a reader holding a letter
+                           is scanning for — and marks the part the search matched, so a row found only
+                           by its number says why it is listed. Null when none is on file, which the
+                           card drops (issue #181). *@
+                        ReferenceMeta(c.ReferenceNumber),
                         ContactMeta(string.IsNullOrWhiteSpace(c.InstitutionName) ? "No contact" : c.InstitutionName),
                     };
 
@@ -173,6 +178,17 @@
                                              ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
                                     <Value>@detail.Name</Value>
                                 </OdsInfoTile>
+
+                                @* Present only when on file (issue #181): a contract without a number
+                                   is ordinary, so absence adds no tile rather than a "None" one. *@
+                                @if (!string.IsNullOrWhiteSpace(detail.ReferenceNumber))
+                                {
+                                    <OdsInfoTile Icon="tag" Label="Reference number" Class="con-ref-tile"
+                                                 ValueVariant="OdsInfoTileVariant.Text" WrapValue="true"
+                                                 Foot="@OdsInfoTile.Caption("as printed on the paperwork")">
+                                        <Value><OdsReferenceNumber Value="@detail.ReferenceNumber" /></Value>
+                                    </OdsInfoTile>
+                                }
 
                                 @* No per-tile icon colour: the grid inherits the card's accent, which
                                    IS this contract's type colour. *@
@@ -367,6 +383,13 @@
     // The contact entry on the card's meta line. An inline render fragment is Razor syntax, so it
     // cannot live in the code-behind. One span, so it becomes the .odc-record-metaitem's only child
     // and picks up the meta line's alignment.
+    // The reference-number entry on the meta line (issue #181), or null so the card drops it — an
+    // absent fact must not leave a stray separator.
+    private RenderFragment? ReferenceMeta(string? referenceNumber) =>
+        string.IsNullOrWhiteSpace(referenceNumber)
+            ? null
+            : @<OdsReferenceNumber Value="@referenceNumber" Size="OdsReferenceNumberSize.Sm" Highlight="@_searchString" />;
+
     private RenderFragment ContactMeta(string name) =>
         @<span class="con-sub-inst">
             <span class="material-icons" aria-hidden="true">groups</span><span>@name</span>

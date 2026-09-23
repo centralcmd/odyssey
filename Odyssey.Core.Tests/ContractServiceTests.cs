@@ -757,4 +757,76 @@ public class ContractServiceTests
         Assert.Equal(party!.ContractPartyId, stored.ContractPartyId);
         Assert.Equal(from.Date, stored.FromDate!.Value.Date);
     }
+
+    // ── Reference number (issue #181) ────────────────────────────────────────
+
+    /// <summary>
+    /// The trim and blank-to-null normalisation, exercised separately on EACH write path (AC 6) —
+    /// the service is also reachable by non-HTTP callers, so it cannot lean on model validation.
+    /// </summary>
+    [Theory]
+    [InlineData("  REF-1  ", "REF-1")]
+    [InlineData("REF 1 / 2", "REF 1 / 2")]
+    [InlineData("   ", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public async Task Reference_number_is_normalised_on_create_and_on_update(string? submitted, string? expected)
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+
+        var created = await service.Create(new NewContract
+        {
+            Name = "Lease",
+            Type = DtoContractType.Rental,
+            ReferenceNumber = submitted,
+        }, TestUserId);
+        Assert.Equal(expected, created.ReferenceNumber);
+
+        await service.Update(created.ContractId, new UpdateContract
+        {
+            Name = "Lease",
+            Type = DtoContractType.Rental,
+            ReferenceNumber = "OTHER",
+        }, TestUserId);
+
+        var updated = await service.Update(created.ContractId, new UpdateContract
+        {
+            Name = "Lease",
+            Type = DtoContractType.Rental,
+            ReferenceNumber = submitted,
+        }, TestUserId);
+        Assert.Equal(expected, updated!.ReferenceNumber);
+        Assert.Equal(expected, (await context.Contracts.FindAsync(created.ContractId))!.ReferenceNumber);
+    }
+
+    /// <summary>Neither write path writes the value into a log line (AC 20).</summary>
+    [Fact]
+    public async Task Reference_number_never_reaches_a_log_line()
+    {
+        const string Probe = "LOGPROBE-5508217";
+        await using var context = TestContextFactory.Create();
+        var logger = new RecordingLogger();
+        var service = CreateService(context, logger: logger);
+
+        var created = await service.Create(new NewContract
+        {
+            Name = "Lease",
+            Type = DtoContractType.Rental,
+            ReferenceNumber = Probe,
+            Ready = FixedToday.AddDays(-2),
+            Signed = FixedToday.AddDays(-1),
+        }, TestUserId);
+        await service.Update(created.ContractId, new UpdateContract
+        {
+            Name = "Lease",
+            Type = DtoContractType.Rental,
+            ReferenceNumber = Probe + "-2",
+        }, TestUserId);
+
+        // The signature transitions above guarantee the service DID log, so an empty capture cannot
+        // pass this vacuously.
+        Assert.NotEmpty(logger.Lines);
+        Assert.DoesNotContain(logger.Lines, line => line.Contains("LOGPROBE", StringComparison.Ordinal));
+    }
 }

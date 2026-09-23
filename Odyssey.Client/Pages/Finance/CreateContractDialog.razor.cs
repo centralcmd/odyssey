@@ -37,6 +37,7 @@ public partial class CreateContractDialog
     private string? _name;
     private string _type = string.Empty;
     private string? _description;
+    private string? _referenceNumber;
     private DateTime? _startDate = DateTime.UtcNow.Date;
     private DateTime? _endDate;
     private DateTime? _completionDate;
@@ -106,6 +107,7 @@ public partial class CreateContractDialog
         _name           = contract.Name;
         _type           = contract.Type.ToString();
         _description    = contract.Description;
+        _referenceNumber = contract.ReferenceNumber;
         _mode           = contract.CompletionDate is not null ? OneOffMode : TermMode;
         _startDate      = contract.StartDate;
         _endDate        = contract.EndDate;
@@ -199,7 +201,10 @@ public partial class CreateContractDialog
         // call stays unconditional because the server runs the same guards on POST regardless.
         ValidateSignature();
 
-        if (_nameError is not null || _typeError is not null || _endError is not null
+        // The field shows its own live error; a broken rule only has to block the save here.
+        var referenceInvalid = OdsReferenceNumberRules.Validate(_referenceNumber) is not null;
+
+        if (referenceInvalid || _nameError is not null || _typeError is not null || _endError is not null
             || _completionError is not null || _readyError is not null || _signedError is not null)
             return false;
 
@@ -207,6 +212,7 @@ public partial class CreateContractDialog
         var type = Enum.TryParse<ContractType>(_type, out var t) ? t : ContractType.Other;
         var name = _name!.Trim();
         var description = string.IsNullOrWhiteSpace(_description) ? null : _description!.Trim();
+        var referenceNumber = OdsReferenceNumberRules.Normalize(_referenceNumber);
         var startDate = oneOff ? null : _startDate;
         var endDate = oneOff ? null : _endDate;
         var completionDate = oneOff ? _completionDate : null;
@@ -218,6 +224,9 @@ public partial class CreateContractDialog
                 Name = name,
                 Type = type,
                 Description = description,
+                // The field is pre-filled from the record, so sending it back is the carry-forward
+                // PUT's full replacement demands; an emptied field is how it is cleared (issue #181).
+                ReferenceNumber = referenceNumber,
                 StartDate = startDate,
                 EndDate = endDate,
                 CompletionDate = completionDate,
@@ -243,6 +252,7 @@ public partial class CreateContractDialog
             Name = name,
             Type = type,
             Description = description,
+            ReferenceNumber = referenceNumber,
             StartDate = startDate,
             EndDate = endDate,
             CompletionDate = completionDate,

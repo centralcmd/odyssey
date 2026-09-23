@@ -40,6 +40,8 @@ public enum ContractSortBy
     EndDate,
     Type,
     Status,
+    /// <summary>Appended (issue #181) — never renumber the members above. Nulls sort last both ways.</summary>
+    ReferenceNumber,
 }
 
 /// <summary>

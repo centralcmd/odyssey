@@ -73,6 +73,9 @@ public partial class ContractsCard
         // orders by. Sorting on the ordinal here would put Draft and Ready, the two earliest states,
         // last: they are appended members, because an ordinal is a wire and persistence contract.
         new() { Key = "status", Label = "Status", Type = OdsSortType.Status, SortValue = c => ContractStatusOrder.Rank(c.Status) },
+        // ContractSortBy.ReferenceNumber (issue #181) — appended, ascending by default, nulls last in
+        // both directions on the server. Case-folded to match the collation the server sorts under.
+        new() { Key = "referenceNumber", Label = "Reference number", Type = OdsSortType.Text, SortValue = c => c.ReferenceNumber?.ToLowerInvariant() },
     ];
 
     // ── Permissions ────────────────────────────────────────────────────────────
@@ -542,6 +545,8 @@ public partial class ContractsCard
             Name = d.Name,
             Type = d.Type,
             Description = d.Description,
+            // PUT is a full replacement: omitted, the reference number would be cleared (issue #181).
+            ReferenceNumber = d.ReferenceNumber,
             StartDate = d.StartDate,
             EndDate = d.EndDate,
             CompletionDate = d.CompletionDate,
@@ -581,6 +586,8 @@ public partial class ContractsCard
             Name = d.Name,
             Type = d.Type,
             Description = d.Description,
+            // PUT is a full replacement: omitted, the reference number would be cleared (issue #181).
+            ReferenceNumber = d.ReferenceNumber,
             StartDate = d.StartDate,
             EndDate = d.EndDate,
             CompletionDate = d.CompletionDate,
@@ -674,6 +681,8 @@ public partial class ContractsCard
             Name = d.Name,
             Type = d.Type,
             Description = d.Description,
+            // PUT is a full replacement: omitted, the reference number would be cleared (issue #181).
+            ReferenceNumber = d.ReferenceNumber,
             StartDate = d.StartDate,
             EndDate = d.EndDate,
             CompletionDate = d.CompletionDate,
@@ -1011,6 +1020,21 @@ public partial class ContractsCard
                 Icon = "upload_file",
                 Label = "Upload document",
                 OnClick = EventCallback.Factory.Create(this, () => AttachDocument(c.ContractId)),
+            });
+        }
+
+        // Beside Copy ID, and only when a number is on file — absent, not disabled, for a contract
+        // without one (issue #181).
+        if (!string.IsNullOrWhiteSpace(c.ReferenceNumber))
+        {
+            var referenceNumber = c.ReferenceNumber;
+            items.Add(new OdsMenuItem
+            {
+                Icon = "tag",
+                Label = "Copy reference number",
+                TrailingIcon = "content_copy",
+                OnClick = EventCallback.Factory.Create(this,
+                    () => Clipboard.CopyAsync(referenceNumber, "Reference number copied.")),
             });
         }
 

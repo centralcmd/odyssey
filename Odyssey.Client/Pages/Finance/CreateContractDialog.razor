@@ -8,7 +8,8 @@
     CreateContractDialog — the "New contract" dialog (issue #174), reused in edit mode when a
     Contract is supplied (design-system update: every record's Edit action opens its create dialog
     in edit mode instead of an inline expand-to-edit panel). Fields mirror the NewContract /
-    UpdateContract DTOs: name (required, ≤256), type, description (optional, ≤1024), and the term.
+    UpdateContract DTOs: name (required, ≤256), the reference number (optional, ≤64 — issue #181),
+    type, description (optional, ≤1024), and the term.
     A contract is either TERM-based — startDate (optional) + endDate (optional, ≥ startDate) — or a
     ONE-OFF — a required completionDate point-in-time agreement with no ongoing term. Parties and
     documents are never edited here; they are managed from the contract's detail (§6/§10).
@@ -30,7 +31,7 @@
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
                Icon="handshake" Title="@(IsEdit ? "Edit contract" : "New contract")"
                Subtitle="@(IsEdit
-                   ? "Update the agreement's name, type, term and signature dates. Parties and documents are managed from the contract."
+                   ? "Update the agreement's name, reference, type, term and signature dates. Parties and documents are managed from the contract."
                    : "Record the agreement's name, type and dates — a term or a one-off. It starts as a draft; mark it ready and signed from the contract itself.")"
                SubmitLabel="@(IsEdit ? "Save changes" : "Create contract")"
                SubmitIcon="@(IsEdit ? "check" : "add")"
@@ -38,6 +39,11 @@
 
     <OdsField Label="Contract name" Required="true" @bind-Value="_name" Placeholder="e.g. Maple St Residence — Lease"
               Error="@_nameError" />
+
+    @* The counterparty's number off the paperwork (issue #181). Not unique, so there is no "already
+       in use" state. PUT is a full replacement, so on edit it is pre-filled and sent back; emptying
+       the field is the only way to clear it. *@
+    <OdsReferenceNumberField @bind-Value="_referenceNumber" />
 
     <OdsFormRow>
         <OdsContractTypeSelect Required="true" Value="@_type"

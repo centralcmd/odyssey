@@ -1,0 +1,98 @@
+@inject Odyssey.Client.Services.IClipboardService Clipboard
+@*
+    OdsReferenceNumber — read-only display of a counterparty identifier, a contract's referenceNumber
+    (Odyssey Design System · components/ReferenceNumber): a `tag` glyph and the value in mono,
+    exactly as stored.
+
+    • Null or blank renders NOTHING. A contract with no number on file is an ordinary record, so there
+      is no "No reference" placeholder, no dash and no muted tile — absence is the healthy state.
+    • Highlight marks the case-insensitive substring a list search matched, so a row found only by its
+      reference number shows why it is in the list.
+    • Copyable adds a copy button. The value is never truncated when copied; long values wrap in the
+      Md size and ellipsize with a full-value title in Sm.
+    • The glyph labels a bare meta-line value, so it shows by default in Sm only — a detail tile
+      already carries its own `tag` chip.
+*@
+
+@if (!string.IsNullOrWhiteSpace(Value))
+{
+    var parts = Parts;
+    <span class="@CssClass" title="@(Size == OdsReferenceNumberSize.Sm ? Value : null)">
+        @if (WithIcon)
+        {
+            <span class="material-icons odc-refnum-icon" aria-hidden="true">tag</span>
+        }
+        @* One line on purpose: whitespace between these nodes would render inside the value. *@
+        <span class="odc-refnum-text"><span class="odc-sr-only">Reference number </span>@parts.Before@if (parts.Match is not null){<mark class="odc-refnum-mark">@parts.Match</mark>}@parts.After</span>
+        @if (Copyable)
+        {
+            <button type="button" class="@($"odc-refnum-copy{(_copied ? " done" : "")}")" @onclick="CopyAsync"
+                    @onclick:stopPropagation="true"
+                    aria-label="@(_copied ? "Reference number copied" : "Copy reference number")">
+                <span class="material-icons" aria-hidden="true">@(_copied ? "check" : "content_copy")</span>
+            </button>
+        }
+    </span>
+}
+
+@code {
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>The search term to mark, case-insensitively. Blank marks nothing.</summary>
+    [Parameter] public string? Highlight { get; set; }
+
+    [Parameter] public bool Copyable { get; set; }
+
+    [Parameter] public OdsReferenceNumberSize Size { get; set; } = OdsReferenceNumberSize.Md;
+
+    /// <summary>Override the glyph; by default it shows in Sm only.</summary>
+    [Parameter] public bool? ShowIcon { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private bool _copied;
+    private CancellationTokenSource? _reset;
+
+    private bool WithIcon => ShowIcon ?? Size == OdsReferenceNumberSize.Sm;
+
+    private string? Needle => string.IsNullOrWhiteSpace(Highlight) ? null : Highlight.Trim();
+
+    /// <summary>The value split around the first case-insensitive match; no match leaves it whole.</summary>
+    private (string Before, string? Match, string After) Parts
+    {
+        get
+        {
+            var value = Value ?? string.Empty;
+            var at = Needle is null ? -1 : value.IndexOf(Needle, StringComparison.OrdinalIgnoreCase);
+            return at < 0
+                ? (value, null, string.Empty)
+                : (value[..at], value.Substring(at, Needle!.Length), value[(at + Needle.Length)..]);
+        }
+    }
+
+    private string CssClass =>
+        $"odc-refnum {(Size == OdsReferenceNumberSize.Sm ? "sm" : "md")}{(string.IsNullOrEmpty(Class) ? "" : " " + Class)}";
+
+    private async Task CopyAsync()
+    {
+        // The toast is the announcement: swapping the focused button's aria-label is not reliably
+        // read out, so the checkmark alone would leave a screen-reader user without a status
+        // (WCAG 4.1.3) — the same path every other copy action in the client takes.
+        if (Value is null || !await Clipboard.CopyAsync(Value, "Reference number copied."))
+            return;
+
+        _copied = true;
+        _reset?.Cancel();
+        _reset = new CancellationTokenSource();
+        var token = _reset.Token;
+        try
+        {
+            await Task.Delay(1400, token);
+            _copied = false;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException)
+        {
+        }
+    }
+}
