@@ -82,24 +82,12 @@
             @if (TakesLabel && IsContractOwner)
             {
                 var labelError = _errors.TryGetValue("label", out var contractLabelErr) ? contractLabelErr : null;
-                <OdsFieldShell Label="Name" HtmlFor="trm-label" Required="true" Error="@labelError">
-                    <HelpContent>
-                        @if (labelError is null)
-                        {
-                            @if (MatchedSeries is { } matched)
-                            {
-                                <text>Joins the price history of <b>@matched.Label</b> — currently @matched.Note. This entry supersedes it from the effective date.</text>
-                            }
-                            else if (!string.IsNullOrWhiteSpace(_label))
-                            {
-                                <text>Starts a <b>new charge</b> on this contract, with its own history separate from the others.</text>
-                            }
-                            else
-                            {
-                                <text>Pick a charge this updates, or type a new name to start one.</text>
-                            }
-                        }
-                    </HelpContent>
+                @* Help and error are mutually exclusive, as in AddContractPartyDialog: with no help
+                   node the error takes the help line's id, which is what the combobox's
+                   aria-describedby names — a help fragment left in place would push the error onto a
+                   separate "-error" id nothing points at. *@
+                <OdsFieldShell Label="Name" HtmlFor="trm-label" Required="true" Error="@labelError"
+                               HelpContent="@(labelError is null ? NameHelp : null)">
                     <ChildContent>
                         <OdsCombobox InputId="trm-label" FreeText="true" Clearable="true"
                                      Value="@_label" ValueChanged="OnLabelChanged"

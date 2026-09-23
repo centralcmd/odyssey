@@ -468,6 +468,27 @@ public class ContractTermSurfaceTests
         Assert.Contains("money leaves the household", cut.Markup, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The name field's error must land on the id its input's aria-describedby names. Help and error
+    /// are therefore mutually exclusive: with the help line withdrawn, the error takes
+    /// <c>trm-label-help</c> rather than a separate <c>-error</c> id nothing points at.
+    /// </summary>
+    [Fact]
+    public void A_missing_name_error_is_the_node_the_input_is_described_by()
+    {
+        var cut = RenderDialog(Lease());
+
+        Assert.Contains("Pick a charge this updates", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal);
+
+        cut.FindAll("button")
+            .Single(b => b.TextContent.Contains("Create term", StringComparison.Ordinal))
+            .Click();
+
+        var described = cut.Find("#trm-label-help");
+        Assert.Contains("Name this charge", described.TextContent, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll("#trm-label-help-error"));
+    }
+
     // ── Harness ──────────────────────────────────────────────────────────────
 
     private static int CountOccurrences(string haystack, string needle)

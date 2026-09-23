@@ -387,6 +387,27 @@ public partial class AddTermDialog
     private NameSuggestion? MatchedSeries =>
         TermLabel.Key(_label) is { } key ? _nameSuggestions.FirstOrDefault(s => s.Key == key) : null;
 
+    /// <summary>The name field's help line: which of the two writes — join or start — is about to happen.</summary>
+    private RenderFragment NameHelp => builder =>
+    {
+        if (MatchedSeries is { } matched)
+        {
+            builder.AddMarkupContent(0, "Joins the price history of ");
+            builder.OpenElement(1, "b");
+            builder.AddContent(2, matched.Label);
+            builder.CloseElement();
+            builder.AddContent(3, $" — currently {matched.Note}. This entry supersedes it from the effective date.");
+        }
+        else if (!string.IsNullOrWhiteSpace(_label))
+        {
+            builder.AddMarkupContent(4, "Starts a <b>new charge</b> on this contract, with its own history separate from the others.");
+        }
+        else
+        {
+            builder.AddContent(5, "Pick a charge this updates, or type a new name to start one.");
+        }
+    };
+
     // The combobox's "New charge" row writes the typed text as the name — a new series, not a record.
     private static OdsOption? CreateNameOption(string text, string? _) =>
         string.IsNullOrWhiteSpace(text) ? null : OdsOption.From(text.Trim());
