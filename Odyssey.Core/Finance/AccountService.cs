@@ -7,10 +7,8 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using ContextAccountFileType = Odyssey.Context.AccountFileType;
 using ContextAccountType = Odyssey.Context.AccountType;
-using ContextTermKind = Odyssey.Context.TermKind;
 using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoAccountFileType = Odyssey.Dtos.Finance.AccountFileType;
-using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
 using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using DtoTermDirection = Odyssey.Dtos.Finance.TermDirection;
 using DtoInterval = Odyssey.Dtos.Finance.Interval;
@@ -398,15 +396,13 @@ public class AccountService
     }
 
     /// <summary>
-    /// The in-force terms per account — one per SERIES, <c>(TermKind, LabelKey)</c>, ordered by kind
-    /// (registry order) then label so the card's Current band reads the same way on every load. One
-    /// kind contributes one tile per label: a card charging four named fees shows four.
+    /// The in-force terms per account — one per SERIES, its <c>LabelKey</c>, ordered by label so the
+    /// card's Current band reads the same way on every load: a card charging four named fees shows
+    /// four.
     ///
     /// <para>
-    /// This is the query that used to fetch the rate terms alone. Widening it from two kinds to all of
-    /// them is what feeds the record card's Current band, and it stays <b>one</b> query over the term
-    /// composite index across every account on the page — the alternative, a per-account follow-up, is
-    /// the N+1 the whole enrichment exists to avoid.
+    /// It stays <b>one</b> query over the term composite index across every account on the page — the
+    /// alternative, a per-account follow-up, is the N+1 the whole enrichment exists to avoid.
     /// </para>
     /// </summary>
     private async Task<Dictionary<Guid, List<Term>>> GetCurrentTerms(
@@ -432,7 +428,6 @@ public class AccountService
 
     private static AccountCurrentTerm ToCurrentTerm(Term term) => new()
     {
-        TermKind = term.TermKind.Adapt<DtoTermKind>(),
         // Carried because it is the tile's NAME — without it a card with several fees renders
         // several indistinguishable tiles. Note is still excluded from this cross-claim projection.
         Label = term.Label,

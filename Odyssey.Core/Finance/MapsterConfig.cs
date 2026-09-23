@@ -12,10 +12,8 @@ using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoBudgetCategoryType = Odyssey.Dtos.Finance.BudgetCategoryType;
 using DtoTransactionFileType = Odyssey.Dtos.Finance.TransactionFileType;
 using DtoTaxStatementFileType = Odyssey.Dtos.Finance.TaxStatementFileType;
-using ContextTermKind = Odyssey.Context.TermKind;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
 using ContextInterval = Odyssey.Context.Interval;
-using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
 using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using DtoInterval = Odyssey.Dtos.Finance.Interval;
 using ContextBudgetItem = Odyssey.Context.BudgetItem;
@@ -88,14 +86,6 @@ public static class MapsterConfig
                 .MapWith(src => ConvertContextToDto(src));
 
             TypeAdapterConfig<DtoTaxStatementFileType, ContextTaxStatementFileType>
-                .NewConfig()
-                .MapWith(src => ConvertDtoToContext(src));
-
-            TypeAdapterConfig<ContextTermKind, DtoTermKind>
-                .NewConfig()
-                .MapWith(src => ConvertContextToDto(src));
-
-            TypeAdapterConfig<DtoTermKind, ContextTermKind>
                 .NewConfig()
                 .MapWith(src => ConvertDtoToContext(src));
 
@@ -295,22 +285,6 @@ public static class MapsterConfig
         DtoTaxStatementFileType.TaxAssessment => ContextTaxStatementFileType.TaxAssessment,
         DtoTaxStatementFileType.SupportingDocument => ContextTaxStatementFileType.SupportingDocument,
         _ => ContextTaxStatementFileType.Other,
-    };
-
-    private static DtoTermKind ConvertContextToDto(ContextTermKind src) => src switch
-    {
-        ContextTermKind.InterestRate => DtoTermKind.InterestRate,
-        ContextTermKind.ExpectedReturn => DtoTermKind.ExpectedReturn,
-        ContextTermKind.Fee => DtoTermKind.Fee,
-        _ => DtoTermKind.Unknown,
-    };
-
-    private static ContextTermKind ConvertDtoToContext(DtoTermKind src) => src switch
-    {
-        DtoTermKind.InterestRate => ContextTermKind.InterestRate,
-        DtoTermKind.ExpectedReturn => ContextTermKind.ExpectedReturn,
-        DtoTermKind.Fee => ContextTermKind.Fee,
-        _ => ContextTermKind.Unknown,
     };
 
     private static DtoTermValueUnit ConvertContextToDto(ContextTermValueUnit src) => src switch

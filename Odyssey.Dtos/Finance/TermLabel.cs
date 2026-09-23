@@ -8,7 +8,7 @@ namespace Odyssey.Dtos.Finance;
 /// drift.
 ///
 /// <para>
-/// A term's series key is <c>(AccountId, TermKind, LabelKey)</c>: <see cref="Normalize"/> produces the
+/// A term's series key is <c>(owner, LabelKey)</c>: <see cref="Normalize"/> produces the
 /// display form the user sees, and <see cref="Key"/> the comparison form that decides which series a
 /// term joins. Folding is done on write rather than at query time because the comparison has to mean
 /// the same thing on MariaDB (case-insensitive collation) and the EF InMemory provider (ordinal).
@@ -55,26 +55,4 @@ public static class TermLabel
     /// </summary>
     public static string? Key(string? raw) =>
         Normalize(raw)?.ToLowerInvariant();
-
-    /// <summary>
-    /// Whether a kind takes a label. Refused on the rate kinds, so the headline rate stays
-    /// unambiguous; required on <see cref="TermKind.Fee"/>, since with one fee kind two unnamed fees
-    /// could not be told apart.
-    /// </summary>
-    public static TermLabelRule RuleFor(TermKind kind) => kind switch
-    {
-        TermKind.InterestRate or TermKind.ExpectedReturn => TermLabelRule.Refused,
-        TermKind.Fee => TermLabelRule.Required,
-        _ => TermLabelRule.Refused,
-    };
-}
-
-/// <summary>Whether a <see cref="TermKind"/> refuses a label or requires one. There is no third case.</summary>
-public enum TermLabelRule
-{
-    /// <summary>A rate kind: the field is not rendered, and a supplied label is a 400.</summary>
-    Refused,
-
-    /// <summary>A fee: the field is required, and a missing label is a 400.</summary>
-    Required,
 }

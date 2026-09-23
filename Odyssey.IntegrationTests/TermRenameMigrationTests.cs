@@ -196,7 +196,6 @@ public class TermRenameMigrationTests(MariaDbFixture fixture)
                 // The read-modify-write a UI performs: send back exactly what was read.
                 var updated = await service.Update(accountId, termId, new Odyssey.Dtos.Finance.NewTerm
                 {
-                    TermKind = loaded.TermKind,
                     Label = loaded.Label,
                     ValueUnit = loaded.ValueUnit,
                     Value = loaded.Value,

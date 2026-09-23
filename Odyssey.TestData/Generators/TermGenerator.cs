@@ -31,7 +31,6 @@ public static class TermGenerator
 {
     private sealed record TermSpec(
         string AccountName,
-        TermKind Kind,
         TermValueUnit Unit,
         decimal Value,
         DateTime EffectiveFrom,
@@ -43,79 +42,77 @@ public static class TermGenerator
         string? Note = null);
 
     /// <summary>
-    /// The id of one seeded term. The label is part of the seed key because it is part of the series
-    /// key: two fees on one account can now share a kind and a date, and would otherwise be handed
-    /// the same deterministic id.
+    /// The id of one seeded term. The label is part of the seed key because it IS the series key: two
+    /// terms on one account can share a date, and would otherwise be handed the same deterministic id.
     /// </summary>
-    public static Guid IdFor(string accountName, TermKind kind, DateTime effectiveFrom, string? label = null) =>
-        DeterministicGuid.From($"account-term::{accountName}::{kind}::{TermLabel.Key(label) ?? ""}@{effectiveFrom:yyyy-MM-dd}");
+    public static Guid IdFor(string accountName, DateTime effectiveFrom, string? label = null) =>
+        DeterministicGuid.From($"account-term::{accountName}::{TermLabel.Key(label) ?? ""}@{effectiveFrom:yyyy-MM-dd}");
 
     public static List<Term> Build()
     {
         var specs = new List<TermSpec>
         {
             // Savings interest rate climbing over three years → demonstrates rate history + current resolution.
-            new(Catalog.Accounts.EmergencyFund, TermKind.Fee, TermValueUnit.Percentage, 0.0150m, D(2023, 1, 1), Label: "Interest rate", Note: "Introductory savings rate."),
-            new(Catalog.Accounts.EmergencyFund, TermKind.Fee, TermValueUnit.Percentage, 0.0250m, D(2024, 1, 1), Label: "Interest rate", Note: "Rate rise."),
-            new(Catalog.Accounts.EmergencyFund, TermKind.Fee, TermValueUnit.Percentage, 0.0410m, D(2025, 6, 1), Label: "Interest rate", Note: "Current rate."),
+            new(Catalog.Accounts.EmergencyFund, TermValueUnit.Percentage, 0.0150m, D(2023, 1, 1), Label: "Interest rate", Note: "Introductory savings rate."),
+            new(Catalog.Accounts.EmergencyFund, TermValueUnit.Percentage, 0.0250m, D(2024, 1, 1), Label: "Interest rate", Note: "Rate rise."),
+            new(Catalog.Accounts.EmergencyFund, TermValueUnit.Percentage, 0.0410m, D(2025, 6, 1), Label: "Interest rate", Note: "Current rate."),
 
             // High-yield savings (EUR): a single, higher current rate.
-            new(Catalog.Accounts.HighYieldSavings, TermKind.Fee, TermValueUnit.Percentage, 0.0325m, D(2025, 11, 1), Label: "Interest rate", Note: "Promotional high-yield rate."),
+            new(Catalog.Accounts.HighYieldSavings, TermValueUnit.Percentage, 0.0325m, D(2025, 11, 1), Label: "Interest rate", Note: "Promotional high-yield rate."),
 
             // Mortgage: a fixed rate set at origination.
-            new(Catalog.Accounts.HomeMortgage, TermKind.Fee, TermValueUnit.Percentage, 0.0395m, D(2017, 9, 1), Label: "Interest rate", Note: "30-year fixed."),
+            new(Catalog.Accounts.HomeMortgage, TermValueUnit.Percentage, 0.0395m, D(2017, 9, 1), Label: "Interest rate", Note: "30-year fixed."),
 
             // Loans: interest rates.
-            new(Catalog.Accounts.CarLoanVolvo, TermKind.Fee, TermValueUnit.Percentage, 0.0690m, D(2023, 2, 15), Label: "Interest rate", Note: "Auto loan APR."),
-            new(Catalog.Accounts.RenovationPersonalLoan, TermKind.Fee, TermValueUnit.Percentage, 0.0810m, D(2024, 9, 1), Label: "Interest rate", Note: "Personal loan APR."),
+            new(Catalog.Accounts.CarLoanVolvo, TermValueUnit.Percentage, 0.0690m, D(2023, 2, 15), Label: "Interest rate", Note: "Auto loan APR."),
+            new(Catalog.Accounts.RenovationPersonalLoan, TermValueUnit.Percentage, 0.0810m, D(2024, 9, 1), Label: "Interest rate", Note: "Personal loan APR."),
 
             // Credit card: the purchase APR plus SIX named fees. Under one fee kind per category these
             // collapsed to two in-force values; named, they are six independent series — which is the
             // whole point of the label. "ATM withdrawal · abroad" carries two dates, so its later
             // entry supersedes only itself and the domestic charge beside it is untouched.
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Percentage, 0.1999m, D(2018, 5, 20), Label: "Interest rate", Note: "Purchase APR."),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 95m, D(2018, 5, 20), Label: "Annual card fee", Currency: Currencies.Usd, Billing: Interval.Annually, Note: "Membership fee."),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Percentage, 0.0275m, D(2018, 5, 20), Label: "Currency conversion", Billing: Interval.PerOccurrence, Note: "Markup on the network rate."),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 5m, D(2018, 5, 20), Label: "ATM withdrawal · domestic", Currency: Currencies.Usd, Billing: Interval.PerOccurrence),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 25m, D(2018, 5, 20), Label: "ATM withdrawal · abroad", Currency: Currencies.Usd, Billing: Interval.PerOccurrence),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 30m, D(2024, 3, 1), Label: "ATM withdrawal · abroad", Currency: Currencies.Usd, Billing: Interval.PerOccurrence, Note: "Overseas network charge increase."),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 15m, D(2018, 5, 20), Label: "Card replacement", Currency: Currencies.Usd, Billing: Interval.OneTime),
-            new(Catalog.Accounts.TravelRewardsCard, TermKind.Fee, TermValueUnit.Amount, 2m, D(2018, 5, 20), Label: "Paper statement", Currency: Currencies.Usd, Billing: Interval.Monthly),
+            new(Catalog.Accounts.TravelRewardsCard, TermValueUnit.Percentage, 0.1999m, D(2018, 5, 20), Label: "Interest rate", Note: "Purchase APR."),
+            new(Catalog.Accounts.TravelRewardsCard, TermValueUnit.Amount, 95m, D(2018, 5, 20), Label: "Annual card fee", Currency: Currencies.Usd, Billing: Interval.Annually, Note: "Membership fee."),
+            new(Catalog.Accounts.TravelRewardsCard, TermValueUnit.Percentage, 0.0275m, D(2018, 5, 20), Label: "Currency conversion", Billing: Interval.PerOccurrence, Note: "Markup on the network rate."),
+            new(Catalog.Accounts.TravelRewardsCard, TermValueUnit.Amount, 5m, D(2018, 5, 20), Label: "ATM withdrawal · domestic", Currency: Currencies.Usd, Billing: Interval.PerOccurrence),
+            new(Catalog.Accounts.TravelRewardsCard, TermValueUnit.Amount, 25m, D(2018, 5, 20), Label: "ATM withdrawal · abroad", Currency: Currencies.Usd, Billing: Interval.PerOccurrence),
+            new(Catalog.Accounts.TravelRewardsCard, TermValueUnit.Amount, 30m, D(2024, 3, 1), Label: "ATM withdrawal · abroad", Currency: Currencies.Usd, Billing: Interval.PerOccurrence, Note: "Overseas network charge increase."),
+            new(Catalog.Accounts.TravelRewardsCard, TermValueUnit.Amount, 15m, D(2018, 5, 20), Label: "Card replacement", Currency: Currencies.Usd, Billing: Interval.OneTime),
+            new(Catalog.Accounts.TravelRewardsCard, TermValueUnit.Amount, 2m, D(2018, 5, 20), Label: "Paper statement", Currency: Currencies.Usd, Billing: Interval.Monthly),
 
             // Brokerage (investment): expected return + a percentage platform fee.
-            new(Catalog.Accounts.BrokerageAccount, TermKind.Fee, TermValueUnit.Percentage, 0.0700m, D(2016, 7, 1), Label: "Expected return", Note: "Long-run expected annual return."),
-            new(Catalog.Accounts.BrokerageAccount, TermKind.Fee, TermValueUnit.Percentage, 0.0025m, D(2016, 7, 1), Label: "Platform fee", Billing: Interval.Annually, Note: "Blended expense ratio."),
+            new(Catalog.Accounts.BrokerageAccount, TermValueUnit.Percentage, 0.0700m, D(2016, 7, 1), Label: "Expected return", Note: "Long-run expected annual return."),
+            new(Catalog.Accounts.BrokerageAccount, TermValueUnit.Percentage, 0.0025m, D(2016, 7, 1), Label: "Platform fee", Billing: Interval.Annually, Note: "Blended expense ratio."),
 
             // Pension: expected return + a scheme management charge.
-            new(Catalog.Accounts.WorkplacePension, TermKind.Fee, TermValueUnit.Percentage, 0.0500m, D(2016, 2, 10), Label: "Expected return", Note: "Expected annual return."),
-            new(Catalog.Accounts.WorkplacePension, TermKind.Fee, TermValueUnit.Percentage, 0.0040m, D(2016, 2, 10), Label: "Management charge", Billing: Interval.Annually, Note: "Scheme management charge."),
+            new(Catalog.Accounts.WorkplacePension, TermValueUnit.Percentage, 0.0500m, D(2016, 2, 10), Label: "Expected return", Note: "Expected annual return."),
+            new(Catalog.Accounts.WorkplacePension, TermValueUnit.Percentage, 0.0040m, D(2016, 2, 10), Label: "Management charge", Billing: Interval.Annually, Note: "Scheme management charge."),
 
             // Stocks portfolio (SEK investment): percentage terms only (no currency needed).
-            new(Catalog.Accounts.StocksPortfolio, TermKind.Fee, TermValueUnit.Percentage, 0.0650m, D(2019, 11, 5), Label: "Expected return", Note: "Expected annual return."),
-            new(Catalog.Accounts.StocksPortfolio, TermKind.Fee, TermValueUnit.Percentage, 0.0030m, D(2019, 11, 5), Label: "Custody fee", Billing: Interval.Annually),
+            new(Catalog.Accounts.StocksPortfolio, TermValueUnit.Percentage, 0.0650m, D(2019, 11, 5), Label: "Expected return", Note: "Expected annual return."),
+            new(Catalog.Accounts.StocksPortfolio, TermValueUnit.Percentage, 0.0030m, D(2019, 11, 5), Label: "Custody fee", Billing: Interval.Annually),
 
             // Per-unit custody charge — the unit itself is named by the label, not by a field.
-            new(Catalog.Accounts.StocksPortfolio, TermKind.Fee, TermValueUnit.Amount, 0.02m, D(2019, 11, 5), Label: "Custody · per share", Currency: Currencies.Sek, Billing: Interval.PerUnit, Note: "On shares held at month end."),
+            new(Catalog.Accounts.StocksPortfolio, TermValueUnit.Amount, 0.02m, D(2019, 11, 5), Label: "Custody · per share", Currency: Currencies.Sek, Billing: Interval.PerUnit, Note: "On shares held at month end."),
 
             // Everyday checking: a monthly maintenance fee + a per-occurrence fee (amounts, USD).
-            new(Catalog.Accounts.EverydayChecking, TermKind.Fee, TermValueUnit.Amount, 12m, D(2016, 4, 1), Label: "Account maintenance", Currency: Currencies.Usd, Billing: Interval.Monthly),
-            new(Catalog.Accounts.EverydayChecking, TermKind.Fee, TermValueUnit.Amount, 0.30m, D(2016, 4, 1), Label: "Transaction processing", Currency: Currencies.Usd, Billing: Interval.PerOccurrence),
+            new(Catalog.Accounts.EverydayChecking, TermValueUnit.Amount, 12m, D(2016, 4, 1), Label: "Account maintenance", Currency: Currencies.Usd, Billing: Interval.Monthly),
+            new(Catalog.Accounts.EverydayChecking, TermValueUnit.Amount, 0.30m, D(2016, 4, 1), Label: "Transaction processing", Currency: Currencies.Usd, Billing: Interval.PerOccurrence),
 
             // A weekly cadence with a count of 2 — "every second week", which the old enum could not
             // express at all.
-            new(Catalog.Accounts.EverydayChecking, TermKind.Fee, TermValueUnit.Amount, 3m, D(2025, 6, 1), Label: "Cash handling · branch", Currency: Currencies.Usd, Billing: Interval.Weekly, Count: 2, Note: "Charged every second week the account is used at a counter."),
+            new(Catalog.Accounts.EverydayChecking, TermValueUnit.Amount, 3m, D(2025, 6, 1), Label: "Cash handling · branch", Currency: Currencies.Usd, Billing: Interval.Weekly, Count: 2, Note: "Charged every second week the account is used at a counter."),
 
             // The case AnchorDate exists for: a quarterly charge (Monthly x 3 — what the retired
             // Quarterly value becomes) raised on the 1st but not first billed until the 15th.
-            new(Catalog.Accounts.EverydayChecking, TermKind.Fee, TermValueUnit.Amount, 45m, D(2026, 1, 1), Label: "Relationship service charge", Currency: Currencies.Usd, Billing: Interval.Monthly, Count: 3, Anchor: D(2026, 1, 15), Note: "Billed in arrears."),
+            new(Catalog.Accounts.EverydayChecking, TermValueUnit.Amount, 45m, D(2026, 1, 1), Label: "Relationship service charge", Currency: Currencies.Usd, Billing: Interval.Monthly, Count: 3, Anchor: D(2026, 1, 15), Note: "Billed in arrears."),
         };
 
         return specs
             .Select(spec => new Term
             {
-                TermId = IdFor(spec.AccountName, spec.Kind, spec.EffectiveFrom, spec.Label),
+                TermId = IdFor(spec.AccountName, spec.EffectiveFrom, spec.Label),
                 AccountId = Catalog.Accounts.IdFor(spec.AccountName),
-                TermKind = spec.Kind,
                 // Normalized through the same rule the write path uses, so the seed is a set the
                 // service itself would have produced.
                 Label = TermLabel.Normalize(spec.Label),

@@ -848,7 +848,6 @@ public class ContractEventsApiTests
 
     private static NewTerm NewTermBody(decimal value) => new()
     {
-        TermKind = Odyssey.Dtos.Finance.TermKind.Fee,
         Label = "Monthly rent",
         ValueUnit = Odyssey.Dtos.Finance.TermValueUnit.Amount,
         Value = value,

@@ -4,7 +4,6 @@ using Odyssey.Dtos.Finance;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
-using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using Interval = Odyssey.Dtos.Finance.Interval;
 using TermDirection = Odyssey.Dtos.Finance.TermDirection;
@@ -35,7 +34,6 @@ public class TermServiceTests
     /// <summary>A percentage term named like the former rate kind — now an ordinary labelled series.</summary>
     private static NewTerm InterestRate(decimal value, DateTime effectiveFrom) => new()
     {
-        TermKind = TermKind.Fee,
         Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = value,
@@ -44,7 +42,6 @@ public class TermServiceTests
 
     private static NewTerm Fee(string? label, decimal value, DateTime effectiveFrom) => new()
     {
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -79,7 +76,6 @@ public class TermServiceTests
 
         var created = await service.Create(accountId, new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 5m,
@@ -98,30 +94,12 @@ public class TermServiceTests
 
         await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 5m,
             CurrencyCode = "ZZZ",
             EffectiveFrom = new DateTime(2026, 1, 1),
         }));
-    }
-
-    [Theory]
-    [InlineData(TermKind.Unknown)]
-    [InlineData(TermKind.InterestRate)]
-    [InlineData(TermKind.ExpectedReturn)]
-    public async Task Create_AnyKindButFee_IsRefused(TermKind kind)
-    {
-        await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, DtoAccountType.SavingsAccount);
-        var service = new TermService(context);
-
-        var term = InterestRate(0.03m, new DateTime(2026, 1, 1));
-        term.TermKind = kind;
-
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, term));
-        Assert.Empty(context.Terms);
     }
 
     [Fact]
@@ -144,7 +122,6 @@ public class TermServiceTests
 
         await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(accountId, new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = -1m,
@@ -173,7 +150,6 @@ public class TermServiceTests
 
         await service.Create(accountId, new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 2m,
@@ -256,7 +232,6 @@ public class TermServiceTests
         await service.Create(accountId, InterestRate(0.03m, new DateTime(2026, 1, 1)));
         await service.Create(accountId, new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Account fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 5m,
@@ -526,7 +501,6 @@ public class TermServiceTests
             new Term
             {
                 AccountId = account.AccountId,
-                TermKind = Odyssey.Context.TermKind.Fee,
                 ValueUnit = Odyssey.Context.TermValueUnit.Percentage,
                 Value = 0.03m,
                 EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -535,7 +509,6 @@ public class TermServiceTests
             new Term
             {
                 AccountId = account.AccountId,
-                TermKind = Odyssey.Context.TermKind.Fee,
                 ValueUnit = Odyssey.Context.TermValueUnit.Percentage,
                 Value = 0.02m,
                 EffectiveFrom = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),

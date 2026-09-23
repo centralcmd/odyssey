@@ -5,7 +5,6 @@ using Odyssey.TestData.Catalog;
 using Odyssey.TestData.Generators;
 using Xunit;
 using DtoInterval = Odyssey.Dtos.Finance.Interval;
-using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
 using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using NewTerm = Odyssey.Dtos.Finance.NewTerm;
 
@@ -46,13 +45,13 @@ public class DemoTermSeedTests
     }
 
     [Fact]
-    public async Task The_seed_exercises_a_percentage_fee_which_the_service_accepts()
+    public async Task The_seed_exercises_a_percentage_term_which_the_service_accepts()
     {
         await using var context = await SeededAccountsAsync();
         var service = new TermService(context);
 
         var percentageFees = TermGenerator.Build()
-            .Where(t => t.TermKind == TermKind.Fee && t.ValueUnit == TermValueUnit.Percentage)
+            .Where(t => t.ValueUnit == TermValueUnit.Percentage)
             .ToList();
 
         Assert.NotEmpty(percentageFees);
@@ -61,24 +60,15 @@ public class DemoTermSeedTests
         {
             var created = await service.Create(fee.AccountId!.Value, ToRequest(fee));
 
-            // A percentage carries no currency, and a fee always carries its name.
+            // A percentage carries no currency, and a term always carries its name.
             Assert.Null(created.CurrencyCode);
             Assert.False(string.IsNullOrWhiteSpace(created.Label));
         }
     }
 
     [Fact]
-    public void Every_seeded_fee_is_named_and_every_seeded_rate_is_not()
-    {
-        var terms = TermGenerator.Build();
-
-        Assert.All(
-            terms.Where(t => t.TermKind == TermKind.Fee),
-            fee => Assert.False(string.IsNullOrWhiteSpace(fee.Label)));
-        Assert.All(
-            terms.Where(t => t.TermKind != TermKind.Fee),
-            rate => Assert.Null(rate.Label));
-    }
+    public void Every_seeded_term_is_named() =>
+        Assert.All(TermGenerator.Build(), term => Assert.False(string.IsNullOrWhiteSpace(term.Label)));
 
     [Fact]
     public void No_two_seeded_terms_share_a_series_and_a_date()
@@ -88,7 +78,7 @@ public class DemoTermSeedTests
         var terms = TermGenerator.Build();
 
         var duplicates = terms
-            .GroupBy(t => (t.AccountId, t.TermKind, t.LabelKey, t.EffectiveFrom))
+            .GroupBy(t => (t.AccountId, t.LabelKey, t.EffectiveFrom))
             .Where(g => g.Count() > 1)
             .ToList();
 
@@ -98,7 +88,7 @@ public class DemoTermSeedTests
     [Fact]
     public void Every_seeded_term_has_a_distinct_id()
     {
-        // Two fees on one account can now share a kind and a date, so the label is part of the seed
+        // Two terms on one account can share a date, so the label is part of the seed
         // key; dropping it would hand both the same deterministic id.
         var terms = TermGenerator.Build();
 
@@ -171,7 +161,6 @@ public class DemoTermSeedTests
 
     private static NewTerm ToRequest(Term term) => new()
     {
-        TermKind = (DtoTermKind)(int)term.TermKind,
         Label = term.Label,
         ValueUnit = (DtoTermValueUnit)(int)term.ValueUnit,
         Value = term.Value,

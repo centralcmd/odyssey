@@ -167,7 +167,6 @@ public class ContractTermPermissionTests(ApiStackFixture fixture)
         var seededTerm = await fixture.PostWithAntiforgeryAsync(
             client, $"/api/accounts/{accountId}/terms", new
             {
-                termKind = 10,
                 label = "E2E containment fee",
                 valueUnit = 1,
                 value = 7m,
@@ -201,7 +200,6 @@ public class ContractTermPermissionTests(ApiStackFixture fixture)
 
     private static object Rent(decimal value, string effectiveFrom) => new
     {
-        termKind = 10,
         label = "Monthly rent",
         valueUnit = 1,
         value,

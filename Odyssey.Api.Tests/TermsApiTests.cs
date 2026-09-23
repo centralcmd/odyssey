@@ -20,7 +20,6 @@ using Microsoft.Extensions.Options;
 using Xunit;
 using Odyssey.Api.Tests.Infrastructure;
 using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
-using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using Interval = Odyssey.Dtos.Finance.Interval;
 
@@ -36,7 +35,6 @@ public class TermsApiTests
     /// <summary>A percentage term named like the former rate kind — now an ordinary labelled series.</summary>
     private static NewTerm InterestRate(decimal value, DateTime effectiveFrom) => new()
     {
-        TermKind = TermKind.Fee,
         Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = value,
@@ -45,7 +43,6 @@ public class TermsApiTests
 
     private static NewTerm Fee(string? label, decimal value, DateTime effectiveFrom) => new()
     {
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -371,7 +368,6 @@ public class TermsApiTests
 
         var post = await client.PostAsJsonAsync(TermsPath(accountId), new
         {
-            termKind = TermKind.Fee,
             label = "ATM Abroad",
             labelKey = "smuggled",
             valueUnit = TermValueUnit.Amount,
@@ -444,7 +440,6 @@ public class TermsApiTests
 
         var post = await client.PostAsJsonAsync(TermsPath(accountId), new
         {
-            termKind = TermKind.Fee,
             label = "Quarterly charge",
             valueUnit = TermValueUnit.Amount,
             value = 45m,
@@ -503,7 +498,6 @@ public class TermsApiTests
 
         var post = await client.PostAsJsonAsync(TermsPath(accountId), new
         {
-            termKind = TermKind.Fee,
             label = "Paper statement",
             valueUnit = TermValueUnit.Amount,
             value = 2m,

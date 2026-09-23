@@ -15,9 +15,8 @@ public sealed record ExistingTerm
 
     /// <summary>The owning contract, or null when this term belongs to an account (issue #135).</summary>
     public Guid? ContractId { get; set; }
-    public TermKind TermKind { get; set; }
 
-    /// <summary>The series name, as the user wrote it. Null for a rate.</summary>
+    /// <summary>The series name, as the user wrote it.</summary>
     [StringLength(TermLabel.MaxLength)]
     public string? Label { get; set; }
 

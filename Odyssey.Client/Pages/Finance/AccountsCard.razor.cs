@@ -600,7 +600,6 @@ public partial class AccountsCard
     {
         TermId = Guid.Empty,
         AccountId = a.AccountId,
-        TermKind = term.TermKind,
         // Carried, because the card renders one tile per in-force series: without the label a travel
         // card's six fees would be six identical tiles.
         Label = term.Label,

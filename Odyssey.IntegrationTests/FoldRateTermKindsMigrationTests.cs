@@ -10,8 +10,9 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// <c>FoldRateTermKindsIntoFee</c>: the two rate kinds and any unrecognised kind become labelled fees.
-/// A data migration, so only observable here — the EF InMemory provider runs no migrations at all.
+/// <c>FoldRateTermKindsIntoFee</c>: the two rate kinds and any unrecognised kind become labelled fees;
+/// then <c>RemoveTermKind</c> drops the column. Both are only observable here — the EF InMemory
+/// provider runs no migrations and enforces no foreign keys.
 /// </summary>
 /// <remarks>
 /// Every read is raw SQL at this migration's own schema rather than through the <c>Terms</c> DbSet,
@@ -26,6 +27,8 @@ public class FoldRateTermKindsMigrationTests(MariaDbFixture fixture)
     private const string Baseline = "_DropInsurancePoliciesAndSettings";
 
     private const string Subject = "_FoldRateTermKindsIntoFee";
+
+    private const string Removal = "_RemoveTermKind";
 
     private const int Fee = 10;
 
@@ -144,6 +147,83 @@ public class FoldRateTermKindsMigrationTests(MariaDbFixture fixture)
             await DropAsync();
         }
     }
+
+    /// <summary>
+    /// The index swap applies and reverts with both owner foreign keys intact. InnoDB requires an index
+    /// on an FK column at all times, and the swapped indexes are the only ones leading with
+    /// <c>AccountId</c> / <c>ContractId</c> — EF's scaffolded drop-before-create order fails there
+    /// with errno 1553, so the migration creates each replacement first.
+    /// </summary>
+    [SkippableFact]
+    public async Task The_kind_column_drops_and_restores_with_the_owner_foreign_keys_intact()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await RecreateAsync();
+
+        var accountId = Guid.NewGuid();
+        var contractId = Guid.NewGuid();
+        var term = Guid.NewGuid();
+
+        try
+        {
+            await using (var context = NewContext())
+            {
+                await MigrationSeam.MigrateToAsync(context, Subject);
+                await SeedOwnersAsync(context, accountId, contractId);
+                await InsertTermAsync(context, term, accountId, null, kind: Fee, unit: 1, value: 5m, label: "Account fee");
+            }
+
+            await using (var context = NewContext())
+            {
+                await MigrationSeam.MigrateToAsync(context, Removal);
+
+                Assert.False(await ColumnExistsAsync(context, "TermKind"));
+                Assert.True(await IndexExistsAsync(context, "IX_Terms_AccountId_LabelKey_EffectiveFrom"));
+                Assert.True(await IndexExistsAsync(context, "IX_Terms_ContractId_LabelKey_EffectiveFrom"));
+                Assert.False(await IndexExistsAsync(context, "IX_Terms_AccountId_TermKind_LabelKey_EffectiveFrom"));
+                Assert.Equal(2, await OwnerForeignKeyCountAsync(context));
+            }
+
+            await using (var context = NewContext())
+            {
+                await MigrationSeam.MigrateToAsync(context, Subject);
+
+                Assert.True(await ColumnExistsAsync(context, "TermKind"));
+                Assert.True(await IndexExistsAsync(context, "IX_Terms_AccountId_TermKind_LabelKey_EffectiveFrom"));
+                Assert.False(await IndexExistsAsync(context, "IX_Terms_AccountId_LabelKey_EffectiveFrom"));
+                Assert.Equal(2, await OwnerForeignKeyCountAsync(context));
+
+                // Every row existing at the revert was a fee, which is what the restored column says.
+                Assert.Equal(Fee, (await ReadAsync(context))[term].Kind);
+            }
+        }
+        finally
+        {
+            await DropAsync();
+        }
+    }
+
+    private static async Task<bool> ColumnExistsAsync(OdysseyContext context, string column) =>
+        await context.Database
+            .SqlQueryRaw<int>(
+                "SELECT COUNT(*) AS `Value` FROM information_schema.COLUMNS " +
+                $"WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Terms' AND COLUMN_NAME = '{column}'")
+            .SingleAsync() > 0;
+
+    private static async Task<bool> IndexExistsAsync(OdysseyContext context, string name) =>
+        await context.Database
+            .SqlQueryRaw<int>(
+                "SELECT COUNT(*) AS `Value` FROM information_schema.STATISTICS " +
+                $"WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Terms' AND INDEX_NAME = '{name}'")
+            .SingleAsync() > 0;
+
+    private static Task<int> OwnerForeignKeyCountAsync(OdysseyContext context) =>
+        context.Database
+            .SqlQueryRaw<int>(
+                "SELECT COUNT(*) AS `Value` FROM information_schema.TABLE_CONSTRAINTS " +
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Terms' AND CONSTRAINT_TYPE = 'FOREIGN KEY' " +
+                "AND CONSTRAINT_NAME IN ('FK_Terms_Accounts_AccountId', 'FK_Terms_Contracts_ContractId')")
+            .SingleAsync();
 
     private sealed record Row(int Kind, string? Label, string? LabelKey, int Unit, decimal Value);
 

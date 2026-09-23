@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoContractType = Odyssey.Dtos.Finance.ContractType;
-using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using Interval = Odyssey.Dtos.Finance.Interval;
 
@@ -69,7 +68,6 @@ public class ContractTermServiceTests
 
     private static NewTerm Rent(decimal value, DateTime effectiveFrom, string? label = "Monthly rent", string? currency = "USD") => new()
     {
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -81,7 +79,6 @@ public class ContractTermServiceTests
     /// <summary>A percentage term named like the former rate kind — now an ordinary labelled series.</summary>
     private static NewTerm InterestRate(decimal value, DateTime effectiveFrom) => new()
     {
-        TermKind = TermKind.Fee,
         Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = value,
@@ -114,7 +111,6 @@ public class ContractTermServiceTests
 
         var created = await Terms(context).Create(accountId, new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Monthly fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 4m,
@@ -188,23 +184,6 @@ public class ContractTermServiceTests
         Assert.Equal(2, (await service.GetContractHistory(contractId))!.Count);
     }
 
-    [Fact]
-    public async Task Create_UnknownKind_IsRefused()
-    {
-        await using var context = TestContextFactory.Create();
-        var contractId = await SeedContractAsync(context);
-
-        await Assert.ThrowsAsync<DomainValidationException>(() =>
-            Terms(context).CreateForContract(contractId, new NewTerm
-            {
-                TermKind = TermKind.Unknown,
-                ValueUnit = TermValueUnit.Amount,
-                Value = 1m,
-                CurrencyCode = "USD",
-                EffectiveFrom = new DateTime(2026, 1, 1),
-            }, userId: null));
-    }
-
     // ── Currency ─────────────────────────────────────────────────────────────
 
     [Fact]
@@ -228,7 +207,6 @@ public class ContractTermServiceTests
 
         var created = await Terms(context).Create(accountId, new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Monthly fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 4m,
@@ -344,12 +322,12 @@ public class ContractTermServiceTests
 
         await service.Create(accountId, new NewTerm
         {
-            TermKind = TermKind.Fee, Label = "A", ValueUnit = TermValueUnit.Amount, Value = 1m,
+            Label = "A", ValueUnit = TermValueUnit.Amount, Value = 1m,
             EffectiveFrom = new DateTime(2026, 1, 1),
         });
         await service.Create(accountId, new NewTerm
         {
-            TermKind = TermKind.Fee, Label = "B", ValueUnit = TermValueUnit.Amount, Value = 2m,
+            Label = "B", ValueUnit = TermValueUnit.Amount, Value = 2m,
             EffectiveFrom = new DateTime(2026, 1, 1),
         });
 
@@ -368,7 +346,7 @@ public class ContractTermServiceTests
 
         var accountTerm = await service.Create(accountId, new NewTerm
         {
-            TermKind = TermKind.Fee, Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
+            Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
             EffectiveFrom = new DateTime(2026, 1, 1),
         });
 

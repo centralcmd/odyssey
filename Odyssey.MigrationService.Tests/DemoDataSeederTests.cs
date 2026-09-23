@@ -217,7 +217,7 @@ public class DemoDataSeederTests
 
         var fee = Assert.Single(await context.Terms.AsNoTracking()
             .Where(t => t.ContractId == contract.ContractId
-                && t.TermKind == TermKind.Fee
+               
                 && t.ValueUnit == TermValueUnit.Amount
                 && t.EffectiveFrom <= DateTime.UtcNow)
             .ToListAsync());
@@ -264,7 +264,7 @@ public class DemoDataSeederTests
         // The draft is a contract nobody has agreed to yet, priced anyway.
         var quote = Assert.Single(await context.Terms.AsNoTracking()
             .Where(t => t.ContractId == draft.ContractId
-                && t.TermKind == TermKind.Fee
+               
                 && t.ValueUnit == TermValueUnit.Amount
                 && t.EffectiveFrom <= DateTime.UtcNow)
             .ToListAsync());

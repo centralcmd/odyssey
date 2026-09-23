@@ -46,11 +46,10 @@ public class OpenApiSchemaIdTests
     /// A Dtos enum that merely shares its name with the entity copy in <c>Odyssey.Context</c>
     /// is not ambiguous on the OpenAPI surface — only the Dtos copy is a contract. Before issue #392
     /// the export document bound to the entity enums, both copies reached the generator, and these
-    /// seven were pushed to module-qualified ids they never needed.
+    /// were pushed to module-qualified ids they never needed.
     /// </summary>
     [Theory]
     [InlineData("AccountType")]
-    [InlineData("TermKind")]
     [InlineData("TermValueUnit")]
     [InlineData("Interval")]
     [InlineData("BudgetCategoryType")]

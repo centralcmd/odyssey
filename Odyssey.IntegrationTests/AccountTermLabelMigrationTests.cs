@@ -133,7 +133,7 @@ public class AccountTermLabelMigrationTests(MariaDbFixture fixture)
                 var labelKeys = await LabelKeysByIdAsync(context, accountId);
 
                 // Every fee ends at Fee (10) — nothing is left on a retired ordinal.
-                Assert.All(kinds.Values, kind => Assert.Equal((int)TermKind.Fee, kind));
+                Assert.All(kinds.Values, kind => Assert.Equal(10, kind));
 
                 Assert.Equal("Management fee", labels[management]);
                 Assert.Equal("Service fee", labels[service]);

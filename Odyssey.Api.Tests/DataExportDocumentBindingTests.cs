@@ -36,7 +36,6 @@ public class DataExportDocumentBindingTests
 
     [Theory]
     [InlineData(typeof(AccountExport), nameof(AccountExport.AccountType), typeof(Odyssey.Dtos.Finance.AccountType))]
-    [InlineData(typeof(TermExport), nameof(TermExport.TermKind), typeof(Odyssey.Dtos.Finance.TermKind))]
     [InlineData(typeof(TermExport), nameof(TermExport.ValueUnit), typeof(Odyssey.Dtos.Finance.TermValueUnit))]
     [InlineData(typeof(TermExport), nameof(TermExport.Interval), typeof(Odyssey.Dtos.Finance.Interval?))]
     [InlineData(typeof(TermExport), nameof(TermExport.IntervalCount), typeof(int?))]
@@ -59,7 +58,6 @@ public class DataExportDocumentBindingTests
     /// </summary>
     [Theory]
     [InlineData(typeof(Odyssey.Dtos.Finance.AccountType), typeof(Odyssey.Context.AccountType))]
-    [InlineData(typeof(Odyssey.Dtos.Finance.TermKind), typeof(Odyssey.Context.TermKind))]
     [InlineData(typeof(Odyssey.Dtos.Finance.TermValueUnit), typeof(Odyssey.Context.TermValueUnit))]
     [InlineData(typeof(Odyssey.Dtos.Finance.Interval), typeof(Odyssey.Context.Interval))]
     [InlineData(typeof(Odyssey.Dtos.Finance.BudgetCategoryType), typeof(Odyssey.Context.BudgetCategoryType))]

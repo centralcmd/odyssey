@@ -9,7 +9,7 @@ namespace Odyssey.Context;
 ///
 /// <para>
 /// Direction is a property of the ENTRY, never of the series: it joins neither the series key
-/// <c>(owner, TermKind, LabelKey)</c>, the duplicate guard nor supersession. Correcting a
+/// <c>(owner, LabelKey)</c>, the duplicate guard nor supersession. Correcting a
 /// mis-directed term therefore supersedes it rather than forking a second series.
 /// </para>
 ///

@@ -448,8 +448,8 @@ public static class ContractGenerator
 
     /// <summary>
     /// The contracts' fee terms — what the roll-up's run rate sums and what its "next charges" project
-    /// forward. Every one is a <see cref="TermKind.Fee"/> in <see cref="TermValueUnit.Amount"/>, since
-    /// a rate term carries no amount and a percentage fee carries no due figure.
+    /// forward. Every one is in <see cref="TermValueUnit.Amount"/>, since a
+    /// percentage term carries no due figure.
     ///
     /// <para>
     /// The set covers the three things the projection has to get right: a periodic fee with a
@@ -545,7 +545,6 @@ public static class ContractGenerator
                 TermId = TermIdFor(spec.ContractName, spec.Label, effectiveFrom),
                 ContractId = contractId,
                 AccountId = null,
-                TermKind = TermKind.Fee,
                 Label = spec.Label,
                 LabelKey = TermLabel.Key(spec.Label),
                 ValueUnit = TermValueUnit.Amount,

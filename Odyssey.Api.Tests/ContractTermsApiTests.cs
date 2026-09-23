@@ -14,7 +14,6 @@ using ContextAccountType = Odyssey.Context.AccountType;
 // Both halves of the aligned pair are in scope here (Odyssey.Context for the direct seeds,
 // Odyssey.Dtos.Finance for the wire), so each wire type is named explicitly.
 using ContractType = Odyssey.Dtos.Finance.ContractType;
-using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using Interval = Odyssey.Dtos.Finance.Interval;
 using TermDirection = Odyssey.Dtos.Finance.TermDirection;
@@ -109,7 +108,6 @@ public class ContractTermsApiTests
             termId = forgedTermId,
             labelKey = "forged-key",
             createdAtUtc = new DateTime(1990, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            termKind = TermKind.Fee,
             label = "  Monthly   RENT  ",
             valueUnit = TermValueUnit.Amount,
             value = 14500m,
@@ -175,7 +173,6 @@ public class ContractTermsApiTests
         // The account path is unchanged: no currency in the body, and the account's own is used.
         var onAccount = await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Monthly fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 4m,
@@ -265,7 +262,7 @@ public class ContractTermsApiTests
         await PostTermAsync(client, contractId, Rent(14500m, new DateTime(2025, 1, 1)));
         (await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee, Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
+            Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
             EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         })).EnsureSuccessStatusCode();
 
@@ -414,7 +411,7 @@ public class ContractTermsApiTests
 
         var accountTerm = await (await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee, Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
+            Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
             EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         })).Content.ReadFromJsonAsync<ExistingTerm>();
 
@@ -451,7 +448,7 @@ public class ContractTermsApiTests
         await PostTermAsync(client, survivingContractId, Rent(9000m, new DateTime(2026, 10, 1)));
         (await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee, Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
+            Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
             EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         })).EnsureSuccessStatusCode();
 
@@ -620,7 +617,6 @@ public class ContractTermsApiTests
 
     private static NewTerm Incoming(decimal value, DateTime effectiveFrom, string? label = "Sublet") => new()
     {
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -658,7 +654,6 @@ public class ContractTermsApiTests
 
     private static NewTerm Rent(decimal value, DateTime effectiveFrom, string? label = "Monthly rent", string? currency = "EUR") => new()
     {
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -669,7 +664,6 @@ public class ContractTermsApiTests
 
     private static NewTerm InterestRate(decimal value, DateTime effectiveFrom) => new()
     {
-        TermKind = TermKind.Fee,
         Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = value,

@@ -14,7 +14,6 @@ using Odyssey.Dtos;
 using Microsoft.Extensions.Logging;
 using ContextContractPartyRole = Odyssey.Context.ContractPartyRole;
 using ContextInterval = Odyssey.Context.Interval;
-using ContextTermKind = Odyssey.Context.TermKind;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
 using ContextTermDirection = Odyssey.Context.TermDirection;
 using DtoInterval = Odyssey.Dtos.Finance.Interval;
@@ -339,10 +338,7 @@ public class ContractService
     /// </para>
     /// <para>
     /// Direction is not part of the series key and is not a predicate before the collapse, so the
-    /// winner is chosen exactly as it is everywhere else and only then read for its direction. The
-    /// kind filter is not a narrowing of that rule: only a contract FEE can carry a direction at all
-    /// (the server refuses <c>Incoming</c> on a rate and on an account term), so a rate row could
-    /// never have qualified.
+    /// winner is chosen exactly as it is everywhere else and only then read for its direction.
     /// </para>
     /// </remarks>
     private async Task<HashSet<Guid>> LoadContractsWithIncomingTermAsync(
@@ -357,7 +353,6 @@ public class ContractService
             .AsNoTracking()
             .Where(t => t.ContractId != null
                 && contractIds.Contains(t.ContractId.Value)
-                && t.TermKind == ContextTermKind.Fee
                 && t.EffectiveFrom <= today)
             .ToListAsync(cancellationToken);
 
@@ -368,7 +363,7 @@ public class ContractService
     }
 
     /// <summary>
-    /// The in-force fee terms of the Active and Upcoming contracts, in one query.
+    /// The in-force amount terms of the Active and Upcoming contracts, in one query.
     ///
     /// <para>
     /// Narrowed in SQL to those contracts and to <c>EffectiveFrom &lt;= today</c>, then collapsed per
@@ -391,7 +386,6 @@ public class ContractService
             .AsNoTracking()
             .Where(t => t.ContractId != null
                 && ids.Contains(t.ContractId.Value)
-                && t.TermKind == ContextTermKind.Fee
                 && t.ValueUnit == ContextTermValueUnit.Amount
                 && t.EffectiveFrom <= today)
             .ToListAsync(cancellationToken);

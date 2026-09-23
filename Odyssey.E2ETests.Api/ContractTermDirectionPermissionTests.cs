@@ -155,12 +155,11 @@ public class ContractTermDirectionPermissionTests(ApiStackFixture fixture)
 
     /// <summary>
     /// A priced monthly fee. The ordinals are written as numbers because this project speaks to the
-    /// API over the wire rather than through the DTO assembly: <c>termKind = 10</c> is <c>Fee</c>,
-    /// <c>valueUnit = 1</c> is <c>Amount</c> and <c>interval = 3</c> is <c>Monthly</c>.
+    /// API over the wire rather than through the DTO assembly: <c>valueUnit = 1</c> is <c>Amount</c> and
+    /// <c>interval = 3</c> is <c>Monthly</c>.
     /// </summary>
     private static object Fee(string label, decimal value, bool incoming = false) => new
     {
-        termKind = 10,
         label,
         valueUnit = 1,
         value,

@@ -10,7 +10,6 @@ using DtoContractType = Odyssey.Dtos.Finance.ContractType;
 using EventType = Odyssey.Context.ContractEventType;
 using EventSource = Odyssey.Context.ContractEventSource;
 using ContractPartyRole = Odyssey.Dtos.Finance.ContractPartyRole;
-using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 
 namespace Odyssey.Core.Tests;
@@ -508,7 +507,6 @@ public class ContractEventAutomationTests
 
     private static NewTerm Rent(decimal value, DateTime effectiveFrom, string? label = "Monthly rent") => new()
     {
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -530,7 +528,7 @@ public class ContractEventAutomationTests
             created.ContractId, Rent(14500m, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)), TestUserId);
         var added = SingleSystemEvent(context, created.ContractId);
         Assert.Equal(EventType.PriceChanged, added.Type);
-        Assert.Equal("Fee term added (Monthly rent)", added.Title);
+        Assert.Equal("Term added (Monthly rent)", added.Title);
         Assert.Equal("USD 14500 per month effective 1 January 2026.", added.Description);
         Assert.Equal(TestUserId, added.CreatedByUserId);
 
@@ -539,14 +537,14 @@ public class ContractEventAutomationTests
             created.ContractId, term.TermId,
             Rent(15000m, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)), TestUserId));
         var changed = SingleSystemEvent(context, created.ContractId);
-        Assert.Equal("Fee term changed (Monthly rent)", changed.Title);
+        Assert.Equal("Term changed (Monthly rent)", changed.Title);
         Assert.Equal("USD 15000 per month effective 1 January 2026.", changed.Description);
         Assert.Equal(TestUserId, changed.CreatedByUserId);
 
         ClearEvents(context, created.ContractId);
         Assert.True(await terms.DeleteForContract(created.ContractId, term.TermId, TestUserId));
         var removed = SingleSystemEvent(context, created.ContractId);
-        Assert.Equal("Fee term removed (Monthly rent)", removed.Title);
+        Assert.Equal("Term removed (Monthly rent)", removed.Title);
         Assert.Equal("Effective 1 January 2026 — removed.", removed.Description);
         Assert.Equal(TestUserId, removed.CreatedByUserId);
     }

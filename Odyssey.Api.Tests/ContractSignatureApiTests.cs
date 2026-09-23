@@ -10,7 +10,6 @@ using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Xunit;
 using ContractType = Odyssey.Dtos.Finance.ContractType;
-using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using Interval = Odyssey.Dtos.Finance.Interval;
 
@@ -324,7 +323,6 @@ public class ContractSignatureApiTests
         var draft = await CreateAsync(client, end: FixedToday.Date.AddDays(5));
         (await client.PostAsJsonAsync($"{Path}/{draft}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Quoted rate",
             ValueUnit = TermValueUnit.Amount,
             Value = 100m,
@@ -344,7 +342,6 @@ public class ContractSignatureApiTests
             .EnsureSuccessStatusCode();
         (await client.PostAsJsonAsync($"{Path}/{active}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Plan fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 50m,

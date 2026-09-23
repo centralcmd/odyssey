@@ -521,7 +521,6 @@ public partial class AddTermDialog
 
         var dto = new NewTerm
         {
-            TermKind = TermKind.Fee,
             // LabelKey is derived server-side and is on no request DTO — only Label is sent.
             Label = label,
             ValueUnit = _unit,

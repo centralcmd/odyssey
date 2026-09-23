@@ -5,7 +5,6 @@ using Odyssey.Dtos.Finance;
 using Xunit;
 using DtoContractType = Odyssey.Dtos.Finance.ContractType;
 using ContextInterval = Odyssey.Context.Interval;
-using ContextTermKind = Odyssey.Context.TermKind;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
 
 namespace Odyssey.Core.Tests;
@@ -86,7 +85,6 @@ public class ContractSummaryRollupTests
         {
             TermId = Guid.NewGuid(),
             ContractId = contractId,
-            TermKind = ContextTermKind.Fee,
             Label = label,
             LabelKey = label.ToLowerInvariant(),
             ValueUnit = ContextTermValueUnit.Amount,
@@ -375,7 +373,6 @@ public class ContractSummaryRollupTests
         {
             TermId = Guid.NewGuid(),
             ContractId = id,
-            TermKind = ContextTermKind.Fee,
             Label = "Commission",
             LabelKey = "commission",
             ValueUnit = ContextTermValueUnit.Percentage,

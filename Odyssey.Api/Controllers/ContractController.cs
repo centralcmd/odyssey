@@ -266,14 +266,13 @@ written — re-role those parties or detach them first.")]
     [SwaggerOperation(
         Summary = "Get the term (rate/fee) history for a contract.",
         Description = @"Lists the full term history for the contract, newest effective date first.
-                        Optionally filtered by term kind and/or an as-of date. An archived contract's
-                        history stays readable.")]
+                        Optionally filtered by an as-of date. An archived contract's history stays
+                        readable.")]
     public async Task<IActionResult> GetTerms(
         [FromRoute(Name = "id")] Guid id,
-        [FromQuery(Name = "kind")] TermKind? kind = null,
         [FromQuery(Name = "asOf")] DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
-        var terms = await termService.GetContractHistory(id, kind, asOf, cancellationToken);
+        var terms = await termService.GetContractHistory(id, asOf, cancellationToken);
         return terms is null ? this.NotFoundProblem($"Contract ID {id} not found.") : Ok(terms);
     }
 
@@ -283,7 +282,7 @@ written — re-role those parties or detach them first.")]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Get the currently-effective term of each series on a contract.",
-        Description = @"Returns the in-force entry of each (kind, label) series that has at least one
+        Description = @"Returns the in-force entry of each labelled series that has at least one
                         entry, as of now or the supplied as-of date. An empty array is a healthy
                         response — a contract with no recorded price is not a defect.")]
     public async Task<IActionResult> GetCurrentTerms(
