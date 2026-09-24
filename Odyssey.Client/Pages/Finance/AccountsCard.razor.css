@@ -21,15 +21,6 @@
    an OdsInfoTile with the lifecycle as its foot, the caption is the record card's own
    `.odc-record-caption`, and the grid is an OdsInfoTileGrid. */
 
-/* In-force rate on the card's meta line (colour set inline per kind / cost-rate). */
-.acct-rate {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 500;
-}
-
 /* The "Add account" ghost row is now the shared <OdsAddRow> (dashed list-closing
    create affordance) — its styles live in Components/OdsAddRow.razor.css. */
 

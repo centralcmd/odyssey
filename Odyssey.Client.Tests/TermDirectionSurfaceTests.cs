@@ -140,17 +140,48 @@ public class TermDirectionSurfaceTests
         Assert.Contains("account term", TermVisuals.DirectionRefusal(isContractOwned: false), StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Only an INCOMING term re-colours. Outgoing returns null so every surface keeps the colour it
-    /// already had — nothing that existed before this field changes appearance, which is the visual
-    /// half of the same compatibility promise the backend makes about the figures.
+    /// Every contract term takes its direction's finance hue — coral out, mint in — on the figure and
+    /// the glyph alike; an account term keeps its unit hue, since no direction is stated there.
     /// </summary>
     [Fact]
-    public void Only_an_incoming_contract_term_takes_the_income_hue()
+    public void A_contract_term_takes_its_directions_hue_and_an_account_term_its_units()
     {
         Assert.Equal("var(--finance-income)", TermVisuals.DirectionColor(Fee(TermDirection.Incoming)));
-        Assert.Null(TermVisuals.DirectionColor(Fee()));
-        // An account term stores Outgoing and would not be re-coloured even if it did not.
-        Assert.Null(TermVisuals.DirectionColor(Fee(TermDirection.Incoming, onContract: false)));
+        Assert.Equal("var(--finance-expense)", TermVisuals.DirectionColor(Fee()));
+        Assert.Equal(("var(--finance-expense)", "var(--finance-expense-soft)"), TermVisuals.IconColors(Fee()));
+        Assert.Equal(("var(--finance-income)", "var(--finance-income-soft)"), TermVisuals.IconColors(Fee(TermDirection.Incoming)));
+
+        var onAccount = Fee(TermDirection.Incoming, onContract: false);
+        Assert.Null(TermVisuals.DirectionColor(onAccount));
+        Assert.Equal(TermVisuals.Info(onAccount).Color, TermVisuals.ValueColor(onAccount));
+        Assert.Equal((TermVisuals.Info(onAccount).Color, TermVisuals.Info(onAccount).Soft), TermVisuals.IconColors(onAccount));
+    }
+
+    /// <summary>
+    /// A history row states a contract term's direction on the NAME's line — name, a decorative dot,
+    /// then the word — and tints the glyph in the direction's hue. An account row carries neither.
+    /// </summary>
+    [Fact]
+    public void A_history_row_puts_the_direction_beside_the_name_and_tints_the_glyph()
+    {
+        using var ctx = NewContext();
+        var contractRow = ctx.Render<TermHistoryTable>(p => p
+            .Add(t => t.Terms, [Fee()])
+            .Add(t => t.FormatMoney, (v, c) => $"{v} {c}"));
+
+        var top = contractRow.Find(".trm-row-top");
+        Assert.Equal("Base salary", top.QuerySelector(".trm-row-kind-name")!.TextContent.Trim());
+        Assert.Equal("true", top.QuerySelector(".trm-row-dot")!.GetAttribute("aria-hidden"));
+        Assert.Equal("Outgoing", top.QuerySelector(".trm-dir")!.TextContent.Trim());
+        Assert.Contains("color:var(--finance-expense)", contractRow.Find(".trm-kind-ic").GetAttribute("style"), StringComparison.Ordinal);
+
+        var accountRow = ctx.Render<TermHistoryTable>(p => p
+            .Add(t => t.Terms, [Fee(onContract: false)])
+            .Add(t => t.FormatMoney, (v, c) => $"{v} {c}"));
+
+        Assert.Empty(accountRow.FindAll(".trm-row-dot"));
+        Assert.Empty(accountRow.FindAll(".trm-dir"));
+        Assert.Contains($"color:{TermVisuals.UnitInfo(TermValueUnit.Amount).Color}", accountRow.Find(".trm-kind-ic").GetAttribute("style"), StringComparison.Ordinal);
     }
 
     // ── The field lead ───────────────────────────────────────────────────────

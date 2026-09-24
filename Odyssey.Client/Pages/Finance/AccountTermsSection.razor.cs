@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 
@@ -41,6 +42,7 @@ public partial class AccountTermsSection
     private List<ExistingTerm> _terms = [];
     private List<ExistingTerm> _current = [];
     private HashSet<Guid> _currentIds = [];
+    private List<OdsTermHistorySeries> _chartSeries = [];
 
     private bool _isLoading;
     private bool _isOpen;
@@ -97,6 +99,7 @@ public partial class AccountTermsSection
             .OrderBy(t => TermLabel.Key(t.Label) ?? "", StringComparer.Ordinal)
             .ToList();
         _currentIds = _current.Select(t => t.TermId).ToHashSet();
+        _chartSeries = TermChartSeries.Build(_terms, asOf, FormatMoney);
     }
 
     private void OpenNew()

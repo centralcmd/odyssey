@@ -35,7 +35,28 @@ public class TermSeriesLabelTests
     [InlineData("")]
     [InlineData("   ")]
     public void DisplayName_OfAnUnlabelledRow_IsThePlainNoun_NeverBlank(string? label) =>
-        Assert.Equal(TermVisuals.Info.Label, TermVisuals.DisplayName(Term(label)));
+        Assert.Equal(TermVisuals.DefaultName, TermVisuals.DisplayName(Term(label)));
+
+    // ── How a term looks ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// With no kind left, the glyph and hue follow the UNIT (the design system's termUnits), so a rate
+    /// and a price still read apart at a glance.
+    /// </summary>
+    [Fact]
+    public void The_glyph_and_hue_follow_the_unit()
+    {
+        var pct = TermVisuals.UnitInfo(TermValueUnit.Percentage);
+        var amt = TermVisuals.UnitInfo(TermValueUnit.Amount);
+
+        Assert.Equal("percent", pct.Icon);
+        Assert.Equal("oklch(0.78 0.13 200)", pct.Color);
+        Assert.Equal("payments", amt.Icon);
+        Assert.Equal("oklch(0.77 0.14 55)", amt.Color);
+
+        Assert.Same(amt, TermVisuals.Info(Term("Annual fee")));
+        Assert.Same(pct, TermVisuals.Info(Term("Interest rate") with { ValueUnit = TermValueUnit.Percentage }));
+    }
 
     // ── The series key ───────────────────────────────────────────────────────
 

@@ -57,7 +57,7 @@
             {
                 <OdsField Label="Name" Required="true" MaxLength="TermLabelMaxLength"
                           Value="@_label" ValueChanged="OnLabelChanged"
-                          Placeholder="e.g. Interest rate"
+                          Placeholder="e.g. Interest rate · ATM withdrawal abroad"
                           Help="Names this term so it keeps its own history, separate from the account’s other terms."
                           Error="@(_errors.TryGetValue("label", out var labelErr) ? labelErr : null)" />
             }
@@ -120,7 +120,7 @@
                             {
                                 <text><b>@DirectionInfo.Label</b> — @DirectionInfo.Sentence. Click <b>@DirectionInfo.Short</b> to switch. </text>
                             }
-                            <text>Stored as a fraction: <b>@PreviewFraction</b></text>
+                            <text>Stored as a fraction: <b>@PreviewFraction</b>@CadenceValueHint</text>
                         </HelpContent>
                     </OdsAmountField>
                 }
@@ -192,7 +192,7 @@
                     @* The unit carries its own label, and the non-periodic branch's guidance
                        rides its Help slot rather than a loose sibling — MudSelect wires that
                        into aria-describedby, which a bare <div> beside the control is not. *@
-                    <OdsSelect Label="Billing interval" Help="@IntervalHelp"
+                    <OdsSelect Label="Interval" Help="@IntervalHelp"
                                Value="@_interval" ValueChanged="OnIntervalChanged" Options="_intervalOptions" />
                     @if (IsPeriodicInterval)
                     {
@@ -214,7 +214,7 @@
                    the dialog promises and what the tile later shows cannot diverge. *@
                 @if (ShowsCadenceEcho)
                 {
-                    <div class="trm-cadence-echo" id="@CadenceEchoId">Charged @CadenceEcho.</div>
+                    <div class="trm-cadence-echo" id="@CadenceEchoId">Applies @CadenceEcho.</div>
                 }
 
                 <OdsDatePicker Value="_anchorDate" ValueChanged="OnAnchorDateChanged"
@@ -244,7 +244,7 @@
     private RenderFragment SubtitleFragment => IsEdit
         ? (IsContractOwner
             ? @<text>Correct this entry in the contract’s price history.</text>
-            : @<text>Correct this term entry.</text>)
+            : @<text>Correct this entry.</text>)
         : (IsContractOwner
             ? @<text>Record what @OwnerName costs, effective from a date.</text>
             : @<text>Record a term on @OwnerName, effective from a date.</text>);

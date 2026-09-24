@@ -7,7 +7,7 @@
 @*
     AccountTermsSection — the "Terms" section inside an expanded account record
     (Accounts → account detail), beside Files & Transactions. Renders the AccountTerm
-    history (GET …/terms): the current-terms summary and the editable history table. Owns the create / edit / delete flow (write-gated).
+    history (GET …/terms): the series chart, the current-terms summary and the editable history table. Owns the create / edit / delete flow (write-gated).
 *@
 
 <OdsCollapsible Chrome="Chrome" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="§">
@@ -26,14 +26,10 @@
         }
         else if (_terms.Count == 0)
         {
-            <OdsEmptyState Icon="percent">
+            <OdsEmptyState Icon="article" MutedIcon="true">
                 <Title>No terms recorded yet</Title>
                 <Description>
-                    Track this account’s rates and the prices of its services over time.
-                    @if (CanWrite)
-                    {
-                        <text>Add the first term to start the history.</text>
-                    }
+                    Record what this account charges or pays — a rate, a fee, a price — each under its own name with its own history.
                 </Description>
                 <Action>
                     @if (CanWrite)
@@ -46,6 +42,11 @@
         else
         {
             <div class="trm-section">
+
+                @* The series chooser — the same chart, and the same builder, as a contract's term
+                   history, so one term charts identically whichever owner it belongs to. It opens on
+                   the series whose latest entry is the most recent. *@
+                <OdsTermHistoryChart Class="trm-seriesplot" Series="_chartSeries" />
 
                 @* CURRENT TERMS *@
                 @* Dropped when the host lifted these values into the record card's own
@@ -61,7 +62,7 @@
                     <div class="trm-summary tiles">
                         @foreach (var t in _current)
                         {
-                            var info = TermVisuals.Info;
+                            var info = TermVisuals.Info(t);
                             @* The cadence in words, from the one helper every surface reads — so a
                                tile, a history row and the dialog can never word a term differently.
                                A one-time charge and an unset interval carry none and render nothing. *@

@@ -1992,7 +1992,11 @@ tr:focus-within > .odc-rowactions.reveal,
   color: var(--mud-palette-text-secondary);
   white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
-.trm-row-kind .trm-dir { margin-top: 3px; }
+/* The history row's top line: the name, a divider dot and the direction word on ONE line, wrapping
+   only when the cell is too narrow to hold them. */
+.trm-row-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.trm-row-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--mud-palette-divider); flex: none; }
+.trm-row-kind .trm-dir { display: inline-block; margin-top: 0; }
 /* On a COLLAPSED record row the same caption sits in the meta line beside the type and the contact,
    so it keeps its own inline box there rather than claiming a line of its own — the treatment the
    design system's .trm-tl-top gives it in the timeline. No hue: .trm-dir's whole point is that the

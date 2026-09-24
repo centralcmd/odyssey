@@ -270,7 +270,7 @@ public class TermSeriesSurfaceTests
     // ── The cadence sub-form in the New / Edit dialog (issue #120) ────────────
     //
     // The count field's PRESENCE, the bound it validates against, and the wiring that ties the
-    // "Charged every 3 months." echo to the control it describes are all logic with no other test
+    // "Applies every 3 months." echo to the control it describes are all logic with no other test
     // site: the fields are private state inside AddTermDialog, and what they promise is markup.
     // The aria-describedby assertions below are the regression test for the WCAG 1.3.1 fix — they
     // fail against the version where the echo was a loose sibling div.
@@ -285,7 +285,7 @@ public class TermSeriesSurfaceTests
         var (cut, _) = RenderDialog(Card(), []);
 
         Assert.NotNull(FindInput(cut, "Every"));
-        Assert.Equal("Charged monthly.", CadenceEcho(cut));
+        Assert.Equal("Applies monthly.", CadenceEcho(cut));
     }
 
     /// <summary>
@@ -294,8 +294,8 @@ public class TermSeriesSurfaceTests
     /// wording instead, in its own Help slot so it reaches assistive technology.
     /// </summary>
     [Theory]
-    [InlineData(Interval.PerOccurrence, "Charged per occurrence")]
-    [InlineData(Interval.PerUnit, "Charged per unit")]
+    [InlineData(Interval.PerOccurrence, "Applies per occurrence")]
+    [InlineData(Interval.PerUnit, "Applies per unit")]
     public void A_non_periodic_unit_has_no_count_field_and_says_so_on_the_picker(Interval interval, string hint)
     {
         var term = Fee("ATM · abroad", 25m, Past(30));
@@ -319,7 +319,7 @@ public class TermSeriesSurfaceTests
 
         Assert.Null(FindInput(cut, "Every"));
         Assert.Null(CadenceEcho(cut));
-        Assert.DoesNotContain("Charged one-time", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Applies one-time", cut.Markup, StringComparison.Ordinal);
     }
 
     /// <summary>A stored multi-unit cadence round-trips into the dialog and is echoed in words.</summary>
@@ -333,7 +333,7 @@ public class TermSeriesSurfaceTests
         var (cut, _) = RenderDialog(Card(), [term], editing: term);
 
         Assert.Equal("3", FindInput(cut, "Every")!.GetAttribute("value"));
-        Assert.Equal("Charged every 3 months.", CadenceEcho(cut));
+        Assert.Equal("Applies every 3 months.", CadenceEcho(cut));
     }
 
     /// <summary>
@@ -351,7 +351,7 @@ public class TermSeriesSurfaceTests
         var echo = cut.Find(".trm-cadence-echo");
 
         Assert.Contains(echo.Id, described);
-        Assert.Equal("Charged monthly.", echo.TextContent.Trim());
+        Assert.Equal("Applies monthly.", echo.TextContent.Trim());
     }
 
     /// <summary>

@@ -10,7 +10,7 @@ public partial class TermHistoryTable
     [Parameter, EditorRequired] public IReadOnlyList<ExistingTerm> Terms { get; set; } = [];
 
     /// <summary>
-    /// The ids currently in force — one per <c>(kind, label)</c> series. Supplied by the caller
+    /// The ids currently in force — one per labelled series. Supplied by the caller
     /// rather than derived here, so the tiles above a table and the badges inside it are resolved
     /// from one computation and cannot disagree.
     /// </summary>
