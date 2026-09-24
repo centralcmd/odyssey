@@ -53,7 +53,9 @@ namespace Odyssey.TestData.Generators;
 /// refuse. The set covers both tiers of the matrix: suggested roles on every type, plus the
 /// <c>Guarantor</c> and <c>Other</c> allowed-but-not-suggested cases, and at least one party carries a
 /// non-default term. Since issue #169 it also seeds the two type-specific OBJECT roles —
-/// <c>Property</c> on the house purchase and <c>Collateral</c> on the car loan. That is not decoration:
+/// <c>Property</c> on the house purchase and <c>Collateral</c> on the car loan. Since issue #187 it
+/// seeds a fixed-term <c>Deposit</c> with both of its suggested roles, <c>Depositor</c> and
+/// <c>Custodian</c>, and an incoming interest term. That is not decoration:
 /// the browser and API E2E tiers read seeded data, so a role absent from this set is a role no
 /// full-stack test ever renders or round-trips. Roles stay unconstrained by party KIND — an account may
 /// hold any role its type permits.
@@ -362,6 +364,20 @@ public static class ContractGenerator
                     new(PartyKind.Account, Catalog.Accounts.FamilyCar, ContractPartyRole.Collateral),
                 ]),
 
+            // DEPOSIT (issue #187) — the mirror of the loan above: money the household PLACES with a
+            // bank rather than borrows from one. Before this type existed it was filed as Other, or as
+            // a Loan with its roles read backwards. Active, fixed term. Both suggested roles are
+            // seeded — the account the money came from and the bank holding it — and its monthly
+            // interest term (below) is INCOMING, so the roll-up's incoming split has a Deposit row.
+            new(
+                "Fixed-term Deposit — 12 Months", ContractType.Deposit,
+                "Twelve-month fixed-rate deposit of USD 25,000 at 4.2% p.a. Interest is credited monthly; the principal is returned at maturity.",
+                anchor.AddMonths(-4), anchor.AddMonths(8), false,
+                [
+                    new(PartyKind.Account, Catalog.Accounts.HighYieldSavings, ContractPartyRole.Depositor),
+                    new(PartyKind.Contact, Catalog.Contacts.FirstNationalBank, ContractPartyRole.Custodian),
+                ]),
+
             // Archived — an expired prior service contract, retained for reference (hidden by default).
             new(
                 "Previous Broadband Contract", ContractType.Service,
@@ -524,6 +540,13 @@ public static class ContractGenerator
             // would leave that exclusion invisible, exactly as it would for the paused one above.
             new("Beacon Home Services — Cleaning", "Cleaning", 180.00m, Currencies.Usd,
                 Interval.Monthly, 1, 0, Note: "Quoted rate — not agreed until the contract is signed."),
+
+            // The deposit's interest (issue #187) — 25,000 at 4.2% p.a. is 87.50 a month, and it ARRIVES.
+            // The principal is deliberately not a term: it is placed once and returned once, which is
+            // not a rate the roll-up can project.
+            new("Fixed-term Deposit — 12 Months", "Interest", 87.50m, Currencies.Usd,
+                Interval.Monthly, 1, 0, AnchorDays: 27, Note: "Credited at month end.",
+                Direction: TermDirection.Incoming),
 
             // An archived contract still carries its history; it must contribute to neither figure.
             new("Previous Broadband Contract", "Line rental", 45.00m, Currencies.Usd,

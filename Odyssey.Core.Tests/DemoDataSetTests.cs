@@ -209,6 +209,25 @@ public class DemoDataSetTests
     }
 
     /// <summary>
+    /// Issue #187 AC 20 — a <c>Deposit</c> is seeded with BOTH of its suggested roles and an
+    /// <c>Incoming</c> term, so the type filter, the party picker's two new roles and the roll-up's
+    /// incoming split under <c>Deposit</c> all have a row to show in the dev stack and the E2E tiers.
+    /// </summary>
+    [Fact]
+    public void Contracts_IncludeADeposit_WithADepositorACustodianAndAnIncomingTerm()
+    {
+        var data = DemoDataSet.Build();
+
+        var deposit = data.Contracts.Should().ContainSingle(contract => contract.Type == ContractType.Deposit).Subject;
+
+        data.ContractParties.Where(party => party.ContractId == deposit.ContractId).Select(party => party.Role)
+            .Should().Contain([ContractPartyRole.Depositor, ContractPartyRole.Custodian]);
+
+        data.Terms.Should().Contain(term =>
+            term.ContractId == deposit.ContractId && term.Direction == Odyssey.Context.TermDirection.Incoming);
+    }
+
+    /// <summary>
     /// The seeded terms respect the one rule the server enforces on a party write: a term cannot begin
     /// before the contract did. Seeding a row the API would refuse would make the demo stack an
     /// unreliable oracle for exactly the validation this feature adds.

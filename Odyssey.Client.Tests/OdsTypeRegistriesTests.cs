@@ -154,6 +154,24 @@ public class OdsTypeRegistriesTests
     }
 
     /// <summary>
+    /// <c>ContractTypes</c> reads in its own order, not ordinal order (issues #157, #187): <c>Loan</c>
+    /// (8) sits after <c>Purchase</c>, <c>Deposit</c> (9) beside its mirror <c>Loan</c>, and
+    /// <c>Other</c> (3) last — the trailing entry being <c>ContractTypeOf</c>'s documented fallback, so
+    /// appending <c>Deposit</c> at the end of the list would have made every unknown type render as a
+    /// deposit.
+    /// </summary>
+    [Fact]
+    public void ContractTypes_reads_Deposit_after_Loan_and_Other_last()
+    {
+        Assert.Equal(
+            ["Employment", "Service", "Rental", "Insurance", "Subscription", "Purchase", "Loan", "Deposit",
+             "Membership", "Other"],
+            OdsTypeRegistries.ContractTypes.Select(t => t.Key).ToList());
+
+        Assert.NotEqual(ContractType.Other, Enum.GetValues<ContractType>().Max());
+    }
+
+    /// <summary>
     /// <c>ContractEventTypes</c> reads in a different order from the one it is stored in (issue #154).
     /// <c>Other</c> keeps ordinal 8 while the nine automation members take 9–17, so the registry's
     /// reading order and the enum's ordinal order have parted company — the same split
