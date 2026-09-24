@@ -253,10 +253,10 @@ public static class OdsTypeRegistries
         // (60) and Purchase (140), clearing both by 40 degrees at the same lightness and chroma as its
         // neighbours (the design system's contrast pass, not a value invented here).
         new() { Key = "Loan",         Label = "Loan",         Icon = "account_balance",     Color = "oklch(0.77 0.13 100)", Soft = "oklch(0.77 0.13 100 / 0.16)" },
-        // Deposit carries ordinal 9 and reads beside its mirror, Loan (issue #187 §3.4). PROVISIONAL:
-        // the design system has no Deposit entry yet, so the glyph and hue are placeholders chosen only
-        // to satisfy this registry's guard tests — replace them when the DS registry lands.
-        new() { Key = "Deposit",      Label = "Deposit",      Icon = "savings",             Color = "oklch(0.77 0.13 195)", Soft = "oklch(0.77 0.13 195 / 0.16)" },
+        // Deposit carries ordinal 9 and reads beside its mirror, Loan (issue #187 §3.4). Its hue sits in
+        // the widest gap left on the wheel, between Employment (225) and Insurance (290); the neutral
+        // Other at 250 is near-achromatic, so the two do not compete (the design system's choice).
+        new() { Key = "Deposit",      Label = "Deposit",      Icon = "lock_clock",          Color = "oklch(0.76 0.13 258)", Soft = "oklch(0.76 0.13 258 / 0.16)" },
         new() { Key = "Membership",   Label = "Membership",   Icon = "card_membership",     Color = "oklch(0.77 0.13 20)",  Soft = "oklch(0.77 0.13 20 / 0.16)" },
         new() { Key = "Other",        Label = "Other",        Icon = "description",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
@@ -304,12 +304,11 @@ public static class OdsTypeRegistries
         new() { Key = "Object",       Label = "Object",       Icon = "category",           Color = "oklch(0.78 0.11 75)",  Soft = "oklch(0.78 0.11 75 / 0.16)",  IsObject = true },
         new() { Key = "Property",     Label = "Property",     Icon = "holiday_village",    Color = "oklch(0.78 0.11 45)",  Soft = "oklch(0.78 0.11 45 / 0.16)",  IsObject = true },
         new() { Key = "Collateral",   Label = "Collateral",   Icon = "lock",               Color = "oklch(0.78 0.11 105)", Soft = "oklch(0.78 0.11 105 / 0.16)", IsObject = true },
-        // The Deposit counterparties (issue #187) — sides of the agreement, so NOT object roles.
-        // PROVISIONAL: the design system has no entries for them yet; the glyphs and hues are
-        // placeholders chosen only to satisfy this registry's guard tests — replace them when the DS
-        // registry lands.
-        new() { Key = "Depositor",    Label = "Depositor",    Icon = "move_to_inbox",      Color = "oklch(0.78 0.13 200)", Soft = "oklch(0.78 0.13 200 / 0.16)" },
-        new() { Key = "Custodian",    Label = "Custodian",    Icon = "account_balance",    Color = "oklch(0.77 0.13 235)", Soft = "oklch(0.77 0.13 235 / 0.16)" },
+        // The Deposit pair (issue #187) — the mirror of Lender/Borrower, and sides of the agreement, so
+        // NOT object roles. Separate members rather than aliases, so no report has to guess whether a
+        // Lender row is a creditor or a depositor. Values mirror the DS registry.
+        new() { Key = "Depositor",    Label = "Depositor",    Icon = "account_balance_wallet", Color = "oklch(0.77 0.13 235)", Soft = "oklch(0.77 0.13 235 / 0.16)" },
+        new() { Key = "Custodian",    Label = "Custodian",    Icon = "account_balance",    Color = "oklch(0.76 0.13 350)", Soft = "oklch(0.76 0.13 350 / 0.16)" },
     ];
 
     /// <summary>
