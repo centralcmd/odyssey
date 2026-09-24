@@ -425,6 +425,68 @@ public class TransactionTagServiceTests
         Assert.Contains("1 transaction", conflict.Message);
     }
 
+    [Fact]
+    public async Task Delete_IsRefusedWhileAPropertyWatchesTheTag_AndNamesTheCount()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedPropertySmartTagLink(context, tag.TransactionTagId, "Storgata 14");
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("1 property", conflict.Message);
+        // A COUNT, never the property: naming it would reach past transactions.tags.delete's boundary.
+        Assert.DoesNotContain("Storgata 14", conflict.Message);
+        Assert.Equal(1, context.TransactionTags.Count());
+        Assert.Equal(1, context.PropertySmartTags.Count());
+    }
+
+    [Fact]
+    public async Task Delete_PluralisesThePropertyCount()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedPropertySmartTagLink(context, tag.TransactionTagId, "Storgata 14");
+        await SeedPropertySmartTagLink(context, tag.TransactionTagId, "Family car");
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("2 properties", conflict.Message);
+    }
+
+    /// <summary>
+    /// Issue #167 AC 22: the property clause composes with the four existing ones rather than replacing
+    /// or shadowing them — every class is counted, each with its own count.
+    /// </summary>
+    [Fact]
+    public async Task Delete_BlockedByAllFiveClasses_NamesAllFive()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TransactionTagService(context);
+        var tag = await service.Create(new NewTransactionTag { Name = "Groceries", Description = null, Archived = false });
+        await SeedBudgetItem(context, tag.TransactionTagId);
+        await SeedSmartTagLink(context, tag.TransactionTagId, "Checking");
+        await SeedSmartTagLink(context, tag.TransactionTagId, "Savings");
+        await SeedContractSmartTagLink(context, tag.TransactionTagId, "Maple St lease");
+        await SeedPropertySmartTagLink(context, tag.TransactionTagId, "Storgata 14");
+        await SeedPropertySmartTagLink(context, tag.TransactionTagId, "Family car");
+        await SeedPropertySmartTagLink(context, tag.TransactionTagId, "Cabin");
+        await SeedTaggedTransaction(context, tag.TransactionTagId, "Weekly shop");
+
+        var conflict = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Delete(tag.TransactionTagId));
+
+        Assert.Contains("1 budget item", conflict.Message);
+        Assert.Contains("2 accounts", conflict.Message);
+        Assert.Contains("1 contract", conflict.Message);
+        Assert.Contains("3 properties", conflict.Message);
+        Assert.Contains("1 transaction", conflict.Message);
+    }
+
     private static async Task SeedTaggedTransaction(OdysseyContext context, Guid tagId, string description)
     {
         var account = new Account
@@ -497,6 +559,28 @@ public class TransactionTagServiceTests
         context.ContractSmartTags.Add(new ContractSmartTag
         {
             ContractId = contract.ContractId,
+            TransactionTagId = tagId,
+            AddedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        });
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedPropertySmartTagLink(OdysseyContext context, Guid tagId, string propertyName)
+    {
+        var property = new Property
+        {
+            Name = propertyName,
+            Description = string.Empty,
+            Type = Odyssey.Dtos.Finance.PropertyType.RealEstate,
+            CurrencyCode = "NOK",
+            RealEstateDetails = new RealEstateDetails { Kind = Odyssey.Dtos.Finance.RealEstateKind.House },
+        };
+        context.Properties.Add(property);
+        await context.SaveChangesAsync();
+
+        context.PropertySmartTags.Add(new PropertySmartTag
+        {
+            PropertyId = property.PropertyId,
             TransactionTagId = tagId,
             AddedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         });

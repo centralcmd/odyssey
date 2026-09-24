@@ -399,6 +399,58 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        // ── Property aggregate (issue #167) ───────────────────────────────────────────────────────
+        // A Contact-shaped aggregate: two 1:1 detail sub-records sharing the parent PK, plus two
+        // sibling tables (estimates, smart tags) mirroring the account/contract ones. Every
+        // relationship below is NEW; no existing table is altered.
+        modelBuilder.Entity<Property>(entity =>
+        {
+            entity.Property(p => p.Type).HasConversion<int>();
+
+            // The detail row is meaningless without its parent and reachable only through it.
+            entity.HasOne(p => p.RealEstateDetails)
+                .WithOne(d => d.Property)
+                .HasForeignKey<RealEstateDetails>(d => d.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(p => p.VehicleDetails)
+                .WithOne(d => d.Property)
+                .HasForeignKey<VehicleDetails>(d => d.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RealEstateDetails>().Property(d => d.Kind).HasConversion<int>();
+        modelBuilder.Entity<VehicleDetails>().Property(d => d.Kind).HasConversion<int>();
+
+        modelBuilder.Entity<PropertyEstimate>(entity =>
+        {
+            // CASCADE, like AccountEstimate: the history is meaningless once its subject is gone.
+            entity.HasOne(estimate => estimate.Property)
+                .WithMany(property => property.Estimates)
+                .HasForeignKey(estimate => estimate.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PropertySmartTag>(entity =>
+        {
+            // Composite key, exactly as ContractSmartTag: one association per pair, idempotent at the
+            // database level, and addressable by the route pair rather than a link-row id.
+            entity.HasKey(smartTag => new { smartTag.PropertyId, smartTag.TransactionTagId });
+
+            entity.HasOne(smartTag => smartTag.Property)
+                .WithMany(property => property.SmartTags)
+                .HasForeignKey(smartTag => smartTag.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // RESTRICT is the backstop, not the guard: TransactionTagService.Delete pre-checks it,
+            // because the violation reaches GlobalExceptionHandler as a generic 409 naming no surface
+            // and the EF InMemory tiers enforce no foreign keys at all.
+            entity.HasOne(smartTag => smartTag.TransactionTag)
+                .WithMany(tag => tag.PropertySmartTags)
+                .HasForeignKey(smartTag => smartTag.TransactionTagId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         // ── Journal, tasks, photos, calendars and contacts ────────────────────────────────────────
         modelBuilder.Entity<JournalEntryTag>(entity =>
         {
@@ -898,6 +950,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             new SystemSetting { Key = SystemSettingsKeys.EmailMaxTrackedRecipients, Value = "20000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.AccountMaxSmartTagsPerAccount, Value = "20", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.ContractMaxSmartTagsPerContract, Value = "20", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.PropertyMaxSmartTagsPerProperty, Value = "20", UpdatedAt = seededAt },
             // The file-analysis kill switch, model and destination (issue #439). Seeded to today's
             // effective values, so a default install is behaviourally identical: analysis OFF,
             // claude-sonnet-5, api.anthropic.com.
@@ -1248,6 +1301,13 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<ContractFile> ContractFiles { get; set; }
     public DbSet<ContractEvent> ContractEvents { get; set; }
     public DbSet<ContractSmartTag> ContractSmartTags { get; set; }
+
+    // ── Properties (issue #167) ───────────────────────────────────────────────────────────────
+    public DbSet<Property> Properties { get; set; }
+    public DbSet<RealEstateDetails> RealEstateDetails { get; set; }
+    public DbSet<VehicleDetails> VehicleDetails { get; set; }
+    public DbSet<PropertyEstimate> PropertyEstimates { get; set; }
+    public DbSet<PropertySmartTag> PropertySmartTags { get; set; }
 
     // ── Journal, tasks, photos, calendars and contacts ────────────────────────────────────────
     public DbSet<JournalEntry> JournalEntries { get; set; }

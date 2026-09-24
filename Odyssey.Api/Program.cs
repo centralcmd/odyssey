@@ -298,6 +298,9 @@ builder.Services.AddScoped<TermService>();
 builder.Services.AddScoped<AccountEstimateService>();
 builder.Services.AddScoped<AccountSmartTagService>();
 builder.Services.AddScoped<ContractSmartTagService>();
+builder.Services.AddScoped<PropertyService>();
+builder.Services.AddScoped<PropertyEstimateService>();
+builder.Services.AddScoped<PropertySmartTagService>();
 builder.Services.AddScoped<BudgetItemService>();
 builder.Services.AddScoped<BudgetService>();
 builder.Services.AddScoped<TransactionService>();
@@ -370,6 +373,7 @@ builder.Services.AddScoped<Odyssey.Core.Finance.IUploadLimitsLookup, Odyssey.Api
 // reason every other lookup here has one: sharing an entry would make an unrelated save evict it.
 builder.Services.AddScoped<Odyssey.Core.Finance.IAccountLimitsLookup, Odyssey.Api.SystemSettings.AccountLimitsLookup>();
 builder.Services.AddScoped<Odyssey.Core.Finance.IContractLimitsLookup, Odyssey.Api.SystemSettings.ContractLimitsLookup>();
+builder.Services.AddScoped<Odyssey.Core.Finance.IPropertyLimitsLookup, Odyssey.Api.SystemSettings.PropertyLimitsLookup>();
 builder.Services.AddSingleton<Odyssey.Api.SystemSettings.RequestCapCeilings>();
 
 // Encrypted secret settings (issue #444). The registry is a singleton because its only input is the

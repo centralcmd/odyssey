@@ -58,6 +58,8 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             $"{SystemSettingsDefaults.ContractMaxSummaryCharges}"),
         (SystemSettingsKeys.ContractMaxSmartTagsPerContract,
             $"{SystemSettingsDefaults.ContractMaxSmartTagsPerContract}"),
+        (SystemSettingsKeys.PropertyMaxSmartTagsPerProperty,
+            $"{SystemSettingsDefaults.PropertyMaxSmartTagsPerProperty}"),
     ];
 
     [SkippableFact]
@@ -80,8 +82,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             // Contracts summary windows and its next-charge row cap, +1 for the per-contract smart-tag
             // cap (issue #166), then -3 when the standalone subscriptions feature was removed and its
             // migration deleted the three summary-limit rows, and -5 when the standalone
-            // insurance-policy feature went the same way.
-            Assert.Equal(64, rows.Count);
+            // insurance-policy feature went the same way, then +1 for the per-property smart-tag cap
+            // (issue #167).
+            Assert.Equal(65, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)

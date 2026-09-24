@@ -158,8 +158,9 @@ public class SystemSettingsApiTests
         // and the public link origin (issue #8), +1 for the per-contract term cap (issue #135), +3
         // for the Contracts summary windows and its next-charge row cap, +1 for the per-contract
         // smart-tag cap (issue #166), then -3 when the standalone subscriptions feature was removed
-        // and -5 when the standalone insurance-policy feature was.
-        Assert.Equal(64, rows.Count);
+        // and -5 when the standalone insurance-policy feature was, then +1 for the per-property
+        // smart-tag cap (issue #167).
+        Assert.Equal(65, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 

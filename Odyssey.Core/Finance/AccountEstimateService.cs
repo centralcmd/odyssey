@@ -13,6 +13,12 @@ namespace Odyssey.Core.Finance;
 /// latest <c>EffectiveFrom</c> on or before a date). Unlike terms, an estimate is always a single
 /// money amount in the account currency, so there is no kind/unit/billing dimension or eligibility
 /// matrix — every account type may carry estimates.
+///
+/// <para>
+/// The duplicate-date conflict and the current-as-of resolution are asked of
+/// <see cref="EstimateEffectiveDating"/>, which <see cref="PropertyEstimateService"/> also calls, so the
+/// two estimate surfaces cannot disagree about either (issue #167 §4). The scalar checks stay here.
+/// </para>
 /// </summary>
 public class AccountEstimateService
 {
@@ -44,8 +50,7 @@ public class AccountEstimateService
         }
 
         var estimates = await query
-            .OrderByDescending(estimate => estimate.EffectiveFrom)
-            .ThenByDescending(estimate => estimate.CreatedAtUtc)
+            .InSupersessionOrder()
             .ToListAsync(cancellationToken);
 
         return estimates.Adapt<List<ExistingAccountEstimate>>();
@@ -63,12 +68,10 @@ public class AccountEstimateService
 
         var cutoff = DateTimeNormalization.NormalizeToUtc(asOf ?? timeProvider.GetUtcNow().UtcDateTime);
 
-        var estimate = await context.AccountEstimates
-            .AsNoTracking()
-            .Where(e => e.AccountId == accountId && e.EffectiveFrom <= cutoff)
-            .OrderByDescending(e => e.EffectiveFrom)
-            .ThenByDescending(e => e.CreatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
+        var estimate = await EstimateEffectiveDating.ResolveCurrentAsync(
+            context.AccountEstimates.AsNoTracking().Where(e => e.AccountId == accountId),
+            cutoff,
+            cancellationToken);
 
         return estimate?.Adapt<CurrentAccountEstimate>();
     }
@@ -153,10 +156,12 @@ public class AccountEstimateService
 
         var effectiveFrom = DateTimeNormalization.NormalizeToUtc(source.EffectiveFrom);
 
-        var duplicateExists = await context.AccountEstimates.AnyAsync(existing =>
-            existing.AccountId == account.AccountId
-            && existing.EffectiveFrom == effectiveFrom
-            && (excludeEstimateId == null || existing.AccountEstimateId != excludeEstimateId), cancellationToken);
+        var duplicateExists = await EstimateEffectiveDating.HasConflictAsync(
+            context.AccountEstimates.Where(existing =>
+                existing.AccountId == account.AccountId
+                && (excludeEstimateId == null || existing.AccountEstimateId != excludeEstimateId)),
+            effectiveFrom,
+            cancellationToken);
         if (duplicateExists)
             throw new DomainConflictException(
                 $"An estimate effective from {effectiveFrom:yyyy-MM-dd} already exists for this account.");

@@ -169,6 +169,9 @@ public class DataExportApiTests
                      "contracts", "contractParties", "contractFiles",
                      // Issue #166.
                      "contractSmartTags",
+                     // Issue #167.
+                     "properties", "realEstateDetails", "vehicleDetails", "propertyEstimates",
+                     "propertySmartTags",
                  })
         {
             Assert.Equal(JsonValueKind.Array, finance.GetProperty(collection).ValueKind);
@@ -707,12 +710,49 @@ public class DataExportApiTests
         Assert.NotEqual(Guid.Empty, contractSmartTag.GetProperty("transactionTagId").GetGuid());
     }
 
+    /// <summary>
+    /// Issue #167 AC 23 — the property aggregate is IN the export: the base row, exactly one detail row
+    /// per property (keyed by the same id), the estimate history and the smart-tag links.
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesThePropertyTables()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var properties = finance.GetProperty("properties").EnumerateArray().ToList();
+        Assert.Equal(2, properties.Count);
+        var houseId = properties.Single(p => p.GetProperty("name").GetString() == "Export house")
+            .GetProperty("propertyId").GetGuid();
+        var carId = properties.Single(p => p.GetProperty("name").GetString() == "Export car")
+            .GetProperty("propertyId").GetGuid();
+
+        var realEstate = Assert.Single(finance.GetProperty("realEstateDetails").EnumerateArray());
+        Assert.Equal(houseId, realEstate.GetProperty("propertyId").GetGuid());
+        Assert.Equal("Oslo", realEstate.GetProperty("city").GetString());
+        var vehicle = Assert.Single(finance.GetProperty("vehicleDetails").EnumerateArray());
+        Assert.Equal(carId, vehicle.GetProperty("propertyId").GetGuid());
+        Assert.Equal("EL12345", vehicle.GetProperty("registrationNumber").GetString());
+
+        var estimate = Assert.Single(finance.GetProperty("propertyEstimates").EnumerateArray());
+        Assert.Equal(houseId, estimate.GetProperty("propertyId").GetGuid());
+        Assert.Equal(6_750_000m, estimate.GetProperty("value").GetDecimal());
+
+        var smartTag = Assert.Single(finance.GetProperty("propertySmartTags").EnumerateArray());
+        Assert.Equal(houseId, smartTag.GetProperty("propertyId").GetGuid());
+        Assert.NotEqual(Guid.Empty, smartTag.GetProperty("transactionTagId").GetGuid());
+    }
+
     // ── Deterministic ordering, every collection (spec §10.1.9) ───────────────
 
     /// <summary>
     /// The collections and the key columns each is ordered by, with the kind of comparison that
-    /// key uses. All 27 of them appear here — ordering was pinned for <c>accounts</c> alone, so a
-    /// dropped or wrong <c>OrderBy</c> on any of the other 26 queries passed the whole suite.
+    /// key uses. All 26 of them appear here — ordering was pinned for <c>accounts</c> alone, so a
+    /// dropped or wrong <c>OrderBy</c> on any of the other 25 queries passed the whole suite.
     /// Deterministic order is what makes two exports of unchanged data diffable, so it is a
     /// property of the format, not of one table.
     /// </summary>
@@ -743,6 +783,12 @@ public class DataExportApiTests
         { "contractFiles", ["contractFileId"], KeyKind.Guid },
         // Composite-keyed, like accountSmartTags: ordered by both key columns, in that order.
         { "contractSmartTags", ["contractId", "transactionTagId"], KeyKind.Guid },
+        // Issue #167. The two detail tables share their parent's key, so propertyId orders them too.
+        { "properties", ["propertyId"], KeyKind.Guid },
+        { "realEstateDetails", ["propertyId"], KeyKind.Guid },
+        { "vehicleDetails", ["propertyId"], KeyKind.Guid },
+        { "propertyEstimates", ["propertyEstimateId"], KeyKind.Guid },
+        { "propertySmartTags", ["propertyId", "transactionTagId"], KeyKind.Guid },
     };
 
     /// <summary>
@@ -934,6 +980,31 @@ public class DataExportApiTests
             context.ContractSmartTags.Add(new ContractSmartTag
             {
                 ContractId = id, TransactionTagId = tagId, AddedAt = now,
+            });
+
+            // Issue #167: every property table, inverted by the loop order like the rest. Both detail
+            // tables get a row per sequence — ordering is what is under test, not the subtype invariant.
+            context.Properties.Add(new Property
+            {
+                PropertyId = id, Name = $"Property {sequence}", Description = string.Empty,
+                Type = Odyssey.Dtos.Finance.PropertyType.RealEstate, CurrencyCode = "USD",
+                CreatedAt = now, UpdatedAt = now,
+            });
+            context.RealEstateDetails.Add(new RealEstateDetails
+            {
+                PropertyId = id, Kind = Odyssey.Dtos.Finance.RealEstateKind.House,
+            });
+            context.VehicleDetails.Add(new VehicleDetails
+            {
+                PropertyId = id, Kind = Odyssey.Dtos.Finance.VehicleKind.Car,
+            });
+            context.PropertyEstimates.Add(new PropertyEstimate
+            {
+                PropertyEstimateId = id, PropertyId = id, Value = 1m, EffectiveFrom = now, CreatedAtUtc = now,
+            });
+            context.PropertySmartTags.Add(new PropertySmartTag
+            {
+                PropertyId = id, TransactionTagId = tagId, AddedAt = now,
             });
         }
 
@@ -1225,6 +1296,37 @@ public class DataExportApiTests
             ContractId = contractId,
             TransactionTagId = tagId,
             AddedAt = DateTime.UtcNow,
+        });
+
+        // Issue #167: one property of each subtype, an estimate and a smart tag on the house.
+        var houseId = Guid.NewGuid();
+        context.Properties.AddRange(
+            new Property
+            {
+                PropertyId = houseId, Name = "Export house", Description = string.Empty,
+                Type = Odyssey.Dtos.Finance.PropertyType.RealEstate, CurrencyCode = "NOK",
+                RealEstateDetails = new RealEstateDetails
+                {
+                    Kind = Odyssey.Dtos.Finance.RealEstateKind.House, City = "Oslo",
+                },
+            },
+            new Property
+            {
+                PropertyId = Guid.NewGuid(), Name = "Export car", Description = string.Empty,
+                Type = Odyssey.Dtos.Finance.PropertyType.Vehicle, CurrencyCode = "NOK",
+                VehicleDetails = new VehicleDetails
+                {
+                    Kind = Odyssey.Dtos.Finance.VehicleKind.Car, RegistrationNumber = "EL12345",
+                },
+            });
+        context.PropertyEstimates.Add(new PropertyEstimate
+        {
+            PropertyId = houseId, Value = 6_750_000m, CurrencyCode = "NOK",
+            EffectiveFrom = DateTime.UtcNow, CreatedAtUtc = DateTime.UtcNow,
+        });
+        context.PropertySmartTags.Add(new PropertySmartTag
+        {
+            PropertyId = houseId, TransactionTagId = tagId, AddedAt = DateTime.UtcNow,
         });
         context.ContractFiles.Add(new ContractFile
         {

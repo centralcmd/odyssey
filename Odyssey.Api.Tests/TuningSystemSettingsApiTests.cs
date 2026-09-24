@@ -339,6 +339,13 @@ public class TuningSystemSettingsApiTests
             ContractSmartTagsMin, ContractSmartTagsMax,
             $"Smart tags per contract must be between {ContractSmartTagsMin} and {ContractSmartTagsMax}.");
 
+        // The property sibling (issue #167), bounded by the same filter length for the same reason.
+        const int PropertySmartTagsMin = SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMin;
+        const int PropertySmartTagsMax = SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMax;
+        Both(nameof(SystemSettingsUpdate.PropertyMaxSmartTagsPerProperty),
+            PropertySmartTagsMin, PropertySmartTagsMax,
+            $"Smart tags per property must be between {PropertySmartTagsMin} and {PropertySmartTagsMax}.");
+
         return data;
     }
 

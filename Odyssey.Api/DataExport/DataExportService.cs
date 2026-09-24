@@ -154,6 +154,11 @@ public sealed class DataExportService
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractFiles), ContractFilesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractEvents), ContractEventsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.ContractSmartTags), ContractSmartTagsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Properties), PropertiesQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.RealEstateDetails), RealEstateDetailsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.VehicleDetails), VehicleDetailsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyEstimates), PropertyEstimatesQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertySmartTags), PropertySmartTagsQuery(), cancellationToken);
     }
 
     /// <summary>
@@ -501,6 +506,85 @@ public sealed class DataExportService
             .Select(smartTag => new ContractSmartTagExport
             {
                 ContractId = smartTag.ContractId,
+                TransactionTagId = smartTag.TransactionTagId,
+                AddedAt = smartTag.AddedAt,
+            });
+
+    // ── Issue #167 ────────────────────────────────────────────────────────────
+    // The three property enums have no Odyssey.Context copy, so there is nothing to cast across.
+
+    private IQueryable<PropertyExport> PropertiesQuery() =>
+        context.Properties.AsNoTracking()
+            .OrderBy(property => property.PropertyId)
+            .Select(property => new PropertyExport
+            {
+                PropertyId = property.PropertyId,
+                Name = property.Name,
+                Description = property.Description,
+                Type = property.Type,
+                CurrencyCode = property.CurrencyCode,
+                AcquiredDate = property.AcquiredDate,
+                DisposedDate = property.DisposedDate,
+                Notes = property.Notes,
+                Archived = property.Archived,
+                CreatedAt = property.CreatedAt,
+                UpdatedAt = property.UpdatedAt,
+            });
+
+    private IQueryable<RealEstateDetailsExport> RealEstateDetailsQuery() =>
+        context.RealEstateDetails.AsNoTracking()
+            .OrderBy(details => details.PropertyId)
+            .Select(details => new RealEstateDetailsExport
+            {
+                PropertyId = details.PropertyId,
+                Kind = details.Kind,
+                AddressLine = details.AddressLine,
+                PostalCode = details.PostalCode,
+                City = details.City,
+                CountryCode = details.CountryCode,
+                CadastralNumber = details.CadastralNumber,
+                LivingAreaSqm = details.LivingAreaSqm,
+                PlotAreaSqm = details.PlotAreaSqm,
+                BuildYear = details.BuildYear,
+            });
+
+    private IQueryable<VehicleDetailsExport> VehicleDetailsQuery() =>
+        context.VehicleDetails.AsNoTracking()
+            .OrderBy(details => details.PropertyId)
+            .Select(details => new VehicleDetailsExport
+            {
+                PropertyId = details.PropertyId,
+                Kind = details.Kind,
+                RegistrationNumber = details.RegistrationNumber,
+                Vin = details.Vin,
+                Make = details.Make,
+                Model = details.Model,
+                ModelYear = details.ModelYear,
+                FirstRegisteredDate = details.FirstRegisteredDate,
+            });
+
+    private IQueryable<PropertyEstimateExport> PropertyEstimatesQuery() =>
+        context.PropertyEstimates.AsNoTracking()
+            .OrderBy(estimate => estimate.PropertyEstimateId)
+            .Select(estimate => new PropertyEstimateExport
+            {
+                PropertyEstimateId = estimate.PropertyEstimateId,
+                PropertyId = estimate.PropertyId,
+                Value = estimate.Value,
+                CurrencyCode = estimate.CurrencyCode,
+                EffectiveFrom = estimate.EffectiveFrom,
+                Note = estimate.Note,
+                CreatedAtUtc = estimate.CreatedAtUtc,
+            });
+
+    // Composite-keyed, so both key columns order it — there is no single id to sort on.
+    private IQueryable<PropertySmartTagExport> PropertySmartTagsQuery() =>
+        context.PropertySmartTags.AsNoTracking()
+            .OrderBy(smartTag => smartTag.PropertyId)
+            .ThenBy(smartTag => smartTag.TransactionTagId)
+            .Select(smartTag => new PropertySmartTagExport
+            {
+                PropertyId = smartTag.PropertyId,
                 TransactionTagId = smartTag.TransactionTagId,
                 AddedAt = smartTag.AddedAt,
             });

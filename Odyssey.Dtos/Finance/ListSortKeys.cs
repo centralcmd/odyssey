@@ -16,6 +16,19 @@ public enum AccountSortBy
     TxnCount,
 }
 
+/// <summary>
+/// Sortable keys for the properties list (issue #167). <see cref="Value"/> is the in-force estimate as of
+/// now, in each property's own currency and <b>unconverted</b>, with estimate-less properties last in
+/// both directions.
+/// </summary>
+public enum PropertySortBy
+{
+    Name,
+    Type,
+    Acquired,
+    Value,
+}
+
 /// <summary>Sortable keys for the budgets list.</summary>
 public enum BudgetSortBy
 {
