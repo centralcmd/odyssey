@@ -1954,14 +1954,11 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-summary.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
 .trm-tile { position: relative; display: flex; flex-direction: column; gap: 9px; padding: 13px 14px; border: 1px solid var(--mud-palette-divider); border-radius: 9px; background: var(--mud-palette-surface); }
 .trm-tile-top { display: flex; align-items: center; gap: 9px; }
-.trm-tile-kind { font: 500 12px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
-/* A labelled term is NAMED by its label; the kind wording drops to a caption beneath it. Both are
-   text, so no meaning rides on the glyph or its hue (WCAG 1.1.1 / 1.4.1). Both colours are existing
-   semantic tokens, already AA-compliant in the light and dark themes. */
+/* A term is NAMED by its label, as text, so no meaning rides on the glyph or its hue
+   (WCAG 1.1.1 / 1.4.1). The colour is an existing semantic token, already AA-compliant in the light
+   and dark themes. */
 .trm-name { display: inline-flex; flex-direction: column; gap: 2px; min-width: 0; }
 .trm-tile-name { font: 500 12.5px/1.25 var(--font-sans); color: var(--mud-palette-text-primary); }
-.trm-kind-caption { font: 400 10.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.trm-kind-caption.inline { font-size: 11px; }
 .trm-tile-value { font: 400 23px/1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; color: var(--mud-palette-text-primary); }
 .trm-tile-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font: 400 11px/1.3 var(--font-mono); color: var(--mud-palette-text-secondary); }
 /* The DS adds `white-space: nowrap` here; this deliberately does NOT carry it across. The pill used
@@ -2024,10 +2021,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-cadence { display: flex; flex-direction: column; gap: var(--space-2); }
 .trm-cadence-echo { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: -2px; }
 
-/* ---- HISTORY — grouped, as a table ---- */
+/* ---- HISTORY — as a table ---- */
 .trm-history { display: flex; flex-direction: column; gap: 20px; }
-.trm-group-label { display: flex; align-items: center; gap: 8px; font: 500 12px/1 var(--font-sans); color: var(--mud-palette-text-primary); margin-bottom: 9px; }
-.trm-group-count { font: 500 10.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-default-hover); padding: 3px 7px; border-radius: 999px; }
 
 .trm-tbl { width: 100%; border-collapse: collapse; }
 .trm-tbl thead th { text-align: left; font: 600 10px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mud-palette-text-secondary); padding: 0 12px 9px; border-bottom: 1px solid var(--mud-palette-divider); }
@@ -2051,15 +2046,7 @@ tr:focus-within > .odc-rowactions.reveal,
    hover/focus lives with the component, not here. */
 
 
-/* ---- NEW / EDIT TERM dialog — the kind picker is OdsCardSelect (.odc-cardsel); .trm-kind-opt is the edit-mode locked tile ---- */
-.trm-kind-opt { display: flex; align-items: center; gap: 10px; padding: 10px 11px; text-align: left; border: 1px solid var(--mud-palette-divider); border-radius: 9px; background: var(--mud-palette-background); cursor: pointer; transition: border-color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard); }
-.trm-kind-opt:hover { border-color: var(--mud-palette-text-secondary); }
-.trm-kind-opt.on { border-color: transparent; box-shadow: inset 0 0 0 2px var(--mud-palette-primary); background: var(--mud-palette-surface); }
-.trm-kind-opt-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.trm-kind-opt-name { font: 500 13px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
-.trm-kind-opt-grp { font: 400 10.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
-.trm-kind-ineligible { font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 8px; }
-.trm-kind-ineligible b { color: var(--mud-palette-text-primary); font-weight: 500; }
+/* ---- NEW / EDIT TERM dialog ---- */
 
 .trm-value-block { display: flex; flex-direction: column; gap: 10px; }
 
