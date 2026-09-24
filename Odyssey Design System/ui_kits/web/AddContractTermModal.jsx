@@ -20,6 +20,16 @@
    date, the (label, effectiveFrom) duplicate guard that is the server's
    409 — is the shared rule, read from the same helpers the account dialog uses.
 
+   FOUR KINDS (TextAndDateTimeTermKinds). Percentage and Amount are priced; Text
+   and DateTime record a fact. The kind picker leads the form because it decides
+   which fields exist at all: on Text / DateTime the direction, currency, cadence
+   and first-billed date are not hidden-but-kept — they are NOT SENT. The server
+   refuses each one with its own 400 rather than clearing it, so a kind change on
+   edit must null them here, and the dialog says it is doing so.
+
+   `kinds` narrows the picker. The compatibility release (backend issue, Goal 9)
+   passes ['Percentage', 'Amount']; the full release passes all four.
+
    On confirm, onSave(dto, id?) receives the term-shaped object (id on edit). */
 
 const CTM_CURRENCIES = (window.OdysseyData.currencies || [])
@@ -67,9 +77,8 @@ const ctmNameOptions = (existing, currentId) => {
       const sorted = s.entries.slice().sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? -1 : 1));
       const inForce = sorted.filter(t => t.effectiveFrom <= today).pop();
       const t = inForce || sorted[sorted.length - 1];
-      const amount = t.unit === 'Percentage'
-        ? `${ctmFracToPctStr(t.value)}%`
-        : H.money(t.value, t.currency || H.defaultCurrency());
+      const raw = H.fmtTermValueFor(t);
+      const amount = t.unit === 'Text' ? `“${raw.length > 36 ? raw.slice(0, 35) + '…' : raw}”` : raw;
       const cadence = H.cadenceTextFor(t);
       const parts = [amount];
       if (cadence) parts.push(cadence);
@@ -84,7 +93,16 @@ const ctmNameOptions = (existing, currentId) => {
     });
 };
 
-const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }) => {
+const CTM_ALL_KINDS = ['Percentage', 'Amount', 'Text', 'DateTime'];
+
+/* The server's messages (§9), verbatim in meaning — and never the text itself. */
+const CTM_TEXT_ERR = {
+  empty: 'Enter the text this term records.',
+  long: `Keep it to ${window.OdysseyData.termTextMaxLength} characters.`,
+  control: 'Remove tabs, line breaks and hidden direction marks.',
+};
+
+const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave, kinds = CTM_ALL_KINDS, initialUnit }) => {
   const { useState } = React;
   const D = window.OdysseyData;
   const H = window.OdysseyHelpers;
@@ -93,8 +111,11 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
   const COUNT = D.termIntervalCount;
 
   const [draft, setDraft] = useState(() => ({
-    unit: term ? term.unit : 'Amount',
-    valueStr: term ? (term.unit === 'Percentage' ? ctmFracToPctStr(term.value) : String(term.value)) : '',
+    unit: initialUnit || (term ? term.unit : 'Amount'),
+    valueStr: term && term.value != null ? (term.unit === 'Percentage' ? ctmFracToPctStr(term.value) : String(term.value)) : '',
+    textValue: term && term.textValue ? term.textValue : '',
+    dtDate: term && term.dateTimeValue ? H.termUtcToLocal(term.dateTimeValue).date : '',
+    dtTime: term && term.dateTimeValue ? H.termUtcToLocal(term.dateTimeValue).time : '',
     // No account currency to inherit, so the USER'S DEFAULT stands in for one.
     // Still required: a cleared field refuses the write.
     currency: term ? (term.currency || '') : H.defaultCurrency(),
@@ -112,7 +133,14 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
   const [errors, setErrors] = useState({});
 
   const isPct = draft.unit === 'Percentage';
+  const isText = draft.unit === 'Text';
+  const isDt = draft.unit === 'DateTime';
+  const numeric = H.termIsNumeric(draft.unit);
   const info = H.termInfo(draft.unit);
+  const dtUtc = isDt ? H.termLocalToUtc(draft.dtDate, draft.dtTime) : null;
+  const zone = H.localZone(dtUtc);
+  const textTrimmed = draft.textValue.trim();
+  const textProblem = isText && draft.textValue !== '' ? H.termTextProblem(draft.textValue) : null;
   const periodic = H.intervalIsPeriodic(draft.interval);
   const intervalInfo = H.intervalInfo(draft.interval);
 
@@ -127,22 +155,32 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
     if (contract.archived) next.archived = 'This contract is archived — restore it first.';
 
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
-    if (draft.valueStr === '' || isNaN(raw)) {
-      next.value = 'Enter a value.';
-    } else if (isPct) {
-      if (raw < -100 || raw > 100) next.value = 'Must be between −100% and 100%.';
-    } else if (raw < 0) {
-      next.value = 'An amount can’t be negative.';
+    if (numeric) {
+      if (draft.valueStr === '' || isNaN(raw)) {
+        next.value = 'Enter a value.';
+      } else if (isPct) {
+        if (raw < -100 || raw > 100) next.value = 'Must be between −100% and 100%.';
+      } else if (raw < 0) {
+        next.value = 'An amount can’t be negative.';
+      }
+      // The contract rule: an amount needs a currency of its own on the record.
+      if (!isPct && !draft.currency) next.currency = 'Pick the currency this amount is in — a contract has no currency of its own.';
+    } else if (isText) {
+      const p = H.termTextProblem(draft.textValue);
+      if (p) next.textValue = CTM_TEXT_ERR[p];
+    } else if (isDt) {
+      if (!draft.dtDate || !draft.dtTime) next.dateTimeValue = 'Pick both a date and a time.';
+      else {
+        const R = D.termDateTimeRange;
+        if (!dtUtc || dtUtc < R.min || dtUtc > R.max) next.dateTimeValue = 'Pick a date between 1900 and 2200.';
+      }
     }
-
-    // The contract rule: an amount needs a currency of its own on the record.
-    if (!isPct && !draft.currency) next.currency = 'Pick the currency this amount is in — a contract has no currency of its own.';
 
     if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
 
     const countRaw = String(draft.intervalCount).trim();
     let count = null;
-    if (periodic && countRaw !== '') {
+    if (numeric && periodic && countRaw !== '') {
       count = parseInt(countRaw, 10);
       if (isNaN(count) || count < COUNT.min || count > COUNT.max) {
         next.intervalCount = `Enter a whole number between ${COUNT.min} and ${COUNT.max}.`;
@@ -166,17 +204,23 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
 
     if (Object.keys(next).length) { setErrors(next); return; }
 
-    const value = isPct ? Number((raw / 100).toFixed(6)) : Number(raw.toFixed(2));
+    const value = !numeric ? null : isPct ? Number((raw / 100).toFixed(6)) : Number(raw.toFixed(2));
+    /* Exactly one value field is set, and every field that does not apply to
+       the kind goes out as null (direction as Outgoing) — never left over from
+       a kind the entry used to be. */
     onSave({
       contractId: contract.id,
       accountId: null,
       unit: draft.unit,
       value,
-      currency: isPct ? null : draft.currency,
-      interval: draft.interval || null,
-      intervalCount: periodic ? (count == null ? 1 : count) : null,
-      anchorDate: draft.anchorDate || null,
-      direction: draft.direction,
+      textValue: isText ? textTrimmed : null,
+      // Always an instant with Z — the server refuses a time with no offset.
+      dateTimeValue: isDt ? dtUtc : null,
+      currency: numeric && !isPct ? draft.currency : null,
+      interval: numeric ? (draft.interval || null) : null,
+      intervalCount: numeric && periodic ? (count == null ? 1 : count) : null,
+      anchorDate: numeric ? (draft.anchorDate || null) : null,
+      direction: numeric ? draft.direction : 'Outgoing',
       effectiveFrom: draft.effectiveFrom,
       label,
       labelKey: key,
@@ -204,7 +248,7 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
   return (
     <Modal
       title={isEdit ? 'Edit term' : 'New term'}
-      subtitle={isEdit ? 'Correct this entry in the contract’s price history.' : `Record what ${contract.name} costs, effective from a date.`}
+      subtitle={isEdit ? 'Correct this entry in the contract’s term history.' : `Record a price, a rate or a fact of ${contract.name}, effective from a date.`}
       icon={isEdit ? 'edit' : '§'}
       className="trm-dialog"
       onClose={onClose}
@@ -234,10 +278,10 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
           required
           error={errors.label}
           help={errors.label ? undefined : (matchedSeries
-            ? <React.Fragment>Joins the price history of <b>{matchedSeries.label}</b> — currently {matchedSeries.note}. This entry supersedes it from the effective date.</React.Fragment>
+            ? <React.Fragment>Joins the history of <b>{matchedSeries.label}</b> — currently {matchedSeries.note}. This entry supersedes it from the effective date.</React.Fragment>
             : (draft.label.trim()
-              ? <React.Fragment>Starts a <b>new charge</b> on this contract, with its own history separate from the others.</React.Fragment>
-              : 'Pick a charge this updates, or type a new name to start one.'))}>
+              ? <React.Fragment>Starts a <b>new term</b> on this contract, with its own history separate from the others.</React.Fragment>
+              : 'Pick a term this updates, or type a new name to start one.'))}>
           <Combobox
             id="ctm-label"
             freeText
@@ -246,12 +290,12 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
             onChange={set('label')}
             options={nameOptions}
             onCreate={(text) => text}
-            createLabel="New charge"
-            placeholder="e.g. Monthly rent"
+            createLabel="New term"
+            placeholder="e.g. Monthly rent, Notice period"
             ariaLabel="Name"
             required
             invalid={!!errors.label}
-            emptyText={nameOptions.length ? 'No matching charge — type to name a new one' : 'No charges yet — type a name'}
+            emptyText={nameOptions.length ? 'No matching term — type to name a new one' : 'No terms yet — type a name'}
           />
         </FieldShell>
       )}
@@ -264,26 +308,59 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
          value whichever way it is priced — and a rate is asked the same way a
          fee is, because an arrears rate charges and a deposit rate pays. */}
 
-      {/* Unit + Value */}
+      {/* Kind — first, because it decides which fields exist below. */}
+      <FieldShell label="Kind" required>
+        <div className="trm-kind-seg" role="radiogroup" aria-label="Kind">
+          {kinds.map(k => {
+            const ki = H.termInfo(k);
+            const on = draft.unit === k;
+            return (
+              <button key={k} type="button" role="radio" aria-checked={on}
+                style={on ? { background: ki.soft, color: ki.color } : undefined}
+                onClick={() => { set('unit')(k); setErrors({}); }}>
+                <MIcon name={ki.icon} size={16} />{ki.short || ki.label}
+              </button>
+            );
+          })}
+        </div>
+      </FieldShell>
+      {isEdit && term.unit !== draft.unit && (
+        <div className="trm-kind-switch">
+          Changes this entry from <b>{H.termInfo(term.unit).label.toLowerCase()}</b> to <b>{info.label.toLowerCase()}</b>.
+          {H.termIsNumeric(term.unit) && !numeric ? ' Its value, currency and cadence are removed.' : ''} The name keeps its history.
+        </div>
+      )}
+
       <div className="trm-value-block">
+        {isText ? (
+          <FieldShell label="Text" htmlFor="ctm-text" required
+            error={errors.textValue || (textProblem === 'control' ? CTM_TEXT_ERR.control : undefined)}
+            aside={<span className={`trm-text-count${textTrimmed.length > D.termTextMaxLength ? ' over' : ''}`}>{textTrimmed.length} / {D.termTextMaxLength}</span>}
+            help="One line of plain text, as the contract words it.">
+            <div className="odc-input-wrap">
+              <input id="ctm-text" className="odc-input" type="text" autoFocus
+                value={draft.textValue} onChange={(e) => set('textValue')(e.target.value)}
+                aria-invalid={!!(errors.textValue || textProblem === 'control')}
+                placeholder="e.g. 3 months, to the end of a month" />
+            </div>
+          </FieldShell>
+        ) : isDt ? (
+          <div>
+            <FormRow cols={2}>
+              <DateField label="Date" required value={draft.dtDate} onChange={(v) => { set('dtDate')(v); setErrors(e => ({ ...e, dateTimeValue: undefined })); }} />
+              <TimeField label="Time" required step={30} value={draft.dtTime} onChange={(v) => { set('dtTime')(v || ''); setErrors(e => ({ ...e, dateTimeValue: undefined })); }} />
+            </FormRow>
+            {errors.dateTimeValue
+              ? <div className="helper aam-err">{errors.dateTimeValue}</div>
+              : <div className="helper">
+                  In your time zone, <b>{zone.name}</b> ({zone.offset}){dtUtc ? <React.Fragment>. Saved as <span className="trm-dt-utc">{H.termUtcStamp(dtUtc)}</span>.</React.Fragment> : '.'}
+                </div>}
+          </div>
+        ) : (
+        <React.Fragment>
         <div className="trm-field-head">
           <div className="label" style={{ marginBottom: 0 }}>Value<span className="odc-field-req" aria-hidden="true">*</span></div>
-          {(
-            <div className="atm-seg" role="radiogroup" aria-label="Unit" style={{ marginLeft: 'auto' }}>
-              <button type="button" role="radio" aria-checked={isPct}
-                className={`atm-seg-btn ${isPct ? 'on' : ''}`} style={isPct ? { background: info.soft, color: info.color } : {}}
-                onClick={() => set('unit')('Percentage')}>
-                <MIcon name="percent" size={15} />Percentage
-              </button>
-              <button type="button" role="radio" aria-checked={!isPct}
-                className={`atm-seg-btn ${!isPct ? 'on' : ''}`} style={!isPct ? { background: info.soft, color: info.color } : {}}
-                onClick={() => set('unit')('Amount')}>
-                <MIcon name="payments" size={15} />Amount
-              </button>
-            </div>
-          )}
         </div>
-
         {isPct ? (
           <AmountField
             size="lg"
@@ -338,7 +415,16 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
               : <React.Fragment>A contract has no currency of its own — <b>pick one</b> for this amount. The word on the left says which way the money moves.</React.Fragment>)}
           />
         )}
+        </React.Fragment>
+        )}
       </div>
+
+      {!numeric && (
+        <div className="trm-na-note">
+          <MIcon name="info" size={16} />
+          <span>{isText ? 'A text term' : 'A date-time term'} records a fact, not a charge. It has no direction, currency or cadence, and it doesn’t count toward the contract’s run rate.</span>
+        </div>
+      )}
 
       <FormRow cols={1}>
         <DateField label="Effective from" required value={draft.effectiveFrom} onChange={set('effectiveFrom')}
@@ -346,8 +432,8 @@ const AddContractTermModal = ({ contract, term, existing = [], onClose, onSave }
       </FormRow>
       {errors.effectiveFrom && <div className="helper aam-err" style={{ marginTop: -6 }}>{errors.effectiveFrom}</div>}
 
-      {/* Cadence — the count only once the unit is periodic. */}
-      {(
+      {/* Cadence — the count only once the unit is periodic. Numeric kinds only. */}
+      {numeric && (
         <div className="trm-cadence">
           <FormRow cols={periodic ? 2 : 1}>
             <FieldShell label="Interval"

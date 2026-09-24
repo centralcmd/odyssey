@@ -104,7 +104,11 @@ const ContractTermChart = ({ terms, owner }) => {
   const DS = window.OdysseyDesignSystem_d5aa51 || {};
   const DSTermHistoryChart = DS.TermHistoryChart;
   if (!DSTermHistoryChart) return null;
-  const series = conTermSeriesList(terms).map((x) => {
+  /* Only a series whose entry IN FORCE is a number plots, and only its entries
+     of that same unit: a notice period has no axis, and a service charge that
+     became "Included in the rent" is no longer a price. Its numeric past stays
+     in the table below. */
+  const series = conTermSeriesList(terms).filter(x => CTRM_H.termIsNumeric(x.inForce)).map((x) => {
     const t = x.inForce;
     const dir = CTRM_H.termDirectionApplies(t, owner) ? CTRM_H.termDirectionInfo(t) : null;
     const pct = t.unit === 'Percentage';
@@ -115,11 +119,12 @@ const ContractTermChart = ({ terms, owner }) => {
       tone: dir ? { label: dir.label, color: dir.color } : undefined,
       color: dir ? dir.color : trmKindInfo(t).color,
       group: conCompatKey(t),
-      points: trmSeriesFromList(terms, x.key).map(p => ({ id: p.id, date: p.date, value: p.value })),
+      points: trmSeriesFromList(terms.filter(e => e.unit === t.unit), x.key).map(p => ({ id: p.id, date: p.date, value: p.value })),
       format: (v) => (pct ? CTRM_H.pctStr(v) : CTRM_H.money(v, t.currency || CTRM_H.defaultCurrency())),
       axisFormat: conAxisFmt(t),
     };
   });
+  if (!series.length) return null;
   return <DSTermHistoryChart className="trm-seriesplot" series={series} />;
 };
 
@@ -130,10 +135,27 @@ const ContractTermsNotice = ({ block }) => (
   </div>
 );
 
-const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) => {
+/* Relative distance to a DateTime term's instant, for the tile foot. Display
+   only — nothing is scheduled off it (Non-goal 2). */
+const conDtDistance = (iso) => {
+  const days = Math.round((new Date(iso).getTime() - Date.now()) / 86400000);
+  if (days === 0) return 'today';
+  if (days > 0) return days < 60 ? `in ${days} days` : `in ${Math.round(days / 30.4)} months`;
+  const a = -days;
+  return a < 60 ? `${a} days ago` : `${Math.round(a / 30.4)} months ago`;
+};
+const CON_KIND_ORDER = { Amount: 0, Percentage: 0, DateTime: 1, Text: 2 };
+
+/* nonNumericEditing — false in the compatibility release (backend issue Goal 9):
+   Text / DateTime rows render and delete, but the numeric form will not open
+   them. True once the frontend spec ships the full dialog. */
+const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete, nonNumericEditing = true }) => {
   const { useMemo } = React;
   const owner = useMemo(() => conTermOwner(contract), [contract]);
-  const current = useMemo(() => trmCurrentFromList(terms), [terms]);
+  const current = useMemo(() => trmCurrentFromList(terms)
+    .map((t, i) => ({ t, i })).sort((a, b) => ((CON_KIND_ORDER[a.t.unit] ?? 3) - (CON_KIND_ORDER[b.t.unit] ?? 3)) || (a.i - b.i)).map(x => x.t), [terms]);
+  const editLockFor = nonNumericEditing ? null
+    : (t) => (CTRM_H.termIsNumeric(t) ? null : 'Text and date-time terms can’t be edited here yet');
   const currentIds = useMemo(() => new Set(current.map(t => t.id)), [current]);
   const block = CTRM_H.conTermWriteBlock(contract, terms.length, cap);
   const limit = cap != null ? cap : CTRM_D.CONTRACT_MAX_TERMS_PER_CONTRACT;
@@ -141,13 +163,14 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
      employment agreement pays a salary IN and deducts dues OUT — so the
      section says how many of each rather than one count of "values". */
   const incoming = current.filter(t => CTRM_H.termDirectionApplies(t, owner) && CTRM_H.termIsIncoming(t));
+  const priced = current.filter(t => CTRM_H.termDirectionApplies(t, owner));
 
   if (terms.length === 0) {
     return (
       <div className="con-section">
         <SectionDivider label="Terms" meta="0 entries" />
         <EmptyLine>
-          No terms yet — record what this agreement costs: a rent, a service fee, an interest rate. Each keeps its own dated history.
+          No terms yet — record what this agreement costs, like a rent or an interest rate, and the facts it fixes, like a notice period or a deadline. Each keeps its own dated history.
           {block ? <div className="con-trm-inline-block">{block.text}</div> : null}
         </EmptyLine>
       </div>
@@ -162,12 +185,27 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
   return (
     <React.Fragment>
       <div className="con-section">
-        <SectionDivider label="Current terms" meta={current.length ? `${current.length} ${current.length === 1 ? 'value' : 'values'} in force${incoming.length ? ` · ${incoming.length} incoming, ${current.length - incoming.length} outgoing` : ''} · ${CTRM_H.dateLong(trmToday())}` : 'none in force'} />
+        <SectionDivider label="Current terms" meta={current.length ? `${current.length} ${current.length === 1 ? 'value' : 'values'} in force${incoming.length ? ` · ${incoming.length} incoming, ${priced.length - incoming.length} outgoing` : ''} · ${CTRM_H.dateLong(trmToday())}` : 'none in force'} />
         {block ? <ContractTermsNotice block={block} /> : null}
         {current.length ? (
           <InfoTileGrid>
             {current.map(t => {
               const info = trmKindInfo(t);
+              /* Text and DateTime: the fact itself, in body ink. No direction,
+                 no cadence — the kind's own hue on the icon says what it is. */
+              if (!CTRM_H.termIsNumeric(t)) {
+                const isText = t.unit === 'Text';
+                const isDt = t.unit === 'DateTime';
+                return (
+                  <InfoTile key={trmKey(t)} icon={info.icon} iconColor={info.color} iconSoft={info.soft}
+                    className={isText ? 'trm-text-tile' : 'trm-dt-tile'}
+                    wide={isText && (t.textValue || '').length > 40}
+                    valueVariant={isDt ? 'sm' : 'text'}
+                    label={CTRM_H.termDisplayName(t, owner)}
+                    value={<span title={isDt ? CTRM_H.termUtcStamp(t.dateTimeValue) : undefined}>{CTRM_H.fmtTermValueFor(t, owner)}</span>}
+                    foot={`since ${CTRM_H.dateLong(t.effectiveFrom)}${isDt ? ` · ${conDtDistance(t.dateTimeValue)}` : ''}`} />
+                );
+              }
               // The cadence is what separates a 2,150 USD monthly rent from a
               // 2,150 USD one-off, so it rides in the foot beside the date.
               const period = CTRM_H.cadenceTextFor(t);
@@ -211,6 +249,7 @@ const ContractTerms = ({ contract, terms = [], cap, onNew, onEdit, onDelete }) =
           account={owner}
           onEdit={onEdit}
           onDelete={onDelete}
+          editLockFor={editLockFor}
         />
       </div>
     </React.Fragment>

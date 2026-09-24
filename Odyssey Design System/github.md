@@ -28,6 +28,7 @@ date: 2026-08-25T08:15:20Z
 | `components/ReferenceNumberField.jsx` · `ReferenceNumber.jsx` · `referencenumber.html` | **No shipped counterpart.** Designed from the *Contract Reference Number — Backend (Draft v2)* spec. The `UpdateContract` carry-forward sites are `ContractsCard.razor.cs` (Archive/Restore, Pause/Resume, Sign) and `CreateContractDialog.razor.cs` (edit). |
 | `preview/58d-data-deposit-contract-type.html` · `contracts-data.js` / `ContractTypeSelect.jsx` / `ContractPartyRoleSelect.jsx` registry rows | **No shipped counterpart yet** — the three `OdsTypeRegistries` rows (`ContractTypes` Deposit after Loan; `ContractPartyRoles` Depositor, Custodian) from the *Deposit contract type — Backend (Draft v1)* spec. |
 | `ui_kits/web/admin.css` | `Odyssey.Client/Pages/Settings.razor.css` |
+| `preview/31e-contract-term-text-datetime.html` · `AddContractTermModal.jsx` / `ContractTerms.jsx` / `AccountTerms.jsx` / `data.js` term helpers | **No shipped counterpart.** Designed from the *Text and Date-Time Contract Terms — Backend (Draft v2)* spec. Compat sites: `AddTermDialog.razor.cs`, `TermVisuals.cs`, `TermChartSeries.cs`. |
 
 ## Notes
 

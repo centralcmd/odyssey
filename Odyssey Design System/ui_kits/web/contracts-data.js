@@ -881,6 +881,15 @@
       // the chart's "measured differently, so it shows on its own" rule
       // something a reader can actually meet.
       { id: 'ctm-lease-7', contractId: 'ct-lease', unit: 'Percentage', value: 0.08, currency: null, interval: null, intervalCount: null, effectiveFrom: '2025-09-01', label: 'Arrears interest', labelKey: 'arrears interest', direction: 'Outgoing', note: 'Statutory rate on rent in arrears.', createdAtUtc: '2025-08-14T10:00:00Z' },
+      /* TextAndDateTimeTermKinds — contract facts that are not a number. A Text
+         term and a DateTime term, plus a series that CHANGED KIND at the review:
+         the service charge was folded into the rent, so its Amount is superseded
+         by a Text entry and stops counting toward the run rate. */
+      { id: 'ctm-lease-8', contractId: 'ct-lease', unit: 'Text', value: null, textValue: '2 months, to the end of a rental period', dateTimeValue: null, currency: null, interval: null, intervalCount: null, anchorDate: null, direction: 'Outgoing', effectiveFrom: '2025-09-01', label: 'Notice period', labelKey: 'notice period', note: 'Clause 14.2.', createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-9', contractId: 'ct-lease', unit: 'DateTime', value: null, textValue: null, dateTimeValue: '2026-11-30T17:00:00Z', currency: null, interval: null, intervalCount: null, anchorDate: null, direction: 'Outgoing', effectiveFrom: '2025-09-01', label: 'Break notice deadline', labelKey: 'break notice deadline', note: 'Written notice must reach the agent by then.', createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-9b', contractId: 'ct-lease', unit: 'DateTime', value: null, textValue: null, dateTimeValue: '2027-02-26T17:00:00Z', currency: null, interval: null, intervalCount: null, anchorDate: null, direction: 'Outgoing', effectiveFrom: '2026-03-01', label: 'Break notice deadline', labelKey: 'break notice deadline', note: 'Moved with the three-month extension.', createdAtUtc: '2026-01-28T09:00:00Z' },
+      { id: 'ctm-lease-10', contractId: 'ct-lease', unit: 'Amount', value: 40.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-09-01', label: 'Service charge', labelKey: 'service charge', note: null, createdAtUtc: '2025-08-14T10:00:00Z' },
+      { id: 'ctm-lease-10b', contractId: 'ct-lease', unit: 'Text', value: null, textValue: 'Included in the monthly rent', dateTimeValue: null, currency: null, interval: null, intervalCount: null, anchorDate: null, direction: 'Outgoing', effectiveFrom: '2026-03-01', label: 'Service charge', labelKey: 'service charge', note: 'Folded into the rent at the mid-term review.', createdAtUtc: '2026-01-28T09:00:00Z' },
       { id: 'ctm-lease-7b', contractId: 'ct-lease', unit: 'Percentage', value: 0.0925, currency: null, interval: null, intervalCount: null, effectiveFrom: '2026-03-01', label: 'Arrears interest', labelKey: 'arrears interest', direction: 'Outgoing', note: 'Tracks the statutory rate.', createdAtUtc: '2026-01-28T09:00:00Z' },
     ],
     // Fiber service — a price rise on the monthly charge, plus two one-offs.

@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"77a2688a5486","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d56735c7fe2d","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"5a8b2c825711","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"2d8a461f940e","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"e361647ccece","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"3fd815566ac2","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"0487ec4e9d16","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"247fb5488f6f","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"36ed78215490","ui_kits/web/Contracts.jsx":"4b23470f804f","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5118424de926","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"854a34963f77","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"0abc7857c7b3","ui_kits/web/contracts-data.js":"fd2a9b71de02","ui_kits/web/data.js":"a9e70c04b609","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/system-settings-data.js":"b7eea7ed2b3c","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"77a2688a5486","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d56735c7fe2d","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"5a8b2c825711","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"a97a01a9279b","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"e361647ccece","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"0487ec4e9d16","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"247fb5488f6f","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"4b23470f804f","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5118424de926","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"854a34963f77","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"0fc117954b43","ui_kits/web/contracts-data.js":"1f142d62ba22","ui_kits/web/data.js":"2f39d2338da7","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/system-settings-data.js":"b7eea7ed2b3c","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -20782,7 +20782,9 @@ const trmCurrentFromList = (terms, asOf) => {
   }
   return H.sortTermsBySeries(Object.values(bySeries));
 };
-const trmSeriesFromList = (terms, labelKey) => terms.filter(t => trmKey(t) === (labelKey || '')).map(t => ({
+/* Only entries with a number plot. A Text / DateTime entry in a series' history
+   is SKIPPED, never drawn as 0 (Goal 9) — the table below still lists it. */
+const trmSeriesFromList = (terms, labelKey) => terms.filter(t => trmKey(t) === (labelKey || '') && H.termIsNumeric(t) && t.value != null).map(t => ({
   id: t.id,
   date: t.effectiveFrom,
   value: t.value,
@@ -21248,18 +21250,26 @@ const TermStatus = ({
     className: "trm-superseded"
   }, "Superseded");
 };
+
+/* `editLocked` — a reason string when this client cannot edit the row (the
+   compatibility release opens only Percentage / Amount in the numeric form).
+   The button stays visible but disabled, and the reason is its tooltip, so the
+   row does not look read-only for some other cause. Delete is unaffected. */
 const RowActions = ({
   onEdit,
-  onDelete
+  onDelete,
+  editLocked
 }) => /*#__PURE__*/React.createElement("span", {
   className: "trm-rowbtns"
 }, /*#__PURE__*/React.createElement("button", {
   type: "button",
   className: "trm-iconbtn",
-  "aria-label": "Edit term",
-  onClick: onEdit
+  "aria-label": editLocked ? `Edit term — ${editLocked}` : 'Edit term',
+  title: editLocked || undefined,
+  disabled: !!editLocked,
+  onClick: editLocked ? undefined : onEdit
 }, /*#__PURE__*/React.createElement(MIcon, {
-  name: "edit",
+  name: editLocked ? 'edit_off' : 'edit',
   size: 17
 })), /*#__PURE__*/React.createElement("button", {
   type: "button",
@@ -21270,12 +21280,46 @@ const RowActions = ({
   name: "delete",
   size: 17
 })));
+
+/* The value cell, by kind. Numbers keep the mono, right-aligned figure and its
+   cadence. Text is proportional and may wrap; a date-time is the viewer's local
+   time with the zone named. Neither takes a direction hue or a cadence. */
+const TermValueCell = ({
+  t,
+  account,
+  isCurrent,
+  Tag = 'td',
+  className = 'trm-cell-value',
+  cadenceSize
+}) => {
+  if (!H.termIsNumeric(t)) {
+    const kind = t.unit === 'Text' ? 'text' : t.unit === 'DateTime' ? 'datetime' : 'unknown';
+    return /*#__PURE__*/React.createElement(Tag, {
+      className: `${className} trm-v-${kind}${isCurrent ? ' is-current' : ''}`,
+      title: t.unit === 'DateTime' ? H.termUtcStamp(t.dateTimeValue) : undefined
+    }, H.fmtTermValueFor(t, account));
+  }
+  const cadence = H.cadenceTextFor(t);
+  return /*#__PURE__*/React.createElement(Tag, {
+    className: className,
+    style: H.termDirectionApplies(t, account) || isCurrent ? {
+      color: trmValueColor(t, account)
+    } : undefined
+  }, H.fmtTermValueFor(t, account), cadence ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--mud-palette-text-secondary)',
+      fontWeight: 400,
+      fontSize: cadenceSize
+    }
+  }, " ", cadence) : null);
+};
 const TermTable = ({
   rows,
   currentIds,
   onEdit,
   onDelete,
-  account
+  account,
+  editLockFor
 }) => /*#__PURE__*/React.createElement("table", {
   className: "trm-tbl"
 }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
@@ -21328,24 +21372,19 @@ const TermTable = ({
     className: "trm-row-note"
   }, t.note)))), /*#__PURE__*/React.createElement("td", {
     className: "trm-cell-date"
-  }, H.dateLong(t.effectiveFrom)), /*#__PURE__*/React.createElement("td", {
-    className: "trm-cell-value",
-    style: H.termDirectionApplies(t, account) || isCurrent ? {
-      color: trmValueColor(t, account)
-    } : undefined
-  }, H.fmtTermValueFor(t, account), cadence ? /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: 'var(--mud-palette-text-secondary)',
-      fontWeight: 400
-    }
-  }, " ", cadence) : null), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(TermStatus, {
+  }, H.dateLong(t.effectiveFrom)), /*#__PURE__*/React.createElement(TermValueCell, {
+    t: t,
+    account: account,
+    isCurrent: isCurrent
+  }), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(TermStatus, {
     t: t,
     currentIds: currentIds
   })), /*#__PURE__*/React.createElement("td", {
     className: "trm-cell-act"
   }, /*#__PURE__*/React.createElement(RowActions, {
     onEdit: () => onEdit(t),
-    onDelete: () => onDelete(t)
+    onDelete: () => onDelete(t),
+    editLocked: editLockFor ? editLockFor(t) : null
   })));
 })));
 const TermTimeline = ({
@@ -21353,7 +21392,8 @@ const TermTimeline = ({
   currentIds,
   onEdit,
   onDelete,
-  account
+  account,
+  editLockFor
 }) => /*#__PURE__*/React.createElement("div", {
   className: "trm-timeline"
 }, rows.map(t => {
@@ -21391,26 +21431,24 @@ const TermTimeline = ({
     className: "trm-tl-note"
   }, t.note)), /*#__PURE__*/React.createElement("div", {
     className: "trm-tl-figs"
-  }, /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement(TermValueCell, {
+    t: t,
+    account: account,
+    isCurrent: currentIds.has(t.id),
+    Tag: "span",
     className: "trm-tl-value",
-    style: H.termDirectionApplies(t, account) || currentIds.has(t.id) ? {
-      color: trmValueColor(t, account)
-    } : undefined
-  }, H.fmtTermValueFor(t, account), cadence ? /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: 'var(--mud-palette-text-secondary)',
-      fontWeight: 400,
-      fontSize: 12
-    }
-  }, " ", cadence) : null), /*#__PURE__*/React.createElement("span", {
+    cadenceSize: 12
+  }), /*#__PURE__*/React.createElement("span", {
     className: "trm-rowbtns trm-tl-actions"
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
     className: "trm-iconbtn",
     "aria-label": "Edit term",
+    title: editLockFor && editLockFor(t) || undefined,
+    disabled: !!(editLockFor && editLockFor(t)),
     onClick: () => onEdit(t)
   }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "edit",
+    name: editLockFor && editLockFor(t) ? 'edit_off' : 'edit',
     size: 16
   })), /*#__PURE__*/React.createElement("button", {
     type: "button",
@@ -21428,7 +21466,8 @@ const TermHistory = ({
   historyStyle,
   onEdit,
   onDelete,
-  account
+  account,
+  editLockFor
 }) => {
   const sorted = terms.slice().sort((a, b) => a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : 0);
   const View = historyStyle === 'timeline' ? TermTimeline : TermTable;
@@ -21439,7 +21478,8 @@ const TermHistory = ({
     currentIds: currentIds,
     onEdit: onEdit,
     onDelete: onDelete,
-    account: account
+    account: account,
+    editLockFor: editLockFor
   }));
 };
 Object.assign(window, {
@@ -21447,6 +21487,7 @@ Object.assign(window, {
   TermHero,
   CurrentTermsSummary,
   TermHistory,
+  TermValueCell,
   TermName,
   CadenceTag,
   TermDirectionTag,
@@ -25417,6 +25458,16 @@ try { (() => {
    date, the (label, effectiveFrom) duplicate guard that is the server's
    409 — is the shared rule, read from the same helpers the account dialog uses.
 
+   FOUR KINDS (TextAndDateTimeTermKinds). Percentage and Amount are priced; Text
+   and DateTime record a fact. The kind picker leads the form because it decides
+   which fields exist at all: on Text / DateTime the direction, currency, cadence
+   and first-billed date are not hidden-but-kept — they are NOT SENT. The server
+   refuses each one with its own 400 rather than clearing it, so a kind change on
+   edit must null them here, and the dialog says it is doing so.
+
+   `kinds` narrows the picker. The compatibility release (backend issue, Goal 9)
+   passes ['Percentage', 'Amount']; the full release passes all four.
+
    On confirm, onSave(dto, id?) receives the term-shaped object (id on edit). */
 
 const CTM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({
@@ -25469,7 +25520,8 @@ const ctmNameOptions = (existing, currentId) => {
     const sorted = s.entries.slice().sort((a, b) => a.effectiveFrom < b.effectiveFrom ? -1 : 1);
     const inForce = sorted.filter(t => t.effectiveFrom <= today).pop();
     const t = inForce || sorted[sorted.length - 1];
-    const amount = t.unit === 'Percentage' ? `${ctmFracToPctStr(t.value)}%` : H.money(t.value, t.currency || H.defaultCurrency());
+    const raw = H.fmtTermValueFor(t);
+    const amount = t.unit === 'Text' ? `“${raw.length > 36 ? raw.slice(0, 35) + '…' : raw}”` : raw;
     const cadence = H.cadenceTextFor(t);
     const parts = [amount];
     if (cadence) parts.push(cadence);else if (t.interval === 'OneTime') parts.push('one-time');
@@ -25482,12 +25534,22 @@ const ctmNameOptions = (existing, currentId) => {
     };
   });
 };
+const CTM_ALL_KINDS = ['Percentage', 'Amount', 'Text', 'DateTime'];
+
+/* The server's messages (§9), verbatim in meaning — and never the text itself. */
+const CTM_TEXT_ERR = {
+  empty: 'Enter the text this term records.',
+  long: `Keep it to ${window.OdysseyData.termTextMaxLength} characters.`,
+  control: 'Remove tabs, line breaks and hidden direction marks.'
+};
 const AddContractTermModal = ({
   contract,
   term,
   existing = [],
   onClose,
-  onSave
+  onSave,
+  kinds = CTM_ALL_KINDS,
+  initialUnit
 }) => {
   const {
     useState
@@ -25497,8 +25559,11 @@ const AddContractTermModal = ({
   const isEdit = !!term;
   const COUNT = D.termIntervalCount;
   const [draft, setDraft] = useState(() => ({
-    unit: term ? term.unit : 'Amount',
-    valueStr: term ? term.unit === 'Percentage' ? ctmFracToPctStr(term.value) : String(term.value) : '',
+    unit: initialUnit || (term ? term.unit : 'Amount'),
+    valueStr: term && term.value != null ? term.unit === 'Percentage' ? ctmFracToPctStr(term.value) : String(term.value) : '',
+    textValue: term && term.textValue ? term.textValue : '',
+    dtDate: term && term.dateTimeValue ? H.termUtcToLocal(term.dateTimeValue).date : '',
+    dtTime: term && term.dateTimeValue ? H.termUtcToLocal(term.dateTimeValue).time : '',
     // No account currency to inherit, so the USER'S DEFAULT stands in for one.
     // Still required: a cleared field refuses the write.
     currency: term ? term.currency || '' : H.defaultCurrency(),
@@ -25515,7 +25580,14 @@ const AddContractTermModal = ({
   }));
   const [errors, setErrors] = useState({});
   const isPct = draft.unit === 'Percentage';
+  const isText = draft.unit === 'Text';
+  const isDt = draft.unit === 'DateTime';
+  const numeric = H.termIsNumeric(draft.unit);
   const info = H.termInfo(draft.unit);
+  const dtUtc = isDt ? H.termLocalToUtc(draft.dtDate, draft.dtTime) : null;
+  const zone = H.localZone(dtUtc);
+  const textTrimmed = draft.textValue.trim();
+  const textProblem = isText && draft.textValue !== '' ? H.termTextProblem(draft.textValue) : null;
   const periodic = H.intervalIsPeriodic(draft.interval);
   const intervalInfo = H.intervalInfo(draft.interval);
   const set = k => v => {
@@ -25532,20 +25604,29 @@ const AddContractTermModal = ({
     const next = {};
     if (contract.archived) next.archived = 'This contract is archived — restore it first.';
     const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
-    if (draft.valueStr === '' || isNaN(raw)) {
-      next.value = 'Enter a value.';
-    } else if (isPct) {
-      if (raw < -100 || raw > 100) next.value = 'Must be between −100% and 100%.';
-    } else if (raw < 0) {
-      next.value = 'An amount can’t be negative.';
+    if (numeric) {
+      if (draft.valueStr === '' || isNaN(raw)) {
+        next.value = 'Enter a value.';
+      } else if (isPct) {
+        if (raw < -100 || raw > 100) next.value = 'Must be between −100% and 100%.';
+      } else if (raw < 0) {
+        next.value = 'An amount can’t be negative.';
+      }
+      // The contract rule: an amount needs a currency of its own on the record.
+      if (!isPct && !draft.currency) next.currency = 'Pick the currency this amount is in — a contract has no currency of its own.';
+    } else if (isText) {
+      const p = H.termTextProblem(draft.textValue);
+      if (p) next.textValue = CTM_TEXT_ERR[p];
+    } else if (isDt) {
+      if (!draft.dtDate || !draft.dtTime) next.dateTimeValue = 'Pick both a date and a time.';else {
+        const R = D.termDateTimeRange;
+        if (!dtUtc || dtUtc < R.min || dtUtc > R.max) next.dateTimeValue = 'Pick a date between 1900 and 2200.';
+      }
     }
-
-    // The contract rule: an amount needs a currency of its own on the record.
-    if (!isPct && !draft.currency) next.currency = 'Pick the currency this amount is in — a contract has no currency of its own.';
     if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
     const countRaw = String(draft.intervalCount).trim();
     let count = null;
-    if (periodic && countRaw !== '') {
+    if (numeric && periodic && countRaw !== '') {
       count = parseInt(countRaw, 10);
       if (isNaN(count) || count < COUNT.min || count > COUNT.max) {
         next.intervalCount = `Enter a whole number between ${COUNT.min} and ${COUNT.max}.`;
@@ -25565,17 +25646,23 @@ const AddContractTermModal = ({
       setErrors(next);
       return;
     }
-    const value = isPct ? Number((raw / 100).toFixed(6)) : Number(raw.toFixed(2));
+    const value = !numeric ? null : isPct ? Number((raw / 100).toFixed(6)) : Number(raw.toFixed(2));
+    /* Exactly one value field is set, and every field that does not apply to
+       the kind goes out as null (direction as Outgoing) — never left over from
+       a kind the entry used to be. */
     onSave({
       contractId: contract.id,
       accountId: null,
       unit: draft.unit,
       value,
-      currency: isPct ? null : draft.currency,
-      interval: draft.interval || null,
-      intervalCount: periodic ? count == null ? 1 : count : null,
-      anchorDate: draft.anchorDate || null,
-      direction: draft.direction,
+      textValue: isText ? textTrimmed : null,
+      // Always an instant with Z — the server refuses a time with no offset.
+      dateTimeValue: isDt ? dtUtc : null,
+      currency: numeric && !isPct ? draft.currency : null,
+      interval: numeric ? draft.interval || null : null,
+      intervalCount: numeric && periodic ? count == null ? 1 : count : null,
+      anchorDate: numeric ? draft.anchorDate || null : null,
+      direction: numeric ? draft.direction : 'Outgoing',
       effectiveFrom: draft.effectiveFrom,
       label,
       labelKey: key,
@@ -25605,7 +25692,7 @@ const AddContractTermModal = ({
   })();
   return /*#__PURE__*/React.createElement(Modal, {
     title: isEdit ? 'Edit term' : 'New term',
-    subtitle: isEdit ? 'Correct this entry in the contract’s price history.' : `Record what ${contract.name} costs, effective from a date.`,
+    subtitle: isEdit ? 'Correct this entry in the contract’s term history.' : `Record a price, a rate or a fact of ${contract.name}, effective from a date.`,
     icon: isEdit ? 'edit' : '§',
     className: "trm-dialog",
     onClose: onClose,
@@ -25625,7 +25712,7 @@ const AddContractTermModal = ({
     htmlFor: "ctm-label",
     required: true,
     error: errors.label,
-    help: errors.label ? undefined : matchedSeries ? /*#__PURE__*/React.createElement(React.Fragment, null, "Joins the price history of ", /*#__PURE__*/React.createElement("b", null, matchedSeries.label), " \u2014 currently ", matchedSeries.note, ". This entry supersedes it from the effective date.") : draft.label.trim() ? /*#__PURE__*/React.createElement(React.Fragment, null, "Starts a ", /*#__PURE__*/React.createElement("b", null, "new charge"), " on this contract, with its own history separate from the others.") : 'Pick a charge this updates, or type a new name to start one.'
+    help: errors.label ? undefined : matchedSeries ? /*#__PURE__*/React.createElement(React.Fragment, null, "Joins the history of ", /*#__PURE__*/React.createElement("b", null, matchedSeries.label), " \u2014 currently ", matchedSeries.note, ". This entry supersedes it from the effective date.") : draft.label.trim() ? /*#__PURE__*/React.createElement(React.Fragment, null, "Starts a ", /*#__PURE__*/React.createElement("b", null, "new term"), " on this contract, with its own history separate from the others.") : 'Pick a term this updates, or type a new name to start one.'
   }, /*#__PURE__*/React.createElement(Combobox, {
     id: "ctm-label",
     freeText: true,
@@ -25634,15 +25721,95 @@ const AddContractTermModal = ({
     onChange: set('label'),
     options: nameOptions,
     onCreate: text => text,
-    createLabel: "New charge",
-    placeholder: "e.g. Monthly rent",
+    createLabel: "New term",
+    placeholder: "e.g. Monthly rent, Notice period",
     ariaLabel: "Name",
     required: true,
     invalid: !!errors.label,
-    emptyText: nameOptions.length ? 'No matching charge — type to name a new one' : 'No charges yet — type a name'
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "trm-value-block"
+    emptyText: nameOptions.length ? 'No matching term — type to name a new one' : 'No terms yet — type a name'
+  })), /*#__PURE__*/React.createElement(FieldShell, {
+    label: "Kind",
+    required: true
   }, /*#__PURE__*/React.createElement("div", {
+    className: "trm-kind-seg",
+    role: "radiogroup",
+    "aria-label": "Kind"
+  }, kinds.map(k => {
+    const ki = H.termInfo(k);
+    const on = draft.unit === k;
+    return /*#__PURE__*/React.createElement("button", {
+      key: k,
+      type: "button",
+      role: "radio",
+      "aria-checked": on,
+      style: on ? {
+        background: ki.soft,
+        color: ki.color
+      } : undefined,
+      onClick: () => {
+        set('unit')(k);
+        setErrors({});
+      }
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: ki.icon,
+      size: 16
+    }), ki.short || ki.label);
+  }))), isEdit && term.unit !== draft.unit && /*#__PURE__*/React.createElement("div", {
+    className: "trm-kind-switch"
+  }, "Changes this entry from ", /*#__PURE__*/React.createElement("b", null, H.termInfo(term.unit).label.toLowerCase()), " to ", /*#__PURE__*/React.createElement("b", null, info.label.toLowerCase()), ".", H.termIsNumeric(term.unit) && !numeric ? ' Its value, currency and cadence are removed.' : '', " The name keeps its history."), /*#__PURE__*/React.createElement("div", {
+    className: "trm-value-block"
+  }, isText ? /*#__PURE__*/React.createElement(FieldShell, {
+    label: "Text",
+    htmlFor: "ctm-text",
+    required: true,
+    error: errors.textValue || (textProblem === 'control' ? CTM_TEXT_ERR.control : undefined),
+    aside: /*#__PURE__*/React.createElement("span", {
+      className: `trm-text-count${textTrimmed.length > D.termTextMaxLength ? ' over' : ''}`
+    }, textTrimmed.length, " / ", D.termTextMaxLength),
+    help: "One line of plain text, as the contract words it."
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "odc-input-wrap"
+  }, /*#__PURE__*/React.createElement("input", {
+    id: "ctm-text",
+    className: "odc-input",
+    type: "text",
+    autoFocus: true,
+    value: draft.textValue,
+    onChange: e => set('textValue')(e.target.value),
+    "aria-invalid": !!(errors.textValue || textProblem === 'control'),
+    placeholder: "e.g. 3 months, to the end of a month"
+  }))) : isDt ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(FormRow, {
+    cols: 2
+  }, /*#__PURE__*/React.createElement(DateField, {
+    label: "Date",
+    required: true,
+    value: draft.dtDate,
+    onChange: v => {
+      set('dtDate')(v);
+      setErrors(e => ({
+        ...e,
+        dateTimeValue: undefined
+      }));
+    }
+  }), /*#__PURE__*/React.createElement(TimeField, {
+    label: "Time",
+    required: true,
+    step: 30,
+    value: draft.dtTime,
+    onChange: v => {
+      set('dtTime')(v || '');
+      setErrors(e => ({
+        ...e,
+        dateTimeValue: undefined
+      }));
+    }
+  })), errors.dateTimeValue ? /*#__PURE__*/React.createElement("div", {
+    className: "helper aam-err"
+  }, errors.dateTimeValue) : /*#__PURE__*/React.createElement("div", {
+    className: "helper"
+  }, "In your time zone, ", /*#__PURE__*/React.createElement("b", null, zone.name), " (", zone.offset, ")", dtUtc ? /*#__PURE__*/React.createElement(React.Fragment, null, ". Saved as ", /*#__PURE__*/React.createElement("span", {
+    className: "trm-dt-utc"
+  }, H.termUtcStamp(dtUtc)), ".") : '.')) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "trm-field-head"
   }, /*#__PURE__*/React.createElement("div", {
     className: "label",
@@ -25652,40 +25819,7 @@ const AddContractTermModal = ({
   }, "Value", /*#__PURE__*/React.createElement("span", {
     className: "odc-field-req",
     "aria-hidden": "true"
-  }, "*")), /*#__PURE__*/React.createElement("div", {
-    className: "atm-seg",
-    role: "radiogroup",
-    "aria-label": "Unit",
-    style: {
-      marginLeft: 'auto'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    role: "radio",
-    "aria-checked": isPct,
-    className: `atm-seg-btn ${isPct ? 'on' : ''}`,
-    style: isPct ? {
-      background: info.soft,
-      color: info.color
-    } : {},
-    onClick: () => set('unit')('Percentage')
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "percent",
-    size: 15
-  }), "Percentage"), /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    role: "radio",
-    "aria-checked": !isPct,
-    className: `atm-seg-btn ${!isPct ? 'on' : ''}`,
-    style: !isPct ? {
-      background: info.soft,
-      color: info.color
-    } : {},
-    onClick: () => set('unit')('Amount')
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "payments",
-    size: 15
-  }), "Amount"))), isPct ? /*#__PURE__*/React.createElement(AmountField, {
+  }, "*"))), isPct ? /*#__PURE__*/React.createElement(AmountField, {
     size: "lg",
     required: true,
     suffix: "%",
@@ -25724,7 +25858,12 @@ const AddContractTermModal = ({
     currencyPlaceholder: "Pick",
     error: [errors.value, errors.currency, errors.direction].filter(Boolean).join(' ') || undefined,
     help: errors.value || errors.currency || errors.direction ? undefined : draft.currency ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("b", null, dirInfo.label), " \u2014 ", dirInfo.sentence, ". Flat amount in ", /*#__PURE__*/React.createElement("b", null, draft.currency), cadence ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", cadence) : '', ".", ' ', "Click ", /*#__PURE__*/React.createElement("b", null, dirInfo.short), " to switch", isEdit ? ' — a correction supersedes the entry, it never forks the history' : '', ".") : /*#__PURE__*/React.createElement(React.Fragment, null, "A contract has no currency of its own \u2014 ", /*#__PURE__*/React.createElement("b", null, "pick one"), " for this amount. The word on the left says which way the money moves.")
-  })), /*#__PURE__*/React.createElement(FormRow, {
+  }))), !numeric && /*#__PURE__*/React.createElement("div", {
+    className: "trm-na-note"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "info",
+    size: 16
+  }), /*#__PURE__*/React.createElement("span", null, isText ? 'A text term' : 'A date-time term', " records a fact, not a charge. It has no direction, currency or cadence, and it doesn\u2019t count toward the contract\u2019s run rate.")), /*#__PURE__*/React.createElement(FormRow, {
     cols: 1
   }, /*#__PURE__*/React.createElement(DateField, {
     label: "Effective from",
@@ -25737,7 +25876,7 @@ const AddContractTermModal = ({
     style: {
       marginTop: -6
     }
-  }, errors.effectiveFrom), /*#__PURE__*/React.createElement("div", {
+  }, errors.effectiveFrom), numeric && /*#__PURE__*/React.createElement("div", {
     className: "trm-cadence"
   }, /*#__PURE__*/React.createElement(FormRow, {
     cols: periodic ? 2 : 1
@@ -37699,7 +37838,11 @@ const ContractTermChart = ({
   const DS = window.OdysseyDesignSystem_d5aa51 || {};
   const DSTermHistoryChart = DS.TermHistoryChart;
   if (!DSTermHistoryChart) return null;
-  const series = conTermSeriesList(terms).map(x => {
+  /* Only a series whose entry IN FORCE is a number plots, and only its entries
+     of that same unit: a notice period has no axis, and a service charge that
+     became "Included in the rent" is no longer a price. Its numeric past stays
+     in the table below. */
+  const series = conTermSeriesList(terms).filter(x => CTRM_H.termIsNumeric(x.inForce)).map(x => {
     const t = x.inForce;
     const dir = CTRM_H.termDirectionApplies(t, owner) ? CTRM_H.termDirectionInfo(t) : null;
     const pct = t.unit === 'Percentage';
@@ -37713,7 +37856,7 @@ const ContractTermChart = ({
       } : undefined,
       color: dir ? dir.color : trmKindInfo(t).color,
       group: conCompatKey(t),
-      points: trmSeriesFromList(terms, x.key).map(p => ({
+      points: trmSeriesFromList(terms.filter(e => e.unit === t.unit), x.key).map(p => ({
         id: p.id,
         date: p.date,
         value: p.value
@@ -37722,6 +37865,7 @@ const ContractTermChart = ({
       axisFormat: conAxisFmt(t)
     };
   });
+  if (!series.length) return null;
   return /*#__PURE__*/React.createElement(DSTermHistoryChart, {
     className: "trm-seriesplot",
     series: series
@@ -37737,19 +37881,44 @@ const ContractTermsNotice = ({
 }, "production_quantity_limits"), /*#__PURE__*/React.createElement("div", {
   className: "odc-recordsection-notice-body"
 }, block.text));
+
+/* Relative distance to a DateTime term's instant, for the tile foot. Display
+   only — nothing is scheduled off it (Non-goal 2). */
+const conDtDistance = iso => {
+  const days = Math.round((new Date(iso).getTime() - Date.now()) / 86400000);
+  if (days === 0) return 'today';
+  if (days > 0) return days < 60 ? `in ${days} days` : `in ${Math.round(days / 30.4)} months`;
+  const a = -days;
+  return a < 60 ? `${a} days ago` : `${Math.round(a / 30.4)} months ago`;
+};
+const CON_KIND_ORDER = {
+  Amount: 0,
+  Percentage: 0,
+  DateTime: 1,
+  Text: 2
+};
+
+/* nonNumericEditing — false in the compatibility release (backend issue Goal 9):
+   Text / DateTime rows render and delete, but the numeric form will not open
+   them. True once the frontend spec ships the full dialog. */
 const ContractTerms = ({
   contract,
   terms = [],
   cap,
   onNew,
   onEdit,
-  onDelete
+  onDelete,
+  nonNumericEditing = true
 }) => {
   const {
     useMemo
   } = React;
   const owner = useMemo(() => conTermOwner(contract), [contract]);
-  const current = useMemo(() => trmCurrentFromList(terms), [terms]);
+  const current = useMemo(() => trmCurrentFromList(terms).map((t, i) => ({
+    t,
+    i
+  })).sort((a, b) => (CON_KIND_ORDER[a.t.unit] ?? 3) - (CON_KIND_ORDER[b.t.unit] ?? 3) || a.i - b.i).map(x => x.t), [terms]);
+  const editLockFor = nonNumericEditing ? null : t => CTRM_H.termIsNumeric(t) ? null : 'Text and date-time terms can’t be edited here yet';
   const currentIds = useMemo(() => new Set(current.map(t => t.id)), [current]);
   const block = CTRM_H.conTermWriteBlock(contract, terms.length, cap);
   const limit = cap != null ? cap : CTRM_D.CONTRACT_MAX_TERMS_PER_CONTRACT;
@@ -37757,13 +37926,14 @@ const ContractTerms = ({
      employment agreement pays a salary IN and deducts dues OUT — so the
      section says how many of each rather than one count of "values". */
   const incoming = current.filter(t => CTRM_H.termDirectionApplies(t, owner) && CTRM_H.termIsIncoming(t));
+  const priced = current.filter(t => CTRM_H.termDirectionApplies(t, owner));
   if (terms.length === 0) {
     return /*#__PURE__*/React.createElement("div", {
       className: "con-section"
     }, /*#__PURE__*/React.createElement(SectionDivider, {
       label: "Terms",
       meta: "0 entries"
-    }), /*#__PURE__*/React.createElement(EmptyLine, null, "No terms yet \u2014 record what this agreement costs: a rent, a service fee, an interest rate. Each keeps its own dated history.", block ? /*#__PURE__*/React.createElement("div", {
+    }), /*#__PURE__*/React.createElement(EmptyLine, null, "No terms yet \u2014 record what this agreement costs, like a rent or an interest rate, and the facts it fixes, like a notice period or a deadline. Each keeps its own dated history.", block ? /*#__PURE__*/React.createElement("div", {
       className: "con-trm-inline-block"
     }, block.text) : null));
   }
@@ -37777,11 +37947,31 @@ const ContractTerms = ({
     className: "con-section"
   }, /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Current terms",
-    meta: current.length ? `${current.length} ${current.length === 1 ? 'value' : 'values'} in force${incoming.length ? ` · ${incoming.length} incoming, ${current.length - incoming.length} outgoing` : ''} · ${CTRM_H.dateLong(trmToday())}` : 'none in force'
+    meta: current.length ? `${current.length} ${current.length === 1 ? 'value' : 'values'} in force${incoming.length ? ` · ${incoming.length} incoming, ${priced.length - incoming.length} outgoing` : ''} · ${CTRM_H.dateLong(trmToday())}` : 'none in force'
   }), block ? /*#__PURE__*/React.createElement(ContractTermsNotice, {
     block: block
   }) : null, current.length ? /*#__PURE__*/React.createElement(InfoTileGrid, null, current.map(t => {
     const info = trmKindInfo(t);
+    /* Text and DateTime: the fact itself, in body ink. No direction,
+       no cadence — the kind's own hue on the icon says what it is. */
+    if (!CTRM_H.termIsNumeric(t)) {
+      const isText = t.unit === 'Text';
+      const isDt = t.unit === 'DateTime';
+      return /*#__PURE__*/React.createElement(InfoTile, {
+        key: trmKey(t),
+        icon: info.icon,
+        iconColor: info.color,
+        iconSoft: info.soft,
+        className: isText ? 'trm-text-tile' : 'trm-dt-tile',
+        wide: isText && (t.textValue || '').length > 40,
+        valueVariant: isDt ? 'sm' : 'text',
+        label: CTRM_H.termDisplayName(t, owner),
+        value: /*#__PURE__*/React.createElement("span", {
+          title: isDt ? CTRM_H.termUtcStamp(t.dateTimeValue) : undefined
+        }, CTRM_H.fmtTermValueFor(t, owner)),
+        foot: `since ${CTRM_H.dateLong(t.effectiveFrom)}${isDt ? ` · ${conDtDistance(t.dateTimeValue)}` : ''}`
+      });
+    }
     // The cadence is what separates a 2,150 USD monthly rent from a
     // 2,150 USD one-off, so it rides in the foot beside the date.
     const period = CTRM_H.cadenceTextFor(t);
@@ -37827,7 +38017,8 @@ const ContractTerms = ({
     historyStyle: "table",
     account: owner,
     onEdit: onEdit,
-    onDelete: onDelete
+    onDelete: onDelete,
+    editLockFor: editLockFor
   })));
 };
 Object.assign(window, {
@@ -54824,7 +55015,7 @@ try { (() => {
     desc: 'The agreement was brought to an end. This does not change the contract’s status.'
   }, {
     key: 'PriceChanged',
-    label: 'Price changed',
+    label: 'Term changed',
     enumValue: 6,
     icon: 'price_change',
     color: 'oklch(0.76 0.14 320)',
@@ -57226,6 +57417,92 @@ try { (() => {
       direction: 'Outgoing',
       note: 'Statutory rate on rent in arrears.',
       createdAtUtc: '2025-08-14T10:00:00Z'
+    },
+    /* TextAndDateTimeTermKinds — contract facts that are not a number. A Text
+       term and a DateTime term, plus a series that CHANGED KIND at the review:
+       the service charge was folded into the rent, so its Amount is superseded
+       by a Text entry and stops counting toward the run rate. */
+    {
+      id: 'ctm-lease-8',
+      contractId: 'ct-lease',
+      unit: 'Text',
+      value: null,
+      textValue: '2 months, to the end of a rental period',
+      dateTimeValue: null,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      anchorDate: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2025-09-01',
+      label: 'Notice period',
+      labelKey: 'notice period',
+      note: 'Clause 14.2.',
+      createdAtUtc: '2025-08-14T10:00:00Z'
+    }, {
+      id: 'ctm-lease-9',
+      contractId: 'ct-lease',
+      unit: 'DateTime',
+      value: null,
+      textValue: null,
+      dateTimeValue: '2026-11-30T17:00:00Z',
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      anchorDate: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2025-09-01',
+      label: 'Break notice deadline',
+      labelKey: 'break notice deadline',
+      note: 'Written notice must reach the agent by then.',
+      createdAtUtc: '2025-08-14T10:00:00Z'
+    }, {
+      id: 'ctm-lease-9b',
+      contractId: 'ct-lease',
+      unit: 'DateTime',
+      value: null,
+      textValue: null,
+      dateTimeValue: '2027-02-26T17:00:00Z',
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      anchorDate: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2026-03-01',
+      label: 'Break notice deadline',
+      labelKey: 'break notice deadline',
+      note: 'Moved with the three-month extension.',
+      createdAtUtc: '2026-01-28T09:00:00Z'
+    }, {
+      id: 'ctm-lease-10',
+      contractId: 'ct-lease',
+      unit: 'Amount',
+      value: 40.00,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 1,
+      effectiveFrom: '2025-09-01',
+      label: 'Service charge',
+      labelKey: 'service charge',
+      note: null,
+      createdAtUtc: '2025-08-14T10:00:00Z'
+    }, {
+      id: 'ctm-lease-10b',
+      contractId: 'ct-lease',
+      unit: 'Text',
+      value: null,
+      textValue: 'Included in the monthly rent',
+      dateTimeValue: null,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      anchorDate: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2026-03-01',
+      label: 'Service charge',
+      labelKey: 'service charge',
+      note: 'Folded into the rent at the mid-term review.',
+      createdAtUtc: '2026-01-28T09:00:00Z'
     }, {
       id: 'ctm-lease-7b',
       contractId: 'ct-lease',
@@ -61170,7 +61447,43 @@ window.OdysseyData.termUnits = {
     icon: 'payments',
     color: 'oklch(0.77 0.14 55)',
     soft: 'oklch(0.77 0.14 55 / 0.15)'
+  },
+  /* The two NON-NUMERIC kinds (TextAndDateTimeTermKinds). Contract-owned only.
+     They carry no currency, cadence, anchor date or direction, never plot, and
+     never enter the roll-up. Both take the neutral orange (the Amount hue): with no
+     direction there is no finance hue to give them. The glyph tells them apart. */
+  Text: {
+    key: 'Text',
+    label: 'Text',
+    short: 'Text',
+    icon: 'short_text',
+    enumValue: 2,
+    color: 'oklch(0.77 0.14 55)',
+    soft: 'oklch(0.77 0.14 55 / 0.15)'
+  },
+  DateTime: {
+    key: 'DateTime',
+    label: 'Date & time',
+    short: 'Date & time',
+    icon: 'event',
+    enumValue: 3,
+    color: 'oklch(0.77 0.14 55)',
+    soft: 'oklch(0.77 0.14 55 / 0.15)'
   }
+};
+/* An unknown member (a newer server than this client) — never guessed at. */
+window.OdysseyData.termUnitUnknown = {
+  key: 'Unknown',
+  label: 'Unknown',
+  icon: 'help_outline',
+  color: 'var(--mud-palette-text-secondary)',
+  soft: 'var(--mud-palette-action-default-hover)'
+};
+/* TermTextValue.MaxLength, and the DateTime range the service enforces. */
+window.OdysseyData.termTextMaxLength = 256;
+window.OdysseyData.termDateTimeRange = {
+  min: '1900-01-01T00:00:00Z',
+  max: '2200-12-31T23:59:59Z'
 };
 
 /* Interval enum (was BillingPeriod) — optional context for fees; null for rates.
@@ -61320,7 +61633,85 @@ Object.assign(window.OdysseyHelpers, {
   // Presentation for a term (or a unit key): glyph + hue by unit.
   termInfo(t) {
     const u = typeof t === 'string' ? t : t && t.unit;
-    return window.OdysseyData.termUnits[u] || window.OdysseyData.termUnits.Amount;
+    return window.OdysseyData.termUnits[u] || window.OdysseyData.termUnitUnknown;
+  },
+  // Percentage / Amount — the only kinds with a `value`, a chart point or a direction.
+  termIsNumeric(t) {
+    const u = typeof t === 'string' ? t : t && t.unit;
+    return u === 'Percentage' || u === 'Amount';
+  },
+  /* A DateTime term's instant in the VIEWER's local time, with the zone named —
+     "31 Mar 2027, 12:00 CEST". The stored value is UTC; the zone is shown so
+     two readers in different zones can tell they are looking at one instant. */
+  fmtTermDateTime(iso, {
+    zone = true
+  } = {}) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d)) return '—';
+    const date = d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+    const time = d.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    if (!zone) return `${date}, ${time}`;
+    const tz = d.toLocaleTimeString('en-US', {
+      timeZoneName: 'short'
+    }).split(' ').pop() || '';
+    return `${date}, ${time} ${tz}`.trim();
+  },
+  // The event catalogue's invariant form: "2027-03-31 10:00 UTC".
+  termUtcStamp(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return '—';
+    return d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+  },
+  // The viewer's zone, for the dialog: { name: 'Europe/Berlin', offset: 'UTC+02:00' } at that instant.
+  localZone(atIso) {
+    const d = atIso ? new Date(atIso) : new Date();
+    const name = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local time';
+    const m = isNaN(d) ? 0 : -d.getTimezoneOffset();
+    const sign = m >= 0 ? '+' : '−';
+    const hh = String(Math.floor(Math.abs(m) / 60)).padStart(2, '0');
+    const mm = String(Math.abs(m) % 60).padStart(2, '0');
+    return {
+      name,
+      offset: `UTC${sign}${hh}:${mm}`
+    };
+  },
+  /* Text rule — the SAME order the service applies (§8 rule 5): trim, then
+     1–256, then no Cc control characters and no bidi override / isolate.
+     Returns null when valid, else the reason key. Never echoes the text. */
+  termTextProblem(raw) {
+    const s = String(raw == null ? '' : raw).trim();
+    if (!s.length) return 'empty';
+    if (s.length > window.OdysseyData.termTextMaxLength) return 'long';
+    if (/[\u0000-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069]/.test(s)) return 'control';
+    return null;
+  },
+  // Local date (YYYY-MM-DD) + time (HH:mm) → UTC ISO string with Z, or null.
+  termLocalToUtc(date, time) {
+    if (!date || !time) return null;
+    const d = new Date(`${date}T${time}:00`);
+    return isNaN(d) ? null : d.toISOString().replace('.000Z', 'Z');
+  },
+  // UTC ISO → { date, time } in local time, for editing.
+  termUtcToLocal(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return {
+      date: '',
+      time: ''
+    };
+    const p = n => String(n).padStart(2, '0');
+    return {
+      date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
+      time: `${p(d.getHours())}:${p(d.getMinutes())}`
+    };
   },
   intervalInfo(key) {
     return key ? window.OdysseyData.intervalByKey[key] || {
@@ -61373,7 +61764,7 @@ Object.assign(window.OdysseyHelpers, {
      predicate, so the dialog's control, the read surfaces and the refusal copy
      can never disagree. */
   termDirectionApplies(t, owner) {
-    return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract';
+    return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract' && window.OdysseyHelpers.termIsNumeric(t);
   },
   // Why direction is refused here, in the words the 400 uses. Null = allowed.
   termDirectionRefusal() {
@@ -61423,8 +61814,7 @@ Object.assign(window.OdysseyHelpers, {
   },
   // A term's value as a display string (percentage or money) with the right unit.
   fmtTermValue(t) {
-    if (t.unit === 'Percentage') return window.OdysseyHelpers.pctStr(t.value);
-    return window.OdysseyHelpers.money(t.value, t.currency || 'USD');
+    return window.OdysseyHelpers.fmtTermValueFor(t);
   },
   // ---- Cost rates: a loan's interest is a COST, but not a negative number ---
   // Interest you're charged on a liability (loan, credit card, …) is money out.
@@ -61444,10 +61834,25 @@ Object.assign(window.OdysseyHelpers, {
   // Display string — the stored sign, never a synthesized one: "6.49%" on a
   // loan (coral, labelled "Interest charged"), "3.40%" on savings, "−0.50%"
   // only when the stored rate really is negative.
+  /* Exhaustive over the four kinds (Goal 9). A null value on a numeric kind and
+     an unknown kind both read "—" — never 0, never money, never a percentage. */
   fmtTermValueFor(t, account) {
-    if (t.unit !== 'Percentage') return window.OdysseyHelpers.money(t.value, t.currency || 'USD');
-    const v = t.value;
-    return (v < 0 ? '−' : '') + window.OdysseyHelpers.pctStr(Math.abs(v));
+    switch (t && t.unit) {
+      case 'Percentage':
+        {
+          if (t.value == null) return '—';
+          const v = t.value;
+          return (v < 0 ? '−' : '') + window.OdysseyHelpers.pctStr(Math.abs(v));
+        }
+      case 'Amount':
+        return t.value == null ? '—' : window.OdysseyHelpers.money(t.value, t.currency || 'USD');
+      case 'Text':
+        return t.textValue || '—';
+      case 'DateTime':
+        return window.OdysseyHelpers.fmtTermDateTime(t.dateTimeValue);
+      default:
+        return '—';
+    }
   }
 });
 

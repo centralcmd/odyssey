@@ -1,0 +1,191 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Text & date-time terms" subtitle="The two non-numeric term kinds on a contract — Text (one line, ≤256) and DateTime (an instant, shown in the viewer's zone). Current-terms tiles, history rows, the chart skipping them, the four-kind dialog, the event text, and the compatibility release that renders them but will not edit them. Live." viewport="1200x1700" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · Text &amp; date-time terms</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="../ui_kits/web/kit.css" />
+<link rel="stylesheet" href="../ui_kits/web/admin.css" />
+<link rel="stylesheet" href="../ui_kits/web/account.css" />
+<link rel="stylesheet" href="../ui_kits/web/account-terms.css" />
+<link rel="stylesheet" href="../ui_kits/web/contracts.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<script src="../ui_kits/web/data.js"></script>
+<script src="../ui_kits/web/contracts-data.js"></script>
+<style>
+html,body{min-height:0;background:var(--mud-palette-background)}
+body{width:1200px;padding:24px;box-sizing:border-box;font-family:var(--font-sans);color:var(--mud-palette-text-primary)}
+a{color:var(--tide-400)}a:hover{color:var(--tide-300)}
+.spec-doc{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:12px;padding:18px 20px;margin-bottom:18px}
+.spec-doc h2{font:600 15px/1.3 var(--font-sans);margin:0 0 6px}
+.spec-doc h3{font:600 10px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:18px 0 10px}
+.spec-lead{font:400 13px/1.55 var(--font-sans);color:var(--mud-palette-text-secondary);margin:0 0 14px;max-width:96ch;text-wrap:pretty}
+.spec-lead b{color:var(--tide-400);font-weight:500}
+.spec-src{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+.spec-src .pill{font:500 11px/1 var(--font-mono);color:var(--mud-palette-text-secondary);background:rgba(255,255,255,.05);border:1px solid var(--mud-palette-divider);border-radius:999px;padding:5px 10px}
+.spec-src .pill b{color:var(--tide-400);font-weight:600}
+table.spec-tbl{width:100%;border-collapse:collapse}
+table.spec-tbl th{text-align:left;font:600 10px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);padding:0 12px 8px;border-bottom:1px solid var(--mud-palette-divider)}
+table.spec-tbl td{font:400 12.5px/1.45 var(--font-sans);padding:9px 12px;border-bottom:1px solid var(--mud-palette-divider-light);vertical-align:top}
+table.spec-tbl td.f{font-family:var(--font-mono);color:var(--tide-400);white-space:nowrap}
+table.spec-tbl td.m{font-family:var(--font-mono);font-size:12px}
+table.spec-tbl tr:last-child td{border-bottom:none}
+.spec-notes{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.spec-notes li{position:relative;padding-left:22px;font:400 12.5px/1.55 var(--font-sans);color:var(--mud-palette-text-secondary);text-wrap:pretty}
+.spec-notes li b{color:var(--mud-palette-text-primary);font-weight:500}
+.spec-notes li code{font:500 11.5px/1 var(--font-mono);color:var(--tide-400)}
+.spec-notes li .material-icons{position:absolute;left:0;top:1px;font-size:16px;color:var(--tide-400)}
+.twk{position:sticky;top:0;z-index:5;display:flex;align-items:center;flex-wrap:wrap;gap:18px;background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:10px;padding:11px 16px;margin-bottom:18px}
+.twk-grp{display:flex;align-items:center;gap:9px}
+.twk-lab{font:600 10px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.twk-seg{display:inline-flex;gap:3px;padding:3px;border-radius:9px;background:var(--mud-palette-background);border:1px solid var(--mud-palette-divider)}
+.twk-seg button{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 13px;border:none;border-radius:7px;background:transparent;cursor:pointer;font:500 12px/1 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.twk-seg button .material-icons{font-size:16px}
+.twk-seg button.on{background:var(--tide-400);color:var(--ink-950)}
+.twk-spacer{flex:1}
+.stage-label{font:500 11px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:2px 0 10px 2px;display:flex;align-items:center;gap:8px}
+.stage-label .material-icons{font-size:15px;color:var(--tide-400)}
+.tryrow{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.dcard{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:12px;overflow:hidden;padding-bottom:14px;margin-bottom:22px}
+.dcard-head{display:flex;align-items:center;gap:14px;padding:16px 18px;border-bottom:1px solid var(--mud-palette-divider-light);margin-bottom:8px}
+.dcard-name{font:500 16px/1.2 var(--font-sans)}
+.dcard-tags{font:400 12px/1 var(--font-sans);color:var(--mud-palette-text-secondary);margin-top:4px}
+.ev-q{font-family:var(--font-sans)}
+</style>
+</head>
+<body>
+<div class="spec-doc">
+<h2>Text &amp; date-time terms · <span style="color:var(--mud-palette-text-secondary);font-weight:400;">contracts/{id} → Terms</span></h2>
+<p class="spec-lead">Two new <code>TermValueUnit</code> members let a contract record facts that are not a number: <b>Text</b> (one plain line, up to 256 characters) and <b>DateTime</b> (an instant, stored in UTC). They are ordinary terms: same name field, same effective date, same supersession. They differ in what they <b>leave out</b>. There is no direction, currency, cadence or first-billed date, and no chart point or run-rate contribution. The page below is the full design. The <b>Release</b> switch shows the smaller change the backend issue ships (Goal 9), where the client renders the new kinds correctly but will not edit them.</p>
+<div class="spec-src">
+<span class="pill">Enum <b>TermValueUnit</b> · Text = 2 · DateTime = 3</span>
+<span class="pill">DTO <b>textValue</b> · <b>dateTimeValue</b> · value?</span>
+<span class="pill">Constant <b>TermTextValue.MaxLength</b> = 256</span>
+<span class="pill">Client <b>TermVisuals</b> · <b>AddTermDialog</b> · <b>TermChartSeries</b></span>
+</div>
+</div>
+<div id="root"></div>
+<script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
+<script type="text/babel" src="../ui_kits/web/AccountTerms.jsx"></script>
+<script type="text/babel" src="../ui_kits/web/AddContractTermModal.jsx"></script>
+<script type="text/babel" src="../ui_kits/web/ContractTerms.jsx"></script>
+<script type="text/babel" data-presets="env,react">
+const { useState, useEffect } = React;
+const D = window.OdysseyData, H = window.OdysseyHelpers;
+const contract = D.contracts.find(c => c.id === 'ct-lease');
+const Seg = ({ value, onChange, options }) => (
+  <div className="twk-seg" role="tablist">
+    {options.map(o => (
+      <button key={o.value} role="tab" aria-selected={value === o.value} className={value === o.value ? 'on' : ''} onClick={() => onChange(o.value)}>
+        {o.icon && <span className="material-icons">{o.icon}</span>}{o.label}
+      </button>
+    ))}
+  </div>
+);
+const RELEASE_KEY = 'odc-31e-release';
+
+function Spec() {
+  const [release, setRelease] = useState(() => localStorage.getItem(RELEASE_KEY) || 'full');
+  const [theme, setTheme] = useState('dark');
+  const [terms, setTerms] = useState(() => H.conTermsFor(contract.id));
+  const [dialog, setDialog] = useState(null);
+  useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+  useEffect(() => { localStorage.setItem(RELEASE_KEY, release); }, [release]);
+  const full = release === 'full';
+  const kinds = full ? ['Percentage', 'Amount', 'Text', 'DateTime'] : ['Percentage', 'Amount'];
+  const upsert = (dto, id) => {
+    setTerms(prev => id ? prev.map(t => (t.id === id ? { ...t, ...dto } : t))
+      : [{ id: `ctm-new-${Date.now()}`, createdAtUtc: new Date().toISOString(), ...dto }, ...prev]);
+    setDialog(null);
+  };
+  const svc = terms.find(t => t.id === 'ctm-lease-10');
+  const textT = terms.find(t => t.unit === 'Text' && t.labelKey === 'notice period');
+  const dtT = terms.filter(t => t.unit === 'DateTime').sort((a, b) => a.effectiveFrom < b.effectiveFrom ? 1 : -1)[0];
+
+  return (
+    <React.Fragment>
+      <div className="twk">
+        <div className="twk-grp"><span className="twk-lab">Release</span>
+          <Seg value={release} onChange={setRelease} options={[
+            { value: 'compat', label: 'Compatibility · backend issue', icon: 'build' },
+            { value: 'full', label: 'Full · frontend spec', icon: 'edit_note' },
+          ]} /></div>
+        <div className="twk-spacer" />
+        <div className="twk-grp"><span className="twk-lab">Theme</span>
+          <Seg value={theme} onChange={setTheme} options={[
+            { value: 'dark', label: 'Dark', icon: 'dark_mode' }, { value: 'light', label: 'Light', icon: 'light_mode' },
+          ]} /></div>
+      </div>
+
+      <div className="stage-label"><span className="material-icons">home</span>Rental · a notice period, a break deadline that moved, and a service charge that became text</div>
+      <div className="tryrow">
+        <Button variant="outlined" icon="add" onClick={() => setDialog({})}>New term</Button>
+        {full && <Button variant="outlined" icon="short_text" onClick={() => setDialog({ unit: 'Text' })}>New text term</Button>}
+        {full && <Button variant="outlined" icon="event" onClick={() => setDialog({ unit: 'DateTime' })}>New date-time term</Button>}
+        {full && svc && <Button variant="outlined" icon="swap_horiz" onClick={() => setDialog({ term: svc, unit: 'Text' })}>Edit an amount into text</Button>}
+        {full && dtT && <Button variant="text" icon="edit" onClick={() => setDialog({ term: dtT })}>Edit the deadline</Button>}
+      </div>
+      <div className="dcard">
+        <div className="dcard-head">
+          <Avatar icon={H.contractTypeInfo(contract.type).icon} tone={{ bg: H.contractTypeInfo(contract.type).soft, fg: H.contractTypeInfo(contract.type).color }} square size="lg" />
+          <div><div className="dcard-name">{contract.name}</div><div className="dcard-tags">{H.contractTypeInfo(contract.type).label}</div></div>
+        </div>
+        <ContractTerms contract={contract} terms={terms} nonNumericEditing={full}
+          onNew={() => setDialog({})} onEdit={(t) => setDialog({ term: t })}
+          onDelete={(t) => setTerms(prev => prev.filter(x => x.id !== t.id))} />
+      </div>
+      {dialog && (
+        <AddContractTermModal key={JSON.stringify([dialog.unit, dialog.term && dialog.term.id])} contract={contract} existing={terms} kinds={kinds}
+          term={dialog.term}
+          initialUnit={dialog.unit}
+          onClose={() => setDialog(null)} onSave={upsert} />
+      )}
+
+      <div className="spec-doc">
+        <h2>How each surface treats the new kinds</h2>
+        <table className="spec-tbl">
+          <thead><tr><th>Surface</th><th>Text</th><th>DateTime</th></tr></thead>
+          <tbody>
+            <tr><td>Current terms tile</td><td>The text in body ink, proportional, wrapping. Goes full-width past 40 characters. Foot: <i>since</i> date.</td><td>Local date and time with the zone abbreviation. Foot: <i>since</i> date plus distance (“in 2 months”). The UTC instant is the tooltip.</td></tr>
+            <tr><td>Tile order</td><td colSpan="2">Priced terms first, then date-times, then text. Figures stay together. The count line’s incoming/outgoing split counts priced terms only.</td></tr>
+            <tr><td>History row</td><td>Same row, kind icon in the kind hue, text right-aligned and wrapping. No cadence, no direction caption.</td><td>Same row, mono local time with zone. No cadence, no direction caption.</td></tr>
+            <tr><td>Chart</td><td colSpan="2">A series plots only when its entry <b>in force</b> is a number, and only its entries of that unit. The service charge left the chart when it became text; its amount stays in the table as <i>Superseded</i>. A null value is skipped, never drawn as 0.</td></tr>
+            <tr><td>Dialog</td><td>Single-line input, counter measured <b>after trim</b> out of 256. Tabs, line breaks and bidi marks are refused inline. The message never repeats the text.</td><td>Date + time pickers in the viewer’s zone, the zone and offset <b>at that instant</b> stated, and the UTC value it will be saved as. Always sent with <code>Z</code>, so the server’s no-offset refusal cannot trigger.</td></tr>
+            <tr><td>Kind change on edit</td><td colSpan="2">Allowed. A line under the picker says what is removed. Fields that do not apply are sent as null (direction as Outgoing), because the server refuses them rather than clearing them.</td></tr>
+            <tr><td>Unknown kind</td><td colSpan="2">Grey help icon, value “—”. Never rendered as money or a percentage.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Term changed event text · PriceChanged · ContractEventCatalogue.TermValue</h3>
+        <table className="spec-tbl">
+          <thead><tr><th>Kind</th><th>Rendered value</th><th>Operator log slot</th></tr></thead>
+          <tbody>
+            <tr><td className="f">Amount</td><td className="m">{H.money(2250, 'USD')} monthly</td><td className="m">2250.00 USD</td></tr>
+            <tr><td className="f">Text</td><td className="m ev-q">“{textT ? textT.textValue : '3 months, to the end of a month'}”</td><td className="m">(text)</td></tr>
+            <tr><td className="f">DateTime</td><td className="m">{H.termUtcStamp(dtT ? dtT.dateTimeValue : '2027-03-31T10:00:00Z')}</td><td className="m">{(dtT ? dtT.dateTimeValue : '2027-03-31T10:00:00Z')}</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Compatibility release (backend issue, Goal 9)</h3>
+        <ul className="spec-notes">
+          <li><span className="material-icons">visibility</span><b>Everything renders as in the full release.</b> Tiles, rows, the chart skip and the “—” fallback all ship in the backend issue, because the shared DTOs make them necessary for the client to compile and read correctly.</li>
+          <li><span className="material-icons">edit_off</span><b>Editing is closed on Text and DateTime rows.</b> The edit button stays in place, disabled, with the reason as its tooltip. Delete still works. The dialog offers Percentage and Amount only.</li>
+        </ul>
+
+        <h3>Open questions for the spec</h3>
+        <ul className="spec-notes">
+          <li><span className="material-icons">label</span><b>Event type label.</b> <code>PriceChanged</code> now displays as “Term changed”, since it also logs text and date-time changes. Display copy only; the member name and ordinal are unchanged.</li>
+          <li><span className="material-icons">schedule</span><b>Tile distance on a date-time.</b> “in 2 months” is display only and computed on the client. Nothing is scheduled from it, which matches Non-goal 2.</li>
+        </ul>
+      </div>
+    </React.Fragment>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Spec />);
+</script>
+</body>
+</html>

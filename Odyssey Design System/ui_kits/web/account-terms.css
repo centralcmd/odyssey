@@ -392,3 +392,33 @@
 
 .trm-foot-note { font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .trm-field-head { display: flex; align-items: center; }
+
+/* Non-numeric term values (Text / DateTime). No direction hue, no cadence: the
+   kind's icon carries the hue; the value itself stays in body ink for reading. */
+.trm-cell-value.trm-v-text { font-family: var(--font-sans); white-space: normal; text-wrap: pretty; max-width: 34ch; margin-left: auto; color: var(--mud-palette-text-primary); }
+td.trm-cell-value.trm-v-text { max-width: none; width: 34ch; }
+.trm-cell-value.trm-v-datetime { color: var(--mud-palette-text-primary); }
+.trm-cell-value.trm-v-unknown { color: var(--mud-palette-text-secondary); }
+.trm-tl-value.trm-v-text { font-family: var(--font-sans); white-space: normal; text-align: right; max-width: 30ch; color: var(--mud-palette-text-primary); }
+.trm-tl-value.trm-v-datetime { color: var(--mud-palette-text-primary); }
+.trm-iconbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.trm-iconbtn:disabled:hover { background: transparent; color: inherit; }
+/* Dialog — the kind picker and the non-numeric value controls. */
+.trm-kind-seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 10px; background: var(--mud-palette-background); border: 1px solid var(--mud-palette-divider); }
+.trm-kind-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 8px; border: none; border-radius: 7px; background: transparent; cursor: pointer; font: 500 12.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.trm-kind-seg button:hover { color: var(--mud-palette-text-primary); }
+.trm-kind-seg button[aria-checked="true"] { font-weight: 600; }
+.trm-kind-seg button:focus-visible { outline: 2px solid var(--tide-400); outline-offset: 1px; }
+.trm-text-count { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); font-variant-numeric: tabular-nums; }
+.trm-text-count.over { color: var(--mud-palette-error); }
+.trm-na-note { display: flex; gap: 8px; align-items: flex-start; font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); padding: 10px 12px; border-radius: 8px; background: var(--mud-palette-action-default-hover); }
+.trm-na-note .material-icons { font-size: 16px; margin-top: 1px; }
+.trm-kind-switch { font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.trm-kind-switch b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.trm-dt-utc { font-family: var(--font-mono); color: var(--mud-palette-text-primary); }
+.trm-text-tile .odc-infotile-v { white-space: normal; overflow: visible; text-overflow: clip; text-wrap: pretty; font-size: 15px; line-height: 1.35; }
+.trm-dt-tile .odc-infotile-v { white-space: normal; overflow: visible; text-overflow: clip; }
+.trm-text-count { margin-left: auto; }
+/* Non-numeric values take the neutral orange (the Amount hue) — no direction, so no finance hue. */
+.trm-cell-value.trm-v-text, .trm-cell-value.trm-v-datetime, .trm-tl-value.trm-v-text, .trm-tl-value.trm-v-datetime,
+.trm-text-tile .odc-infotile-v, .trm-dt-tile .odc-infotile-v { color: oklch(0.77 0.14 55); }

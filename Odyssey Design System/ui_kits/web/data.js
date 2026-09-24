@@ -1153,7 +1153,18 @@ Object.assign(window.OdysseyHelpers, {
 window.OdysseyData.termUnits = {
   Percentage: { key: 'Percentage', label: 'Percentage', icon: 'percent',  color: 'oklch(0.78 0.13 200)', soft: 'oklch(0.78 0.13 200 / 0.15)' },
   Amount:     { key: 'Amount',     label: 'Amount',     icon: 'payments', color: 'oklch(0.77 0.14 55)',  soft: 'oklch(0.77 0.14 55 / 0.15)' },
+  /* The two NON-NUMERIC kinds (TextAndDateTimeTermKinds). Contract-owned only.
+     They carry no currency, cadence, anchor date or direction, never plot, and
+     never enter the roll-up. Both take the neutral orange (the Amount hue): with no
+     direction there is no finance hue to give them. The glyph tells them apart. */
+  Text:       { key: 'Text',       label: 'Text',        short: 'Text',      icon: 'short_text', enumValue: 2, color: 'oklch(0.77 0.14 55)', soft: 'oklch(0.77 0.14 55 / 0.15)' },
+  DateTime:   { key: 'DateTime',   label: 'Date & time', short: 'Date & time', icon: 'event',   enumValue: 3, color: 'oklch(0.77 0.14 55)', soft: 'oklch(0.77 0.14 55 / 0.15)' },
 };
+/* An unknown member (a newer server than this client) — never guessed at. */
+window.OdysseyData.termUnitUnknown = { key: 'Unknown', label: 'Unknown', icon: 'help_outline', color: 'var(--mud-palette-text-secondary)', soft: 'var(--mud-palette-action-default-hover)' };
+/* TermTextValue.MaxLength, and the DateTime range the service enforces. */
+window.OdysseyData.termTextMaxLength = 256;
+window.OdysseyData.termDateTimeRange = { min: '1900-01-01T00:00:00Z', max: '2200-12-31T23:59:59Z' };
 
 /* Interval enum (was BillingPeriod) — optional context for fees; null for rates.
    A cadence is now TWO fields: the unit (this enum) and IntervalCount, the
@@ -1221,7 +1232,64 @@ Object.assign(window.OdysseyHelpers, {
   // Presentation for a term (or a unit key): glyph + hue by unit.
   termInfo(t) {
     const u = typeof t === 'string' ? t : (t && t.unit);
-    return window.OdysseyData.termUnits[u] || window.OdysseyData.termUnits.Amount;
+    return window.OdysseyData.termUnits[u] || window.OdysseyData.termUnitUnknown;
+  },
+  // Percentage / Amount — the only kinds with a `value`, a chart point or a direction.
+  termIsNumeric(t) {
+    const u = typeof t === 'string' ? t : (t && t.unit);
+    return u === 'Percentage' || u === 'Amount';
+  },
+  /* A DateTime term's instant in the VIEWER's local time, with the zone named —
+     "31 Mar 2027, 12:00 CEST". The stored value is UTC; the zone is shown so
+     two readers in different zones can tell they are looking at one instant. */
+  fmtTermDateTime(iso, { zone = true } = {}) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d)) return '—';
+    const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    if (!zone) return `${date}, ${time}`;
+    const tz = (d.toLocaleTimeString('en-US', { timeZoneName: 'short' }).split(' ').pop()) || '';
+    return `${date}, ${time} ${tz}`.trim();
+  },
+  // The event catalogue's invariant form: "2027-03-31 10:00 UTC".
+  termUtcStamp(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return '—';
+    return d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+  },
+  // The viewer's zone, for the dialog: { name: 'Europe/Berlin', offset: 'UTC+02:00' } at that instant.
+  localZone(atIso) {
+    const d = atIso ? new Date(atIso) : new Date();
+    const name = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'Local time';
+    const m = isNaN(d) ? 0 : -d.getTimezoneOffset();
+    const sign = m >= 0 ? '+' : '−';
+    const hh = String(Math.floor(Math.abs(m) / 60)).padStart(2, '0');
+    const mm = String(Math.abs(m) % 60).padStart(2, '0');
+    return { name, offset: `UTC${sign}${hh}:${mm}` };
+  },
+  /* Text rule — the SAME order the service applies (§8 rule 5): trim, then
+     1–256, then no Cc control characters and no bidi override / isolate.
+     Returns null when valid, else the reason key. Never echoes the text. */
+  termTextProblem(raw) {
+    const s = String(raw == null ? '' : raw).trim();
+    if (!s.length) return 'empty';
+    if (s.length > window.OdysseyData.termTextMaxLength) return 'long';
+    if (/[\u0000-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069]/.test(s)) return 'control';
+    return null;
+  },
+  // Local date (YYYY-MM-DD) + time (HH:mm) → UTC ISO string with Z, or null.
+  termLocalToUtc(date, time) {
+    if (!date || !time) return null;
+    const d = new Date(`${date}T${time}:00`);
+    return isNaN(d) ? null : d.toISOString().replace('.000Z', 'Z');
+  },
+  // UTC ISO → { date, time } in local time, for editing.
+  termUtcToLocal(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return { date: '', time: '' };
+    const p = (n) => String(n).padStart(2, '0');
+    return { date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, time: `${p(d.getHours())}:${p(d.getMinutes())}` };
   },
   intervalInfo(key) {
     return key ? (window.OdysseyData.intervalByKey[key] || { key, label: key, periodic: false, adverb: key }) : null;
@@ -1265,7 +1333,7 @@ Object.assign(window.OdysseyHelpers, {
      predicate, so the dialog's control, the read surfaces and the refusal copy
      can never disagree. */
   termDirectionApplies(t, owner) {
-    return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract';
+    return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract' && window.OdysseyHelpers.termIsNumeric(t);
   },
   // Why direction is refused here, in the words the 400 uses. Null = allowed.
   termDirectionRefusal() { return null; },
@@ -1313,8 +1381,7 @@ Object.assign(window.OdysseyHelpers, {
   },
   // A term's value as a display string (percentage or money) with the right unit.
   fmtTermValue(t) {
-    if (t.unit === 'Percentage') return window.OdysseyHelpers.pctStr(t.value);
-    return window.OdysseyHelpers.money(t.value, t.currency || 'USD');
+    return window.OdysseyHelpers.fmtTermValueFor(t);
   },
 
   // ---- Cost rates: a loan's interest is a COST, but not a negative number ---
@@ -1335,10 +1402,24 @@ Object.assign(window.OdysseyHelpers, {
   // Display string — the stored sign, never a synthesized one: "6.49%" on a
   // loan (coral, labelled "Interest charged"), "3.40%" on savings, "−0.50%"
   // only when the stored rate really is negative.
+  /* Exhaustive over the four kinds (Goal 9). A null value on a numeric kind and
+     an unknown kind both read "—" — never 0, never money, never a percentage. */
   fmtTermValueFor(t, account) {
-    if (t.unit !== 'Percentage') return window.OdysseyHelpers.money(t.value, t.currency || 'USD');
-    const v = t.value;
-    return (v < 0 ? '−' : '') + window.OdysseyHelpers.pctStr(Math.abs(v));
+    switch (t && t.unit) {
+      case 'Percentage': {
+        if (t.value == null) return '—';
+        const v = t.value;
+        return (v < 0 ? '−' : '') + window.OdysseyHelpers.pctStr(Math.abs(v));
+      }
+      case 'Amount':
+        return t.value == null ? '—' : window.OdysseyHelpers.money(t.value, t.currency || 'USD');
+      case 'Text':
+        return t.textValue || '—';
+      case 'DateTime':
+        return window.OdysseyHelpers.fmtTermDateTime(t.dateTimeValue);
+      default:
+        return '—';
+    }
   },
 });
 

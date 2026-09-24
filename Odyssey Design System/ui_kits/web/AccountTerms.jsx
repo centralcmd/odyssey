@@ -44,8 +44,10 @@ const trmCurrentFromList = (terms, asOf) => {
   }
   return H.sortTermsBySeries(Object.values(bySeries));
 };
+/* Only entries with a number plot. A Text / DateTime entry in a series' history
+   is SKIPPED, never drawn as 0 (Goal 9) — the table below still lists it. */
 const trmSeriesFromList = (terms, labelKey) => terms
-  .filter(t => trmKey(t) === (labelKey || ''))
+  .filter(t => trmKey(t) === (labelKey || '') && H.termIsNumeric(t) && t.value != null)
   .map(t => ({ id: t.id, date: t.effectiveFrom, value: t.value, note: t.note }))
   .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
@@ -360,14 +362,40 @@ const TermStatus = ({ t, currentIds }) => {
   return <span className="trm-superseded">Superseded</span>;
 };
 
-const RowActions = ({ onEdit, onDelete }) => (
+/* `editLocked` — a reason string when this client cannot edit the row (the
+   compatibility release opens only Percentage / Amount in the numeric form).
+   The button stays visible but disabled, and the reason is its tooltip, so the
+   row does not look read-only for some other cause. Delete is unaffected. */
+const RowActions = ({ onEdit, onDelete, editLocked }) => (
   <span className="trm-rowbtns">
-    <button type="button" className="trm-iconbtn" aria-label="Edit term" onClick={onEdit}><MIcon name="edit" size={17} /></button>
+    <button type="button" className="trm-iconbtn" aria-label={editLocked ? `Edit term — ${editLocked}` : 'Edit term'} title={editLocked || undefined} disabled={!!editLocked} onClick={editLocked ? undefined : onEdit}><MIcon name={editLocked ? 'edit_off' : 'edit'} size={17} /></button>
     <button type="button" className="trm-iconbtn danger" aria-label="Delete term" onClick={onDelete}><MIcon name="delete" size={17} /></button>
   </span>
 );
 
-const TermTable = ({ rows, currentIds, onEdit, onDelete, account }) => (
+/* The value cell, by kind. Numbers keep the mono, right-aligned figure and its
+   cadence. Text is proportional and may wrap; a date-time is the viewer's local
+   time with the zone named. Neither takes a direction hue or a cadence. */
+const TermValueCell = ({ t, account, isCurrent, Tag = 'td', className = 'trm-cell-value', cadenceSize }) => {
+  if (!H.termIsNumeric(t)) {
+    const kind = t.unit === 'Text' ? 'text' : t.unit === 'DateTime' ? 'datetime' : 'unknown';
+    return (
+      <Tag className={`${className} trm-v-${kind}${isCurrent ? ' is-current' : ''}`}
+        title={t.unit === 'DateTime' ? H.termUtcStamp(t.dateTimeValue) : undefined}>
+        {H.fmtTermValueFor(t, account)}
+      </Tag>
+    );
+  }
+  const cadence = H.cadenceTextFor(t);
+  return (
+    <Tag className={className}
+      style={(H.termDirectionApplies(t, account) || isCurrent) ? { color: trmValueColor(t, account) } : undefined}>
+      {H.fmtTermValueFor(t, account)}{cadence ? <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400, fontSize: cadenceSize }}> {cadence}</span> : null}
+    </Tag>
+  );
+};
+
+const TermTable = ({ rows, currentIds, onEdit, onDelete, account, editLockFor }) => (
   <table className="trm-tbl">
     <thead>
       <tr>
@@ -412,12 +440,9 @@ const TermTable = ({ rows, currentIds, onEdit, onDelete, account }) => (
                 Where direction does NOT apply — an account's rates and fees, a
                 contract's interest rate — colour stays the in-force marker it
                 has always been on that surface. */}
-            <td className="trm-cell-value"
-              style={(H.termDirectionApplies(t, account) || isCurrent) ? { color: trmValueColor(t, account) } : undefined}>
-              {H.fmtTermValueFor(t, account)}{cadence ? <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400 }}> {cadence}</span> : null}
-            </td>
+            <TermValueCell t={t} account={account} isCurrent={isCurrent} />
             <td><TermStatus t={t} currentIds={currentIds} /></td>
-            <td className="trm-cell-act"><RowActions onEdit={() => onEdit(t)} onDelete={() => onDelete(t)} /></td>
+            <td className="trm-cell-act"><RowActions onEdit={() => onEdit(t)} onDelete={() => onDelete(t)} editLocked={editLockFor ? editLockFor(t) : null} /></td>
           </tr>
         );
       })}
@@ -425,7 +450,7 @@ const TermTable = ({ rows, currentIds, onEdit, onDelete, account }) => (
   </table>
 );
 
-const TermTimeline = ({ rows, currentIds, onEdit, onDelete, account }) => (
+const TermTimeline = ({ rows, currentIds, onEdit, onDelete, account, editLockFor }) => (
   <div className="trm-timeline">
     {rows.map(t => {
       const info = trmKindInfo(t);
@@ -445,12 +470,9 @@ const TermTimeline = ({ rows, currentIds, onEdit, onDelete, account }) => (
             {t.note && <div className="trm-tl-note">{t.note}</div>}
           </div>
           <div className="trm-tl-figs">
-            <span className="trm-tl-value"
-              style={(H.termDirectionApplies(t, account) || currentIds.has(t.id)) ? { color: trmValueColor(t, account) } : undefined}>
-              {H.fmtTermValueFor(t, account)}{cadence ? <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400, fontSize: 12 }}> {cadence}</span> : null}
-            </span>
+            <TermValueCell t={t} account={account} isCurrent={currentIds.has(t.id)} Tag="span" className="trm-tl-value" cadenceSize={12} />
             <span className="trm-rowbtns trm-tl-actions">
-              <button type="button" className="trm-iconbtn" aria-label="Edit term" onClick={() => onEdit(t)}><MIcon name="edit" size={16} /></button>
+              <button type="button" className="trm-iconbtn" aria-label="Edit term" title={editLockFor && editLockFor(t) || undefined} disabled={!!(editLockFor && editLockFor(t))} onClick={() => onEdit(t)}><MIcon name={editLockFor && editLockFor(t) ? 'edit_off' : 'edit'} size={16} /></button>
               <button type="button" className="trm-iconbtn danger" aria-label="Delete term" onClick={() => onDelete(t)}><MIcon name="delete" size={16} /></button>
             </span>
           </div>
@@ -460,18 +482,18 @@ const TermTimeline = ({ rows, currentIds, onEdit, onDelete, account }) => (
   </div>
 );
 
-const TermHistory = ({ terms, currentIds, historyStyle, onEdit, onDelete, account }) => {
+const TermHistory = ({ terms, currentIds, historyStyle, onEdit, onDelete, account, editLockFor }) => {
   const sorted = terms.slice().sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : 0));
   const View = historyStyle === 'timeline' ? TermTimeline : TermTable;
 
   return (
     <div className="trm-history">
-      <View rows={sorted} currentIds={currentIds} onEdit={onEdit} onDelete={onDelete} account={account} />
+      <View rows={sorted} currentIds={currentIds} onEdit={onEdit} onDelete={onDelete} account={account} editLockFor={editLockFor} />
     </div>
   );
 };
 
 Object.assign(window, {
-  TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermName, CadenceTag, TermDirectionTag,
+  TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermValueCell, TermName, CadenceTag, TermDirectionTag,
   trmCurrentFromList, trmSeriesFromList, trmKindInfo, trmHeadlineKey, trmToday, trmKey, trmMonY,
 });
