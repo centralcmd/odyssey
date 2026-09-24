@@ -84,7 +84,7 @@ public partial class ContractTermsSection
             if (HasNoTerms) return "0 entries";
             if (_current.Count == 0) return "none in force";
 
-            var incoming = _current.Count(TermKindVisuals.IsIncoming);
+            var incoming = _current.Count(TermVisuals.IsIncoming);
             // The split is stated only when there IS an incoming side: on a file that records costs
             // alone it would be a breakdown of one thing, which reads as noise on every contract.
             var split = incoming > 0
@@ -162,28 +162,24 @@ public partial class ContractTermsSection
             .ThenByDescending(t => t.CreatedAtUtc)
             .ToList();
 
-        // One entry per SERIES — (kind, label) — not per kind: a lease carrying rent and a service
-        // charge has two in force, and the later of them supersedes only its own series.
+        // One entry per SERIES — its label: a lease carrying rent and a service charge has two in
+        // force, and the later of them supersedes only its own series.
         var asOf = DateTime.UtcNow.Date;
-        var kindOrder = TermKindVisuals.All
-            .Select((kind, index) => (kind, index))
-            .ToDictionary(x => x.kind, x => x.index);
 
         _current = _terms
             .Where(t => t.EffectiveFrom.Date <= asOf)
-            .GroupBy(t => (t.TermKind, LabelKey: TermLabel.Key(t.Label)))
+            .GroupBy(t => TermLabel.Key(t.Label))
             .Select(group => group
                 .OrderByDescending(t => t.EffectiveFrom).ThenByDescending(t => t.CreatedAtUtc)
                 .First())
-            .OrderBy(t => kindOrder.TryGetValue(t.TermKind, out var i) ? i : int.MaxValue)
-            .ThenBy(t => TermLabel.Key(t.Label) ?? "", StringComparer.Ordinal)
+            .OrderBy(t => TermLabel.Key(t.Label) ?? "", StringComparer.Ordinal)
             .ToList();
         _currentIds = _current.Select(t => t.TermId).ToHashSet();
         _chartSeries = BuildChartSeries(_terms, asOf, FormatMoney);
     }
 
     /// <summary>
-    /// Resolves the contract's terms into the chart's plain series — one per (kind, label) series,
+    /// Resolves the contract's terms into the chart's plain series — one per labelled series,
     /// ordered by whose LATEST entry is most recent (a scheduled one counts: it is the change the
     /// reader came to look at), so the first is the default selection.
     /// </summary>
@@ -197,7 +193,7 @@ public partial class ContractTermsSection
     internal static List<OdsTermHistorySeries> BuildChartSeries(
         IReadOnlyList<ExistingTerm> terms, DateTime asOf, Func<decimal, string?, string> formatMoney) =>
         terms
-            .GroupBy(t => (t.TermKind, LabelKey: TermLabel.Key(t.Label)))
+            .GroupBy(t => TermLabel.Key(t.Label))
             .Select(group =>
             {
                 var entries = group.OrderBy(t => t.EffectiveFrom).ThenBy(t => t.CreatedAtUtc).ToList();
@@ -209,26 +205,26 @@ public partial class ContractTermsSection
             .ToList();
 
     private static OdsTermHistorySeries ToSeries(
-        (TermKind Kind, string? LabelKey) key,
+        string? labelKey,
         List<ExistingTerm> entries,
         ExistingTerm inForce,
         Func<decimal, string?, string> formatMoney)
     {
         var pct = inForce.ValueUnit == TermValueUnit.Percentage;
         var currency = inForce.CurrencyCode;
-        var direction = TermKindVisuals.DirectionApplies(inForce) ? TermDirectionVisuals.Info(inForce.Direction) : null;
+        var direction = TermVisuals.DirectionApplies(inForce) ? TermDirectionVisuals.Info(inForce.Direction) : null;
 
         return new OdsTermHistorySeries
         {
-            Key = $"{key.Kind}|{key.LabelKey}",
-            Label = TermKindVisuals.DisplayName(inForce, null),
-            Value = TermKindVisuals.FormatValue(inForce, formatMoney),
+            Key = labelKey ?? "",
+            Label = TermVisuals.DisplayName(inForce),
+            Value = TermVisuals.FormatValue(inForce, formatMoney),
             ToneLabel = direction?.Label,
             ToneColor = direction?.Color,
-            Color = direction?.Color ?? TermKindVisuals.Info(key.Kind).Color,
+            Color = direction?.Color ?? TermVisuals.Info.Color,
             Group = pct ? "pct" : $"amt:{currency}",
             // One line is one unit and one currency. A series repriced into another currency keeps
-            // its name (the series key is kind + label, as on the server) but only the entries
+            // its name (the series key is the label, as on the server) but only the entries
             // measured like the one in force are plotted: an axis cannot read EUR and USD at once,
             // and joining them would draw a currency change as a price move.
             Points = entries
@@ -237,13 +233,13 @@ public partial class ContractTermsSection
                 .Select(t => new OdsStepPoint(DateOnly.FromDateTime(t.EffectiveFrom), t.Value) { Id = t.TermId.ToString() })
                 .ToList(),
             Format = pct
-                ? v => (v < 0 ? "−" : "") + TermKindVisuals.PctStr(Math.Abs(v))
+                ? v => (v < 0 ? "−" : "") + TermVisuals.PctStr(Math.Abs(v))
                 : v => formatMoney(v, currency),
             AxisFormat = pct ? PercentTick : AmountTick,
         };
     }
 
-    private static string PercentTick(decimal v) => (v < 0 ? "−" : "") + TermKindVisuals.PctStr(Math.Abs(v));
+    private static string PercentTick(decimal v) => (v < 0 ? "−" : "") + TermVisuals.PctStr(Math.Abs(v));
 
     // No currency code on the tick — it is stated once, in the value. Whole units at 10 and above: a
     // rent axis reading "2,438.75" is noise.
@@ -251,15 +247,11 @@ public partial class ContractTermsSection
         (v < 0 ? "−" : "") + Math.Abs(v).ToString(Math.Abs(v) >= 10 ? "#,##0" : "#,##0.##", CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// The tile's foot: the kind wording where the term carries its own name (otherwise the name IS
-    /// the kind and repeating it says nothing), the date it took effect, and the cadence.
+    /// The tile's foot: the date the term took effect, and the cadence.
     /// </summary>
-    private static string TileFoot(ExistingTerm term, bool labelled, string? cadence)
+    private static string TileFoot(ExistingTerm term, string? cadence)
     {
-        var parts = new List<string>(3);
-        if (labelled)
-            parts.Add(TermKindVisuals.LabelFor(term, null));
-
+        var parts = new List<string>(2);
         parts.Add($"since {term.EffectiveFrom:MMM dd, yyyy}");
 
         if (cadence is not null)
@@ -280,7 +272,7 @@ public partial class ContractTermsSection
         // Named by what the user called it, so a contract with several charges says which one is going.
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete term?",
-            $"Remove the {TermKindVisuals.DisplayName(term, null)} entry effective {term.EffectiveFrom:MMM dd, yyyy}? This can’t be undone.",
+            $"Remove the {TermVisuals.DisplayName(term)} entry effective {term.EffectiveFrom:MMM dd, yyyy}? This can’t be undone.",
             yesText: "Delete", cancelText: "Cancel");
 
         if (confirmed != true)

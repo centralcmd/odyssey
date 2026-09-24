@@ -155,7 +155,6 @@ public sealed class TermExport
     public Guid TermId { get; init; }
     public Guid? AccountId { get; init; }
     public Guid? ContractId { get; init; }
-    public TermKind TermKind { get; init; }
     public string? Label { get; init; }
     public string? LabelKey { get; init; }
     public TermValueUnit ValueUnit { get; init; }

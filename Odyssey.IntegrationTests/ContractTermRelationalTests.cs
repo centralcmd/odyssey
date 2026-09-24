@@ -190,9 +190,9 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
         await MigrateAsync();
 
         await using var context = NewContext();
-        var columns = await ReadIndexColumnsAsync(context, "IX_Terms_ContractId_TermKind_LabelKey_EffectiveFrom");
+        var columns = await ReadIndexColumnsAsync(context, "IX_Terms_ContractId_LabelKey_EffectiveFrom");
 
-        Assert.Equal(["ContractId", "TermKind", "LabelKey", "EffectiveFrom"], columns);
+        Assert.Equal(["ContractId", "LabelKey", "EffectiveFrom"], columns);
     }
 
     /// <summary>
@@ -347,11 +347,11 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
         return context.Database.ExecuteSqlRawAsync(
             $"""
              INSERT INTO `Terms`
-               (`TermId`, `AccountId`, `ContractId`, `TermKind`, `Label`, `LabelKey`, `ValueUnit`,
+               (`TermId`, `AccountId`, `ContractId`, `Label`, `LabelKey`, `ValueUnit`,
                 `Value`, `CurrencyCode`, `Interval`, `IntervalCount`, `AnchorDate`, `EffectiveFrom`,
                 `Note`, `CreatedAtUtc`)
              VALUES
-               ('{termId}', {account}, {contract}, 10, 'Monthly rent', 'monthly rent', 1,
+               ('{termId}', {account}, {contract}, 'Monthly rent', 'monthly rent', 1,
                 14500.000000, 'USD', NULL, NULL, NULL, '{effectiveFrom}',
                 NULL, '{createdAt}')
              """);

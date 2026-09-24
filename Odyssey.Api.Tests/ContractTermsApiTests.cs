@@ -14,7 +14,6 @@ using ContextAccountType = Odyssey.Context.AccountType;
 // Both halves of the aligned pair are in scope here (Odyssey.Context for the direct seeds,
 // Odyssey.Dtos.Finance for the wire), so each wire type is named explicitly.
 using ContractType = Odyssey.Dtos.Finance.ContractType;
-using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using Interval = Odyssey.Dtos.Finance.Interval;
 using TermDirection = Odyssey.Dtos.Finance.TermDirection;
@@ -109,7 +108,6 @@ public class ContractTermsApiTests
             termId = forgedTermId,
             labelKey = "forged-key",
             createdAtUtc = new DateTime(1990, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            termKind = TermKind.Fee,
             label = "  Monthly   RENT  ",
             valueUnit = TermValueUnit.Amount,
             value = 14500m,
@@ -137,30 +135,12 @@ public class ContractTermsApiTests
         Assert.Empty(await context.Terms.Where(t => t.ContractId == otherContractId).ToListAsync());
     }
 
-    [Fact]
-    public async Task Post_ExpectedReturn_Returns400()
-    {
-        await using var factory = await NewFactoryAsync(ReadWrite);
-        using var client = factory.CreateClient();
-        var contractId = await CreateContractAsync(client);
-
-        var response = await client.PostAsJsonAsync(Terms(contractId), new NewTerm
-        {
-            TermKind = TermKind.ExpectedReturn,
-            ValueUnit = TermValueUnit.Percentage,
-            Value = 0.07m,
-            EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        });
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
     [Theory]
     [InlineData(ContractType.Employment)]
     [InlineData(ContractType.Service)]
     [InlineData(ContractType.Rental)]
     [InlineData(ContractType.Other)]
-    public async Task Post_FeeAndInterestRate_SucceedOnEveryContractType(ContractType type)
+    public async Task Post_AmountAndPercentageTerms_SucceedOnEveryContractType(ContractType type)
     {
         await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
@@ -193,7 +173,6 @@ public class ContractTermsApiTests
         // The account path is unchanged: no currency in the body, and the account's own is used.
         var onAccount = await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Monthly fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 4m,
@@ -283,7 +262,7 @@ public class ContractTermsApiTests
         await PostTermAsync(client, contractId, Rent(14500m, new DateTime(2025, 1, 1)));
         (await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee, Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
+            Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
             EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         })).EnsureSuccessStatusCode();
 
@@ -315,9 +294,9 @@ public class ContractTermsApiTests
         Assert.Equal(450m, current.Single(t => t.Label == "Service charge").Value);
     }
 
-    /// <summary>AC 4 — the two query filters behave as on the account endpoint.</summary>
+    /// <summary>AC 4 — the as-of filter behaves as on the account endpoint.</summary>
     [Fact]
-    public async Task Get_History_FiltersByKindAndAsOf()
+    public async Task Get_History_FiltersByAsOf()
     {
         await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
@@ -326,11 +305,8 @@ public class ContractTermsApiTests
         await PostTermAsync(client, contractId, Rent(14000m, new DateTime(2024, 1, 1)));
         await PostTermAsync(client, contractId, InterestRate(0.05m, new DateTime(2026, 1, 1)));
 
-        Assert.Single((await client.GetFromJsonAsync<List<ExistingTerm>>($"{Terms(contractId)}?kind={TermKind.Fee}"))!);
+        Assert.Equal(2, (await client.GetFromJsonAsync<List<ExistingTerm>>(Terms(contractId)))!.Count);
         Assert.Single((await client.GetFromJsonAsync<List<ExistingTerm>>($"{Terms(contractId)}?asOf=2024-06-01"))!);
-
-        // An unbindable kind is model-validation's 400, before any query runs.
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"{Terms(contractId)}?kind=NotAKind")).StatusCode);
     }
 
     [Fact]
@@ -435,7 +411,7 @@ public class ContractTermsApiTests
 
         var accountTerm = await (await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee, Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
+            Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
             EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         })).Content.ReadFromJsonAsync<ExistingTerm>();
 
@@ -472,7 +448,7 @@ public class ContractTermsApiTests
         await PostTermAsync(client, survivingContractId, Rent(9000m, new DateTime(2026, 10, 1)));
         (await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee, Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
+            Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
             EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         })).EnsureSuccessStatusCode();
 
@@ -641,7 +617,6 @@ public class ContractTermsApiTests
 
     private static NewTerm Incoming(decimal value, DateTime effectiveFrom, string? label = "Sublet") => new()
     {
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -679,7 +654,6 @@ public class ContractTermsApiTests
 
     private static NewTerm Rent(decimal value, DateTime effectiveFrom, string? label = "Monthly rent", string? currency = "EUR") => new()
     {
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -690,7 +664,7 @@ public class ContractTermsApiTests
 
     private static NewTerm InterestRate(decimal value, DateTime effectiveFrom) => new()
     {
-        TermKind = TermKind.InterestRate,
+        Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = value,
         EffectiveFrom = DateTime.SpecifyKind(effectiveFrom, DateTimeKind.Utc),

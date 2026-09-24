@@ -6,13 +6,12 @@ namespace Odyssey.Context;
 
 /// <summary>
 /// A time-versioned entry recording the value of one named series on an <b>owner</b> — an account or a
-/// contract (issue #135) — being an interest rate, an expected return, or the price of one named
-/// charge, effective from a given date. The series key is <c>(owner, TermKind, LabelKey)</c>, so one
-/// kind can hold several concurrently in-force terms told apart by their labels. There is no explicit
-/// end date: the value in force on a date is the entry with the greatest <see cref="EffectiveFrom"/>
-/// on or before it <em>within its own series</em>. Each composite index backs both history listing
-/// and current-value resolution for its owner, and retains the <c>(owner, TermKind)</c> prefix the
-/// kind-filtered history query uses.
+/// contract (issue #135) — such as a rate, or the price of one named charge, effective from a given
+/// date. The series key is <c>(owner, LabelKey)</c>, so an owner can hold several concurrently
+/// in-force terms told apart by their labels. There is no explicit end date: the value in force on a
+/// date is the entry with the greatest <see cref="EffectiveFrom"/> on or before it <em>within its own
+/// series</em>. Each composite index backs both history listing and current-value resolution for its
+/// owner.
 ///
 /// <para>
 /// Exactly one of <see cref="AccountId"/> and <see cref="ContractId"/> is populated. The domain
@@ -21,8 +20,8 @@ namespace Odyssey.Context;
 /// share a series, so supersession within one owner can never be disturbed by the other.
 /// </para>
 /// </summary>
-[Index(nameof(AccountId), nameof(TermKind), nameof(LabelKey), nameof(EffectiveFrom))]
-[Index(nameof(ContractId), nameof(TermKind), nameof(LabelKey), nameof(EffectiveFrom))]
+[Index(nameof(AccountId), nameof(LabelKey), nameof(EffectiveFrom))]
+[Index(nameof(ContractId), nameof(LabelKey), nameof(EffectiveFrom))]
 public class Term : IEffectiveDated
 {
     [Key]
@@ -44,13 +43,9 @@ public class Term : IEffectiveDated
 
     public Contract? Contract { get; set; }
 
-    [Required]
-    public TermKind TermKind { get; set; }
-
     /// <summary>
     /// The user's own wording for this series ("ATM withdrawal · abroad"), in their own casing.
-    /// Required for a <see cref="Context.TermKind.Fee"/>, null for a rate — a rate is always the
-    /// unnamed series of its own kind, which is exactly how it resolved before labels existed.
+    /// Required on every write; nullable only because a row predating that rule may carry none.
     /// </summary>
     [StringLength(64)]
     public string? Label { get; set; }
@@ -91,7 +86,7 @@ public class Term : IEffectiveDated
     public string? CurrencyCode { get; set; }
 
     /// <summary>
-    /// The cadence UNIT. Refused on the two rate kinds, optional on a fee.
+    /// The cadence UNIT. Optional.
     /// </summary>
     public Interval? Interval { get; set; }
 
@@ -106,8 +101,8 @@ public class Term : IEffectiveDated
     /// <summary>
     /// The date the term is first actually CHARGED, as distinct from <see cref="EffectiveFrom"/>,
     /// when its price took effect. Pure record-keeping: nothing schedules, accrues or projects from
-    /// it, and it enters neither the series key, supersession nor the duplicate guard. Refused on the
-    /// two rate kinds; no ordering against <see cref="EffectiveFrom"/> is imposed in either direction.
+    /// it, and it enters neither the series key, supersession nor the duplicate guard. No ordering
+    /// against <see cref="EffectiveFrom"/> is imposed in either direction.
     /// </summary>
     public DateTime? AnchorDate { get; set; }
 

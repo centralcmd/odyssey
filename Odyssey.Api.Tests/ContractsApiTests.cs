@@ -1029,7 +1029,6 @@ public class ContractsApiTests
     {
         var post = await client.PostAsJsonAsync($"{Path}/{contractId}/terms", new NewTerm
         {
-            TermKind = Odyssey.Dtos.Finance.TermKind.Fee,
             Label = $"{currency} fee",
             ValueUnit = Odyssey.Dtos.Finance.TermValueUnit.Amount,
             Value = value,

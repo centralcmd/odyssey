@@ -276,14 +276,13 @@ public class DataExportApiTests
         Assert.NotEqual(Guid.Empty, term.GetProperty("accountId").GetGuid());
 
         // Enums serialize as their stored integer, not a nested navigation object.
-        Assert.Equal(JsonValueKind.Number, term.GetProperty("termKind").ValueKind);
         Assert.Equal(JsonValueKind.Number, term.GetProperty("valueUnit").ValueKind);
         Assert.False(term.TryGetProperty("account", out _));
 
-        // The series columns are exported, and an unlabelled rate exports both as null — the unnamed
-        // series is a value the export has to state, not a column it may omit.
-        Assert.Equal(JsonValueKind.Null, term.GetProperty("label").ValueKind);
-        Assert.Equal(JsonValueKind.Null, term.GetProperty("labelKey").ValueKind);
+        // There is no kind column any more: the label is what a term is.
+        Assert.False(term.TryGetProperty("termKind", out _));
+        Assert.Equal("Interest rate", term.GetProperty("label").GetString());
+        Assert.Equal("interest rate", term.GetProperty("labelKey").GetString());
     }
 
     /// <summary>
@@ -304,7 +303,7 @@ public class DataExportApiTests
         var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
 
         var fee = finance.GetProperty("terms").EnumerateArray()
-            .Single(t => t.GetProperty("label").ValueKind != JsonValueKind.Null);
+            .Single(t => t.GetProperty("label").GetString() == "ATM · Abroad");
 
         Assert.Equal("ATM · Abroad", fee.GetProperty("label").GetString());
         Assert.Equal("atm · abroad", fee.GetProperty("labelKey").GetString());
@@ -321,7 +320,6 @@ public class DataExportApiTests
         {
             TermId = Guid.NewGuid(),
             AccountId = accountId,
-            TermKind = TermKind.Fee,
             Label = label,
             LabelKey = labelKey,
             ValueUnit = TermValueUnit.Amount,
@@ -388,7 +386,6 @@ public class DataExportApiTests
         {
             TermId = Guid.NewGuid(),
             ContractId = contract.ContractId,
-            TermKind = TermKind.Fee,
             Label = "Monthly rent",
             LabelKey = "monthly rent",
             ValueUnit = TermValueUnit.Amount,
@@ -812,7 +809,7 @@ public class DataExportApiTests
 
             context.Terms.Add(new Term
             {
-                TermId = id, AccountId = accountId, TermKind = TermKind.InterestRate,
+                TermId = id, AccountId = accountId, Label = "Interest rate", LabelKey = "interest rate",
                 ValueUnit = TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = now, CreatedAtUtc = now,
             });
             context.AccountEstimates.Add(new AccountEstimate
@@ -1037,7 +1034,8 @@ public class DataExportApiTests
         {
             TermId = Guid.NewGuid(),
             AccountId = accountId,
-            TermKind = TermKind.InterestRate,
+            Label = "Interest rate",
+            LabelKey = "interest rate",
             ValueUnit = TermValueUnit.Percentage,
             Value = 0.0325m,
             EffectiveFrom = DateTime.UtcNow,

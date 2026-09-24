@@ -23,15 +23,6 @@ public enum TermOwnerKind
 /// <param name="Kind">Which owner this is.</param>
 /// <param name="Id">The owner's primary key.</param>
 /// <param name="Noun">The owner's name in prose, for error messages ("account", "contract").</param>
-/// <param name="PermittedKinds">
-/// The term kinds this owner accepts. An account's set depends on its account type; a contract's is
-/// fixed at <c>Fee</c> + <c>InterestRate</c> — <c>ExpectedReturn</c> prices invested principal, which
-/// a contract does not hold (issue #135 §8).
-/// </param>
-/// <param name="EligibilityScope">
-/// How the permitted set is described when a kind is refused — "accounts of type 'CreditCard'" names
-/// the discriminating fact, "contracts" says there is none.
-/// </param>
 /// <param name="DefaultCurrencyCode">
 /// The currency an <c>Amount</c> term falls back to when the request omits one, or <see langword="null"/>
 /// when the owner has none of its own and an explicit code is therefore required. A contract has no
@@ -50,7 +41,5 @@ public sealed record TermOwnerFacts(
     TermOwnerKind Kind,
     Guid Id,
     string Noun,
-    IReadOnlySet<TermKind> PermittedKinds,
-    string EligibilityScope,
     string? DefaultCurrencyCode,
     bool IsTermCapped);

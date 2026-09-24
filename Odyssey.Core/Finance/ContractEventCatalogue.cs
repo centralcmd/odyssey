@@ -132,8 +132,8 @@ public static class ContractEventCatalogue
 
         var label = term.Label;
         var title = string.IsNullOrWhiteSpace(label)
-            ? $"{KindLabel(term.TermKind)} term {verb}"
-            : $"{KindLabel(term.TermKind)} term {verb} ({label})";
+            ? $"Term {verb}"
+            : $"Term {verb} ({label})";
 
         var effective = Date(term.EffectiveFrom);
         var description = action == TermWriteAction.Removed
@@ -165,8 +165,7 @@ public static class ContractEventCatalogue
     /// <summary>
     /// A fee's cadence in prose. <c>IntervalCount</c> is a <b>divisor of the period</b>, not a
     /// multiplier of the price: 3 with <c>Monthly</c> is quarterly, so it reads "every 3 months".
-    /// The two rate kinds and a cadence-less fee return <see langword="null"/> and the value stands
-    /// alone.
+    /// A cadence-less term returns <see langword="null"/> and the value stands alone.
     /// </summary>
     private static string? Cadence(Interval? interval, int? count) => interval switch
     {
@@ -185,12 +184,6 @@ public static class ContractEventCatalogue
         count is null or 1
             ? $"per {singular}"
             : $"every {count.Value.ToString(CultureInfo.InvariantCulture)} {plural}";
-
-    /// <summary>
-    /// A closed enum member as prose: PascalCase split into words and sentence-cased, so
-    /// <c>ExpectedReturn</c> reads "Expected return".
-    /// </summary>
-    private static string KindLabel(TermKind kind) => SentenceCase(kind.ToString());
 
     /// <summary>
     /// A contract party role as prose. Every member is a single word today, so the split is a

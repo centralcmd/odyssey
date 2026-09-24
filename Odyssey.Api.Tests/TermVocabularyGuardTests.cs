@@ -100,7 +100,6 @@ public class TermVocabularyGuardTests
         Assert.Equal(Odyssey.Context.TermDirection.Outgoing, default(Odyssey.Context.TermDirection));
         Assert.Equal(Odyssey.Dtos.Finance.TermDirection.Outgoing, new Odyssey.Dtos.Finance.NewTerm
         {
-            TermKind = Odyssey.Dtos.Finance.TermKind.Fee,
             ValueUnit = Odyssey.Dtos.Finance.TermValueUnit.Amount,
             Value = 0m,
             EffectiveFrom = default,

@@ -13,7 +13,6 @@ using ContextAccountType = Odyssey.Context.AccountType;
 // Both halves of each aligned pair are in scope (Odyssey.Context for the direct seeds,
 // Odyssey.Dtos.Finance for the wire), so each wire type is named explicitly.
 using ContractType = Odyssey.Dtos.Finance.ContractType;
-using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using TermDirection = Odyssey.Dtos.Finance.TermDirection;
 using Interval = Odyssey.Dtos.Finance.Interval;
@@ -77,12 +76,11 @@ public class ContractTermDirectionApiTests
     }
 
     /// <summary>
-    /// AC 3, revised — a contract's RATE carries a direction too: an arrears rate charges the household
-    /// and a deposit rate pays it, which is the same fact a fee carries. The roll-up still projects no
-    /// percentage, so accepting it changes no figure.
+    /// A percentage term on a contract carries a direction like any other: the rate kinds that
+    /// refused one were folded into labelled terms.
     /// </summary>
     [Fact]
-    public async Task Post_IncomingOnARateKind_IsAcceptedAndReturned()
+    public async Task Post_IncomingOnAPercentageTerm_IsAccepted()
     {
         await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
@@ -90,7 +88,7 @@ public class ContractTermDirectionApiTests
 
         var response = await client.PostAsJsonAsync(Terms(contractId), new NewTerm
         {
-            TermKind = TermKind.InterestRate,
+            Label = "Interest rate",
             ValueUnit = TermValueUnit.Percentage,
             Value = 0.0325m,
             Direction = TermDirection.Incoming,
@@ -116,7 +114,6 @@ public class ContractTermDirectionApiTests
 
         var refused = await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Interest received",
             ValueUnit = TermValueUnit.Amount,
             Value = 12m,
@@ -130,7 +127,6 @@ public class ContractTermDirectionApiTests
 
         var accepted = await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
         {
-            TermKind = TermKind.Fee,
             Label = "Card fee",
             ValueUnit = TermValueUnit.Amount,
             Value = 4m,
@@ -155,7 +151,6 @@ public class ContractTermDirectionApiTests
 
         var response = await client.PostAsJsonAsync(Terms(contractId), new
         {
-            termKind = TermKind.Fee,
             label = "Base salary",
             valueUnit = TermValueUnit.Amount,
             value = 600000m,
@@ -209,7 +204,6 @@ public class ContractTermDirectionApiTests
         // A body with no `direction` member at all — not one carrying an explicit Outgoing.
         var response = await client.PutAsJsonAsync($"{Terms(contractId)}/{created.TermId}", new
         {
-            termKind = TermKind.Fee,
             label = "Base salary",
             valueUnit = TermValueUnit.Amount,
             value = 600000m,
@@ -237,7 +231,6 @@ public class ContractTermDirectionApiTests
 
         var response = await client.PostAsJsonAsync(Terms(contractId), new
         {
-            termKind = TermKind.Fee,
             label = "Base salary",
             valueUnit = TermValueUnit.Amount,
             value = 600000m,
@@ -325,7 +318,6 @@ public class ContractTermDirectionApiTests
         {
             (await writer.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
             {
-                TermKind = TermKind.Fee,
                 Label = "Card fee",
                 ValueUnit = TermValueUnit.Amount,
                 Value = 4m,
@@ -442,7 +434,6 @@ public class ContractTermDirectionApiTests
 
     private static NewTerm Salary(decimal value, TermDirection direction = TermDirection.Outgoing) => new()
     {
-        TermKind = TermKind.Fee,
         Label = "Base salary",
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -458,7 +449,6 @@ public class ContractTermDirectionApiTests
     private static NewTerm MonthlyFee(
         string label, decimal value, string currency, TermDirection direction = TermDirection.Outgoing) => new()
     {
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,

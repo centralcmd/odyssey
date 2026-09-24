@@ -216,7 +216,7 @@ public class AccountsApiClientTests
 
     private static NewTerm SampleTerm() => new()
     {
-        TermKind = TermKind.InterestRate,
+        Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = 3.5m,
         EffectiveFrom = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc),

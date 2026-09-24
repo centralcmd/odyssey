@@ -16,14 +16,13 @@ namespace Odyssey.Core.Finance;
 public static class TermSeries
 {
     /// <summary>
-    /// Picks the in-force entry of each <c>(TermKind, LabelKey)</c> series out of
-    /// <paramref name="candidates"/>, ordered by kind then by folded label.
+    /// Picks the in-force entry of each series — its <c>LabelKey</c> — out of
+    /// <paramref name="candidates"/>, ordered by folded label.
     /// </summary>
     public static List<Term> Current(IEnumerable<Term> candidates) =>
         candidates
-            .GroupBy(term => (term.TermKind, term.LabelKey))
+            .GroupBy(term => term.LabelKey)
             .Select(group => group.MostEffective()!)
-            .OrderBy(term => term.TermKind)
-            .ThenBy(term => term.LabelKey, StringComparer.Ordinal)
+            .OrderBy(term => term.LabelKey, StringComparer.Ordinal)
             .ToList();
 }

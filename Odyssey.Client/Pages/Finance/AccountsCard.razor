@@ -86,14 +86,6 @@
                     {
                         meta.Add(AccountNumberMeta(account.AccountNumber));
                     }
-                    if (RateTermOf(account) is { } headerRate)
-                    {
-                        var rateInfo = TermKindVisuals.Info(headerRate.TermKind);
-                        meta.Add(RateMeta(
-                            TermKindVisuals.CostColor(headerRate, account) ?? rateInfo.Color,
-                            TermKindVisuals.LabelFor(headerRate, account),
-                            TermKindVisuals.FormatValue(headerRate, FormatMoney)));
-                    }
 
                     @* The header counts are the body's table of contents: same glyphs, same order as
                        the sections below. The optional collections are counted only when non-zero. *@
@@ -259,17 +251,16 @@
                                     }
                                     @foreach (var term in account.CurrentTerms)
                                     {
-                                        var info = TermKindVisuals.Info(term.TermKind);
+                                        var info = TermVisuals.Info;
                                         var asTerm = ToTerm(account, term);
-                                        @* A fee is NAMED by its label, with the kind wording leading the
-                                           foot — so six fees read as six distinct tiles, in text,
-                                           rather than six identical ones. *@
+                                        @* A term is NAMED by its label — so six fees read as six
+                                           distinct tiles, in text, rather than six identical ones. *@
                                         <OdsInfoTile Icon="@info.Icon" IconColor="@info.Color" IconSoft="@info.Soft"
-                                                     Label="@TermKindVisuals.DisplayName(asTerm, account)"
-                                                     Foot="@OdsInfoTile.Caption(TermFoot(asTerm, account))">
+                                                     Label="@TermVisuals.DisplayName(asTerm)"
+                                                     Foot="@OdsInfoTile.Caption(TermFoot(asTerm))">
                                             <Value>
-                                                <span style="color:@(TermKindVisuals.CostColor(asTerm, account) ?? info.Color);">
-                                                    @TermKindVisuals.FormatValue(asTerm, FormatMoney)
+                                                <span style="color:@info.Color;">
+                                                    @TermVisuals.FormatValue(asTerm, FormatMoney)
                                                 </span>
                                             </Value>
                                         </OdsInfoTile>
@@ -437,11 +428,4 @@
         @<span class="acct-number-inline">
             <span class="material-icons" aria-hidden="true">tag</span><span class="mono">@number</span>
         </span>;
-
-    @* The rate is the one meta item whose value does not say what it is — "−4.90%" alone is a bare
-       number. Every sibling entry carries a visible glyph and label; this one carries its kind in the
-       same visually-hidden span the header counts use, so the label is in the accessible name rather
-       than in a tooltip nobody on a keyboard or screen reader ever sees (WCAG 1.3.1). *@
-    private RenderFragment RateMeta(string color, string title, string value) =>
-        @<span class="acct-rate mono" title="@title" style="color:@color;">@value<span class="odc-record-sr">@(" " + title)</span></span>;
 }

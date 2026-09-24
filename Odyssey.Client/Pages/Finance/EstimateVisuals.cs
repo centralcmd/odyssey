@@ -5,8 +5,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
 /// Visual + presentation helpers for the account value-estimate surfaces (the "Estimates" section
-/// and the New / Edit estimate dialog). Unlike <see cref="TermKindVisuals"/> an estimate has no
-/// kind / unit / billing dimension — it is a single money value — so this registry only carries the
+/// and the New / Edit estimate dialog). Unlike <see cref="TermVisuals"/> an estimate has no
+/// unit / billing dimension — it is a single money value — so this registry only carries the
 /// recommended-type subset and the compact money formatting the value chart's axis needs. Mirrors
 /// the Odyssey Design System (data.js <c>estimateRecommendedTypes</c> + <c>moneyCompact</c>).
 /// </summary>

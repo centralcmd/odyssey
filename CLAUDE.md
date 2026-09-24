@@ -286,7 +286,7 @@ the registry so something other than `Other` ends it and every stale row silentl
 instead. `OdsTypeRegistriesTests` pins both halves.
 
 **The contracts roll-up computes what the file COSTS, and both halves read the same rows.** The
-in-force `Fee`/`Amount` terms of the **Active** contracts are summed into a run rate (monthly and
+in-force `Amount` terms of the **Active** contracts are summed into a run rate (monthly and
 yearly, converted to the caller's display currency) and separately projected forward into the "next
 charges" the header panel lists. Four things about it are easy to get backwards:
 

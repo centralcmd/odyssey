@@ -20,7 +20,6 @@ using Microsoft.Extensions.Options;
 using Xunit;
 using Odyssey.Api.Tests.Infrastructure;
 using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
-using TermKind = Odyssey.Dtos.Finance.TermKind;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using Interval = Odyssey.Dtos.Finance.Interval;
 
@@ -33,9 +32,10 @@ public class TermsApiTests
     private static string TermsPath(Guid accountId) => $"/api/accounts/{accountId}/terms";
     private static string CurrentPath(Guid accountId) => $"/api/accounts/{accountId}/terms/current";
 
+    /// <summary>A percentage term named like the former rate kind — now an ordinary labelled series.</summary>
     private static NewTerm InterestRate(decimal value, DateTime effectiveFrom) => new()
     {
-        TermKind = TermKind.InterestRate,
+        Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = value,
         EffectiveFrom = effectiveFrom,
@@ -43,7 +43,6 @@ public class TermsApiTests
 
     private static NewTerm Fee(string? label, decimal value, DateTime effectiveFrom) => new()
     {
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -206,18 +205,6 @@ public class TermsApiTests
     }
 
     [Fact]
-    public async Task Post_IneligibleAccountType_ReturnsBadRequest()
-    {
-        await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.Cash);
-        using var client = factory.CreateClient();
-
-        var post = await client.PostAsJsonAsync(TermsPath(accountId), InterestRate(0.03m, new DateTime(2026, 1, 1)));
-
-        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
-    }
-
-    [Fact]
     public async Task Post_OnMissingAccount_ReturnsNotFound()
     {
         await using var factory = new ApiFactory(WriteAndRead);
@@ -344,27 +331,6 @@ public class TermsApiTests
         Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
     }
 
-    [Theory]
-    [InlineData(TermKind.InterestRate, DtoAccountType.SavingsAccount)]
-    [InlineData(TermKind.ExpectedReturn, DtoAccountType.InvestmentAccount)]
-    public async Task Post_RateKindWithLabel_ReturnsBadRequest(TermKind kind, DtoAccountType accountType)
-    {
-        await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, accountType);
-        using var client = factory.CreateClient();
-
-        var post = await client.PostAsJsonAsync(TermsPath(accountId), new NewTerm
-        {
-            TermKind = kind,
-            Label = "Headline",
-            ValueUnit = TermValueUnit.Percentage,
-            Value = 0.03m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        });
-
-        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
-    }
-
     [Fact]
     public async Task Post_OverlongLabel_IsRejectedByModelValidation()
     {
@@ -402,7 +368,6 @@ public class TermsApiTests
 
         var post = await client.PostAsJsonAsync(TermsPath(accountId), new
         {
-            termKind = TermKind.Fee,
             label = "ATM Abroad",
             labelKey = "smuggled",
             valueUnit = TermValueUnit.Amount,
@@ -475,7 +440,6 @@ public class TermsApiTests
 
         var post = await client.PostAsJsonAsync(TermsPath(accountId), new
         {
-            termKind = TermKind.Fee,
             label = "Quarterly charge",
             valueUnit = TermValueUnit.Amount,
             value = 45m,
@@ -534,7 +498,6 @@ public class TermsApiTests
 
         var post = await client.PostAsJsonAsync(TermsPath(accountId), new
         {
-            termKind = TermKind.Fee,
             label = "Paper statement",
             valueUnit = TermValueUnit.Amount,
             value = 2m,
@@ -664,20 +627,27 @@ public class TermsApiTests
         Assert.Contains("IntervalCount", await ErrorKeysAsync(post));
     }
 
+    /// <summary>
+    /// A percentage term is an ordinary term: the cadence and the anchor the retired rate kinds
+    /// refused are accepted on it, on an account type that used to be ineligible for a rate at all.
+    /// </summary>
     [Fact]
-    public async Task Post_IntervalOnARateKind_StillReturnsBadRequest()
+    public async Task Post_APercentageTermWithACadenceAndAnchor_IsAcceptedOnAnyAccountType()
     {
         await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.SavingsAccount);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.Cash);
         using var client = factory.CreateClient();
 
         var term = InterestRate(0.0325m, new DateTime(2026, 1, 1));
-        term.Interval = Interval.Monthly;
+        term.Interval = Interval.Annually;
+        term.AnchorDate = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc);
 
         var post = await client.PostAsJsonAsync(TermsPath(accountId), term);
 
-        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
-        Assert.Contains("Interval is not allowed", await post.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Created, post.StatusCode);
+        var stored = Assert.Single((await client.GetFromJsonAsync<List<ExistingTerm>>(TermsPath(accountId)))!);
+        Assert.Equal("Interest rate", stored.Label);
+        Assert.Equal(Interval.Annually, stored.Interval);
     }
 
     // ── Cadence: the anchor date rules (AC 12-16) ─────────────────────────────
@@ -705,25 +675,6 @@ public class TermsApiTests
         var stored = (await client.GetFromJsonAsync<List<ExistingTerm>>(TermsPath(accountId)))!.Single();
         Assert.Equal(anchorDate, stored.AnchorDate);
         Assert.Equal(effectiveFrom, stored.EffectiveFrom);
-    }
-
-    [Theory]
-    [InlineData(TermKind.InterestRate, DtoAccountType.SavingsAccount)]
-    [InlineData(TermKind.ExpectedReturn, DtoAccountType.InvestmentAccount)]
-    public async Task Post_AnchorDateOnARateKind_ReturnsBadRequest(TermKind kind, DtoAccountType accountType)
-    {
-        await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, accountType);
-        using var client = factory.CreateClient();
-
-        var term = InterestRate(0.0325m, new DateTime(2026, 1, 1));
-        term.TermKind = kind;
-        term.AnchorDate = new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc);
-
-        var post = await client.PostAsJsonAsync(TermsPath(accountId), term);
-
-        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
-        Assert.Contains("AnchorDate is not allowed", await post.Content.ReadAsStringAsync());
     }
 
     [Theory]

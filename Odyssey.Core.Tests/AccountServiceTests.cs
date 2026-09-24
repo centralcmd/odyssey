@@ -648,13 +648,12 @@ public class AccountServiceTests
         context.Terms.AddRange(
             // Superseded by the 2026 rate below — the card's Current band shows what is in force,
             // not the history.
-            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.03m, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow },
-            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.025m, EffectiveFrom = new DateTime(2026, 1, 1), CreatedAtUtc = DateTime.UtcNow },
+            new Term { AccountId = account.AccountId, Label = "Interest rate", LabelKey = "interest rate", ValueUnit = Context.TermValueUnit.Percentage, Value = 0.03m, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow },
+            new Term { AccountId = account.AccountId, Label = "Interest rate", LabelKey = "interest rate", ValueUnit = Context.TermValueUnit.Percentage, Value = 0.025m, EffectiveFrom = new DateTime(2026, 1, 1), CreatedAtUtc = DateTime.UtcNow },
             // Future-dated → not yet in force, must be left out of the band entirely.
-            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = DateTime.UtcNow.AddYears(1), CreatedAtUtc = DateTime.UtcNow },
-            // A second KIND: the widened query is what makes this reach the card at all — the old
-            // one filtered to the two rate kinds and a fee could never appear.
-            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.Fee, Label = "Account fee", LabelKey = "account fee", ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", Interval = Context.Interval.Monthly, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
+            new Term { AccountId = account.AccountId, Label = "Interest rate", LabelKey = "interest rate", ValueUnit = Context.TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = DateTime.UtcNow.AddYears(1), CreatedAtUtc = DateTime.UtcNow },
+            // A second SERIES, told apart from the rate by its label alone.
+            new Term { AccountId = account.AccountId, Label = "Account fee", LabelKey = "account fee", ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", Interval = Context.Interval.Monthly, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
         await context.SaveChangesAsync();
 
         var dto = (await service.ListAsync(new AccountsQueryParams())).Items.Single(a => a.AccountId == account.AccountId);
@@ -662,21 +661,17 @@ public class AccountServiceTests
         // One entry per SERIES, never one per row.
         Assert.Equal(2, dto.CurrentTerms.Count);
 
-        var rate = dto.CurrentTerms.Single(t => t.TermKind == FinanceDtos.TermKind.InterestRate);
+        var rate = dto.CurrentTerms.Single(t => t.Label == "Interest rate");
         Assert.Equal(0.025m, rate.Value);
         Assert.Equal(new DateTime(2026, 1, 1), rate.EffectiveFrom);
 
         // The billing period rides along: it is what separates a 5/month fee from a 5/year one.
-        var fee = dto.CurrentTerms.Single(t => t.TermKind == FinanceDtos.TermKind.Fee);
+        var fee = dto.CurrentTerms.Single(t => t.Label == "Account fee");
         Assert.Equal(5m, fee.Value);
         // The label is the tile's name on the record card, so the projection carries it.
         Assert.Equal("Account fee", fee.Label);
         Assert.Equal(FinanceDtos.Interval.Monthly, fee.Interval);
         Assert.Equal("USD", fee.CurrencyCode);
-
-        // The single headline rate still resolves out of the same widened set.
-        Assert.Equal(0.025m, dto.CurrentInterestRate);
-        Assert.Equal(FinanceDtos.TermKind.InterestRate, dto.CurrentInterestRateKind);
     }
 
     [Fact]
@@ -697,7 +692,8 @@ public class AccountServiceTests
         context.Terms.Add(new Term
         {
             AccountId = account.AccountId,
-            TermKind = Context.TermKind.InterestRate,
+            Label = "Interest rate",
+            LabelKey = "interest rate",
             ValueUnit = Context.TermValueUnit.Percentage,
             Value = 0.0649m,
             EffectiveFrom = new DateTime(2025, 6, 1),
@@ -710,90 +706,8 @@ public class AccountServiceTests
         var fetched = await service.Get(account.AccountId);
 
         var term = Assert.Single(fetched!.CurrentTerms);
-        Assert.Equal(FinanceDtos.TermKind.InterestRate, term.TermKind);
+        Assert.Equal("Interest rate", term.Label);
         Assert.Equal(0.0649m, term.Value);
         Assert.Equal(new DateTime(2025, 6, 1), term.EffectiveFrom);
-    }
-
-    [Fact]
-    public async Task SearchFor_PopulatesCurrentInterestRate_LatestInForcePreferringInterestRate()
-    {
-        await using var context = TestContextFactory.Create();
-        var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
-
-        var account = await service.Create(new NewAccount
-        {
-            Name = "Savings",
-            Description = "",
-            AccountType = DtoAccountType.SavingsAccount,
-            CurrencyCode = "USD",
-            Archived = false,
-        });
-
-        context.Terms.AddRange(
-            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.03m, EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow },
-            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.025m, EffectiveFrom = new DateTime(2026, 1, 1), CreatedAtUtc = DateTime.UtcNow },
-            // Future-dated → not yet in force, must be ignored.
-            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.InterestRate, ValueUnit = Context.TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = DateTime.UtcNow.AddYears(1), CreatedAtUtc = DateTime.UtcNow },
-            // A fee in force must never be chosen for the rate.
-            new Term { AccountId = account.AccountId, TermKind = Context.TermKind.Fee, Label = "Account fee", LabelKey = "account fee", ValueUnit = Context.TermValueUnit.Amount, Value = 5m, CurrencyCode = "USD", EffectiveFrom = new DateTime(2025, 1, 1), CreatedAtUtc = DateTime.UtcNow });
-        await context.SaveChangesAsync();
-
-        var dto = (await service.ListAsync(new AccountsQueryParams())).Items.Single(a => a.AccountId == account.AccountId);
-
-        Assert.Equal(0.025m, dto.CurrentInterestRate);
-        Assert.Equal(FinanceDtos.TermKind.InterestRate, dto.CurrentInterestRateKind);
-    }
-
-    [Fact]
-    public async Task SearchFor_FallsBackToExpectedReturn_WhenNoInterestRate()
-    {
-        await using var context = TestContextFactory.Create();
-        var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
-
-        var account = await service.Create(new NewAccount
-        {
-            Name = "Brokerage",
-            Description = "",
-            AccountType = DtoAccountType.InvestmentAccount,
-            CurrencyCode = "USD",
-            Archived = false,
-        });
-
-        context.Terms.Add(new Term
-        {
-            AccountId = account.AccountId,
-            TermKind = Context.TermKind.ExpectedReturn,
-            ValueUnit = Context.TermValueUnit.Percentage,
-            Value = 0.07m,
-            EffectiveFrom = new DateTime(2025, 1, 1),
-            CreatedAtUtc = DateTime.UtcNow,
-        });
-        await context.SaveChangesAsync();
-
-        var dto = (await service.ListAsync(new AccountsQueryParams())).Items.Single(a => a.AccountId == account.AccountId);
-
-        Assert.Equal(0.07m, dto.CurrentInterestRate);
-        Assert.Equal(FinanceDtos.TermKind.ExpectedReturn, dto.CurrentInterestRateKind);
-    }
-
-    [Fact]
-    public async Task SearchFor_LeavesCurrentInterestRateNull_WhenNoRateTerms()
-    {
-        await using var context = TestContextFactory.Create();
-        var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
-
-        var account = await service.Create(new NewAccount
-        {
-            Name = "Plain",
-            Description = "",
-            AccountType = DtoAccountType.SavingsAccount,
-            Archived = false,
-        });
-
-        var dto = (await service.ListAsync(new AccountsQueryParams())).Items.Single(a => a.AccountId == account.AccountId);
-
-        Assert.Null(dto.CurrentInterestRate);
-        Assert.Null(dto.CurrentInterestRateKind);
     }
 }

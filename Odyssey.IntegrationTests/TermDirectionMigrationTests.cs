@@ -120,7 +120,6 @@ public class TermDirectionMigrationTests(MariaDbFixture fixture)
                 {
                     TermId = termId,
                     ContractId = contractId,
-                    TermKind = TermKind.Fee,
                     Label = "Base salary",
                     LabelKey = "base salary",
                     ValueUnit = TermValueUnit.Amount,

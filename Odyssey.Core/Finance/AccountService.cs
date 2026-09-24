@@ -7,10 +7,8 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using ContextAccountFileType = Odyssey.Context.AccountFileType;
 using ContextAccountType = Odyssey.Context.AccountType;
-using ContextTermKind = Odyssey.Context.TermKind;
 using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoAccountFileType = Odyssey.Dtos.Finance.AccountFileType;
-using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
 using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using DtoTermDirection = Odyssey.Dtos.Finance.TermDirection;
 using DtoInterval = Odyssey.Dtos.Finance.Interval;
@@ -301,11 +299,6 @@ public class AccountService
             if (currentTermsByAccount.TryGetValue(dto.AccountId, out var currentTerms))
             {
                 dto.CurrentTerms = [.. currentTerms.Select(ToCurrentTerm)];
-                if (RateTermOf(currentTerms) is { } rateTerm)
-                {
-                    dto.CurrentInterestRate = rateTerm.Value;
-                    dto.CurrentInterestRateKind = rateTerm.TermKind.Adapt<DtoTermKind>();
-                }
             }
 
             if (estimateByAccount.TryGetValue(dto.AccountId, out var estimate))
@@ -352,11 +345,6 @@ public class AccountService
         if (currentTermsByAccount.TryGetValue(accountId, out var currentTerms))
         {
             dto.CurrentTerms = [.. currentTerms.Select(ToCurrentTerm)];
-            if (RateTermOf(currentTerms) is { } rateTerm)
-            {
-                dto.CurrentInterestRate = rateTerm.Value;
-                dto.CurrentInterestRateKind = rateTerm.TermKind.Adapt<DtoTermKind>();
-            }
         }
 
         var estimateByAccount = await GetCurrentEstimates([accountId], cancellationToken);
@@ -408,21 +396,13 @@ public class AccountService
     }
 
     /// <summary>
-    /// Resolves the currently-effective rate term for each of the given accounts: the latest
-    /// <see cref="ContextTermKind.InterestRate"/> entry on or before now, or the latest
-    /// <see cref="ContextTermKind.ExpectedReturn"/> if there is no interest rate. Returns only
-    /// accounts that have a rate in force. Backs the account-header rate subtitle.
-    /// </summary>
-    /// <summary>
-    /// The in-force terms per account — one per SERIES, <c>(TermKind, LabelKey)</c>, ordered by kind
-    /// (registry order) then label so the card's Current band reads the same way on every load. One
-    /// kind contributes one tile per label: a card charging four named fees shows four.
+    /// The in-force terms per account — one per SERIES, its <c>LabelKey</c>, ordered by label so the
+    /// card's Current band reads the same way on every load: a card charging four named fees shows
+    /// four.
     ///
     /// <para>
-    /// This is the query that used to fetch the rate terms alone. Widening it from two kinds to all of
-    /// them is what feeds the record card's Current band, and it stays <b>one</b> query over the term
-    /// composite index across every account on the page — the alternative, a per-account follow-up, is
-    /// the N+1 the whole enrichment exists to avoid.
+    /// It stays <b>one</b> query over the term composite index across every account on the page — the
+    /// alternative, a per-account follow-up, is the N+1 the whole enrichment exists to avoid.
     /// </para>
     /// </summary>
     private async Task<Dictionary<Guid, List<Term>>> GetCurrentTerms(
@@ -446,17 +426,8 @@ public class AccountService
                 group => TermSeries.Current(group));
     }
 
-    /// <summary>
-    /// The single rate the collapsed row headlines on, picked out of the in-force set: interest rate
-    /// wins over expected return when both apply (registry order).
-    /// </summary>
-    private static Term? RateTermOf(IReadOnlyList<Term> currentTerms) =>
-        currentTerms.FirstOrDefault(t => t.TermKind == ContextTermKind.InterestRate)
-        ?? currentTerms.FirstOrDefault(t => t.TermKind == ContextTermKind.ExpectedReturn);
-
     private static AccountCurrentTerm ToCurrentTerm(Term term) => new()
     {
-        TermKind = term.TermKind.Adapt<DtoTermKind>(),
         // Carried because it is the tile's NAME — without it a card with several fees renders
         // several indistinguishable tiles. Note is still excluded from this cross-claim projection.
         Label = term.Label,

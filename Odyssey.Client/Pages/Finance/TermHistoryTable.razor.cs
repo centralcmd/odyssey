@@ -16,12 +16,6 @@ public partial class TermHistoryTable
     /// </summary>
     [Parameter] public IReadOnlySet<Guid> CurrentIds { get; set; } = new HashSet<Guid>();
 
-    /// <summary>
-    /// The owning account, or <c>null</c> for a contract-owned history (issue #135). It supplies the
-    /// cost-rate wording and colour, which only an account type can decide.
-    /// </summary>
-    [Parameter] public ExistingAccount? Account { get; set; }
-
     /// <summary>Formats a money-valued term in its own currency — supplied by the host.</summary>
     [Parameter, EditorRequired]
     public Func<decimal, string?, string> FormatMoney { get; set; } = (v, _) => v.ToString(CultureInfo.InvariantCulture);

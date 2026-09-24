@@ -28,13 +28,12 @@ public class TermsController : ControllerBase
     [SwaggerOperation(
         Summary = "Get the term (rate/fee) history for an account.",
         Description = @"Lists the full term history for the account, newest effective date first.
-                        Optionally filtered by term kind and/or an as-of date.")]
+                        Optionally filtered by an as-of date.")]
     public async Task<IActionResult> GetTerms(
         [FromRoute(Name = "accountId")] Guid accountId,
-        [FromQuery(Name = "kind")] TermKind? kind = null,
         [FromQuery(Name = "asOf")] DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
-        var terms = await termService.GetHistory(accountId, kind, asOf, cancellationToken);
+        var terms = await termService.GetHistory(accountId, asOf, cancellationToken);
         if (terms is null)
             return this.NotFoundProblem($"Account ID {accountId} not found.");
 
@@ -47,8 +46,8 @@ public class TermsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
-        Summary = "Get the currently-effective term for each kind on an account.",
-        Description = @"Returns the in-force value of each term kind that has at least one entry, as of
+        Summary = "Get the currently-effective term of each series on an account.",
+        Description = @"Returns the in-force value of each labelled series that has at least one entry, as of
                         now or the supplied as-of date.")]
     public async Task<IActionResult> GetCurrentTerms(
         [FromRoute(Name = "accountId")] Guid accountId,

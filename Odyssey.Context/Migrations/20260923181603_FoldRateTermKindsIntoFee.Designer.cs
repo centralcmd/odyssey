@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Odyssey.Context;
 
@@ -11,9 +12,11 @@ using Odyssey.Context;
 namespace Odyssey.Context.Migrations
 {
     [DbContext(typeof(OdysseyContext))]
-    partial class OdysseyContextModelSnapshot : ModelSnapshot
+    [Migration("20260923181603_FoldRateTermKindsIntoFee")]
+    partial class FoldRateTermKindsIntoFee
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3777,6 +3780,9 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("varchar(512)");
 
+                    b.Property<int>("TermKind")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("Value")
                         .HasPrecision(18, 6)
                         .HasColumnType("decimal(18,6)");
@@ -3786,9 +3792,9 @@ namespace Odyssey.Context.Migrations
 
                     b.HasKey("TermId");
 
-                    b.HasIndex("AccountId", "LabelKey", "EffectiveFrom");
+                    b.HasIndex("AccountId", "TermKind", "LabelKey", "EffectiveFrom");
 
-                    b.HasIndex("ContractId", "LabelKey", "EffectiveFrom");
+                    b.HasIndex("ContractId", "TermKind", "LabelKey", "EffectiveFrom");
 
                     b.ToTable("Terms", t =>
                         {

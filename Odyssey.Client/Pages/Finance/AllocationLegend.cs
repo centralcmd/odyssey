@@ -4,7 +4,7 @@ namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
 /// The amount each allocation-donut legend row prints on the Accounts page. Split out of
-/// <c>AccountsOverview</c> for the same reason <see cref="TermKindVisuals.FormatValue"/> is a static
+/// <c>AccountsOverview</c> for the same reason <see cref="TermVisuals.FormatValue"/> is a static
 /// helper: a sign decision that lives as a private method on a component is checkable only by reading
 /// the rendered page, and this one already went wrong once.
 /// </summary>

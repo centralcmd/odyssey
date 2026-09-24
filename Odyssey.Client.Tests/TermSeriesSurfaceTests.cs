@@ -20,11 +20,11 @@ namespace Odyssey.Client.Tests;
 /// The client half of the series key, rendered rather than derived.
 ///
 /// <para>
-/// Issue #57 §9 names THREE sites that must group by <c>(TermKind, LabelKey)</c> — the term service,
+/// Issue #57 §9 names THREE sites that must group by series (now the label alone) — the term service,
 /// the account read projection, and the client's own local recompute. The first two are covered by
 /// service and API tests; this file is the third. It matters because the recompute is not a shared
 /// helper: it is its own implementation inside <c>AccountTermsSection</c>, so a server that groups
-/// per series and a client that still groups per kind would disagree the moment a second labelled fee
+/// per series and a client that grouped any other way would disagree the moment a second labelled fee
 /// existed — and the surface a user checks is this one.
 /// </para>
 ///
@@ -54,22 +54,10 @@ public class TermSeriesSurfaceTests
     {
         TermId = Guid.NewGuid(),
         AccountId = AccountId,
-        TermKind = TermKind.Fee,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
         CurrencyCode = "USD",
-        EffectiveFrom = effectiveFrom,
-        CreatedAtUtc = effectiveFrom,
-    };
-
-    private static ExistingTerm Rate(decimal value, DateTime effectiveFrom) => new()
-    {
-        TermId = Guid.NewGuid(),
-        AccountId = AccountId,
-        TermKind = TermKind.InterestRate,
-        ValueUnit = TermValueUnit.Percentage,
-        Value = value,
         EffectiveFrom = effectiveFrom,
         CreatedAtUtc = effectiveFrom,
     };
@@ -124,39 +112,26 @@ public class TermSeriesSurfaceTests
     }
 
     [Fact]
-    public void An_unlabelled_rate_and_a_labelled_fee_are_separate_series()
+    public void A_tile_is_named_by_its_label_with_no_kind_caption()
     {
-        var cut = RenderSection(Card(), [
-            Rate(0.2249m, Past(400)),
-            Fee("Annual card fee", 95m, Past(400)),
-        ]);
-
-        // The rate is named by its kind wording — on a credit card, a liability, the #55 caption.
-        Assert.Equal(["Interest charged", "Annual card fee"], TileNames(cut));
-    }
-
-    [Fact]
-    public void A_labelled_tile_carries_the_kind_wording_as_a_caption_beneath_its_name()
-    {
-        // Criterion 14: both are TEXT, so no meaning rides on the glyph or its hue.
-        var cut = RenderSection(Card(), [Fee("Paper statement", 2m, Past(30))]);
+        // Every term is one kind of thing, so a caption naming a kind would say nothing.
+        var cut = RenderSection(Card(), [Fee("Interest rate", 0.2249m, Past(30))]);
 
         var tile = cut.Find(".trm-tile");
 
-        Assert.Equal("Paper statement", tile.QuerySelector(".trm-tile-name")!.TextContent.Trim());
-        Assert.Equal("Fee", tile.QuerySelector(".trm-kind-caption")!.TextContent.Trim());
-    }
-
-    [Fact]
-    public void An_unlabelled_rate_tile_has_no_kind_caption()
-    {
-        // Its name already IS the kind wording; a caption repeating it would be noise.
-        var cut = RenderSection(Card(AccountType.SavingsAccount), [Rate(0.0325m, Past(30))]);
-
-        var tile = cut.Find(".trm-tile");
-
-        Assert.Equal("Interest rate", tile.QuerySelector(".trm-tile-kind")!.TextContent.Trim());
+        Assert.Equal("Interest rate", tile.QuerySelector(".trm-tile-name")!.TextContent.Trim());
         Assert.Null(tile.QuerySelector(".trm-kind-caption"));
+    }
+
+    [Fact]
+    public void The_section_draws_no_rate_chart()
+    {
+        // The headline rate and its step chart are withdrawn until they are reintroduced on a new
+        // basis; a term named "Interest rate" renders like any other term.
+        var cut = RenderSection(Card(), [Fee("Interest rate", 0.2249m, Past(30))]);
+
+        Assert.Empty(cut.FindAll(".trm-hero"));
+        Assert.Empty(cut.FindAll("svg.trm-chart"));
     }
 
     [Fact]
@@ -175,15 +150,14 @@ public class TermSeriesSurfaceTests
     // ── The dialog's validation ──────────────────────────────────────────────
 
     [Fact]
-    public void A_fee_with_no_name_is_refused_before_a_request_is_made()
+    public void A_term_with_no_name_is_refused_before_a_request_is_made()
     {
-        // A cash account has only Fee to offer, so the form opens on it.
         var (cut, client) = RenderDialog(Card(AccountType.Cash), []);
 
         Submit(cut);
 
         Assert.Contains(
-            "Name this fee so it keeps its own history.",
+            "Name this term so it keeps its own history.",
             cut.Markup,
             StringComparison.Ordinal);
         client.Verify(
@@ -240,85 +214,20 @@ public class TermSeriesSurfaceTests
             Times.Once);
     }
 
-    [Fact]
-    public void The_kind_picker_is_not_rendered_when_one_kind_is_eligible()
-    {
-        // Criterion 19: a cash account has only Fee to offer, so the one-option card row is dropped — and
-        // the form still opens on that kind and saves.
-        var (cut, client) = RenderDialog(Card(AccountType.Cash), []);
-
-        Assert.Empty(cut.FindAll(".odc-cardsel"));
-
-        Type(cut, "Name", "Safekeeping");
-        Type(cut, "Value", "3");
-        Submit(cut);
-
-        client.Verify(
-            c => c.AddTermAsync(AccountId, It.Is<NewTerm>(t => t.TermKind == TermKind.Fee), It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public void The_kind_picker_is_rendered_when_a_rate_sits_beside_the_fee()
-    {
-        var (cut, _) = RenderDialog(Card(), []);
-
-        Assert.NotEmpty(cut.FindAll(".odc-cardsel"));
-    }
-
-    [Fact]
-    public void The_name_field_is_rendered_for_a_fee_and_not_for_a_rate()
-    {
-        // A credit card offers both, and opens on the rate (registry order), which takes no label.
-        var (cut, _) = RenderDialog(Card(), []);
-
-        Assert.Null(FindInput(cut, "Name"));
-
-        PickKind(cut, "Fee");
-        Assert.NotNull(FindInput(cut, "Name"));
-
-        PickKind(cut, "Interest rate");
-        Assert.Null(FindInput(cut, "Name"));
-    }
-
-    [Fact]
-    public void A_name_typed_on_a_fee_is_discarded_when_the_kind_switches_to_a_rate()
-    {
-        // A rate is refused a label, so a typed one must not be carried invisibly into a request the
-        // server would reject.
-        var (cut, _) = RenderDialog(Card(), []);
-
-        PickKind(cut, "Fee");
-        Type(cut, "Name", "ATM · abroad");
-        PickKind(cut, "Interest rate");
-        PickKind(cut, "Fee");
-
-        Assert.Equal("", FindInput(cut, "Name")!.GetAttribute("value") ?? "");
-    }
-
     // ── The record card's tile caption ───────────────────────────────────────
 
     [Fact]
-    public void The_record_cards_tile_foot_leads_with_the_kind_wording_for_a_labelled_term()
+    public void The_record_cards_tile_foot_states_the_date_and_the_cadence()
     {
         var term = Fee("Annual card fee", 95m, new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc));
         term.Interval = Interval.Annually;
         term.IntervalCount = 1;
 
-        var foot = AccountsCard.TermFoot(term, Card());
-
-        Assert.StartsWith("Fee · since ", foot, StringComparison.Ordinal);
-        // The cadence in words, from the one shared helper — not a chip label.
-        Assert.EndsWith(" · annually", foot, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void The_record_cards_tile_foot_omits_the_kind_wording_for_an_unlabelled_rate()
-    {
-        // The rate's NAME is already its kind wording, so repeating it in the foot would say it twice.
-        var foot = AccountsCard.TermFoot(Rate(0.2249m, new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc)), Card());
+        var foot = AccountsCard.TermFoot(term);
 
         Assert.StartsWith("since ", foot, StringComparison.Ordinal);
+        // The cadence in words, from the one shared helper — not a chip label.
+        Assert.EndsWith(" · annually", foot, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -328,7 +237,7 @@ public class TermSeriesSurfaceTests
         var term = Fee("Card replacement", 15m, new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc));
         term.Interval = Interval.OneTime;
 
-        Assert.DoesNotContain("One-time", AccountsCard.TermFoot(term, Card()), StringComparison.Ordinal);
+        Assert.DoesNotContain("One-time", AccountsCard.TermFoot(term), StringComparison.Ordinal);
     }
 
     // ── Harness ──────────────────────────────────────────────────────────────
@@ -367,16 +276,13 @@ public class TermSeriesSurfaceTests
     // fail against the version where the echo was a loose sibling div.
 
     /// <summary>
-    /// A fee opens on Monthly, which is periodic, so the count field is there from the start and
+    /// A new term opens on Monthly, which is periodic, so the count field is there from the start and
     /// the echo names the identity cadence rather than waiting for a typed value.
     /// </summary>
     [Fact]
     public void A_new_fee_opens_with_the_count_field_and_an_echo_of_the_identity_cadence()
     {
-        // A credit card offers both kinds and opens on the RATE (registry order), which has no
-        // cadence block at all — so every create-path cadence test picks Fee first.
         var (cut, _) = RenderDialog(Card(), []);
-        PickKind(cut, "Fee");
 
         Assert.NotNull(FindInput(cut, "Every"));
         Assert.Equal("Charged monthly.", CadenceEcho(cut));
@@ -440,7 +346,6 @@ public class TermSeriesSurfaceTests
     public void The_count_field_describes_itself_with_the_cadence_echo()
     {
         var (cut, _) = RenderDialog(Card(), []);
-        PickKind(cut, "Fee");
 
         var described = FindInput(cut, "Every")!.GetAttribute("aria-describedby")?.Split(' ') ?? [];
         var echo = cut.Find(".trm-cadence-echo");
@@ -458,7 +363,6 @@ public class TermSeriesSurfaceTests
     public void The_count_field_names_no_echo_while_the_echo_is_withheld()
     {
         var (cut, _) = RenderDialog(Card(), []);
-        PickKind(cut, "Fee");
 
         // Out of range, so the echo gives way to the error. The count is validated on SUBMIT, not on
         // input — typing alone only clears the previous error — so the submit is what withholds it.
@@ -484,7 +388,6 @@ public class TermSeriesSurfaceTests
     public void A_count_outside_the_shared_bound_is_refused_with_the_bound_in_the_message(string typed)
     {
         var (cut, client) = RenderDialog(Card(), []);
-        PickKind(cut, "Fee");
 
         Type(cut, "Name", "Account maintenance");
         Type(cut, "Value", "45");
@@ -510,7 +413,6 @@ public class TermSeriesSurfaceTests
     public void A_blank_count_posts_the_identity_cadence()
     {
         var (cut, client) = RenderDialog(Card(), []);
-        PickKind(cut, "Fee");
 
         Type(cut, "Name", "Paper statement");
         Type(cut, "Value", "2");
@@ -519,31 +421,6 @@ public class TermSeriesSurfaceTests
         client.Verify(c => c.AddTermAsync(
             It.IsAny<Guid>(),
             It.Is<NewTerm>(t => t.Interval == Interval.Monthly && t.IntervalCount == TermIntervalCount.Min),
-            It.IsAny<CancellationToken>()));
-    }
-
-    /// <summary>
-    /// A rate carries NEITHER half of a billing description, nor an anchor — the whole block is
-    /// absent, and nothing it held is posted.
-    /// </summary>
-    [Fact]
-    public void A_rate_kind_posts_no_cadence_and_no_anchor()
-    {
-        var (cut, client) = RenderDialog(Card(), []);
-
-        // Via Fee, so the block is proven to have been there and then withdrawn.
-        PickKind(cut, "Fee");
-        Assert.NotEmpty(cut.FindAll(".trm-cadence"));
-
-        PickKind(cut, "Interest rate");
-        Assert.Empty(cut.FindAll(".trm-cadence"));
-
-        Type(cut, "Value", "3.25");
-        Submit(cut);
-
-        client.Verify(c => c.AddTermAsync(
-            It.IsAny<Guid>(),
-            It.Is<NewTerm>(t => t.Interval == null && t.IntervalCount == null && t.AnchorDate == null),
             It.IsAny<CancellationToken>()));
     }
 
@@ -658,11 +535,6 @@ public class TermSeriesSurfaceTests
                 ?? throw new InvalidOperationException($"No input labelled '{label}'. Markup: {cut.Markup}");
             return input.InputAsync(new ChangeEventArgs { Value = value });
         }).GetAwaiter().GetResult();
-
-    private static void PickKind(IRenderedComponent<DialogHost> cut, string kindLabel) =>
-        cut.InvokeAsync(() => cut.FindAll(".odc-cardsel-opt")
-            .Single(b => b.TextContent.Contains(kindLabel, StringComparison.Ordinal))
-            .ClickAsync(new MouseEventArgs())).GetAwaiter().GetResult();
 
     private static void Submit(IRenderedComponent<DialogHost> cut) =>
         cut.InvokeAsync(() => cut.FindAll("button")

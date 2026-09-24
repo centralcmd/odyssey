@@ -260,7 +260,6 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
 
     private static NewTerm NewRentTerm() => new()
     {
-        TermKind = Odyssey.Dtos.Finance.TermKind.Fee,
         Label = "Monthly rent",
         ValueUnit = Odyssey.Dtos.Finance.TermValueUnit.Amount,
         Value = 14500m,

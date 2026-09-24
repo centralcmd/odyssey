@@ -8,27 +8,23 @@ using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using ContextAccountType = Odyssey.Context.AccountType;
 using ContextInterval = Odyssey.Context.Interval;
-using ContextTermKind = Odyssey.Context.TermKind;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
 using ContextTermDirection = Odyssey.Context.TermDirection;
-using DtoTermKind = Odyssey.Dtos.Finance.TermKind;
 
 namespace Odyssey.Core.Finance;
 
 /// <summary>
-/// Business logic for time-versioned terms (interest rates, expected returns, and fee prices) on
-/// either of the two owners the table serves — an <b>account</b> or a <b>contract</b> (issue #135).
-/// Enforces per-owner kind eligibility and value/unit/currency validation, and resolves the
-/// currently-effective value of each SERIES by implicit supersession (latest <c>EffectiveFrom</c> on
-/// or before a date).
+/// Business logic for time-versioned terms (rates and the prices of named charges) on either of the
+/// two owners the table serves — an <b>account</b> or a <b>contract</b> (issue #135). Enforces
+/// label and value/unit/currency validation, and resolves the currently-effective value of each
+/// SERIES by implicit supersession (latest <c>EffectiveFrom</c> on or before a date).
 ///
 /// <para>
-/// A series is <c>(owner, TermKind, LabelKey)</c>. One kind can hold several concurrently in-force
-/// terms told apart by a user-authored label, and supersession happens strictly within a label — a
-/// rise in the foreign ATM charge is not a change to the domestic one. An account series and a
-/// contract series never interact, however identical their kind and label.
+/// A series is <c>(owner, LabelKey)</c>. An owner can hold several concurrently in-force terms told
+/// apart by a user-authored label, and supersession happens strictly within a label — a rise in the
+/// foreign ATM charge is not a change to the domestic one. An account series and a contract series
+/// never interact, however identical their label.
 /// </para>
 ///
 /// <para>
@@ -67,40 +63,6 @@ public class TermService
         this.logger = logger ?? NullLogger<TermService>.Instance;
     }
 
-    // The eligibility matrix lives in code (not the database) so it can evolve without a migration.
-    // Unknown is never permitted; Fee is permitted on every account type.
-    private static readonly IReadOnlySet<ContextAccountType> InterestRateAccountTypes = new HashSet<ContextAccountType>
-    {
-        ContextAccountType.CheckingAccount,
-        ContextAccountType.SavingsAccount,
-        ContextAccountType.PensionAccount,
-        ContextAccountType.CreditCard,
-        ContextAccountType.Mortgage,
-        ContextAccountType.StudentLoan,
-        ContextAccountType.PersonalLoan,
-        ContextAccountType.CarLoan,
-        ContextAccountType.TaxDebt,
-    };
-
-    private static readonly IReadOnlySet<ContextAccountType> ExpectedReturnAccountTypes = new HashSet<ContextAccountType>
-    {
-        ContextAccountType.InvestmentAccount,
-        ContextAccountType.PensionAccount,
-    };
-
-    /// <summary>
-    /// What a contract may be priced in (issue #135 §8). <c>Fee</c> and <c>InterestRate</c> on every
-    /// contract type — <c>ContractType</c>'s four values (Employment, Service, Rental, Other) are
-    /// coarse and none of them is financing-specific, so a per-type matrix would be arbitrary rather
-    /// than informative. <c>ExpectedReturn</c> is refused: it prices invested principal, which a
-    /// contract does not hold.
-    /// </summary>
-    private static readonly IReadOnlySet<ContextTermKind> ContractTermKinds = new HashSet<ContextTermKind>
-    {
-        ContextTermKind.Fee,
-        ContextTermKind.InterestRate,
-    };
-
     // ── Owner resolution ─────────────────────────────────────────────────────────
     //
     // One resolver per owner. Everything that differs between an account and a contract is decided
@@ -118,18 +80,10 @@ public class TermService
         if (account is null)
             return null;
 
-        var permitted = new HashSet<ContextTermKind> { ContextTermKind.Fee };
-        if (InterestRateAccountTypes.Contains(account.AccountType))
-            permitted.Add(ContextTermKind.InterestRate);
-        if (ExpectedReturnAccountTypes.Contains(account.AccountType))
-            permitted.Add(ContextTermKind.ExpectedReturn);
-
         return new TermOwnerFacts(
             TermOwnerKind.Account,
             account.AccountId,
             "account",
-            permitted,
-            $"accounts of type '{account.AccountType}'",
             // An amount term on an account defaults to the account's own currency, which is the
             // pre-#135 behaviour and stays unchanged.
             DefaultCurrencyCode: account.CurrencyCode,
@@ -153,8 +107,6 @@ public class TermService
             TermOwnerKind.Contract,
             contract.ContractId,
             "contract",
-            ContractTermKinds,
-            "contracts",
             // A contract has no currency of its own, which is what makes an explicit code REQUIRED for
             // an amount term (issue #135 §8 rule 2) rather than merely recommended.
             DefaultCurrencyCode: null,
@@ -186,15 +138,15 @@ public class TermService
 
     /// <summary>
     /// Returns the full term history for an account (newest <c>EffectiveFrom</c> first), or
-    /// <c>null</c> if the account does not exist. Optionally filtered by kind and/or an as-of date.
+    /// <c>null</c> if the account does not exist. Optionally filtered by an as-of date.
     /// </summary>
-    public async Task<IList<ExistingTerm>?> GetHistory(Guid accountId, DtoTermKind? kind = null, DateTime? asOf = null, CancellationToken cancellationToken = default)
+    public async Task<IList<ExistingTerm>?> GetHistory(Guid accountId, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
         var accountExists = await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
         if (!accountExists)
             return null;
 
-        return await GetHistoryFor(TermOwnerKind.Account, accountId, kind, asOf, cancellationToken);
+        return await GetHistoryFor(TermOwnerKind.Account, accountId, asOf, cancellationToken);
     }
 
     /// <summary>
@@ -202,25 +154,19 @@ public class TermService
     /// <c>null</c> if the contract does not exist. An ARCHIVED contract's history stays readable —
     /// only writes are refused (issue #135 §8 rule 3).
     /// </summary>
-    public async Task<IList<ExistingTerm>?> GetContractHistory(Guid contractId, DtoTermKind? kind = null, DateTime? asOf = null, CancellationToken cancellationToken = default)
+    public async Task<IList<ExistingTerm>?> GetContractHistory(Guid contractId, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
         var contractExists = await context.Contracts.AnyAsync(c => c.ContractId == contractId, cancellationToken);
         if (!contractExists)
             return null;
 
-        return await GetHistoryFor(TermOwnerKind.Contract, contractId, kind, asOf, cancellationToken);
+        return await GetHistoryFor(TermOwnerKind.Contract, contractId, asOf, cancellationToken);
     }
 
     private async Task<IList<ExistingTerm>> GetHistoryFor(
-        TermOwnerKind ownerKind, Guid ownerId, DtoTermKind? kind, DateTime? asOf, CancellationToken cancellationToken)
+        TermOwnerKind ownerKind, Guid ownerId, DateTime? asOf, CancellationToken cancellationToken)
     {
         var query = context.Terms.AsNoTracking().Where(OwnedBy(ownerKind, ownerId));
-
-        if (kind is not null)
-        {
-            var contextKind = kind.Value.Adapt<ContextTermKind>();
-            query = query.Where(term => term.TermKind == contextKind);
-        }
 
         if (asOf is not null)
         {
@@ -238,8 +184,8 @@ public class TermService
 
     /// <summary>
     /// Returns the currently-effective value of each SERIES that has at least one entry on or before
-    /// <paramref name="asOf"/> (default now), or <c>null</c> if the account does not exist. One kind
-    /// contributes one entry per label, so a card charging four named fees returns four.
+    /// <paramref name="asOf"/> (default now), or <c>null</c> if the account does not exist. One entry
+    /// per label, so a card charging four named fees returns four.
     /// </summary>
     public async Task<IList<CurrentTerm>?> GetCurrent(Guid accountId, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
@@ -498,7 +444,7 @@ public class TermService
     // ── The structured-log safety net for term writes (issue #154 §8.8) ──────────
 
     /// <summary>
-    /// The four values a term log line names, on one side of a write. Money amounts, a currency code, a
+    /// The values a term log line names, on one side of a write. Money amounts, a currency code, a
     /// date and an opaque id — <b>no names, no free text and no user-supplied <c>Label</c></b>, matching
     /// <c>ContractService.LogPartyWrite</c>'s rule. A <c>Guid</c> or a <c>decimal</c> cannot carry the
     /// CR/LF a forged log line would need, which is what makes them safe to record verbatim.
@@ -509,11 +455,11 @@ public class TermService
     /// <em>here</em>, which is operator-facing.
     /// </remarks>
     private sealed record TermSnapshot(
-        Guid TermId, ContextTermKind Kind, decimal Value, string? CurrencyCode, DateTime EffectiveFrom)
+        Guid TermId, decimal Value, string? CurrencyCode, DateTime EffectiveFrom)
     {
         /// <summary>The term as it stands right now.</summary>
         public static TermSnapshot Of(Term term) =>
-            new(term.TermId, term.TermKind, term.Value, term.CurrencyCode, term.EffectiveFrom);
+            new(term.TermId, term.Value, term.CurrencyCode, term.EffectiveFrom);
 
         /// <summary>
         /// The term as it stood before this update, read off the change tracker's original snapshot —
@@ -527,7 +473,6 @@ public class TermService
             var original = context.Entry(term).OriginalValues;
             return new TermSnapshot(
                 term.TermId,
-                original.GetValue<ContextTermKind>(nameof(Term.TermKind)),
                 original.GetValue<decimal>(nameof(Term.Value)),
                 original.GetValue<string?>(nameof(Term.CurrencyCode)),
                 original.GetValue<DateTime>(nameof(Term.EffectiveFrom)));
@@ -564,13 +509,12 @@ public class TermService
         var subject = after ?? before!;
 
         logger.LogInformation(
-            "Contract term {Action}: contract {ContractId}, term {TermId}, kind {TermKind}, " +
+            "Contract term {Action}: contract {ContractId}, term {TermId}, " +
             "{BeforeValue} {BeforeCurrency} from {BeforeEffectiveFrom} -> " +
             "{AfterValue} {AfterCurrency} from {AfterEffectiveFrom}, by user {UserId}.",
             action,
             contractId,
             subject.TermId,
-            subject.Kind,
             before is null ? NoTermValue : before.Value.ToString(CultureInfo.InvariantCulture),
             LogCurrency(before?.CurrencyCode),
             before is null ? NoTermValue : before.EffectiveFrom.ToString("O", CultureInfo.InvariantCulture),
@@ -618,8 +562,8 @@ public class TermService
 
     /// <summary>
     /// The single validation, normalization and supersession path both owners run through. Everything
-    /// that varies between an account and a contract arrives in <paramref name="owner"/>: which kinds
-    /// are eligible, whether an amount may fall back to an owner currency, and nothing else. The owner
+    /// that varies between an account and a contract arrives in <paramref name="owner"/>: whether an
+    /// amount may fall back to an owner currency, whether a direction is accepted, and nothing else. The owner
     /// ids on <paramref name="term"/> are set by the caller from the route and are never read from
     /// <paramref name="source"/>, which carries no owner field at all.
     /// </summary>
@@ -647,64 +591,23 @@ public class TermService
                 code: null,
                 field: nameof(NewTerm.Direction));
 
-        var kind = source.TermKind.Adapt<ContextTermKind>();
-        if (kind == ContextTermKind.Unknown)
-            throw new DomainValidationException("TermKind must be a recognised value.");
-
-        if (!owner.PermittedKinds.Contains(kind))
-            throw new DomainValidationException(
-                $"Term kind '{source.TermKind}' is not permitted for {owner.EligibilityScope}.");
-
-        // The label carries a fee's taxonomy, so it is required there and refused on a rate: two
-        // labelled interest rates would both be in force, and the account header, the record card and
-        // the history chart each headline exactly one, with no non-arbitrary way to choose.
-        var label = TermLabel.Normalize(source.Label);
-        if (label is not null && label.Length > TermLabel.MaxLength)
+        // The label IS the series, so it is required: two unnamed terms on one owner could not be
+        // told apart.
+        var label = TermLabel.Normalize(source.Label)
+            ?? throw new DomainValidationException(
+                "A term requires a label naming what it prices.",
+                code: null,
+                field: nameof(NewTerm.Label));
+        if (label.Length > TermLabel.MaxLength)
             throw new DomainValidationException(
                 $"A term label must be {TermLabel.MaxLength} characters or fewer.");
-
-        switch (TermLabel.RuleFor(source.TermKind))
-        {
-            case TermLabelRule.Refused when label is not null:
-                throw new DomainValidationException(
-                    $"Term kind '{source.TermKind}' does not take a label.");
-            case TermLabelRule.Required when label is null:
-                throw new DomainValidationException(
-                    $"Term kind '{source.TermKind}' requires a label naming what is charged.");
-        }
 
         // Derived here and only here — LabelKey is on no request DTO and is never bound from one.
         var labelKey = TermLabel.Key(label);
 
         var unit = source.ValueUnit.Adapt<ContextTermValueUnit>();
 
-        // Rate kinds are percentages by definition; an amount unit would store a rate as a currency
-        // value, which is semantically invalid history.
-        if (unit != ContextTermValueUnit.Percentage
-            && (kind == ContextTermKind.InterestRate || kind == ContextTermKind.ExpectedReturn))
-            throw new DomainValidationException(
-                $"Term kind '{source.TermKind}' must be expressed as a percentage, not an amount.");
-
-        var isRateKind = kind == ContextTermKind.InterestRate || kind == ContextTermKind.ExpectedReturn;
-
-        if (source.Interval is not null && isRateKind)
-            throw new DomainValidationException(
-                $"Interval is not allowed for term kind '{source.TermKind}'.");
-
-        // A rate is not billed, so a rate row must not be able to carry half a billing description.
-        // The rule is KIND-based, not interval-based: a one-time fee charged on a known date is
-        // precisely a case worth recording.
-        if (source.AnchorDate is not null && isRateKind)
-            throw new DomainValidationException(
-                $"AnchorDate is not allowed for term kind '{source.TermKind}'.");
-
         var direction = source.Direction.Adapt<ContextTermDirection>();
-
-        // V1 (issue #159) is RETIRED: direction was once refused on a rate kind, but an arrears rate
-        // charges the household and a deposit rate pays it — the same fact a fee carries — so every
-        // CONTRACT term now carries one. The roll-up still projects no percentage, so a rate's
-        // direction changes no figure; it is record-keeping and the "money in" marker. What remains
-        // is V4 below, which keeps every ACCOUNT term Outgoing whatever its kind.
 
         // V4 (issue #159) — an account-owned term may not carry a non-default direction. A savings
         // account's interest is incoming and a loan's is outgoing, but no account surface READS a
@@ -716,8 +619,8 @@ public class TermService
                 code: null,
                 field: nameof(NewTerm.Direction));
 
-        // V2 is the ABSENCE of a rule: every contract term accepts a direction, including the fees the
-        // roll-up ignores — a percentage-unit fee, a OneTime/PerOccurrence/PerUnit fee, and a fee with
+        // V2 is the ABSENCE of a rule: every contract term accepts a direction, including the ones the
+        // roll-up ignores — a percentage-unit term, a OneTime/PerOccurrence/PerUnit term, and a term with
         // no interval at all. A one-off signing bonus is legitimate incoming record-keeping; the
         // roll-up's exclusions are about having no rate to PROJECT, not about direction.
 
@@ -781,16 +684,13 @@ public class TermService
         // The guard is over the SERIES key, on the folded form, so "ATM abroad", "atm abroad" and
         // "  ATM   abroad  " collide while two differently-named fees on one date do not.
         var duplicateExists = await context.Terms.Where(OwnedBy(owner)).AnyAsync(existing =>
-            existing.TermKind == kind
-            && existing.LabelKey == labelKey
+            existing.LabelKey == labelKey
             && existing.EffectiveFrom == effectiveFrom
             && (excludeTermId == null || existing.TermId != excludeTermId), cancellationToken);
         if (duplicateExists)
-            throw new DomainConflictException(label is null
-                ? $"A '{source.TermKind}' term effective from {effectiveFrom:yyyy-MM-dd} already exists for this {owner.Noun}."
-                : $"'{label}' already has an entry effective from {effectiveFrom:yyyy-MM-dd} on this {owner.Noun}.");
+            throw new DomainConflictException(
+                $"'{label}' already has an entry effective from {effectiveFrom:yyyy-MM-dd} on this {owner.Noun}.");
 
-        term.TermKind = kind;
         term.Label = label;
         term.LabelKey = labelKey;
         term.ValueUnit = unit;

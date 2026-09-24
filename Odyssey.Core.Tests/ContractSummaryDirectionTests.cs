@@ -5,7 +5,6 @@ using Odyssey.Dtos.Finance;
 using Xunit;
 using DtoContractType = Odyssey.Dtos.Finance.ContractType;
 using ContextInterval = Odyssey.Context.Interval;
-using ContextTermKind = Odyssey.Context.TermKind;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
 using ContextTermDirection = Odyssey.Context.TermDirection;
 
@@ -384,7 +383,6 @@ public class ContractSummaryDirectionTests
         {
             TermId = Guid.NewGuid(),
             ContractId = contractId,
-            TermKind = ContextTermKind.Fee,
             Label = label,
             LabelKey = label.ToLowerInvariant(),
             ValueUnit = ContextTermValueUnit.Amount,

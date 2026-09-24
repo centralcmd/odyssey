@@ -603,13 +603,29 @@ receipts — and the worst-case row count for that part of the payload doubles. 
 description on **System settings → Contracts** says so; nothing about it needs changing on upgrade.
 
 **No new permission claim and no new configuration.** Direction rides the existing `contracts.read` /
-`.update` and `accounts.terms.write` claims, so **no sign-out/sign-in is required on deploy**. Two new
-`400`s exist on the write path: `Incoming` on an `InterestRate` / `ExpectedReturn` term, and `Incoming`
-on an *account*-owned term — no account surface reads a direction yet, so accepting one there would
+`.update` and `accounts.terms.write` claims, so **no sign-out/sign-in is required on deploy**. A new
+`400` exists on the write path: `Incoming` on an *account*-owned term — no account surface reads a
+direction yet, so accepting one there would
 record a fact the product then contradicts. And note that `PUT …/terms/{termId}` is a **full replace**:
 omitting `direction` resets the term to `Outgoing`, exactly as omitting `label` or `anchorDate` already
 clears those. Every read path returns the field, so a read-modify-write round trip carries it back
 unchanged.
+
+### Release note: rate term kinds folded into labelled terms, and `TermKind` removed
+
+Two migrations run in order. `FoldRateTermKindsIntoFee` rewrites every `InterestRate`,
+`ExpectedReturn` and unrecognised term as an ordinary labelled term — labelled `Interest rate`,
+`Expected return` or `Unspecified` where it had no label — keeping its value, unit and dates.
+`RemoveTermKind` then drops the `Terms.TermKind` column; a term's series is now its label alone.
+If an owner already had a term labelled `Interest rate` or `Expected return`, the converted rate joins
+that history rather than forking a second one. No data is lost, and the down migrations are
+best-effort (they restore a kind only from the exact label the fold wrote).
+
+On the wire, `termKind` is gone from every term request and response, from the data export, and as
+the `?kind=` filter on both history endpoints; `label` is now required on every term.
+`ExistingAccount.currentInterestRate` / `currentInterestRateKind` are removed. The account row's
+headline rate, the rate step chart and the "Interest charged" tint are withdrawn for now — a former
+rate shows as a term like any other.
 
 ## Backups
 
