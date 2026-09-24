@@ -5,7 +5,6 @@ using Odyssey.Dtos.Finance;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
-using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoContractType = Odyssey.Dtos.Finance.ContractType;
 using TermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using Interval = Odyssey.Dtos.Finance.Interval;
@@ -13,10 +12,9 @@ using Interval = Odyssey.Dtos.Finance.Interval;
 namespace Odyssey.Core.Tests;
 
 /// <summary>
-/// The CONTRACT half of <see cref="TermService"/> (issue #135): the contract-specific rules, and —
-/// more importantly — the rules that must NOT differ from the account path, since both owners run one
-/// validator. Anything asserted here about a shared rule is asserted because a per-owner regression in
-/// it would be invisible on the account tests.
+/// The contract-specific rules of <see cref="TermService"/> (issue #135) — the cap, the archived
+/// contract, the currency a contract cannot default, addressing across contracts. The shared value,
+/// label and cadence rules are covered by <see cref="TermServiceTests"/> through the same owner.
 /// </summary>
 public class ContractTermServiceTests
 {
@@ -51,21 +49,6 @@ public class ContractTermServiceTests
         return created.ContractId;
     }
 
-    private static async Task<Guid> SeedAccountAsync(
-        OdysseyContext context, DtoAccountType accountType = DtoAccountType.SavingsAccount)
-    {
-        var account = await new AccountService(context, TestContextFactory.EmptyContactLookup())
-            .Create(new NewAccount
-            {
-                Name = "Savings",
-                Description = "Seeded for the cross-owner assertions.",
-                AccountType = accountType,
-                CurrencyCode = "USD",
-                Archived = false,
-            });
-        return account.AccountId;
-    }
-
     private static NewTerm Rent(decimal value, DateTime effectiveFrom, string? label = "Monthly rent", string? currency = "USD") => new()
     {
         Label = label,
@@ -88,7 +71,7 @@ public class ContractTermServiceTests
     // ── Ownership ────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Create_OnContract_SetsContractOwnerAndLeavesAccountNull()
+    public async Task Create_OnContract_SetsContractOwner()
     {
         await using var context = TestContextFactory.Create();
         var contractId = await SeedContractAsync(context);
@@ -96,29 +79,7 @@ public class ContractTermServiceTests
         var created = await Terms(context).CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
 
         Assert.Equal(contractId, created.ContractId);
-        Assert.Null(created.AccountId);
-
-        var row = await context.Terms.SingleAsync();
-        Assert.Equal(contractId, row.ContractId);
-        Assert.Null(row.AccountId);
-    }
-
-    [Fact]
-    public async Task Create_OnAccount_StillSetsAccountOwnerAndLeavesContractNull()
-    {
-        await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context);
-
-        var created = await Terms(context).Create(accountId, new NewTerm
-        {
-            Label = "Monthly fee",
-            ValueUnit = TermValueUnit.Amount,
-            Value = 4m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        });
-
-        Assert.Equal(accountId, created.AccountId);
-        Assert.Null(created.ContractId);
+        Assert.Equal(contractId, (await context.Terms.SingleAsync()).ContractId);
     }
 
     [Fact]
@@ -128,41 +89,6 @@ public class ContractTermServiceTests
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
             Terms(context).CreateForContract(Guid.NewGuid(), Rent(1m, new DateTime(2026, 1, 1)), userId: null));
-    }
-
-    /// <summary>
-    /// The two owners' series never interact, however identical the kind, label and date. This is the
-    /// property the whole owner-scoped duplicate guard exists to hold.
-    /// </summary>
-    [Fact]
-    public async Task Create_SameKindLabelAndDateOnBothOwners_IsTwoSeriesNotAConflict()
-    {
-        await using var context = TestContextFactory.Create();
-        var contractId = await SeedContractAsync(context);
-        var accountId = await SeedAccountAsync(context);
-        var service = Terms(context);
-        var date = new DateTime(2026, 10, 1);
-
-        await service.CreateForContract(contractId, Rent(14500m, date), userId: null);
-        await service.Create(accountId, Rent(14500m, date));
-
-        Assert.Equal(2, await context.Terms.CountAsync());
-        Assert.Single(await service.GetContractHistory(contractId) ?? []);
-        Assert.Single(await service.GetHistory(accountId) ?? []);
-    }
-
-    [Fact]
-    public async Task GetHistory_OnAnAccount_NeverReturnsContractTerms()
-    {
-        await using var context = TestContextFactory.Create();
-        var contractId = await SeedContractAsync(context);
-        var accountId = await SeedAccountAsync(context);
-        var service = Terms(context);
-
-        await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
-
-        Assert.Empty(await service.GetHistory(accountId) ?? []);
-        Assert.Empty(await service.GetCurrent(accountId) ?? []);
     }
 
     // ── Eligibility ──────────────────────────────────────────────────────────
@@ -197,23 +123,6 @@ public class ContractTermServiceTests
 
         Assert.NotNull(error.Errors);
         Assert.True(error.Errors!.ContainsKey(nameof(NewTerm.CurrencyCode)));
-    }
-
-    [Fact]
-    public async Task Create_AmountWithoutCurrencyOnAnAccount_StillDefaultsToTheAccountCurrency()
-    {
-        await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context);
-
-        var created = await Terms(context).Create(accountId, new NewTerm
-        {
-            Label = "Monthly fee",
-            ValueUnit = TermValueUnit.Amount,
-            Value = 4m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        });
-
-        Assert.Equal("USD", created.CurrencyCode);
     }
 
     [Fact]
@@ -309,54 +218,7 @@ public class ContractTermServiceTests
         Assert.True(await service.UpdateForContract(contractId, first.TermId, Rent(14600m, new DateTime(2026, 1, 1)), userId: null));
     }
 
-    [Fact]
-    public async Task Create_OnAnAccount_IsNeverCapped()
-    {
-        await using var context = TestContextFactory.Create();
-        var settings = new FakeSystemSettingsLookup
-        {
-            Caps = new FinanceRequestCaps(25, 50, 1, 1000),
-        };
-        var accountId = await SeedAccountAsync(context);
-        var service = Terms(context, settings);
-
-        await service.Create(accountId, new NewTerm
-        {
-            Label = "A", ValueUnit = TermValueUnit.Amount, Value = 1m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        });
-        await service.Create(accountId, new NewTerm
-        {
-            Label = "B", ValueUnit = TermValueUnit.Amount, Value = 2m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        });
-
-        Assert.Equal(2, (await service.GetHistory(accountId))!.Count);
-    }
-
-    // ── Cross-owner addressing ───────────────────────────────────────────────
-
-    [Fact]
-    public async Task UpdateAndDelete_WithAnAccountsTermId_AreNotFoundAndLeaveItUntouched()
-    {
-        await using var context = TestContextFactory.Create();
-        var contractId = await SeedContractAsync(context);
-        var accountId = await SeedAccountAsync(context);
-        var service = Terms(context);
-
-        var accountTerm = await service.Create(accountId, new NewTerm
-        {
-            Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
-            EffectiveFrom = new DateTime(2026, 1, 1),
-        });
-
-        Assert.False(await service.UpdateForContract(contractId, accountTerm.TermId, Rent(99m, new DateTime(2026, 1, 1)), userId: null));
-        Assert.False(await service.DeleteForContract(contractId, accountTerm.TermId, userId: null));
-
-        var row = await context.Terms.SingleAsync(t => t.TermId == accountTerm.TermId);
-        Assert.Equal(4m, row.Value);
-        Assert.Equal(accountId, row.AccountId);
-    }
+    // ── Cross-contract addressing ───────────────────────────────────────────────
 
     [Fact]
     public async Task UpdateAndDelete_WithAnotherContractsTermId_AreNotFound()
@@ -370,21 +232,6 @@ public class ContractTermServiceTests
 
         Assert.False(await service.UpdateForContract(second, term.TermId, Rent(99m, new DateTime(2026, 10, 1)), userId: null));
         Assert.False(await service.DeleteForContract(second, term.TermId, userId: null));
-        Assert.Equal(14500m, (await context.Terms.SingleAsync()).Value);
-    }
-
-    [Fact]
-    public async Task UpdateAndDelete_WithAnAccountId_NeverReachAContractTerm()
-    {
-        await using var context = TestContextFactory.Create();
-        var contractId = await SeedContractAsync(context);
-        var accountId = await SeedAccountAsync(context);
-        var service = Terms(context);
-
-        var term = await service.CreateForContract(contractId, Rent(14500m, new DateTime(2026, 10, 1)), userId: null);
-
-        Assert.False(await service.Update(accountId, term.TermId, Rent(99m, new DateTime(2026, 10, 1))));
-        Assert.False(await service.Delete(accountId, term.TermId));
         Assert.Equal(14500m, (await context.Terms.SingleAsync()).Value);
     }
 
@@ -527,7 +374,6 @@ public class ContractTermServiceTests
         Assert.Equal(term.TermId, row.TermId);
         Assert.Equal(15000m, row.Value);
         Assert.Equal(contractId, row.ContractId);
-        Assert.Null(row.AccountId);
     }
 
     [Fact]

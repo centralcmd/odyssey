@@ -33,13 +33,10 @@ public class TermDirectionSurfaceTests
         return ctx;
     }
 
-    private static ExistingTerm Fee(
-        TermDirection direction = TermDirection.Outgoing,
-        bool onContract = true) => new()
+    private static ExistingTerm Fee(TermDirection direction = TermDirection.Outgoing) => new()
         {
             TermId = Guid.NewGuid(),
-            ContractId = onContract ? Guid.NewGuid() : null,
-            AccountId = onContract ? null : Guid.NewGuid(),
+            ContractId = Guid.NewGuid(),
             Label = "Base salary",
             ValueUnit = TermValueUnit.Amount,
             Value = 6200m,
@@ -113,53 +110,22 @@ public class TermDirectionSurfaceTests
     // ── Where direction means something ──────────────────────────────────────
 
     /// <summary>
-    /// ONE predicate: a term on a CONTRACT. No account surface reads a direction — the server refuses
-    /// <c>Incoming</c> there with a 400, so it is not offered one. If this and the refusal copy could
-    /// disagree, a user would meet a rejection the dialog never predicted.
-    /// </summary>
-    [Theory]
-    [InlineData(true, true)]
-    [InlineData(false, false)]
-    public void Direction_applies_only_on_a_contract(bool onContract, bool applies)
-    {
-        Assert.Equal(applies, TermVisuals.DirectionApplies(onContract));
-        Assert.Equal(applies, TermVisuals.DirectionRefusal(onContract) is null);
-    }
-
-    /// <summary>The owner is read off whichever id the row carries, not passed in beside it.</summary>
-    [Fact]
-    public void A_terms_owner_is_read_from_the_row_itself()
-    {
-        Assert.True(TermVisuals.DirectionApplies(Fee()));
-        Assert.False(TermVisuals.DirectionApplies(Fee(onContract: false)));
-    }
-
-    /// <summary>The account refusal names its reason.</summary>
-    [Fact]
-    public void The_account_refusal_names_its_reason() =>
-        Assert.Contains("account term", TermVisuals.DirectionRefusal(isContractOwned: false), StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// Every contract term takes its direction's finance hue — coral out, mint in — on the figure and
-    /// the glyph alike; an account term keeps its unit hue, since no direction is stated there.
+    /// Every term takes its direction's finance hue — coral out, mint in — on the figure and the glyph
+    /// alike. Since issue #190 every term is a contract term, so there is no unit-hued exception left.
     /// </summary>
     [Fact]
-    public void A_contract_term_takes_its_directions_hue_and_an_account_term_its_units()
+    public void A_term_takes_its_directions_hue()
     {
         Assert.Equal("var(--finance-income)", TermVisuals.DirectionColor(Fee(TermDirection.Incoming)));
         Assert.Equal("var(--finance-expense)", TermVisuals.DirectionColor(Fee()));
         Assert.Equal(("var(--finance-expense)", "var(--finance-expense-soft)"), TermVisuals.IconColors(Fee()));
         Assert.Equal(("var(--finance-income)", "var(--finance-income-soft)"), TermVisuals.IconColors(Fee(TermDirection.Incoming)));
-
-        var onAccount = Fee(TermDirection.Incoming, onContract: false);
-        Assert.Null(TermVisuals.DirectionColor(onAccount));
-        Assert.Equal(TermVisuals.Info(onAccount).Ink, TermVisuals.ValueColor(onAccount));
-        Assert.Equal((TermVisuals.Info(onAccount).Color, TermVisuals.Info(onAccount).Soft), TermVisuals.IconColors(onAccount));
+        Assert.Equal("var(--finance-income)", TermVisuals.ValueColor(Fee(TermDirection.Incoming)));
     }
 
     /// <summary>
-    /// A history row states a contract term's direction on the NAME's line — name, a decorative dot,
-    /// then the word — and tints the glyph in the direction's hue. An account row carries neither.
+    /// A history row states a term's direction on the NAME's line — name, a decorative dot, then the
+    /// word — and tints the glyph in the direction's hue.
     /// </summary>
     [Fact]
     public void A_history_row_puts_the_direction_beside_the_name_and_tints_the_glyph()
@@ -174,14 +140,6 @@ public class TermDirectionSurfaceTests
         Assert.Equal("true", top.QuerySelector(".trm-row-dot")!.GetAttribute("aria-hidden"));
         Assert.Equal("Outgoing", top.QuerySelector(".trm-dir")!.TextContent.Trim());
         Assert.Contains("color:var(--finance-expense)", contractRow.Find(".trm-kind-ic").GetAttribute("style"), StringComparison.Ordinal);
-
-        var accountRow = ctx.Render<TermHistoryTable>(p => p
-            .Add(t => t.Terms, [Fee(onContract: false)])
-            .Add(t => t.FormatMoney, (v, c) => $"{v} {c}"));
-
-        Assert.Empty(accountRow.FindAll(".trm-row-dot"));
-        Assert.Empty(accountRow.FindAll(".trm-dir"));
-        Assert.Contains($"color:{TermVisuals.UnitInfo(TermValueUnit.Amount).Color}", accountRow.Find(".trm-kind-ic").GetAttribute("style"), StringComparison.Ordinal);
     }
 
     // ── The field lead ───────────────────────────────────────────────────────

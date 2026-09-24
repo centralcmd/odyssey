@@ -9,9 +9,6 @@ using ContextAccountFileType = Odyssey.Context.AccountFileType;
 using ContextAccountType = Odyssey.Context.AccountType;
 using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoAccountFileType = Odyssey.Dtos.Finance.AccountFileType;
-using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
-using DtoTermDirection = Odyssey.Dtos.Finance.TermDirection;
-using DtoInterval = Odyssey.Dtos.Finance.Interval;
 
 namespace Odyssey.Core.Finance;
 
@@ -237,21 +234,11 @@ public class AccountService
             .Select(g => new { AccountId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.AccountId, x => x.Count, cancellationToken);
 
-        // Per-account estimate / term / smart-tag counts for the row-header badges — one grouped
+        // Per-account estimate / smart-tag counts for the row-header badges — one grouped
         // query each, same shape as the file counts above.
         var estimateCounts = await context.AccountEstimates
             .Where(e => accountIds.Contains(e.AccountId))
             .GroupBy(e => e.AccountId)
-            .Select(g => new { AccountId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.AccountId, x => x.Count, cancellationToken);
-
-        // The null filter is a CORRECTNESS requirement, not only what makes this compile now that
-        // Term.AccountId is nullable (issue #135): it is what keeps a contract-owned term out of an
-        // account's count. Projecting through .Value keeps the dictionary keyed on Guid, which is what
-        // the GetValueOrDefault(dto.AccountId) lookup at the consuming end expects.
-        var termCounts = await context.Terms
-            .Where(t => t.AccountId != null && accountIds.Contains(t.AccountId.Value))
-            .GroupBy(t => t.AccountId!.Value)
             .Select(g => new { AccountId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.AccountId, x => x.Count, cancellationToken);
 
@@ -264,10 +251,6 @@ public class AccountService
         var contractCounts = includeContractCount
             ? await CountContractsAsync(accountIds, cancellationToken)
             : null;
-
-        // Resolve the in-force rate (interest rate, else expected return) per account with one
-        // query over the term composite index, for the account-header subtitle.
-        var currentTermsByAccount = await GetCurrentTerms(accountIds, cancellationToken);
 
         // Resolve the in-force estimated value per account with one query over the estimate
         // composite index, for the account-header headline value (no per-account follow-up call).
@@ -304,14 +287,8 @@ public class AccountService
             }
 
             dto.EstimateCount = estimateCounts.GetValueOrDefault(dto.AccountId);
-            dto.TermCount = termCounts.GetValueOrDefault(dto.AccountId);
             dto.SmartTagCount = smartTagCounts.GetValueOrDefault(dto.AccountId);
             dto.ContractCount = contractCounts?.GetValueOrDefault(dto.AccountId);
-
-            if (currentTermsByAccount.TryGetValue(dto.AccountId, out var currentTerms))
-            {
-                dto.CurrentTerms = [.. currentTerms.Select(ToCurrentTerm)];
-            }
 
             if (estimateByAccount.TryGetValue(dto.AccountId, out var estimate))
             {
@@ -352,7 +329,6 @@ public class AccountService
                 Balance = a.Transactions.Sum(t => (decimal?)t.Amount) ?? 0m,
                 FileCount = a.AccountFiles.Count(),
                 EstimateCount = a.AccountEstimates.Count(),
-                TermCount = a.Terms.Count(),
                 SmartTagCount = a.SmartTags.Count(),
             })
             .FirstOrDefaultAsync(cancellationToken);
@@ -366,18 +342,11 @@ public class AccountService
         dto.Balance = projection.Balance;
         dto.FileCount = projection.FileCount;
         dto.EstimateCount = projection.EstimateCount;
-        dto.TermCount = projection.TermCount;
         dto.SmartTagCount = projection.SmartTagCount;
         if (includeContractCount)
         {
             dto.ContractCount = (await CountContractsAsync([accountId], cancellationToken))
                 .GetValueOrDefault(accountId);
-        }
-
-        var currentTermsByAccount = await GetCurrentTerms([accountId], cancellationToken);
-        if (currentTermsByAccount.TryGetValue(accountId, out var currentTerms))
-        {
-            dto.CurrentTerms = [.. currentTerms.Select(ToCurrentTerm)];
         }
 
         var estimateByAccount = await GetCurrentEstimates([accountId], cancellationToken);
@@ -427,56 +396,6 @@ public class AccountService
         if (custodian.Archived is not null)
             throw new DomainValidationException($"Contact with ID {id} is archived and cannot be set as a custodian.");
     }
-
-    /// <summary>
-    /// The in-force terms per account — one per SERIES, its <c>LabelKey</c>, ordered by label so the
-    /// card's Current band reads the same way on every load: a card charging four named fees shows
-    /// four.
-    ///
-    /// <para>
-    /// It stays <b>one</b> query over the term composite index across every account on the page — the
-    /// alternative, a per-account follow-up, is the N+1 the whole enrichment exists to avoid.
-    /// </para>
-    /// </summary>
-    private async Task<Dictionary<Guid, List<Term>>> GetCurrentTerms(
-        IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default)
-    {
-        if (accountIds.Count == 0)
-            return [];
-
-        var now = timeProvider.GetUtcNow().UtcDateTime;
-        // Same two-part fix as the count above: filter out contract-owned rows, then group through
-        // .Value so the key type stays Guid (issue #135 §3 component 7).
-        var terms = await context.Terms
-            .AsNoTracking()
-            .Where(t => t.AccountId != null && accountIds.Contains(t.AccountId.Value) && t.EffectiveFrom <= now)
-            .ToListAsync(cancellationToken);
-
-        return terms
-            .GroupBy(t => t.AccountId!.Value)
-            .ToDictionary(
-                group => group.Key,
-                group => TermSeries.Current(group));
-    }
-
-    private static AccountCurrentTerm ToCurrentTerm(Term term) => new()
-    {
-        // Carried because it is the tile's NAME — without it a card with several fees renders
-        // several indistinguishable tiles. Note is still excluded from this cross-claim projection.
-        Label = term.Label,
-        ValueUnit = term.ValueUnit.Adapt<DtoTermValueUnit>(),
-        // Carried by HAND, like every other member of this initializer: Mapster is not used here, so a
-        // field added to the shared AccountCurrentTerm projection is silently dropped on the account
-        // side unless it is listed. An account term is always Outgoing (TermService rule V4), so this
-        // one is constant here — the next field added to this type may not be so forgiving.
-        Direction = term.Direction.Adapt<DtoTermDirection>(),
-        Value = term.Value,
-        CurrencyCode = term.CurrencyCode,
-        Interval = term.Interval?.Adapt<DtoInterval>(),
-        IntervalCount = term.IntervalCount,
-        AnchorDate = term.AnchorDate,
-        EffectiveFrom = term.EffectiveFrom,
-    };
 
     /// <summary>
     /// Resolves the currently-effective estimate for each of the given accounts: the latest entry on

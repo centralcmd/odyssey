@@ -104,10 +104,6 @@
                     {
                         counts.Add(new OdsRecordCount("monitor", account.EstimateCount.ToString(CultureInfo.CurrentCulture), "Estimates"));
                     }
-                    if (account.TermCount > 0)
-                    {
-                        counts.Add(new OdsRecordCount("§", account.TermCount.ToString(CultureInfo.CurrentCulture), "Terms"));
-                    }
                     if (account.SmartTagCount > 0)
                     {
                         counts.Add(new OdsRecordCount("sell", account.SmartTagCount.ToString(CultureInfo.CurrentCulture), "Smart tags"));
@@ -255,22 +251,6 @@
                                             <Value>@FormatMoney(account.Balance, account.CurrencyCode)</Value>
                                         </OdsInfoTile>
                                     }
-                                    @foreach (var term in account.CurrentTerms)
-                                    {
-                                        var asTerm = ToTerm(account, term);
-                                        var info = TermVisuals.Info(asTerm);
-                                        @* A term is NAMED by its label — so six fees read as six
-                                           distinct tiles, in text, rather than six identical ones. *@
-                                        <OdsInfoTile Icon="@info.Icon" IconColor="@info.Color" IconSoft="@info.Soft"
-                                                     Label="@TermVisuals.DisplayName(asTerm)"
-                                                     Foot="@OdsInfoTile.Caption(TermFoot(asTerm))">
-                                            <Value>
-                                                <span style="color:@info.Ink;">
-                                                    @TermVisuals.FormatValue(asTerm, FormatMoney)
-                                                </span>
-                                            </Value>
-                                        </OdsInfoTile>
-                                    }
                                 </OdsInfoTileGrid>
                             </OdsRecordSection>
                         }
@@ -288,19 +268,6 @@
                                                          FormatMoney="FormatMoney"
                                                          CurrencyCode="@account.CurrencyCode"
                                                          OnChanged="GetAccounts" />
-                            </OdsRecordSection>
-                        }
-
-                        @if (_canReadTerms && account.TermCount > 0)
-                        {
-                            <OdsRecordSection Class="acct-section" Label="Terms"
-                                              Meta="@($"{account.TermCount} {(account.TermCount == 1 ? "entry" : "entries")}")">
-                                <AccountTermsSection @key="@($"terms:{account.AccountId}:{_termsRefreshToken}")"
-                                                     Account="account"
-                                                     CanWrite="@_canWriteTerms"
-                                                     Chrome="false" ShowCurrent="false" BareAction="false"
-                                                     FormatMoney="FormatMoney"
-                                                     OnChanged="GetAccounts" />
                             </OdsRecordSection>
                         }
 
@@ -419,14 +386,6 @@
                    AccountName="@_uploadAccount.Name"
                    AccountNumber="@_uploadAccount.AccountNumber"
                    OnSaved="OnFilesUploaded" />
-}
-
-@if (_termAccount is not null)
-{
-    <AddTermDialog @key="_termKey"
-                   @bind-Open="_termOpen"
-                   Account="_termAccount"
-                   OnSaved="OnTermCreated" />
 }
 
 @if (_estimateAccount is not null)

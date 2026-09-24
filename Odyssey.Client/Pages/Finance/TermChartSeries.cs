@@ -5,11 +5,9 @@ using Odyssey.Dtos.Finance;
 namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
-/// The term history chart's series, for BOTH owners of the Term table. An account and a contract
-/// carry the same shape of history — named series, each with its own dated entries — so the design
-/// system gives them one chart (the series chooser above the history table), and this is its one
-/// builder: two copies would let an account's line and a contract's line word or colour the same term
-/// differently.
+/// The term history chart's series — a contract's named series, each with its own dated entries,
+/// plotted by the chooser above the history table. A contract is the only owner of a term since
+/// issue #190, so this is the one builder of the chart's lines.
 /// </summary>
 public static class TermChartSeries
 {
@@ -47,16 +45,16 @@ public static class TermChartSeries
     {
         var pct = inForce.ValueUnit == TermValueUnit.Percentage;
         var currency = inForce.CurrencyCode;
-        var direction = TermVisuals.DirectionApplies(inForce) ? TermDirectionVisuals.Info(inForce.Direction) : null;
+        var direction = TermDirectionVisuals.Info(inForce.Direction);
 
         return new OdsTermHistorySeries
         {
             Key = labelKey ?? "",
             Label = TermVisuals.DisplayName(inForce),
             Value = TermVisuals.FormatValue(inForce, formatMoney),
-            ToneLabel = direction?.Label,
-            ToneColor = direction?.Color,
-            Color = direction?.Color ?? TermVisuals.Info(inForce).Ink,
+            ToneLabel = direction.Label,
+            ToneColor = direction.Color,
+            Color = direction.Color,
             Group = pct ? "pct" : $"amt:{currency}",
             // One line is one unit and one currency. A series repriced into another currency keeps
             // its name (the series key is the label, as on the server) but only the entries

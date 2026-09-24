@@ -550,67 +550,6 @@ public class ContractEventAutomationTests
     }
 
     /// <summary>
-    /// AC 16 — an ACCOUNT-owned term write records nothing and logs no term line. That is structural,
-    /// not behavioural: the account wrappers supply no staging delegate, so there is no code path to
-    /// get it wrong. The signature half of the AC is pinned by
-    /// <see cref="AccountTermMethods_TakeNoStagingDelegate"/> below.
-    /// </summary>
-    [Fact]
-    public async Task AccountOwnedTermWrites_RecordNoContractEventAndLogNoLine()
-    {
-        await using var context = TestContextFactory.Create();
-        var log = new RecordingLogger<TermService>();
-        var terms = Terms(context, log);
-
-        var account = new Account
-        {
-            Name = "Savings",
-            Description = "Owner of the account-side terms.",
-            Opened = FixedToday,
-            AccountType = Context.AccountType.SavingsAccount,
-            CurrencyCode = "USD",
-        };
-        context.Accounts.Add(account);
-        await context.SaveChangesAsync();
-
-        var term = await terms.Create(
-            account.AccountId, Rent(10m, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
-        Assert.True(await terms.Update(
-            account.AccountId, term.TermId, Rent(11m, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc))));
-        Assert.True(await terms.Delete(account.AccountId, term.TermId));
-
-        Assert.Empty(context.ContractEvents);
-        Assert.Empty(log.Lines);
-    }
-
-    /// <summary>
-    /// AC 16, the signature half — verified by reflection rather than only by behaviour, so a later
-    /// edit that gave the account path a delegate would fail here even if it happened to pass nothing.
-    /// </summary>
-    [Fact]
-    public void AccountTermMethods_TakeNoStagingDelegate()
-    {
-        var accountMethods = new[] { "Create", "Update", "Delete" };
-        foreach (var name in accountMethods)
-        {
-            var method = typeof(TermService).GetMethod(name);
-            Assert.NotNull(method);
-            Assert.DoesNotContain(
-                method!.GetParameters(),
-                p => p.ParameterType == typeof(Action<Term>));
-            // Nor a userId: the three account-owned methods are untouched by issue #154.
-            Assert.DoesNotContain(method.GetParameters(), p => p.Name == "userId");
-        }
-
-        foreach (var name in new[] { "CreateForContract", "UpdateForContract", "DeleteForContract" })
-        {
-            var method = typeof(TermService).GetMethod(name);
-            Assert.NotNull(method);
-            Assert.Contains(method!.GetParameters(), p => p.Name == "userId");
-        }
-    }
-
-    /// <summary>
     /// AC 18 — a term write refused by the cap leaves the event count unchanged and logs no line. The
     /// reason is structural: in <c>CreateFor</c> the cap check throws before <c>context.Terms.Add</c>
     /// and therefore before the delegate.

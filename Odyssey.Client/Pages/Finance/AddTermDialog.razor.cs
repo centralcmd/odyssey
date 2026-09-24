@@ -8,26 +8,12 @@ using Odyssey.Dtos.Finance;
 namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
-/// New / Edit dialog for a term, on either of the two owners the Term table serves — an account or a
-/// contract (issue #135).
+/// New / Edit dialog for a term on a contract — the only owner a term has since issue #190. The value
+/// bounds, label rule, cadence pair and duplicate guard mirror <c>TermService.ApplyAndValidate</c>.
 /// </summary>
-/// <remarks>
-/// <b>One dialog, two owners</b>, mirroring the server: <c>TermService</c> runs both owners through a
-/// single <c>ApplyAndValidate</c>, with the owner-specific facts supplied as data. A second dialog
-/// would be a second copy of the value bounds, the label rule, the cadence pair and the duplicate
-/// guard — and two copies of a validator diverge, with the copy that has fewer eyes on it being the
-/// one that will. What the owner decides, and all it decides, is: whether a direction applies,
-/// whether an amount may fall back to an owner currency, and which typed client the write goes to.
-/// </remarks>
 public partial class AddTermDialog
 {
-    /// <summary>
-    /// The owning account. Exactly one of this and <see cref="Contract"/> is supplied — the same
-    /// exactly-one-owner invariant the row itself carries.
-    /// </summary>
-    [Parameter] public ExistingAccount? Account { get; set; }
-
-    /// <summary>The owning contract (issue #135).</summary>
+    /// <summary>The owning contract.</summary>
     [Parameter] public ExistingContract? Contract { get; set; }
 
     /// <summary>The term being edited, or <c>null</c> to create a new one.</summary>
@@ -46,40 +32,10 @@ public partial class AddTermDialog
     private bool IsEdit => Term is not null;
     private bool IsPercentage => _unit == TermValueUnit.Percentage;
 
-    /// <summary>Whether this dialog is writing against a contract rather than an account.</summary>
-    private bool IsContractOwner => Contract is not null;
-
-    /// <summary>The owner in prose, for the wording that names it.</summary>
-    private string OwnerNoun => IsContractOwner ? "contract" : "account";
-
     /// <summary>The owner's display name, for the subtitle.</summary>
-    private string OwnerName => Contract?.Name ?? Account?.Name ?? "";
-
-    /// <summary>
-    /// The currency an amount term falls back to when the field is left blank, or <c>null</c> when
-    /// the owner has none of its own and an explicit answer is therefore required. A contract has no
-    /// currency: the two defaulting alternatives — its first account party's currency, or an
-    /// instance-wide base currency — both silently assign a meaning nobody chose, and the first
-    /// changes retroactively when parties are detached or re-ordered.
-    /// </summary>
-    private string? OwnerCurrency => Account?.CurrencyCode;
-
-    /// <summary>
-    /// Whether the currency is a question rather than a default. True for a contract, and the reason
-    /// the money field opens unset there and refuses to submit without an answer.
-    /// </summary>
-    private bool CurrencyRequired => OwnerCurrency is null;
+    private string OwnerName => Contract?.Name ?? "";
 
     // ---- direction (issue #159) ---------------------------------------------------------------
-
-    /// <summary>
-    /// Whether this dialog offers a direction at all — a term on a CONTRACT. Read from the one shared
-    /// predicate, so the control, the read surfaces and the refusal copy cannot disagree.
-    /// </summary>
-    private bool DirectionApplies => TermVisuals.DirectionApplies(IsContractOwner);
-
-    /// <summary>Why it is refused here, in the words the server's <c>400</c> uses; null when allowed.</summary>
-    private string? DirectionRefusal => TermVisuals.DirectionRefusal(IsContractOwner);
 
     private TermDirectionInfo DirectionInfo => TermDirectionVisuals.Info(_direction);
 
@@ -87,11 +43,9 @@ public partial class AddTermDialog
     private static IReadOnlyList<OdsDirectionOption> DirectionLead => TermDirectionVisuals.LeadOptions;
 
     /// <summary>
-    /// The lead's current value, or <c>null</c> where direction does not apply — which is what turns
-    /// the lead OFF in the field. The handler is wired unconditionally: with no value the control
-    /// never enters direction mode, so a conditional callback would be a second switch for one fact.
+    /// The lead's current value — every term states a direction.
     /// </summary>
-    private string? DirectionValue => DirectionApplies ? _direction.ToString() : null;
+    private string DirectionValue => _direction.ToString();
 
     private void OnDirectionChanged(string value)
     {
@@ -144,7 +98,7 @@ public partial class AddTermDialog
             _label = Term.Label ?? "";
             _unit = Term.ValueUnit;
             _valueStr = Term.ValueUnit == TermValueUnit.Percentage ? FractionToPercentString(Term.Value) : Term.Value.ToString(CultureInfo.InvariantCulture);
-            _currency = Term.CurrencyCode ?? OwnerCurrency ?? "";
+            _currency = Term.CurrencyCode ?? "";
             _interval = Term.Interval?.ToString() ?? "";
             _intervalCount = Term.IntervalCount;
             _anchorDate = Term.AnchorDate?.Date;
@@ -157,7 +111,7 @@ public partial class AddTermDialog
             _unit = TermValueUnit.Amount;
             // Empty on a contract: an unset currency is the honest starting state when nothing can
             // supply one, and it is what makes the answer required rather than silently assigned.
-            _currency = OwnerCurrency ?? "";
+            _currency = "";
             _interval = TermVisuals.DefaultInterval.ToString();
             _effectiveFrom = DateTime.UtcNow.Date;
         }
@@ -306,9 +260,7 @@ public partial class AddTermDialog
 
     private void RefreshNameSuggestions()
     {
-        _nameSuggestions = IsContractOwner
-            ? NameSuggestions(Existing, Term?.TermId, DateTime.UtcNow)
-            : [];
+        _nameSuggestions = NameSuggestions(Existing, Term?.TermId, DateTime.UtcNow);
         _nameOptions = _nameSuggestions
             .Select(s => new OdsOption(s.Label, s.Label) { Note = s.Note, Icon = s.Scheduled ? "schedule" : null })
             .ToList();
@@ -407,11 +359,10 @@ public partial class AddTermDialog
     }
 
     /// <summary>
-    /// What the money field's currency slot reads before an answer is given. "Pick" where the answer
-    /// is required and nothing can supply it; otherwise the component's own em-dash placeholder,
-    /// which a populated owner currency immediately replaces anyway.
+    /// What the money field's currency slot reads before an answer is given: the answer is required
+    /// and nothing can supply it, since a contract has no currency of its own.
     /// </summary>
-    private string CurrencyPlaceholder => CurrencyRequired ? "Pick" : "\u2014";
+    private const string CurrencyPlaceholder = "Pick";
 
     /// <summary>
     /// The money field renders ONE error line for the amount and its currency, because they are one
@@ -447,10 +398,10 @@ public partial class AddTermDialog
         _errors.Clear();
 
         // The contract rule: an amount needs a currency, and nothing supplies one.
-        if (!IsPercentage && CurrencyRequired && string.IsNullOrWhiteSpace(_currency))
+        if (!IsPercentage && string.IsNullOrWhiteSpace(_currency))
         {
             _errors["currency"] =
-                $"Pick the currency this amount is in — a {OwnerNoun} has no currency of its own.";
+                "Pick the currency this amount is in — a contract has no currency of its own.";
         }
 
         var raw = ParseValue();
@@ -505,9 +456,9 @@ public partial class AddTermDialog
                 && t.EffectiveFrom.Date == date.Date))
         {
             _errors["effectiveFrom"] = $"“{label}” already has an entry on that date.";
-            // An account term with the same label and date is a DIFFERENT series and never
-            // collides with a contract's — which is why the guard runs over `Existing`, the owner's
-            // own rows, rather than over every term the client has seen.
+            // Another contract's term with the same label and date is a DIFFERENT series and never
+            // collides — which is why the guard runs over `Existing`, this contract's own rows,
+            // rather than over every term the client has seen.
         }
 
         if (_errors.Count > 0)
@@ -531,9 +482,7 @@ public partial class AddTermDialog
             AnchorDate = _anchorDate is null
                 ? null
                 : DateTime.SpecifyKind(_anchorDate.Value.Date, DateTimeKind.Utc),
-            // Sent only where it means something. Everywhere else the request carries the default,
-            // which is exactly what omitting it would have meant — and what the server stores.
-            Direction = DirectionApplies ? _direction : TermDirection.Outgoing,
+            Direction = _direction,
             EffectiveFrom = DateTime.SpecifyKind(_effectiveFrom!.Value.Date, DateTimeKind.Utc),
             Note = string.IsNullOrWhiteSpace(_note) ? null : _note!.Trim(),
         };
@@ -541,16 +490,11 @@ public partial class AddTermDialog
         _isSaving = true;
         try
         {
-            // The owner is named by the ROUTE and by nothing else: NewTerm carries no owner id, so a
-            // contracts.update holder cannot write a term onto an account through this dialog, and
+            // The owner is named by the ROUTE and by nothing else: NewTerm carries no owner id, so
             // re-parenting a term is a delete plus a create.
-            var result = (IsContractOwner, IsEdit) switch
-            {
-                (true, true) => await Contracts.UpdateTermAsync(Contract!.ContractId, Term!.TermId, dto),
-                (true, false) => await Contracts.AddTermAsync(Contract!.ContractId, dto),
-                (false, true) => await Accounts.UpdateTermAsync(Account!.AccountId, Term!.TermId, dto),
-                (false, false) => await Accounts.AddTermAsync(Account!.AccountId, dto),
-            };
+            var result = IsEdit
+                ? await Contracts.UpdateTermAsync(Contract!.ContractId, Term!.TermId, dto)
+                : await Contracts.AddTermAsync(Contract!.ContractId, dto);
 
             var ok = IsEdit
                 ? result.Toast(Snackbar, "Unable to update term", "Term updated.")

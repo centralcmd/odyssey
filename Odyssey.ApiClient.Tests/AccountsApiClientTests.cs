@@ -97,7 +97,6 @@ public class AccountsApiClientTests
 
     public static TheoryData<string, string> SubResourceRoutes() => new()
     {
-        { "term",     $"/api/accounts/{Account}/terms/{Child}" },
         { "estimate", $"/api/accounts/{Account}/estimates/{Child}" },
         { "smarttag", $"/api/accounts/{Account}/smart-tags/{Child}" },
         { "file",     $"/api/accounts/{Account}/files/{Child}" },
@@ -113,7 +112,6 @@ public class AccountsApiClientTests
 
         Task<ApiResult> call = kind switch
         {
-            "term" => client.DeleteTermAsync(Account, Child),
             "estimate" => client.DeleteEstimateAsync(Account, Child),
             "smarttag" => client.RemoveSmartTagAsync(Account, Child),
             _ => client.DetachFileAsync(Account, Child),
@@ -168,14 +166,13 @@ public class AccountsApiClientTests
 
     public static TheoryData<string, string> SubResourceUpdateRoutes() => new()
     {
-        { "term",     $"/api/accounts/{Account}/terms/{Child}" },
         { "estimate", $"/api/accounts/{Account}/estimates/{Child}" },
         { "file",     $"/api/accounts/{Account}/files/{Child}" },
     };
 
     /// <summary>
     /// The same guarantee for the updates. Covering only the deletes left
-    /// <c>UpdateTermAsync</c>/<c>UpdateEstimateAsync</c>/<c>UpdateFileAsync</c> free to be flattened
+    /// <c>UpdateEstimateAsync</c>/<c>UpdateFileAsync</c> free to be flattened
     /// without failing anything — verified by mutation, so this is the half that was missing.
     /// </summary>
     [Theory]
@@ -187,7 +184,6 @@ public class AccountsApiClientTests
 
         Task<ApiResult> call = kind switch
         {
-            "term" => client.UpdateTermAsync(Account, Child, SampleTerm()),
             "estimate" => client.UpdateEstimateAsync(Account, Child, SampleEstimate()),
             _ => client.UpdateFileAsync(Account, Child, new UpdateAccountFileRequest()),
         };
@@ -204,23 +200,12 @@ public class AccountsApiClientTests
         var (client, handler) = Create();
         handler.Response = new HttpResponseMessage(HttpStatusCode.Created);
 
-        await client.AddTermAsync(Account, SampleTerm());
-        Assert.Equal($"/api/accounts/{Account}/terms", handler.LastRequest!.RequestUri!.AbsolutePath);
-
         await client.AddEstimateAsync(Account, SampleEstimate());
         Assert.Equal($"/api/accounts/{Account}/estimates", handler.LastRequest!.RequestUri!.AbsolutePath);
 
         await client.AttachFileAsync(Account, new AttachAccountFileRequest(Child));
         Assert.Equal($"/api/accounts/{Account}/files", handler.LastRequest!.RequestUri!.AbsolutePath);
     }
-
-    private static NewTerm SampleTerm() => new()
-    {
-        Label = "Interest rate",
-        ValueUnit = TermValueUnit.Percentage,
-        Value = 3.5m,
-        EffectiveFrom = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-    };
 
     private static NewAccountEstimate SampleEstimate() => new()
     {

@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Linq.Expressions;
 using Odyssey.Core;
 using Odyssey.Context;
 using Odyssey.Dtos;
@@ -15,23 +14,15 @@ using ContextTermDirection = Odyssey.Context.TermDirection;
 namespace Odyssey.Core.Finance;
 
 /// <summary>
-/// Business logic for time-versioned terms (rates and the prices of named charges) on either of the
-/// two owners the table serves — an <b>account</b> or a <b>contract</b> (issue #135). Enforces
-/// label and value/unit/currency validation, and resolves the currently-effective value of each
-/// SERIES by implicit supersession (latest <c>EffectiveFrom</c> on or before a date).
+/// Business logic for time-versioned terms (rates and the prices of named charges) on a
+/// <b>contract</b>, the only owner a term has since issue #190 moved every account-owned term onto a
+/// contract. Enforces label and value/unit/currency validation, and resolves the currently-effective
+/// value of each SERIES by implicit supersession (latest <c>EffectiveFrom</c> on or before a date).
 ///
 /// <para>
-/// A series is <c>(owner, LabelKey)</c>. An owner can hold several concurrently in-force terms told
-/// apart by a user-authored label, and supersession happens strictly within a label — a rise in the
-/// foreign ATM charge is not a change to the domestic one. An account series and a contract series
-/// never interact, however identical their label.
-/// </para>
-///
-/// <para>
-/// <b>There is exactly one validation path.</b> Both owners run <see cref="ApplyAndValidate"/>; what
-/// differs between them arrives as <see cref="TermOwnerFacts"/> resolved from the route. A second
-/// copy of this validator for contracts would diverge, and the copy with fewer eyes on it is the one
-/// that would.
+/// A series is <c>(ContractId, LabelKey)</c>. A contract can hold several concurrently in-force terms
+/// told apart by a user-authored label, and supersession happens strictly within a label — a rise in
+/// the foreign ATM charge is not a change to the domestic one.
 /// </para>
 /// </summary>
 public class TermService
@@ -42,10 +33,9 @@ public class TermService
     private readonly ILogger<TermService> logger;
 
     /// <param name="systemSettingsLookup">
-    /// Source of the per-contract term cap. Optional because the account surface has no cap at all
-    /// (issue #135 Non-Goal 4) and its callers therefore need none; when it is absent the contract cap
-    /// resolves to the shipped default, which is the same value a healthy absent settings row would
-    /// resolve to.
+    /// Source of the per-contract term cap. Optional so a direct construction in a unit test need not
+    /// supply one; when it is absent the cap resolves to the shipped default, which is the same value
+    /// a healthy absent settings row would resolve to.
     /// </param>
     /// <param name="logger">
     /// Sink for the per-term-write safety net (issue #154 §8.8). Optional-defaulted like the two above
@@ -63,55 +53,8 @@ public class TermService
         this.logger = logger ?? NullLogger<TermService>.Instance;
     }
 
-    // ── Owner resolution ─────────────────────────────────────────────────────────
-    //
-    // One resolver per owner. Everything that differs between an account and a contract is decided
-    // HERE and handed to the one validator as data, so a third owner (issue #135's "Later") is a new
-    // resolver rather than a second validator.
-
-    /// <summary>
-    /// Resolves an account to the facts the validator needs, or <c>null</c> when it does not exist.
-    /// </summary>
-    private async Task<TermOwnerFacts?> ResolveAccountOwner(Guid accountId, CancellationToken cancellationToken)
-    {
-        var account = await context.Accounts
-            .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.AccountId == accountId, cancellationToken);
-        if (account is null)
-            return null;
-
-        return new TermOwnerFacts(
-            TermOwnerKind.Account,
-            account.AccountId,
-            "account",
-            // An amount term on an account defaults to the account's own currency, which is the
-            // pre-#135 behaviour and stays unchanged.
-            DefaultCurrencyCode: account.CurrencyCode,
-            // No cap on account terms — the pre-existing gap is not widened here and is left to its
-            // own issue (Non-Goal 4).
-            IsTermCapped: false);
-    }
-
-    /// <summary>
-    /// Resolves a contract to the facts the validator needs, or <c>null</c> when it does not exist.
-    /// </summary>
-    private async Task<TermOwnerFacts?> ResolveContractOwner(Guid contractId, CancellationToken cancellationToken)
-    {
-        var contract = await context.Contracts
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.ContractId == contractId, cancellationToken);
-        if (contract is null)
-            return null;
-
-        return new TermOwnerFacts(
-            TermOwnerKind.Contract,
-            contract.ContractId,
-            "contract",
-            // A contract has no currency of its own, which is what makes an explicit code REQUIRED for
-            // an amount term (issue #135 §8 rule 2) rather than merely recommended.
-            DefaultCurrencyCode: null,
-            IsTermCapped: true);
-    }
+    private Task<bool> ContractExists(Guid contractId, CancellationToken cancellationToken) =>
+        context.Contracts.AnyAsync(c => c.ContractId == contractId, cancellationToken);
 
     private async Task<int> ResolveTermCap(CancellationToken cancellationToken)
     {
@@ -121,33 +64,7 @@ public class TermService
         return (await systemSettingsLookup.GetRequestCapsAsync(cancellationToken)).MaxTermsPerContract;
     }
 
-    /// <summary>
-    /// The owner predicate, written per owner kind rather than as one expression over two nullable
-    /// columns: a comparison against a <c>Guid?</c> variable that happens to be null is a shape whose
-    /// SQL depends on the provider, and this filter decides which owner's rows a caller can see.
-    /// </summary>
-    private static Expression<Func<Term, bool>> OwnedBy(TermOwnerKind kind, Guid id) => kind switch
-    {
-        TermOwnerKind.Contract => term => term.ContractId == id,
-        _ => term => term.AccountId == id,
-    };
-
-    private static Expression<Func<Term, bool>> OwnedBy(TermOwnerFacts owner) => OwnedBy(owner.Kind, owner.Id);
-
     // ── Reads ────────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Returns the full term history for an account (newest <c>EffectiveFrom</c> first), or
-    /// <c>null</c> if the account does not exist. Optionally filtered by an as-of date.
-    /// </summary>
-    public async Task<IList<ExistingTerm>?> GetHistory(Guid accountId, DateTime? asOf = null, CancellationToken cancellationToken = default)
-    {
-        var accountExists = await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
-        if (!accountExists)
-            return null;
-
-        return await GetHistoryFor(TermOwnerKind.Account, accountId, asOf, cancellationToken);
-    }
 
     /// <summary>
     /// Returns the full term history for a contract (newest <c>EffectiveFrom</c> first), or
@@ -156,17 +73,10 @@ public class TermService
     /// </summary>
     public async Task<IList<ExistingTerm>?> GetContractHistory(Guid contractId, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
-        var contractExists = await context.Contracts.AnyAsync(c => c.ContractId == contractId, cancellationToken);
-        if (!contractExists)
+        if (!await ContractExists(contractId, cancellationToken))
             return null;
 
-        return await GetHistoryFor(TermOwnerKind.Contract, contractId, asOf, cancellationToken);
-    }
-
-    private async Task<IList<ExistingTerm>> GetHistoryFor(
-        TermOwnerKind ownerKind, Guid ownerId, DateTime? asOf, CancellationToken cancellationToken)
-    {
-        var query = context.Terms.AsNoTracking().Where(OwnedBy(ownerKind, ownerId));
+        var query = context.Terms.AsNoTracking().Where(term => term.ContractId == contractId);
 
         if (asOf is not null)
         {
@@ -184,40 +94,20 @@ public class TermService
 
     /// <summary>
     /// Returns the currently-effective value of each SERIES that has at least one entry on or before
-    /// <paramref name="asOf"/> (default now), or <c>null</c> if the account does not exist. One entry
-    /// per label, so a card charging four named fees returns four.
-    /// </summary>
-    public async Task<IList<CurrentTerm>?> GetCurrent(Guid accountId, DateTime? asOf = null, CancellationToken cancellationToken = default)
-    {
-        var accountExists = await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
-        if (!accountExists)
-            return null;
-
-        return await GetCurrentFor(TermOwnerKind.Account, accountId, asOf, cancellationToken);
-    }
-
-    /// <summary>
-    /// The contract mirror of <see cref="GetCurrent"/>. An empty list is a healthy response — a
-    /// contract with no recorded price is not a defect.
+    /// <paramref name="asOf"/> (default now), or <c>null</c> if the contract does not exist. One entry
+    /// per label, so a card charging four named fees returns four. An empty list is a healthy
+    /// response — a contract with no recorded price is not a defect.
     /// </summary>
     public async Task<IList<CurrentTerm>?> GetContractCurrent(Guid contractId, DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
-        var contractExists = await context.Contracts.AnyAsync(c => c.ContractId == contractId, cancellationToken);
-        if (!contractExists)
+        if (!await ContractExists(contractId, cancellationToken))
             return null;
 
-        return await GetCurrentFor(TermOwnerKind.Contract, contractId, asOf, cancellationToken);
-    }
-
-    private async Task<IList<CurrentTerm>> GetCurrentFor(
-        TermOwnerKind ownerKind, Guid ownerId, DateTime? asOf, CancellationToken cancellationToken)
-    {
         var cutoff = NormalizeToUtc(asOf ?? timeProvider.GetUtcNow().UtcDateTime);
 
         var terms = await context.Terms
             .AsNoTracking()
-            .Where(OwnedBy(ownerKind, ownerId))
-            .Where(term => term.EffectiveFrom <= cutoff)
+            .Where(term => term.ContractId == contractId && term.EffectiveFrom <= cutoff)
             .ToListAsync(cancellationToken);
 
         return TermSeries.Current(terms).Adapt<List<CurrentTerm>>();
@@ -226,24 +116,8 @@ public class TermService
     // ── Writes ───────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Creates a new term entry on an account.
-    /// </summary>
-    /// <exception cref="DomainNotFoundException">The account does not exist.</exception>
-    /// <exception cref="DomainValidationException">Validation or eligibility failed.</exception>
-    /// <exception cref="DomainValidationException">The currency for an amount is unsupported.</exception>
-    /// <exception cref="DomainConflictException">A term in the same series with that effective date exists.</exception>
-    public async Task<ExistingTerm> Create(Guid accountId, NewTerm newTerm, CancellationToken cancellationToken = default)
-    {
-        var owner = await ResolveAccountOwner(accountId, cancellationToken)
-            ?? throw new DomainNotFoundException($"Account with ID {accountId} was not found.");
-
-        return await CreateFor(owner, newTerm, cancellationToken);
-    }
-
-    /// <summary>
-    /// Creates a new term entry on a contract (issue #135). The owner comes from the route and from
-    /// nowhere else — <see cref="NewTerm"/> carries no owner field — so a <c>contracts.update</c>
-    /// holder cannot write a term onto an account.
+    /// Creates a new term entry on a contract. The owner comes from the route and from nowhere else —
+    /// <see cref="NewTerm"/> carries no owner field.
     /// </summary>
     /// <exception cref="DomainNotFoundException">The contract does not exist.</exception>
     /// <exception cref="DomainValidationException">Validation or eligibility failed.</exception>
@@ -252,97 +126,64 @@ public class TermService
     public async Task<ExistingTerm> CreateForContract(
         Guid contractId, NewTerm newTerm, string? userId, CancellationToken cancellationToken = default)
     {
-        var owner = await ResolveContractOwner(contractId, cancellationToken)
-            ?? throw new DomainNotFoundException($"Contract ID {contractId} not found.");
+        if (!await ContractExists(contractId, cancellationToken))
+            throw new DomainNotFoundException($"Contract ID {contractId} not found.");
 
-        TermSnapshot? after = null;
-        var created = await CreateFor(owner, newTerm, cancellationToken, term =>
+        var term = new Term
         {
-            var now = timeProvider.GetUtcNow().UtcDateTime;
-            ContractEventRecorder.Stage(
-                context, contractId, ContractEventCatalogue.Term(TermWriteAction.Added, term, now), userId, now);
-            after = TermSnapshot.Of(term);
-        });
+            ContractId = contractId,
+            CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
+        };
+
+        await ApplyAndValidate(term, newTerm, excludeTermId: null, cancellationToken);
+
+        // Create only: an update replaces a row rather than adding one, so it is row-count-neutral and
+        // is never refused by a cap — including on a contract already at or above one lowered later.
+        // The cap's VALUE is read here, so the four routes that never consult it do not pay for a
+        // settings lookup.
+        var cap = await ResolveTermCap(cancellationToken);
+        var count = await context.Terms.CountAsync(t => t.ContractId == contractId, cancellationToken);
+        if (count >= cap)
+            throw new DomainUnprocessableException(
+                $"This contract already has the maximum of {cap} terms.");
+
+        context.Terms.Add(term);
+
+        // Staged after the mutation is applied and BEFORE the save, with the Term as it will be
+        // persisted, so the event rides this very SaveChangesAsync — the atomicity issue #154 §8.6
+        // requires. It is reached only after the cap check above, so a refused create writes no event
+        // and logs no line, structurally rather than by a guard.
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        ContractEventRecorder.Stage(
+            context, contractId, ContractEventCatalogue.Term(TermWriteAction.Added, term, now), userId, now);
+
+        await context.SaveChangesAsync(cancellationToken);
 
         // Post-commit: a log line describes a committed fact. A create has no "before" half, and that
         // (none) is HARDCODED rather than derived — an entity in the Added state has no prior row, so
         // OriginalValues is meaningless there and would silently read back the new values (§8.7).
-        LogTermWrite("added", contractId, before: null, after, userId);
-
-        return created;
-    }
-
-    private async Task<ExistingTerm> CreateFor(
-        TermOwnerFacts owner, NewTerm newTerm, CancellationToken cancellationToken, Action<Term>? stage = null)
-    {
-        var term = new Term
-        {
-            AccountId = owner.Kind == TermOwnerKind.Account ? owner.Id : null,
-            ContractId = owner.Kind == TermOwnerKind.Contract ? owner.Id : null,
-            CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
-        };
-
-        await ApplyAndValidate(term, newTerm, owner, excludeTermId: null, cancellationToken);
-
-        // Create only: an update replaces a row rather than adding one, so it is row-count-neutral and
-        // is never refused by a cap — including on an owner already at or above one lowered later.
-        // The cap's VALUE is read here rather than during owner resolution, so the four routes that
-        // never consult it do not pay for a settings lookup.
-        if (owner.IsTermCapped)
-        {
-            var cap = await ResolveTermCap(cancellationToken);
-            var count = await context.Terms.CountAsync(OwnedBy(owner), cancellationToken);
-            if (count >= cap)
-                throw new DomainUnprocessableException(
-                    $"This {owner.Noun} already has the maximum of {cap} terms.");
-        }
-
-        context.Terms.Add(term);
-
-        // The staging seam (issue #154 §8.7). Invoked after the mutation is applied and BEFORE the save,
-        // with the Term as it will be persisted, so whatever it stages rides this very SaveChangesAsync
-        // — which is the atomicity §8.6 requires. The three ACCOUNT wrappers pass nothing and keep their
-        // behaviour by OMISSION: an account-owned term write cannot emit a ContractEvent because no
-        // delegate was supplied, not because a branch decided not to. There is no code path to get it
-        // wrong, and ApplyAndValidate — the one validation path — is untouched.
-        //
-        // It is reached only after the cap check above, which throws before context.Terms.Add: a refused
-        // create therefore writes no event and logs no line, structurally rather than by a guard.
-        stage?.Invoke(term);
-
-        await context.SaveChangesAsync(cancellationToken);
+        LogTermWrite("added", contractId, before: null, TermSnapshot.Of(term), userId);
 
         return term.Adapt<ExistingTerm>();
     }
 
     /// <summary>
-    /// Updates an existing term entry. Returns <c>false</c> if the term is not attached to the
-    /// given account; otherwise applies the same validation as <see cref="Create"/>.
-    /// </summary>
-    public async Task<bool> Update(Guid accountId, Guid termId, NewTerm putTerm, CancellationToken cancellationToken = default)
-    {
-        var owner = await ResolveAccountOwner(accountId, cancellationToken);
-        return owner is not null && await UpdateFor(owner, termId, putTerm, cancellationToken);
-    }
-
-    /// <summary>
-    /// The contract mirror of <see cref="Update"/>. Returns <c>false</c> when the contract does not
-    /// exist, or when that term is not attached to <i>this</i> contract — including when it belongs to
-    /// an account or to a different contract, which is what keeps the endpoint from being an existence
-    /// oracle across owners. The owner itself is never changeable through this endpoint.
+    /// Updates an existing term entry, applying the same validation as <see cref="CreateForContract"/>.
+    /// Returns <c>false</c> when the contract does not exist, or when that term is not attached to
+    /// <i>this</i> contract — which is what keeps the endpoint from being an existence oracle across
+    /// contracts.
     /// </summary>
     public async Task<bool> UpdateForContract(
         Guid contractId, Guid termId, NewTerm putTerm, string? userId, CancellationToken cancellationToken = default)
     {
-        var owner = await ResolveContractOwner(contractId, cancellationToken);
-        if (owner is null)
+        if (!await ContractExists(contractId, cancellationToken))
             return false;
 
         // Both halves are captured by this closure, which also tells the wrapper whether the delegate
-        // ran at all — it does not when the term id matches no row on this owner.
+        // ran at all — it does not when the term id matches no row on this contract.
         TermSnapshot? before = null;
         TermSnapshot? after = null;
-        var updated = await UpdateFor(owner, termId, putTerm, cancellationToken, term =>
+        var updated = await UpdateFor(contractId, termId, putTerm, cancellationToken, term =>
         {
             var now = timeProvider.GetUtcNow().UtcDateTime;
             ContractEventRecorder.Stage(
@@ -367,46 +208,36 @@ public class TermService
     /// attached <em>before</em> mutation, not after.
     /// </remarks>
     private async Task<bool> UpdateFor(
-        TermOwnerFacts owner, Guid termId, NewTerm putTerm, CancellationToken cancellationToken,
-        Action<Term>? stage = null)
+        Guid contractId, Guid termId, NewTerm putTerm, CancellationToken cancellationToken,
+        Action<Term> stage)
     {
         var term = await context.Terms
-            .Where(OwnedBy(owner))
-            .FirstOrDefaultAsync(t => t.TermId == termId, cancellationToken);
+            .FirstOrDefaultAsync(t => t.ContractId == contractId && t.TermId == termId, cancellationToken);
         if (term is null)
             return false;
 
-        await ApplyAndValidate(term, putTerm, owner, excludeTermId: termId, cancellationToken);
+        await ApplyAndValidate(term, putTerm, excludeTermId: termId, cancellationToken);
 
         // After ApplyAndValidate, so the entity already holds the new values; the PREVIOUS ones still
         // come off the change tracker's untouched original snapshot, at no extra query.
-        stage?.Invoke(term);
+        stage(term);
 
         await context.SaveChangesAsync(cancellationToken);
         return true;
     }
 
     /// <summary>
-    /// Deletes a term entry. Returns <c>false</c> if the term is not attached to the given account.
-    /// </summary>
-    public async Task<bool> Delete(Guid accountId, Guid termId, CancellationToken cancellationToken = default)
-    {
-        var owner = await ResolveAccountOwner(accountId, cancellationToken);
-        return owner is not null && await DeleteFor(owner, termId, cancellationToken);
-    }
-
-    /// <summary>
-    /// The contract mirror of <see cref="Delete"/>. The contract itself is untouched.
+    /// Deletes a term entry. Returns <c>false</c> if the term is not attached to the given contract.
+    /// The contract itself is untouched.
     /// </summary>
     public async Task<bool> DeleteForContract(
         Guid contractId, Guid termId, string? userId, CancellationToken cancellationToken = default)
     {
-        var owner = await ResolveContractOwner(contractId, cancellationToken);
-        if (owner is null)
+        if (!await ContractExists(contractId, cancellationToken))
             return false;
 
         TermSnapshot? before = null;
-        var deleted = await DeleteFor(owner, termId, cancellationToken, term =>
+        var deleted = await DeleteFor(contractId, termId, cancellationToken, term =>
         {
             var now = timeProvider.GetUtcNow().UtcDateTime;
             ContractEventRecorder.Stage(
@@ -423,18 +254,17 @@ public class TermService
     }
 
     private async Task<bool> DeleteFor(
-        TermOwnerFacts owner, Guid termId, CancellationToken cancellationToken, Action<Term>? stage = null)
+        Guid contractId, Guid termId, CancellationToken cancellationToken, Action<Term> stage)
     {
         var term = await context.Terms
-            .Where(OwnedBy(owner))
-            .FirstOrDefaultAsync(t => t.TermId == termId, cancellationToken);
+            .FirstOrDefaultAsync(t => t.ContractId == contractId && t.TermId == termId, cancellationToken);
         if (term is null)
             return false;
 
         // Before Remove, for readability rather than correctness: Remove() only flips the tracked state
         // and does not clear the entity's properties, so either order would in fact work. Stated so
         // nobody has to re-derive it.
-        stage?.Invoke(term);
+        stage(term);
 
         context.Terms.Remove(term);
         await context.SaveChangesAsync(cancellationToken);
@@ -483,9 +313,7 @@ public class TermService
     private const string NoTermValue = "(none)";
 
     /// <summary>
-    /// One structured <c>Information</c> line per <b>contract</b> term write, emitted <b>after</b> the
-    /// commit. The three account wrappers supply no staging delegate, so they reach this with both
-    /// snapshots null and log nothing.
+    /// One structured <c>Information</c> line per term write, emitted <b>after</b> the commit.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -561,13 +389,11 @@ public class TermService
     }
 
     /// <summary>
-    /// The single validation, normalization and supersession path both owners run through. Everything
-    /// that varies between an account and a contract arrives in <paramref name="owner"/>: whether an
-    /// amount may fall back to an owner currency, whether a direction is accepted, and nothing else. The owner
-    /// ids on <paramref name="term"/> are set by the caller from the route and are never read from
+    /// The single validation, normalization and supersession path. The owner id on
+    /// <paramref name="term"/> is set by the caller from the route and is never read from
     /// <paramref name="source"/>, which carries no owner field at all.
     /// </summary>
-    private async Task ApplyAndValidate(Term term, NewTerm source, TermOwnerFacts owner, Guid? excludeTermId, CancellationToken cancellationToken = default)
+    private async Task ApplyAndValidate(Term term, NewTerm source, Guid? excludeTermId, CancellationToken cancellationToken = default)
     {
         // Rules 9-10 — input validation, ahead of every coherence rule below. [ApiController] model
         // validation bounds the HTTP path, but a direct (non-HTTP) caller never reaches it: without
@@ -591,7 +417,7 @@ public class TermService
                 code: null,
                 field: nameof(NewTerm.Direction));
 
-        // The label IS the series, so it is required: two unnamed terms on one owner could not be
+        // The label IS the series, so it is required: two unnamed terms on one contract could not be
         // told apart.
         var label = TermLabel.Normalize(source.Label)
             ?? throw new DomainValidationException(
@@ -608,16 +434,6 @@ public class TermService
         var unit = source.ValueUnit.Adapt<ContextTermValueUnit>();
 
         var direction = source.Direction.Adapt<ContextTermDirection>();
-
-        // V4 (issue #159) — an account-owned term may not carry a non-default direction. A savings
-        // account's interest is incoming and a loan's is outgoing, but no account surface READS a
-        // direction, so accepting one would let a user record a fact the product then contradicts.
-        // Deliberately deferred to its own issue rather than half-implemented here.
-        if (direction != ContextTermDirection.Outgoing && owner.Kind == TermOwnerKind.Account)
-            throw new DomainValidationException(
-                "Direction applies to contract terms only.",
-                code: null,
-                field: nameof(NewTerm.Direction));
 
         // V2 is the ABSENCE of a rule: every contract term accepts a direction, including the ones the
         // roll-up ignores — a percentage-unit term, a OneTime/PerOccurrence/PerUnit term, and a term with
@@ -660,19 +476,16 @@ public class TermService
             if (source.Value < 0m)
                 throw new DomainValidationException("An amount value must be greater than or equal to zero.");
 
-            // An owner with a currency of its own defaults from it; one without — a contract — requires
-            // an explicit code. The two rejected alternatives for a contract (its first account
-            // party's currency, an instance-wide base currency) both assign a meaning nobody chose,
-            // and the first changes retroactively when parties are detached or re-ordered.
+            // A contract has no currency of its own, so an explicit code is required. The two rejected
+            // defaulting alternatives (its first account party's currency, an instance-wide base
+            // currency) both assign a meaning nobody chose, and the first changes retroactively when
+            // parties are detached or re-ordered.
             var requested = source.CurrencyCode;
             if (string.IsNullOrWhiteSpace(requested))
-            {
-                requested = owner.DefaultCurrencyCode
-                    ?? throw new DomainValidationException(
-                        $"A money-valued term on a {owner.Noun} must name its currency — a {owner.Noun} has no currency of its own to fall back to.",
-                        code: null,
-                        field: nameof(NewTerm.CurrencyCode));
-            }
+                throw new DomainValidationException(
+                    "A money-valued term on a contract must name its currency — a contract has no currency of its own to fall back to.",
+                    code: null,
+                    field: nameof(NewTerm.CurrencyCode));
 
             var normalized = CurrencyValidationService.Normalize(requested);
             await CurrencyValidationService.EnsureSupportedAndActive(context, normalized, nameof(source.CurrencyCode));
@@ -683,13 +496,14 @@ public class TermService
 
         // The guard is over the SERIES key, on the folded form, so "ATM abroad", "atm abroad" and
         // "  ATM   abroad  " collide while two differently-named fees on one date do not.
-        var duplicateExists = await context.Terms.Where(OwnedBy(owner)).AnyAsync(existing =>
-            existing.LabelKey == labelKey
+        var duplicateExists = await context.Terms.AnyAsync(existing =>
+            existing.ContractId == term.ContractId
+            && existing.LabelKey == labelKey
             && existing.EffectiveFrom == effectiveFrom
             && (excludeTermId == null || existing.TermId != excludeTermId), cancellationToken);
         if (duplicateExists)
             throw new DomainConflictException(
-                $"'{label}' already has an entry effective from {effectiveFrom:yyyy-MM-dd} on this {owner.Noun}.");
+                $"'{label}' already has an entry effective from {effectiveFrom:yyyy-MM-dd} on this contract.");
 
         term.Label = label;
         term.LabelKey = labelKey;

@@ -14,7 +14,7 @@ public class TermSeriesLabelTests
     private static ExistingTerm Term(string? label, string value = "12") => new()
     {
         TermId = Guid.NewGuid(),
-        AccountId = Guid.NewGuid(),
+        ContractId = Guid.NewGuid(),
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = decimal.Parse(value, CultureInfo.InvariantCulture),

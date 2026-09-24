@@ -108,8 +108,6 @@ public static class RolePermissions
         DataExport,
         FilesExportAll,
         UsersDelete,
-        AccountsTermsRead,
-        AccountsTermsWrite,
         TaxesCreate,
         TaxesRead,
         TaxesUpdate,
@@ -176,8 +174,6 @@ public static class RolePermissions
         FileAnalysisCreate,
         FileAnalysisRead,
         FileAnalysisImport,
-        AccountsTermsRead,
-        AccountsTermsWrite,
         TaxesCreate,
         TaxesRead,
         TaxesUpdate,
@@ -217,7 +213,6 @@ public static class RolePermissions
         FileAnalysisCreate,
         FileAnalysisRead,
         FileAnalysisImport,
-        AccountsTermsRead,
         TaxesRead,
         AccountsEstimatesRead,
         ContractsRead,
@@ -230,7 +225,6 @@ public static class RolePermissions
     public static readonly string[] GuestClaims =
     [
         AccountsRead,
-        AccountsTermsRead,
         BudgetsRead,
         TransactionsRead,
         TransactionTagsRead,

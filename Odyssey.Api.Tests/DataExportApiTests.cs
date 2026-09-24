@@ -259,7 +259,7 @@ public class DataExportApiTests
         Assert.False(transaction.TryGetProperty("transactionFiles", out _));
     }
 
-    // ── Account terms included (issue #172) ───────────────────────────────────
+    // ── Terms included (issue #172) ───────────────────────────────────
 
     [Fact]
     public async Task Export_IncludesTerms_AsFlatRows()
@@ -273,11 +273,11 @@ public class DataExportApiTests
 
         var term = Assert.Single(finance.GetProperty("terms").EnumerateArray());
         Assert.NotEqual(Guid.Empty, term.GetProperty("termId").GetGuid());
-        Assert.NotEqual(Guid.Empty, term.GetProperty("accountId").GetGuid());
+        Assert.NotEqual(Guid.Empty, term.GetProperty("contractId").GetGuid());
 
         // Enums serialize as their stored integer, not a nested navigation object.
         Assert.Equal(JsonValueKind.Number, term.GetProperty("valueUnit").ValueKind);
-        Assert.False(term.TryGetProperty("account", out _));
+        Assert.False(term.TryGetProperty("contract", out _));
 
         // There is no kind column any more: the label is what a term is.
         Assert.False(term.TryGetProperty("termKind", out _));
@@ -314,12 +314,12 @@ public class DataExportApiTests
     {
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        var accountId = await context.Accounts.Select(a => a.AccountId).FirstAsync();
+        var contractId = await context.Contracts.Select(c => c.ContractId).FirstAsync();
 
         context.Terms.Add(new Term
         {
             TermId = Guid.NewGuid(),
-            AccountId = accountId,
+            ContractId = contractId,
             Label = label,
             LabelKey = labelKey,
             ValueUnit = TermValueUnit.Amount,
@@ -332,13 +332,11 @@ public class DataExportApiTests
     }
 
     /// <summary>
-    /// AC 19 (issue #135) — the <c>Terms</c> table carries BOTH owner columns, with exactly one
-    /// populated per row. Without the contract column the export would attribute every contract term
-    /// to no owner at all: the row would be present, complete in every other respect, and silently
-    /// unattached to the agreement whose price it records.
+    /// AC 19 (issue #135), narrowed by issue #190 AC 18 — every exported term names its contract, and
+    /// the row carries no account column at all: a term has had no other owner since the migration.
     /// </summary>
     [Fact]
-    public async Task Export_Terms_CarryBothOwnerIdsWithExactlyOnePopulated()
+    public async Task Export_Terms_CarryTheirContractAndNoAccountColumn()
     {
         await using var factory = new ApiFactory([PermissionClaims.DataExport]);
         await SeedFinanceAsync(factory);
@@ -349,22 +347,14 @@ public class DataExportApiTests
         var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
         var terms = finance.GetProperty("terms").EnumerateArray().ToList();
 
-        // Both owners are represented, so neither column is merely present-and-always-null.
-        Assert.Equal(2, terms.Count);
-
-        var contractTerm = terms.Single(t => t.GetProperty("contractId").ValueKind != JsonValueKind.Null);
+        var contractTerm = terms.Single(t => t.GetProperty("label").GetString() == "Monthly rent");
         Assert.Equal(contractId, contractTerm.GetProperty("contractId").GetGuid());
-        Assert.Equal(JsonValueKind.Null, contractTerm.GetProperty("accountId").ValueKind);
-        Assert.Equal("Monthly rent", contractTerm.GetProperty("label").GetString());
 
-        var accountTerm = terms.Single(t => t.GetProperty("accountId").ValueKind != JsonValueKind.Null);
-        Assert.Equal(JsonValueKind.Null, accountTerm.GetProperty("contractId").ValueKind);
-
-        // The invariant itself, asserted over every row rather than over the two named above.
-        Assert.All(terms, term => Assert.True(
-            (term.GetProperty("accountId").ValueKind != JsonValueKind.Null)
-            ^ (term.GetProperty("contractId").ValueKind != JsonValueKind.Null),
-            "every exported term names exactly one owner"));
+        Assert.All(terms, term =>
+        {
+            Assert.False(term.TryGetProperty("accountId", out _));
+            Assert.Equal(JsonValueKind.String, term.GetProperty("contractId").ValueKind);
+        });
     }
 
     private static async Task<Guid> AddContractTermAsync(WebApplicationFactory<Program> factory)
@@ -809,7 +799,7 @@ public class DataExportApiTests
 
             context.Terms.Add(new Term
             {
-                TermId = id, AccountId = accountId, Label = "Interest rate", LabelKey = "interest rate",
+                TermId = id, ContractId = id, Label = "Interest rate", LabelKey = "interest rate",
                 ValueUnit = TermValueUnit.Percentage, Value = 0.01m, EffectiveFrom = now, CreatedAtUtc = now,
             });
             context.AccountEstimates.Add(new AccountEstimate
@@ -1030,10 +1020,13 @@ public class DataExportApiTests
             new Account { AccountId = Guid.NewGuid(), Name = "Secondary", Description = "Second account", Opened = DateTime.UtcNow },
             new Account { AccountId = Guid.NewGuid(), Name = "Tertiary", Description = "Third account", Opened = DateTime.UtcNow });
 
+        // Declared here because the term below is owned by it (issue #190); the contract row itself is
+        // added further down with the rest of the contract graph.
+        var contractId = Guid.NewGuid();
         context.Terms.Add(new Term
         {
             TermId = Guid.NewGuid(),
-            AccountId = accountId,
+            ContractId = contractId,
             Label = "Interest rate",
             LabelKey = "interest rate",
             ValueUnit = TermValueUnit.Percentage,
@@ -1158,7 +1151,6 @@ public class DataExportApiTests
             AttachedAtUtc = DateTime.UtcNow,
         });
 
-        var contractId = Guid.NewGuid();
         context.Contracts.Add(new Contract
         {
             ContractId = contractId,

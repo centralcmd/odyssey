@@ -218,7 +218,9 @@ public class DemoDataSetTests
     {
         var data = DemoDataSet.Build();
 
-        var deposit = data.Contracts.Should().ContainSingle(contract => contract.Type == ContractType.Deposit).Subject;
+        // The one SPECIFIED deposit; issue #190 adds more, created for the accounts whose terms it moved.
+        var deposit = data.Contracts.Should().ContainSingle(contract => contract.Name == "Fixed-term Deposit — 12 Months").Subject;
+        deposit.Type.Should().Be(ContractType.Deposit);
 
         data.ContractParties.Where(party => party.ContractId == deposit.ContractId).Select(party => party.Role)
             .Should().Contain([ContractPartyRole.Depositor, ContractPartyRole.Custodian]);

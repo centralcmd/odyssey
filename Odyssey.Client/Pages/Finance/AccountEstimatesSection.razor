@@ -7,13 +7,12 @@
 
 @*
     AccountEstimatesSection — the "Estimates" section inside an expanded account record
-    (Accounts → account detail), positioned ABOVE the Terms section. Renders the
+    (Accounts → account detail). Renders the
     AccountEstimate history (GET …/estimates): a value chart over time (step line with a
     dashed hold to Today), the current estimated value beside the quiet transaction
     balance, and the editable history table. The current estimate REPLACES the
     transaction balance in net worth, so it leads as the headline; the balance is kept
-    quiet. Owns the create / edit / delete flow (write-gated). Sibling of
-    AccountTermsSection.
+    quiet. Owns the create / edit / delete flow (write-gated).
 *@
 
 <OdsCollapsible Chrome="Chrome" Open="_isOpen" OnToggle="@(_ => ToggleOpen())" Icon="monitor">

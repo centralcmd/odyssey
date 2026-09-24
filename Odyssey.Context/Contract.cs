@@ -106,7 +106,7 @@ public class Contract
     public ICollection<ContractFile> Files { get; set; } = new List<ContractFile>();
 
     /// <summary>
-    /// The contract's time-versioned price history (issue #135) — the mirror of <c>Account.Terms</c>.
+    /// The contract's time-versioned price history (issue #135) — the only owner of a term since issue #190.
     /// Load-bearing in two places, not cosmetic: <c>ContractService.Delete</c> includes it so the
     /// cascade also happens under the EF InMemory provider the fast test tiers run on, and
     /// <c>ContractService.ListAsync</c> projects <c>Terms.Count</c> as a correlated subquery in the

@@ -870,6 +870,8 @@ The **Budgets page** is the planning screen at `/budgets`, the sister of the Acc
 
 ## Reference data — Term kinds
 
+> **Owner note (issue #190).** Wherever this section speaks of an *account* owner, read *contract*: terms are contract-owned only, and the account-owned half — its currency fallback and its `Outgoing`-only direction rule — no longer exists.
+
 The **TermKind** enum classifies each entry in an account's rate & fee history (the **Term** feature — see *Components — Account rate & fee history*). It carries **three** values: two **rates** — **InterestRate** and the optional **ExpectedReturn** — and one **Fee**. As with every Odyssey registry, the enum carries only a name; the **group** (rate / fee), **Material icon**, **color**, and **default unit** are a design-system decision, defined once in `OdysseyData.termKinds` (`ui_kits/web/data.js`) so a kind reads identically in the step chart, the current-terms summary, the history table/timeline, the New term picker, and the account-row subtitle. Specimen: `preview/36-data-term-kinds.html`.
 
 | Kind | Enum | Group | Icon | Color (oklch) | Default unit | Meaning |

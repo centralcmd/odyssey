@@ -627,6 +627,70 @@ the `?kind=` filter on both history endpoints; `label` is now required on every 
 headline rate, the rate step chart and the "Interest charged" tint are withdrawn for now — a former
 rate shows as a term like any other.
 
+### Release note: account terms moved onto contracts (issue #190)
+
+**Take a database backup before upgrading.** The `MoveAccountTermsToContracts` migration moves data
+and then drops a column, it has **no immutable record** of what it did (a migration step cannot write
+to the application log, and its working table is dropped at the end), and its `Down` restores the
+schema only. The backup is the recovery path.
+
+**What the migration does.** Every term recorded directly on an account is moved, row for row and with
+the same `TermId`, onto a contract the account takes part in. The expected contract type is `Deposit`
+for an asset account, `Loan` for a liability and `Other` for an unclassified one. If the account is a
+party (in any role) on exactly one contract of that type, and none of the moving terms shares a
+`(label, effective date)` with a term already on it, that contract is reused untouched. Otherwise a
+new contract is created from the account — name, description, account number as reference, opened and
+closed dates, archived state — **unsigned (Draft)**, with the account as `Object` and its custodian, if
+any, as `Custodian` / `Lender` / `Other`. Accounts without terms are not touched.
+
+**What to review afterwards.** Each moved account gets one system event on its contract, titled
+*Terms migrated from account "…"*, listing the codes below that apply. It is an ordinary, editable
+event — a to-do list, not an audit record.
+
+| Code | Meaning | What to do |
+|---|---|---|
+| A1 | The contract was created by the migration | Review it; mark it Ready and Signed with the real dates. Until signed it is Draft and **excluded from the run rate**. |
+| A2 | Two or more matching contracts existed | Move the terms to the right one and delete the created contract, or keep it. |
+| A3 | The account is a party on a contract of another type | Check whether the terms belong there. |
+| A4 | An unclassified account became an `Other` contract | Choose the real contract type (party roles may need changing first). |
+| A5 | The account had no custodian | Add the institution as `Custodian` / `Lender`. |
+| A6 | The reference number was copied from the account number | Replace it with the agreement's reference, if different. |
+| A7 | The account's closed date precedes its opened date | Set the contract's end date. |
+| A8 | A percentage term on a Deposit was flipped to `Incoming` | Verify — a negative rate or a percentage **fee** should stay `Outgoing`. |
+| A9 | The one matching contract already had a series with the same label and date, so a new contract was created | Decide which contract the series belongs on; move or delete the duplicate. |
+| A10 | The reused contract now exceeds the per-contract term cap | New terms are refused (`422`) until it is below the cap; edits still work. |
+| A11 | The reused contract is archived | Its terms are hidden with it; unarchive or move them. |
+| A12 | An amount's currency was filled from the account, and that currency is inactive | The term cannot be re-saved until the currency is active or changed. |
+| A13 | The account also has value estimates | Informational — estimates stay on the account. |
+| A14 | Periodic amount terms now sit on a Deposit / Loan | Once signed they **count in the contracts run rate**; confirm the amounts. |
+| A15 | An existing contract was reused | The account keeps its existing role and no custodian party is added; add parties if wanted. |
+
+**What is lost.**
+
+- **L1** — An amount term with no currency used to follow the account's currency, including later
+  changes; it is now frozen to the account currency at migration time.
+- **L2** — The original direction of a flipped percentage term (A8) survives only in the event text.
+- **L3 — Deleting an account no longer deletes its terms.** It removes only the account's party row;
+  the contract and its terms remain and follow the contract's lifecycle. Orphaned Draft contracts left
+  by an account deletion are expected and are not pruned automatically.
+- **L4** — Guest loses read access to these terms: they are now read under `contracts.read`, which
+  Guest does not hold. No role gains access.
+- **L5** — Per-term history events: the move writes one summary event per account, not one per term.
+- **L6** — `ExistingAccount.termCount` and `.currentTerms` are removed from the API, and with them the
+  account row's term badge, Current-band term tiles, Terms section and *New term* menu item.
+- **L7** — `TermExport.accountId` is removed from the admin data export.
+
+**API and permissions.** The five `/api/accounts/{accountId}/terms…` routes are gone and answer `404`;
+`/api/contracts/{id}/terms…` is the only term API. `ExistingTerm` loses `accountId` and its
+`contractId` is never null. The account-term read/write claim pair is deleted; `RoleClaimSeeder` revokes
+its `AspNetRoleClaims` rows at the next start with no migration. Cookies issued before the upgrade
+still carry the dead values until sign-out/sign-in, which is harmless — no endpoint checks them.
+
+**If the migration is interrupted.** An interruption before the schema change is safe to re-run: every
+decision it takes is staged once and reused. An interruption *during* the final column drop is not
+covered by the start-up drift check; repair it by hand per
+[`migration-history-drift.md`](migration-history-drift.md).
+
 ## Backups
 
 The only stateful pieces are two named volumes — back both up:

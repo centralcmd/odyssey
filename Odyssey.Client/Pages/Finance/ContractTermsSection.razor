@@ -8,12 +8,10 @@
     between Parties and Documents.
 
     A contract records WHAT was agreed; a term records what it COSTS, with a dated history rather than
-    a single current number. These are the same Term rows, in the same table, under the same domain
-    rules as an account's rate & fee history — only the owner differs. So the surface reuses the
-    account treatment: the values in force as the record's own tiles, then the editable history
-    through the shared TermHistoryTable. The account surface's step chart comes across too, but not as
-    a hero and not as a rate: an agreement carries several named charges and no single line stands for
-    it, so the chart (OdsTermHistoryChart) sits above the history as a multi-select CHOOSER — opening
+    a single current number — and since issue #190 a contract is the only owner of a term. The surface
+    shows the values in force as the record's own tiles, then the editable history through
+    TermHistoryTable. The step chart is not a hero and not a rate: an agreement carries several named
+    charges and no single line stands for it, so the chart (OdsTermHistoryChart) sits above the history as a multi-select CHOOSER — opening
     on the series whose latest entry is the most recent, letting the reader add up to four charges
     measured the same way, and plotting indexed change by default with a Change / Value toggle.
 
@@ -67,25 +65,17 @@
                    No chip — the FIGURE carries the direction in its own finance hue, and the word
                    sits on its own line under the tile's title, the slot a party tile gives its
                    from–to dates. There is room there for the whole word, so it reads "Incoming". *@
-                var directed = TermVisuals.DirectionApplies(term);
                 var direction = TermDirectionVisuals.Info(term.Direction);
                 var valueColor = TermVisuals.ValueColor(term);
                 var (iconColor, iconSoft) = TermVisuals.IconColors(term);
                 <OdsInfoTile @key="term.TermId"
-                             Class="@(directed ? "trm-dir-tile" : null)"
+                             Class="trm-dir-tile"
                              Icon="@info.Icon" IconColor="@iconColor" IconSoft="@iconSoft"
                              ValueVariant="OdsInfoTileVariant.Text"
                              Foot="@OdsInfoTile.Caption(TileFoot(term, cadence))">
                     <LabelContent>
-                        @if (directed)
-                        {
-                            <span class="trm-dir-name"><span>@TermVisuals.DisplayName(term)</span></span>
-                            <span class="trm-dir-sub">@direction.Label</span>
-                        }
-                        else
-                        {
-                            @TermVisuals.DisplayName(term)
-                        }
+                        <span class="trm-dir-name"><span>@TermVisuals.DisplayName(term)</span></span>
+                        <span class="trm-dir-sub">@direction.Label</span>
                     </LabelContent>
                     <Value>
                         <span style="color:@valueColor;">@TermVisuals.FormatValue(term, FormatMoney)</span>

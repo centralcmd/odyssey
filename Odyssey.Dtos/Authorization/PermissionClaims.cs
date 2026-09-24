@@ -22,8 +22,6 @@ public static class PermissionClaims
     public const string AccountsRead = "accounts.read";
     public const string AccountsUpdate = "accounts.update";
     public const string AccountsDelete = "accounts.delete";
-    public const string AccountsTermsRead = "accounts.terms.read";
-    public const string AccountsTermsWrite = "accounts.terms.write";
     public const string AccountsEstimatesRead = "accounts.estimates.read";
     public const string AccountsEstimatesWrite = "accounts.estimates.write";
 

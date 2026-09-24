@@ -15,7 +15,7 @@ public class TermRateSignTests
     private static ExistingTerm Rate(string value) => new()
     {
         TermId = Guid.NewGuid(),
-        AccountId = Guid.NewGuid(),
+        ContractId = Guid.NewGuid(),
         Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = decimal.Parse(value, CultureInfo.InvariantCulture),

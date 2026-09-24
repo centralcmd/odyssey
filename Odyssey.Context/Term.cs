@@ -5,22 +5,19 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Odyssey.Context;
 
 /// <summary>
-/// A time-versioned entry recording the value of one named series on an <b>owner</b> — an account or a
-/// contract (issue #135) — such as a rate, or the price of one named charge, effective from a given
-/// date. The series key is <c>(owner, LabelKey)</c>, so an owner can hold several concurrently
-/// in-force terms told apart by their labels. There is no explicit end date: the value in force on a
-/// date is the entry with the greatest <see cref="EffectiveFrom"/> on or before it <em>within its own
-/// series</em>. Each composite index backs both history listing and current-value resolution for its
-/// owner.
+/// A time-versioned entry recording the value of one named series on a <b>contract</b> — such as a
+/// rate, or the price of one named charge, effective from a given date. The series key is
+/// <c>(ContractId, LabelKey)</c>, so a contract can hold several concurrently in-force terms told
+/// apart by their labels. There is no explicit end date: the value in force on a date is the entry
+/// with the greatest <see cref="EffectiveFrom"/> on or before it <em>within its own series</em>. The
+/// composite index backs both history listing and current-value resolution.
 ///
 /// <para>
-/// Exactly one of <see cref="AccountId"/> and <see cref="ContractId"/> is populated. The domain
-/// service is the real guard (the owner comes from the route and is never bound from a request body);
-/// <c>CK_Terms_ExactlyOneOwner</c> is the database backstop. An account term and a contract term never
-/// share a series, so supersession within one owner can never be disturbed by the other.
+/// A contract is the only owner. Terms could once also be recorded directly on an account (issue
+/// #135); issue #190 moved every one of those onto a contract the account takes part in
+/// (<c>MoveAccountTermsToContracts</c>) and dropped the account owner from the schema.
 /// </para>
 /// </summary>
-[Index(nameof(AccountId), nameof(LabelKey), nameof(EffectiveFrom))]
 [Index(nameof(ContractId), nameof(LabelKey), nameof(EffectiveFrom))]
 public class Term : IEffectiveDated
 {
@@ -29,17 +26,9 @@ public class Term : IEffectiveDated
     public Guid TermId { get; set; }
 
     /// <summary>
-    /// The owning account, or null when this term belongs to a contract. Nullable since issue #135
-    /// widened the table to two owners; every pre-#135 row has it populated.
+    /// The owning contract.
     /// </summary>
-    public Guid? AccountId { get; set; }
-
-    public Account? Account { get; set; }
-
-    /// <summary>
-    /// The owning contract, or null when this term belongs to an account (issue #135).
-    /// </summary>
-    public Guid? ContractId { get; set; }
+    public Guid ContractId { get; set; }
 
     public Contract? Contract { get; set; }
 

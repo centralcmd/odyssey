@@ -100,7 +100,6 @@ public class TermRenameMigrationTests(MariaDbFixture fixture)
                     .Select(t => new
                     {
                         t.TermId,
-                        t.AccountId,
                         t.Label,
                         t.Interval,
                         t.IntervalCount,
@@ -111,9 +110,11 @@ public class TermRenameMigrationTests(MariaDbFixture fixture)
                 // AC 25 — the row count is identical across the rename.
                 Assert.Equal(6, terms.Count);
 
-                // AC 26 — the primary key travelled with its values, not as a fresh empty column.
-                Assert.Equal(
-                    new Guid?[] { accountId }, terms.Select(t => t.AccountId).Distinct().ToArray());
+                // AC 26 — the primary key travelled with its values, not as a fresh empty column. The
+                // owner is read by raw SQL: the model at head has no Terms.AccountId (issue #190).
+                Assert.Equal(6, await context.Database
+                    .SqlQueryRaw<int>($"SELECT COUNT(*) AS `Value` FROM `Terms` WHERE `AccountId` = '{accountId}'")
+                    .SingleAsync());
                 Assert.All(terms, term => Assert.NotEqual(Guid.Empty, term.TermId));
                 Assert.Equal("Daily charge", terms.Single(t => t.TermId == daily).Label);
 
@@ -184,17 +185,19 @@ public class TermRenameMigrationTests(MariaDbFixture fixture)
                 // added after the rename (ContractId, issue #135). Stopping at the rename would make
                 // it fail on a missing column rather than on the backfill it is asserting. Completing
                 // the run is also the truthful shape: a deployed application is always at head, and
-                // the backfill written by the rename is what it reads.
+                // the backfill written by the rename is what it reads. Since issue #190 the run to head
+                // also moves the term onto a contract created for the account.
                 await context.Database.MigrateAsync();
 
+                var contractId = (await context.Terms.AsNoTracking().SingleAsync(t => t.TermId == termId)).ContractId;
                 var service = new Odyssey.Core.Finance.TermService(context);
-                var history = await service.GetHistory(accountId);
+                var history = await service.GetContractHistory(contractId);
                 var loaded = Assert.Single(history!);
 
                 Assert.Equal(1, loaded.IntervalCount);
 
                 // The read-modify-write a UI performs: send back exactly what was read.
-                var updated = await service.Update(accountId, termId, new Odyssey.Dtos.Finance.NewTerm
+                var updated = await service.UpdateForContract(contractId, termId, userId: null, putTerm: new Odyssey.Dtos.Finance.NewTerm
                 {
                     Label = loaded.Label,
                     ValueUnit = loaded.ValueUnit,

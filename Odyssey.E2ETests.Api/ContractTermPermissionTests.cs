@@ -145,55 +145,57 @@ public class ContractTermPermissionTests(ApiStackFixture fixture)
     }
 
     /// <summary>
-    /// Containment over the wire, across OWNERS: an account's term id is <c>404</c> through a
-    /// contract's route — never <c>403</c>, which would confirm the row exists under a different
-    /// parent, and never a silent success, which would be the cross-claim write the route-only owner
-    /// exists to prevent.
+    /// Containment over the wire, across CONTRACTS: another contract's term id is <c>404</c> through
+    /// this contract's route — never <c>403</c>, which would confirm the row exists under a different
+    /// parent, and never a silent success. And since issue #190 the account-owned term routes are
+    /// gone: each is a plain <c>404</c> even for Admin, naming a seeded account that exists.
     /// </summary>
     [SkippableFact]
-    public async Task An_accounts_term_is_not_found_through_a_contracts_route()
+    public async Task A_foreign_term_is_not_found_and_the_account_term_routes_are_gone()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
 
         var admin = UserIn("Admin");
         var client = await fixture.CreateAuthenticatedClientAsync(admin.Email, admin.Password);
         var contractId = await CreateContractAsync(client, "E2E Terms Containment");
-
-        // An account from the demo seed, and one of its own terms.
-        var accounts = await client.GetFromJsonAsync<JsonDocument>("/api/accounts?limit=1");
-        var accountId = accounts!.RootElement.GetProperty("items").EnumerateArray().First()
-            .GetProperty("accountId").GetGuid();
-
-        var seededTerm = await fixture.PostWithAntiforgeryAsync(
-            client, $"/api/accounts/{accountId}/terms", new
-            {
-                label = "E2E containment fee",
-                valueUnit = 1,
-                value = 7m,
-                effectiveFrom = "2026-02-01T00:00:00Z",
-            });
-        Assert.Equal(HttpStatusCode.Created, seededTerm.StatusCode);
-        var accountTermId = (await seededTerm.Content.ReadFromJsonAsync<JsonDocument>())!
-            .RootElement.GetProperty("termId").GetGuid();
+        var otherContractId = await CreateContractAsync(client, "E2E Terms Containment Other");
 
         try
         {
-            Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(
-                $"/api/contracts/{contractId}/terms/{accountTermId}", Rent(1m, "2026-02-01"))).StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, (await fixture.DeleteWithAntiforgeryAsync(
-                client, $"/api/contracts/{contractId}/terms/{accountTermId}")).StatusCode);
+            var created = await fixture.PostWithAntiforgeryAsync(
+                client, $"/api/contracts/{otherContractId}/terms", Rent(7m, "2026-02-01"));
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            var foreignTermId = (await created.Content.ReadFromJsonAsync<JsonDocument>())!
+                .RootElement.GetProperty("termId").GetGuid();
 
-            // Untouched, and still the account's.
-            using var stillThere = await client.GetFromJsonAsync<JsonDocument>($"/api/accounts/{accountId}/terms");
+            Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(
+                $"/api/contracts/{contractId}/terms/{foreignTermId}", Rent(1m, "2026-02-01"))).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await fixture.DeleteWithAntiforgeryAsync(
+                client, $"/api/contracts/{contractId}/terms/{foreignTermId}")).StatusCode);
+
+            // Untouched, and still the other contract's.
+            using var stillThere = await client.GetFromJsonAsync<JsonDocument>($"/api/contracts/{otherContractId}/terms");
             var row = stillThere!.RootElement.EnumerateArray()
-                .Single(t => t.GetProperty("termId").GetGuid() == accountTermId);
+                .Single(t => t.GetProperty("termId").GetGuid() == foreignTermId);
             Assert.Equal(7m, row.GetProperty("value").GetDecimal());
-            Assert.Equal(accountId, row.GetProperty("accountId").GetGuid());
-            Assert.Equal(JsonValueKind.Null, row.GetProperty("contractId").ValueKind);
+            Assert.Equal(otherContractId, row.GetProperty("contractId").GetGuid());
+
+            // Issue #190 AC 16 — no account-owned term route survives.
+            using var accounts = await client.GetFromJsonAsync<JsonDocument>("/api/accounts?limit=1");
+            var accountId = accounts!.RootElement.GetProperty("items").EnumerateArray().First()
+                .GetProperty("accountId").GetGuid();
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/accounts/{accountId}/terms")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/accounts/{accountId}/terms/current")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await fixture.PostWithAntiforgeryAsync(
+                client, $"/api/accounts/{accountId}/terms", Rent(1m, "2026-02-01"))).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(
+                $"/api/accounts/{accountId}/terms/{foreignTermId}", Rent(1m, "2026-02-01"))).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await fixture.DeleteWithAntiforgeryAsync(
+                client, $"/api/accounts/{accountId}/terms/{foreignTermId}")).StatusCode);
         }
         finally
         {
-            await fixture.DeleteWithAntiforgeryAsync(client, $"/api/accounts/{accountId}/terms/{accountTermId}");
+            await fixture.DeleteWithAntiforgeryAsync(client, $"/api/contracts/{otherContractId}");
             await fixture.DeleteWithAntiforgeryAsync(client, $"/api/contracts/{contractId}");
         }
     }

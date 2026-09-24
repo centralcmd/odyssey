@@ -22,7 +22,7 @@ public class TermVocabularyGuardTests
         typeof(Odyssey.Context.Term).Assembly,
         typeof(Odyssey.Dtos.Finance.NewTerm).Assembly,
         typeof(Odyssey.Core.Finance.TermService).Assembly,
-        typeof(TermsController).Assembly,
+        typeof(ContractController).Assembly,
     ];
 
     /// <summary>
@@ -119,6 +119,11 @@ public class TermVocabularyGuardTests
     [InlineData("AccountTermService")]
     [InlineData("AccountTermsController")]
     [InlineData("AccountTermExport")]
+    // Issue #190 — the account-owned term surface and its owner discriminator.
+    [InlineData("TermsController")]
+    [InlineData("TermOwnerKind")]
+    [InlineData("TermOwnerFacts")]
+    [InlineData("AccountTermsSection")]
     public void TheRenamedTypeNames_AreGoneFromTheSolution(string retired)
     {
         var survivors = SolutionAssemblies
@@ -131,81 +136,73 @@ public class TermVocabularyGuardTests
     }
 
     /// <summary>
-    /// AC 22 — <c>AccountCurrentTerm</c> is NOT renamed. With <c>CurrentAccountTerm</c> becoming
-    /// <c>CurrentTerm</c>, the surviving <c>Account</c> prefix stops being noise and starts doing
-    /// real work: it is the one name meaning "the current term as carried on the account record".
+    /// AC 22 — <c>AccountCurrentTerm</c> is NOT renamed, even after issue #190 took it off the account
+    /// record (its Non-Goal 5): <c>ExistingContract.CurrentTerms</c> still carries it.
     /// </summary>
     [Fact]
     public void AccountCurrentTerm_KeepsItsName()
     {
         Assert.NotNull(typeof(Odyssey.Dtos.Finance.AccountCurrentTerm));
-        Assert.NotNull(typeof(Odyssey.Dtos.Finance.ExistingAccount).GetProperty("CurrentTerms"));
+        Assert.Equal(
+            typeof(List<Odyssey.Dtos.Finance.AccountCurrentTerm>),
+            typeof(Odyssey.Dtos.Finance.ExistingContract).GetProperty("CurrentTerms")!.PropertyType);
     }
 
     /// <summary>
-    /// AC 19 — the claim VALUES survived the rename. They are persisted in <c>AspNetRoleClaims</c>
-    /// and baked into live auth cookies, so renaming one would de-authorize every existing session
-    /// and seeded role row for no functional gain. A rename pass that "completes the job" by
-    /// touching these is a security regression, not a tidy-up.
+    /// Issue #190 AC 18 — the account-owned term projections are gone from every wire shape: the
+    /// account record carries no term count or current terms, a term names no account, and the export
+    /// row has no account column. A contract is the only owner, so its id is not nullable.
     /// </summary>
     [Fact]
-    public void TheTermClaimValues_AreUnchangedByTheRename()
+    public void NoWireShape_CarriesAnAccountOwnedTerm()
     {
-        Assert.Equal("accounts.terms.read", PermissionClaims.AccountsTermsRead);
-        Assert.Equal("accounts.terms.write", PermissionClaims.AccountsTermsWrite);
+        Assert.Null(typeof(Odyssey.Dtos.Finance.ExistingAccount).GetProperty("TermCount"));
+        Assert.Null(typeof(Odyssey.Dtos.Finance.ExistingAccount).GetProperty("CurrentTerms"));
+        Assert.Null(typeof(Odyssey.Dtos.Finance.ExistingTerm).GetProperty("AccountId"));
+        Assert.Equal(typeof(Guid), typeof(Odyssey.Dtos.Finance.ExistingTerm).GetProperty("ContractId")!.PropertyType);
+        Assert.Null(typeof(TermExport).GetProperty("AccountId"));
+        Assert.Equal(typeof(Guid), typeof(TermExport).GetProperty("ContractId")!.PropertyType);
+        Assert.Null(typeof(Odyssey.Context.Term).GetProperty("AccountId"));
+        Assert.Null(typeof(Odyssey.Context.Account).GetProperty("Terms"));
     }
 
     /// <summary>
-    /// AC 44 — every public action on the renamed controller still carries an
-    /// <c>[Authorize(Policy = ...)]</c> naming a <c>PermissionClaims</c> constant.
+    /// Issue #190 AC 17 — the account-term claim pair is DELETED, not renamed. Pinned as the whole
+    /// <c>accounts.*</c> family rather than by naming the two retired values, so no claim — however
+    /// spelled — can creep back under the account prefix unnoticed, and no role can hold one the
+    /// vocabulary lacks: <c>RoleClaimSeeder</c> revokes whatever the roles no longer list at the next
+    /// start. Terms are read under <c>contracts.read</c> and written under <c>contracts.update</c>.
     /// </summary>
-    /// <remarks>
-    /// The cheap companion to the full <c>403</c> matrix. The failure a rename risks is not
-    /// anonymous access — a global <c>RequireAuthenticatedUser</c> fallback is configured — but a
-    /// downgrade to "any authenticated caller", which is quieter and correspondingly easier to miss.
-    /// </remarks>
     [Fact]
-    public void EveryTermsControllerAction_IsGatedOnAPermissionClaim()
+    public void TheAccountClaimFamily_HasNoTermPair()
     {
-        var claimValues = typeof(PermissionClaims)
+        string[] expected =
+        [
+            PermissionClaims.AccountsCreate, PermissionClaims.AccountsRead, PermissionClaims.AccountsUpdate,
+            PermissionClaims.AccountsDelete, PermissionClaims.AccountsEstimatesRead,
+            PermissionClaims.AccountsEstimatesWrite,
+        ];
+
+        var declared = typeof(PermissionClaims)
             .GetFields(BindingFlags.Public | BindingFlags.Static)
             .Where(field => field.IsLiteral && field.FieldType == typeof(string))
             .Select(field => (string)field.GetRawConstantValue()!)
-            .ToHashSet(StringComparer.Ordinal);
+            .Where(value => value.StartsWith("accounts.", StringComparison.Ordinal));
 
-        var actions = typeof(TermsController)
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .Where(method => !method.IsSpecialName)
-            .ToList();
+        Assert.Equal(expected.Order(StringComparer.Ordinal), declared.Order(StringComparer.Ordinal));
 
-        Assert.Equal(5, actions.Count);
-
-        foreach (var action in actions)
+        foreach (var role in new[]
+                 {
+                     Odyssey.Context.Authorization.RolePermissions.AllClaims,
+                     Odyssey.Context.Authorization.RolePermissions.AdminClaims,
+                     Odyssey.Context.Authorization.RolePermissions.OwnerClaims,
+                     Odyssey.Context.Authorization.RolePermissions.UserClaims,
+                     Odyssey.Context.Authorization.RolePermissions.GuestClaims,
+                 })
         {
-            var policy = action.GetCustomAttribute<AuthorizeAttribute>()?.Policy;
-
-            Assert.True(policy is not null, $"{action.Name} carries no [Authorize(Policy = ...)].");
-            Assert.Contains(policy!, claimValues);
+            Assert.All(role.Where(value => value.StartsWith("accounts.", StringComparison.Ordinal)),
+                value => Assert.Contains(value, expected));
         }
-    }
-
-    /// <summary>
-    /// AC 24 — the route NAMES moved with the controller, and nothing still names an old one. A
-    /// <c>CreatedAtRoute</c> against a stale name throws at runtime, not compile time.
-    /// </summary>
-    [Fact]
-    public void TheTermRouteNames_AreTheRenamedOnes()
-    {
-        var names = typeof(TermsController)
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-            .Where(method => !method.IsSpecialName)
-            .SelectMany(method => method.GetCustomAttributes<HttpMethodAttribute>())
-            .Select(attribute => attribute.Name)
-            .ToList();
-
-        Assert.Equal(
-            ["DeleteTerm", "GetCurrentTerms", "GetTerms", "PostTerm", "PutTerm"],
-            names.Order(StringComparer.Ordinal));
     }
 
     /// <summary>
