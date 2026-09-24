@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -44,15 +45,15 @@ public class ContractTermPermissionTests(ApiStackFixture fixture)
         try
         {
             var created = await fixture.PostWithAntiforgeryAsync(
-                client, $"/api/contracts/{contractId}/terms", Rent(14500m, "2026-10-01"));
+                client, $"/api/contracts/{contractId}/terms", Rent(14500m, EffectiveYesterday()));
             Assert.Equal(HttpStatusCode.Created, created.StatusCode);
 
             var body = (await created.Content.ReadFromJsonAsync<JsonDocument>())!.RootElement;
             var termId = body.GetProperty("termId").GetGuid();
-            // The owner is the route's contract, and the account half is null — the exactly-one-owner
-            // invariant as it arrives on the wire.
+            // The owner is the route's contract — the only owner a term has had since issue #190, so
+            // the old account half is gone from the wire rather than null.
             Assert.Equal(contractId, body.GetProperty("contractId").GetGuid());
-            Assert.Equal(JsonValueKind.Null, body.GetProperty("accountId").ValueKind);
+            Assert.False(body.TryGetProperty("accountId", out _));
 
             var history = await client.GetFromJsonAsync<JsonDocument>($"/api/contracts/{contractId}/terms");
             Assert.Single(history!.RootElement.EnumerateArray().ToList());
@@ -62,7 +63,7 @@ public class ContractTermPermissionTests(ApiStackFixture fixture)
                 .GetProperty("value").GetDecimal());
 
             var updated = await client.PutAsJsonAsync(
-                $"/api/contracts/{contractId}/terms/{termId}", Rent(15000m, "2026-10-01"));
+                $"/api/contracts/{contractId}/terms/{termId}", Rent(15000m, EffectiveYesterday()));
             Assert.Equal(HttpStatusCode.NoContent, updated.StatusCode);
 
             // The two contract reads carry the term projections.
@@ -81,11 +82,12 @@ public class ContractTermPermissionTests(ApiStackFixture fixture)
     }
 
     /// <summary>
-    /// <c>User</c> holds <c>contracts.read</c> and <c>contracts.update</c>, so it reaches every one of
-    /// the five routes — the reuse decision's direct consequence for the middle role.
+    /// <c>User</c> holds <c>contracts.read</c> but not <c>contracts.update</c>
+    /// (<c>RolePermissions.UserClaims</c>), so the reuse decision gives the middle role the reads and
+    /// none of the writes — the same reach it has over the contract itself.
     /// </summary>
     [SkippableFact]
-    public async Task The_user_role_can_both_read_and_write_terms()
+    public async Task The_user_role_can_read_but_not_write_terms()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
 
@@ -99,7 +101,7 @@ public class ContractTermPermissionTests(ApiStackFixture fixture)
             var client = await fixture.CreateAuthenticatedClientAsync(user.Email, user.Password);
 
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/contracts/{contractId}/terms")).StatusCode);
-            Assert.Equal(HttpStatusCode.Created, (await fixture.PostWithAntiforgeryAsync(
+            Assert.Equal(HttpStatusCode.Forbidden, (await fixture.PostWithAntiforgeryAsync(
                 client, $"/api/contracts/{contractId}/terms", Rent(950m, "2026-02-01"))).StatusCode);
         }
         finally
@@ -199,6 +201,11 @@ public class ContractTermPermissionTests(ApiStackFixture fixture)
             await fixture.DeleteWithAntiforgeryAsync(client, $"/api/contracts/{contractId}");
         }
     }
+
+    // Relative, not a literal: the round trip asserts the term is CURRENT, which a fixed date can only
+    // satisfy from that date on (issue #178). A later literal is the same bomb with a longer fuse.
+    private static string EffectiveYesterday() =>
+        DateTime.UtcNow.Date.AddDays(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private static object Rent(decimal value, string effectiveFrom) => new
     {

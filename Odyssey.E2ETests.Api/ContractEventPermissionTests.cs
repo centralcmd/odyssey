@@ -77,7 +77,11 @@ public class ContractEventPermissionTests(ApiStackFixture fixture)
             Assert.Equal(8, after.GetProperty("type").GetInt32());
             // ...and the provenance is untouched by the edit (AC 5).
             Assert.Equal(owner.DisplayName, after.GetProperty("createdBy").GetString());
-            Assert.Equal(body.GetProperty("createdAtUtc").GetDateTime(), after.GetProperty("createdAtUtc").GetDateTime());
+            // At the column's precision: the POST echoes the in-memory stamp (100 ns ticks) while the
+            // PUT re-reads the stored datetime(6), which MariaDB truncates to whole microseconds.
+            Assert.Equal(
+                ToStoredPrecision(body.GetProperty("createdAtUtc").GetDateTime()),
+                ToStoredPrecision(after.GetProperty("createdAtUtc").GetDateTime()));
 
             var deleted = await fixture.DeleteWithAntiforgeryAsync(
                 client, $"/api/contracts/{contractId}/events/{eventId}");
@@ -90,11 +94,12 @@ public class ContractEventPermissionTests(ApiStackFixture fixture)
     }
 
     /// <summary>
-    /// <c>User</c> holds <c>contracts.read</c> and <c>contracts.update</c>, so it reaches every one of
-    /// the four routes — the reuse decision's direct consequence for the middle role.
+    /// <c>User</c> holds <c>contracts.read</c> but not <c>contracts.update</c>
+    /// (<c>RolePermissions.UserClaims</c>), so the reuse decision gives the middle role the list and
+    /// nothing else — the same reach it has over the contract itself.
     /// </summary>
     [SkippableFact]
-    public async Task The_user_role_can_both_read_and_write_events()
+    public async Task The_user_role_can_read_but_not_write_events()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
 
@@ -108,7 +113,7 @@ public class ContractEventPermissionTests(ApiStackFixture fixture)
             var client = await fixture.CreateAuthenticatedClientAsync(user.Email, user.Password);
 
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/contracts/{contractId}/events")).StatusCode);
-            Assert.Equal(HttpStatusCode.Created, (await fixture.PostWithAntiforgeryAsync(
+            Assert.Equal(HttpStatusCode.Forbidden, (await fixture.PostWithAntiforgeryAsync(
                 client, $"/api/contracts/{contractId}/events", Recorded("Rang about the renewal"))).StatusCode);
         }
         finally
@@ -227,6 +232,9 @@ public class ContractEventPermissionTests(ApiStackFixture fixture)
             await fixture.DeleteWithAntiforgeryAsync(client, $"/api/contracts/{contractId}");
         }
     }
+
+    private static DateTime ToStoredPrecision(DateTime value) =>
+        new(value.Ticks - (value.Ticks % 10), value.Kind);
 
     private static object Recorded(string title) => new
     {
