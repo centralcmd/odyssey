@@ -2,6 +2,8 @@
 
 > **No frontend counterpart** — no new UI surface. The client code that references the removed claims and API-client methods is deleted in the same PR (§14), because it would not compile otherwise.
 
+> **v2 changes** (review round 1): staging table for idempotency (§3.7, architect #1); `COUNT(DISTINCT ContractId)` (§3.2, architect #2); bounded event text (§3.5, architect #3); DDL-interruption note (§9, architect #4); series collision falls back to a new contract (§3.2, security #1); retention note (§7.9, §14, security #2); no immutable record stated explicitly (§3.5, §7.7, security #3).
+
 ## 1. Overview
 
 Terms (interest rates, fees, expected returns) can today be recorded directly on an account **or** on a
@@ -192,9 +194,9 @@ recoverable from any backup taken before upgrade, and the release note (§14) sa
 terms: `AccountId` (PK), `TargetContractId`, `EventId`, `Created` (bool), `CandidateCount`, and the flag
 inputs. Rows are inserted only for accounts **not already present**, and `TargetContractId` for a new
 contract is assigned `UUID()` **at that insert**, as is the `EventId` of its attention event. Every later
-step reads this table and inserts with `WHERE NOT EXISTS` on that id. A re-run after an interruption therefore reuses the decision and the id it
-already made — it can never see its own created contract as a second candidate. The table is dropped as the
-last data step, before the DDL in step 7.
+step reads this table and inserts with `WHERE NOT EXISTS` on that id. A re-run after an interruption
+therefore reuses the decision and the id it already made — it can never see its own created contract as a
+second candidate. The table is dropped as the last data step, before the DDL in step 7.
 
 ## 4. Data Model Changes
 
@@ -286,8 +288,8 @@ that no longer exist.
 ## 8. Validation and Mapping Rules
 
 - The migration writes by SQL and **bypasses** `TermService.ApplyAndValidate`; every value it writes is a
-  value that was valid under the account rules, and every rule difference is flagged (A8, A10–A12) rather than
-  "fixed".
+  value that was valid under the account rules, and every rule difference is flagged (A8, A10–A12) rather
+  than "fixed".
 - Removed from `TermService`: account owner resolution, rule V4 (account terms Outgoing only),
   `TermOwnerFacts.DefaultCurrencyCode`, `IsTermCapped = false` branch, `TermOwnerKind.Account`.
 - Unchanged for contract terms: currency required on `Amount`, cap on create only, duplicate
