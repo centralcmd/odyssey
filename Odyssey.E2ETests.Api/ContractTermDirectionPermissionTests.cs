@@ -47,8 +47,8 @@ public class ContractTermDirectionPermissionTests(ApiStackFixture fixture)
             var created = await fixture.PostWithAntiforgeryAsync(
                 client, $"/api/contracts/{contractId}/terms", Fee("Base salary", 50000m, incoming: true));
             Assert.Equal(HttpStatusCode.Created, created.StatusCode);
-            Assert.Equal("Incoming", (await created.Content.ReadFromJsonAsync<JsonDocument>())!
-                .RootElement.GetProperty("direction").GetString());
+            Assert.Equal(Incoming, (await created.Content.ReadFromJsonAsync<JsonDocument>())!
+                .RootElement.GetProperty("direction").GetInt32());
 
             Assert.Equal(HttpStatusCode.Created, (await fixture.PostWithAntiforgeryAsync(
                 client, $"/api/contracts/{contractId}/terms", Fee("Union membership", 450m))).StatusCode);
@@ -113,14 +113,19 @@ public class ContractTermDirectionPermissionTests(ApiStackFixture fixture)
         }
     }
 
+    // TermDirection's ordinals. Enums cross the wire as numbers — the solution registers no
+    // JsonStringEnumConverter — so the responses carry these, not the member names.
+    private const int Outgoing = 0;
+    private const int Incoming = 1;
+
     private static void AssertBothSides(JsonElement.ArrayEnumerator rows)
     {
         var byLabel = rows.ToDictionary(
             r => r.GetProperty("label").GetString()!,
-            r => r.GetProperty("direction").GetString());
+            r => r.GetProperty("direction").GetInt32());
 
-        Assert.Equal("Incoming", byLabel["Base salary"]);
-        Assert.Equal("Outgoing", byLabel["Union membership"]);
+        Assert.Equal(Incoming, byLabel["Base salary"]);
+        Assert.Equal(Outgoing, byLabel["Union membership"]);
     }
 
     /// <summary>
@@ -136,7 +141,7 @@ public class ContractTermDirectionPermissionTests(ApiStackFixture fixture)
         currencyCode = "NOK",
         interval = 3,
         intervalCount = 1,
-        direction = incoming ? 1 : 0,
+        direction = incoming ? Incoming : Outgoing,
         effectiveFrom = "2026-02-01T00:00:00Z",
     };
 
