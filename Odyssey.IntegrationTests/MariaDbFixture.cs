@@ -26,19 +26,9 @@ public sealed class MariaDbFixture : IAsyncLifetime
     // seeded dataset the seeder test asserts exact counts against.
     private const string RelationalDatabase = "odyssey_relational";
 
-    // The image goes through the constructor, not .WithImage(): Testcontainers 4.14 obsoleted the
-    // parameterless MySqlBuilder() so the image is known before any module default is applied.
-    private readonly MySqlContainer container = new MySqlBuilder(Image)
-        .WithDatabase(SharedDatabase)
-        .WithUsername(AppUser)
-        .WithPassword(AppPassword)
-        .WithEnvironment("MARIADB_ROOT_PASSWORD", RootPassword)
-        // The MySql module's default readiness probe shells out to the `mysql` client, which the
-        // mariadb image no longer ships — it would loop until timeout. Use the image's own
-        // healthcheck script instead (same one docker-compose uses).
-        .WithWaitStrategy(Wait.ForUnixContainer()
-            .UntilCommandIsCompleted("healthcheck.sh", "--connect", "--innodb_initialized"))
-        .Build();
+    // Built in InitializeAsync, not a field initialiser: .Build() resolves the Docker endpoint and
+    // throws when no daemon is reachable, and only there does the catch below turn that into a skip.
+    private MySqlContainer? container;
 
     public bool Available { get; private set; }
 
@@ -55,6 +45,20 @@ public sealed class MariaDbFixture : IAsyncLifetime
     {
         try
         {
+            // The image goes through the constructor, not .WithImage(): Testcontainers 4.14 obsoleted the
+            // parameterless MySqlBuilder() so the image is known before any module default is applied.
+            container = new MySqlBuilder(Image)
+                .WithDatabase(SharedDatabase)
+                .WithUsername(AppUser)
+                .WithPassword(AppPassword)
+                .WithEnvironment("MARIADB_ROOT_PASSWORD", RootPassword)
+                // The MySql module's default readiness probe shells out to the `mysql` client, which the
+                // mariadb image no longer ships — it would loop until timeout. Use the image's own
+                // healthcheck script instead (same one docker-compose uses).
+                .WithWaitStrategy(Wait.ForUnixContainer()
+                    .UntilCommandIsCompleted("healthcheck.sh", "--connect", "--innodb_initialized"))
+                .Build();
+
             await container.StartAsync();
 
             // The image creates the shared database; add the isolated relational one too.
@@ -82,14 +86,14 @@ public sealed class MariaDbFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (Available)
+        if (container is not null)
         {
             await container.DisposeAsync();
         }
     }
 
     private string BuildConnectionString(string database) =>
-        $"server={container.Hostname};port={container.GetMappedPublicPort(ContainerPort)};" +
+        $"server={container!.Hostname};port={container.GetMappedPublicPort(ContainerPort)};" +
         $"database={database};user={AppUser};password={AppPassword};";
 }
 
