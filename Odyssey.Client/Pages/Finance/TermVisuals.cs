@@ -11,9 +11,10 @@ namespace Odyssey.Client.Pages.Finance;
 /// literals in the shared categorical band (L~0.74–0.80) chosen to read in both light and dark themes,
 /// so — like the other type registries (account / file / contact) — they are NOT tokenized.</summary>
 /// <remarks>
-/// The unit hue is a GLYPH hue only. A term's figure and chart line take its direction's finance hue
-/// (<see cref="TermVisuals.ValueColor"/>) — every term states a direction, since a contract is its only
-/// owner (issue #190) — so the unit hue is never text and needs no per-theme ink.
+/// The unit hue is a GLYPH hue only. A priced term's figure and chart line take its direction's
+/// finance hue (<see cref="TermVisuals.ValueColor"/>); a Text or DateTime term's value takes the
+/// per-theme <c>--trm-fact-ink</c> (issue #192) — so the unit hue is never text and needs no
+/// per-theme ink of its own.
 /// </remarks>
 public sealed record TermInfo(string Label, string Icon, string Color, string Soft);
 
@@ -42,12 +43,64 @@ public static class TermVisuals
     private static readonly TermInfo AmountInfo =
         new("Amount", "payments", "oklch(0.77 0.14 55)", "oklch(0.77 0.14 55 / 0.15)");
 
-    /// <summary>The glyph and hue for a unit. An undefined value reads as an amount, the default unit.</summary>
-    public static TermInfo UnitInfo(TermValueUnit unit) =>
-        unit == TermValueUnit.Percentage ? PercentageInfo : AmountInfo;
+    // The two NON-NUMERIC kinds (issue #192). Both take the neutral orange of the Amount hue: they have
+    // no direction, so there is no finance hue to give them, and the glyph tells them apart.
+    private static readonly TermInfo TextInfo =
+        new("Text", "short_text", "oklch(0.77 0.14 55)", "oklch(0.77 0.14 55 / 0.15)");
+
+    private static readonly TermInfo DateTimeInfo =
+        new("Date & time", "event", "oklch(0.77 0.14 55)", "oklch(0.77 0.14 55 / 0.15)");
+
+    /// <summary>An unknown member — a newer server than this client. Never guessed at.</summary>
+    private static readonly TermInfo UnknownInfo =
+        new("Unknown", "help_outline", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-default-hover)");
+
+    /// <summary>
+    /// The glyph and hue for a unit — exhaustive over the four kinds. An undefined value reads as
+    /// unknown, never as an amount: a Text term rendered with the money glyph is the misrepresentation
+    /// issue #192 exists to remove.
+    /// </summary>
+    public static TermInfo UnitInfo(TermValueUnit unit) => unit switch
+    {
+        TermValueUnit.Percentage => PercentageInfo,
+        TermValueUnit.Amount => AmountInfo,
+        TermValueUnit.Text => TextInfo,
+        TermValueUnit.DateTime => DateTimeInfo,
+        _ => UnknownInfo,
+    };
 
     /// <summary>The glyph and hue a term renders with — its unit's.</summary>
     public static TermInfo Info(ExistingTerm term) => UnitInfo(term.ValueUnit);
+
+    /// <summary>
+    /// The four kinds in the dialog's picker order. The ordinals happen to match; the list is the
+    /// registry so a later member is placed deliberately rather than by its number.
+    /// </summary>
+    public static readonly IReadOnlyList<TermValueUnit> AllUnits =
+        [TermValueUnit.Percentage, TermValueUnit.Amount, TermValueUnit.Text, TermValueUnit.DateTime];
+
+    /// <summary>
+    /// Whether a unit carries a number — the only kinds with a <c>value</c>, a chart point, a
+    /// direction, a currency or a cadence (issue #192).
+    /// </summary>
+    public static bool IsNumeric(TermValueUnit unit) =>
+        unit is TermValueUnit.Percentage or TermValueUnit.Amount;
+
+    /// <summary>Whether a term carries a number. See <see cref="IsNumeric(TermValueUnit)"/>.</summary>
+    public static bool IsNumeric(ExistingTerm term) => IsNumeric(term.ValueUnit);
+
+    /// <summary>
+    /// The CSS modifier a non-numeric value takes on a read surface — <c>trm-v-text</c>,
+    /// <c>trm-v-datetime</c> or <c>trm-v-unknown</c> — or <c>null</c> for a number, which keeps the
+    /// mono figure and its direction hue.
+    /// </summary>
+    public static string? ValueKindClass(ExistingTerm term) => term.ValueUnit switch
+    {
+        TermValueUnit.Percentage or TermValueUnit.Amount => null,
+        TermValueUnit.Text => "trm-v-text",
+        TermValueUnit.DateTime => "trm-v-datetime",
+        _ => "trm-v-unknown",
+    };
 
     /// <summary>
     /// The cadence units, in READING order rather than ordinal order — the occasions first, then the
@@ -131,42 +184,150 @@ public static class TermVisuals
         return $"{s}%";
     }
 
-    /// <summary>A term's value as a display string, carrying the stored sign as entered: "6.49%",
-    /// "−0.5%" for a genuinely negative percentage, or a money amount (formatted via
-    /// <paramref name="money"/>).</summary>
-    public static string FormatValue(ExistingTerm term, Func<decimal, string?, string> money)
-    {
-        if (term.ValueUnit != TermValueUnit.Percentage)
-            return money(term.Value, term.CurrencyCode);
+    /// <summary>What a value that cannot be shown reads as — never 0, never money, never a percentage.</summary>
+    public const string NoValue = "\u2014";
 
-        return (term.Value < 0 ? "−" : "") + PctStr(Math.Abs(term.Value));
+    /// <summary>
+    /// A term's value as a display string — exhaustive over the four kinds (issue #192). A number
+    /// carries the stored sign as entered: "6.49%", "−0.5%" for a genuinely negative percentage, or a
+    /// money amount (formatted via <paramref name="money"/>). A Text term reads its text as plain
+    /// text; a DateTime term its instant in the viewer's local time with the offset named. A null
+    /// value on a numeric kind and an unknown kind both read <see cref="NoValue"/>.
+    /// </summary>
+    public static string FormatValue(ExistingTerm term, Func<decimal, string?, string> money) =>
+        FormatValue(term.ValueUnit, term.Value, term.CurrencyCode, term.TextValue, term.DateTimeValue, money);
+
+    /// <inheritdoc cref="FormatValue(ExistingTerm, Func{decimal, string?, string})"/>
+    public static string FormatValue(
+        TermValueUnit unit, decimal? value, string? currencyCode, string? textValue, DateTime? dateTimeValue,
+        Func<decimal, string?, string> money) => unit switch
+    {
+        TermValueUnit.Percentage => value is { } pct ? (pct < 0 ? "−" : "") + PctStr(Math.Abs(pct)) : NoValue,
+        TermValueUnit.Amount => value is { } amount ? money(amount, currencyCode) : NoValue,
+        TermValueUnit.Text => string.IsNullOrWhiteSpace(textValue) ? NoValue : textValue,
+        TermValueUnit.DateTime => FormatDateTime(dateTimeValue),
+        _ => NoValue,
+    };
+
+    // ---- Date & time (issue #192) -------------------------------------------------------------
+
+    /// <summary>
+    /// A DateTime term's instant in the VIEWER's local time, with the offset in force at that instant
+    /// named — "31 Mar 2027, 12:00 UTC+02:00". The stored value is UTC; the offset is shown so two
+    /// readers in different zones can tell they are looking at one instant.
+    /// </summary>
+    public static string FormatDateTime(DateTime? utc, TimeZoneInfo? zone = null)
+    {
+        if (utc is not { } instant)
+            return NoValue;
+
+        var local = ToLocal(instant, zone ?? TimeZoneInfo.Local);
+        return $"{local.ToString("dd MMM yyyy, HH:mm", CultureInfo.InvariantCulture)} {OffsetLabel(local.Offset)}";
     }
+
+    /// <summary>The event catalogue's invariant form: "2027-03-31 10:00 UTC".</summary>
+    public static string UtcStamp(DateTime? utc) =>
+        utc is { } instant
+            ? AsUtc(instant).ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture)
+            : NoValue;
+
+    /// <summary>"UTC+02:00", "UTC−05:00", "UTC+00:00" — the offset as the dialog and the value state it.</summary>
+    public static string OffsetLabel(TimeSpan offset)
+    {
+        var sign = offset < TimeSpan.Zero ? "−" : "+";
+        var abs = offset.Duration();
+        return $"UTC{sign}{abs.Hours:00}:{abs.Minutes:00}";
+    }
+
+    /// <summary>A UTC instant as the viewer's local wall-clock time, carrying the offset in force then.</summary>
+    public static DateTimeOffset ToLocal(DateTime utc, TimeZoneInfo zone) =>
+        TimeZoneInfo.ConvertTime(new DateTimeOffset(AsUtc(utc)), zone);
+
+    /// <summary>
+    /// A local date and time-of-day in <paramref name="zone"/> as the UTC instant it names, or
+    /// <c>null</c> when either half is missing. A wall-clock time skipped by a daylight-saving jump is
+    /// read with the offset in force before the jump.
+    /// </summary>
+    public static DateTime? LocalToUtc(DateTime? date, TimeSpan? time, TimeZoneInfo zone)
+    {
+        if (date is not { } d || time is not { } t)
+            return null;
+
+        var wall = DateTime.SpecifyKind(d.Date + t, DateTimeKind.Unspecified);
+        var offset = zone.IsInvalidTime(wall)
+            ? zone.GetUtcOffset(wall.AddHours(-1))
+            : zone.GetUtcOffset(wall);
+        return DateTime.SpecifyKind(wall - offset, DateTimeKind.Utc);
+    }
+
+    /// <summary>
+    /// "in 2 months", "in 12 days", "today", "3 days ago" — the distance to a DateTime term's instant
+    /// for the tile foot. Display only: nothing is scheduled off it.
+    /// </summary>
+    public static string Distance(DateTime utc, DateTime nowUtc)
+    {
+        var days = (int)Math.Round((AsUtc(utc) - AsUtc(nowUtc)).TotalDays);
+        if (days == 0)
+            return "today";
+
+        var abs = Math.Abs(days);
+        var span = abs < 60 ? $"{abs} {(abs == 1 ? "day" : "days")}" : $"{(int)Math.Round(abs / 30.4)} months";
+        return days > 0 ? $"in {span}" : $"{span} ago";
+    }
+
+    private static DateTime AsUtc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+    };
 
     // ---- Direction (issue #159) -------------------------------------------------------------
 
     /// <summary>
     /// Whether this term brings money IN. A predicate of its own rather than a test on
     /// <see cref="DirectionColor"/>: a caller that wants the fact should ask for the fact, or a later
-    /// change to what the colour helper returns silently changes what the caller counts.
+    /// change to what the colour helper returns silently changes what the caller counts. A Text or
+    /// DateTime term has no direction and is never incoming.
     /// </summary>
-    public static bool IsIncoming(ExistingTerm term) => term.Direction == TermDirection.Incoming;
+    public static bool IsIncoming(ExistingTerm term) =>
+        IsNumeric(term) && term.Direction == TermDirection.Incoming;
 
     /// <summary>
-    /// The finance hue of the term's direction — coral out, mint in. Every term states one: a term
-    /// is owned by a contract, and since issue #190 by nothing else. One helper, so the tiles, the
-    /// table rows and the chart cannot disagree about which figure is which colour.
+    /// Whether the term states a direction at all — only a priced one does. A Text or DateTime term
+    /// records a fact, not a movement of money, so no direction word is shown for it (issue #192).
+    /// </summary>
+    public static bool HasDirection(ExistingTerm term) => IsNumeric(term);
+
+    /// <summary>
+    /// The finance hue of the term's direction — coral out, mint in. Every priced term states one: a
+    /// term is owned by a contract, and since issue #190 by nothing else. One helper, so the tiles,
+    /// the table rows and the chart cannot disagree about which figure is which colour.
     /// </summary>
     public static string DirectionColor(ExistingTerm term) => TermDirectionVisuals.Info(term.Direction).Color;
 
     /// <summary>The soft ground behind a term's glyph, in its direction's hue.</summary>
     public static string DirectionSoft(ExistingTerm term) => TermDirectionVisuals.Info(term.Direction).Soft;
 
-    /// <summary>The figure's colour: its direction's hue.</summary>
-    public static string ValueColor(ExistingTerm term) => DirectionColor(term);
+    /// <summary>
+    /// The figure's colour: its direction's hue on a priced term. A non-numeric value takes the
+    /// per-theme fact ink instead — no direction, so no finance hue.
+    /// </summary>
+    public static string ValueColor(ExistingTerm term) =>
+        IsNumeric(term) ? DirectionColor(term) : "var(--trm-fact-ink)";
 
-    /// <summary>The glyph's colour and ground — the direction's.</summary>
-    public static (string Color, string Soft) IconColors(ExistingTerm term) =>
-        (DirectionColor(term), DirectionSoft(term));
+    /// <summary>
+    /// The glyph's colour and ground — the direction's on a priced term, the kind's own on a Text or
+    /// DateTime term.
+    /// </summary>
+    public static (string Color, string Soft) IconColors(ExistingTerm term)
+    {
+        if (IsNumeric(term))
+            return (DirectionColor(term), DirectionSoft(term));
+
+        var info = Info(term);
+        return (info.Color, info.Soft);
+    }
 }
 
 /// <summary>

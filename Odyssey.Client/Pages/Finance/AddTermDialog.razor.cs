@@ -31,6 +31,11 @@ public partial class AddTermDialog
 
     private bool IsEdit => Term is not null;
     private bool IsPercentage => _unit == TermValueUnit.Percentage;
+    private bool IsText => _unit == TermValueUnit.Text;
+    private bool IsDateTime => _unit == TermValueUnit.DateTime;
+
+    /// <summary>Whether the selected kind carries a number — and so a direction, currency and cadence.</summary>
+    private bool IsNumeric => TermVisuals.IsNumeric(_unit);
 
     /// <summary>The owner's display name, for the subtitle.</summary>
     private string OwnerName => Contract?.Name ?? "";
@@ -66,6 +71,15 @@ public partial class AddTermDialog
     private string? _note = "";
     private bool _isSaving;
 
+    // The two non-numeric kinds (issue #192). The date-time is edited as a LOCAL date and time of day
+    // in the viewer's zone and converted to a UTC instant only on submit.
+    private string _textValue = "";
+    private DateTime? _dtDate;
+    private TimeSpan? _dtTime;
+
+    /// <summary>The zone the date-time pickers read in. The browser's, in WASM.</summary>
+    private static TimeZoneInfo LocalZone => TimeZoneInfo.Local;
+
     /// <summary>
     /// Which way the money moves (issue #159). <see cref="TermDirection.Outgoing"/> is the default
     /// because it is what every term meant before the field existed — an omitted direction and a
@@ -73,11 +87,14 @@ public partial class AddTermDialog
     /// </summary>
     private TermDirection _direction = TermDirection.Outgoing;
 
+    /// <summary>The kind picker — the four units, each with its registry glyph and label.</summary>
     private static readonly IReadOnlyList<OdsSegmentedOption> _unitOptions =
-    [
-        new() { Value = nameof(TermValueUnit.Percentage), Label = "Percentage", Icon = "percent" },
-        new() { Value = nameof(TermValueUnit.Amount), Label = "Amount", Icon = "payments" },
-    ];
+        [.. TermVisuals.AllUnits.Select(u => new OdsSegmentedOption
+        {
+            Value = u.ToString(),
+            Label = TermVisuals.UnitInfo(u).Label,
+            Icon = TermVisuals.UnitInfo(u).Icon,
+        })];
 
     private List<OdsOption> _currencyOptions = [];
     private List<OdsOption> _intervalOptions = [];
@@ -97,9 +114,21 @@ public partial class AddTermDialog
         {
             _label = Term.Label ?? "";
             _unit = Term.ValueUnit;
-            _valueStr = Term.ValueUnit == TermValueUnit.Percentage ? FractionToPercentString(Term.Value) : Term.Value.ToString(CultureInfo.InvariantCulture);
+            _valueStr = Term.Value is not { } number
+                ? ""
+                : Term.ValueUnit == TermValueUnit.Percentage
+                    ? FractionToPercentString(number)
+                    : number.ToString(CultureInfo.InvariantCulture);
+            _textValue = Term.TextValue ?? "";
+            if (Term.DateTimeValue is { } instant)
+            {
+                var local = TermVisuals.ToLocal(instant, LocalZone);
+                _dtDate = local.Date;
+                _dtTime = new TimeSpan(local.Hour, local.Minute, 0);
+            }
             _currency = Term.CurrencyCode ?? "";
-            _interval = Term.Interval?.ToString() ?? "";
+            // A fact kind has no cadence; reopening one as a price starts from the default one.
+            _interval = Term.Interval?.ToString() ?? (TermVisuals.IsNumeric(Term.ValueUnit) ? "" : TermVisuals.DefaultInterval.ToString());
             _intervalCount = Term.IntervalCount;
             _anchorDate = Term.AnchorDate?.Date;
             _effectiveFrom = Term.EffectiveFrom.Date;
@@ -235,12 +264,7 @@ public partial class AddTermDialog
                 var label = TermLabel.Normalize(sorted[^1].Label)!;
                 var inForce = sorted.LastOrDefault(t => t.EffectiveFrom.Date <= today.Date);
                 var t = inForce ?? sorted[^1];
-                var parts = new List<string>(3)
-                {
-                    t.ValueUnit == TermValueUnit.Percentage
-                        ? TermVisuals.PctStr(t.Value)
-                        : OdsMoney.Format(t.Value, t.CurrencyCode),
-                };
+                var parts = new List<string>(3) { SuggestionValue(t) };
                 if (TermVisuals.CadenceText(t) is { } cadence)
                     parts.Add(cadence);
                 if (inForce is null)
@@ -252,6 +276,24 @@ public partial class AddTermDialog
     }
 
     internal sealed record NameSuggestion(string Key, string Label, string Note, bool Scheduled);
+
+    /// <summary>The longest stretch of a Text value a name suggestion quotes before it ellipsizes.</summary>
+    private const int SuggestionTextLength = 36;
+
+    /// <summary>
+    /// A series' in-force value as its suggestion row states it: the figure, a date-time in the
+    /// viewer's zone, or a Text value quoted — and cut short, since a row is one line.
+    /// </summary>
+    private static string SuggestionValue(ExistingTerm t)
+    {
+        if (t.ValueUnit != TermValueUnit.Text)
+            return TermVisuals.FormatValue(t, (v, c) => OdsMoney.Format(v, c));
+
+        var text = t.TextValue ?? "";
+        return text.Length > SuggestionTextLength
+            ? $"\u201C{text[..(SuggestionTextLength - 1)]}\u2026\u201D"
+            : $"\u201C{text}\u201D";
+    }
 
     private List<NameSuggestion> _nameSuggestions = [];
     private List<OdsOption> _nameOptions = [];
@@ -278,7 +320,7 @@ public partial class AddTermDialog
     {
         if (MatchedSeries is { } matched)
         {
-            builder.AddMarkupContent(0, "Joins the price history of ");
+            builder.AddMarkupContent(0, "Joins the history of ");
             builder.OpenElement(1, "b");
             builder.AddContent(2, matched.Label);
             builder.CloseElement();
@@ -286,25 +328,94 @@ public partial class AddTermDialog
         }
         else if (!string.IsNullOrWhiteSpace(_label))
         {
-            builder.AddMarkupContent(4, "Starts a <b>new charge</b> on this contract, with its own history separate from the others.");
+            builder.AddMarkupContent(4, "Starts a <b>new term</b> on this contract, with its own history separate from the others.");
         }
         else
         {
-            builder.AddContent(5, "Pick a charge this updates, or type a new name to start one.");
+            builder.AddContent(5, "Pick a term this updates, or type a new name to start one.");
         }
     };
 
-    // The combobox's "New charge" row writes the typed text as the name — a new series, not a record.
+    // The combobox's "New term" row writes the typed text as the name — a new series, not a record.
     internal static OdsOption? CreateNameOption(string text, string? _) =>
         string.IsNullOrWhiteSpace(text) ? null : OdsOption.From(text.Trim());
 
     private void OnUnitChanged(string value)
     {
-        if (Enum.TryParse<TermValueUnit>(value, out var unit))
+        if (Enum.TryParse<TermValueUnit>(value, out var unit) && Enum.IsDefined(unit))
             _unit = unit;
         _errors.Remove("value");
+        _errors.Remove("textValue");
+        _errors.Remove("dateTimeValue");
+        _errors.Remove("intervalCount");
         ClearCurrencyErrorOnUnitSwitch();
     }
+
+    /// <summary>
+    /// On edit, what a kind change does to the entry — stated because the fields that do not apply to
+    /// the new kind are dropped from the request rather than kept: the server refuses them.
+    /// </summary>
+    private string? KindSwitchNote
+    {
+        get
+        {
+            if (Term is null || Term.ValueUnit == _unit)
+                return null;
+
+            var from = TermVisuals.UnitInfo(Term.ValueUnit).Label.ToLowerInvariant();
+            var to = TermVisuals.UnitInfo(_unit).Label.ToLowerInvariant();
+            var removed = TermVisuals.IsNumeric(Term.ValueUnit) && !IsNumeric
+                ? " Its value, direction, currency and cadence are removed."
+                : "";
+            return $"Changes this entry from {from} to {to}.{removed} The name keeps its history.";
+        }
+    }
+
+    private void OnTextChanged(ChangeEventArgs e)
+    {
+        _textValue = e.Value?.ToString() ?? "";
+        _errors.Remove("textValue");
+    }
+
+    /// <summary>The Text value's length as the server counts it — after the trim.</summary>
+    private int TrimmedTextLength => _textValue.Trim().Length;
+
+    /// <summary>
+    /// The Text field's error: a submit-time refusal, or — live, as the value is typed — a forbidden
+    /// character, since that one is invisible and would otherwise surface only on submit. The message
+    /// names the rule and never repeats the text.
+    /// </summary>
+    private string? TextError =>
+        _errors.TryGetValue("textValue", out var error)
+            ? error
+            : _textValue.Length > 0 && TermTextValue.HasForbiddenCharacter(_textValue.Trim())
+                ? TextControlMessage
+                : null;
+
+    private const string TextControlMessage = "Remove tabs, line breaks and hidden direction marks.";
+
+    private void OnDateTimeDateChanged(DateTime? date)
+    {
+        _dtDate = date;
+        _errors.Remove("dateTimeValue");
+    }
+
+    private void OnDateTimeTimeChanged(TimeSpan? time)
+    {
+        _dtTime = time;
+        _errors.Remove("dateTimeValue");
+    }
+
+    /// <summary>The picked local date and time as the UTC instant the request carries, or null.</summary>
+    private DateTime? DateTimeUtc => TermVisuals.LocalToUtc(_dtDate, _dtTime, LocalZone);
+
+    /// <summary>The viewer's zone, as the date-time help line names it.</summary>
+    private static string LocalZoneName =>
+        string.IsNullOrWhiteSpace(LocalZone.Id) ? "Local time" : LocalZone.Id;
+
+    /// <summary>The offset in force at the picked instant (or now), so a summer date reads its summer offset.</summary>
+    private string LocalOffsetLabel =>
+        TermVisuals.OffsetLabel(LocalZone.GetUtcOffset(DateTimeUtc ?? DateTime.UtcNow));
 
     private void OnValueChanged(string value)
     {
@@ -397,26 +508,50 @@ public partial class AddTermDialog
 
         _errors.Clear();
 
-        // The contract rule: an amount needs a currency, and nothing supplies one.
-        if (!IsPercentage && string.IsNullOrWhiteSpace(_currency))
-        {
-            _errors["currency"] =
-                "Pick the currency this amount is in — a contract has no currency of its own.";
-        }
-
         var raw = ParseValue();
-        if (raw is null)
+        string? textValue = null;
+        DateTime? dateTimeValue = null;
+        if (IsNumeric)
         {
-            _errors["value"] = "Enter a value.";
+            // The contract rule: an amount needs a currency, and nothing supplies one.
+            if (!IsPercentage && string.IsNullOrWhiteSpace(_currency))
+            {
+                _errors["currency"] =
+                    "Pick the currency this amount is in — a contract has no currency of its own.";
+            }
+
+            if (raw is null)
+            {
+                _errors["value"] = "Enter a value.";
+            }
+            else if (IsPercentage)
+            {
+                if (raw < -100m || raw > 100m)
+                    _errors["value"] = "Must be between −100% and 100%.";
+            }
+            else if (raw < 0m)
+            {
+                _errors["value"] = "An amount can’t be negative.";
+            }
         }
-        else if (IsPercentage)
+        else if (IsText)
         {
-            if (raw < -100m || raw > 100m)
-                _errors["value"] = "Must be between −100% and 100%.";
+            // The SAME rule, in the same order, the server applies — the shared TermTextValue delegate.
+            textValue = TermTextValue.Normalize(_textValue);
+            if (textValue is null)
+                _errors["textValue"] = "Enter the text this term records.";
+            else if (textValue.Length > TermTextValue.MaxLength)
+                _errors["textValue"] = $"Keep it to {TermTextValue.MaxLength} characters.";
+            else if (TermTextValue.HasForbiddenCharacter(textValue))
+                _errors["textValue"] = TextControlMessage;
         }
-        else if (raw < 0m)
+        else if (IsDateTime)
         {
-            _errors["value"] = "An amount can’t be negative.";
+            dateTimeValue = DateTimeUtc;
+            if (dateTimeValue is null)
+                _errors["dateTimeValue"] = "Pick both a date and a time.";
+            else if (!TermDateTimeValue.IsInRange(dateTimeValue.Value))
+                _errors["dateTimeValue"] = "Pick a date between 1900 and 2200.";
         }
 
         if (_effectiveFrom is null)
@@ -424,7 +559,7 @@ public partial class AddTermDialog
 
         // The same bound the DTO's [Range] carries and the service re-checks — named from the one
         // constant pair, so the message cannot quote a number the server would not enforce.
-        if (IsPeriodicInterval && _intervalCount is { } count
+        if (IsNumeric && IsPeriodicInterval && _intervalCount is { } count
             && (count != Math.Truncate(count) || count < TermIntervalCount.Min || count > TermIntervalCount.Max))
         {
             _errors["intervalCount"] =
@@ -464,25 +599,33 @@ public partial class AddTermDialog
         if (_errors.Count > 0)
             return;
 
-        var value = IsPercentage
-            ? Math.Round(raw!.Value / 100m, 6)
-            : Math.Round(raw!.Value, 2);
+        decimal? value = !IsNumeric
+            ? null
+            : IsPercentage
+                ? Math.Round(raw!.Value / 100m, 6)
+                : Math.Round(raw!.Value, 2);
 
+        // Exactly one value field is set, and every field that does not apply to the kind goes out as
+        // null (direction as Outgoing) — never left over from a kind the entry used to be. The server
+        // refuses each of them on a Text or DateTime term rather than clearing it.
         var dto = new NewTerm
         {
             // LabelKey is derived server-side and is on no request DTO — only Label is sent.
             Label = label,
             ValueUnit = _unit,
             Value = value,
-            CurrencyCode = IsPercentage ? null : _currency,
-            Interval = SelectedInterval,
+            TextValue = textValue,
+            // Always a UTC instant — the server refuses a date-time with no offset.
+            DateTimeValue = dateTimeValue,
+            CurrencyCode = IsNumeric && !IsPercentage ? _currency : null,
+            Interval = IsNumeric ? SelectedInterval : null,
             // The identity cadence when a periodic unit is left blank, and null — never a
             // meaningless 1 — in every other case, matching what the service persists.
-            IntervalCount = IsPeriodicInterval ? EffectiveIntervalCount : null,
-            AnchorDate = _anchorDate is null
+            IntervalCount = IsNumeric && IsPeriodicInterval ? EffectiveIntervalCount : null,
+            AnchorDate = !IsNumeric || _anchorDate is null
                 ? null
                 : DateTime.SpecifyKind(_anchorDate.Value.Date, DateTimeKind.Utc),
-            Direction = _direction,
+            Direction = IsNumeric ? _direction : TermDirection.Outgoing,
             EffectiveFrom = DateTime.SpecifyKind(_effectiveFrom!.Value.Date, DateTimeKind.Utc),
             Note = string.IsNullOrWhiteSpace(_note) ? null : _note!.Trim(),
         };

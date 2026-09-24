@@ -245,7 +245,7 @@ public class TermService
             before = TermSnapshot.Of(term);
         });
 
-        // A delete hard-deletes the row (Non-Goal 10), so once the PriceChanged event is itself deleted
+        // A delete hard-deletes the row (Non-Goal 10), so once the TermChanged event is itself deleted
         // this line is the only surviving record of what the term used to say. Hence the empty "after".
         if (deleted)
             LogTermWrite("removed", contractId, before, after: null, userId);
@@ -285,11 +285,16 @@ public class TermService
     /// <em>here</em>, which is operator-facing.
     /// </remarks>
     private sealed record TermSnapshot(
-        Guid TermId, decimal Value, string? CurrencyCode, DateTime EffectiveFrom)
+        Guid TermId, ContextTermValueUnit ValueUnit, decimal? Value, string? CurrencyCode,
+        DateTime? DateTimeValue, DateTime EffectiveFrom)
     {
+        // There is deliberately NO TextValue member (issue #192 §7.5): a Text term's value is
+        // user-supplied free text, and leaving it off the snapshot makes "never in the log line" a
+        // property of this shape rather than of every call site remembering the rule.
+
         /// <summary>The term as it stands right now.</summary>
         public static TermSnapshot Of(Term term) =>
-            new(term.TermId, term.Value, term.CurrencyCode, term.EffectiveFrom);
+            new(term.TermId, term.ValueUnit, term.Value, term.CurrencyCode, term.DateTimeValue, term.EffectiveFrom);
 
         /// <summary>
         /// The term as it stood before this update, read off the change tracker's original snapshot —
@@ -303,11 +308,28 @@ public class TermService
             var original = context.Entry(term).OriginalValues;
             return new TermSnapshot(
                 term.TermId,
-                original.GetValue<decimal>(nameof(Term.Value)),
+                original.GetValue<ContextTermValueUnit>(nameof(Term.ValueUnit)),
+                original.GetValue<decimal?>(nameof(Term.Value)),
                 original.GetValue<string?>(nameof(Term.CurrencyCode)),
+                original.GetValue<DateTime?>(nameof(Term.DateTimeValue)),
                 original.GetValue<DateTime>(nameof(Term.EffectiveFrom)));
         }
+
+        /// <summary>
+        /// The value slot, chosen by the unit: the number for a percentage or an amount, the literal
+        /// <c>(text)</c> for a Text term — whose text never reaches the line — and the round-tripped
+        /// ISO-8601 instant for a DateTime term, which cannot carry a line break.
+        /// </summary>
+        public string LogValue() => ValueUnit switch
+        {
+            ContextTermValueUnit.Text => TextValuePlaceholder,
+            ContextTermValueUnit.DateTime => DateTimeValue?.ToString("O", CultureInfo.InvariantCulture) ?? NoTermValue,
+            _ => Value?.ToString(CultureInfo.InvariantCulture) ?? NoTermValue,
+        };
     }
+
+    /// <summary>What a Text term's value slot reads in the log line, in place of the text.</summary>
+    private const string TextValuePlaceholder = "(text)";
 
     /// <summary>What a log slot reads when there is no term on that side of the write.</summary>
     private const string NoTermValue = "(none)";
@@ -318,7 +340,7 @@ public class TermService
     /// <remarks>
     /// <para>
     /// <b>Why this exists.</b> A term update mutates the row <em>in place</em> and a term delete
-    /// <em>hard-deletes</em> it (issue #154 Non-Goal 10), so after either write the <c>PriceChanged</c>
+    /// <em>hard-deletes</em> it (issue #154 Non-Goal 10), so after either write the <c>TermChanged</c>
     /// event is the only record of what the term used to say — and that event is itself deletable by any
     /// <c>contracts.update</c> holder. Deleting it would destroy the last evidence. This line goes to the
     /// application log, which no endpoint can edit or delete.
@@ -343,10 +365,10 @@ public class TermService
             action,
             contractId,
             subject.TermId,
-            before is null ? NoTermValue : before.Value.ToString(CultureInfo.InvariantCulture),
+            before is null ? NoTermValue : before.LogValue(),
             LogCurrency(before?.CurrencyCode),
             before is null ? NoTermValue : before.EffectiveFrom.ToString("O", CultureInfo.InvariantCulture),
-            after is null ? NoTermValue : after.Value.ToString(CultureInfo.InvariantCulture),
+            after is null ? NoTermValue : after.LogValue(),
             LogCurrency(after?.CurrencyCode),
             after is null ? NoTermValue : after.EffectiveFrom.ToString("O", CultureInfo.InvariantCulture),
             userId ?? "(unknown)");
@@ -431,65 +453,163 @@ public class TermService
         // Derived here and only here — LabelKey is on no request DTO and is never bound from one.
         var labelKey = TermLabel.Key(label);
 
+        // Rule 1 (issue #192 §8) — fail closed for a direct caller, like Direction above: an undefined
+        // ordinal would otherwise reach the Mapster converter, which throws rather than guessing.
+        if (!Enum.IsDefined(source.ValueUnit))
+            throw new DomainValidationException(
+                $"ValueUnit '{(int)source.ValueUnit}' is not a recognised value.",
+                code: null,
+                field: nameof(NewTerm.ValueUnit));
+
         var unit = source.ValueUnit.Adapt<ContextTermValueUnit>();
+
+        // Rule 2 (the owner rule) has nothing to check since issue #190: a contract is the only owner a
+        // term can have, and the two non-numeric kinds are contract-only by construction.
 
         var direction = source.Direction.Adapt<ContextTermDirection>();
 
-        // V2 is the ABSENCE of a rule: every contract term accepts a direction, including the ones the
-        // roll-up ignores — a percentage-unit term, a OneTime/PerOccurrence/PerUnit term, and a term with
-        // no interval at all. A one-off signing bonus is legitimate incoming record-keeping; the
-        // roll-up's exclusions are about having no rate to PROJECT, not about direction.
+        decimal? value = null;
+        string? textValue = null;
+        DateTime? dateTimeValue = null;
+        ContextInterval? interval = null;
+        int? intervalCount = null;
+        DateTime? anchorDate = null;
+        string? currencyCode = null;
 
-        // A count is meaningful only for a periodic unit. Stored as 1 when a periodic interval
-        // arrives without one (the identity cadence), and as null — never 1 — otherwise: a
-        // meaningless 1 on a one-time fee would be indistinguishable from a deliberate one, and
-        // would trip this very rule on the next read-modify-write round trip.
-        var interval = source.Interval?.Adapt<ContextInterval>();
-        int? intervalCount;
-        if (interval is not null && interval.Value.IsPeriodic())
+        if (unit is ContextTermValueUnit.Text or ContextTermValueUnit.DateTime)
         {
-            intervalCount = source.IntervalCount ?? TermIntervalCount.Min;
+            var kind = unit == ContextTermValueUnit.Text ? "Text" : "date-time";
+
+            // Rule 3 — exactly one value field, the one the unit names. Never echo the submitted text.
+            if (source.Value is not null)
+                throw ShapeInvalid(kind, nameof(NewTerm.Value));
+            if (unit == ContextTermValueUnit.Text && source.DateTimeValue is not null)
+                throw ShapeInvalid(kind, nameof(NewTerm.DateTimeValue));
+            if (unit == ContextTermValueUnit.DateTime && source.TextValue is not null)
+                throw ShapeInvalid(kind, nameof(NewTerm.TextValue));
+
+            // Rule 4 — fields that do not apply are REFUSED, each under its own key, never silently
+            // cleared: clearing would hide a client bug on a read-modify-write that changed the kind.
+            if (source.CurrencyCode is not null)
+                throw NotApplicable(kind, nameof(NewTerm.CurrencyCode));
+            if (source.Interval is not null)
+                throw NotApplicable(kind, nameof(NewTerm.Interval));
+            if (source.IntervalCount is not null)
+                throw NotApplicable(kind, nameof(NewTerm.IntervalCount));
+            if (source.AnchorDate is not null)
+                throw NotApplicable(kind, nameof(NewTerm.AnchorDate));
+            if (direction != ContextTermDirection.Outgoing)
+                throw NotApplicable(kind, nameof(NewTerm.Direction));
+
+            if (unit == ContextTermValueUnit.Text)
+            {
+                // Rule 5 — trimmed, then 1–256 characters with no control or bidi character. The message
+                // names the rule and never the value (§7.12).
+                textValue = TermTextValue.Normalize(source.TextValue);
+                if (textValue is null)
+                    throw new DomainValidationException(
+                        "A Text term requires textValue and must not carry value or dateTimeValue.",
+                        code: null,
+                        field: nameof(NewTerm.TextValue));
+                if (!TermTextValue.IsValid(textValue))
+                    throw new DomainValidationException(
+                        $"textValue must be 1–{TermTextValue.MaxLength} characters with no control characters.",
+                        code: null,
+                        field: nameof(NewTerm.TextValue));
+            }
+            else
+            {
+                if (source.DateTimeValue is not { } requested)
+                    throw new DomainValidationException(
+                        "A date-time term requires dateTimeValue and must not carry value or textValue.",
+                        code: null,
+                        field: nameof(NewTerm.DateTimeValue));
+
+                // Rule 6 — an instant with no offset is REFUSED, not read as UTC: every other term date
+                // does read it as UTC, but here that would silently shift the user's intended time by
+                // their offset.
+                if (requested.Kind == DateTimeKind.Unspecified)
+                    throw DateTimeInvalid();
+
+                var utc = requested.Kind == DateTimeKind.Local ? requested.ToUniversalTime() : requested;
+                if (!TermDateTimeValue.IsInRange(utc))
+                    throw DateTimeInvalid();
+
+                dateTimeValue = utc;
+            }
         }
         else
         {
-            if (source.IntervalCount is not null)
+            // Rule 3 for the two numeric kinds: value is required, and the other two value fields are refused.
+            if (source.Value is not { } number)
+                throw new DomainValidationException(
+                    "A percentage or amount term requires value and must not carry textValue or dateTimeValue.",
+                    code: null,
+                    field: nameof(NewTerm.Value));
+            if (source.TextValue is not null)
+                throw new DomainValidationException(
+                    "A percentage or amount term must not carry textValue.",
+                    code: null,
+                    field: nameof(NewTerm.TextValue));
+            if (source.DateTimeValue is not null)
+                throw new DomainValidationException(
+                    "A percentage or amount term must not carry dateTimeValue.",
+                    code: null,
+                    field: nameof(NewTerm.DateTimeValue));
+
+            value = number;
+
+            // V2 is the ABSENCE of a rule: every numeric contract term accepts a direction, including the
+            // ones the roll-up ignores — a percentage-unit term, a OneTime/PerOccurrence/PerUnit term, and
+            // a term with no interval at all. A one-off signing bonus is legitimate incoming
+            // record-keeping; the roll-up's exclusions are about having no rate to PROJECT, not about
+            // direction.
+
+            // A count is meaningful only for a periodic unit. Stored as 1 when a periodic interval
+            // arrives without one (the identity cadence), and as null — never 1 — otherwise: a
+            // meaningless 1 on a one-time fee would be indistinguishable from a deliberate one, and
+            // would trip this very rule on the next read-modify-write round trip.
+            interval = source.Interval?.Adapt<ContextInterval>();
+            if (interval is not null && interval.Value.IsPeriodic())
+            {
+                intervalCount = source.IntervalCount ?? TermIntervalCount.Min;
+            }
+            else if (source.IntervalCount is not null)
+            {
                 throw new DomainValidationException(
                     "IntervalCount is only allowed for a periodic interval (Daily, Weekly, Monthly, Annually).");
+            }
 
-            intervalCount = null;
-        }
+            anchorDate = source.AnchorDate is null ? null : NormalizeToUtc(source.AnchorDate.Value);
 
-        var anchorDate = source.AnchorDate is null ? (DateTime?)null : NormalizeToUtc(source.AnchorDate.Value);
+            if (unit == ContextTermValueUnit.Percentage)
+            {
+                if (number < -1m || number > 1m)
+                    throw new DomainValidationException(
+                        "A percentage value must be a fraction within [-1, 1] (e.g. 0.0325 for 3.25%).");
 
-        string? currencyCode;
-        if (unit == ContextTermValueUnit.Percentage)
-        {
-            if (source.Value < -1m || source.Value > 1m)
-                throw new DomainValidationException(
-                    "A percentage value must be a fraction within [-1, 1] (e.g. 0.0325 for 3.25%).");
+                // Currency is meaningless for a percentage; it is always stored null.
+            }
+            else
+            {
+                if (number < 0m)
+                    throw new DomainValidationException("An amount value must be greater than or equal to zero.");
 
-            // Currency is meaningless for a percentage; it is always stored null.
-            currencyCode = null;
-        }
-        else
-        {
-            if (source.Value < 0m)
-                throw new DomainValidationException("An amount value must be greater than or equal to zero.");
+                // A contract has no currency of its own, so an explicit code is required. The two
+                // rejected defaulting alternatives (its first account party's currency, an
+                // instance-wide base currency) both assign a meaning nobody chose, and the first
+                // changes retroactively when parties are detached or re-ordered.
+                var requested = source.CurrencyCode;
+                if (string.IsNullOrWhiteSpace(requested))
+                    throw new DomainValidationException(
+                        "A money-valued term on a contract must name its currency — a contract has no currency of its own to fall back to.",
+                        code: null,
+                        field: nameof(NewTerm.CurrencyCode));
 
-            // A contract has no currency of its own, so an explicit code is required. The two rejected
-            // defaulting alternatives (its first account party's currency, an instance-wide base
-            // currency) both assign a meaning nobody chose, and the first changes retroactively when
-            // parties are detached or re-ordered.
-            var requested = source.CurrencyCode;
-            if (string.IsNullOrWhiteSpace(requested))
-                throw new DomainValidationException(
-                    "A money-valued term on a contract must name its currency — a contract has no currency of its own to fall back to.",
-                    code: null,
-                    field: nameof(NewTerm.CurrencyCode));
-
-            var normalized = CurrencyValidationService.Normalize(requested);
-            await CurrencyValidationService.EnsureSupportedAndActive(context, normalized, nameof(source.CurrencyCode));
-            currencyCode = normalized;
+                var normalized = CurrencyValidationService.Normalize(requested);
+                await CurrencyValidationService.EnsureSupportedAndActive(context, normalized, nameof(source.CurrencyCode));
+                currencyCode = normalized;
+            }
         }
 
         var effectiveFrom = NormalizeToUtc(source.EffectiveFrom);
@@ -512,7 +632,9 @@ public class TermService
         // not in the series key, the duplicate guard or supersession, so two entries differing only in
         // direction are the ordinary supersession case rather than two concurrent series.
         term.Direction = direction;
-        term.Value = source.Value;
+        term.Value = value;
+        term.TextValue = textValue;
+        term.DateTimeValue = dateTimeValue;
         term.CurrencyCode = currencyCode;
         term.Interval = interval;
         term.IntervalCount = intervalCount;
@@ -520,6 +642,23 @@ public class TermService
         term.EffectiveFrom = effectiveFrom;
         term.Note = source.Note;
     }
+
+    private static DomainValidationException ShapeInvalid(string kind, string field) =>
+        new($"A {kind} term carries only its own value field; {Camel(field)} must be null.", code: null, field: field);
+
+    private static DomainValidationException NotApplicable(string kind, string field) =>
+        new(field == nameof(NewTerm.Direction)
+                ? $"direction does not apply to a {kind} term; it must be Outgoing."
+                : $"{Camel(field)} does not apply to a {kind} term.",
+            code: null,
+            field: field);
+
+    private static DomainValidationException DateTimeInvalid() =>
+        new("dateTimeValue must include a UTC offset and lie between 1900 and 2200.",
+            code: null,
+            field: nameof(NewTerm.DateTimeValue));
+
+    private static string Camel(string name) => char.ToLowerInvariant(name[0]) + name[1..];
 
     private static DateTime NormalizeToUtc(DateTime value) => value.Kind switch
     {

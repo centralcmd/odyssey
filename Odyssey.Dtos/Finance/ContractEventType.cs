@@ -13,7 +13,7 @@ public enum ContractEventType
     Extended = 3,
     NoticeGiven = 4,
     Terminated = 5,
-    PriceChanged = 6,
+    TermChanged = 6,
     EmailSent = 7,
 
     /// <summary>The catch-all and the default — a kind the eight named members do not cover, carried by the title.</summary>

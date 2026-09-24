@@ -461,7 +461,7 @@ public class ContractTermSurfaceTests
     {
         var cut = RenderDialog(Lease(), [Fee("Monthly rent", 2150m, Past(30), Interval.Monthly)]);
 
-        Assert.Contains("Pick a charge this updates", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Pick a term this updates", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal);
 
         await cut.InvokeAsync(() => cut.Find("#trm-label").InputAsync(new ChangeEventArgs { Value = "  monthly RENT " }));
         await cut.InvokeAsync(() => cut.Find("#trm-label").FocusOutAsync(new FocusEventArgs()));
@@ -470,7 +470,7 @@ public class ContractTermSurfaceTests
         cut.WaitForAssertion(() =>
         {
             var joins = cut.Find("#trm-label-help");
-            Assert.Contains("Joins the price history of", joins.TextContent, StringComparison.Ordinal);
+            Assert.Contains("Joins the history of", joins.TextContent, StringComparison.Ordinal);
             Assert.Equal("Monthly rent", joins.QuerySelector("b")!.TextContent);
             Assert.Contains("2,150.00 NOK · monthly", joins.TextContent, StringComparison.Ordinal);
         });
@@ -478,7 +478,7 @@ public class ContractTermSurfaceTests
         await cut.InvokeAsync(() => cut.Find("#trm-label").InputAsync(new ChangeEventArgs { Value = "Water" }));
         await cut.InvokeAsync(() => cut.Find("#trm-label").FocusOutAsync(new FocusEventArgs()));
         cut.WaitForAssertion(() =>
-            Assert.Contains("Starts a new charge", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal));
+            Assert.Contains("Starts a new term", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal));
     }
 
     [Theory]
@@ -517,7 +517,7 @@ public class ContractTermSurfaceTests
     {
         var cut = RenderDialog(Lease());
 
-        Assert.Contains("Pick a charge this updates", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Pick a term this updates", cut.Find("#trm-label-help").TextContent, StringComparison.Ordinal);
 
         cut.FindAll("button")
             .Single(b => b.TextContent.Contains("Create term", StringComparison.Ordinal))

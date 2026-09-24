@@ -301,9 +301,12 @@ public class TermSeriesSurfaceTests
         term.IntervalCount = interval is null ? null : 1;
         var (cut, _) = RenderDialog(Card(), [term], editing: term);
 
-        var help = System.Text.RegularExpressions.Regex.Replace(cut.Markup, "<[^>]+>", "");
+        // The innermost element holding the helper, so the line ends where the helper does rather than
+        // wherever the markup that follows it happens to break.
+        var helper = cut.FindAll("*").LastOrDefault(e => e.TextContent.Contains("Stored as a fraction: ", StringComparison.Ordinal));
+        Assert.True(helper is not null, "No fraction helper rendered.");
+        var help = helper!.TextContent;
         var at = help.IndexOf("Stored as a fraction: ", StringComparison.Ordinal);
-        Assert.True(at >= 0, "No fraction helper rendered.");
         var line = help[(at + "Stored as a fraction: ".Length)..].Split('\n')[0].Trim();
 
         Assert.Equal(expected, line);

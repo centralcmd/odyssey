@@ -67,9 +67,27 @@ public class Term : IEffectiveDated
     [Required]
     public TermDirection Direction { get; set; }
 
-    [Required]
+    /// <summary>
+    /// The numeric value. Non-null IFF <see cref="ValueUnit"/> is <see cref="TermValueUnit.Percentage"/>
+    /// or <see cref="TermValueUnit.Amount"/>; null on the two non-numeric kinds (issue #192), which is
+    /// backed up by <c>CK_Terms_ValueMatchesUnit</c>.
+    /// </summary>
     [Precision(18, 6)]
-    public decimal Value { get; set; }
+    public decimal? Value { get; set; }
+
+    /// <summary>
+    /// A <see cref="TermValueUnit.Text"/> term's value: one plain line, stored trimmed. Non-null IFF
+    /// <see cref="ValueUnit"/> is <c>Text</c>. User-supplied free text, so it never reaches the operator log.
+    /// </summary>
+    [StringLength(Odyssey.Dtos.Finance.TermTextValue.MaxLength)]
+    public string? TextValue { get; set; }
+
+    /// <summary>
+    /// A <see cref="TermValueUnit.DateTime"/> term's value: an instant, always stored as UTC. Non-null
+    /// IFF <see cref="ValueUnit"/> is <c>DateTime</c>. Stored for the record only — nothing schedules
+    /// from it.
+    /// </summary>
+    public DateTime? DateTimeValue { get; set; }
 
     [StringLength(3)]
     public string? CurrencyCode { get; set; }

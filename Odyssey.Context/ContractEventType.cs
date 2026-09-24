@@ -18,7 +18,7 @@ public enum ContractEventType
     Extended = 3,
     NoticeGiven = 4,
     Terminated = 5,
-    PriceChanged = 6,
+    TermChanged = 6,
 
     /// <summary>
     /// Correspondence the user sent about the agreement. Kept even though an event has no contact link

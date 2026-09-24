@@ -155,7 +155,9 @@ public sealed class TermExport
     public string? Label { get; init; }
     public string? LabelKey { get; init; }
     public TermValueUnit ValueUnit { get; init; }
-    public decimal Value { get; init; }
+    public decimal? Value { get; init; }
+    public string? TextValue { get; init; }
+    public DateTime? DateTimeValue { get; init; }
     public string? CurrencyCode { get; init; }
     public Interval? Interval { get; init; }
     public int? IntervalCount { get; init; }

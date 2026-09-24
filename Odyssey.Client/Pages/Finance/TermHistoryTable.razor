@@ -49,8 +49,13 @@
                                 @* The WORD beside the name, on every term and both ways round. The
                                    figure's hue is the other carrier; neither is alone, so the
                                    direction never rests on colour (WCAG 1.4.1). *@
-                                <span class="trm-row-dot" aria-hidden="true"></span>
-                                <span class="trm-dir">@TermDirectionVisuals.Info(term.Direction).Label</span>
+                                @* A Text or DateTime term records a fact, not a movement of money, so
+                                   it carries no direction word (issue #192). *@
+                                @if (TermVisuals.HasDirection(term))
+                                {
+                                    <span class="trm-row-dot" aria-hidden="true"></span>
+                                    <span class="trm-dir">@TermDirectionVisuals.Info(term.Direction).Label</span>
+                                }
                             </div>
                             @if (!string.IsNullOrWhiteSpace(term.Note))
                             {
@@ -65,12 +70,22 @@
                    SCHEDULED one draws the entry that is next as though it were already history. The
                    hierarchy is carried by the in-force row's tinted ground, its heavier figure and the
                    status cell's own words — none of which costs contrast. *@
+                @if (TermVisuals.ValueKindClass(term) is { } kindClass)
+                {
+                    @* Text is proportional and may wrap; a date-time is the viewer's local time with the
+                       offset named and its UTC instant as the tooltip. Neither has a cadence. *@
+                    <td class="trm-cell-value @kindClass"
+                        title="@(term.ValueUnit == TermValueUnit.DateTime ? TermVisuals.UtcStamp(term.DateTimeValue) : null)">@TermVisuals.FormatValue(term, FormatMoney)</td>
+                }
+                else
+                {
                 <td class="trm-cell-value" style="@ValueStyle(term)">
                     @TermVisuals.FormatValue(term, FormatMoney)@if (cadence is not null)
                     {@* The separator is an explicit string: Razor trims leading whitespace inside an
                          element, which glued "$45.00" to "every 3 months". *@
                         <span style="color:var(--mud-palette-text-secondary);font-weight:400;">@($" {cadence}")</span>}
                 </td>
+                }
                 <td>
                     @if (term.EffectiveFrom.Date > DateTime.UtcNow.Date)
                     {

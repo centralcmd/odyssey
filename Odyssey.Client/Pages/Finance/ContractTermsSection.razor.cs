@@ -85,10 +85,13 @@ public partial class ContractTermsSection
             if (_current.Count == 0) return "none in force";
 
             var incoming = _current.Count(TermVisuals.IsIncoming);
+            // Only a priced term has a direction (issue #192), so the split counts those alone: a
+            // notice period is neither incoming nor outgoing.
+            var priced = _current.Count(TermVisuals.HasDirection);
             // The split is stated only when there IS an incoming side: on a file that records costs
             // alone it would be a breakdown of one thing, which reads as noise on every contract.
             var split = incoming > 0
-                ? $" · {incoming} incoming, {_current.Count - incoming} outgoing"
+                ? $" · {incoming} incoming, {priced - incoming} outgoing"
                 : string.Empty;
 
             return $"{_current.Count} {(_current.Count == 1 ? "value" : "values")} in force{split} · {DateTime.UtcNow:MMM dd, yyyy}";
@@ -172,10 +175,38 @@ public partial class ContractTermsSection
             .Select(group => group
                 .OrderByDescending(t => t.EffectiveFrom).ThenByDescending(t => t.CreatedAtUtc)
                 .First())
-            .OrderBy(t => TermLabel.Key(t.Label) ?? "", StringComparer.Ordinal)
+            .OrderBy(t => KindOrder(t.ValueUnit))
+            .ThenBy(t => TermLabel.Key(t.Label) ?? "", StringComparer.Ordinal)
             .ToList();
         _currentIds = _current.Select(t => t.TermId).ToHashSet();
         _chartSeries = TermChartSeries.Build(_terms, asOf, FormatMoney);
+    }
+
+    /// <summary>
+    /// The tiles' order by kind (issue #192): priced terms first, then date-times, then text, so the
+    /// figures stay together. Within a kind the series' folded label decides.
+    /// </summary>
+    private static int KindOrder(TermValueUnit unit) => unit switch
+    {
+        TermValueUnit.Percentage or TermValueUnit.Amount => 0,
+        TermValueUnit.DateTime => 1,
+        TermValueUnit.Text => 2,
+        _ => 3,
+    };
+
+    /// <summary>A Text tile goes full-width past this many characters, so a clause is not ellipsized.</summary>
+    private const int WideTextThreshold = 40;
+
+    /// <summary>
+    /// A Text or DateTime tile's foot: the date it took effect and, for a date-time, how far away the
+    /// instant is. Display only — nothing is scheduled off it.
+    /// </summary>
+    private static string FactTileFoot(ExistingTerm term)
+    {
+        var since = $"since {term.EffectiveFrom:MMM dd, yyyy}";
+        return term.ValueUnit == TermValueUnit.DateTime && term.DateTimeValue is { } instant
+            ? $"{since} · {TermVisuals.Distance(instant, DateTime.UtcNow)}"
+            : since;
     }
 
     /// <summary>

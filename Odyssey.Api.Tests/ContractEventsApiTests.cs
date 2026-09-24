@@ -726,7 +726,7 @@ public class ContractEventsApiTests
     }
 
     /// <summary>
-    /// AC 17 — a <c>PriceChanged</c> event recorded by a term write is attributed to the CALLER, not
+    /// AC 17 — a <c>TermChanged</c> event recorded by a term write is attributed to the CALLER, not
     /// to a service identity. Without the §5.6 plumbing every one would read "Unknown user", which is
     /// indistinguishable from a deleted author — so the defect would look like correct behaviour.
     /// Asserted for all three verbs, over HTTP, because the claim is about the controller's plumbing.
@@ -867,7 +867,7 @@ public class ContractEventsApiTests
         HttpClient client, Guid contractId, string expected)
     {
         var page = await client.GetFromJsonAsync<PagedResult<ExistingContractEvent>>(
-            $"{Events(contractId)}?types={(int)ContractEventType.PriceChanged}&sortBy=CreatedAtUtc&sortDir=desc");
+            $"{Events(contractId)}?types={(int)ContractEventType.TermChanged}&sortBy=CreatedAtUtc&sortDir=desc");
         var latest = page!.Items[0];
         Assert.Equal(ContractEventSource.System, latest.Source);
         Assert.Equal(expected, latest.CreatedBy);

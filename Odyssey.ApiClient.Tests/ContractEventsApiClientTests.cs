@@ -49,7 +49,7 @@ public class ContractEventsApiClientTests
         await client.ListEventsAsync(
             ContractId,
             search: "rent increase",
-            types: ["EmailSent", "PriceChanged"],
+            types: ["EmailSent", "TermChanged"],
             from: new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             to: new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
             sortBy: "OccurredAt",
@@ -58,7 +58,7 @@ public class ContractEventsApiClientTests
         var query = handler.LastRequest!.RequestUri!.Query;
         Assert.Contains("search=rent%20increase", query, StringComparison.Ordinal);
         Assert.Contains("types=EmailSent", query, StringComparison.Ordinal);
-        Assert.Contains("types=PriceChanged", query, StringComparison.Ordinal);
+        Assert.Contains("types=TermChanged", query, StringComparison.Ordinal);
         Assert.Contains("from=2026-01-01", query, StringComparison.Ordinal);
         Assert.Contains("to=2026-12-31", query, StringComparison.Ordinal);
         Assert.Contains("sortBy=OccurredAt", query, StringComparison.Ordinal);

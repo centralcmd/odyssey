@@ -17,7 +17,7 @@ public enum ContractStamp
     Signed,
 }
 
-/// <summary>Which of the three term verbs a <c>PriceChanged</c> event is describing (issue #154 §8.3).</summary>
+/// <summary>Which of the three term verbs a <c>TermChanged</c> event is describing (issue #154 §8.3).</summary>
 public enum TermWriteAction
 {
     Added,
@@ -109,7 +109,7 @@ public static class ContractEventCatalogue
         new(ContractEventType.PartyRemoved, Bound($"{RoleLabel(role)} removed as a party", MaxTitleLength), null, occurredAt);
 
     /// <summary>
-    /// A term write, reusing the existing <see cref="ContractEventType.PriceChanged"/> rather than
+    /// A term write, reusing the existing <see cref="ContractEventType.TermChanged"/> rather than
     /// adding term-specific members (§2 goal 5).
     /// </summary>
     /// <remarks>
@@ -141,19 +141,36 @@ public static class ContractEventCatalogue
             : $"{TermValue(term)} effective {effective}.";
 
         return new TransitionDescriptor(
-            ContractEventType.PriceChanged,
+            ContractEventType.TermChanged,
             Bound(title, MaxTitleLength),
             Bound(description, MaxDescriptionLength),
             occurredAt);
     }
 
     /// <summary>
-    /// The term's priced value as the term API already returns it: an amount with its currency code or
-    /// a percentage, plus its fee cadence where it has one.
+    /// The term's value as the term API already returns it: an amount with its currency code or a
+    /// percentage, plus its fee cadence where it has one; a Text term's text in typographic quotes, so
+    /// it cannot be mistaken for the event's own wording; a DateTime term's instant in UTC (issue #192).
+    /// The two non-numeric kinds carry no cadence.
     /// </summary>
+    /// <remarks>
+    /// The Text value is user-supplied free text and appears here on the same basis as <c>Label</c>:
+    /// contract data behind <c>contracts.read</c>, never the operator log. The copy outlives the term —
+    /// see issue #192 §7.6 for the accepted erasure residual.
+    /// </remarks>
     private static string TermValue(Term term)
     {
-        var number = term.Value.ToString("0.######", CultureInfo.InvariantCulture);
+        switch (term.ValueUnit)
+        {
+            case TermValueUnit.Text:
+                return $"\u201C{term.TextValue}\u201D";
+            case TermValueUnit.DateTime:
+                return term.DateTimeValue is { } instant
+                    ? instant.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture)
+                    : "—";
+        }
+
+        var number = (term.Value ?? 0m).ToString("0.######", CultureInfo.InvariantCulture);
         var value = term.ValueUnit == TermValueUnit.Amount
             ? string.IsNullOrWhiteSpace(term.CurrencyCode) ? number : $"{term.CurrencyCode} {number}"
             : $"{number}%";

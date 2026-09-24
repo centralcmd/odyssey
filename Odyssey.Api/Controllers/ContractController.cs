@@ -307,7 +307,7 @@ written — re-role those parties or detach them first.")]
         [FromBody] NewTerm newTerm, CancellationToken cancellationToken = default)
     {
         // The acting user, threaded through exactly as every sibling contract write already does. Without
-        // it the PriceChanged system event this write records would read "Unknown user" — which is
+        // it the TermChanged system event this write records would read "Unknown user" — which is
         // indistinguishable from a deleted author, so the defect would look like correct behaviour
         // (issue #154 §5.6).
         var term = await termService.CreateForContract(

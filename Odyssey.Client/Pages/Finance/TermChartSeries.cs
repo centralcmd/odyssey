@@ -31,8 +31,13 @@ public static class TermChartSeries
             {
                 var entries = group.OrderBy(t => t.EffectiveFrom).ThenBy(t => t.CreatedAtUtc).ToList();
                 var inForce = entries.LastOrDefault(t => t.EffectiveFrom.Date <= asOf) ?? entries[0];
-                return (Latest: entries[^1].EffectiveFrom, Series: ToSeries(group.Key, entries, inForce, formatMoney));
+                return (Latest: entries[^1].EffectiveFrom, InForce: inForce, Entries: entries, Key: group.Key);
             })
+            // Only a series whose entry IN FORCE is a number plots (issue #192): a notice period has no
+            // axis, and a service charge that became "Included in the rent" is no longer a price. Its
+            // numeric past stays in the history table.
+            .Where(x => TermVisuals.IsNumeric(x.InForce) && x.InForce.Value is not null)
+            .Select(x => (x.Latest, Series: ToSeries(x.Key, x.Entries, x.InForce, formatMoney)))
             .OrderByDescending(x => x.Latest)
             .Select(x => x.Series)
             .ToList();
@@ -60,10 +65,13 @@ public static class TermChartSeries
             // its name (the series key is the label, as on the server) but only the entries
             // measured like the one in force are plotted: an axis cannot read EUR and USD at once,
             // and joining them would draw a currency change as a price move.
+            // An entry with no number — a Text or DateTime entry in this series' history — is SKIPPED,
+            // never drawn as 0.
             Points = entries
                 .Where(t => t.ValueUnit == inForce.ValueUnit
+                            && t.Value is not null
                             && (pct || string.Equals(t.CurrencyCode, currency, StringComparison.OrdinalIgnoreCase)))
-                .Select(t => new OdsStepPoint(DateOnly.FromDateTime(t.EffectiveFrom), t.Value) { Id = t.TermId.ToString() })
+                .Select(t => new OdsStepPoint(DateOnly.FromDateTime(t.EffectiveFrom), t.Value!.Value) { Id = t.TermId.ToString() })
                 .ToList(),
             Format = pct
                 ? v => (v < 0 ? "−" : "") + TermVisuals.PctStr(Math.Abs(v))

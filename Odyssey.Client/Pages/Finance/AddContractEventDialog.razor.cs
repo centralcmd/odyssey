@@ -89,7 +89,7 @@ public partial class AddContractEventDialog
         // Stated on the row that would otherwise mislead: an event is a record, never a mutation of
         // the contract's derived status (§4.2).
         ContractEventType.Terminated => "The agreement was brought to an end. This does not change the contract's status.",
-        ContractEventType.PriceChanged => "What the agreement costs was renegotiated or re-set.",
+        ContractEventType.TermChanged => "A term of the agreement (a price, rate, date or clause) was set or changed.",
         ContractEventType.EmailSent => "Correspondence you sent about the agreement. Name the recipient in the title or description.",
         // ── The nine automation members (issue #154) ──────────────────────────────
         ContractEventType.Paused => "The contract was paused. Recording this by hand does not pause anything.",
@@ -136,7 +136,7 @@ public partial class AddContractEventDialog
     private string AutoClause => Event?.Type switch
     {
         ContractEventType.Signed => "the contract was marked signed",
-        ContractEventType.PriceChanged => "the agreement was re-priced",
+        ContractEventType.TermChanged => "a term of the agreement was changed",
         ContractEventType.Paused => "the contract was paused",
         ContractEventType.Unpaused => "the contract was resumed",
         ContractEventType.Ready => "the contract was marked ready",

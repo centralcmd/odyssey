@@ -253,6 +253,8 @@ public sealed class DataExportService
                 LabelKey = term.LabelKey,
                 ValueUnit = (FinanceDtos.TermValueUnit)term.ValueUnit,
                 Value = term.Value,
+                TextValue = term.TextValue,
+                DateTimeValue = term.DateTimeValue,
                 CurrencyCode = term.CurrencyCode,
                 Interval = (FinanceDtos.Interval?)term.Interval,
                 IntervalCount = term.IntervalCount,

@@ -251,7 +251,7 @@ public class ContractEventServiceTests
     {
         var contractId = await SeedContractAsync();
         var service = CreateService();
-        var created = await service.CreateAsync(contractId, New(type: DtoContractEventType.PriceChanged), "user-jane");
+        var created = await service.CreateAsync(contractId, New(type: DtoContractEventType.TermChanged), "user-jane");
 
         var updated = await service.UpdateAsync(
             contractId, created!.Event.ContractEventId, Update(title: "Just the title now"));
