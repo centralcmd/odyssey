@@ -5,6 +5,38 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.0](https://github.com/centralcmd/odyssey/compare/v0.33.0...v0.34.0) (2026-09-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** POST/PUT of a term with TermKind other than Fee is a 400, and ExistingAccount no longer carries CurrentInterestRate or CurrentInterestRateKind.
+* /api/insurance-policies is removed, along with the insurance.create/read/update/delete claims and the InsuranceExpiringSoonWindowDays, InsuranceMaxSummaryPolicies, InsuranceMaxRenewalsPerPolicy, InsuranceMaxFilesPerParent and InsuranceMaxLinksPerPolicy settings. DELETE /api/contacts/{id} renames its detach flag to detachBlockingLinks and no longer reports an insuranceLinks extension. The data export no longer emits the seven insurance tables.
+* /api/subscriptions is removed, along with the subscriptions.create/read/update/delete claims and the SubscriptionRenewalWindowDays, SubscriptionMaxSummaryRenewals and SubscriptionMaxSummarySubscriptions settings. The data export no longer emits a Subscriptions table.
+
+### Features
+
+* **client:** sync account contracts and party view to the design system ([#186](https://github.com/centralcmd/odyssey/issues/186)) ([50eb76c](https://github.com/centralcmd/odyssey/commit/50eb76c2fdc5107ea4500c78a2b060c6e326c55d))
+* **client:** sync term surfaces to the kindless design system ([#185](https://github.com/centralcmd/odyssey/issues/185)) ([4f1074f](https://github.com/centralcmd/odyssey/commit/4f1074fbadb2c05e69b280149bed6b6ba2daacfb))
+* contract reference number (backend + frontend) ([#183](https://github.com/centralcmd/odyssey/issues/183)) ([3622b9e](https://github.com/centralcmd/odyssey/commit/3622b9ef745b23e9b5f7713d8cbbc00250a3e20a))
+* **core:** add deposit contract type with depositor and custodian roles ([#188](https://github.com/centralcmd/odyssey/issues/188)) ([adcb971](https://github.com/centralcmd/odyssey/commit/adcb97161823a558b5b9ea3982f60c7f653c4d9f))
+* **core:** fold rate term kinds into fees and remove TermKind ([#184](https://github.com/centralcmd/odyssey/issues/184)) ([439691c](https://github.com/centralcmd/odyssey/commit/439691c4e4d5478b32680763030450832eb3b559))
+* remove the standalone insurance policy feature ([#180](https://github.com/centralcmd/odyssey/issues/180)) ([d1a0aa5](https://github.com/centralcmd/odyssey/commit/d1a0aa5fd9a93be09185f0eb6c252441078ceb9f))
+* remove the standalone subscriptions feature ([#176](https://github.com/centralcmd/odyssey/issues/176)) ([27f62de](https://github.com/centralcmd/odyssey/commit/27f62dedc58383ee2755c973c9601f3f10b3df24))
+* sync contract terms chart, name picker and rate direction to the design system ([#182](https://github.com/centralcmd/odyssey/issues/182)) ([afb91fb](https://github.com/centralcmd/odyssey/commit/afb91fb73687a765c1af3c48376f48ffdc0bb799))
+
+
+### Documentation
+
+* update design system ([fabd3d2](https://github.com/centralcmd/odyssey/commit/fabd3d28f7fa61e41da151becbe2f0944a852752))
+* update design system ([aa6ab17](https://github.com/centralcmd/odyssey/commit/aa6ab17e5643d1af3d5cbc2c78c7e4d0d4d50dca))
+* update design system ([aeeb3ce](https://github.com/centralcmd/odyssey/commit/aeeb3ce214f321e4da7d1fecade209e85790f93b))
+* update design system ([bb6b2fc](https://github.com/centralcmd/odyssey/commit/bb6b2fcd2a64daec6f4069e9aad23409ffeb900a))
+* update design system ([0468094](https://github.com/centralcmd/odyssey/commit/04680941f11c6ad395d8cb030be493e494c965ee))
+* update design system ([3105a09](https://github.com/centralcmd/odyssey/commit/3105a09d70e9a3a01c38cd753c69e6d4382eb7ba))
+* update design system ([654badd](https://github.com/centralcmd/odyssey/commit/654badd14579fcec80b2b4f4f09efa7845dee285))
+* update design system ([3677683](https://github.com/centralcmd/odyssey/commit/3677683bc85231c5847332a67efd67b669d15ae4))
+
 ## [0.33.0](https://github.com/centralcmd/odyssey/compare/v0.32.1...v0.33.0) (2026-09-21)
 
 
