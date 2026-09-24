@@ -204,8 +204,11 @@ public class MoveAccountTermsMigrationTests(MariaDbFixture fixture)
             await using (var context = NewContext())
             {
                 await MigrationSeam.MigrateToAsync(context, Baseline);
+                // A cap of 2: the capped contract lands EXACTLY on it (one existing + one moved term),
+                // the boundary at which TermService already refuses a create, while every other
+                // reused contract stays one below it and must carry no A10.
                 await context.Database.ExecuteSqlRawAsync(
-                    "UPDATE `SystemSettings` SET `Value` = '1' WHERE `Key` = 'ContractMaxTermsPerContract'");
+                    "UPDATE `SystemSettings` SET `Value` = '2' WHERE `Key` = 'ContractMaxTermsPerContract'");
 
                 foreach (var (id, name) in new[]
                          {

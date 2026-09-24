@@ -166,7 +166,8 @@ namespace Odyssey.Context.Migrations
 
             // 1d — Flag inputs, read from the PRE-MOVE state, for every row whose event is not written
             // yet. A10 counts every term that will sit on a reused contract, other accounts' included,
-            // against the stored cap — only a plain number is read (a CAST of anything else warns, and a
+            // against the stored cap with `>=` — the boundary TermService refuses a create at, so a
+            // contract landing exactly ON the cap is flagged too — only a plain number is read (a CAST of anything else warns, and a
             // warning in an UPDATE is an error under strict mode); otherwise the shipped default of 500.
             migrationBuilder.Sql($"""
                 UPDATE {Staging} m
@@ -188,7 +189,7 @@ namespace Odyssey.Context.Migrations
                              + (SELECT COUNT(*) FROM `Terms` t
                                   JOIN {Staging} o ON o.`AccountId` = t.`AccountId`
                                  WHERE o.`TargetContractId` = m.`TargetContractId`)
-                             > COALESCE((SELECT CAST(s.`Value` AS UNSIGNED) FROM `SystemSettings` s
+                             >= COALESCE((SELECT CAST(s.`Value` AS UNSIGNED) FROM `SystemSettings` s
                                           WHERE s.`Key` = 'ContractMaxTermsPerContract'
                                             AND s.`Value` REGEXP '^[0-9]+$' AND CHAR_LENGTH(s.`Value`) <= 9), 500),
                        m.`A8Count` =
