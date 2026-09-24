@@ -64,7 +64,10 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
   a denomination it is not in. The one place a symbol still belongs is the Currency admin record,
   where `Symbol` is a stored field being edited.
 - **Deliberate exception:** the picker `oklch(...)` literals mirror the design system on purpose and
-  are **not** tokenized. Don't "fix" them.
+  are **not** tokenized. Don't "fix" them. The exception covers a **glyph on its soft ground** only:
+  those hues sit at L ≈ 0.77 and read ~2:1 on the light theme, so where one becomes **text or a chart
+  line** it goes through a per-theme ink token instead (`--term-percentage-ink` /
+  `--term-amount-ink`, surfaced as `TermInfo.Ink`; `TermInkContrastTests` computes the ratio).
 - **An unavailable action is ABSENT from a menu, never dimmed.** `OdsMenuItem.Disabled` makes
   `OdsMenu` skip the item entirely, along with any divider or header the omission orphans — there is
   no `Description`/note property any more, and no disabled-item styling to reach for. Where the user

@@ -123,15 +123,27 @@ public class TermSeriesSurfaceTests
         Assert.Null(tile.QuerySelector(".trm-kind-caption"));
     }
 
+    /// <summary>
+    /// The account surface leads with the same series chart a contract's history has (design system
+    /// aeeb3ce) — one per labelled series, opening on the one whose latest entry is the most recent. A
+    /// term named "Interest rate" is a series like any other: there is no headline-rate hero.
+    /// </summary>
     [Fact]
-    public void The_section_draws_no_rate_chart()
+    public void The_section_leads_with_the_series_chart_opening_on_the_latest_change()
     {
-        // The headline rate and its step chart are withdrawn until they are reintroduced on a new
-        // basis; a term named "Interest rate" renders like any other term.
-        var cut = RenderSection(Card(), [Fee("Interest rate", 0.2249m, Past(30))]);
+        var rate = Fee("Interest rate", 0.0385m, Past(400));
+        rate.ValueUnit = TermValueUnit.Percentage;
+        rate.CurrencyCode = null;
+        var cut = RenderSection(Card(), [
+            rate,
+            Fee("Annual card fee", 95m, Past(400)),
+            Fee("Annual card fee", 120m, Past(20)),
+        ]);
 
+        Assert.Single(cut.FindAll(".odc-thc.trm-seriesplot"));
+        var legend = Assert.Single(cut.FindAll(".odc-sc-leg"));
+        Assert.Contains("Annual card fee", legend.TextContent, StringComparison.Ordinal);
         Assert.Empty(cut.FindAll(".trm-hero"));
-        Assert.Empty(cut.FindAll("svg.trm-chart"));
     }
 
     [Fact]
@@ -422,6 +434,30 @@ public class TermSeriesSurfaceTests
             It.IsAny<Guid>(),
             It.Is<NewTerm>(t => t.Interval == Interval.Monthly && t.IntervalCount == TermIntervalCount.Min),
             It.IsAny<CancellationToken>()));
+    }
+
+    /// <summary>
+    /// A percentage's helper names its cadence after the stored fraction — the same words the echo and
+    /// the tiles use — and names none when the term has no cadence.
+    /// </summary>
+    [Theory]
+    [InlineData(Interval.Annually, "0.0500 · annually")]
+    [InlineData(null, "0.0500")]
+    public void The_percentage_helper_carries_the_cadence_when_there_is_one(Interval? interval, string expected)
+    {
+        var term = Fee("Management fee", 0.05m, Past(30));
+        term.ValueUnit = TermValueUnit.Percentage;
+        term.CurrencyCode = null;
+        term.Interval = interval;
+        term.IntervalCount = interval is null ? null : 1;
+        var (cut, _) = RenderDialog(Card(), [term], editing: term);
+
+        var help = System.Text.RegularExpressions.Regex.Replace(cut.Markup, "<[^>]+>", "");
+        var at = help.IndexOf("Stored as a fraction: ", StringComparison.Ordinal);
+        Assert.True(at >= 0, "No fraction helper rendered.");
+        var line = help[(at + "Stored as a fraction: ".Length)..].Split('\n')[0].Trim();
+
+        Assert.Equal(expected, line);
     }
 
     /// <summary>The echo's text, or null when it is not rendered.</summary>

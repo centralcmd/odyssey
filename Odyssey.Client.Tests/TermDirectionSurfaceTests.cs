@@ -153,7 +153,7 @@ public class TermDirectionSurfaceTests
 
         var onAccount = Fee(TermDirection.Incoming, onContract: false);
         Assert.Null(TermVisuals.DirectionColor(onAccount));
-        Assert.Equal(TermVisuals.Info(onAccount).Color, TermVisuals.ValueColor(onAccount));
+        Assert.Equal(TermVisuals.Info(onAccount).Ink, TermVisuals.ValueColor(onAccount));
         Assert.Equal((TermVisuals.Info(onAccount).Color, TermVisuals.Info(onAccount).Soft), TermVisuals.IconColors(onAccount));
     }
 
