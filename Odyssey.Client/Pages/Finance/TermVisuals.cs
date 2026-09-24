@@ -4,13 +4,15 @@ using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
 
-/// <summary>How a term renders everywhere — the summary tiles, the history table and the
-/// create/edit dialog — so a term reads identically across the surface. Every term is one labelled
-/// series; there is no kind taxonomy left to pick a glyph or hue from, so there is one of each. The hue
-/// is the design system's former fee hue, a deliberate oklch literal in the shared categorical band
-/// (L~0.74–0.80) chosen to read in both light and dark themes, so — like the other type registries
-/// (account / file / contact) — it is NOT tokenized.</summary>
-public sealed record TermInfo(string Label, string Icon, string Color, string Soft);
+/// <summary>How a term renders everywhere — the summary tiles, the history table, the chart and the
+/// create/edit dialog — so a term reads identically across the surface. There is no kind taxonomy: the
+/// glyph and hue follow the term's <see cref="TermValueUnit"/>, so a rate and a price still read apart
+/// at a glance (the design system's <c>OdysseyData.termUnits</c>). The hues are deliberate oklch
+/// literals in the shared categorical band (L~0.74–0.80) chosen to read in both light and dark themes,
+/// so — like the other type registries (account / file / contact) — they are NOT tokenized.</summary>
+/// <param name="Ink">The hue where it is TEXT or a chart line — a per-theme token that clears the WCAG
+/// contrast floors in light mode, where <paramref name="Color"/> (the glyph's hue) does not.</param>
+public sealed record TermInfo(string Label, string Icon, string Color, string Soft, string Ink);
 
 /// <summary>
 /// Display context for an <see cref="Interval"/> — the picker label, whether the unit is
@@ -28,9 +30,21 @@ public sealed record IntervalInfo(string Label, bool Periodic, string Adverb, st
 
 public static class TermVisuals
 {
-    /// <summary>The one glyph, hue and noun every term renders with.</summary>
-    public static readonly TermInfo Info =
-        new("Term", "receipt_long", "oklch(0.77 0.14 55)", "oklch(0.77 0.14 55 / 0.15)");
+    /// <summary>What an unnamed term reads as — only a row predating the required label.</summary>
+    public const string DefaultName = "Term";
+
+    private static readonly TermInfo PercentageInfo =
+        new("Percentage", "percent", "oklch(0.78 0.13 200)", "oklch(0.78 0.13 200 / 0.15)", "var(--term-percentage-ink)");
+
+    private static readonly TermInfo AmountInfo =
+        new("Amount", "payments", "oklch(0.77 0.14 55)", "oklch(0.77 0.14 55 / 0.15)", "var(--term-amount-ink)");
+
+    /// <summary>The glyph and hue for a unit. An undefined value reads as an amount, the default unit.</summary>
+    public static TermInfo UnitInfo(TermValueUnit unit) =>
+        unit == TermValueUnit.Percentage ? PercentageInfo : AmountInfo;
+
+    /// <summary>The glyph and hue a term renders with — its unit's.</summary>
+    public static TermInfo Info(ExistingTerm term) => UnitInfo(term.ValueUnit);
 
     /// <summary>
     /// The cadence units, in READING order rather than ordinal order — the occasions first, then the
@@ -102,7 +116,7 @@ public static class TermVisuals
     /// <summary>What a term is CALLED: its own label. Every term carries one; a row predating that
     /// rule reads as the plain noun rather than as blank.</summary>
     public static string DisplayName(ExistingTerm term) =>
-        TermLabel.Normalize(term.Label) ?? Info.Label;
+        TermLabel.Normalize(term.Label) ?? DefaultName;
 
     /// <summary>0.0340 → "3.40%", 0.0003 → "0.03%" (trailing zeros trimmed above 1%).</summary>
     public static string PctStr(decimal frac)
@@ -161,12 +175,26 @@ public static class TermVisuals
         DirectionApplies(term) && term.Direction == TermDirection.Incoming;
 
     /// <summary>
-    /// Mint wherever an INCOMING term's own value is printed; <c>null</c> everywhere else, so every
-    /// surface keeps the colour it already had and nothing that existed before this field changes
-    /// appearance.
+    /// The finance hue of the term's direction wherever direction is stated — coral out, mint in, on
+    /// every contract term — and <c>null</c> on an account term, which keeps its unit hue. One helper,
+    /// so the tiles, the table rows and the chart cannot disagree about which figure is which colour.
     /// </summary>
     public static string? DirectionColor(ExistingTerm term) =>
-        IsIncoming(term) ? "var(--finance-income)" : null;
+        DirectionApplies(term) ? TermDirectionVisuals.Info(term.Direction).Color : null;
+
+    /// <summary>The soft ground behind a directed term's glyph; <c>null</c> where direction does not
+    /// apply.</summary>
+    public static string? DirectionSoft(ExistingTerm term) =>
+        DirectionApplies(term) ? TermDirectionVisuals.Info(term.Direction).Soft : null;
+
+    /// <summary>The figure's colour: its direction's hue where one is stated, else its unit's text ink.</summary>
+    public static string ValueColor(ExistingTerm term) => DirectionColor(term) ?? Info(term).Ink;
+
+    /// <summary>The glyph's colour and ground — the direction's where one is stated, else the unit's.</summary>
+    public static (string Color, string Soft) IconColors(ExistingTerm term) =>
+        DirectionApplies(term)
+            ? (DirectionColor(term)!, DirectionSoft(term)!)
+            : (Info(term).Color, Info(term).Soft);
 }
 
 /// <summary>
@@ -182,6 +210,9 @@ public sealed record TermDirectionInfo(string Label, string Short, string Senten
 {
     /// <summary>The colour of this side's figures.</summary>
     public string Color => Tone == "income" ? "var(--finance-income)" : "var(--finance-expense)";
+
+    /// <summary>The soft ground behind a glyph in this side's hue.</summary>
+    public string Soft => Tone == "income" ? "var(--finance-income-soft)" : "var(--finance-expense-soft)";
 }
 
 /// <summary>

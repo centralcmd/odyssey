@@ -20,8 +20,8 @@ public sealed record NavPage(string Key, string Label, string Icon, string Href,
 
 /// <summary>An optionally-labelled group of pages inside a module (Finance is sub-grouped; others are flat).
 /// <paramref name="NoDivider"/> suppresses the hairline the rail draws above a group — the design system
-/// runs Finance's Reference pages straight on from Documents rather than splitting a nine-button rail four
-/// ways.</summary>
+/// runs Finance's Commitments straight on from Money, and its Reference pages straight on from Documents,
+/// rather than splitting a nine-button rail four ways.</summary>
 public sealed record NavGroup(string? Label, IReadOnlyList<NavPage> Items, bool NoDivider = false);
 
 /// <summary>A top-level module shown in the rail's switcher.</summary>
@@ -53,9 +53,9 @@ public static class NavModel
             ]),
             new("Commitments",
             [
-                new("tax-statements", "Tax Statements", "request_quote", "tax-statements", PermissionClaims.TaxesRead),
                 new("contracts", "Contracts", "handshake", "contracts", PermissionClaims.ContractsRead),
-            ]),
+                new("tax-statements", "Tax Statements", "request_quote", "tax-statements", PermissionClaims.TaxesRead),
+            ], NoDivider: true),
             new("Documents",
             [
                 new("files", "Files", "folder", "files", PermissionClaims.FilesRead),

@@ -226,11 +226,11 @@ public partial class AddTermDialog
             if (IsPeriodicInterval || SelectedInterval is not { } interval || interval == Interval.OneTime)
                 return null;
 
-            var charged = $"Charged {TermVisuals.InfoFor(interval)!.Adverb}";
+            var applies = $"Applies {TermVisuals.InfoFor(interval)!.Adverb}";
 
             return interval == Interval.PerUnit
-                ? $"{charged} — name the unit in the term\u2019s name, e.g. \u201cCustody \u00b7 per share\u201d"
-                : charged;
+                ? $"{applies} — name the unit in the term\u2019s name, e.g. \u201cCustody \u00b7 per share\u201d"
+                : applies;
         }
     }
 
@@ -461,7 +461,7 @@ public partial class AddTermDialog
         else if (IsPercentage)
         {
             if (raw < -100m || raw > 100m)
-                _errors["value"] = "Rate must be between −100% and 100%.";
+                _errors["value"] = "Must be between −100% and 100%.";
         }
         else if (raw < 0m)
         {
@@ -490,9 +490,7 @@ public partial class AddTermDialog
         var label = TermLabel.Normalize(_label);
         if (label is null)
         {
-            _errors["label"] = IsContractOwner
-                ? "Name this charge so it keeps its own history."
-                : "Name this term so it keeps its own history.";
+            _errors["label"] = "Name this term so it keeps its own history.";
         }
         else if (label is { Length: > TermLabel.MaxLength })
             _errors["label"] = $"Keep the name under {TermLabel.MaxLength} characters.";

@@ -23,8 +23,8 @@
     reader looks for actions on this record — so "New term" is passed in from the host.
 
     Three things are contract-specific, and each is drawn rather than assumed:
-      • Kind eligibility — Fee and InterestRate on every ContractType; ExpectedReturn is refused.
-        Handled in the dialog.
+      • Direction — every contract term states which way its money moves, in words and in the
+        finance hue of its side, on the tiles, the history rows and the chart alike.
       • Archiving changes NOTHING here: an archived contract still records and edits terms, and keeps
         its per-row controls. Archival hides a contract from the default list; the final rent or the
         closing fee is exactly what gets recorded after an agreement has ended.
@@ -58,7 +58,7 @@
             @foreach (var t in _current)
             {
                 var term = t;
-                var info = TermVisuals.Info;
+                var info = TermVisuals.Info(term);
                 @* The cadence is what separates a 2,150 monthly rent from a 2,150 one-off, so it
                    rides in the foot beside the date. From the one helper every surface reads. *@
                 var cadence = TermVisuals.CadenceText(term);
@@ -69,10 +69,11 @@
                    from–to dates. There is room there for the whole word, so it reads "Incoming". *@
                 var directed = TermVisuals.DirectionApplies(term);
                 var direction = TermDirectionVisuals.Info(term.Direction);
-                var valueColor = TermVisuals.DirectionColor(term) ?? info.Color;
+                var valueColor = TermVisuals.ValueColor(term);
+                var (iconColor, iconSoft) = TermVisuals.IconColors(term);
                 <OdsInfoTile @key="term.TermId"
                              Class="@(directed ? "trm-dir-tile" : null)"
-                             Icon="@info.Icon" IconColor="@info.Color" IconSoft="@info.Soft"
+                             Icon="@info.Icon" IconColor="@iconColor" IconSoft="@iconSoft"
                              ValueVariant="OdsInfoTileVariant.Text"
                              Foot="@OdsInfoTile.Caption(TileFoot(term, cadence))">
                     <LabelContent>

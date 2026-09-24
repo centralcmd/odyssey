@@ -133,10 +133,20 @@ public class NavModelTests
             Assert.True(reference.NoDivider);
         }
 
+        // Commitments runs straight on from Money too (design-system AppShell).
+        Assert.True(NavModel.VisibleGroups(Module("finance"), Admin).Single(g => g.Label == "Commitments").NoDivider);
+
         // And it is not simply true everywhere: the groups that DO earn a divider still declare one.
         var groups = NavModel.VisibleGroups(Module("finance"), Admin);
-        Assert.All(groups.Where(g => g.Label != "Reference"), g => Assert.False(g.NoDivider));
+        Assert.All(groups.Where(g => g.Label is not ("Reference" or "Commitments")), g => Assert.False(g.NoDivider));
     }
+
+    /// <summary>Contracts leads the Commitments group, ahead of Tax Statements (design-system AppShell).</summary>
+    [Fact]
+    public void Commitments_lists_contracts_before_tax_statements() =>
+        Assert.Equal(
+            ["contracts", "tax-statements"],
+            NavModel.VisibleGroups(Module("finance"), Admin).Single(g => g.Label == "Commitments").Items.Select(p => p.Key));
 
     [Fact]
     public void Contacts_page_is_gated_by_ContactsRead()

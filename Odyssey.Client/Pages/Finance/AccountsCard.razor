@@ -251,15 +251,15 @@
                                     }
                                     @foreach (var term in account.CurrentTerms)
                                     {
-                                        var info = TermVisuals.Info;
                                         var asTerm = ToTerm(account, term);
+                                        var info = TermVisuals.Info(asTerm);
                                         @* A term is NAMED by its label — so six fees read as six
                                            distinct tiles, in text, rather than six identical ones. *@
                                         <OdsInfoTile Icon="@info.Icon" IconColor="@info.Color" IconSoft="@info.Soft"
                                                      Label="@TermVisuals.DisplayName(asTerm)"
                                                      Foot="@OdsInfoTile.Caption(TermFoot(asTerm))">
                                             <Value>
-                                                <span style="color:@info.Color;">
+                                                <span style="color:@info.Ink;">
                                                     @TermVisuals.FormatValue(asTerm, FormatMoney)
                                                 </span>
                                             </Value>

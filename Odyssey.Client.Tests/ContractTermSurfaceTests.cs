@@ -395,7 +395,7 @@ public class ContractTermSurfaceTests
             eur,
         };
 
-        var series = ContractTermsSection.BuildChartSeries(
+        var series = TermChartSeries.Build(
             terms, DateTime.UtcNow.Date, (v, c) => $"{v.ToString("0.##", CultureInfo.InvariantCulture)} {c}");
 
         // The rent's latest entry is scheduled, so it leads — but it STATES the entry in force.
@@ -501,7 +501,7 @@ public class ContractTermSurfaceTests
         old.CurrencyCode = "EUR";
         var terms = new List<ExistingTerm> { old, Fee("Licence", 1200m, Past(30), Interval.Annually) };
 
-        var series = Assert.Single(ContractTermsSection.BuildChartSeries(
+        var series = Assert.Single(TermChartSeries.Build(
             terms, DateTime.UtcNow.Date, (v, c) => $"{v} {c}"));
 
         Assert.Equal("amt:NOK", series.Group);
@@ -525,7 +525,7 @@ public class ContractTermSurfaceTests
             .Click();
 
         var described = cut.Find("#trm-label-help");
-        Assert.Contains("Name this charge", described.TextContent, StringComparison.Ordinal);
+        Assert.Contains("Name this term", described.TextContent, StringComparison.Ordinal);
         Assert.Empty(cut.FindAll("#trm-label-help-error"));
     }
 
