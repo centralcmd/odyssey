@@ -5,6 +5,25 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0](https://github.com/centralcmd/odyssey/compare/v0.34.0...v0.35.0) (2026-09-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** `value` on the term wire shapes is now nullable and `valueUnit` has two new members (Text = 2, DateTime = 3).
+* **core:** /api/accounts/{accountId}/terms* return 404; ExistingAccount loses termCount/currentTerms, ExistingTerm loses accountId and TermExport loses accountId; Guest can no longer read these terms.
+
+### Features
+
+* **core:** move account terms onto contracts ([#191](https://github.com/centralcmd/odyssey/issues/191)) ([318a11c](https://github.com/centralcmd/odyssey/commit/318a11c6e0d8e82e346d040568466685dec8e975))
+* **core:** text and date-time contract terms ([#194](https://github.com/centralcmd/odyssey/issues/194)) ([441cc0f](https://github.com/centralcmd/odyssey/commit/441cc0f489dc80cfe32bee59f884d57e33e28208))
+
+
+### Documentation
+
+* update design system ([6622017](https://github.com/centralcmd/odyssey/commit/6622017e6d57526dc7001321f3ea8eb483213dde))
+* update design system ([a678e81](https://github.com/centralcmd/odyssey/commit/a678e81c02500af1b9fb530a412b4b7402e14ad6))
+
 ## [0.34.0](https://github.com/centralcmd/odyssey/compare/v0.33.0...v0.34.0) (2026-09-24)
 
 
