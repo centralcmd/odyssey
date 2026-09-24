@@ -108,7 +108,7 @@
   const JSX = [
     'Components.jsx', 'profile-fields.jsx', 'AppShell.jsx', 'Login.jsx', 'ForgotPassword.jsx', 'ResetPassword.jsx', 'ChangePasswordRequired.jsx', 'Onboarding.jsx', 'Dashboard.jsx',
     'AddAccountModal.jsx', 'AddFileModal.jsx', 'FileViewerModal.jsx', 'AnalyzeFileModal.jsx',
-    'AddTransactionModal.jsx', 'AddTermModal.jsx', 'AccountTerms.jsx',
+    'AddTransactionModal.jsx', 'AccountTerms.jsx',
     'AddEstimateModal.jsx', 'AccountEstimates.jsx', 'Accounts.jsx',
     'Files.jsx', 'Transactions.jsx', 'TransactionTags.jsx', 'ContactAvatarDialog.jsx', 'ContactImportModal.jsx', 'Contacts.jsx',
     'Currencies.jsx', 'ExchangeRates.jsx', 'AddBudgetModal.jsx', 'AddBudgetItemModal.jsx',

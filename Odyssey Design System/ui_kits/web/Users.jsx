@@ -23,7 +23,6 @@
    declares them. */
 const UA_CATEGORIES = [
   { cat: 'accounts',            icon: 'account_balance_wallet', actions: ['create', 'read', 'update', 'delete'] },
-  { cat: 'accounts.terms',      icon: 'percent',                actions: ['read', 'write'] },
   { cat: 'accounts.estimates',  icon: 'query_stats',            actions: ['read', 'write'] },
   { cat: 'budgets',             icon: 'pie_chart',              actions: ['create', 'read', 'update', 'delete'] },
   { cat: 'transactions',        icon: 'receipt_long',           actions: ['create', 'read', 'update', 'delete'] },
@@ -64,7 +63,7 @@ const UA_ROLES = [
     !v.startsWith('users.') && v !== 'data.export' && v !== 'files.export-all' && v !== 'file-analysis.audit') },
   // User = day-to-day finance work + full Journal/Tasks module. Mirrors UserClaims.
   { name: 'User', permissions: [
-    'accounts.read', 'accounts.terms.read', 'accounts.estimates.read',
+    'accounts.read', 'accounts.estimates.read',
     'budgets.read',
     'transactions.create', 'transactions.read', 'transactions.update', 'transactions.delete',
     'transactions.tags.read',
@@ -81,7 +80,7 @@ const UA_ROLES = [
   // Guest = read-only finance data + personal preferences. Mirrors GuestClaims
   // (no Journal/Tasks module, no file-analysis, no contracts).
   { name: 'Guest', permissions: [
-    'accounts.read', 'accounts.terms.read', 'accounts.estimates.read',
+    'accounts.read', 'accounts.estimates.read',
     'budgets.read', 'transactions.read', 'transactions.tags.read',
     'contacts.read', 'currencies.read', 'exchangerates.read',
     'user-preferences.create', 'user-preferences.read', 'user-preferences.update', 'user-preferences.delete',

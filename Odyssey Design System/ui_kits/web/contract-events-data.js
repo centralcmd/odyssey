@@ -136,6 +136,22 @@
       { id: 'cev-s3s', contractId: 'ct-solar', source: 'system', type: 'PartyRemoved', title: 'Helen Voss removed as a party', description: 'Removed from the agreement at completion.', notes: null, occurredAt: '2025-10-31T12:04:00Z', createdByUserId: 'u-sam', createdAtUtc: '2025-10-31T12:04:00Z' },
       { id: 'cev-s4s', contractId: 'ct-solar', source: 'system', type: 'Archived', title: 'Contract archived', description: 'Archived after the property sale completed.', notes: null, occurredAt: '2025-11-06T09:15:00Z', createdByUserId: 'u-sam', createdAtUtc: '2025-11-06T09:15:00Z' },
     ],
+    /* The migration's attention records (MoveAccountTermsToContracts §3.5):
+       one system Other event per contract it created or moved terms onto.
+       Server-authored, one line per flag code; editable and deletable like any
+       system row — a to-do, not an audit record. */
+    'ct-deposit': [
+      { id: 'cev-mig-dep', contractId: 'ct-deposit', source: 'system', type: 'Other', title: 'Terms migrated from account "Ally Savings"', description: 'A8 (5): Interest rate\nA14 (1): Cash handling · branch\nA15 (1): Ally Savings', notes: null, occurredAt: '2026-09-24T06:00:00Z', createdByUserId: null, createdAtUtc: '2026-09-24T06:00:00Z' },
+    ],
+    'ct-auto-loan': [
+      { id: 'cev-mig-loan', contractId: 'ct-auto-loan', source: 'system', type: 'Other', title: 'Terms migrated from account "Citi Auto Loan"', description: 'A15 (1): Citi Auto Loan', notes: null, occurredAt: '2026-09-24T06:00:00Z', createdByUserId: null, createdAtUtc: '2026-09-24T06:00:00Z' },
+    ],
+    'ct-mig-amex': [
+      { id: 'cev-mig-amex', contractId: 'ct-mig-amex', source: 'system', type: 'Other', title: 'Terms migrated from account "Amex Platinum"', description: 'A1 (1): Amex Platinum\nA6 (1): 3782 822463 55121\nA14 (3): Annual card fee, Paper statement, Account maintenance', notes: null, occurredAt: '2026-09-24T06:00:00Z', createdByUserId: null, createdAtUtc: '2026-09-24T06:00:00Z' },
+    ],
+    'ct-mig-vanguard': [
+      { id: 'cev-mig-vg', contractId: 'ct-mig-vanguard', source: 'system', type: 'Other', title: 'Terms migrated from account "Vanguard Brokerage"', description: 'A1 (1): Vanguard Brokerage\nA6 (1): VBR9 0042 1188\nA8 (4): Expected return, Management fee', notes: null, occurredAt: '2026-09-24T06:00:00Z', createdByUserId: null, createdAtUtc: '2026-09-24T06:00:00Z' },
+    ],
     // ct-employment deliberately has none — it drives the empty state.
   };
 

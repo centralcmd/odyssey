@@ -1208,63 +1208,9 @@ window.OdysseyData.termDirectionByKey = Object.fromEntries(window.OdysseyData.te
 /* TermIntervalCount.Min / .Max — the same pair the DTO's [Range] names. */
 window.OdysseyData.termIntervalCount = { min: 1, max: 1000 };
 
-/* Every account type may carry terms — there is no eligibility matrix. */
-
-/* Seed Term history, keyed by accountId. EffectiveFrom ascending here for
-   readability; the helpers sort as needed. Percentages stored as fractions.
-   Every fee is kind 'Fee' and carries a Label — the shape the collapse migration
-   leaves behind, with the old kind names backfilled as labels where a row had none. */
-window.OdysseyData.accountTerms = {
-  // Ally Savings — a high-yield rate stepped DOWN over two years (the headline story).
-  '2': [
-    { id: 'tm-2-1', accountId: '2', unit: 'Percentage', value: 0.0425, currency: null,  interval: null,             effectiveFrom: '2024-02-01', label: 'Interest rate', labelKey: 'interest rate', note: 'Promotional intro APY',                  createdAtUtc: '2024-02-01T09:00:00Z' },
-    { id: 'tm-2-2', accountId: '2', unit: 'Percentage', value: 0.0410, currency: null,  interval: null,             effectiveFrom: '2024-09-01', label: 'Interest rate', labelKey: 'interest rate', note: null,                                     createdAtUtc: '2024-09-01T09:00:00Z' },
-    { id: 'tm-2-3', accountId: '2', unit: 'Percentage', value: 0.0385, currency: null,  interval: null,             effectiveFrom: '2025-01-15', label: 'Interest rate', labelKey: 'interest rate', note: 'Fed cut pass-through',                   createdAtUtc: '2025-01-15T09:00:00Z' },
-    { id: 'tm-2-4', accountId: '2', unit: 'Percentage', value: 0.0360, currency: null,  interval: null,             effectiveFrom: '2025-07-01', label: 'Interest rate', labelKey: 'interest rate', note: null,                                     createdAtUtc: '2025-07-01T09:00:00Z' },
-    { id: 'tm-2-5', accountId: '2', unit: 'Percentage', value: 0.0340, currency: null,  interval: null,             effectiveFrom: '2026-02-10', label: 'Interest rate', labelKey: 'interest rate', note: 'Fed cut pass-through',                   createdAtUtc: '2026-02-10T09:00:00Z' },
-    { id: 'tm-2-6', accountId: '2', unit: 'Amount', value: 10.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, effectiveFrom: '2024-02-01', label: 'Excess withdrawal', labelKey: 'excess withdrawal', note: 'Over 6 withdrawals a month', createdAtUtc: '2024-02-01T09:00:00Z' },
-    { id: 'tm-2-7', accountId: '2', unit: 'Amount', value: 35.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, effectiveFrom: '2024-02-01', label: 'Outgoing wire · international', labelKey: 'outgoing wire · international', note: null, createdAtUtc: '2024-02-01T09:00:00Z' },
-    // Weekly x 2 — a cadence the old enum could not express at all.
-    { id: 'tm-2-8', accountId: '2', unit: 'Amount', value: 3.00, currency: 'USD', interval: 'Weekly', intervalCount: 2, effectiveFrom: '2025-06-01', label: 'Cash handling · branch', labelKey: 'cash handling · branch', note: 'Charged every second week the account is used at a counter.', createdAtUtc: '2025-06-01T09:00:00Z' },
-  ],
-  // Amex Platinum — a travel card: purchase APR stepped UP, plus SIX named fees,
-  // every one of them kind 'Fee'. Before the collapse these were four kinds that
-  // resolved to two in-force tiles; now they are six, told apart by their names.
-  '3': [
-    { id: 'tm-3-1', accountId: '3', unit: 'Percentage', value: 0.2249, currency: null,  interval: null,             effectiveFrom: '2023-01-01', label: 'Purchase APR', labelKey: 'purchase apr', note: 'Variable purchase APR (Prime + 16.99%)', createdAtUtc: '2023-01-01T09:00:00Z' },
-    { id: 'tm-3-2', accountId: '3', unit: 'Percentage', value: 0.2624, currency: null,  interval: null,             effectiveFrom: '2023-09-01', label: 'Purchase APR', labelKey: 'purchase apr', note: null,                                     createdAtUtc: '2023-09-01T09:00:00Z' },
-    { id: 'tm-3-3', accountId: '3', unit: 'Percentage', value: 0.2899, currency: null,  interval: null,             effectiveFrom: '2024-06-01', label: 'Purchase APR', labelKey: 'purchase apr', note: 'Prime-rate increase',                    createdAtUtc: '2024-06-01T09:00:00Z' },
-    { id: 'tm-3-4', accountId: '3', unit: 'Amount',     value: 695.00, currency: 'USD', interval: 'Annually', intervalCount: 1,       effectiveFrom: '2023-01-01', label: 'Annual card fee', labelKey: 'annual card fee', note: 'Membership fee', createdAtUtc: '2023-01-01T09:00:00Z' },
-    { id: 'tm-3-5', accountId: '3', unit: 'Percentage', value: 0.0275, currency: null,  interval: 'PerOccurrence', intervalCount: null, effectiveFrom: '2023-01-01', label: 'Currency conversion', labelKey: 'currency conversion', note: 'Markup on the network rate', createdAtUtc: '2023-01-01T09:00:00Z' },
-    { id: 'tm-3-6', accountId: '3', unit: 'Amount',     value: 5.00,   currency: 'USD', interval: 'PerOccurrence', intervalCount: null, effectiveFrom: '2023-01-01', label: 'ATM withdrawal · domestic', labelKey: 'atm withdrawal · domestic', note: null, createdAtUtc: '2023-01-01T09:00:00Z' },
-    { id: 'tm-3-7', accountId: '3', unit: 'Amount',     value: 25.00,  currency: 'USD', interval: 'PerOccurrence', intervalCount: null, effectiveFrom: '2023-01-01', label: 'ATM withdrawal · abroad', labelKey: 'atm withdrawal · abroad', note: null, createdAtUtc: '2023-01-01T09:00:00Z' },
-    // Same label, later date → supersedes only its own series; the domestic
-    // charge above is untouched.
-    { id: 'tm-3-8', accountId: '3', unit: 'Amount',     value: 30.00,  currency: 'USD', interval: 'PerOccurrence', intervalCount: null, effectiveFrom: '2025-03-01', label: 'ATM withdrawal · abroad', labelKey: 'atm withdrawal · abroad', note: 'Overseas network charge increase', createdAtUtc: '2025-03-01T09:00:00Z' },
-    { id: 'tm-3-9', accountId: '3', unit: 'Amount',     value: 15.00,  currency: 'USD', interval: 'OneTime', intervalCount: null,        effectiveFrom: '2023-01-01', label: 'Card replacement', labelKey: 'card replacement', note: null, createdAtUtc: '2023-01-01T09:00:00Z' },
-    { id: 'tm-3-10', accountId: '3', unit: 'Amount',    value: 2.00,   currency: 'USD', interval: 'Monthly', intervalCount: 1,        effectiveFrom: '2023-01-01', label: 'Paper statement', labelKey: 'paper statement', note: null, createdAtUtc: '2023-01-01T09:00:00Z' },
-    // The case AnchorDate exists for: a quarterly charge (Monthly x 3 — the old
-    // Quarterly value) raised on the 1st but not first billed until the 15th.
-    { id: 'tm-3-11', accountId: '3', unit: 'Amount',    value: 45.00,  currency: 'USD', interval: 'Monthly', intervalCount: 3,        effectiveFrom: '2026-01-01', anchorDate: '2026-01-15', label: 'Account maintenance', labelKey: 'account maintenance', note: 'Billed in arrears.', createdAtUtc: '2026-01-01T09:00:00Z' },
-  ],
-  // Vanguard Brokerage — an expected-return target (lowered once) + an expense ratio.
-  // The expense-ratio rows were ManagementFee; the migration backfilled the old
-  // kind name as their label, which is why they read "Management fee".
-  '4': [
-    { id: 'tm-4-1', accountId: '4', unit: 'Percentage', value: 0.0700, currency: null,  interval: null,       effectiveFrom: '2024-01-01', label: 'Expected return', labelKey: 'expected return', note: 'Long-run target · 80/20 blend', createdAtUtc: '2024-01-01T09:00:00Z' },
-    { id: 'tm-4-2', accountId: '4', unit: 'Percentage', value: 0.0650, currency: null,  interval: null,       effectiveFrom: '2025-06-01', label: 'Expected return', labelKey: 'expected return', note: 'Trimmed on valuation outlook', createdAtUtc: '2025-06-01T09:00:00Z' },
-    { id: 'tm-4-3', accountId: '4', unit: 'Percentage', value: 0.0004, currency: null, interval: 'Annually', intervalCount: 1, effectiveFrom: '2023-01-01', label: 'Management fee', labelKey: 'management fee', note: 'Blended expense ratio', createdAtUtc: '2023-01-01T09:00:00Z' },
-    { id: 'tm-4-4', accountId: '4', unit: 'Percentage', value: 0.0003, currency: null, interval: 'Annually', intervalCount: 1, effectiveFrom: '2025-01-01', label: 'Management fee', labelKey: 'management fee', note: 'Expense ratio reduction', createdAtUtc: '2025-01-01T09:00:00Z' },
-    // PerUnit — the unit itself is named by the label, not by a field.
-    { id: 'tm-4-5', accountId: '4', unit: 'Amount', value: 0.02, currency: 'USD', interval: 'PerUnit', intervalCount: null, effectiveFrom: '2025-01-01', label: 'Custody · per share', labelKey: 'custody · per share', note: 'On shares held at month end.', createdAtUtc: '2025-01-01T09:00:00Z' },
-  ],
-  // Citi Auto Loan — a single fixed APR (chart shows one flat hold) + a late fee.
-  '5': [
-    { id: 'tm-5-1', accountId: '5', unit: 'Percentage', value: 0.0649, currency: null,  interval: null,             effectiveFrom: '2023-06-01', label: 'APR', labelKey: 'apr', note: 'Fixed APR · 60-month term', createdAtUtc: '2023-06-01T09:00:00Z' },
-    { id: 'tm-5-2', accountId: '5', unit: 'Amount', value: 15.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, effectiveFrom: '2023-06-01', label: 'Late payment', labelKey: 'late payment', note: null, createdAtUtc: '2023-06-01T09:00:00Z' },
-  ],
-  // Chase Checking ('1') intentionally has no terms — drives the empty state.
-};
+/* Terms have ONE owner: a contract (MoveAccountTermsToContracts). The seed that
+   used to live here as accountTerms was moved row-for-row — same ids — onto
+   contracts in contracts-data.js, following the migration's §3.2 rule. */
 
 /* Every fee is named by its Label; the series key is (kind, labelKey). A rate is
    refused a label, so it is always the unnamed series of its own kind — exactly
@@ -1301,7 +1247,7 @@ Object.assign(window.OdysseyHelpers, {
   },
   /* ---- Direction ---------------------------------------------------------
      Read with a DEFAULT, never a truthiness test: a row written before the
-     field existed, and every account term, is Outgoing. */
+     field existed is Outgoing. */
   termDirection(t) {
     return (t && t.direction === 'Incoming') ? 'Incoming' : 'Outgoing';
   },
@@ -1310,13 +1256,8 @@ Object.assign(window.OdysseyHelpers, {
     return window.OdysseyData.termDirectionByKey[key] || window.OdysseyData.termDirectionByKey.Outgoing;
   },
   termIsIncoming(t) { return window.OdysseyHelpers.termDirection(t) === 'Incoming'; },
-  // The owner kind of a term row, from whichever id is populated.
-  termOwnerKind(t, owner) {
-    if (owner && owner.ownerKind) return owner.ownerKind;
-    if (t && t.contractId) return 'contract';
-    if (t && t.accountId) return 'account';
-    return 'account';
-  },
+  // Every term is owned by a contract; kept so callers need not change.
+  termOwnerKind() { return 'contract'; },
   /* Where direction MEANS something: any term owned by a CONTRACT. An arrears
      rate charges the tenant and a deposit rate pays them — the same fact a fee
      carries, so it is asked the same way on both. An ACCOUNT term still has no
@@ -1327,22 +1268,13 @@ Object.assign(window.OdysseyHelpers, {
     return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract';
   },
   // Why direction is refused here, in the words the 400 uses. Null = allowed.
-  termDirectionRefusal(ownerKind) {
-    if (ownerKind !== 'contract') return 'Direction applies to a contract term. An account term is always money out.';
-    return null;
-  },
+  termDirectionRefusal() { return null; },
   /* Mint wherever an INCOMING term's own value is printed. Outgoing returns
      null so every surface keeps the color it already had — nothing that
      existed before this field changes appearance. */
   termDirectionColor(t, owner) {
     return (window.OdysseyHelpers.termDirectionApplies(t, owner) && window.OdysseyHelpers.termIsIncoming(t))
       ? 'var(--finance-income)' : null;
-  },
-  // All terms for an account, EffectiveFrom DESC (history listing, newest first).
-  termsForAccount(accountId) {
-    return (window.OdysseyData.accountTerms[accountId] || [])
-      .slice()
-      .sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : 0));
   },
   // ---- Series labels: one TermKind can hold several named series --------
   // ONE normalization rule, shared by the write path and the client's
@@ -1366,36 +1298,12 @@ Object.assign(window.OdysseyHelpers, {
   termDisplayName(t) {
     return window.OdysseyHelpers.termLabelNormalize(t.label) || 'Term';
   },
-  // The currently-effective entry per SERIES as of `asOf` (default: today): for
-  // each (kind, label) with ≥1 entry, the one with the greatest EffectiveFrom ≤
-  // asOf. Ordered kind (registry order) then label (ordinal), so tiles and rows
-  // keep a stable order across loads. This is the GET …/terms/current view.
-  currentTerms(accountId, asOf) {
-    const cutoff = asOf || new Date().toISOString().slice(0, 10);
-    const bySeries = {};
-    for (const t of (window.OdysseyData.accountTerms[accountId] || [])) {
-      if (t.effectiveFrom > cutoff) continue; // future-dated, not yet in force
-      const key = window.OdysseyHelpers.termSeriesKey(t);
-      const cur = bySeries[key];
-      if (!cur || t.effectiveFrom > cur.effectiveFrom
-        || (t.effectiveFrom === cur.effectiveFrom && t.createdAtUtc > cur.createdAtUtc)) bySeries[key] = t;
-    }
-    return window.OdysseyHelpers.sortTermsBySeries(Object.values(bySeries));
-  },
   // Label ordinal — a stable order across loads.
   sortTermsBySeries(list) {
     return list.slice().sort((a, b) => {
       const la = a.label || '', lb = b.label || '';
       return la < lb ? -1 : la > lb ? 1 : 0;
     });
-  },
-  // Ascending {date,value,note,id} series for one label.
-  termSeries(accountId, labelKey) {
-    const key = window.OdysseyHelpers.termLabelKey(labelKey) || '';
-    return (window.OdysseyData.accountTerms[accountId] || [])
-      .filter(t => window.OdysseyHelpers.termSeriesKey(t) === key)
-      .map(t => ({ id: t.id, date: t.effectiveFrom, value: t.value, note: t.note }))
-      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   },
   // Percentage fraction → trimmed display string. 0.0340 → "3.40%", 0.0003 → "0.03%".
   pctStr(frac) {

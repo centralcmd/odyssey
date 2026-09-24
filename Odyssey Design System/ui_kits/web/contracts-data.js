@@ -384,6 +384,33 @@
       ],
       files: [],
     },
+    /* CREATED BY THE MIGRATION (MoveAccountTermsToContracts §3.3). Amex held
+       terms but was party to no Loan, so a Loan was built from the account's
+       own data: name, description, number → reference, opened → start. Left
+       unsigned — Draft — so it stays out of the run rate until reviewed (A1). */
+    {
+      id: 'ct-mig-amex', name: 'Amex Platinum', type: 'Loan', referenceNumber: '3782 822463 55121',
+      description: 'Travel & dining rewards card',
+      startDate: '2022-11-20', endDate: null, completionDate: null, ready: null, signed: null, paused: null, archived: null, createdAtUtc: '2026-09-24T06:00:00Z', createdByUserId: null,
+      parties: [
+        { id: 'cp-mig-amex-1', accountId: '3', role: 'Object', fromDate: null, toDate: null },
+        { id: 'cp-mig-amex-2', contactId: 'c16', role: 'Lender', fromDate: null, toDate: null },
+      ],
+      files: [],
+    },
+    /* Asset account, no Deposit contract → a Deposit, account as Object and
+       its custodian as Custodian. Percentage terms were flipped to Incoming —
+       right for the expected return, wrong for the expense ratio (A8). */
+    {
+      id: 'ct-mig-vanguard', name: 'Vanguard Brokerage', type: 'Deposit', referenceNumber: 'VBR9 0042 1188',
+      description: 'Long-term index fund portfolio',
+      startDate: '2019-01-09', endDate: null, completionDate: null, ready: null, signed: null, paused: null, archived: null, createdAtUtc: '2026-09-24T06:00:00Z', createdByUserId: null,
+      parties: [
+        { id: 'cp-mig-vg-1', accountId: '4', role: 'Object', fromDate: null, toDate: null },
+        { id: 'cp-mig-vg-2', contactId: 'c17', role: 'Custodian', fromDate: null, toDate: null },
+      ],
+      files: [],
+    },
   ];
 
   // ---- Lookups + helpers -----------------------------------------------------
@@ -869,10 +896,6 @@
       { id: 'ctm-house-1', contractId: 'ct-house', unit: 'Percentage', value: 0.0425, currency: null, interval: null, intervalCount: null, effectiveFrom: '2021-04-15', label: 'Interest rate', labelKey: 'interest rate', direction: 'Outgoing', note: 'Vendor financing on the balance of the purchase price.', createdAtUtc: '2021-04-15T09:00:00Z' },
       { id: 'ctm-house-2', contractId: 'ct-house', unit: 'Percentage', value: 0.0399, currency: null, interval: null, intervalCount: null, effectiveFrom: '2024-05-01', label: 'Interest rate', labelKey: 'interest rate', direction: 'Outgoing', note: 'Renegotiated at the three-year review.', createdAtUtc: '2024-05-01T09:00:00Z' },
     ],
-    // Deposit interest — money IN. Fixed for the term, paid on the 1st.
-    'ct-deposit': [
-      { id: 'ctm-dep-1', contractId: 'ct-deposit', unit: 'Amount', value: 68.75, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Incoming', anchorDate: '2026-05-01', effectiveFrom: '2026-04-01', label: 'Interest', labelKey: 'interest', note: '4.125% p.a. on 20,000, paid monthly.', createdAtUtc: '2026-03-24T09:00:00Z' },
-    ],
     'ct-parking': [
       { id: 'ctm-parking-1', contractId: 'ct-parking', unit: 'Amount', value: 165.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-11-01', label: 'Space licence', labelKey: 'space licence', note: 'Due on the 1st.', createdAtUtc: '2025-10-20T09:00:00Z' },
       { id: 'ctm-parking-2', contractId: 'ct-parking', unit: 'Amount', value: 40.00, currency: 'USD', interval: 'OneTime', intervalCount: null, effectiveFrom: '2025-11-01', label: 'Access fob', labelKey: 'access fob', note: null, createdAtUtc: '2025-10-20T09:00:00Z' },
@@ -920,6 +943,49 @@
       { id: 'ctm-emp-3', contractId: 'ct-employment', unit: 'Amount', value: 42.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Outgoing', anchorDate: '2024-03-01', effectiveFrom: '2024-03-01', label: 'Union dues', labelKey: 'union dues', note: 'Deducted at source.', createdAtUtc: '2024-02-24T09:00:00Z' },
       { id: 'ctm-emp-4', contractId: 'ct-employment', unit: 'Amount', value: 380.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Outgoing', anchorDate: '2025-01-25', effectiveFrom: '2025-01-01', label: 'Pension contribution', labelKey: 'pension contribution', note: 'Employee share, 5% of base.', createdAtUtc: '2024-12-11T09:00:00Z' },
       { id: 'ctm-emp-5', contractId: 'ct-employment', unit: 'Amount', value: 3000.00, currency: 'USD', interval: 'OneTime', intervalCount: null, direction: 'Incoming', effectiveFrom: '2024-03-01', label: 'Signing bonus', labelKey: 'signing bonus', note: 'Paid with the first salary. One-off — recorded, never projected.', createdAtUtc: '2024-02-24T09:00:00Z' },
+    ],
+    /* ---- Moved by MoveAccountTermsToContracts — same TermId, value and
+       history as on the account. Direction is Outgoing except Percentage
+       rows on a Deposit, which the migration flips to Incoming (A8). ---- */
+    // Ally Savings → its one Deposit (reused; no series collision with 'interest').
+    'ct-deposit': [
+      { id: 'ctm-dep-1', contractId: 'ct-deposit', unit: 'Amount', value: 68.75, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Incoming', anchorDate: '2026-05-01', effectiveFrom: '2026-04-01', label: 'Interest', labelKey: 'interest', note: '4.125% p.a. on 20,000, paid monthly.', createdAtUtc: '2026-03-24T09:00:00Z' },
+      { id: 'tm-2-1', contractId: 'ct-deposit', unit: 'Percentage', value: 0.0425, currency: null, interval: null, intervalCount: null, direction: 'Incoming', effectiveFrom: '2024-02-01', label: 'Interest rate', labelKey: 'interest rate', note: 'Promotional intro APY', createdAtUtc: '2024-02-01T09:00:00Z' },
+      { id: 'tm-2-2', contractId: 'ct-deposit', unit: 'Percentage', value: 0.0410, currency: null, interval: null, intervalCount: null, direction: 'Incoming', effectiveFrom: '2024-09-01', label: 'Interest rate', labelKey: 'interest rate', note: null, createdAtUtc: '2024-09-01T09:00:00Z' },
+      { id: 'tm-2-3', contractId: 'ct-deposit', unit: 'Percentage', value: 0.0385, currency: null, interval: null, intervalCount: null, direction: 'Incoming', effectiveFrom: '2025-01-15', label: 'Interest rate', labelKey: 'interest rate', note: 'Fed cut pass-through', createdAtUtc: '2025-01-15T09:00:00Z' },
+      { id: 'tm-2-4', contractId: 'ct-deposit', unit: 'Percentage', value: 0.0360, currency: null, interval: null, intervalCount: null, direction: 'Incoming', effectiveFrom: '2025-07-01', label: 'Interest rate', labelKey: 'interest rate', note: null, createdAtUtc: '2025-07-01T09:00:00Z' },
+      { id: 'tm-2-5', contractId: 'ct-deposit', unit: 'Percentage', value: 0.0340, currency: null, interval: null, intervalCount: null, direction: 'Incoming', effectiveFrom: '2026-02-10', label: 'Interest rate', labelKey: 'interest rate', note: 'Fed cut pass-through', createdAtUtc: '2026-02-10T09:00:00Z' },
+      { id: 'tm-2-6', contractId: 'ct-deposit', unit: 'Amount', value: 10.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, direction: 'Outgoing', effectiveFrom: '2024-02-01', label: 'Excess withdrawal', labelKey: 'excess withdrawal', note: 'Over 6 withdrawals a month', createdAtUtc: '2024-02-01T09:00:00Z' },
+      { id: 'tm-2-7', contractId: 'ct-deposit', unit: 'Amount', value: 35.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, direction: 'Outgoing', effectiveFrom: '2024-02-01', label: 'Outgoing wire · international', labelKey: 'outgoing wire · international', note: null, createdAtUtc: '2024-02-01T09:00:00Z' },
+      { id: 'tm-2-8', contractId: 'ct-deposit', unit: 'Amount', value: 3.00, currency: 'USD', interval: 'Weekly', intervalCount: 2, direction: 'Outgoing', effectiveFrom: '2025-06-01', label: 'Cash handling · branch', labelKey: 'cash handling · branch', note: 'Charged every second week the account is used at a counter.', createdAtUtc: '2025-06-01T09:00:00Z' },
+    ],
+    // Citi Auto Loan → its one Loan. The account holds TWO roles there
+    // (Borrower, Collateral) and still counts as one candidate.
+    'ct-auto-loan': [
+      { id: 'tm-5-1', contractId: 'ct-auto-loan', unit: 'Percentage', value: 0.0649, currency: null, interval: null, intervalCount: null, direction: 'Outgoing', effectiveFrom: '2023-06-01', label: 'APR', labelKey: 'apr', note: 'Fixed APR · 60-month term', createdAtUtc: '2023-06-01T09:00:00Z' },
+      { id: 'tm-5-2', contractId: 'ct-auto-loan', unit: 'Amount', value: 15.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, direction: 'Outgoing', effectiveFrom: '2023-06-01', label: 'Late payment', labelKey: 'late payment', note: null, createdAtUtc: '2023-06-01T09:00:00Z' },
+    ],
+    'ct-mig-amex': [
+      { id: 'tm-3-1', contractId: 'ct-mig-amex', unit: 'Percentage', value: 0.2249, currency: null, interval: null, intervalCount: null, direction: 'Outgoing', effectiveFrom: '2023-01-01', label: 'Purchase APR', labelKey: 'purchase apr', note: 'Variable purchase APR (Prime + 16.99%)', createdAtUtc: '2023-01-01T09:00:00Z' },
+      { id: 'tm-3-2', contractId: 'ct-mig-amex', unit: 'Percentage', value: 0.2624, currency: null, interval: null, intervalCount: null, direction: 'Outgoing', effectiveFrom: '2023-09-01', label: 'Purchase APR', labelKey: 'purchase apr', note: null, createdAtUtc: '2023-09-01T09:00:00Z' },
+      { id: 'tm-3-3', contractId: 'ct-mig-amex', unit: 'Percentage', value: 0.2899, currency: null, interval: null, intervalCount: null, direction: 'Outgoing', effectiveFrom: '2024-06-01', label: 'Purchase APR', labelKey: 'purchase apr', note: 'Prime-rate increase', createdAtUtc: '2024-06-01T09:00:00Z' },
+      { id: 'tm-3-4', contractId: 'ct-mig-amex', unit: 'Amount', value: 695.00, currency: 'USD', interval: 'Annually', intervalCount: 1, direction: 'Outgoing', effectiveFrom: '2023-01-01', label: 'Annual card fee', labelKey: 'annual card fee', note: 'Membership fee', createdAtUtc: '2023-01-01T09:00:00Z' },
+      { id: 'tm-3-5', contractId: 'ct-mig-amex', unit: 'Percentage', value: 0.0275, currency: null, interval: 'PerOccurrence', intervalCount: null, direction: 'Outgoing', effectiveFrom: '2023-01-01', label: 'Currency conversion', labelKey: 'currency conversion', note: 'Markup on the network rate', createdAtUtc: '2023-01-01T09:00:00Z' },
+      { id: 'tm-3-6', contractId: 'ct-mig-amex', unit: 'Amount', value: 5.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, direction: 'Outgoing', effectiveFrom: '2023-01-01', label: 'ATM withdrawal · domestic', labelKey: 'atm withdrawal · domestic', note: null, createdAtUtc: '2023-01-01T09:00:00Z' },
+      { id: 'tm-3-7', contractId: 'ct-mig-amex', unit: 'Amount', value: 25.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, direction: 'Outgoing', effectiveFrom: '2023-01-01', label: 'ATM withdrawal · abroad', labelKey: 'atm withdrawal · abroad', note: null, createdAtUtc: '2023-01-01T09:00:00Z' },
+      { id: 'tm-3-8', contractId: 'ct-mig-amex', unit: 'Amount', value: 30.00, currency: 'USD', interval: 'PerOccurrence', intervalCount: null, direction: 'Outgoing', effectiveFrom: '2025-03-01', label: 'ATM withdrawal · abroad', labelKey: 'atm withdrawal · abroad', note: 'Overseas network charge increase', createdAtUtc: '2025-03-01T09:00:00Z' },
+      { id: 'tm-3-9', contractId: 'ct-mig-amex', unit: 'Amount', value: 15.00, currency: 'USD', interval: 'OneTime', intervalCount: null, direction: 'Outgoing', effectiveFrom: '2023-01-01', label: 'Card replacement', labelKey: 'card replacement', note: null, createdAtUtc: '2023-01-01T09:00:00Z' },
+      { id: 'tm-3-10', contractId: 'ct-mig-amex', unit: 'Amount', value: 2.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Outgoing', effectiveFrom: '2023-01-01', label: 'Paper statement', labelKey: 'paper statement', note: null, createdAtUtc: '2023-01-01T09:00:00Z' },
+      { id: 'tm-3-11', contractId: 'ct-mig-amex', unit: 'Amount', value: 45.00, currency: 'USD', interval: 'Monthly', intervalCount: 3, direction: 'Outgoing', effectiveFrom: '2026-01-01', anchorDate: '2026-01-15', label: 'Account maintenance', labelKey: 'account maintenance', note: 'Billed in arrears.', createdAtUtc: '2026-01-01T09:00:00Z' },
+    ],
+    'ct-mig-vanguard': [
+      { id: 'tm-4-1', contractId: 'ct-mig-vanguard', unit: 'Percentage', value: 0.0700, currency: null, interval: null, intervalCount: null, direction: 'Incoming', effectiveFrom: '2024-01-01', label: 'Expected return', labelKey: 'expected return', note: 'Long-run target · 80/20 blend', createdAtUtc: '2024-01-01T09:00:00Z' },
+      { id: 'tm-4-2', contractId: 'ct-mig-vanguard', unit: 'Percentage', value: 0.0650, currency: null, interval: null, intervalCount: null, direction: 'Incoming', effectiveFrom: '2025-06-01', label: 'Expected return', labelKey: 'expected return', note: 'Trimmed on valuation outlook', createdAtUtc: '2025-06-01T09:00:00Z' },
+      // Flipped to Incoming by the rule, but an expense ratio is money OUT —
+      // exactly the percentage fee A8 asks the user to put back.
+      { id: 'tm-4-3', contractId: 'ct-mig-vanguard', unit: 'Percentage', value: 0.0004, currency: null, interval: 'Annually', intervalCount: 1, direction: 'Incoming', effectiveFrom: '2023-01-01', label: 'Management fee', labelKey: 'management fee', note: 'Blended expense ratio', createdAtUtc: '2023-01-01T09:00:00Z' },
+      { id: 'tm-4-4', contractId: 'ct-mig-vanguard', unit: 'Percentage', value: 0.0003, currency: null, interval: 'Annually', intervalCount: 1, direction: 'Incoming', effectiveFrom: '2025-01-01', label: 'Management fee', labelKey: 'management fee', note: 'Expense ratio reduction', createdAtUtc: '2025-01-01T09:00:00Z' },
+      { id: 'tm-4-5', contractId: 'ct-mig-vanguard', unit: 'Amount', value: 0.02, currency: 'USD', interval: 'PerUnit', intervalCount: null, direction: 'Outgoing', effectiveFrom: '2025-01-01', label: 'Custody · per share', labelKey: 'custody · per share', note: 'On shares held at month end.', createdAtUtc: '2025-01-01T09:00:00Z' },
     ],
   };
 

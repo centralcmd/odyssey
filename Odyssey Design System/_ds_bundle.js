@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"77a2688a5486","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d56735c7fe2d","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"5a8b2c825711","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"1e717f1f9227","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"9d40bf8f4cbd","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"6f3ae5b7eb3c","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTermModal.jsx":"79706b8b03ba","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"0487ec4e9d16","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"247fb5488f6f","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"36ed78215490","ui_kits/web/Contracts.jsx":"4b23470f804f","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5118424de926","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"80c686ed592f","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"f4d098849ff3","ui_kits/web/contracts-data.js":"9d6cf73216e8","ui_kits/web/data.js":"6fef8e2fb528","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/system-settings-data.js":"b7eea7ed2b3c","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"77a2688a5486","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d56735c7fe2d","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"5a8b2c825711","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"2d8a461f940e","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"e361647ccece","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"3fd815566ac2","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"0487ec4e9d16","ui_kits/web/Budgets.jsx":"dde64354b357","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"247fb5488f6f","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"36ed78215490","ui_kits/web/Contracts.jsx":"4b23470f804f","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5118424de926","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"854a34963f77","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"0abc7857c7b3","ui_kits/web/contracts-data.js":"fd2a9b71de02","ui_kits/web/data.js":"a9e70c04b609","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/system-settings-data.js":"b7eea7ed2b3c","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -20733,32 +20733,15 @@ Object.assign(window, {
 
 // ui_kits/web/AccountTerms.jsx
 try { (() => {
-/* AccountTerms — the "Terms" section inside an expanded account record
-   (Accounts → account detail), beside Files & Transactions.
+/* Shared term visuals — the step chart, current-terms summary, history table /
+   timeline, name / cadence / direction tags and the series resolvers.
 
-   Backs the AccountTerm feature (interest-rate & fee history): a time-versioned
-   list of TERMS per account. A term's series key is (TermKind, Label) — one kind
-   can hold several concurrently in-force terms, told apart by a user-authored
-   label ("ATM withdrawal · abroad"); within one label, the latest entry on/before
-   a date is the value in force (implicit supersession — no EffectiveTo). Every
-   fee carries a label; a rate is refused one, so a rate is always the unnamed
-   series of its own kind. This surface renders three things from that history,
-   leading with the interest rate:
-
-     1. HERO     — a step-line chart of the rate over time (rates hold flat and
-                   jump on each change). Falls back to expected return; hidden
-                   when the account has no chartable rate series.
-     2. CURRENT  — the values in force for every series (the GET …/terms/current
-                   view). Three summary styles: tiles · row · chips.
-     3. HISTORY  — the full GET …/terms list, grouped Rate then Fees, as a table
-                   or a vertical timeline, each row editable / deletable.
-
-   Props:
-     account       — the account record (drives currency + eligibility)
-     summaryStyle  — 'tiles' (default) | 'row' | 'chips'
-     historyStyle  — 'table' (default) | 'timeline'
-     headerActionRef — optional: receives the "New term" button to hoist into the
-                       collapsible header (so the section owns its own create). */
+   This file used to also compose the account "Terms" section. That section is
+   gone: MoveAccountTermsToContracts made the contract the only owner of a term,
+   removed the /api/accounts/{id}/terms routes and the accounts.terms.* claims,
+   and moved every account term onto a contract. The pieces below are what
+   ContractTerms.jsx composes; the file keeps its name so every page that loads
+   it keeps working. */
 
 const H = window.OdysseyHelpers;
 const D = window.OdysseyData;
@@ -21459,135 +21442,7 @@ const TermHistory = ({
     account: account
   }));
 };
-
-/* =============================================================
-   AccountTerms — composes the section + owns create/edit/delete
-   ============================================================= */
-const AccountTerms = ({
-  account,
-  summaryStyle = 'tiles',
-  historyStyle = 'table',
-  defaultOpen = false,
-  chrome = true,
-  bareAction = true,
-  showCurrent = true,
-  terms: termsProp,
-  onNew,
-  onEdit,
-  onDelete: onDeleteProp
-}) => {
-  const {
-    useState,
-    useMemo
-  } = React;
-  const controlled = termsProp != null;
-  const [internalTerms, setInternalTerms] = useState(() => H.termsForAccount(account.id));
-  const [modal, setModal] = useState(null); // { mode:'new'|'edit', term? } (uncontrolled only)
-  const terms = controlled ? termsProp : internalTerms;
-  const current = useMemo(() => trmCurrentFromList(terms), [terms]);
-  const currentIds = useMemo(() => new Set(current.map(t => t.id)), [current]);
-
-  // Uncontrolled (standalone specimen) keeps its own state + dialog; controlled
-  // (live account row) delegates create/edit/delete + the dialog to the parent.
-  const upsert = (dto, id) => {
-    setInternalTerms(prev => id ? prev.map(t => t.id === id ? {
-      ...t,
-      ...dto
-    } : t) : [{
-      id: `tm-new-${Date.now()}`,
-      accountId: account.id,
-      createdAtUtc: new Date().toISOString(),
-      ...dto
-    }, ...prev]);
-    setModal(null);
-  };
-  const openNew = () => controlled ? onNew && onNew() : setModal({
-    mode: 'new'
-  });
-  const openEdit = t => controlled ? onEdit && onEdit(t) : setModal({
-    mode: 'edit',
-    term: t
-  });
-  const remove = t => controlled ? onDeleteProp && onDeleteProp(t) : setInternalTerms(prev => prev.filter(x => x.id !== t.id));
-  const empty = terms.length === 0;
-  const newBtn = /*#__PURE__*/React.createElement(Button, {
-    variant: "text",
-    color: "primary",
-    icon: "add",
-    onClick: openNew
-  }, "New term");
-  const body = /*#__PURE__*/React.createElement("div", {
-    className: "trm-section"
-  }, empty ? /*#__PURE__*/React.createElement(EmptyState, {
-    icon: "article",
-    mutedIcon: true,
-    title: "No terms recorded yet",
-    desc: "Record what this account charges or pays \u2014 a rate, a fee, a price \u2014 each under its own name with its own history.",
-    action: /*#__PURE__*/React.createElement(Button, {
-      variant: "filled",
-      color: "primary",
-      icon: "add",
-      onClick: openNew
-    }, "New term")
-  }) : /*#__PURE__*/React.createElement(React.Fragment, null, window.ContractTermChart ? /*#__PURE__*/React.createElement(window.ContractTermChart, {
-    terms: terms,
-    owner: account
-  }) : null, showCurrent ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "trm-sub"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "trm-sub-label"
-  }, "Current terms"), /*#__PURE__*/React.createElement("span", {
-    className: "trm-sub-rule"
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "trm-sub-meta"
-  }, "in force \xB7 ", H.dateLong(trmToday()))), /*#__PURE__*/React.createElement(CurrentTermsSummary, {
-    current: current,
-    style: summaryStyle,
-    account: account
-  })) : null, /*#__PURE__*/React.createElement("div", null, chrome || bareAction ? /*#__PURE__*/React.createElement("div", {
-    className: "trm-sub"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "trm-sub-label"
-  }, "History"), /*#__PURE__*/React.createElement("span", {
-    className: "trm-sub-rule"
-  }), /*#__PURE__*/React.createElement("span", {
-    className: "trm-sub-meta"
-  }, terms.length, " ", terms.length === 1 ? 'entry' : 'entries'), !chrome && bareAction && /*#__PURE__*/React.createElement("span", {
-    style: {
-      marginLeft: 4
-    }
-  }, newBtn)) : null, /*#__PURE__*/React.createElement(TermHistory, {
-    terms: terms,
-    currentIds: currentIds,
-    historyStyle: historyStyle,
-    account: account,
-    onEdit: openEdit,
-    onDelete: remove
-  }))));
-  const dialog = !controlled && modal && /*#__PURE__*/React.createElement(AddTermModal, {
-    account: account,
-    term: modal.mode === 'edit' ? modal.term : null,
-    existing: terms,
-    onClose: () => setModal(null),
-    onSave: upsert
-  });
-
-  // Bare (no collapsible chrome) — used by the standalone specimen.
-  if (!chrome) {
-    return /*#__PURE__*/React.createElement(React.Fragment, null, body, dialog);
-  }
-
-  // Default: render as a collapsible, matching Files & Transactions.
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Collapsible, {
-    icon: "\xA7",
-    title: "Terms",
-    count: terms.length,
-    defaultOpen: defaultOpen,
-    action: newBtn
-  }, body), dialog);
-};
 Object.assign(window, {
-  AccountTerms,
   TermStepChart,
   TermHero,
   CurrentTermsSummary,
@@ -22879,10 +22734,6 @@ const AccountDetail = ({
   txns,
   onSaveTxn,
   onDeleteTxn,
-  terms,
-  onNewTerm,
-  onEditTerm,
-  onDeleteTerm,
   estimates,
   onNewEstimate,
   onEditEstimate,
@@ -22962,13 +22813,12 @@ const AccountDetail = ({
     value: a.description,
     wide: true
   })) : null, (() => {
-    // CURRENT — the account's in-force values, as the same InfoTiles the
-    // details use. Each keeps its own semantic colour: term kinds their
-    // registry hue, the estimate mint, the transaction balance muted.
-    const curTerms = terms.length > 0 ? window.trmCurrentFromList(terms) : [];
+    // CURRENT — the account's in-force estimate beside its transaction
+    // balance. Terms no longer live here: they belong to the account's
+    // contracts (MoveAccountTermsToContracts), listed further down.
     const curEst = estimates.length > 0 ? window.estCurrentFromList(estimates) : null;
     const txnSum = txns.reduce((s, t) => s + t.amount, 0);
-    const inForce = curTerms.length + (curEst ? 2 : 0);
+    const inForce = curEst ? 2 : 0;
     if (!inForce) return null;
     return /*#__PURE__*/React.createElement(RecordSection, {
       className: "acct-section",
@@ -22988,29 +22838,7 @@ const AccountDetail = ({
       label: "Transaction balance",
       value: H.money(txnSum, a.currency),
       foot: txns.length === 0 ? 'No transactions' : `${txns.length} transaction${txns.length === 1 ? '' : 's'} · secondary`
-    })) : null, curTerms.map(t => {
-      const info = window.trmKindInfo(t);
-      // The cadence is what separates a 695 USD annual fee from a 695 USD
-      // monthly one, so it rides in the foot beside the date.
-      const period = H.cadenceTextFor(t);
-      // A fee is NAMED by its label, with the kind wording leading the
-      // caption — so six fees read as six distinct tiles, in text, not
-      // six identical ones.
-      const labelled = !!H.termLabelNormalize(t.label);
-      return /*#__PURE__*/React.createElement(InfoTile, {
-        key: window.trmKey(t),
-        icon: info.icon,
-        iconColor: info.color,
-        iconSoft: info.soft,
-        label: H.termDisplayName(t, a),
-        value: /*#__PURE__*/React.createElement("span", {
-          style: {
-            color: info.color
-          }
-        }, H.fmtTermValueFor(t, a)),
-        foot: `since ${H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`
-      });
-    })));
+    })) : null));
   })(), estimates.length > 0 ? /*#__PURE__*/React.createElement(RecordSection, {
     className: "acct-section",
     label: "Estimates",
@@ -23025,19 +22853,6 @@ const AccountDetail = ({
     onNew: onNewEstimate,
     onEdit: onEditEstimate,
     onDelete: onDeleteEstimate
-  })) : null, terms.length > 0 ? /*#__PURE__*/React.createElement(RecordSection, {
-    className: "acct-section",
-    label: "Terms",
-    meta: `${terms.length} ${terms.length === 1 ? 'entry' : 'entries'}`
-  }, /*#__PURE__*/React.createElement(AccountTerms, {
-    account: a,
-    terms: terms,
-    chrome: false,
-    bareAction: false,
-    showCurrent: false,
-    onNew: onNewTerm,
-    onEdit: onEditTerm,
-    onDelete: onDeleteTerm
   })) : null, (() => {
     const conRows = H.conContractsForAccount ? H.conContractsForAccount(a.id) : [];
     return /*#__PURE__*/React.createElement(RecordSection, {
@@ -23182,32 +22997,7 @@ const AccountListItem = ({
   } : t));
   const deleteTxn = id => setTxns(prev => prev.filter(t => t.id !== id));
 
-  // Account terms (rate & fee history) — lifted here so the row menu's "New term",
-  // the section's own button, and the in-force rate shown in the header all share
-  // one source of truth; a term added from either place shows everywhere at once.
-  const [terms, setTerms] = useState(() => H.termsForAccount(acct.id));
-  const [termModal, setTermModal] = useState(null); // { mode:'new'|'edit', term? }
-  const upsertTerm = (dto, id) => {
-    setTerms(prev => id ? prev.map(t => t.id === id ? {
-      ...t,
-      ...dto
-    } : t) : [{
-      id: `tm-new-${Date.now()}`,
-      accountId: acct.id,
-      createdAtUtc: new Date().toISOString(),
-      ...dto
-    }, ...prev]);
-    setTermModal(null);
-  };
-  const deleteTerm = t => setTerms(prev => prev.filter(x => x.id !== t.id));
-  const newTerm = () => {
-    setOpen(true);
-    setTermModal({
-      mode: 'new'
-    });
-  };
-
-  // Account value estimates — same lifting pattern as terms, so the row menu's
+  // Account value estimates — lifted here so the row menu's
   // "New estimate", the section's own button, and the in-force estimate shown as
   // the header value all share one source of truth.
   const [estimates, setEstimates] = useState(() => H.estimatesForAccount(acct.id));
@@ -23353,10 +23143,6 @@ const AccountListItem = ({
       icon: 'monitor',
       value: estimates.length,
       label: 'Estimates'
-    }] : []), ...(terms.length > 0 ? [{
-      icon: '§',
-      value: terms.length,
-      label: 'Terms'
     }] : []), ...(smartTagIds.length > 0 ? [{
       icon: 'sell',
       value: smartTagIds.length,
@@ -23391,10 +23177,6 @@ const AccountListItem = ({
         icon: 'monitor',
         label: 'New estimate',
         onClick: newEstimate
-      }, {
-        icon: '§',
-        label: 'New term',
-        onClick: newTerm
       }, {
         icon: 'fingerprint',
         label: 'Copy ID',
@@ -23433,13 +23215,6 @@ const AccountListItem = ({
     txns: txns,
     onSaveTxn: saveTxn,
     onDeleteTxn: deleteTxn,
-    terms: terms,
-    onNewTerm: newTerm,
-    onEditTerm: t => setTermModal({
-      mode: 'edit',
-      term: t
-    }),
-    onDeleteTerm: deleteTerm,
     estimates: estimates,
     onNewEstimate: newEstimate,
     onEditEstimate: e => setEstModal({
@@ -23462,12 +23237,6 @@ const AccountListItem = ({
     lockAccount: true,
     onClose: () => setAddingTxn(false),
     onCreate: createTxn
-  }), termModal && /*#__PURE__*/React.createElement(AddTermModal, {
-    account: acct,
-    term: termModal.mode === 'edit' ? termModal.term : null,
-    existing: terms,
-    onClose: () => setTermModal(null),
-    onSave: upsertTerm
   }), estModal && /*#__PURE__*/React.createElement(AddEstimateModal, {
     account: acct,
     estimate: estModal.mode === 'edit' ? estModal.estimate : null,
@@ -25628,9 +25397,9 @@ Object.assign(window, {
 try { (() => {
 /* AddContractTermModal — New / Edit dialog for a term owned by a CONTRACT.
 
-   The account dialog's twin (AddTermModal), on the same Modal shell and the
-   same NewTerm field set — the body a contract POSTs is byte-identical to the
-   one an account POSTs, and the owner is never in it: it comes from the route.
+   The only term dialog — account terms were retired (MoveAccountTermsToContracts).
+   Built on the shared Modal shell and the NewTerm field set; the owner is never
+   in the body: it comes from the route.
    Three rules differ, and they are the whole reason this is its own file:
 
      • CURRENCY — required, and prefilled from the user's DEFAULT CURRENCY. An
@@ -26760,281 +26529,6 @@ Object.assign(window, {
   AddTaxStatementModal
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddTaxStatementModal.jsx", error: String((e && e.message) || e) }); }
-
-// ui_kits/web/AddTermModal.jsx
-try { (() => {
-/* AddTermModal — New / Edit dialog for an account Term.
-
-   There is no term kind. Every term is one shape, named by its Label, and keeps
-   its own dated history — a rate is simply a term priced as a Percentage.
-   Field set mirrors the NewTerm DTO:
-
-     • Label           — REQUIRED; the series name. Normalized (trim + collapse
-                         whitespace) by the shared rule; ≤ 64 chars.
-     • ValueUnit       — Percentage | Amount.
-     • Value           — Percentage: typed as a percent, stored as a fraction in
-                         [-1, 1] (3.40 → 0.0340; negative allowed). Amount: ≥ 0.
-     • CurrencyCode    — required for Amount (defaults to the account currency);
-                         null for Percentage.
-     • Interval        — optional cadence unit: OneTime / PerOccurrence / PerUnit /
-                         Daily / Weekly / Monthly / Annually.
-     • IntervalCount   — 1…1000, only for a periodic unit; null otherwise.
-     • AnchorDate      — optional: when the term is FIRST BILLED.
-     • EffectiveFrom   — required; past or future allowed (future = scheduled).
-     • Note            — optional, ≤ 512 chars.
-
-   Rejects a (Label, EffectiveFrom) duplicate on the case-folded label key (the
-   server's 409). On confirm, onSave(dto, id?) receives the term-shaped object. */
-
-const TRM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({
-  value: c.code,
-  label: c.name
-}));
-const trmDefaultInterval = () => window.OdysseyData.defaultFeeInterval;
-const TRM_COUNT = window.OdysseyData.termIntervalCount; // { min: 1, max: 1000 }
-
-const fracToPctStr = f => String(Number((f * 100).toFixed(4)));
-const AddTermModal = ({
-  account,
-  term,
-  existing = [],
-  onClose,
-  onSave
-}) => {
-  const {
-    useState
-  } = React;
-  const isEdit = !!term;
-  const D = window.OdysseyData;
-  const H = window.OdysseyHelpers;
-  const [draft, setDraft] = useState(() => ({
-    unit: term ? term.unit : 'Amount',
-    valueStr: term ? term.unit === 'Percentage' ? fracToPctStr(term.value) : String(term.value) : '',
-    currency: term ? term.currency || account.currency || 'USD' : account.currency || 'USD',
-    interval: term ? term.interval || '' : trmDefaultInterval(),
-    intervalCount: term && term.intervalCount != null ? String(term.intervalCount) : '',
-    anchorDate: term ? term.anchorDate || '' : '',
-    effectiveFrom: term ? term.effectiveFrom : new Date().toISOString().slice(0, 10),
-    label: term ? term.label || '' : '',
-    note: term ? term.note || '' : ''
-  }));
-  const [errors, setErrors] = useState({});
-  const isPct = draft.unit === 'Percentage';
-  const info = H.termInfo(draft.unit);
-  const periodic = H.intervalIsPeriodic(draft.interval);
-  const intervalInfo = H.intervalInfo(draft.interval);
-  const set = k => v => {
-    setDraft(d => ({
-      ...d,
-      [k]: v
-    }));
-    if (errors[k]) setErrors(e => ({
-      ...e,
-      [k]: undefined
-    }));
-  };
-  const submit = () => {
-    const next = {};
-    const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
-    if (draft.valueStr === '' || isNaN(raw)) next.value = 'Enter a value.';else if (isPct) {
-      if (raw < -100 || raw > 100) next.value = 'Must be between −100% and 100%.';
-    } else if (raw < 0) next.value = 'An amount can’t be negative.';
-    if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
-    const countRaw = String(draft.intervalCount).trim();
-    let count = null;
-    if (periodic && countRaw !== '') {
-      count = parseInt(countRaw, 10);
-      if (isNaN(count) || count < TRM_COUNT.min || count > TRM_COUNT.max) {
-        next.intervalCount = `Enter a whole number between ${TRM_COUNT.min} and ${TRM_COUNT.max}.`;
-      }
-    }
-    if (draft.note.length > 512) next.note = 'Keep the note under 512 characters.';
-    const label = H.termLabelNormalize(draft.label);
-    if (!label) next.label = 'Name this term so it keeps its own history.';else if (label.length > 64) next.label = 'Keep the name under 64 characters.';
-    const key = H.termLabelKey(label);
-    const dup = label && existing.some(t => t.id !== (term && term.id) && H.termSeriesKey(t) === key && t.effectiveFrom === draft.effectiveFrom);
-    if (dup) next.effectiveFrom = `“${label}” already has an entry on that date.`;
-    if (Object.keys(next).length) {
-      setErrors(next);
-      return;
-    }
-    const value = isPct ? Number((raw / 100).toFixed(6)) : Number(raw.toFixed(2));
-    onSave({
-      unit: draft.unit,
-      value,
-      currency: isPct ? null : draft.currency,
-      interval: draft.interval || null,
-      intervalCount: periodic ? count == null ? 1 : count : null,
-      anchorDate: draft.anchorDate || null,
-      effectiveFrom: draft.effectiveFrom,
-      label,
-      labelKey: key,
-      note: draft.note.trim() || null
-    }, term && term.id);
-  };
-  const cadence = H.cadenceText(draft.interval, draft.intervalCount === '' ? 1 : parseInt(draft.intervalCount, 10));
-  const previewFrac = (() => {
-    const raw = parseFloat(String(draft.valueStr).replace(/,/g, ''));
-    return isNaN(raw) ? null : raw / 100;
-  })();
-  return /*#__PURE__*/React.createElement(Modal, {
-    title: isEdit ? 'Edit term' : 'New term',
-    subtitle: isEdit ? 'Correct this entry.' : `Record a term on ${account.name}, effective from a date.`,
-    icon: isEdit ? 'edit' : '§',
-    className: "trm-dialog",
-    onClose: onClose,
-    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
-      variant: "text",
-      onClick: onClose
-    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
-      variant: "filled",
-      color: "primary",
-      icon: isEdit ? 'check' : 'add',
-      onClick: submit
-    }, isEdit ? 'Save changes' : 'Create term'))
-  }, /*#__PURE__*/React.createElement(Field, {
-    label: "Name",
-    required: true,
-    value: draft.label,
-    onChange: set('label'),
-    placeholder: "e.g. Interest rate \xB7 ATM withdrawal abroad",
-    error: errors.label,
-    help: "Names this term so it keeps its own history, separate from the account's other terms."
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "trm-value-block"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "trm-field-head"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "label",
-    style: {
-      marginBottom: 0
-    }
-  }, "Value", /*#__PURE__*/React.createElement("span", {
-    className: "odc-field-req",
-    "aria-hidden": "true"
-  }, "*")), /*#__PURE__*/React.createElement("div", {
-    className: "atm-seg",
-    role: "radiogroup",
-    "aria-label": "Unit",
-    style: {
-      marginLeft: 'auto'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    role: "radio",
-    "aria-checked": isPct,
-    className: `atm-seg-btn ${isPct ? 'on' : ''}`,
-    style: isPct ? {
-      background: info.soft,
-      color: info.color
-    } : {},
-    onClick: () => set('unit')('Percentage')
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "percent",
-    size: 15
-  }), "Percentage"), /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    role: "radio",
-    "aria-checked": !isPct,
-    className: `atm-seg-btn ${!isPct ? 'on' : ''}`,
-    style: !isPct ? {
-      background: info.soft,
-      color: info.color
-    } : {},
-    onClick: () => set('unit')('Amount')
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "payments",
-    size: 15
-  }), "Amount"))), isPct ? /*#__PURE__*/React.createElement(AmountField, {
-    size: "lg",
-    required: true,
-    suffix: "%",
-    allowNegative: true,
-    value: draft.valueStr,
-    onChange: set('valueStr'),
-    error: errors.value,
-    help: /*#__PURE__*/React.createElement(React.Fragment, null, "Stored as a fraction: ", /*#__PURE__*/React.createElement("b", null, previewFrac == null ? '—' : previewFrac.toFixed(4)), cadence ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", cadence) : '')
-  }) : /*#__PURE__*/React.createElement(MoneyField, {
-    size: "lg",
-    required: true,
-    allowNegative: true,
-    signEditable: true,
-    value: draft.valueStr,
-    onChange: set('valueStr'),
-    currency: draft.currency,
-    onCurrencyChange: set('currency'),
-    currencyOptions: TRM_CURRENCIES,
-    currencySearchThreshold: 0,
-    error: errors.value,
-    help: /*#__PURE__*/React.createElement(React.Fragment, null, "Flat amount in ", /*#__PURE__*/React.createElement("b", null, draft.currency), cadence ? /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 ", cadence) : '')
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "trm-dir-refused"
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "block",
-    size: 15
-  }), /*#__PURE__*/React.createElement("span", null, "An account term is always ", /*#__PURE__*/React.createElement("b", null, "money out"), ". Direction \u2014 money in or out \u2014 is recorded on a ", /*#__PURE__*/React.createElement("b", null, "contract"), " term.")), /*#__PURE__*/React.createElement(FormRow, {
-    cols: 1
-  }, /*#__PURE__*/React.createElement(DateField, {
-    label: "Effective from",
-    required: true,
-    value: draft.effectiveFrom,
-    onChange: set('effectiveFrom'),
-    helper: errors.effectiveFrom ? undefined : 'When this value takes effect'
-  })), errors.effectiveFrom && /*#__PURE__*/React.createElement("div", {
-    className: "helper aam-err",
-    style: {
-      marginTop: -6
-    }
-  }, errors.effectiveFrom), /*#__PURE__*/React.createElement("div", {
-    className: "trm-cadence"
-  }, /*#__PURE__*/React.createElement(FormRow, {
-    cols: periodic ? 2 : 1
-  }, /*#__PURE__*/React.createElement(FieldShell, {
-    label: "Interval",
-    help: periodic ? `Applies ${cadence}` : intervalInfo && intervalInfo.key !== 'OneTime' ? `Applies ${intervalInfo.adverb}` : undefined
-  }, /*#__PURE__*/React.createElement(Select, {
-    value: draft.interval,
-    onChange: set('interval'),
-    options: [{
-      value: '',
-      label: 'Not specified'
-    }, ...D.intervals.map(b => ({
-      value: b.key,
-      label: b.label,
-      icon: b.icon,
-      iconColor: b.color
-    }))]
-  })), periodic && /*#__PURE__*/React.createElement(NumberField, {
-    label: "Every",
-    min: TRM_COUNT.min,
-    max: TRM_COUNT.max,
-    step: 1,
-    unit: intervalInfo ? intervalInfo.many : '',
-    placeholder: "1",
-    value: draft.intervalCount === '' ? null : Number(draft.intervalCount),
-    onChange: v => set('intervalCount')(v == null ? '' : String(v)),
-    error: errors.intervalCount,
-    help: errors.intervalCount ? undefined : `Leave blank for ${intervalInfo.adverb}`
-  })), draft.interval === 'PerUnit' && /*#__PURE__*/React.createElement("div", {
-    className: "helper trm-cadence-echo"
-  }, "Name the unit in the term\u2019s name \u2014 \u201CCustody \xB7 per share\u201D."), /*#__PURE__*/React.createElement(DateField, {
-    label: "First billed on",
-    value: draft.anchorDate,
-    onChange: set('anchorDate'),
-    helper: "When this is first actually charged, if that isn\u2019t the effective date"
-  })), /*#__PURE__*/React.createElement(NoteField, {
-    label: "Note",
-    maxLength: 512,
-    value: draft.note,
-    onChange: set('note'),
-    placeholder: "What changed, and why \u2014 e.g. \u201CFed cut pass-through\u201D.",
-    error: errors.note
-  }));
-};
-Object.assign(window, {
-  AddTermModal
-});
-})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddTermModal.jsx", error: String((e && e.message) || e) }); }
 
 // ui_kits/web/AddTransactionModal.jsx
 try { (() => {
@@ -53634,10 +53128,6 @@ const UA_CATEGORIES = [{
   icon: 'account_balance_wallet',
   actions: ['create', 'read', 'update', 'delete']
 }, {
-  cat: 'accounts.terms',
-  icon: 'percent',
-  actions: ['read', 'write']
-}, {
   cat: 'accounts.estimates',
   icon: 'query_stats',
   actions: ['read', 'write']
@@ -53739,13 +53229,13 @@ const UA_ROLES = [
 // User = day-to-day finance work + full Journal/Tasks module. Mirrors UserClaims.
 {
   name: 'User',
-  permissions: ['accounts.read', 'accounts.terms.read', 'accounts.estimates.read', 'budgets.read', 'transactions.create', 'transactions.read', 'transactions.update', 'transactions.delete', 'transactions.tags.read', 'taxes.read', 'contracts.read', 'contacts.read', 'currencies.read', 'exchangerates.read', 'user-preferences.create', 'user-preferences.read', 'user-preferences.update', 'user-preferences.delete', 'files.create', 'files.read', 'files.update', 'files.delete', 'file-analysis.create', 'file-analysis.read', 'file-analysis.import', 'journal.create', 'journal.read', 'journal.update', 'journal.delete', 'journal.tags.create', 'journal.tags.read', 'journal.tags.update', 'journal.tags.delete', 'tasks.create', 'tasks.read', 'tasks.update', 'tasks.delete', 'tasks.tags.create', 'tasks.tags.read', 'tasks.tags.update', 'tasks.tags.delete']
+  permissions: ['accounts.read', 'accounts.estimates.read', 'budgets.read', 'transactions.create', 'transactions.read', 'transactions.update', 'transactions.delete', 'transactions.tags.read', 'taxes.read', 'contracts.read', 'contacts.read', 'currencies.read', 'exchangerates.read', 'user-preferences.create', 'user-preferences.read', 'user-preferences.update', 'user-preferences.delete', 'files.create', 'files.read', 'files.update', 'files.delete', 'file-analysis.create', 'file-analysis.read', 'file-analysis.import', 'journal.create', 'journal.read', 'journal.update', 'journal.delete', 'journal.tags.create', 'journal.tags.read', 'journal.tags.update', 'journal.tags.delete', 'tasks.create', 'tasks.read', 'tasks.update', 'tasks.delete', 'tasks.tags.create', 'tasks.tags.read', 'tasks.tags.update', 'tasks.tags.delete']
 },
 // Guest = read-only finance data + personal preferences. Mirrors GuestClaims
 // (no Journal/Tasks module, no file-analysis, no contracts).
 {
   name: 'Guest',
-  permissions: ['accounts.read', 'accounts.terms.read', 'accounts.estimates.read', 'budgets.read', 'transactions.read', 'transactions.tags.read', 'contacts.read', 'currencies.read', 'exchangerates.read', 'user-preferences.create', 'user-preferences.read', 'user-preferences.update', 'user-preferences.delete', 'files.read', 'taxes.read']
+  permissions: ['accounts.read', 'accounts.estimates.read', 'budgets.read', 'transactions.read', 'transactions.tags.read', 'contacts.read', 'currencies.read', 'exchangerates.read', 'user-preferences.create', 'user-preferences.read', 'user-preferences.update', 'user-preferences.delete', 'files.read', 'taxes.read']
 }];
 const UA_ROLE_BY = Object.fromEntries(UA_ROLES.map(r => [r.name, r]));
 const UA_ROLE_META = {
@@ -55682,6 +55172,58 @@ try { (() => {
       occurredAt: '2025-11-06T09:15:00Z',
       createdByUserId: 'u-sam',
       createdAtUtc: '2025-11-06T09:15:00Z'
+    }],
+    /* The migration's attention records (MoveAccountTermsToContracts §3.5):
+       one system Other event per contract it created or moved terms onto.
+       Server-authored, one line per flag code; editable and deletable like any
+       system row — a to-do, not an audit record. */
+    'ct-deposit': [{
+      id: 'cev-mig-dep',
+      contractId: 'ct-deposit',
+      source: 'system',
+      type: 'Other',
+      title: 'Terms migrated from account "Ally Savings"',
+      description: 'A8 (5): Interest rate\nA14 (1): Cash handling · branch\nA15 (1): Ally Savings',
+      notes: null,
+      occurredAt: '2026-09-24T06:00:00Z',
+      createdByUserId: null,
+      createdAtUtc: '2026-09-24T06:00:00Z'
+    }],
+    'ct-auto-loan': [{
+      id: 'cev-mig-loan',
+      contractId: 'ct-auto-loan',
+      source: 'system',
+      type: 'Other',
+      title: 'Terms migrated from account "Citi Auto Loan"',
+      description: 'A15 (1): Citi Auto Loan',
+      notes: null,
+      occurredAt: '2026-09-24T06:00:00Z',
+      createdByUserId: null,
+      createdAtUtc: '2026-09-24T06:00:00Z'
+    }],
+    'ct-mig-amex': [{
+      id: 'cev-mig-amex',
+      contractId: 'ct-mig-amex',
+      source: 'system',
+      type: 'Other',
+      title: 'Terms migrated from account "Amex Platinum"',
+      description: 'A1 (1): Amex Platinum\nA6 (1): 3782 822463 55121\nA14 (3): Annual card fee, Paper statement, Account maintenance',
+      notes: null,
+      occurredAt: '2026-09-24T06:00:00Z',
+      createdByUserId: null,
+      createdAtUtc: '2026-09-24T06:00:00Z'
+    }],
+    'ct-mig-vanguard': [{
+      id: 'cev-mig-vg',
+      contractId: 'ct-mig-vanguard',
+      source: 'system',
+      type: 'Other',
+      title: 'Terms migrated from account "Vanguard Brokerage"',
+      description: 'A1 (1): Vanguard Brokerage\nA6 (1): VBR9 0042 1188\nA8 (4): Expected return, Management fee',
+      notes: null,
+      occurredAt: '2026-09-24T06:00:00Z',
+      createdByUserId: null,
+      createdAtUtc: '2026-09-24T06:00:00Z'
     }]
     // ct-employment deliberately has none — it drives the empty state.
   };
@@ -56839,6 +56381,73 @@ try { (() => {
       toDate: null
     }],
     files: []
+  },
+  /* CREATED BY THE MIGRATION (MoveAccountTermsToContracts §3.3). Amex held
+     terms but was party to no Loan, so a Loan was built from the account's
+     own data: name, description, number → reference, opened → start. Left
+     unsigned — Draft — so it stays out of the run rate until reviewed (A1). */
+  {
+    id: 'ct-mig-amex',
+    name: 'Amex Platinum',
+    type: 'Loan',
+    referenceNumber: '3782 822463 55121',
+    description: 'Travel & dining rewards card',
+    startDate: '2022-11-20',
+    endDate: null,
+    completionDate: null,
+    ready: null,
+    signed: null,
+    paused: null,
+    archived: null,
+    createdAtUtc: '2026-09-24T06:00:00Z',
+    createdByUserId: null,
+    parties: [{
+      id: 'cp-mig-amex-1',
+      accountId: '3',
+      role: 'Object',
+      fromDate: null,
+      toDate: null
+    }, {
+      id: 'cp-mig-amex-2',
+      contactId: 'c16',
+      role: 'Lender',
+      fromDate: null,
+      toDate: null
+    }],
+    files: []
+  },
+  /* Asset account, no Deposit contract → a Deposit, account as Object and
+     its custodian as Custodian. Percentage terms were flipped to Incoming —
+     right for the expected return, wrong for the expense ratio (A8). */
+  {
+    id: 'ct-mig-vanguard',
+    name: 'Vanguard Brokerage',
+    type: 'Deposit',
+    referenceNumber: 'VBR9 0042 1188',
+    description: 'Long-term index fund portfolio',
+    startDate: '2019-01-09',
+    endDate: null,
+    completionDate: null,
+    ready: null,
+    signed: null,
+    paused: null,
+    archived: null,
+    createdAtUtc: '2026-09-24T06:00:00Z',
+    createdByUserId: null,
+    parties: [{
+      id: 'cp-mig-vg-1',
+      accountId: '4',
+      role: 'Object',
+      fromDate: null,
+      toDate: null
+    }, {
+      id: 'cp-mig-vg-2',
+      contactId: 'c17',
+      role: 'Custodian',
+      fromDate: null,
+      toDate: null
+    }],
+    files: []
   }];
 
   // ---- Lookups + helpers -----------------------------------------------------
@@ -57717,23 +57326,6 @@ try { (() => {
       note: 'Renegotiated at the three-year review.',
       createdAtUtc: '2024-05-01T09:00:00Z'
     }],
-    // Deposit interest — money IN. Fixed for the term, paid on the 1st.
-    'ct-deposit': [{
-      id: 'ctm-dep-1',
-      contractId: 'ct-deposit',
-      unit: 'Amount',
-      value: 68.75,
-      currency: 'USD',
-      interval: 'Monthly',
-      intervalCount: 1,
-      direction: 'Incoming',
-      anchorDate: '2026-05-01',
-      effectiveFrom: '2026-04-01',
-      label: 'Interest',
-      labelKey: 'interest',
-      note: '4.125% p.a. on 20,000, paid monthly.',
-      createdAtUtc: '2026-03-24T09:00:00Z'
-    }],
     'ct-parking': [{
       id: 'ctm-parking-1',
       contractId: 'ct-parking',
@@ -57961,6 +57553,399 @@ try { (() => {
       labelKey: 'signing bonus',
       note: 'Paid with the first salary. One-off — recorded, never projected.',
       createdAtUtc: '2024-02-24T09:00:00Z'
+    }],
+    /* ---- Moved by MoveAccountTermsToContracts — same TermId, value and
+       history as on the account. Direction is Outgoing except Percentage
+       rows on a Deposit, which the migration flips to Incoming (A8). ---- */
+    // Ally Savings → its one Deposit (reused; no series collision with 'interest').
+    'ct-deposit': [{
+      id: 'ctm-dep-1',
+      contractId: 'ct-deposit',
+      unit: 'Amount',
+      value: 68.75,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 1,
+      direction: 'Incoming',
+      anchorDate: '2026-05-01',
+      effectiveFrom: '2026-04-01',
+      label: 'Interest',
+      labelKey: 'interest',
+      note: '4.125% p.a. on 20,000, paid monthly.',
+      createdAtUtc: '2026-03-24T09:00:00Z'
+    }, {
+      id: 'tm-2-1',
+      contractId: 'ct-deposit',
+      unit: 'Percentage',
+      value: 0.0425,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      direction: 'Incoming',
+      effectiveFrom: '2024-02-01',
+      label: 'Interest rate',
+      labelKey: 'interest rate',
+      note: 'Promotional intro APY',
+      createdAtUtc: '2024-02-01T09:00:00Z'
+    }, {
+      id: 'tm-2-2',
+      contractId: 'ct-deposit',
+      unit: 'Percentage',
+      value: 0.0410,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      direction: 'Incoming',
+      effectiveFrom: '2024-09-01',
+      label: 'Interest rate',
+      labelKey: 'interest rate',
+      note: null,
+      createdAtUtc: '2024-09-01T09:00:00Z'
+    }, {
+      id: 'tm-2-3',
+      contractId: 'ct-deposit',
+      unit: 'Percentage',
+      value: 0.0385,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      direction: 'Incoming',
+      effectiveFrom: '2025-01-15',
+      label: 'Interest rate',
+      labelKey: 'interest rate',
+      note: 'Fed cut pass-through',
+      createdAtUtc: '2025-01-15T09:00:00Z'
+    }, {
+      id: 'tm-2-4',
+      contractId: 'ct-deposit',
+      unit: 'Percentage',
+      value: 0.0360,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      direction: 'Incoming',
+      effectiveFrom: '2025-07-01',
+      label: 'Interest rate',
+      labelKey: 'interest rate',
+      note: null,
+      createdAtUtc: '2025-07-01T09:00:00Z'
+    }, {
+      id: 'tm-2-5',
+      contractId: 'ct-deposit',
+      unit: 'Percentage',
+      value: 0.0340,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      direction: 'Incoming',
+      effectiveFrom: '2026-02-10',
+      label: 'Interest rate',
+      labelKey: 'interest rate',
+      note: 'Fed cut pass-through',
+      createdAtUtc: '2026-02-10T09:00:00Z'
+    }, {
+      id: 'tm-2-6',
+      contractId: 'ct-deposit',
+      unit: 'Amount',
+      value: 10.00,
+      currency: 'USD',
+      interval: 'PerOccurrence',
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2024-02-01',
+      label: 'Excess withdrawal',
+      labelKey: 'excess withdrawal',
+      note: 'Over 6 withdrawals a month',
+      createdAtUtc: '2024-02-01T09:00:00Z'
+    }, {
+      id: 'tm-2-7',
+      contractId: 'ct-deposit',
+      unit: 'Amount',
+      value: 35.00,
+      currency: 'USD',
+      interval: 'PerOccurrence',
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2024-02-01',
+      label: 'Outgoing wire · international',
+      labelKey: 'outgoing wire · international',
+      note: null,
+      createdAtUtc: '2024-02-01T09:00:00Z'
+    }, {
+      id: 'tm-2-8',
+      contractId: 'ct-deposit',
+      unit: 'Amount',
+      value: 3.00,
+      currency: 'USD',
+      interval: 'Weekly',
+      intervalCount: 2,
+      direction: 'Outgoing',
+      effectiveFrom: '2025-06-01',
+      label: 'Cash handling · branch',
+      labelKey: 'cash handling · branch',
+      note: 'Charged every second week the account is used at a counter.',
+      createdAtUtc: '2025-06-01T09:00:00Z'
+    }],
+    // Citi Auto Loan → its one Loan. The account holds TWO roles there
+    // (Borrower, Collateral) and still counts as one candidate.
+    'ct-auto-loan': [{
+      id: 'tm-5-1',
+      contractId: 'ct-auto-loan',
+      unit: 'Percentage',
+      value: 0.0649,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2023-06-01',
+      label: 'APR',
+      labelKey: 'apr',
+      note: 'Fixed APR · 60-month term',
+      createdAtUtc: '2023-06-01T09:00:00Z'
+    }, {
+      id: 'tm-5-2',
+      contractId: 'ct-auto-loan',
+      unit: 'Amount',
+      value: 15.00,
+      currency: 'USD',
+      interval: 'PerOccurrence',
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2023-06-01',
+      label: 'Late payment',
+      labelKey: 'late payment',
+      note: null,
+      createdAtUtc: '2023-06-01T09:00:00Z'
+    }],
+    'ct-mig-amex': [{
+      id: 'tm-3-1',
+      contractId: 'ct-mig-amex',
+      unit: 'Percentage',
+      value: 0.2249,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2023-01-01',
+      label: 'Purchase APR',
+      labelKey: 'purchase apr',
+      note: 'Variable purchase APR (Prime + 16.99%)',
+      createdAtUtc: '2023-01-01T09:00:00Z'
+    }, {
+      id: 'tm-3-2',
+      contractId: 'ct-mig-amex',
+      unit: 'Percentage',
+      value: 0.2624,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2023-09-01',
+      label: 'Purchase APR',
+      labelKey: 'purchase apr',
+      note: null,
+      createdAtUtc: '2023-09-01T09:00:00Z'
+    }, {
+      id: 'tm-3-3',
+      contractId: 'ct-mig-amex',
+      unit: 'Percentage',
+      value: 0.2899,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2024-06-01',
+      label: 'Purchase APR',
+      labelKey: 'purchase apr',
+      note: 'Prime-rate increase',
+      createdAtUtc: '2024-06-01T09:00:00Z'
+    }, {
+      id: 'tm-3-4',
+      contractId: 'ct-mig-amex',
+      unit: 'Amount',
+      value: 695.00,
+      currency: 'USD',
+      interval: 'Annually',
+      intervalCount: 1,
+      direction: 'Outgoing',
+      effectiveFrom: '2023-01-01',
+      label: 'Annual card fee',
+      labelKey: 'annual card fee',
+      note: 'Membership fee',
+      createdAtUtc: '2023-01-01T09:00:00Z'
+    }, {
+      id: 'tm-3-5',
+      contractId: 'ct-mig-amex',
+      unit: 'Percentage',
+      value: 0.0275,
+      currency: null,
+      interval: 'PerOccurrence',
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2023-01-01',
+      label: 'Currency conversion',
+      labelKey: 'currency conversion',
+      note: 'Markup on the network rate',
+      createdAtUtc: '2023-01-01T09:00:00Z'
+    }, {
+      id: 'tm-3-6',
+      contractId: 'ct-mig-amex',
+      unit: 'Amount',
+      value: 5.00,
+      currency: 'USD',
+      interval: 'PerOccurrence',
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2023-01-01',
+      label: 'ATM withdrawal · domestic',
+      labelKey: 'atm withdrawal · domestic',
+      note: null,
+      createdAtUtc: '2023-01-01T09:00:00Z'
+    }, {
+      id: 'tm-3-7',
+      contractId: 'ct-mig-amex',
+      unit: 'Amount',
+      value: 25.00,
+      currency: 'USD',
+      interval: 'PerOccurrence',
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2023-01-01',
+      label: 'ATM withdrawal · abroad',
+      labelKey: 'atm withdrawal · abroad',
+      note: null,
+      createdAtUtc: '2023-01-01T09:00:00Z'
+    }, {
+      id: 'tm-3-8',
+      contractId: 'ct-mig-amex',
+      unit: 'Amount',
+      value: 30.00,
+      currency: 'USD',
+      interval: 'PerOccurrence',
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2025-03-01',
+      label: 'ATM withdrawal · abroad',
+      labelKey: 'atm withdrawal · abroad',
+      note: 'Overseas network charge increase',
+      createdAtUtc: '2025-03-01T09:00:00Z'
+    }, {
+      id: 'tm-3-9',
+      contractId: 'ct-mig-amex',
+      unit: 'Amount',
+      value: 15.00,
+      currency: 'USD',
+      interval: 'OneTime',
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2023-01-01',
+      label: 'Card replacement',
+      labelKey: 'card replacement',
+      note: null,
+      createdAtUtc: '2023-01-01T09:00:00Z'
+    }, {
+      id: 'tm-3-10',
+      contractId: 'ct-mig-amex',
+      unit: 'Amount',
+      value: 2.00,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 1,
+      direction: 'Outgoing',
+      effectiveFrom: '2023-01-01',
+      label: 'Paper statement',
+      labelKey: 'paper statement',
+      note: null,
+      createdAtUtc: '2023-01-01T09:00:00Z'
+    }, {
+      id: 'tm-3-11',
+      contractId: 'ct-mig-amex',
+      unit: 'Amount',
+      value: 45.00,
+      currency: 'USD',
+      interval: 'Monthly',
+      intervalCount: 3,
+      direction: 'Outgoing',
+      effectiveFrom: '2026-01-01',
+      anchorDate: '2026-01-15',
+      label: 'Account maintenance',
+      labelKey: 'account maintenance',
+      note: 'Billed in arrears.',
+      createdAtUtc: '2026-01-01T09:00:00Z'
+    }],
+    'ct-mig-vanguard': [{
+      id: 'tm-4-1',
+      contractId: 'ct-mig-vanguard',
+      unit: 'Percentage',
+      value: 0.0700,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      direction: 'Incoming',
+      effectiveFrom: '2024-01-01',
+      label: 'Expected return',
+      labelKey: 'expected return',
+      note: 'Long-run target · 80/20 blend',
+      createdAtUtc: '2024-01-01T09:00:00Z'
+    }, {
+      id: 'tm-4-2',
+      contractId: 'ct-mig-vanguard',
+      unit: 'Percentage',
+      value: 0.0650,
+      currency: null,
+      interval: null,
+      intervalCount: null,
+      direction: 'Incoming',
+      effectiveFrom: '2025-06-01',
+      label: 'Expected return',
+      labelKey: 'expected return',
+      note: 'Trimmed on valuation outlook',
+      createdAtUtc: '2025-06-01T09:00:00Z'
+    },
+    // Flipped to Incoming by the rule, but an expense ratio is money OUT —
+    // exactly the percentage fee A8 asks the user to put back.
+    {
+      id: 'tm-4-3',
+      contractId: 'ct-mig-vanguard',
+      unit: 'Percentage',
+      value: 0.0004,
+      currency: null,
+      interval: 'Annually',
+      intervalCount: 1,
+      direction: 'Incoming',
+      effectiveFrom: '2023-01-01',
+      label: 'Management fee',
+      labelKey: 'management fee',
+      note: 'Blended expense ratio',
+      createdAtUtc: '2023-01-01T09:00:00Z'
+    }, {
+      id: 'tm-4-4',
+      contractId: 'ct-mig-vanguard',
+      unit: 'Percentage',
+      value: 0.0003,
+      currency: null,
+      interval: 'Annually',
+      intervalCount: 1,
+      direction: 'Incoming',
+      effectiveFrom: '2025-01-01',
+      label: 'Management fee',
+      labelKey: 'management fee',
+      note: 'Expense ratio reduction',
+      createdAtUtc: '2025-01-01T09:00:00Z'
+    }, {
+      id: 'tm-4-5',
+      contractId: 'ct-mig-vanguard',
+      unit: 'Amount',
+      value: 0.02,
+      currency: 'USD',
+      interval: 'PerUnit',
+      intervalCount: null,
+      direction: 'Outgoing',
+      effectiveFrom: '2025-01-01',
+      label: 'Custody · per share',
+      labelKey: 'custody · per share',
+      note: 'On shares held at month end.',
+      createdAtUtc: '2025-01-01T09:00:00Z'
     }]
   };
   Object.assign(H, {
@@ -61323,365 +61308,9 @@ window.OdysseyData.termIntervalCount = {
   max: 1000
 };
 
-/* Every account type may carry terms — there is no eligibility matrix. */
-
-/* Seed Term history, keyed by accountId. EffectiveFrom ascending here for
-   readability; the helpers sort as needed. Percentages stored as fractions.
-   Every fee is kind 'Fee' and carries a Label — the shape the collapse migration
-   leaves behind, with the old kind names backfilled as labels where a row had none. */
-window.OdysseyData.accountTerms = {
-  // Ally Savings — a high-yield rate stepped DOWN over two years (the headline story).
-  '2': [{
-    id: 'tm-2-1',
-    accountId: '2',
-    unit: 'Percentage',
-    value: 0.0425,
-    currency: null,
-    interval: null,
-    effectiveFrom: '2024-02-01',
-    label: 'Interest rate',
-    labelKey: 'interest rate',
-    note: 'Promotional intro APY',
-    createdAtUtc: '2024-02-01T09:00:00Z'
-  }, {
-    id: 'tm-2-2',
-    accountId: '2',
-    unit: 'Percentage',
-    value: 0.0410,
-    currency: null,
-    interval: null,
-    effectiveFrom: '2024-09-01',
-    label: 'Interest rate',
-    labelKey: 'interest rate',
-    note: null,
-    createdAtUtc: '2024-09-01T09:00:00Z'
-  }, {
-    id: 'tm-2-3',
-    accountId: '2',
-    unit: 'Percentage',
-    value: 0.0385,
-    currency: null,
-    interval: null,
-    effectiveFrom: '2025-01-15',
-    label: 'Interest rate',
-    labelKey: 'interest rate',
-    note: 'Fed cut pass-through',
-    createdAtUtc: '2025-01-15T09:00:00Z'
-  }, {
-    id: 'tm-2-4',
-    accountId: '2',
-    unit: 'Percentage',
-    value: 0.0360,
-    currency: null,
-    interval: null,
-    effectiveFrom: '2025-07-01',
-    label: 'Interest rate',
-    labelKey: 'interest rate',
-    note: null,
-    createdAtUtc: '2025-07-01T09:00:00Z'
-  }, {
-    id: 'tm-2-5',
-    accountId: '2',
-    unit: 'Percentage',
-    value: 0.0340,
-    currency: null,
-    interval: null,
-    effectiveFrom: '2026-02-10',
-    label: 'Interest rate',
-    labelKey: 'interest rate',
-    note: 'Fed cut pass-through',
-    createdAtUtc: '2026-02-10T09:00:00Z'
-  }, {
-    id: 'tm-2-6',
-    accountId: '2',
-    unit: 'Amount',
-    value: 10.00,
-    currency: 'USD',
-    interval: 'PerOccurrence',
-    intervalCount: null,
-    effectiveFrom: '2024-02-01',
-    label: 'Excess withdrawal',
-    labelKey: 'excess withdrawal',
-    note: 'Over 6 withdrawals a month',
-    createdAtUtc: '2024-02-01T09:00:00Z'
-  }, {
-    id: 'tm-2-7',
-    accountId: '2',
-    unit: 'Amount',
-    value: 35.00,
-    currency: 'USD',
-    interval: 'PerOccurrence',
-    intervalCount: null,
-    effectiveFrom: '2024-02-01',
-    label: 'Outgoing wire · international',
-    labelKey: 'outgoing wire · international',
-    note: null,
-    createdAtUtc: '2024-02-01T09:00:00Z'
-  },
-  // Weekly x 2 — a cadence the old enum could not express at all.
-  {
-    id: 'tm-2-8',
-    accountId: '2',
-    unit: 'Amount',
-    value: 3.00,
-    currency: 'USD',
-    interval: 'Weekly',
-    intervalCount: 2,
-    effectiveFrom: '2025-06-01',
-    label: 'Cash handling · branch',
-    labelKey: 'cash handling · branch',
-    note: 'Charged every second week the account is used at a counter.',
-    createdAtUtc: '2025-06-01T09:00:00Z'
-  }],
-  // Amex Platinum — a travel card: purchase APR stepped UP, plus SIX named fees,
-  // every one of them kind 'Fee'. Before the collapse these were four kinds that
-  // resolved to two in-force tiles; now they are six, told apart by their names.
-  '3': [{
-    id: 'tm-3-1',
-    accountId: '3',
-    unit: 'Percentage',
-    value: 0.2249,
-    currency: null,
-    interval: null,
-    effectiveFrom: '2023-01-01',
-    label: 'Purchase APR',
-    labelKey: 'purchase apr',
-    note: 'Variable purchase APR (Prime + 16.99%)',
-    createdAtUtc: '2023-01-01T09:00:00Z'
-  }, {
-    id: 'tm-3-2',
-    accountId: '3',
-    unit: 'Percentage',
-    value: 0.2624,
-    currency: null,
-    interval: null,
-    effectiveFrom: '2023-09-01',
-    label: 'Purchase APR',
-    labelKey: 'purchase apr',
-    note: null,
-    createdAtUtc: '2023-09-01T09:00:00Z'
-  }, {
-    id: 'tm-3-3',
-    accountId: '3',
-    unit: 'Percentage',
-    value: 0.2899,
-    currency: null,
-    interval: null,
-    effectiveFrom: '2024-06-01',
-    label: 'Purchase APR',
-    labelKey: 'purchase apr',
-    note: 'Prime-rate increase',
-    createdAtUtc: '2024-06-01T09:00:00Z'
-  }, {
-    id: 'tm-3-4',
-    accountId: '3',
-    unit: 'Amount',
-    value: 695.00,
-    currency: 'USD',
-    interval: 'Annually',
-    intervalCount: 1,
-    effectiveFrom: '2023-01-01',
-    label: 'Annual card fee',
-    labelKey: 'annual card fee',
-    note: 'Membership fee',
-    createdAtUtc: '2023-01-01T09:00:00Z'
-  }, {
-    id: 'tm-3-5',
-    accountId: '3',
-    unit: 'Percentage',
-    value: 0.0275,
-    currency: null,
-    interval: 'PerOccurrence',
-    intervalCount: null,
-    effectiveFrom: '2023-01-01',
-    label: 'Currency conversion',
-    labelKey: 'currency conversion',
-    note: 'Markup on the network rate',
-    createdAtUtc: '2023-01-01T09:00:00Z'
-  }, {
-    id: 'tm-3-6',
-    accountId: '3',
-    unit: 'Amount',
-    value: 5.00,
-    currency: 'USD',
-    interval: 'PerOccurrence',
-    intervalCount: null,
-    effectiveFrom: '2023-01-01',
-    label: 'ATM withdrawal · domestic',
-    labelKey: 'atm withdrawal · domestic',
-    note: null,
-    createdAtUtc: '2023-01-01T09:00:00Z'
-  }, {
-    id: 'tm-3-7',
-    accountId: '3',
-    unit: 'Amount',
-    value: 25.00,
-    currency: 'USD',
-    interval: 'PerOccurrence',
-    intervalCount: null,
-    effectiveFrom: '2023-01-01',
-    label: 'ATM withdrawal · abroad',
-    labelKey: 'atm withdrawal · abroad',
-    note: null,
-    createdAtUtc: '2023-01-01T09:00:00Z'
-  },
-  // Same label, later date → supersedes only its own series; the domestic
-  // charge above is untouched.
-  {
-    id: 'tm-3-8',
-    accountId: '3',
-    unit: 'Amount',
-    value: 30.00,
-    currency: 'USD',
-    interval: 'PerOccurrence',
-    intervalCount: null,
-    effectiveFrom: '2025-03-01',
-    label: 'ATM withdrawal · abroad',
-    labelKey: 'atm withdrawal · abroad',
-    note: 'Overseas network charge increase',
-    createdAtUtc: '2025-03-01T09:00:00Z'
-  }, {
-    id: 'tm-3-9',
-    accountId: '3',
-    unit: 'Amount',
-    value: 15.00,
-    currency: 'USD',
-    interval: 'OneTime',
-    intervalCount: null,
-    effectiveFrom: '2023-01-01',
-    label: 'Card replacement',
-    labelKey: 'card replacement',
-    note: null,
-    createdAtUtc: '2023-01-01T09:00:00Z'
-  }, {
-    id: 'tm-3-10',
-    accountId: '3',
-    unit: 'Amount',
-    value: 2.00,
-    currency: 'USD',
-    interval: 'Monthly',
-    intervalCount: 1,
-    effectiveFrom: '2023-01-01',
-    label: 'Paper statement',
-    labelKey: 'paper statement',
-    note: null,
-    createdAtUtc: '2023-01-01T09:00:00Z'
-  },
-  // The case AnchorDate exists for: a quarterly charge (Monthly x 3 — the old
-  // Quarterly value) raised on the 1st but not first billed until the 15th.
-  {
-    id: 'tm-3-11',
-    accountId: '3',
-    unit: 'Amount',
-    value: 45.00,
-    currency: 'USD',
-    interval: 'Monthly',
-    intervalCount: 3,
-    effectiveFrom: '2026-01-01',
-    anchorDate: '2026-01-15',
-    label: 'Account maintenance',
-    labelKey: 'account maintenance',
-    note: 'Billed in arrears.',
-    createdAtUtc: '2026-01-01T09:00:00Z'
-  }],
-  // Vanguard Brokerage — an expected-return target (lowered once) + an expense ratio.
-  // The expense-ratio rows were ManagementFee; the migration backfilled the old
-  // kind name as their label, which is why they read "Management fee".
-  '4': [{
-    id: 'tm-4-1',
-    accountId: '4',
-    unit: 'Percentage',
-    value: 0.0700,
-    currency: null,
-    interval: null,
-    effectiveFrom: '2024-01-01',
-    label: 'Expected return',
-    labelKey: 'expected return',
-    note: 'Long-run target · 80/20 blend',
-    createdAtUtc: '2024-01-01T09:00:00Z'
-  }, {
-    id: 'tm-4-2',
-    accountId: '4',
-    unit: 'Percentage',
-    value: 0.0650,
-    currency: null,
-    interval: null,
-    effectiveFrom: '2025-06-01',
-    label: 'Expected return',
-    labelKey: 'expected return',
-    note: 'Trimmed on valuation outlook',
-    createdAtUtc: '2025-06-01T09:00:00Z'
-  }, {
-    id: 'tm-4-3',
-    accountId: '4',
-    unit: 'Percentage',
-    value: 0.0004,
-    currency: null,
-    interval: 'Annually',
-    intervalCount: 1,
-    effectiveFrom: '2023-01-01',
-    label: 'Management fee',
-    labelKey: 'management fee',
-    note: 'Blended expense ratio',
-    createdAtUtc: '2023-01-01T09:00:00Z'
-  }, {
-    id: 'tm-4-4',
-    accountId: '4',
-    unit: 'Percentage',
-    value: 0.0003,
-    currency: null,
-    interval: 'Annually',
-    intervalCount: 1,
-    effectiveFrom: '2025-01-01',
-    label: 'Management fee',
-    labelKey: 'management fee',
-    note: 'Expense ratio reduction',
-    createdAtUtc: '2025-01-01T09:00:00Z'
-  },
-  // PerUnit — the unit itself is named by the label, not by a field.
-  {
-    id: 'tm-4-5',
-    accountId: '4',
-    unit: 'Amount',
-    value: 0.02,
-    currency: 'USD',
-    interval: 'PerUnit',
-    intervalCount: null,
-    effectiveFrom: '2025-01-01',
-    label: 'Custody · per share',
-    labelKey: 'custody · per share',
-    note: 'On shares held at month end.',
-    createdAtUtc: '2025-01-01T09:00:00Z'
-  }],
-  // Citi Auto Loan — a single fixed APR (chart shows one flat hold) + a late fee.
-  '5': [{
-    id: 'tm-5-1',
-    accountId: '5',
-    unit: 'Percentage',
-    value: 0.0649,
-    currency: null,
-    interval: null,
-    effectiveFrom: '2023-06-01',
-    label: 'APR',
-    labelKey: 'apr',
-    note: 'Fixed APR · 60-month term',
-    createdAtUtc: '2023-06-01T09:00:00Z'
-  }, {
-    id: 'tm-5-2',
-    accountId: '5',
-    unit: 'Amount',
-    value: 15.00,
-    currency: 'USD',
-    interval: 'PerOccurrence',
-    intervalCount: null,
-    effectiveFrom: '2023-06-01',
-    label: 'Late payment',
-    labelKey: 'late payment',
-    note: null,
-    createdAtUtc: '2023-06-01T09:00:00Z'
-  }]
-  // Chase Checking ('1') intentionally has no terms — drives the empty state.
-};
+/* Terms have ONE owner: a contract (MoveAccountTermsToContracts). The seed that
+   used to live here as accountTerms was moved row-for-row — same ids — onto
+   contracts in contracts-data.js, following the migration's §3.2 rule. */
 
 /* Every fee is named by its Label; the series key is (kind, labelKey). A rate is
    refused a label, so it is always the unnamed series of its own kind — exactly
@@ -61722,7 +61351,7 @@ Object.assign(window.OdysseyHelpers, {
   },
   /* ---- Direction ---------------------------------------------------------
      Read with a DEFAULT, never a truthiness test: a row written before the
-     field existed, and every account term, is Outgoing. */
+     field existed is Outgoing. */
   termDirection(t) {
     return t && t.direction === 'Incoming' ? 'Incoming' : 'Outgoing';
   },
@@ -61733,12 +61362,9 @@ Object.assign(window.OdysseyHelpers, {
   termIsIncoming(t) {
     return window.OdysseyHelpers.termDirection(t) === 'Incoming';
   },
-  // The owner kind of a term row, from whichever id is populated.
-  termOwnerKind(t, owner) {
-    if (owner && owner.ownerKind) return owner.ownerKind;
-    if (t && t.contractId) return 'contract';
-    if (t && t.accountId) return 'account';
-    return 'account';
+  // Every term is owned by a contract; kept so callers need not change.
+  termOwnerKind() {
+    return 'contract';
   },
   /* Where direction MEANS something: any term owned by a CONTRACT. An arrears
      rate charges the tenant and a deposit rate pays them — the same fact a fee
@@ -61750,8 +61376,7 @@ Object.assign(window.OdysseyHelpers, {
     return window.OdysseyHelpers.termOwnerKind(t, owner) === 'contract';
   },
   // Why direction is refused here, in the words the 400 uses. Null = allowed.
-  termDirectionRefusal(ownerKind) {
-    if (ownerKind !== 'contract') return 'Direction applies to a contract term. An account term is always money out.';
+  termDirectionRefusal() {
     return null;
   },
   /* Mint wherever an INCOMING term's own value is printed. Outgoing returns
@@ -61759,10 +61384,6 @@ Object.assign(window.OdysseyHelpers, {
      existed before this field changes appearance. */
   termDirectionColor(t, owner) {
     return window.OdysseyHelpers.termDirectionApplies(t, owner) && window.OdysseyHelpers.termIsIncoming(t) ? 'var(--finance-income)' : null;
-  },
-  // All terms for an account, EffectiveFrom DESC (history listing, newest first).
-  termsForAccount(accountId) {
-    return (window.OdysseyData.accountTerms[accountId] || []).slice().sort((a, b) => a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : 0);
   },
   // ---- Series labels: one TermKind can hold several named series --------
   // ONE normalization rule, shared by the write path and the client's
@@ -61786,21 +61407,6 @@ Object.assign(window.OdysseyHelpers, {
   termDisplayName(t) {
     return window.OdysseyHelpers.termLabelNormalize(t.label) || 'Term';
   },
-  // The currently-effective entry per SERIES as of `asOf` (default: today): for
-  // each (kind, label) with ≥1 entry, the one with the greatest EffectiveFrom ≤
-  // asOf. Ordered kind (registry order) then label (ordinal), so tiles and rows
-  // keep a stable order across loads. This is the GET …/terms/current view.
-  currentTerms(accountId, asOf) {
-    const cutoff = asOf || new Date().toISOString().slice(0, 10);
-    const bySeries = {};
-    for (const t of window.OdysseyData.accountTerms[accountId] || []) {
-      if (t.effectiveFrom > cutoff) continue; // future-dated, not yet in force
-      const key = window.OdysseyHelpers.termSeriesKey(t);
-      const cur = bySeries[key];
-      if (!cur || t.effectiveFrom > cur.effectiveFrom || t.effectiveFrom === cur.effectiveFrom && t.createdAtUtc > cur.createdAtUtc) bySeries[key] = t;
-    }
-    return window.OdysseyHelpers.sortTermsBySeries(Object.values(bySeries));
-  },
   // Label ordinal — a stable order across loads.
   sortTermsBySeries(list) {
     return list.slice().sort((a, b) => {
@@ -61808,16 +61414,6 @@ Object.assign(window.OdysseyHelpers, {
         lb = b.label || '';
       return la < lb ? -1 : la > lb ? 1 : 0;
     });
-  },
-  // Ascending {date,value,note,id} series for one label.
-  termSeries(accountId, labelKey) {
-    const key = window.OdysseyHelpers.termLabelKey(labelKey) || '';
-    return (window.OdysseyData.accountTerms[accountId] || []).filter(t => window.OdysseyHelpers.termSeriesKey(t) === key).map(t => ({
-      id: t.id,
-      date: t.effectiveFrom,
-      value: t.value,
-      note: t.note
-    })).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
   },
   // Percentage fraction → trimmed display string. 0.0340 → "3.40%", 0.0003 → "0.03%".
   pctStr(frac) {

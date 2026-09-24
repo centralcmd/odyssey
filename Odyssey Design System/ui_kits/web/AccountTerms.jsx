@@ -1,29 +1,12 @@
-/* AccountTerms — the "Terms" section inside an expanded account record
-   (Accounts → account detail), beside Files & Transactions.
+/* Shared term visuals — the step chart, current-terms summary, history table /
+   timeline, name / cadence / direction tags and the series resolvers.
 
-   Backs the AccountTerm feature (interest-rate & fee history): a time-versioned
-   list of TERMS per account. A term's series key is (TermKind, Label) — one kind
-   can hold several concurrently in-force terms, told apart by a user-authored
-   label ("ATM withdrawal · abroad"); within one label, the latest entry on/before
-   a date is the value in force (implicit supersession — no EffectiveTo). Every
-   fee carries a label; a rate is refused one, so a rate is always the unnamed
-   series of its own kind. This surface renders three things from that history,
-   leading with the interest rate:
-
-     1. HERO     — a step-line chart of the rate over time (rates hold flat and
-                   jump on each change). Falls back to expected return; hidden
-                   when the account has no chartable rate series.
-     2. CURRENT  — the values in force for every series (the GET …/terms/current
-                   view). Three summary styles: tiles · row · chips.
-     3. HISTORY  — the full GET …/terms list, grouped Rate then Fees, as a table
-                   or a vertical timeline, each row editable / deletable.
-
-   Props:
-     account       — the account record (drives currency + eligibility)
-     summaryStyle  — 'tiles' (default) | 'row' | 'chips'
-     historyStyle  — 'table' (default) | 'timeline'
-     headerActionRef — optional: receives the "New term" button to hoist into the
-                       collapsible header (so the section owns its own create). */
+   This file used to also compose the account "Terms" section. That section is
+   gone: MoveAccountTermsToContracts made the contract the only owner of a term,
+   removed the /api/accounts/{id}/terms routes and the accounts.terms.* claims,
+   and moved every account term onto a contract. The pieces below are what
+   ContractTerms.jsx composes; the file keeps its name so every page that loads
+   it keeps working. */
 
 const H = window.OdysseyHelpers;
 const D = window.OdysseyData;
@@ -488,114 +471,7 @@ const TermHistory = ({ terms, currentIds, historyStyle, onEdit, onDelete, accoun
   );
 };
 
-/* =============================================================
-   AccountTerms — composes the section + owns create/edit/delete
-   ============================================================= */
-const AccountTerms = ({ account, summaryStyle = 'tiles', historyStyle = 'table', defaultOpen = false, chrome = true,
-  bareAction = true, showCurrent = true, terms: termsProp, onNew, onEdit, onDelete: onDeleteProp }) => {
-  const { useState, useMemo } = React;
-  const controlled = termsProp != null;
-  const [internalTerms, setInternalTerms] = useState(() => H.termsForAccount(account.id));
-  const [modal, setModal] = useState(null); // { mode:'new'|'edit', term? } (uncontrolled only)
-  const terms = controlled ? termsProp : internalTerms;
-
-  const current = useMemo(() => trmCurrentFromList(terms), [terms]);
-  const currentIds = useMemo(() => new Set(current.map(t => t.id)), [current]);
-
-  // Uncontrolled (standalone specimen) keeps its own state + dialog; controlled
-  // (live account row) delegates create/edit/delete + the dialog to the parent.
-  const upsert = (dto, id) => {
-    setInternalTerms(prev => id
-      ? prev.map(t => t.id === id ? { ...t, ...dto } : t)
-      : [{ id: `tm-new-${Date.now()}`, accountId: account.id, createdAtUtc: new Date().toISOString(), ...dto }, ...prev]);
-    setModal(null);
-  };
-  const openNew = () => (controlled ? (onNew && onNew()) : setModal({ mode: 'new' }));
-  const openEdit = (t) => (controlled ? (onEdit && onEdit(t)) : setModal({ mode: 'edit', term: t }));
-  const remove = (t) => (controlled ? (onDeleteProp && onDeleteProp(t)) : setInternalTerms(prev => prev.filter(x => x.id !== t.id)));
-
-  const empty = terms.length === 0;
-  const newBtn = <Button variant="text" color="primary" icon="add" onClick={openNew}>New term</Button>;
-
-  const body = (
-    <div className="trm-section">
-      {empty ? (
-        <EmptyState
-          icon="article"
-          mutedIcon
-          title="No terms recorded yet"
-          desc="Record what this account charges or pays — a rate, a fee, a price — each under its own name with its own history."
-          action={<Button variant="filled" color="primary" icon="add" onClick={openNew}>New term</Button>}
-        />
-      ) : (
-        <React.Fragment>
-          {/* Same series chooser + table as a contract's term history. */}
-          {window.ContractTermChart ? <window.ContractTermChart terms={terms} owner={account} /> : null}
-
-          {showCurrent ? (
-            <div>
-              <div className="trm-sub">
-                <span className="trm-sub-label">Current terms</span>
-                <span className="trm-sub-rule" />
-                <span className="trm-sub-meta">in force · {H.dateLong(trmToday())}</span>
-              </div>
-              <CurrentTermsSummary current={current} style={summaryStyle} account={account} />
-            </div>
-          ) : null}
-
-          <div>
-            {/* Dropped only when the host supplied its own section divider
-                (bareAction={false}) — otherwise it would repeat it. */}
-            {(chrome || bareAction) ? (
-              <div className="trm-sub">
-                <span className="trm-sub-label">History</span>
-                <span className="trm-sub-rule" />
-                <span className="trm-sub-meta">{terms.length} {terms.length === 1 ? 'entry' : 'entries'}</span>
-                {!chrome && bareAction && <span style={{ marginLeft: 4 }}>{newBtn}</span>}
-              </div>
-            ) : null}
-            <TermHistory
-              terms={terms}
-              currentIds={currentIds}
-              historyStyle={historyStyle}
-              account={account}
-              onEdit={openEdit}
-              onDelete={remove}
-            />
-          </div>
-        </React.Fragment>
-      )}
-
-    </div>
-  );
-
-  const dialog = (!controlled && modal) && (
-    <AddTermModal
-      account={account}
-      term={modal.mode === 'edit' ? modal.term : null}
-      existing={terms}
-      onClose={() => setModal(null)}
-      onSave={upsert}
-    />
-  );
-
-  // Bare (no collapsible chrome) — used by the standalone specimen.
-  if (!chrome) {
-    return <React.Fragment>{body}{dialog}</React.Fragment>;
-  }
-
-  // Default: render as a collapsible, matching Files & Transactions.
-  return (
-    <React.Fragment>
-      <Collapsible icon="§" title="Terms" count={terms.length} defaultOpen={defaultOpen} action={newBtn}>
-        {body}
-      </Collapsible>
-      {dialog}
-    </React.Fragment>
-  );
-};
-
 Object.assign(window, {
-  AccountTerms, TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermName, CadenceTag, TermDirectionTag,
+  TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermName, CadenceTag, TermDirectionTag,
   trmCurrentFromList, trmSeriesFromList, trmKindInfo, trmHeadlineKey, trmToday, trmKey, trmMonY,
 });

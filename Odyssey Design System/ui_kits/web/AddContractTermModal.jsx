@@ -1,8 +1,8 @@
 /* AddContractTermModal — New / Edit dialog for a term owned by a CONTRACT.
 
-   The account dialog's twin (AddTermModal), on the same Modal shell and the
-   same NewTerm field set — the body a contract POSTs is byte-identical to the
-   one an account POSTs, and the owner is never in it: it comes from the route.
+   The only term dialog — account terms were retired (MoveAccountTermsToContracts).
+   Built on the shared Modal shell and the NewTerm field set; the owner is never
+   in the body: it comes from the route.
    Three rules differ, and they are the whole reason this is its own file:
 
      • CURRENCY — required, and prefilled from the user's DEFAULT CURRENCY. An

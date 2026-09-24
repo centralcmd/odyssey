@@ -463,7 +463,7 @@ const AccountSmartTags = ({ a, txns, onNavigate, tagIds, setTagIds, bare = false
   );
 };
 
-const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDeleteTxn, terms, onNewTerm, onEditTerm, onDeleteTerm,
+const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDeleteTxn,
   estimates, onNewEstimate, onEditEstimate, onDeleteEstimate, smartTagIds, setSmartTagIds }) => {
   const files = H.filesForAccount(a.id);
   const status = H.accountStatus(a);
@@ -510,13 +510,12 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
       ) : null}
 
       {(() => {
-        // CURRENT — the account's in-force values, as the same InfoTiles the
-        // details use. Each keeps its own semantic colour: term kinds their
-        // registry hue, the estimate mint, the transaction balance muted.
-        const curTerms = terms.length > 0 ? window.trmCurrentFromList(terms) : [];
+        // CURRENT — the account's in-force estimate beside its transaction
+        // balance. Terms no longer live here: they belong to the account's
+        // contracts (MoveAccountTermsToContracts), listed further down.
         const curEst = estimates.length > 0 ? window.estCurrentFromList(estimates) : null;
         const txnSum = txns.reduce((s, t) => s + t.amount, 0);
-        const inForce = curTerms.length + (curEst ? 2 : 0);
+        const inForce = curEst ? 2 : 0;
         if (!inForce) return null;
         return (
           <RecordSection className="acct-section" label="Current" meta={`${inForce} ${inForce === 1 ? 'value' : 'values'} in force`}>
@@ -531,22 +530,6 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
                     foot={txns.length === 0 ? 'No transactions' : `${txns.length} transaction${txns.length === 1 ? '' : 's'} · secondary`} />
                 </React.Fragment>
               ) : null}
-              {curTerms.map((t) => {
-                const info = window.trmKindInfo(t);
-                // The cadence is what separates a 695 USD annual fee from a 695 USD
-                // monthly one, so it rides in the foot beside the date.
-                const period = H.cadenceTextFor(t);
-                // A fee is NAMED by its label, with the kind wording leading the
-                // caption — so six fees read as six distinct tiles, in text, not
-                // six identical ones.
-                const labelled = !!H.termLabelNormalize(t.label);
-                return (
-                  <InfoTile key={window.trmKey(t)} icon={info.icon} iconColor={info.color} iconSoft={info.soft}
-                    label={H.termDisplayName(t, a)}
-                    value={<span style={{ color: info.color }}>{H.fmtTermValueFor(t, a)}</span>}
-                    foot={`since ${H.dateLong(t.effectiveFrom)}${period ? ` · ${period}` : ''}`} />
-                );
-              })}
             </InfoTileGrid>
           </RecordSection>
         );
@@ -556,13 +539,6 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
         <RecordSection className="acct-section" label="Estimates" meta={`${estimates.length} ${estimates.length === 1 ? 'estimate' : 'estimates'}`}>
           <AccountEstimates account={a} estimates={estimates} txns={txns} chrome={false} bareAction={false} showCurrent={false}
             onNew={onNewEstimate} onEdit={onEditEstimate} onDelete={onDeleteEstimate} />
-        </RecordSection>
-      ) : null}
-
-      {terms.length > 0 ? (
-        <RecordSection className="acct-section" label="Terms" meta={`${terms.length} ${terms.length === 1 ? 'entry' : 'entries'}`}>
-          <AccountTerms account={a} terms={terms} chrome={false} bareAction={false} showCurrent={false}
-            onNew={onNewTerm} onEdit={onEditTerm} onDelete={onDeleteTerm} />
         </RecordSection>
       ) : null}
 
@@ -659,21 +635,7 @@ const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJu
   const saveTxn = (id, patch) => setTxns(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
   const deleteTxn = (id) => setTxns(prev => prev.filter(t => t.id !== id));
 
-  // Account terms (rate & fee history) — lifted here so the row menu's "New term",
-  // the section's own button, and the in-force rate shown in the header all share
-  // one source of truth; a term added from either place shows everywhere at once.
-  const [terms, setTerms] = useState(() => H.termsForAccount(acct.id));
-  const [termModal, setTermModal] = useState(null); // { mode:'new'|'edit', term? }
-  const upsertTerm = (dto, id) => {
-    setTerms(prev => id
-      ? prev.map(t => t.id === id ? { ...t, ...dto } : t)
-      : [{ id: `tm-new-${Date.now()}`, accountId: acct.id, createdAtUtc: new Date().toISOString(), ...dto }, ...prev]);
-    setTermModal(null);
-  };
-  const deleteTerm = (t) => setTerms(prev => prev.filter(x => x.id !== t.id));
-  const newTerm = () => { setOpen(true); setTermModal({ mode: 'new' }); };
-
-  // Account value estimates — same lifting pattern as terms, so the row menu's
+  // Account value estimates — lifted here so the row menu's
   // "New estimate", the section's own button, and the in-force estimate shown as
   // the header value all share one source of truth.
   const [estimates, setEstimates] = useState(() => H.estimatesForAccount(acct.id));
@@ -788,7 +750,6 @@ const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJu
           { icon: 'attach_file', value: files.length, label: 'Files' },
           ...(conCount > 0 ? [{ icon: 'handshake', value: conCount, label: 'Contracts' }] : []),
           ...(estimates.length > 0 ? [{ icon: 'monitor', value: estimates.length, label: 'Estimates' }] : []),
-          ...(terms.length > 0 ? [{ icon: '§', value: terms.length, label: 'Terms' }] : []),
           ...(smartTagIds.length > 0 ? [{ icon: 'sell', value: smartTagIds.length, label: 'Smart tags' }] : []),
         ]}
         figure={curEstimate
@@ -803,7 +764,6 @@ const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJu
             { icon: 'upload_file', label: 'Upload file', onClick: () => setAddingFile(true) },
             { icon: 'receipt_long', label: 'New transaction', onClick: () => setAddingTxn(true) },
             { icon: 'monitor', label: 'New estimate', onClick: newEstimate },
-            { icon: '§', label: 'New term', onClick: newTerm },
             { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(acct.id); } },
             { divider: true },
             { icon: acct.closed ? 'lock_open' : 'lock', label: acct.closed ? 'Reopen' : 'Close',
@@ -814,7 +774,6 @@ const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJu
         ]} />}
       >
         <AccountDetail a={acct} problem={problem} onFix={handleFix} onNavigate={onNavigate} txns={txns} onSaveTxn={saveTxn} onDeleteTxn={deleteTxn}
-          terms={terms} onNewTerm={newTerm} onEditTerm={(t) => setTermModal({ mode: 'edit', term: t })} onDeleteTerm={deleteTerm}
           estimates={estimates} onNewEstimate={newEstimate} onEditEstimate={(e) => setEstModal({ mode: 'edit', estimate: e })} onDeleteEstimate={deleteEstimate}
           smartTagIds={smartTagIds} setSmartTagIds={setSmartTagIds} />
       </RecordCard>
@@ -832,15 +791,6 @@ const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJu
           lockAccount
           onClose={() => setAddingTxn(false)}
           onCreate={createTxn}
-        />
-      )}
-      {termModal && (
-        <AddTermModal
-          account={acct}
-          term={termModal.mode === 'edit' ? termModal.term : null}
-          existing={terms}
-          onClose={() => setTermModal(null)}
-          onSave={upsertTerm}
         />
       )}
       {estModal && (
