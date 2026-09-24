@@ -346,7 +346,8 @@ public partial class AddTermDialog
             _unit = unit;
         _errors.Remove("value");
         _errors.Remove("textValue");
-        _errors.Remove("dateTimeValue");
+        _errors.Remove("dateTimeDate");
+        _errors.Remove("dateTimeTime");
         _errors.Remove("intervalCount");
         ClearCurrencyErrorOnUnitSwitch();
     }
@@ -385,29 +386,49 @@ public partial class AddTermDialog
     /// character, since that one is invisible and would otherwise surface only on submit. The message
     /// names the rule and never repeats the text.
     /// </summary>
-    private string? TextError =>
-        _errors.TryGetValue("textValue", out var error)
-            ? error
-            : _textValue.Length > 0 && TermTextValue.HasForbiddenCharacter(_textValue.Trim())
+    private string? TextError
+    {
+        get
+        {
+            if (_errors.TryGetValue("textValue", out var error))
+                return error;
+            if (TrimmedTextLength > TermTextValue.MaxLength)
+                return TextTooLongMessage;
+            return _textValue.Length > 0 && TermTextValue.HasForbiddenCharacter(_textValue.Trim())
                 ? TextControlMessage
                 : null;
+        }
+    }
+
+    // The counter is aria-hidden, so the over-limit state is announced through the error line as the
+    // value is typed rather than only on submit (WCAG 3.3.1 / 4.1.3).
+    private static string TextTooLongMessage => $"Keep it to {TermTextValue.MaxLength} characters.";
 
     private const string TextControlMessage = "Remove tabs, line breaks and hidden direction marks.";
 
     private void OnDateTimeDateChanged(DateTime? date)
     {
         _dtDate = date;
-        _errors.Remove("dateTimeValue");
+        _errors.Remove("dateTimeDate");
     }
 
     private void OnDateTimeTimeChanged(TimeSpan? time)
     {
         _dtTime = time;
-        _errors.Remove("dateTimeValue");
+        _errors.Remove("dateTimeTime");
     }
 
     /// <summary>The picked local date and time as the UTC instant the request carries, or null.</summary>
     private DateTime? DateTimeUtc => TermVisuals.LocalToUtc(_dtDate, _dtTime, LocalZone);
+
+    /// <summary>
+    /// The date picker's helper line: the zone the pickers read in, the offset in force at that
+    /// instant, and the UTC value the entry will be saved as. Carried by the picker's own helper slot,
+    /// so the input is described by it.
+    /// </summary>
+    private string DateTimeHelp =>
+        $"In your time zone, {LocalZoneName} ({LocalOffsetLabel})"
+        + (DateTimeUtc is { } utc ? $". Saved as {TermVisuals.UtcStamp(utc)}." : ".");
 
     /// <summary>The viewer's zone, as the date-time help line names it.</summary>
     private static string LocalZoneName =>
@@ -541,17 +562,21 @@ public partial class AddTermDialog
             if (textValue is null)
                 _errors["textValue"] = "Enter the text this term records.";
             else if (textValue.Length > TermTextValue.MaxLength)
-                _errors["textValue"] = $"Keep it to {TermTextValue.MaxLength} characters.";
+                _errors["textValue"] = TextTooLongMessage;
             else if (TermTextValue.HasForbiddenCharacter(textValue))
                 _errors["textValue"] = TextControlMessage;
         }
         else if (IsDateTime)
         {
+            // Keyed per control, so each message is the picker's own error line and marks that picker
+            // aria-invalid rather than floating beside the row.
             dateTimeValue = DateTimeUtc;
-            if (dateTimeValue is null)
-                _errors["dateTimeValue"] = "Pick both a date and a time.";
-            else if (!TermDateTimeValue.IsInRange(dateTimeValue.Value))
-                _errors["dateTimeValue"] = "Pick a date between 1900 and 2200.";
+            if (_dtDate is null)
+                _errors["dateTimeDate"] = "Pick a date.";
+            if (_dtTime is null)
+                _errors["dateTimeTime"] = "Pick a time.";
+            if (dateTimeValue is { } picked && !TermDateTimeValue.IsInRange(picked))
+                _errors["dateTimeDate"] = "Pick a date between 1900 and 2200.";
         }
 
         if (_effectiveFrom is null)

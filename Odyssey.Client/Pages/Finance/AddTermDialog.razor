@@ -104,23 +104,14 @@
                        carries a UTC instant, so the server's no-offset refusal cannot trigger. *@
                     <OdsFormRow Cols="2">
                         <OdsDatePicker Value="_dtDate" ValueChanged="OnDateTimeDateChanged"
-                                       Label="Date" Required="true" />
+                                       Label="Date" Required="true"
+                                       HelperText="@DateTimeHelp"
+                                       Error="@_errors.ContainsKey("dateTimeDate")"
+                                       ErrorText="@(_errors.TryGetValue("dateTimeDate", out var dateErr) ? dateErr : null)" />
                         <OdsTimeField Value="_dtTime" ValueChanged="OnDateTimeTimeChanged"
-                                      Label="Time" Required="true" />
+                                      Label="Time" Required="true" Help="24-hour, in your time zone"
+                                      Error="@(_errors.TryGetValue("dateTimeTime", out var timeErr) ? timeErr : null)" />
                     </OdsFormRow>
-                    @if (_errors.TryGetValue("dateTimeValue", out var dtErr))
-                    {
-                        <div class="trm-err" role="alert">@dtErr</div>
-                    }
-                    else
-                    {
-                        <div class="trm-dt-help">
-                            In your time zone, <b>@LocalZoneName</b> (@LocalOffsetLabel)@if (DateTimeUtc is { } utc)
-                            {<text>. Saved as <span class="trm-dt-utc">@TermVisuals.UtcStamp(utc)</span>.</text>}
-                            else
-                            {<text>.</text>}
-                        </div>
-                    }
                 }
                 else
                 {

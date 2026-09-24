@@ -30,8 +30,8 @@ public static class TermTextValue
         foreach (var c in text)
         {
             if (char.GetUnicodeCategory(c) == UnicodeCategory.Control
-                || c is >= '‪' and <= '‮'
-                || c is >= '⁦' and <= '⁩')
+                || c is >= '\u202A' and <= '\u202E'
+                || c is >= '\u2066' and <= '\u2069')
                 return true;
         }
 

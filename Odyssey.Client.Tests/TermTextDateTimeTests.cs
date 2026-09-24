@@ -207,7 +207,7 @@ public class TermTextDateTimeTests
 
     [Theory]
     [InlineData("line\tbreak")]
-    [InlineData("hidden‮mark")]
+    [InlineData("hidden\u202Emark")]
     public void A_forbidden_character_is_refused_inline_without_echoing_the_text(string text)
     {
         var (cut, client) = RenderDialog();
@@ -218,6 +218,24 @@ public class TermTextDateTimeTests
         Assert.Contains("Remove tabs, line breaks and hidden direction marks.", cut.Markup, StringComparison.Ordinal);
         Click(cut, "Create term");
         client.Verify(c => c.AddTermAsync(It.IsAny<Guid>(), It.IsAny<NewTerm>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    /// <summary>
+    /// The counter is aria-hidden, so an over-long text is announced through the error line as it is
+    /// typed — measured after the trim, so padding alone never trips it.
+    /// </summary>
+    [Fact]
+    public void An_over_long_text_is_flagged_live_after_the_trim()
+    {
+        var (cut, _) = RenderDialog();
+        PickKind(cut, "Text");
+
+        TypeText(cut, "  " + new string('x', TermTextValue.MaxLength) + "  ");
+        Assert.DoesNotContain("Keep it to", cut.Markup, StringComparison.Ordinal);
+
+        TypeText(cut, new string('x', TermTextValue.MaxLength + 1));
+        Assert.Contains($"Keep it to {TermTextValue.MaxLength} characters.", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal("true", cut.Find("#trm-text").GetAttribute("aria-invalid"));
     }
 
     [Fact]

@@ -75,7 +75,8 @@
                     @* Text is proportional and may wrap; a date-time is the viewer's local time with the
                        offset named and its UTC instant as the tooltip. Neither has a cadence. *@
                     <td class="trm-cell-value @kindClass"
-                        title="@(term.ValueUnit == TermValueUnit.DateTime ? TermVisuals.UtcStamp(term.DateTimeValue) : null)">@TermVisuals.FormatValue(term, FormatMoney)</td>
+                        title="@(term.ValueUnit == TermValueUnit.DateTime ? TermVisuals.UtcStamp(term.DateTimeValue) : null)">@TermVisuals.FormatValue(term, FormatMoney)@if (term.ValueUnit == TermValueUnit.DateTime)
+                        {<span class="sr-only">@($" ({TermVisuals.UtcStamp(term.DateTimeValue)})")</span>}</td>
                 }
                 else
                 {

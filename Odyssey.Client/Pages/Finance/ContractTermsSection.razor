@@ -74,6 +74,11 @@
                                  Foot="@OdsInfoTile.Caption(FactTileFoot(term))">
                         <Value>
                             <span title="@(isDateTime ? TermVisuals.UtcStamp(term.DateTimeValue) : null)">@TermVisuals.FormatValue(term, FormatMoney)</span>
+                            @if (isDateTime)
+                            {
+                                @* The tooltip is mouse-only; the same instant is spoken for a screen reader. *@
+                                <span class="sr-only">@($" ({TermVisuals.UtcStamp(term.DateTimeValue)})")</span>
+                            }
                         </Value>
                     </OdsInfoTile>
                     continue;

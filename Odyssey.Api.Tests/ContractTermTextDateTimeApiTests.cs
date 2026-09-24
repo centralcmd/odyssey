@@ -136,7 +136,7 @@ public class ContractTermTextDateTimeApiTests
 
     public static TheoryData<string, object> ShapeViolations()
     {
-        var control = "Notice‮period";
+        var control = "Notice\u202Eperiod";
         return new TheoryData<string, object>
         {
             { nameof(NewTerm.TextValue), TextBody(null) },
@@ -184,7 +184,7 @@ public class ContractTermTextDateTimeApiTests
     /// <summary>AC 7 — a refusal names the field and the rule and never echoes the submitted text.</summary>
     [Theory]
     [InlineData("SECRET-CLAUSE line\nbreak")]
-    [InlineData("SECRET-CLAUSE‮reversed")]
+    [InlineData("SECRET-CLAUSE\u202Ereversed")]
     public async Task Post_RefusedText_IsNeverEchoedInTheBody(string text)
     {
         await using var factory = await NewFactoryAsync(ReadWrite);
