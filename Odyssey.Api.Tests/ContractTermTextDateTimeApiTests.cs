@@ -181,6 +181,34 @@ public class ContractTermTextDateTimeApiTests
         Assert.Empty(await ReadAllRowsAsync(factory));
     }
 
+    /// <summary>
+    /// The exact edges are ACCEPTED: a text of exactly the maximum length after the trim, and each
+    /// end of the date-time range. The refusals one step beyond each are in
+    /// <see cref="ShapeViolations"/>, so an off-by-one in either comparison fails one side or the other.
+    /// </summary>
+    [Theory]
+    [InlineData("text", null)]
+    [InlineData("datetime", "1900-01-01T00:00:00Z")]
+    [InlineData("datetime", "2200-12-31T23:59:59Z")]
+    public async Task Post_AtTheExactBoundary_Returns201(string kind, string? instant)
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+        var atMax = new string('x', TermTextValue.MaxLength);
+
+        var response = await client.PostAsJsonAsync(Terms(contractId),
+            kind == "text" ? TextBody(atMax) : DateTimeBody(instant));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = (await response.Content.ReadFromJsonAsync<ExistingTerm>())!;
+        if (kind == "text")
+            Assert.Equal(TermTextValue.MaxLength, created.TextValue!.Length);
+        else
+            Assert.Equal(DateTime.Parse(instant!, null, System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal),
+                created.DateTimeValue!.Value.ToUniversalTime());
+    }
+
     /// <summary>AC 7 — a refusal names the field and the rule and never echoes the submitted text.</summary>
     [Theory]
     [InlineData("SECRET-CLAUSE line\nbreak")]
