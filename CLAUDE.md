@@ -217,9 +217,10 @@ wire value shifted meaning.
 references and is reachable from both the API and the WASM client, so the write-path validator and the
 party picker name **one** symbol — the same precedent `SettingItem.Rule` and `SystemSettingsBounds` set.
 A client-side *copy* of a server rule is the defect CLAUDE.md already forbids for caps; a shared
-declaration is what avoids it. **69 of the 162 cells are legal** (issue #169 widened it from 52 of
-135), and guard tests pin that count, the per-type legal and suggested sets, and the universality of
-`Guarantor`, `Broker` and `Other`.
+declaration is what avoids it. **78 of the 200 cells are legal** (issue #169 widened it from 52 of
+135 to 69 of 162; issue #187 added the `Deposit` column and its two roles), and guard tests pin that
+count, the per-type legal and suggested sets, and the universality of `Guarantor`, `Broker` and
+`Other`.
 
 Three things about that widening are worth keeping straight:
 
@@ -229,14 +230,23 @@ Three things about that widening are worth keeping straight:
   duplicated entry in `LegalFor`, which fails the distinctness guard on the ordinary path. Promoting a
   role means deleting it from every column that named it.
 - **`Object` (17), `Property` (18) and `Collateral` (19) name what a contract is ABOUT**, not who
-  stands on a side of it. `Object` reaches seven types; `Property` is Rental, Purchase and Other;
-  `Collateral` is Loan and Other. The two exclusions are deliberate and stated so they are not "fixed"
+  stands on a side of it. `Object` reaches eight types; `Property` is Rental, Purchase and Other;
+  `Collateral` is Loan, Deposit and Other — **suggested** on Loan and only **allowed** on Deposit, a
+  deliberate asymmetry (collateral is central to a loan and incidental to a deposit). The two exclusions are deliberate and stated so they are not "fixed"
   later: Employment's object is the employee's labour, which `Employee` already names, and Insurance's
   is already `Insured` — "the person, account or thing covered" — and a second name for one concept
   would split where the covered thing is recorded.
 - **The "exactly two suggested roles" invariant is RETIRED, not loosened** (issue #169 §4.4). The shape
   is now 4 / 3 / 2 / 1: four for Insurance, three for Rental, Purchase and Loan, two for the remaining
-  named types, one for `Other`. The count stays pinned, at a new number.
+  named types (`Deposit` included), one for `Other`. The count stays pinned, at a new number.
+- **`Deposit` is the mirror of `Loan`, with its own roles** (issue #187). `Depositor` (20) and
+  `Custodian` (21) are separate members, **not aliases** of `Lender`/`Borrower`, and the two columns
+  reject each other's counterparties — so a report never has to guess whether a `Lender` row is a
+  creditor or a depositor. `Other` still permits **every** live role; a role appended later must widen
+  that column too, and `OtherType_PermitsEveryLiveRole` fails otherwise. The `Custodian` *role* is
+  independent of the account-level custodian (`Account.CustodianId`, the `Custodian` record) — neither
+  is synchronised with nor validated against the other; don't "unify" them. Nor does `Custodian` block
+  a contact delete the way `Beneficiary` does.
 
 Five further rules are easy to get backwards:
 
@@ -276,11 +286,11 @@ for: the ordinary case is still an action-level `[Authorize]` policy or a contro
 this is the one shape neither can serve.
 
 **`ContractType` reads in a different order from the one it is stored in.** The four members added
-after the original set carry ordinals **4–7** (`Insurance`, `Subscription`, `Purchase`, `Membership`)
-and `Loan` appends at **8**, while `Other` keeps **3** — an ordinal is a wire and persistence contract and is never renumbered, so
+after the original set carry ordinals **4–7** (`Insurance`, `Subscription`, `Purchase`, `Membership`),
+`Loan` appends at **8** and `Deposit` at **9**, while `Other` keeps **3** — an ordinal is a wire and persistence contract and is never renumbered, so
 a stored `3` cannot be made to mean `Insurance`. Only the *reading* order pulls `Other` last — and
-`Loan` in after `Purchase`, since a mortgage was filed as a `Purchase` before that member existed — and
-it lives in one place: `OdsTypeRegistries.ContractTypes`. That matters beyond tidiness, because
+`Loan` in after `Purchase`, since a mortgage was filed as a `Purchase` before that member existed, with
+`Deposit` directly after its mirror `Loan` — and it lives in one place: `OdsTypeRegistries.ContractTypes`. That matters beyond tidiness, because
 `ContractTypeOf`'s documented fallback for an out-of-range value is the **trailing** entry — reorder
 the registry so something other than `Other` ends it and every stale row silently renders as that
 instead. `OdsTypeRegistriesTests` pins both halves.

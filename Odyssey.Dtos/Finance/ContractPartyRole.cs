@@ -110,4 +110,27 @@ public enum ContractPartyRole
     /// <see cref="Object"/> is.
     /// </summary>
     Collateral = 19,
+
+    /// <summary>
+    /// The party placing the money and entitled to have it returned (issue #187). Suggested on
+    /// <see cref="ContractType.Deposit"/>, where it mirrors <see cref="Lender"/> on a loan. A separate member rather than an
+    /// alias of <see cref="Lender"/>, so a report or filter never has to guess whether a lender row is
+    /// a creditor or a depositor.
+    /// </summary>
+    Depositor = 20,
+
+    /// <summary>
+    /// The party holding the deposited money and owing it back — typically the bank, or a landlord
+    /// holding a rental deposit (issue #187). Suggested on <see cref="ContractType.Deposit"/>, where it mirrors
+    /// <see cref="Borrower"/> on a loan.
+    /// </summary>
+    /// <remarks>
+    /// <b>The name overlaps the account-level custodian deliberately</b> —
+    /// <c>Odyssey.Dtos.Finance.Custodian</c> (the contact holding an account) and <c>Account.CustodianId</c>. The
+    /// real-world concept is the same, but the two surfaces are <b>independent</b>: an account's
+    /// custodian is an account attribute, a custodian party is a party on one agreement, and neither is
+    /// synchronised with or validated against the other. Do not "unify" them. Unlike
+    /// <see cref="Beneficiary"/>, this role does <b>not</b> block deletion of its contact.
+    /// </remarks>
+    Custodian = 21,
 }

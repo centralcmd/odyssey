@@ -16,9 +16,9 @@ public enum ContractPartyRoleLegality
 }
 
 /// <summary>
-/// The contract-type × party-role matrix (issue #157 §4.7, widened by issue #169 §4.2): which roles
+/// The contract-type × party-role matrix (issue #157 §4.7, widened by issues #169 §4.2 and #187): which roles
 /// are legal on which contract type, and which of those are <em>suggested</em>.
-/// <b>69 of the 162 cells are legal.</b>
+/// <b>78 of the 200 cells are legal.</b>
 /// </summary>
 /// <remarks>
 /// <b>This is the single declaration, not a server rule the client re-implements.</b> It lives in
@@ -46,7 +46,7 @@ public enum ContractPartyRoleLegality
 /// mirroring an insurance policy's four link collections; three for
 /// <see cref="ContractType.Rental"/>, <see cref="ContractType.Purchase"/> and
 /// <see cref="ContractType.Loan"/>, whose object role is as ordinary as their two counterparties;
-/// two for the remaining named types; and one for <see cref="ContractType.Other"/>, since a contract
+/// two for the remaining named types, <see cref="ContractType.Deposit"/> included; and one for <see cref="ContractType.Other"/>, since a contract
 /// whose type is "none of the above" has no domain vocabulary to offer, so the only role that can be
 /// <em>suggested</em> is the one that says as much. The earlier "exactly two except Insurance and
 /// Other" invariant is <b>retired</b> by issue #169 §4.4, not loosened — the count is still pinned,
@@ -105,6 +105,11 @@ public static class ContractPartyRoleMatrix
         [ContractType.Loan] = new(
             [ContractPartyRole.Lender, ContractPartyRole.Borrower, ContractPartyRole.Collateral],
             [ContractPartyRole.Object]),
+        // The mirror of Loan (issue #187). Collateral is allowed rather than suggested — a deposit
+        // pledged as security is incidental to a deposit, where collateral is central to a loan.
+        [ContractType.Deposit] = new(
+            [ContractPartyRole.Depositor, ContractPartyRole.Custodian],
+            [ContractPartyRole.Object, ContractPartyRole.Collateral]),
         [ContractType.Membership] = new(
             [ContractPartyRole.Buyer, ContractPartyRole.Seller],
             [ContractPartyRole.Object]),
@@ -128,6 +133,8 @@ public static class ContractPartyRoleMatrix
                 ContractPartyRole.Object,
                 ContractPartyRole.Property,
                 ContractPartyRole.Collateral,
+                ContractPartyRole.Depositor,
+                ContractPartyRole.Custodian,
             ]),
     };
 
@@ -181,7 +188,7 @@ public static class ContractPartyRoleMatrix
     /// <summary>
     /// One column of the matrix. <paramref name="allowedBeyondUniversal"/> is what this type permits
     /// <em>in addition to</em> <see cref="UniversallyAllowed"/>, which is appended here rather than
-    /// repeated on all nine columns.
+    /// repeated on all ten columns.
     /// </summary>
     private sealed class Cell
     {

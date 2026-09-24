@@ -145,17 +145,18 @@ public class ContractPartyRoleMatrixApiTests
     }
 
     /// <summary>
-    /// AC 9, re-pinned by issue #169 AC 8 — <b>every one of the 162 cells</b> is exercised against the
-    /// live endpoint: the 69 legal ones are accepted and the 93 rejected ones refused. Iterating the
+    /// AC 9, re-pinned by issue #169 AC 8 and issue #187 AC 9 — <b>every one of the 200 cells</b> is
+    /// exercised against the live endpoint: the 78 legal ones are accepted and the 122 rejected ones
+    /// refused. Iterating the
     /// matrix rather than sampling it is what makes a cell unable to disagree silently between the
     /// declaration and the validator.
     /// </summary>
     /// <remarks>
     /// These two figures are a SECOND, independent pin of the count
-    /// <c>ContractPartyRoleGuardTests.LegalCellCount_Is69Of162</c> asserts off the declaration alone.
+    /// <c>ContractPartyRoleGuardTests.LegalCellCount_Is78Of200</c> asserts off the declaration alone.
     /// Nothing links them, so a widening that updates one and not the other is green on one file and
-    /// red on the other. This one drives a real HTTP round trip per cell (162 of them since issue
-    /// #169, up from 135); if it ever outgrows its time budget, narrow it by type rather than dropping
+    /// red on the other. This one drives a real HTTP round trip per cell (200 of them since issue
+    /// #187, up from 162 and 135 before that); if it ever outgrows its time budget, narrow it by type rather than dropping
     /// the assertion.
     /// </remarks>
     [Fact]
@@ -197,8 +198,8 @@ public class ContractPartyRoleMatrixApiTests
             }
         }
 
-        Assert.Equal(69, legal);
-        Assert.Equal(93, rejected);
+        Assert.Equal(78, legal);
+        Assert.Equal(122, rejected);
     }
 
     // ── The three object roles and the universal Guarantor (issue #169) ──────
@@ -291,7 +292,7 @@ public class ContractPartyRoleMatrixApiTests
     }
 
     /// <summary>
-    /// Issue #169 AC 6 — <c>Guarantor</c> is accepted on ALL NINE types, including the five that
+    /// Issue #169 AC 6 — <c>Guarantor</c> is accepted on ALL TEN types (<c>Deposit</c> since issue #187), including the five that
     /// rejected it before this change. A party standing behind another's obligation belongs to no
     /// particular kind of agreement.
     /// </summary>
@@ -366,13 +367,14 @@ public class ContractPartyRoleMatrixApiTests
 
     /// <summary>
     /// Issue #169 AC 17 — an ordinal outside the enum is still a <c>400</c> from model validation,
-    /// before the service runs. The two retired holes are included: widening the enum by three must
-    /// not make <c>0</c> or <c>5</c> bindable again.
+    /// before the service runs. The two retired holes are included: widening the enum must not make
+    /// <c>0</c> or <c>5</c> bindable again. <c>22</c> is the first ordinal past <c>Custodian</c>
+    /// (issue #187 §7.9).
     /// </summary>
     [Theory]
     [InlineData(0)]
     [InlineData(5)]
-    [InlineData(20)]
+    [InlineData(22)]
     [InlineData(99)]
     public async Task AddParty_WithAnUndefinedRoleOrdinal_Returns400(int ordinal)
     {

@@ -154,6 +154,67 @@ public class OdsTypeRegistriesTests
     }
 
     /// <summary>
+    /// <c>ContractTypes</c> reads in its own order, not ordinal order (issues #157, #187): <c>Loan</c>
+    /// (8) sits after <c>Purchase</c>, <c>Deposit</c> (9) beside its mirror <c>Loan</c>, and
+    /// <c>Other</c> (3) last — the trailing entry being <c>ContractTypeOf</c>'s documented fallback, so
+    /// appending <c>Deposit</c> at the end of the list would have made every unknown type render as a
+    /// deposit.
+    /// </summary>
+    [Fact]
+    public void ContractTypes_reads_Deposit_after_Loan_and_Other_last()
+    {
+        Assert.Equal(
+            ["Employment", "Service", "Rental", "Insurance", "Subscription", "Purchase", "Loan", "Deposit",
+             "Membership", "Other"],
+            OdsTypeRegistries.ContractTypes.Select(t => t.Key).ToList());
+
+        Assert.NotEqual(ContractType.Other, Enum.GetValues<ContractType>().Max());
+    }
+
+    /// <summary>
+    /// Issue #187 — the contract-type and party-role registries agree with the design system's
+    /// <c>CONTRACT_TYPES</c> / <c>CONTRACT_PARTY_ROLES</c> exports on every key, label, glyph, colour,
+    /// ordinal and the reading order. The internal-consistency tests above stay green while a hand-copied
+    /// row drifts from its source; this is what catches the drift, the same way
+    /// <see cref="ContractEventTypes_agrees_with_the_design_systems_registry"/> does for events.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(OdsTypeRegistries.ContractTypes), "ContractTypeSelect.jsx", typeof(ContractType))]
+    [InlineData(nameof(OdsTypeRegistries.ContractPartyRoles), "ContractPartyRoleSelect.jsx", typeof(ContractPartyRole))]
+    public void Contract_type_and_role_registries_agree_with_the_design_system(
+        string registryName, string dsFile, Type enumType)
+    {
+        var path = ClientSource.Sibling(Path.Combine("Odyssey Design System", "components", dsFile));
+        Assert.True(File.Exists(path), $"The design system's registry is missing at {path}.");
+
+        var declared = Regex.Matches(
+                File.ReadAllText(path),
+                @"\{\s*key:\s*'(?<key>\w+)',\s*label:\s*'(?<label>[^']*)',\s*enumValue:\s*(?<ordinal>\d+),"
+                + @"\s*icon:\s*'(?<icon>\w+)',\s*color:\s*'(?<color>[^']*)',\s*soft:\s*'(?<soft>[^']*)'")
+            .Select(m => (
+                Key: m.Groups["key"].Value,
+                Label: m.Groups["label"].Value,
+                Ordinal: int.Parse(m.Groups["ordinal"].Value, CultureInfo.InvariantCulture),
+                Icon: m.Groups["icon"].Value,
+                Color: m.Groups["color"].Value,
+                Soft: m.Groups["soft"].Value))
+            .ToList();
+
+        var registry = Registry(registryName);
+
+        Assert.Equal(declared.Select(d => d.Key), registry.Select(t => t.Key));
+
+        foreach (var (entry, ds) in registry.Zip(declared))
+        {
+            Assert.Equal(ds.Label, entry.Label);
+            Assert.Equal(ds.Icon, entry.Icon);
+            Assert.Equal(ds.Color, entry.Color);
+            Assert.Equal(ds.Soft, entry.Soft);
+            Assert.Equal(ds.Ordinal, Convert.ToInt32(Enum.Parse(enumType, entry.Key), CultureInfo.InvariantCulture));
+        }
+    }
+
+    /// <summary>
     /// <c>ContractEventTypes</c> reads in a different order from the one it is stored in (issue #154).
     /// <c>Other</c> keeps ordinal 8 while the nine automation members take 9–17, so the registry's
     /// reading order and the enum's ordinal order have parted company — the same split
