@@ -27,6 +27,7 @@ public class AccountController : ControllerBase
     private readonly NetWorthHistoryService netWorthHistoryService;
     private readonly TimeProvider timeProvider;
     private readonly IUserDisplayNameResolver displayNames;
+    private readonly ContractService contractService;
 
     public AccountController(
         ILogger<AccountController> logger,
@@ -36,7 +37,8 @@ public class AccountController : ControllerBase
         AccountTotalsService accountTotalsService,
         NetWorthHistoryService netWorthHistoryService,
         TimeProvider timeProvider,
-        IUserDisplayNameResolver displayNames)
+        IUserDisplayNameResolver displayNames,
+        ContractService contractService)
     {
         this.logger = logger;
         this.accountService = accountService;
@@ -46,7 +48,15 @@ public class AccountController : ControllerBase
         this.netWorthHistoryService = netWorthHistoryService;
         this.timeProvider = timeProvider;
         this.displayNames = displayNames;
+        this.contractService = contractService;
     }
+
+    /// <summary>
+    /// Whether the caller may see <see cref="ExistingAccount.ContractCount"/>. The account routes are
+    /// gated on <c>accounts.read</c> alone and Guest holds no contract claim, so the count is filled
+    /// only for a <c>contracts.read</c> holder — the service has no <c>ClaimsPrincipal</c> to decide.
+    /// </summary>
+    private bool CanReadContracts() => User.HasClaim(PermissionClaims.Type, PermissionClaims.ContractsRead);
     
     [HttpGet(Name = "GetAccounts")]
     [Authorize(Policy = PermissionClaims.AccountsRead)]
@@ -60,7 +70,8 @@ public class AccountController : ControllerBase
         [FromQuery] AccountsQueryParams query,
         CancellationToken cancellationToken = default)
     {
-        var result = await accountService.ListAsync(query, cancellationToken);
+        var result = await accountService.ListAsync(
+            query, cancellationToken, includeContractCount: CanReadContracts());
         return Ok(result);
     }
 
@@ -87,7 +98,7 @@ public class AccountController : ControllerBase
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true, 
             Description = @"The ID for the account to get.")] Guid id, CancellationToken cancellationToken = default)
     {
-        var account = await accountService.Get(id, cancellationToken);
+        var account = await accountService.Get(id, cancellationToken, includeContractCount: CanReadContracts());
         if (account is null)
         {
             return this.NotFoundProblem($"Account ID {id} not found.");
@@ -249,6 +260,27 @@ public class AccountController : ControllerBase
 
         await displayNames.EnrichFileAttributionAsync(User, files, cancellationToken);
         return Ok(files);
+    }
+
+    [HttpGet("{accountId}/contracts", Name = "GetAccountContracts")]
+    [Authorize(Policy = PermissionClaims.AccountsRead)]
+    [Authorize(Policy = PermissionClaims.ContractsRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<AccountContractLink>))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Get the contracts that name an account as a party.",
+        Description = @"One row per contract, with every role the account holds on it. Requires both
+                        accounts.read and contracts.read: the rows name contracts, which accounts.read
+                        alone does not license.")]
+    public async Task<IActionResult> GetAccountContracts(
+        [FromRoute(Name = "accountId")] Guid accountId, CancellationToken cancellationToken = default)
+    {
+        var contracts = await contractService.ListForAccountAsync(accountId, cancellationToken);
+        if (contracts is null)
+            return this.NotFoundProblem($"Account ID {accountId} not found.");
+
+        return Ok(contracts);
     }
 
     [HttpGet("{accountId}/transactions", Name = "GetAccountTransactions")]

@@ -488,7 +488,7 @@ public static class OdsTypeRegistries
     /// <summary>
     /// Whether <paramref name="role"/> names the THING the agreement concerns rather than a side of
     /// it — <c>Object</c>, <c>Property</c> or <c>Collateral</c> (issue #169). Read off the registry's
-    /// own <see cref="OdsTypeOption.IsObject"/> flag, so the tile mark and the tile ORDER cannot
+    /// own <see cref="OdsTypeOption.IsObject"/> flag, so the tile class and the tile ORDER cannot
     /// disagree about which roles they mean.
     /// </summary>
     /// <remarks>

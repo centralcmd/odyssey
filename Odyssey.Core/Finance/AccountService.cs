@@ -46,9 +46,15 @@ public class AccountService
     /// <c>balance</c> and <c>txnCount</c> keys are expressed as correlated subqueries so the ordering
     /// happens in SQL <b>before</b> the page slice (they were previously aggregated post-materialisation).
     /// </summary>
+    /// <param name="includeContractCount">
+    /// Whether to fill <see cref="ExistingAccount.ContractCount"/>. The caller decides from its own
+    /// <c>contracts.read</c> claim — this service has no <c>ClaimsPrincipal</c> — and left false the
+    /// count stays <c>null</c> ("withheld"), never <c>0</c>.
+    /// </param>
     public async Task<PagedResult<ExistingAccount>> ListAsync(
         AccountsQueryParams query,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool includeContractCount = false)
     {
         var q = context.Accounts.AsNoTracking().AsQueryable();
 
@@ -105,7 +111,7 @@ public class AccountService
             .ToListAsync(cancellationToken);
 
         var dtos = accounts.Adapt<List<ExistingAccount>>();
-        await EnrichAccountsAsync(accounts, dtos, cancellationToken);
+        await EnrichAccountsAsync(accounts, dtos, includeContractCount, cancellationToken);
 
         return new PagedResult<ExistingAccount>
         {
@@ -211,7 +217,8 @@ public class AccountService
 
     /// <summary>Populate per-account aggregates (balance, counts, current rate/estimate, custodian) over a materialised page.</summary>
     private async Task EnrichAccountsAsync(
-        IReadOnlyList<Account> accounts, IReadOnlyList<ExistingAccount> dtos, CancellationToken cancellationToken)
+        IReadOnlyList<Account> accounts, IReadOnlyList<ExistingAccount> dtos, bool includeContractCount,
+        CancellationToken cancellationToken)
     {
         // Populate per-account transaction counts and balances with a single grouped
         // query rather than including (and materializing) every transaction row.
@@ -254,6 +261,10 @@ public class AccountService
             .Select(g => new { AccountId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.AccountId, x => x.Count, cancellationToken);
 
+        var contractCounts = includeContractCount
+            ? await CountContractsAsync(accountIds, cancellationToken)
+            : null;
+
         // Resolve the in-force rate (interest rate, else expected return) per account with one
         // query over the term composite index, for the account-header subtitle.
         var currentTermsByAccount = await GetCurrentTerms(accountIds, cancellationToken);
@@ -295,6 +306,7 @@ public class AccountService
             dto.EstimateCount = estimateCounts.GetValueOrDefault(dto.AccountId);
             dto.TermCount = termCounts.GetValueOrDefault(dto.AccountId);
             dto.SmartTagCount = smartTagCounts.GetValueOrDefault(dto.AccountId);
+            dto.ContractCount = contractCounts?.GetValueOrDefault(dto.AccountId);
 
             if (currentTermsByAccount.TryGetValue(dto.AccountId, out var currentTerms))
             {
@@ -310,7 +322,23 @@ public class AccountService
         }
     }
     
-    public async Task<ExistingAccount?> Get(Guid accountId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Distinct CONTRACTS naming each account as a party — not party rows. An account linked to one
+    /// contract in two roles is one contract, which is what the account's Contracts section lists.
+    /// </summary>
+    private async Task<Dictionary<Guid, int>> CountContractsAsync(
+        IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken) =>
+        await context.ContractParties
+            .Where(p => p.AccountId != null && accountIds.Contains(p.AccountId.Value))
+            .Select(p => new { AccountId = p.AccountId!.Value, p.ContractId })
+            .Distinct()
+            .GroupBy(x => x.AccountId)
+            .Select(g => new { AccountId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.AccountId, x => x.Count, cancellationToken);
+
+    /// <param name="includeContractCount">As on <see cref="ListAsync"/>.</param>
+    public async Task<ExistingAccount?> Get(
+        Guid accountId, CancellationToken cancellationToken = default, bool includeContractCount = false)
     {
         // Materialise the account together with its badge counts and balance in a single round-trip
         // (correlated subqueries over the navigation collections) rather than one query per aggregate.
@@ -340,6 +368,11 @@ public class AccountService
         dto.EstimateCount = projection.EstimateCount;
         dto.TermCount = projection.TermCount;
         dto.SmartTagCount = projection.SmartTagCount;
+        if (includeContractCount)
+        {
+            dto.ContractCount = (await CountContractsAsync([accountId], cancellationToken))
+                .GetValueOrDefault(accountId);
+        }
 
         var currentTermsByAccount = await GetCurrentTerms([accountId], cancellationToken);
         if (currentTermsByAccount.TryGetValue(accountId, out var currentTerms))
