@@ -1,6 +1,6 @@
 # Move Account Terms to Contracts — Backend (Draft v1)
 
-> **Frontend counterpart:** {{ FRONTEND_ISSUE }}
+> **No frontend counterpart** — no new UI surface. The client code that references the removed claims and API-client methods is deleted in the same PR (§14), because it would not compile otherwise.
 
 ## 1. Overview
 
@@ -355,6 +355,6 @@ dotnet ef migrations add MoveAccountTermsToContracts \
 - Backend removal (§5, §7, §8), demo seed re-target, test clean-up.
 - Client **compile-coupled removal** in the same PR (the claims and API-client methods it references are
   deleted): `AccountTermsSection`, account branches of `AddTermDialog` / `TermVisuals`, `AccountsCard`
-  term badge/tiles/menu item. Any replacement UX is the frontend counterpart's.
+  term badge/tiles/menu item. No replacement UX in v1 (no frontend counterpart).
 - Docs: `Odyssey Design System/README.md` §terms note, `docs/deployment.md` claim table, release note
   listing L1–L7 and A1–A15.
