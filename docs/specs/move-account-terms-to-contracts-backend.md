@@ -152,17 +152,6 @@ end of `Up()`. That is accepted deliberately — single-tenant deployment, the p
 recoverable from any backup taken before upgrade, and the release note (§14) says to take one
 *(security finding 3; corrects the v1 claim of a per-account log line)*.
 
-### 3.7 Staging table (idempotency)
-
-`Up()` creates `__AccountTermMigration` (`CREATE TABLE IF NOT EXISTS`) with one row per account holding
-terms: `AccountId` (PK), `TargetContractId`, `EventId`, `Created` (bool), `CandidateCount`, and the flag
-inputs. Rows
-are inserted only for accounts **not already present**, and `TargetContractId` for a new contract is
-assigned `UUID()` **at that insert**, as is the `EventId` of its attention event. Every later step reads this table and inserts with
-`WHERE NOT EXISTS` on that id. A re-run after an interruption therefore reuses the decision and the id it
-already made — it can never see its own created contract as a second candidate. The table is dropped as the
-last data step, before the DDL in step 7.
-
 ### 3.6 Data loss and user attention — exhaustive list
 
 **Lost (not recoverable after migration)**
@@ -196,6 +185,16 @@ last data step, before the DDL in step 7.
 | A13 | Account also carries estimates (`AccountEstimate`) | Nothing moved; informational only — estimates stay on the account. |
 | A14 | Periodic `Amount` terms now on a Deposit/Loan | Once signed, they **count in the contracts run rate**; confirm the amounts. |
 | A15 | Reused contract: account keeps its existing role, custodian contact not added | Add `Object`/institution parties if wanted. |
+
+### 3.7 Staging table (idempotency)
+
+`Up()` creates `__AccountTermMigration` (`CREATE TABLE IF NOT EXISTS`) with one row per account holding
+terms: `AccountId` (PK), `TargetContractId`, `EventId`, `Created` (bool), `CandidateCount`, and the flag
+inputs. Rows are inserted only for accounts **not already present**, and `TargetContractId` for a new
+contract is assigned `UUID()` **at that insert**, as is the `EventId` of its attention event. Every later
+step reads this table and inserts with `WHERE NOT EXISTS` on that id. A re-run after an interruption therefore reuses the decision and the id it
+already made — it can never see its own created contract as a second candidate. The table is dropped as the
+last data step, before the DDL in step 7.
 
 ## 4. Data Model Changes
 
@@ -287,7 +286,7 @@ that no longer exist.
 ## 8. Validation and Mapping Rules
 
 - The migration writes by SQL and **bypasses** `TermService.ApplyAndValidate`; every value it writes is a
-  value that was valid under the account rules, and every rule difference is flagged (A8–A12) rather than
+  value that was valid under the account rules, and every rule difference is flagged (A8, A10–A12) rather than
   "fixed".
 - Removed from `TermService`: account owner resolution, rule V4 (account terms Outgoing only),
   `TermOwnerFacts.DefaultCurrencyCode`, `IsTermCapped = false` branch, `TermOwnerKind.Account`.
@@ -304,7 +303,6 @@ that no longer exist.
 | **MigrationInterrupted (data steps)** | Idempotent via the staging table (§3.7) — re-run completes, reusing prior decisions and ids. |
 | **MigrationInterrupted (DDL, step 7)** | MariaDB commits DDL implicitly. The `MigrationRunner` guard (issue #468) only detects *a pending migration creating an object that already exists*; it does **not** detect a half-finished drop sequence. Repair is manual per `docs/migration-history-drift.md`; the migration's XML summary says so *(architect finding 4)*. |
 | **RemovedRoute** | `404`. |
-| **TermEditOnDuplicateSeries** (A9) | Existing `409` problem details. |
 | **TermCreateOverCap** (A10) | Existing `422`. |
 
 ## 10. Performance Targets
