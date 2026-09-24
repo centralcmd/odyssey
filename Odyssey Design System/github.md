@@ -26,6 +26,7 @@ date: 2026-08-25T08:15:20Z
 | `components/consentgate.html` | `Odyssey.Client/Pages/Finance/FileAnalysisConsentPanel.razor` + `.razor.css`, `Odyssey.Client/Models/FileAnalysisConsent.cs` |
 | `components/uploadcap.html` · `components/FileUpload.jsx` | the seven client upload-cap constant sites named in the Wave 4 spec |
 | `components/ReferenceNumberField.jsx` · `ReferenceNumber.jsx` · `referencenumber.html` | **No shipped counterpart.** Designed from the *Contract Reference Number — Backend (Draft v2)* spec. The `UpdateContract` carry-forward sites are `ContractsCard.razor.cs` (Archive/Restore, Pause/Resume, Sign) and `CreateContractDialog.razor.cs` (edit). |
+| `preview/58d-data-deposit-contract-type.html` · `contracts-data.js` / `ContractTypeSelect.jsx` / `ContractPartyRoleSelect.jsx` registry rows | **No shipped counterpart yet** — the three `OdsTypeRegistries` rows (`ContractTypes` Deposit after Loan; `ContractPartyRoles` Depositor, Custodian) from the *Deposit contract type — Backend (Draft v1)* spec. |
 | `ui_kits/web/admin.css` | `Odyssey.Client/Pages/Settings.razor.css` |
 
 ## Notes

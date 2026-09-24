@@ -39,13 +39,16 @@ export const CONTRACT_PARTY_ROLES = [
   // orthogonal to kind: expected on an Account, equally legal on a Contact.
   { key: 'Object',       label: 'Object',       enumValue: 17, icon: 'category',           color: 'oklch(0.78 0.11 75)',  soft: 'oklch(0.78 0.11 75 / 0.16)',  object: true, desc: 'The thing the agreement concerns — the record it is about, not a side of it.' },
   { key: 'Property',     label: 'Property',     enumValue: 18, icon: 'holiday_village',    color: 'oklch(0.78 0.11 45)',  soft: 'oklch(0.78 0.11 45 / 0.16)',  object: true, desc: 'Real property or goods — the let premises, the purchased asset.' },
-  { key: 'Collateral',   label: 'Collateral',   enumValue: 19, icon: 'lock',               color: 'oklch(0.78 0.11 105)', soft: 'oklch(0.78 0.11 105 / 0.16)', object: true, desc: 'Security pledged against the loan.' },
+  { key: 'Collateral',   label: 'Collateral',   enumValue: 19, icon: 'lock',               color: 'oklch(0.78 0.11 105)', soft: 'oklch(0.78 0.11 105 / 0.16)', object: true, desc: 'Security pledged against an obligation — a loan’s security, or a deposit blocked to secure a lease.' },
+  // The Deposit pair — the mirror of Lender/Borrower, separate members, not aliases.
+  { key: 'Depositor',    label: 'Depositor',    enumValue: 20, icon: 'account_balance_wallet', color: 'oklch(0.77 0.13 235)', soft: 'oklch(0.77 0.13 235 / 0.16)', desc: 'The party placing the money and entitled to have it returned.' },
+  { key: 'Custodian',    label: 'Custodian',    enumValue: 21, icon: 'account_balance',    color: 'oklch(0.76 0.13 350)', soft: 'oklch(0.76 0.13 350 / 0.16)', desc: 'The party holding the deposited money and owing it back — typically the bank, or a landlord holding a rental deposit. Independent of an account\u2019s custodian.' },
 ];
 
 /**
  * The type × role matrix. Per contract type: `suggested` (legal, offered first)
  * and `allowed` (legal, offered after). Anything absent from both is rejected
- * server-side with a 422 — 69 of the 162 cells are legal. Every type carries at
+ * server-side with a 422 — 78 of the 200 cells are legal. Every type carries at
  * least one suggested role, so the picker's first group is never empty.
  * `Guarantor`, `Broker`, `Other` are universal: legal everywhere, suggested
  * nowhere. `Object` is deliberately absent from Employment and Insurance.
@@ -58,8 +61,9 @@ export const CONTRACT_PARTY_ROLE_MATRIX = {
   Subscription: { suggested: ['Buyer', 'Seller'],                             allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
   Purchase:     { suggested: ['Buyer', 'Seller', 'Property'],                 allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
   Loan:         { suggested: ['Lender', 'Borrower', 'Collateral'],            allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+  Deposit:      { suggested: ['Depositor', 'Custodian'],                      allowed: ['Object', 'Collateral', 'Guarantor', 'Broker', 'Other'] },
   Membership:   { suggested: ['Buyer', 'Seller'],                             allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
-  Other:        { suggested: ['Other'],                                       allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Object', 'Property', 'Collateral', 'Guarantor', 'Broker'] },
+  Other:        { suggested: ['Other'],                                       allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Object', 'Property', 'Collateral', 'Depositor', 'Custodian', 'Guarantor', 'Broker'] },
 };
 
 /** 'suggested' | 'allowed' | 'rejected' for one (contract type, role) cell. */

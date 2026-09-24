@@ -12,7 +12,7 @@ export interface ContractPartyRoleEntry {
   group?: 'suggested' | 'allowed';
 }
 
-/** Canonical ContractPartyRole registry — the eighteen live members. Ordinals 0 and 5 are retired holes. */
+/** Canonical ContractPartyRole registry — the twenty live members. Ordinals 0 and 5 are retired holes. */
 export declare const CONTRACT_PARTY_ROLES: ContractPartyRoleEntry[];
 
 export interface ContractPartyRoleMatrixCell {
@@ -20,7 +20,7 @@ export interface ContractPartyRoleMatrixCell {
   allowed: string[];
 }
 
-/** Canonical contract type × party role legality matrix; 69 of 162 cells are legal. */
+/** Canonical contract type × party role legality matrix; 78 of 200 cells are legal. */
 export declare const CONTRACT_PARTY_ROLE_MATRIX: Record<string, ContractPartyRoleMatrixCell>;
 
 /** Legality of one cell. An unknown contract type reports 'allowed' rather than refusing. */

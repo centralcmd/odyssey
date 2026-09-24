@@ -11,7 +11,7 @@ export interface ContractTypeEntry {
 export declare const CONTRACT_TYPES: ContractTypeEntry[];
 
 export interface ContractTypeSelectProps {
-  /** Selected ContractType enum key. */
+  /** Selected ContractType enum key — 'Employment' | 'Service' | 'Rental' | 'Insurance' | 'Subscription' | 'Purchase' | 'Loan' | 'Deposit' | 'Membership' | 'Other'. */
   value?: string;
   /** Fires with the picked key first, the native event second. */
   onChange?: (key: string, event: React.MouseEvent) => void;

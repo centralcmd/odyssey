@@ -6,7 +6,7 @@
  * other type picker — colored glyph, label, far-right check. Falls back to the
  * base Select until the bundle carries TypeSelect.
  *
- * Value is the enum key — 'Employment' | 'Service' | 'Rental' | 'Loan' | 'Other'.
+ * Value is the enum key — 'Employment' | 'Service' | 'Rental' | 'Loan' | 'Deposit' | 'Other'.
  * The registry is in READING order, which is not ordinal order, and `Other` must
  * stay the trailing entry: it is the documented fallback for an out-of-range
  * value, so a reorder that displaces it makes stale rows render as whatever
@@ -29,6 +29,7 @@ export const CONTRACT_TYPES = [
   { key: 'Subscription', label: 'Subscription', enumValue: 5, icon: 'autorenew',       color: 'oklch(0.76 0.14 320)', soft: 'oklch(0.76 0.14 320 / 0.16)' },
   { key: 'Purchase',   label: 'Purchase',   enumValue: 6, icon: 'shopping_bag',        color: 'oklch(0.78 0.14 140)', soft: 'oklch(0.78 0.14 140 / 0.16)' },
   { key: 'Loan',       label: 'Loan',       enumValue: 8, icon: 'account_balance',     color: 'oklch(0.77 0.13 100)', soft: 'oklch(0.77 0.13 100 / 0.16)' },
+  { key: 'Deposit',    label: 'Deposit',    enumValue: 9, icon: 'lock_clock',          color: 'oklch(0.76 0.13 258)', soft: 'oklch(0.76 0.13 258 / 0.16)' },
   { key: 'Membership', label: 'Membership', enumValue: 7, icon: 'card_membership',     color: 'oklch(0.77 0.13 20)',  soft: 'oklch(0.77 0.13 20 / 0.16)' },
   { key: 'Other',      label: 'Other',      enumValue: 3, icon: 'description',         color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)' },
 ];

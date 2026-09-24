@@ -67,6 +67,13 @@
        The hue is the one wide gap left on the wheel between Rental (60) and
        Purchase (140); it clears both by 40° at the same L/C as its neighbours. */
     { key: 'Loan',       label: 'Loan',       enumValue: 8, icon: 'account_balance',     color: 'oklch(0.77 0.13 100)', soft: 'oklch(0.77 0.13 100 / 0.16)', desc: 'A loan or mortgage — money advanced under an agreement to repay.' },
+    /* Deposit (9) is APPENDED in ordinal and read beside its mirror, Loan: the
+       household PLACES money here where under a Loan it borrows it. Before this
+       member a deposit was filed as Other, or as a Loan with the roles read
+       backwards. Hue 258 sits in the widest gap left on the wheel, between
+       Employment (225) and Insurance (290); the neutral Other at 250 is
+       near-achromatic, so it does not compete. */
+    { key: 'Deposit',    label: 'Deposit',    enumValue: 9, icon: 'lock_clock',          color: 'oklch(0.76 0.13 258)', soft: 'oklch(0.76 0.13 258 / 0.16)', desc: 'Money placed with a bank or landlord under an agreement to return it — a fixed-term or notice deposit, a rental deposit.' },
     { key: 'Membership', label: 'Membership', enumValue: 7, icon: 'card_membership',     color: 'oklch(0.77 0.13 20)',  soft: 'oklch(0.77 0.13 20 / 0.16)',  desc: 'A club, gym, union, or association membership.' },
     { key: 'Other',      label: 'Other',      enumValue: 3, icon: 'description',         color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)', desc: 'The entity default — anything outside the categories above.' },
   ];
@@ -81,7 +88,7 @@
   ];
 
   /* ---- Canonical ContractPartyRole registry — what a linked record DOES in
-     the agreement, orthogonal to its kind. EIGHTEEN live members; `Unspecified`
+     the agreement, orthogonal to its kind. TWENTY live members; `Unspecified`
      (0) and `ServiceProvider` (5) are RETIRED and their ordinals are permanent
      holes that must never be reused — reusing one would make an unmigrated row
      mean something new rather than nothing. ORDINALS ARE A WIRE AND PERSISTENCE
@@ -116,13 +123,21 @@
     { key: 'Broker',       label: 'Broker',       enumValue: 16, icon: 'handshake',          color: 'oklch(0.76 0.07 245)', soft: 'oklch(0.76 0.07 245 / 0.16)', desc: 'An intermediary that arranged the agreement. Legal on every type.' },
     { key: 'Object',       label: 'Object',       enumValue: 17, icon: 'category',           color: 'oklch(0.78 0.11 75)',  soft: 'oklch(0.78 0.11 75 / 0.16)',  object: true, desc: 'The thing the agreement concerns — the record it is about, not a side of it.' },
     { key: 'Property',     label: 'Property',     enumValue: 18, icon: 'holiday_village',    color: 'oklch(0.78 0.11 45)',  soft: 'oklch(0.78 0.11 45 / 0.16)',  object: true, desc: 'Real property or goods — the let premises, the purchased asset.' },
-    { key: 'Collateral',   label: 'Collateral',   enumValue: 19, icon: 'lock',               color: 'oklch(0.78 0.11 105)', soft: 'oklch(0.78 0.11 105 / 0.16)', object: true, desc: 'Security pledged against the loan.' },
+    { key: 'Collateral',   label: 'Collateral',   enumValue: 19, icon: 'lock',               color: 'oklch(0.78 0.11 105)', soft: 'oklch(0.78 0.11 105 / 0.16)', object: true, desc: 'Security pledged against an obligation — a loan’s security, or a deposit blocked to secure a lease.' },
+    /* The Deposit pair (20/21) — the mirror of Lender/Borrower, and separate
+       members rather than aliases, so no report has to guess whether a Lender
+       row is a creditor or a depositor. `Custodian` deliberately shares its
+       word with the account-level custodian (Account.custodianId): same
+       real-world institution, independent surfaces, never synchronised. It
+       does NOT block contact deletion the way Beneficiary does. */
+    { key: 'Depositor',    label: 'Depositor',    enumValue: 20, icon: 'account_balance_wallet', color: 'oklch(0.77 0.13 235)', soft: 'oklch(0.77 0.13 235 / 0.16)', desc: 'The party placing the money and entitled to have it returned.' },
+    { key: 'Custodian',    label: 'Custodian',    enumValue: 21, icon: 'account_balance',    color: 'oklch(0.76 0.13 350)', soft: 'oklch(0.76 0.13 350 / 0.16)', desc: 'The party holding the deposited money and owing it back — typically the bank, or a landlord holding a rental deposit. Independent of an account\u2019s custodian.' },
   ];
 
   /* ---- The contract type × party role MATRIX — the client half of the shared
      server declaration, not a copy of a rule the client invented. Per type:
      `suggested` (legal, offered first) and `allowed` (legal, offered after);
-     anything in neither is rejected server-side with a 422. 69 of the 162 cells
+     anything in neither is rejected server-side with a 422. 78 of the 200 cells
      are legal. Every type carries at least one suggested role, so the picker's
      first group is never empty — `Other`-the-type suggests `Other`-the-role,
      which is the only honest suggestion for "none of the above".
@@ -138,8 +153,9 @@
     Subscription: { suggested: ['Buyer', 'Seller'],                  allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
     Purchase:     { suggested: ['Buyer', 'Seller', 'Property'],      allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
     Loan:         { suggested: ['Lender', 'Borrower', 'Collateral'], allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+    Deposit:      { suggested: ['Depositor', 'Custodian'],           allowed: ['Object', 'Collateral', 'Guarantor', 'Broker', 'Other'] },
     Membership:   { suggested: ['Buyer', 'Seller'],                  allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
-    Other:        { suggested: ['Other'], allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Object', 'Property', 'Collateral', 'Guarantor', 'Broker'] },
+    Other:        { suggested: ['Other'], allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Object', 'Property', 'Collateral', 'Depositor', 'Custodian', 'Guarantor', 'Broker'] },
   };
 
   /* ---- The file library (the user's files.read-visible FileMetadata records).
@@ -231,6 +247,23 @@
         { id: 'cp-loan-3', contactId: 'c9', role: 'Guarantor', fromDate: null, toDate: null },
         // The security pledged against the loan — a Loan's own object role.
         { id: 'cp-loan-4', accountId: '5', role: 'Collateral', fromDate: null, toDate: null },
+      ],
+      files: [],
+    },
+    /* DEPOSIT — the mirror of the Loan above. The household's savings account
+       places the money (Depositor) and the bank holds it (Custodian). The
+       monthly interest is an INCOMING term, so it lands in the roll-up's
+       incoming split under Deposit instead of under Other. The principal is
+       not a term (v1) — the end date is the maturity. */
+    {
+      id: 'ct-deposit', name: 'Fixed-term deposit — 12 months', type: 'Deposit', referenceNumber: 'TD-8821-0426',
+      description: 'Twelve-month fixed-term deposit of 20,000 USD placed from Ally Savings. Interest paid monthly into the savings account; principal returned at maturity. No early withdrawal.',
+      startDate: '2026-04-01', endDate: '2027-03-31', ready: '2026-03-24T09:00:00Z', signed: '2026-03-25T09:00:00Z', paused: null, archived: null, createdAtUtc: '2026-03-24T09:00:00Z', createdByUserId: 'u-jane',
+      parties: [
+        { id: 'cp-dep-1', accountId: '2', role: 'Depositor', fromDate: null, toDate: null },
+        // The same bank is the savings account's own custodian — the two are
+        // recorded independently and never cross-checked (v1 non-goal).
+        { id: 'cp-dep-2', contactId: 'c15', role: 'Custodian', fromDate: null, toDate: null },
       ],
       files: [],
     },
@@ -835,6 +868,10 @@
     'ct-house': [
       { id: 'ctm-house-1', contractId: 'ct-house', unit: 'Percentage', value: 0.0425, currency: null, interval: null, intervalCount: null, effectiveFrom: '2021-04-15', label: 'Interest rate', labelKey: 'interest rate', direction: 'Outgoing', note: 'Vendor financing on the balance of the purchase price.', createdAtUtc: '2021-04-15T09:00:00Z' },
       { id: 'ctm-house-2', contractId: 'ct-house', unit: 'Percentage', value: 0.0399, currency: null, interval: null, intervalCount: null, effectiveFrom: '2024-05-01', label: 'Interest rate', labelKey: 'interest rate', direction: 'Outgoing', note: 'Renegotiated at the three-year review.', createdAtUtc: '2024-05-01T09:00:00Z' },
+    ],
+    // Deposit interest — money IN. Fixed for the term, paid on the 1st.
+    'ct-deposit': [
+      { id: 'ctm-dep-1', contractId: 'ct-deposit', unit: 'Amount', value: 68.75, currency: 'USD', interval: 'Monthly', intervalCount: 1, direction: 'Incoming', anchorDate: '2026-05-01', effectiveFrom: '2026-04-01', label: 'Interest', labelKey: 'interest', note: '4.125% p.a. on 20,000, paid monthly.', createdAtUtc: '2026-03-24T09:00:00Z' },
     ],
     'ct-parking': [
       { id: 'ctm-parking-1', contractId: 'ct-parking', unit: 'Amount', value: 165.00, currency: 'USD', interval: 'Monthly', intervalCount: 1, effectiveFrom: '2025-11-01', label: 'Space licence', labelKey: 'space licence', note: 'Due on the 1st.', createdAtUtc: '2025-10-20T09:00:00Z' },

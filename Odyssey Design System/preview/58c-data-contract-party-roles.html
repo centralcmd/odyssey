@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Reference data" name="Contract party roles & the type matrix" subtitle="The ContractPartyRole vocabulary — fifteen live members after Unspecified (0) and ServiceProvider (5) were retired — and the contract-type × role matrix that decides which of them are legal where. ● suggested · ○ allowed · blank rejected (422). 52 of 135 cells are legal. Driven by OdysseyData.contractPartyRoles and OdysseyData.contractPartyRoleMatrix." viewport="1280x1180" -->
+<!-- @dsCard group="Reference data" name="Contract party roles & the type matrix" subtitle="The ContractPartyRole vocabulary — twenty live members after Unspecified (0) and ServiceProvider (5) were retired — and the contract-type × role matrix that decides which of them are legal where. ● suggested · ○ allowed · blank rejected (422). 78 of 200 cells are legal. Driven by OdysseyData.contractPartyRoles and OdysseyData.contractPartyRoleMatrix." viewport="1280x1180" -->
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8" />
@@ -49,7 +49,7 @@ table.mx{width:100%;border-collapse:collapse;background:var(--mud-palette-surfac
 <body>
 <div class="spec-doc">
 <h2>Contract party roles and the type × role matrix</h2>
-<p class="spec-lead">What a linked record <b>does</b> in an agreement. The vocabulary is fifteen live members: the four generic ones that survived, plus <b>Landlord / Tenant</b>, the four insurance roles, <b>Lender / Borrower</b> for the new <b>Loan</b> type, and <b>Guarantor / Broker</b>. <b>Unspecified</b> (0) and <b>ServiceProvider</b> (5) are retired — a role is now required on every party write, and supplying a service is what <b>Seller</b> already meant. Their ordinals stay permanent holes: reusing one would make an unmigrated row mean something new rather than nothing. Which roles are legal is decided per contract type by one shared matrix, so the picker and the server validator name the same declaration instead of the client keeping a copy of a server rule.</p>
+<p class="spec-lead">What a linked record <b>does</b> in an agreement. The vocabulary is twenty live members: the four generic ones that survived, plus <b>Landlord / Tenant</b>, the four insurance roles, <b>Lender / Borrower</b> for <b>Loan</b>, <b>Guarantor / Broker</b>, the three object roles (<b>Object / Property / Collateral</b>), and <b>Depositor / Custodian</b> for <b>Deposit</b>, the mirror of Loan. <b>Unspecified</b> (0) and <b>ServiceProvider</b> (5) are retired — a role is now required on every party write, and supplying a service is what <b>Seller</b> already meant. Their ordinals stay permanent holes: reusing one would make an unmigrated row mean something new rather than nothing. Which roles are legal is decided per contract type by one shared matrix, so the picker and the server validator name the same declaration instead of the client keeping a copy of a server rule.</p>
 <div class="spec-src">
 <span class="pill">Enum <b>ContractPartyRole</b></span>
 <span class="pill">Declaration <b>ContractPartyRoleMatrix</b></span>
@@ -59,7 +59,7 @@ table.mx{width:100%;border-collapse:collapse;background:var(--mud-palette-surfac
 </div>
 </div>
 
-<div class="stage-label"><span class="material-icons">badge</span>The fifteen live members · ordinal · icon &amp; colour</div>
+<div class="stage-label"><span class="material-icons">badge</span>The twenty live members · ordinal · icon &amp; colour</div>
 <div class="role-grid" id="roles"></div>
 
 <div class="stage-label"><span class="material-icons">grid_on</span>The matrix · which role is legal on which type</div>

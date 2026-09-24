@@ -1,0 +1,162 @@
+<!doctype html>
+<!-- @dsCard group="Reference data" name="Deposit contract type" subtitle="ContractType.Deposit (9) and its two roles, Depositor (20) and Custodian (21) — the mirror of Loan. No new UI flow: the type picker, the list filter, the party picker and the run-rate roll-up pick the values up from the registries and the matrix unchanged. Driven by OdysseyData.contractTypes / contractPartyRoles / contractPartyRoleMatrix." viewport="1280x1320" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · Deposit contract type</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<script src="../ui_kits/web/data.js"></script>
+<script src="../ui_kits/web/contracts-data.js"></script>
+<style>
+html,body{min-height:0;background:var(--mud-palette-background)}
+body{width:1280px;padding:24px;box-sizing:border-box;font-family:var(--font-sans);color:var(--mud-palette-text-primary)}
+a{color:var(--tide-400)}a:hover{color:var(--tide-300)}
+.spec-doc{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:12px;padding:20px 22px;margin-bottom:20px}
+.spec-doc h2{font:600 16px/1.3 var(--font-sans);margin:0 0 7px}
+.spec-lead{font:400 13px/1.6 var(--font-sans);color:var(--mud-palette-text-secondary);margin:0 0 14px;max-width:96ch;text-wrap:pretty}
+.spec-lead b{color:var(--tide-400);font-weight:500}
+.spec-src{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+.spec-src .pill{font:500 11px/1 var(--font-mono);color:var(--mud-palette-text-secondary);background:rgba(255,255,255,0.05);border:1px solid var(--mud-palette-divider);border-radius:999px;padding:6px 11px}
+.spec-src .pill b{color:var(--tide-400);font-weight:600}
+.stage-label{font:500 11px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:4px 0 12px 2px;display:flex;align-items:center;gap:8px}
+.stage-label .material-icons{font-size:15px;color:var(--tide-400)}
+.reg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:24px}
+.card{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.top{display:flex;align-items:center;gap:11px}
+.av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:none}
+.av .material-icons{font-size:20px}
+.lab{font:500 14px/1.1 var(--font-sans)}
+.meta{font:500 10.5px/1.4 var(--font-mono);color:var(--mud-palette-text-secondary);margin-top:3px;display:block}
+.desc{font:400 12px/1.5 var(--font-sans);color:var(--mud-palette-text-secondary);margin:0;text-wrap:pretty}
+.strip{display:flex;flex-wrap:wrap;gap:6px;margin:-12px 0 24px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;font:500 12px/1 var(--font-sans);border:1px solid transparent}
+.chip .material-icons{font-size:15px}
+.chip.new{border-color:currentColor}
+.chip .ord{font:500 10px/1 var(--font-mono);opacity:.7}
+.ctx{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:24px}
+.pane{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.pane h3{font:600 12.5px/1.3 var(--font-sans);margin:0}
+.pane .sub{font:400 11.5px/1.45 var(--font-sans);color:var(--mud-palette-text-secondary);margin:-4px 0 0}
+.menu{border:1px solid var(--mud-palette-divider);border-radius:8px;padding:4px 0;background:var(--mud-palette-background)}
+.grp{font:600 10px/1 var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--mud-palette-text-secondary);padding:9px 12px 5px}
+.opt{display:flex;align-items:center;gap:10px;padding:7px 12px;font:400 12.5px/1.2 var(--font-sans)}
+.opt .material-icons{font-size:17px}
+.opt.hi{background:rgba(255,255,255,0.05)}
+.opt .chk{margin-left:auto;color:var(--tide-400);font-size:16px}
+.mirror{display:grid;grid-template-columns:1fr 24px 1fr;gap:6px 4px;align-items:center}
+.mirror .h{font:600 10px/1 var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--mud-palette-text-secondary);padding-bottom:4px}
+.mirror .arr{color:var(--mud-palette-text-secondary);font-size:16px;text-align:center}
+.mirror .same{grid-column:1/-1;font:400 11.5px/1.5 var(--font-sans);color:var(--mud-palette-text-secondary);border-top:1px solid var(--mud-palette-divider-light);padding-top:8px;margin-top:4px}
+.err{display:flex;gap:9px;padding:10px 12px;border-radius:8px;background:oklch(0.70 0.15 25 / 0.12);font:400 12px/1.5 var(--font-sans)}
+.err .material-icons{font-size:17px;color:oklch(0.76 0.14 25)}
+.roll{display:flex;flex-direction:column;gap:2px}
+.rr{display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid var(--mud-palette-divider-light);font:400 12.5px/1 var(--font-sans)}
+.rr:last-child{border-bottom:none}
+.rr .material-icons{font-size:16px}
+.rr .amt{margin-left:auto;font:500 12px/1 var(--font-mono)}
+.rr.new{font-weight:500}
+.spec-notes{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.spec-notes li{position:relative;padding-left:22px;font:400 12.5px/1.55 var(--font-sans);color:var(--mud-palette-text-secondary);text-wrap:pretty}
+.spec-notes li b{color:var(--mud-palette-text-primary);font-weight:500}
+.spec-notes li code{font:500 11.5px/1 var(--font-mono);color:var(--tide-400)}
+.spec-notes li .material-icons{position:absolute;left:0;top:0;font-size:16px;color:var(--tide-400)}
+</style>
+</head>
+<body>
+<div class="spec-doc">
+<h2>Deposit — the contract under which the household places money</h2>
+<p class="spec-lead">Odyssey could file a <b>Loan</b>, where the household borrows, but not the reverse: a fixed-term bank deposit, a notice account, a rental deposit held by a landlord. Those were filed as <b>Other</b>, or as a Loan with Lender and Borrower read backwards. This adds one contract type and two roles. There is <b>no new screen, dialog or component</b> — only three registry rows and one matrix column, which every existing surface already reads.</p>
+<div class="spec-src">
+<span class="pill">Enum <b>ContractType.Deposit = 9</b></span>
+<span class="pill">Enum <b>ContractPartyRole.Depositor = 20</b></span>
+<span class="pill">Enum <b>ContractPartyRole.Custodian = 21</b></span>
+<span class="pill">Client <b>OdsTypeRegistries</b></span>
+<span class="pill">Matrix <b>78 of 200</b> legal</span>
+</div>
+</div>
+
+<div class="stage-label"><span class="material-icons">palette</span>The three registry rows · label · ordinal · icon &amp; colour</div>
+<div class="reg" id="reg"></div>
+
+<div class="stage-label"><span class="material-icons">format_list_numbered</span>Contract types in reading order · Deposit reads after Loan, Other stays last</div>
+<div class="strip" id="strip"></div>
+
+<div class="stage-label"><span class="material-icons">visibility</span>Where the new values appear · existing surfaces, unchanged</div>
+<div class="ctx">
+<div class="pane">
+<h3>Type picker &amp; list filter</h3>
+<p class="sub">New / Edit contract and the Contracts filter both list <code>contractTypes</code> as-is.</p>
+<div class="menu" id="typeMenu"></div>
+</div>
+<div class="pane">
+<h3>Party role picker on a Deposit</h3>
+<p class="sub">Seven legal roles, the suggested pair first. Lender and Borrower are not offered.</p>
+<div class="menu" id="roleMenu"></div>
+</div>
+<div class="pane">
+<h3>Mirror of Loan</h3>
+<p class="sub">Separate members, not aliases, so a Lender row always means a creditor.</p>
+<div class="mirror" id="mirror"></div>
+<div class="err" id="err"><span class="material-icons">error_outline</span><span></span></div>
+</div>
+</div>
+
+<div class="ctx" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr)">
+<div class="pane">
+<h3>Run rate · incoming by type</h3>
+<p class="sub">The seeded deposit's monthly interest is an Incoming term, so it counts under Deposit, not Other.</p>
+<div class="roll" id="roll"></div>
+</div>
+<div class="pane">
+<h3>Notes for the implementer</h3>
+<ul class="spec-notes">
+<li><span class="material-icons">lock_clock</span><b>Deposit uses <code>lock_clock</code> at hue 258.</b> The glyph reads as money set aside for a term. The hue sits in the widest remaining gap on the type wheel, between Employment (225) and Insurance (290); Other at 250 is near-achromatic and does not compete.</li>
+<li><span class="material-icons">account_balance</span><b>Custodian reuses <code>account_balance</code></b>, the bank glyph the Institution contact type already uses, the same way Insurer shares <code>shield</code> with Insurance. It never sits beside the Loan type chip, because Custodian is rejected on Loan. Depositor takes <code>account_balance_wallet</code>.</li>
+<li><span class="material-icons">link_off</span><b>The Custodian role and an account's custodian stay independent.</b> The seeded deposit names Ally Bank as Custodian, which is also Ally Savings' account custodian. Nothing links, syncs or cross-checks the two.</li>
+<li><span class="material-icons">delete_outline</span><b>Custodian does not block contact deletion.</b> Only Beneficiary refuses with a 409; deleting a Custodian contact cascades its party row away and the contract survives.</li>
+<li><span class="material-icons">lock</span><b>Collateral is allowed on Deposit, suggested on Loan.</b> Its description now covers both: security on a loan, or a deposit blocked to secure a lease.</li>
+<li><span class="material-icons">history</span><b>Version skew needs nothing new.</b> An older client shows 9 as Other (the trailing fallback) and 20/21 as <i>Unrecognised role</i> with Edit party withheld.</li>
+</ul>
+</div>
+</div>
+
+<script>
+(function(){
+  var D = window.OdysseyData, H = window.OdysseyHelpers;
+  var tBy = D.contractTypeByKey, rBy = D.contractPartyRoleByKey;
+  var dep = tBy.Deposit, rows = [[dep,'ContractType · ordinal 9'],[rBy.Depositor,'ContractPartyRole · ordinal 20'],[rBy.Custodian,'ContractPartyRole · ordinal 21']];
+  var ic = function(x,s){ return '<span class="material-icons" style="color:'+x.color+(s?';'+s:'')+'">'+x.icon+'</span>'; };
+  document.getElementById('reg').innerHTML = rows.map(function(p){ var x=p[0];
+    return '<div class="card"><div class="top"><span class="av" style="background:'+x.soft+';color:'+x.color+'"><span class="material-icons">'+x.icon+'</span></span>'
+      +'<div><span class="lab">'+x.label+'</span><span class="meta">'+p[1]+' · '+x.icon+' · '+x.color+'</span></div></div><p class="desc">'+(x.desc||'')+'</p></div>'; }).join('');
+  document.getElementById('strip').innerHTML = D.contractTypes.map(function(t){
+    return '<span class="chip'+(t.key==='Deposit'?' new':'')+'" style="background:'+t.soft+';color:'+t.color+'">'+'<span class="material-icons">'+t.icon+'</span>'+t.label+'<span class="ord">'+t.enumValue+'</span></span>'; }).join('');
+  var i = D.contractTypes.findIndex(function(t){return t.key==='Deposit';});
+  document.getElementById('typeMenu').innerHTML = D.contractTypes.slice(i-2).map(function(t){
+    var on = t.key==='Deposit';
+    return '<div class="opt'+(on?' hi':'')+'">'+ic(t)+t.label+(on?'<span class="material-icons chk">check</span>':'')+'</div>'; }).join('');
+  var cell = D.contractPartyRoleMatrix.Deposit;
+  var opt = function(k){ var r=rBy[k]; return '<div class="opt">'+ic(r)+r.label+'</div>'; };
+  document.getElementById('roleMenu').innerHTML = '<div class="grp">Suggested for deposit</div>'+cell.suggested.map(opt).join('')+'<div class="grp">Also allowed</div>'+cell.allowed.map(opt).join('');
+  var pair = function(a,b){ return '<div class="chip" style="background:'+rBy[a].soft+';color:'+rBy[a].color+'">'+'<span class="material-icons">'+rBy[a].icon+'</span>'+rBy[a].label+'</div><span class="material-icons arr">sync_alt</span><div class="chip" style="background:'+rBy[b].soft+';color:'+rBy[b].color+'">'+'<span class="material-icons">'+rBy[b].icon+'</span>'+rBy[b].label+'</div>'; };
+  document.getElementById('mirror').innerHTML = '<div class="h">Loan</div><div></div><div class="h">Deposit</div>'+pair('Lender','Depositor')+pair('Borrower','Custodian')
+    +'<div class="same">Lender ↔ Depositor: the side the money leaves. Borrower ↔ Custodian: the side that owes it back.</div>';
+  var legal = cell.suggested.concat(cell.allowed).map(function(k){return rBy[k].label;}).join(', ');
+  document.getElementById('err').lastChild.textContent = 'Lender is not a role a Deposit contract can have. The roles it can have are: '+legal+'.';
+  /* conRunRate reads window.trmCurrentFromList, defined in the kit's AccountTerms.jsx.
+     The card does not load JSX, so it carries the same resolver when absent. */
+  if (!window.trmCurrentFromList) window.trmCurrentFromList = function(terms, asOf){
+    var by = {};
+    terms.forEach(function(t){ if (t.effectiveFrom > asOf) return; var k = H.termSeriesKey(t), c = by[k];
+      if (!c || t.effectiveFrom > c.effectiveFrom || (t.effectiveFrom === c.effectiveFrom && (t.createdAtUtc||'') > (c.createdAtUtc||''))) by[k] = t; });
+    return H.sortTermsBySeries(Object.values(by));
+  };
+  var rr = H.conRunRate(D.contracts, '2026-09-24');
+  var inc = rr.incomingTypeRows || [];
+  document.getElementById('roll').innerHTML = inc.map(function(r){
+    return '<div class="rr'+(r.key==='Deposit'?' new':'')+'">'+ic(r)+r.label+'<span class="amt">'+r.monthly.toFixed(2)+' / mo</span></div>'; }).join('')
+    + (rr.incomingMonthly != null ? '<div class="rr" style="color:var(--mud-palette-text-secondary)">Incoming total<span class="amt">'+rr.incomingMonthly.toFixed(2)+' / mo</span></div>' : '');
+})();
+</script>
+</body>
+</html>
