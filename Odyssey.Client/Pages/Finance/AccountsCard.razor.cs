@@ -102,6 +102,7 @@ public partial class AccountsCard
     private bool _canWriteTerms;
     private bool _canReadEstimates;
     private bool _canWriteEstimates;
+    private bool _canReadContracts;
 
     // ── Computed ─────────────────────────────────────────────────────────────
     private int ActiveCount => _summary?.CountsByStatus.Open ?? 0;
@@ -297,6 +298,7 @@ public partial class AccountsCard
         _canWriteTerms         = user.HasPermission(PermissionClaims.AccountsTermsWrite);
         _canReadEstimates      = user.HasPermission(PermissionClaims.AccountsEstimatesRead);
         _canWriteEstimates     = user.HasPermission(PermissionClaims.AccountsEstimatesWrite);
+        _canReadContracts      = user.HasPermission(PermissionClaims.ContractsRead);
     }
 
     // Server-side fetch (issue #277): search/filters/sort are applied by the API, not in the browser.

@@ -92,6 +92,8 @@ public partial class ContractsCard
     private bool _canDelete;
     private bool _canDownloadFiles;
     private bool _canUploadFiles;
+    private bool _canViewAccounts;
+    private bool _canViewContacts;
 
     // ── Computed ────────────────────────────────────────────────────────────────
     // Derived from the unfiltered summary (issue #277): the sub-line reflects the whole set, not the
@@ -189,6 +191,8 @@ public partial class ContractsCard
         _canUploadFiles = user.HasPermission(PermissionClaims.FilesCreate)
                        && user.HasPermission(PermissionClaims.FilesRead)
                        && user.HasPermission(PermissionClaims.ContractsUpdate);
+        _canViewAccounts = user.HasPermission(PermissionClaims.AccountsRead);
+        _canViewContacts = user.HasPermission(PermissionClaims.ContactsRead);
     }
 
     // Server-side (issue #277): search + multi type/status filters + sort applied by the API.

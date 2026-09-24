@@ -94,6 +94,12 @@
                         new("receipt_long", account.TransactionCount.ToString(CultureInfo.CurrentCulture), "Transactions"),
                         new("attach_file", account.FileCount.ToString(CultureInfo.CurrentCulture), "Files"),
                     };
+                    @* ContractCount is null unless the caller holds contracts.read — the server
+                       withholds it rather than zeroing it — so this needs no claim check of its own. *@
+                    if (account.ContractCount is > 0 and var contractCount)
+                    {
+                        counts.Add(new OdsRecordCount("handshake", contractCount.ToString(CultureInfo.CurrentCulture), "Contracts"));
+                    }
                     if (account.EstimateCount > 0)
                     {
                         counts.Add(new OdsRecordCount("monitor", account.EstimateCount.ToString(CultureInfo.CurrentCulture), "Estimates"));
@@ -295,6 +301,23 @@
                                                      Chrome="false" ShowCurrent="false" BareAction="false"
                                                      FormatMoney="FormatMoney"
                                                      OnChanged="GetAccounts" />
+                            </OdsRecordSection>
+                        }
+
+                        @* Contracts is always rendered for a reader who may see contracts, as the
+                           design system draws it: "not a party to any contract" is worth stating,
+                           since the link is made on the contract and not from here. *@
+                        @if (_canReadContracts)
+                        {
+                            var contractCount = account.ContractCount ?? 0;
+                            <OdsRecordSection Class="acct-section" Label="Contracts"
+                                              Meta="@($"{contractCount} contract{(contractCount == 1 ? "" : "s")}")"
+                                              Empty="@(contractCount == 0)">
+                                <EmptyText>This account is not a party to any contract.</EmptyText>
+                                <ChildContent>
+                                    <AccountContractsSection @key="@($"contracts:{account.AccountId}")"
+                                                             AccountId="@account.AccountId" />
+                                </ChildContent>
                             </OdsRecordSection>
                         }
 

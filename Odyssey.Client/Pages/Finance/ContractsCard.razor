@@ -316,6 +316,8 @@
                                                 NewTermRequestToken="@NewTermRequestFor(c.ContractId)"
                                                 NewEventRequestToken="@NewEventRequestFor(c.ContractId)"
                                                 CanDownload="_canDownloadFiles"
+                                                CanViewAccounts="_canViewAccounts"
+                                                CanViewContacts="_canViewContacts"
                                                 OnEditParty="@(p => EditParty(c.ContractId, p))"
                                                 OnAnnounce="@(m => Announce(m))"
                                                 OnChanged="@(() => ReloadContract(c.ContractId))"

@@ -37,7 +37,8 @@ public class CreatedAtRouteControllerTests
             new AccountTotalsService(context, new CurrencyConversionService(context)),
             new NetWorthHistoryService(context, new CurrencyConversionService(context)),
             TimeProvider.System,
-            new UserDisplayNameResolver(context));
+            new UserDisplayNameResolver(context),
+            null!);
 
         var missingId = Guid.NewGuid();
         var result = await controller.Put(missingId, new NewAccount

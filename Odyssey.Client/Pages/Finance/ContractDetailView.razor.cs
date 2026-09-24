@@ -11,11 +11,22 @@ public partial class ContractDetailView : IAsyncDisposable
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private IClipboardService Clipboard { get; set; } = default!;
     [Inject] private TimeProvider Time { get; set; } = default!;
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     [Parameter, EditorRequired] public ExistingContract Contract { get; set; } = default!;
 
     [Parameter] public bool CanWrite { get; set; }
     [Parameter] public bool CanDownload { get; set; }
+
+    /// <summary>
+    /// Whether a party tile's View goes anywhere: an account party opens the Accounts page, a contact
+    /// party the Contacts page, and each page is gated on its own read claim. A View the caller could
+    /// only follow into "not authorized" is absent, per the menu rule.
+    /// </summary>
+    [Parameter] public bool CanViewAccounts { get; set; }
+
+    /// <inheritdoc cref="CanViewAccounts"/>
+    [Parameter] public bool CanViewContacts { get; set; }
 
     /// <summary>
     /// Gates the Smart tags section (issue #166), which resolves its watchlist through the
@@ -208,8 +219,10 @@ public partial class ContractDetailView : IAsyncDisposable
     }
 
     /// <summary>
-    /// The party's actions. Copy ID is unconditional, which is what keeps the menu non-empty for a
-    /// party whose target did not resolve. Detach removes the LINK; the account or contact itself is
+    /// The party's actions. View leads, for any caller who may open the target's page; everything
+    /// after it needs <see cref="CanWrite"/>, so a read-only caller's menu is View alone or absent.
+    /// For a writer Copy ID is unconditional, which is what keeps the menu non-empty for a party whose
+    /// target did not resolve. Detach removes the LINK; the account or contact itself is
     /// untouched, which is why it is not worded as a delete.
     /// </summary>
     /// <remarks>
@@ -222,10 +235,22 @@ public partial class ContractDetailView : IAsyncDisposable
     /// </remarks>
     private IReadOnlyList<OdsMenuItem> MenuFor(ExistingContractParty party, PartyVisual visual)
     {
-        if (!CanWrite) return [];
-
         var items = new List<OdsMenuItem>();
         var resolved = party.Account is not null || party.Institution is not null;
+
+        // View is navigation, not a write, so it is offered to a read-only caller too — the one item
+        // such a caller gets. It needs a resolved target: an unresolved party names no record.
+        if (ViewRouteFor(party) is { } route)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "visibility",
+                Label = "View",
+                OnClick = EventCallback.Factory.Create(this, () => Navigation.NavigateTo(route)),
+            });
+        }
+
+        if (!CanWrite) return items;
 
         if (OnEditParty.HasDelegate && resolved && !PartyRoleLabel.IsUnknown(party.Role))
         {
@@ -269,6 +294,14 @@ public partial class ContractDetailView : IAsyncDisposable
 
         return items;
     }
+
+    /// <summary>The page a party's View opens, or null when there is none the caller may follow.</summary>
+    private string? ViewRouteFor(ExistingContractParty party) => party switch
+    {
+        { Kind: ContractPartyKind.Account, Account: not null } when CanViewAccounts => "accounts",
+        { Kind: ContractPartyKind.Institution, Institution: not null } when CanViewContacts => "contacts",
+        _ => null,
+    };
 
     private async Task DetachPartyAsync(ExistingContractParty party)
     {

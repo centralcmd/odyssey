@@ -69,7 +69,8 @@ public class ContractPartyTileTests
         };
 
     private static IRenderedComponent<DetailHost> Render(
-        ExistingContractParty party, bool canWrite = true)
+        ExistingContractParty party, bool canWrite = true, bool canView = false,
+        bool? canViewAccounts = null, bool? canViewContacts = null)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -85,7 +86,9 @@ public class ContractPartyTileTests
 
         return ctx.Render<DetailHost>(p => p
             .Add(h => h.Party, party)
-            .Add(h => h.CanWrite, canWrite));
+            .Add(h => h.CanWrite, canWrite)
+            .Add(h => h.CanViewAccounts, canViewAccounts ?? canView)
+            .Add(h => h.CanViewContacts, canViewContacts ?? canView));
     }
 
     /// <summary>The same fixture with SEVERAL parties, for the cases about tile order.</summary>
@@ -107,13 +110,9 @@ public class ContractPartyTileTests
             .Add(h => h.CanWrite, true));
     }
 
-    /// <summary>
-    /// The role WORDS in render order. Read off the word span rather than the overline's text
-    /// content, which also carries the object mark's ligature — the mark sits inside <c>.con-role</c>
-    /// so that it inherits the role's own colour.
-    /// </summary>
+    /// <summary>The role WORDS in render order.</summary>
     private static List<string> RoleWords(IRenderedComponent<DetailHost> cut) =>
-        [.. cut.FindAll(".con-role > span:not(.con-role-mark)").Select(r => r.TextContent.Trim())];
+        [.. cut.FindAll(".con-role > span").Select(r => r.TextContent.Trim())];
 
     /// <summary>A party with its own id, so several can sit on one contract without colliding.</summary>
     private static ExistingContractParty PartyWith(Guid id, ContractPartyRole role) => new()
@@ -133,27 +132,28 @@ public class ContractPartyTileTests
     // ── Object parties (issue #169) ──────────────────────────────────────────
 
     /// <summary>
-    /// An OBJECT role — the thing the agreement is about rather than a side of it — carries the
-    /// outward-arrow mark in its overline, and the tile and overline both take the <c>object</c>
-    /// class the grouping styles hang off.
+    /// An OBJECT role — the thing the agreement is about rather than a side of it — takes the
+    /// <c>object</c> class on the tile and the overline, and its overline is the role WORD alone: the
+    /// design system retired the outward-arrow mark it once carried, so no glyph rides beside it.
     /// </summary>
     [Theory]
     [InlineData(ContractPartyRole.Object)]
     [InlineData(ContractPartyRole.Property)]
     [InlineData(ContractPartyRole.Collateral)]
-    public void An_object_role_carries_the_outward_mark(ContractPartyRole role)
+    public void An_object_role_takes_the_object_class_and_no_glyph(ContractPartyRole role)
     {
         var cut = Render(Party(role));
 
         Assert.Contains("object", cut.Find(".con-party-tile").ClassName, StringComparison.Ordinal);
-        Assert.Contains("object", cut.Find(".con-role").ClassName, StringComparison.Ordinal);
-        Assert.Equal("north_east", cut.Find(".con-role .con-role-mark").TextContent.Trim());
+        var overline = cut.Find(".con-role");
+        Assert.Contains("object", overline.ClassName, StringComparison.Ordinal);
+        Assert.Empty(overline.QuerySelectorAll(".material-icons"));
+        Assert.Equal(PartyRoleLabel.For(role), overline.TextContent.Trim());
     }
 
     /// <summary>
-    /// The negative half, and the one that keeps the mark meaning something: a party that IS a side
-    /// of the agreement carries neither the class nor the glyph. Without this, a rule that marked
-    /// every tile would satisfy the case above while saying nothing.
+    /// The negative half: a party that IS a side of the agreement does not take the class. Without
+    /// this, a rule that classed every tile would satisfy the case above while saying nothing.
     /// </summary>
     [Theory]
     [InlineData(ContractPartyRole.Employer)]
@@ -165,24 +165,6 @@ public class ContractPartyTileTests
 
         Assert.DoesNotContain("object", cut.Find(".con-party-tile").ClassName, StringComparison.Ordinal);
         Assert.DoesNotContain("object", cut.Find(".con-role").ClassName, StringComparison.Ordinal);
-        Assert.Empty(cut.FindAll(".con-role-mark"));
-    }
-
-    /// <summary>
-    /// The mark is DECORATION and is hidden from assistive technology: the role word beside it
-    /// already names which kind of party this is, so announcing the glyph would read a bare ligature
-    /// to a screen-reader user and the state would ride on something other than the text
-    /// (WCAG 1.3.1 / 1.4.1, both Level A).
-    /// </summary>
-    [Fact]
-    public void The_object_mark_is_hidden_from_assistive_technology_and_the_word_carries_the_state()
-    {
-        var cut = Render(Party(ContractPartyRole.Property));
-
-        Assert.Equal("true", cut.Find(".con-role-mark").GetAttribute("aria-hidden"));
-
-        // The accessible name of the overline is the ROLE, not the ligature riding beside it.
-        Assert.Equal("Property", cut.Find(".con-role > span:not(.con-role-mark)").TextContent.Trim());
     }
 
     /// <summary>
@@ -224,7 +206,6 @@ public class ContractPartyTileTests
         Assert.Equal(
             ["Landlord", "Unrecognised role"],
             RoleWords(cut));
-        Assert.Empty(cut.FindAll(".con-role-mark"));
     }
 
     /// <summary>AC 1 — a stated role is the overline; the record's own TYPE is the caption.</summary>
@@ -415,6 +396,85 @@ public class ContractPartyTileTests
     }
 
     /// <summary>
+    /// View opens the party's own page — Accounts for an account party — and leads the menu, as in
+    /// the design system's <c>PartyTile</c>.
+    /// </summary>
+    [Fact]
+    public void View_leads_the_menu_and_opens_the_accounts_page_for_an_account_party()
+    {
+        var cut = Render(Party(), canView: true);
+
+        var labels = MenuLabels(cut);
+        Assert.Equal("View", labels[0]);
+
+        cut.FindAll(".mud-menu-item").First(i => i.TextContent.Contains("View", StringComparison.Ordinal)).Click();
+        var nav = cut.Services.GetRequiredService<NavigationManager>();
+        Assert.EndsWith("/accounts", nav.Uri, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// View is navigation, not a write: a read-only caller gets a menu holding it alone. Before
+    /// View existed such a caller got no menu at all (the case above), and the write items stay
+    /// withheld from them.
+    /// </summary>
+    [Fact]
+    public void A_read_only_caller_who_may_open_the_target_gets_view_and_nothing_else()
+    {
+        var cut = Render(Party(), canWrite: false, canView: true);
+
+        Assert.Equal(["View"], MenuLabels(cut));
+    }
+
+    /// <summary>
+    /// View is ABSENT — not dimmed — when the caller may not open the target's page, and for a party
+    /// whose target did not resolve, which names no record to open.
+    /// </summary>
+    [Fact]
+    public void View_is_absent_without_the_targets_read_claim_or_a_resolved_target()
+    {
+        Assert.DoesNotContain("View", MenuLabels(Render(Party(), canView: false)));
+        Assert.DoesNotContain("View", MenuLabels(Render(Party(resolved: false), canView: true)));
+    }
+
+    /// <summary>A contact ("institution") party, for the View cases that turn on the party's KIND.</summary>
+    private static ExistingContractParty ContactParty() => new()
+    {
+        ContractPartyId = PartyId,
+        ContractId = ContractId,
+        Kind = ContractPartyKind.Institution,
+        Institution = new ContractContactReference
+        {
+            ContactId = AccountId,
+            Name = "First National Bank",
+            Type = Odyssey.Dtos.ContactType.Organization,
+        },
+        Role = ContractPartyRole.Employer,
+    };
+
+    /// <summary>A contact party's View opens the Contacts page — the other arm of the route choice.</summary>
+    [Fact]
+    public void View_opens_the_contacts_page_for_a_contact_party()
+    {
+        var cut = Render(ContactParty(), canViewContacts: true);
+
+        Assert.Equal("View", MenuLabels(cut)[0]);
+        cut.FindAll(".mud-menu-item").First(i => i.TextContent.Contains("View", StringComparison.Ordinal)).Click();
+        Assert.EndsWith("/contacts", cut.Services.GetRequiredService<NavigationManager>().Uri, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Each kind is gated on ITS OWN target's claim: accounts.read opens nothing for a contact party,
+    /// and contacts.read opens nothing for an account party. A swapped claim check fails here.
+    /// </summary>
+    [Fact]
+    public void View_is_gated_on_the_claim_for_the_partys_own_kind()
+    {
+        Assert.DoesNotContain("View", MenuLabels(Render(ContactParty(), canViewAccounts: true, canViewContacts: false)));
+        Assert.DoesNotContain("View", MenuLabels(Render(Party(), canViewAccounts: false, canViewContacts: true)));
+        Assert.Contains("View", MenuLabels(Render(Party(), canViewAccounts: true, canViewContacts: false)));
+    }
+
+    /// <summary>
     /// A party whose target did not resolve still shows its ROLE — a top-level field that does not
     /// depend on the reference — and keeps Copy ID and Detach, which need only the link.
     /// </summary>
@@ -485,6 +545,12 @@ public class ContractPartyTileTests
 
         [Parameter] public bool CanWrite { get; set; }
 
+        /// <summary>Stands in for accounts.read.</summary>
+        [Parameter] public bool CanViewAccounts { get; set; }
+
+        /// <summary>Stands in for contacts.read.</summary>
+        [Parameter] public bool CanViewContacts { get; set; }
+
         public List<ExistingContractParty> Edited { get; } = [];
 
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
@@ -500,6 +566,8 @@ public class ContractPartyTileTests
                 Parties = Parties ?? [Party],
             });
             builder.AddComponentParameter(3, nameof(ContractDetailView.CanWrite), CanWrite);
+            builder.AddComponentParameter(5, nameof(ContractDetailView.CanViewAccounts), CanViewAccounts);
+            builder.AddComponentParameter(6, nameof(ContractDetailView.CanViewContacts), CanViewContacts);
             if (CanWrite)
             {
                 builder.AddComponentParameter(4, nameof(ContractDetailView.OnEditParty),

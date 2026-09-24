@@ -31,6 +31,14 @@ public sealed record ExistingAccount
     /// <summary>Number of smart tags configured on this account (computed server-side).</summary>
     public int SmartTagCount { get; set; }
 
+    /// <summary>
+    /// Number of distinct contracts naming this account as a party (computed server-side), or
+    /// <c>null</c> when the caller does not hold <c>contracts.read</c>. The route is gated on
+    /// <c>accounts.read</c> alone and Guest holds no contract claim, so the count is withheld rather
+    /// than zeroed: a zero would state "no contracts" to a caller who may not know either way.
+    /// </summary>
+    public int? ContractCount { get; set; }
+
     /// <summary>Sum of this account's signed transaction amounts (computed server-side).</summary>
     public decimal Balance { get; set; }
 

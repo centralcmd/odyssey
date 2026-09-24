@@ -918,6 +918,53 @@ public class ContractService
     public async Task<bool> Exists(Guid id, CancellationToken cancellationToken = default) =>
         await context.Contracts.AnyAsync(c => c.ContractId == id, cancellationToken);
 
+    /// <summary>
+    /// Every contract naming <paramref name="accountId"/> as a party, one row per contract with each
+    /// role the account holds there, for the account record's Contracts section. Returns
+    /// <see langword="null"/> when the account does not exist, so the route can tell a missing account
+    /// from one that is simply party to nothing.
+    /// </summary>
+    /// <remarks>
+    /// Archived contracts are included, as they are on the contracts list by default: the link is still
+    /// on record and the tile states the status. Ordered by name, then id, so the order is stable.
+    /// </remarks>
+    public async Task<List<AccountContractLink>?> ListForAccountAsync(
+        Guid accountId, CancellationToken cancellationToken = default)
+    {
+        if (!await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken))
+            return null;
+
+        var today = Today;
+        var rows = await context.Contracts
+            .AsNoTracking()
+            .Where(c => c.Parties.Any(p => p.AccountId == accountId))
+            .Select(c => new
+            {
+                Contract = c,
+                Roles = c.Parties
+                    .Where(p => p.AccountId == accountId)
+                    .OrderBy(p => p.ContractPartyId)
+                    .Select(p => p.Role)
+                    .ToList(),
+            })
+            .ToListAsync(cancellationToken);
+
+        return
+        [
+            .. rows
+                .Select(x => new AccountContractLink
+                {
+                    ContractId = x.Contract.ContractId,
+                    Name = x.Contract.Name,
+                    Type = x.Contract.Type.Adapt<DtoContractType>(),
+                    Status = DeriveStatus(x.Contract, today),
+                    Roles = [.. x.Roles.Select(r => r.Adapt<DtoContractPartyRole>())],
+                })
+                .OrderBy(l => l.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(l => l.ContractId),
+        ];
+    }
+
     // ── Parties ──────────────────────────────────────────────────────────────────
 
     /// <summary>

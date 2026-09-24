@@ -114,6 +114,14 @@ public interface IAccountsApiClient
     Task<ApiResult<PagedResult<ExistingTransaction>>> ListTransactionsAsync(
         Guid accountId, int page, int pageSize, CancellationToken ct = default);
 
+    // ── Contracts ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The contracts naming the account as a party, one row per contract with every role it holds
+    /// there. Needs <c>contracts.read</c> as well as <c>accounts.read</c>.
+    /// </summary>
+    Task<ApiResult<List<AccountContractLink>>> ListContractsAsync(Guid accountId, CancellationToken ct = default);
+
     // ── Smart tags ───────────────────────────────────────────────────────────
 
     Task<ApiResult<List<ExistingTransactionTag>>> ListSmartTagsAsync(Guid accountId, CancellationToken ct = default);
@@ -262,6 +270,11 @@ public sealed class AccountsApiClient(IOdysseyApi api) : IAccountsApiClient
         Guid accountId, int page, int pageSize, CancellationToken ct = default) =>
         api.GetPagedAsync<ExistingTransaction>(
             PagedQuery.For($"{Base}/{accountId}/transactions").Window(page, pageSize).Build(), ct);
+
+    // ── Contracts ────────────────────────────────────────────────────────────
+
+    public Task<ApiResult<List<AccountContractLink>>> ListContractsAsync(Guid accountId, CancellationToken ct = default) =>
+        api.GetAsync<List<AccountContractLink>>($"{Base}/{accountId}/contracts", ct);
 
     // ── Smart tags ───────────────────────────────────────────────────────────
 
