@@ -71,6 +71,50 @@ public class AccountContractsApiTests
         Assert.Empty((await client.GetFromJsonAsync<List<AccountContractLink>>($"/api/accounts/{loneId}/contracts"))!);
     }
 
+    /// <summary>
+    /// Roles come back in PARTY order (by party id), as <see cref="AccountContractLink.Roles"/>
+    /// promises — the order the contract detail reads its parties in.
+    /// </summary>
+    [Fact]
+    public async Task GetAccountContracts_ListsRolesInPartyIdOrder()
+    {
+        await using var factory = new ApiFactory(Reader);
+        var accountId = await SeedAccountAsync(factory);
+        await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan,
+            [
+                (Guid.Parse("00000000-0000-0000-0000-000000000003"), accountId, ContextContractPartyRole.Guarantor),
+                (Guid.Parse("00000000-0000-0000-0000-000000000001"), accountId, ContextContractPartyRole.Collateral),
+                (Guid.Parse("00000000-0000-0000-0000-000000000002"), accountId, ContextContractPartyRole.Borrower),
+            ]);
+        using var client = factory.CreateClient();
+
+        var row = Assert.Single((await client.GetFromJsonAsync<List<AccountContractLink>>($"/api/accounts/{accountId}/contracts"))!);
+
+        Assert.Equal(
+            [ContractPartyRole.Collateral, ContractPartyRole.Borrower, ContractPartyRole.Guarantor],
+            row.Roles);
+    }
+
+    /// <summary>
+    /// Archived contracts are INCLUDED, as <c>ListForAccountAsync</c> documents: the link is still on
+    /// record, and the tile states the status rather than hiding the row.
+    /// </summary>
+    [Fact]
+    public async Task GetAccountContracts_IncludesArchivedContracts_WithTheArchivedStatus()
+    {
+        await using var factory = new ApiFactory(Reader);
+        var accountId = await SeedAccountAsync(factory);
+        var archivedId = await SeedContractAsync(factory, "Old lease", ContextContractType.Rental,
+            [(Guid.NewGuid(), accountId, ContextContractPartyRole.Tenant)], archived: FixedToday.AddDays(-1));
+        using var client = factory.CreateClient();
+
+        var row = Assert.Single((await client.GetFromJsonAsync<List<AccountContractLink>>($"/api/accounts/{accountId}/contracts"))!);
+
+        Assert.Equal(archivedId, row.ContractId);
+        Assert.Equal(ContractStatus.Archived, row.Status);
+        Assert.Equal(1, (await client.GetFromJsonAsync<ExistingAccount>($"/api/accounts/{accountId}"))!.ContractCount);
+    }
+
     [Fact]
     public async Task GetAccountContracts_ForAMissingAccount_Returns404()
     {
@@ -191,9 +235,15 @@ public class AccountContractsApiTests
     }
 
     /// <summary>A signed contract that started a month ago — so it derives as Active.</summary>
+    private static Task<Guid> SeedContractAsync(
+        OdysseyApiFactory factory, string name, ContextContractType type,
+        params (Guid AccountId, ContextContractPartyRole Role)[] parties) =>
+        SeedContractAsync(factory, name, type, [.. parties.Select(p => (Guid.NewGuid(), p.AccountId, p.Role))]);
+
+    /// <summary>As above, with explicit party ids (for ordering) and an optional archive stamp.</summary>
     private static async Task<Guid> SeedContractAsync(
         OdysseyApiFactory factory, string name, ContextContractType type,
-        params (Guid AccountId, ContextContractPartyRole Role)[] parties)
+        (Guid PartyId, Guid AccountId, ContextContractPartyRole Role)[] parties, DateTime? archived = null)
     {
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -206,12 +256,13 @@ public class AccountContractsApiTests
             StartDate = FixedToday.AddDays(-30),
             Signed = FixedToday.AddDays(-31),
             CreatedAtUtc = FixedToday.AddDays(-31),
+            Archived = archived,
         };
-        foreach (var (accountId, role) in parties)
+        foreach (var (partyId, accountId, role) in parties)
         {
             contract.Parties.Add(new ContractParty
             {
-                ContractPartyId = Guid.NewGuid(),
+                ContractPartyId = partyId,
                 ContractId = contract.ContractId,
                 AccountId = accountId,
                 Role = role,

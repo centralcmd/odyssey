@@ -69,7 +69,8 @@ public class ContractPartyTileTests
         };
 
     private static IRenderedComponent<DetailHost> Render(
-        ExistingContractParty party, bool canWrite = true, bool canView = false)
+        ExistingContractParty party, bool canWrite = true, bool canView = false,
+        bool? canViewAccounts = null, bool? canViewContacts = null)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -86,7 +87,8 @@ public class ContractPartyTileTests
         return ctx.Render<DetailHost>(p => p
             .Add(h => h.Party, party)
             .Add(h => h.CanWrite, canWrite)
-            .Add(h => h.CanView, canView));
+            .Add(h => h.CanViewAccounts, canViewAccounts ?? canView)
+            .Add(h => h.CanViewContacts, canViewContacts ?? canView));
     }
 
     /// <summary>The same fixture with SEVERAL parties, for the cases about tile order.</summary>
@@ -434,6 +436,44 @@ public class ContractPartyTileTests
         Assert.DoesNotContain("View", MenuLabels(Render(Party(resolved: false), canView: true)));
     }
 
+    /// <summary>A contact ("institution") party, for the View cases that turn on the party's KIND.</summary>
+    private static ExistingContractParty ContactParty() => new()
+    {
+        ContractPartyId = PartyId,
+        ContractId = ContractId,
+        Kind = ContractPartyKind.Institution,
+        Institution = new ContractContactReference
+        {
+            ContactId = AccountId,
+            Name = "First National Bank",
+            Type = Odyssey.Dtos.ContactType.Organization,
+        },
+        Role = ContractPartyRole.Employer,
+    };
+
+    /// <summary>A contact party's View opens the Contacts page — the other arm of the route choice.</summary>
+    [Fact]
+    public void View_opens_the_contacts_page_for_a_contact_party()
+    {
+        var cut = Render(ContactParty(), canViewContacts: true);
+
+        Assert.Equal("View", MenuLabels(cut)[0]);
+        cut.FindAll(".mud-menu-item").First(i => i.TextContent.Contains("View", StringComparison.Ordinal)).Click();
+        Assert.EndsWith("/contacts", cut.Services.GetRequiredService<NavigationManager>().Uri, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Each kind is gated on ITS OWN target's claim: accounts.read opens nothing for a contact party,
+    /// and contacts.read opens nothing for an account party. A swapped claim check fails here.
+    /// </summary>
+    [Fact]
+    public void View_is_gated_on_the_claim_for_the_partys_own_kind()
+    {
+        Assert.DoesNotContain("View", MenuLabels(Render(ContactParty(), canViewAccounts: true, canViewContacts: false)));
+        Assert.DoesNotContain("View", MenuLabels(Render(Party(), canViewAccounts: false, canViewContacts: true)));
+        Assert.Contains("View", MenuLabels(Render(Party(), canViewAccounts: true, canViewContacts: false)));
+    }
+
     /// <summary>
     /// A party whose target did not resolve still shows its ROLE — a top-level field that does not
     /// depend on the reference — and keeps Copy ID and Detach, which need only the link.
@@ -505,8 +545,11 @@ public class ContractPartyTileTests
 
         [Parameter] public bool CanWrite { get; set; }
 
-        /// <summary>Stands in for both target read claims (accounts.read and contacts.read).</summary>
-        [Parameter] public bool CanView { get; set; }
+        /// <summary>Stands in for accounts.read.</summary>
+        [Parameter] public bool CanViewAccounts { get; set; }
+
+        /// <summary>Stands in for contacts.read.</summary>
+        [Parameter] public bool CanViewContacts { get; set; }
 
         public List<ExistingContractParty> Edited { get; } = [];
 
@@ -523,8 +566,8 @@ public class ContractPartyTileTests
                 Parties = Parties ?? [Party],
             });
             builder.AddComponentParameter(3, nameof(ContractDetailView.CanWrite), CanWrite);
-            builder.AddComponentParameter(5, nameof(ContractDetailView.CanViewAccounts), CanView);
-            builder.AddComponentParameter(6, nameof(ContractDetailView.CanViewContacts), CanView);
+            builder.AddComponentParameter(5, nameof(ContractDetailView.CanViewAccounts), CanViewAccounts);
+            builder.AddComponentParameter(6, nameof(ContractDetailView.CanViewContacts), CanViewContacts);
             if (CanWrite)
             {
                 builder.AddComponentParameter(4, nameof(ContractDetailView.OnEditParty),
