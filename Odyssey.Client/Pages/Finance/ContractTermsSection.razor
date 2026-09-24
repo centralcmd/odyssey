@@ -8,12 +8,10 @@
     between Parties and Documents.
 
     A contract records WHAT was agreed; a term records what it COSTS, with a dated history rather than
-    a single current number. These are the same Term rows, in the same table, under the same domain
-    rules as an account's rate & fee history — only the owner differs. So the surface reuses the
-    account treatment: the values in force as the record's own tiles, then the editable history
-    through the shared TermHistoryTable. The account surface's step chart comes across too, but not as
-    a hero and not as a rate: an agreement carries several named charges and no single line stands for
-    it, so the chart (OdsTermHistoryChart) sits above the history as a multi-select CHOOSER — opening
+    a single current number — and since issue #190 a contract is the only owner of a term. The surface
+    shows the values in force as the record's own tiles, then the editable history through
+    TermHistoryTable. The step chart is not a hero and not a rate: an agreement carries several named
+    charges and no single line stands for it, so the chart (OdsTermHistoryChart) sits above the history as a multi-select CHOOSER — opening
     on the series whose latest entry is the most recent, letting the reader add up to four charges
     measured the same way, and plotting indexed change by default with a Change / Value toggle.
 

@@ -1,13 +1,10 @@
 @using Odyssey.Dtos.Finance
 
 @*
-    TermHistoryTable — ONE table of term rows, shared by both owners of the Term table: an account's
-    rate & fee history and a contract's price history (issue #135).
-
-    It is a component rather than a render fragment duplicated in two sections because a term row is
-    the surface where the three temporal states are read — In force / Scheduled / Superseded — and
-    those must never be worded or coloured differently depending on who owns the row. Every piece of
-    wording and formatting comes from TermVisuals, the one registry both surfaces read.
+    TermHistoryTable — the table of a contract's term rows (its price history). A term row is the
+    surface where the three temporal states are read — In force / Scheduled / Superseded — and every
+    piece of wording and formatting comes from TermVisuals, the one term registry. A contract is the
+    only owner of a term since issue #190.
 *@
 
 <table class="trm-tbl">

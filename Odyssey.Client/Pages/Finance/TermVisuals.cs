@@ -10,9 +10,12 @@ namespace Odyssey.Client.Pages.Finance;
 /// at a glance (the design system's <c>OdysseyData.termUnits</c>). The hues are deliberate oklch
 /// literals in the shared categorical band (L~0.74–0.80) chosen to read in both light and dark themes,
 /// so — like the other type registries (account / file / contact) — they are NOT tokenized.</summary>
-/// <param name="Ink">The hue where it is TEXT or a chart line — a per-theme token that clears the WCAG
-/// contrast floors in light mode, where <paramref name="Color"/> (the glyph's hue) does not.</param>
-public sealed record TermInfo(string Label, string Icon, string Color, string Soft, string Ink);
+/// <remarks>
+/// The unit hue is a GLYPH hue only. A term's figure and chart line take its direction's finance hue
+/// (<see cref="TermVisuals.ValueColor"/>) — every term states a direction, since a contract is its only
+/// owner (issue #190) — so the unit hue is never text and needs no per-theme ink.
+/// </remarks>
+public sealed record TermInfo(string Label, string Icon, string Color, string Soft);
 
 /// <summary>
 /// Display context for an <see cref="Interval"/> — the picker label, whether the unit is
@@ -34,10 +37,10 @@ public static class TermVisuals
     public const string DefaultName = "Term";
 
     private static readonly TermInfo PercentageInfo =
-        new("Percentage", "percent", "oklch(0.78 0.13 200)", "oklch(0.78 0.13 200 / 0.15)", "var(--term-percentage-ink)");
+        new("Percentage", "percent", "oklch(0.78 0.13 200)", "oklch(0.78 0.13 200 / 0.15)");
 
     private static readonly TermInfo AmountInfo =
-        new("Amount", "payments", "oklch(0.77 0.14 55)", "oklch(0.77 0.14 55 / 0.15)", "var(--term-amount-ink)");
+        new("Amount", "payments", "oklch(0.77 0.14 55)", "oklch(0.77 0.14 55 / 0.15)");
 
     /// <summary>The glyph and hue for a unit. An undefined value reads as an amount, the default unit.</summary>
     public static TermInfo UnitInfo(TermValueUnit unit) =>

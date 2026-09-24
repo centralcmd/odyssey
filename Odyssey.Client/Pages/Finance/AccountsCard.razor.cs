@@ -600,8 +600,7 @@ public partial class AccountsCard
                 ? null
                 : "converted for reporting";
 
-    /// <summary>The row action menu, permission-gated. "New term" leads with the § glyph, which
-    /// OdsMenu renders as a literal rather than a Material ligature.</summary>
+    /// <summary>The row action menu, permission-gated.</summary>
     private IReadOnlyList<OdsMenuItem> RowActions(ExistingAccount account)
     {
         var items = new List<OdsMenuItem>();

@@ -39,18 +39,9 @@ input:-webkit-autofill:active {
   --status-closed-soft:    rgba(245,158,11,0.12);
   --status-archived:       #4A5670;          /* --ink-500 */
   --status-archived-soft:  rgba(74,86,112,0.10);
-
-  /* Term unit INK — the unit hue (TermVisuals) where it is TEXT or a chart line. The design
-     system's hues (L 0.77–0.78) read ~2:1 on a light ground, under both the 4.5:1 text and 3:1
-     graphics floors, so light mode takes the same hue at L 0.52 (≥ 5:1 on white). The glyph
-     tiles keep the design hue: a decorative icon on its own soft ground carries no meaning. */
-  --term-percentage-ink:   oklch(0.52 0.11 200);
-  --term-amount-ink:       oklch(0.52 0.13 55);
 }
 
 [data-theme='dark'] {
-  --term-percentage-ink:   oklch(0.78 0.13 200);  /* the design-system hue, ≥ 8:1 on the dark grounds */
-  --term-amount-ink:       oklch(0.77 0.14 55);
   --finance-income:        #4ADE80;          /* --mint-500 */
   --finance-income-soft:   rgba(74,222,128,0.14);
   --finance-expense:       #FF6B6B;          /* --coral-500 */
