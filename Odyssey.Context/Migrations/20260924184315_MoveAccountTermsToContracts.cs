@@ -369,19 +369,21 @@ namespace Odyssey.Context.Migrations
             "m.`ExpectedType` IN (8, 9) AND t.`ValueUnit` = 1 AND t.`Interval` IN (2, 3, 5, 7)";
 
         /// <summary>
-        /// The description's lines in code order, one per applicable flag, joined by newlines.
+        /// The description's lines in code order, one per applicable flag, joined by newlines. A1 and
+        /// A15 name the account the terms came from and A6 the number copied as the reference, as the
+        /// design system's rendering of this event shows; the label-bearing codes list term labels.
         /// <c>CONCAT_WS</c> skips the <c>NULL</c> of an inapplicable flag. With
         /// <paramref name="withLabels"/> false it yields only the code-and-count parts the label
         /// budget is measured against.
         /// </summary>
         private static string Lines(bool withLabels) => $"""
             CONCAT_WS(CHAR(10 USING utf8mb4),
-                IF(m.`Created` = 1, 'A1 (1)', NULL),
+                IF(m.`Created` = 1, CONCAT('A1 (1): ', a.`Name`), NULL),
                 IF(m.`CandidateCount` >= 2, CONCAT('A2 (', m.`CandidateCount`, ')'), NULL),
                 IF(m.`OtherTypeCount` > 0, CONCAT('A3 (', m.`OtherTypeCount`, ')'), NULL),
                 IF(m.`Created` = 1 AND m.`ExpectedType` = 3, 'A4 (1)', NULL),
                 IF(m.`Created` = 1 AND a.`CustodianId` IS NULL, 'A5 (1)', NULL),
-                IF(m.`Created` = 1 AND NULLIF(a.`AccountNumber`, '') IS NOT NULL, 'A6 (1)', NULL),
+                IF(m.`Created` = 1 AND NULLIF(a.`AccountNumber`, '') IS NOT NULL, CONCAT('A6 (1): ', a.`AccountNumber`), NULL),
                 IF(m.`Created` = 1 AND a.`Closed` < a.`Opened`, 'A7 (1)', NULL),
                 {LabelLine("A8", withLabels)},
                 IF(m.`CollisionCount` > 0, CONCAT('A9 (', m.`CollisionCount`, ')'), NULL),
@@ -390,7 +392,7 @@ namespace Odyssey.Context.Migrations
                 {LabelLine("A12", withLabels)},
                 IF(m.`EstimateCount` > 0, CONCAT('A13 (', m.`EstimateCount`, ')'), NULL),
                 {LabelLine("A14", withLabels)},
-                IF(m.`Created` = 0, 'A15 (1)', NULL))
+                IF(m.`Created` = 0, CONCAT('A15 (1): ', a.`Name`), NULL))
             """;
 
         /// <summary>

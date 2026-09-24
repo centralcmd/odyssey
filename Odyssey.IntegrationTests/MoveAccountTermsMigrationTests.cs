@@ -128,7 +128,7 @@ public class MoveAccountTermsMigrationTests(MariaDbFixture fixture)
                 Assert.Equal(Opened, terms[savingsFee].CreatedAtUtc);
 
                 Assert.Equal(
-                    ["A1 (1)", "A6 (1)", "A8 (1): Interest rate", "A14 (1): Monthly fee"],
+                    ["A1 (1): Savings", "A6 (1): 1234.56.78901", "A8 (1): Interest rate", "A14 (1): Monthly fee"],
                     await ReadEventLinesAsync(context, deposit, "Savings"));
 
                 // AC 4, 6 — liability → Loan, Object only; percentages stay Outgoing on a Loan.
@@ -136,7 +136,7 @@ public class MoveAccountTermsMigrationTests(MariaDbFixture fixture)
                 Assert.Equal(Loan, (await ReadContractAsync(context, loan)).Type);
                 Assert.Equal([(carLoan, (Guid?)null, ObjectRole)], await ReadPartiesAsync(context, loan));
                 Assert.Equal(Outgoing, terms[loanRate].Direction);
-                Assert.Equal(["A1 (1)", "A5 (1)"], await ReadEventLinesAsync(context, loan, "Car loan"));
+                Assert.Equal(["A1 (1): Car loan", "A5 (1)"], await ReadEventLinesAsync(context, loan, "Car loan"));
 
                 // AC 5 — unclassified → Other, Object + Other; A4; percentage stays Outgoing.
                 var other = terms[unknownRate].ContractId;
@@ -262,7 +262,7 @@ public class MoveAccountTermsMigrationTests(MariaDbFixture fixture)
                 // AC 7 — reused, its fields and parties unchanged.
                 Assert.Equal(singleContract, terms[singleTerm].ContractId);
                 Assert.Equal(
-                    ["A3 (1)", "A15 (1)"],
+                    ["A3 (1)", "A15 (1): Single"],
                     await ReadEventLinesAsync(context, singleContract, "Single"));
 
                 // AC 7a — two roles on one contract are one candidate.
@@ -273,7 +273,7 @@ public class MoveAccountTermsMigrationTests(MariaDbFixture fixture)
                 Assert.NotEqual(ambiguousA, created);
                 Assert.NotEqual(ambiguousB, created);
                 Assert.Equal("Ambiguous", (await ReadContractAsync(context, created)).Name);
-                Assert.Equal(["A1 (1)", "A2 (2)", "A5 (1)"], await ReadEventLinesAsync(context, created, "Ambiguous"));
+                Assert.Equal(["A1 (1): Ambiguous", "A2 (2)", "A5 (1)"], await ReadEventLinesAsync(context, created, "Ambiguous"));
 
                 // AC 7b — a colliding series is never merged into the candidate.
                 var split = terms[collidingTerm].ContractId;
