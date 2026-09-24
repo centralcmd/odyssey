@@ -98,6 +98,25 @@ public class DemoDataSetTests
     }
 
     [Fact]
+    public void ExchangeRates_CoverTheNetWorthChartsDefaultWindow()
+    {
+        // Issue #179: the chart converts each point at the rate in force AS OF that point, so a rate
+        // history shorter than its window renders the early points as understated.
+        var data = DemoDataSet.Build();
+        var (windowStart, _) = new NetWorthHistoryQuery()
+            .ResolveWindow(DateOnly.FromDateTime(DemoDataDefaults.AnchorDate));
+        var windowStartInstant = windowStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+
+        foreach (var pair in data.ExchangeRates.GroupBy(rate => (rate.FromCurrencyCode, rate.ToCurrencyCode)))
+        {
+            pair.Min(rate => rate.AsOf).Should().BeOnOrBefore(windowStartInstant,
+                "{0}->{1} needs a rate in force at the chart's first point", pair.Key.FromCurrencyCode, pair.Key.ToCurrencyCode);
+            pair.Max(rate => rate.AsOf).Should().Be(DemoDataDefaults.AnchorDate,
+                "conversions read the latest row, which is anchored on the seed date");
+        }
+    }
+
+    [Fact]
     public void ClosedAccounts_NetToZero()
     {
         var data = DemoDataSet.Build();

@@ -1,4 +1,5 @@
 using Odyssey.Context;
+using Odyssey.Dtos.Finance;
 using static Odyssey.TestData.DemoDataDefaults;
 
 namespace Odyssey.TestData.Generators;
@@ -7,8 +8,9 @@ namespace Odyssey.TestData.Generators;
 /// Seeds realistic exchange rates so multi-currency accounts convert without warnings.
 /// The conversion service does no inversion or triangulation (a (to,from) rate does NOT serve a
 /// (from,to) request), so every directed pair among the demo currencies gets its own rate.
-/// Rates are derived from a single USD-value table to stay internally consistent, with a short
-/// monthly history so the rates view looks populated; conversions use the latest (AsOf) row.
+/// Rates are derived from a single USD-value table to stay internally consistent, with a monthly
+/// history long enough to cover the net-worth chart's default window; conversions use the latest
+/// (AsOf) row.
 /// </summary>
 public static class ExchangeRateGenerator
 {
@@ -25,13 +27,17 @@ public static class ExchangeRateGenerator
         (DemoDataDefaults.Currencies.Nok, 0.0920m),
     ];
 
-    // (months back, scale) — a little drift in the recent past; the latest point (scale 1.0) is exact.
-    private static readonly (int MonthsBack, decimal Scale)[] Snapshots =
-    [
-        (2, 0.98m),
-        (1, 0.99m),
-        (0, 1.00m),
-    ];
+    // The net-worth chart measures each point against the rate in force AS OF that point and walks
+    // back NetWorthHistoryQuery.DefaultPoints months, so the history has to span at least that — the
+    // rates view and spot conversion alone would be satisfied by the latest row. The headroom is a
+    // margin, not a derived number.
+    public const int HistoryMonths = NetWorthHistoryQuery.DefaultPoints + 6;
+
+    // (months back, scale) — a little drift into the past; the latest point (scale 1.0) is exact, so
+    // headline conversions read the table above unchanged.
+    private static IEnumerable<(int MonthsBack, decimal Scale)> Snapshots() =>
+        Enumerable.Range(0, HistoryMonths)
+            .Select(monthsBack => (monthsBack, 1.00m - (monthsBack * 0.005m)));
 
     public static List<ExchangeRate> Build(DateTime anchor)
     {
@@ -48,7 +54,7 @@ public static class ExchangeRateGenerator
 
                 var baseRate = from.UsdValue / to.UsdValue;
 
-                foreach (var (monthsBack, scale) in Snapshots)
+                foreach (var (monthsBack, scale) in Snapshots())
                 {
                     var asOf = anchor.AddMonths(-monthsBack);
                     rates.Add(new ExchangeRate
