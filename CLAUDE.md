@@ -1053,6 +1053,23 @@ Claude is integrated into this repo via the [claude-code-action](https://github.
 - Claude cannot modify files under `.github/workflows/`
 - Each invocation is a fresh context — reference prior issues or PRs explicitly if relevant
 
+**A precedent a design cites must be verified in the live tree, not recalled.** Issue #167 was
+rewritten twice because it rested on precedents that had been removed under it. Its estimate widening
+cited `Term`'s nullable `AccountId` under `CK_Terms_ExactlyOneOwner` — which #191 dropped when it moved
+account terms onto contracts — and its smart-tag widening was written before #173 landed
+`ContractSmartTag` as a deliberate *sibling* table, whose doc comment argues against exactly the shape
+the spec proposed. Both readings were true when written and false by the time anything was built on
+them.
+
+So when a spec, a review or a commit message says "this follows X", open X: `grep` the constraint, read
+the entity, check the doc comment. Two failure shapes are worth naming because both happened here. **A
+pattern with no live instance is not a precedent** — once #191 landed, "a surrogate-keyed table may take
+a second nullable owner" described nothing in the tree. And **a design-only proposal recorded in an
+issue is not merged code**: a review cited "the `MigrationRunner` drift guard was extended" on the
+strength of #167's own draft text, and `git diff` over the whole range showed the file had never been
+touched. Verifying costs one `grep`; not verifying costs a rewrite.
+
+
 **Every new issue gets a milestone decision, not a default.** Check the repo's open milestones before
 filing and set the one the issue belongs to; when none covers it, file it unset and *say so* in the
 same breath as the issue number, so triage is a decision rather than an omission. Never create a
