@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Odyssey.Dtos.Finance;
 using Odyssey.TestData;
 using Xunit;
 
@@ -113,10 +114,10 @@ public class ContractTermDirectionPermissionTests(ApiStackFixture fixture)
         }
     }
 
-    // TermDirection's ordinals. Enums cross the wire as numbers — the solution registers no
-    // JsonStringEnumConverter — so the responses carry these, not the member names.
-    private const int Outgoing = 0;
-    private const int Incoming = 1;
+    // Enums cross the wire as ordinals — the solution registers no JsonStringEnumConverter — so the
+    // responses carry these numbers, not the member names.
+    private const int Outgoing = (int)TermDirection.Outgoing;
+    private const int Incoming = (int)TermDirection.Incoming;
 
     private static void AssertBothSides(JsonElement.ArrayEnumerator rows)
     {
