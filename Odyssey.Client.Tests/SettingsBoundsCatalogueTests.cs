@@ -46,7 +46,8 @@ public class SettingsBoundsCatalogueTests
     }
 
     /// <summary>
-    /// Scope, stated rather than implied: 40 of the catalogue's 48 numeric rows (45 of 53 before the
+    /// Scope, stated rather than implied: 41 of the catalogue's 49 numeric rows (40 of 48 before issue
+    /// #167 added the per-property smart-tag cap, 45 of 53 before the
     /// standalone insurance-policy feature was removed with its five knobs; 48 of 56 before the
     /// standalone subscriptions feature went with its three summary limits; 47 of 55 before issue #166
     /// added the per-contract smart-tag cap, 44 of 52 before the Contracts summary gained its two
@@ -59,7 +60,7 @@ public class SettingsBoundsCatalogueTests
     [Fact]
     public void The_guard_covers_every_int_row()
     {
-        Assert.Equal(40, NumericRows.Count);
+        Assert.Equal(41, NumericRows.Count);
         Assert.Equal(
             8,
             Settings.AllItems.Count(item => item.Control == Settings.SettingControl.Capacity));

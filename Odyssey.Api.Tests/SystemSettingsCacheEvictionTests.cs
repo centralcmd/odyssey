@@ -40,6 +40,7 @@ public class SystemSettingsCacheEvictionTests
         // reflect. Naming the constant still fails if the lookup is repointed at a different key.
         (AccountLimitsLookup.CacheKey, [SystemSettingsKeys.AccountMaxSmartTagsPerAccount]),
         (ContractLimitsLookup.CacheKey, [SystemSettingsKeys.ContractMaxSmartTagsPerContract]),
+        (PropertyLimitsLookup.CacheKey, [SystemSettingsKeys.PropertyMaxSmartTagsPerProperty]),
         (UploadLimitsLookup.CacheKey, [SystemSettingsKeys.FileStorageMaxUploadMegabytes]),
     ];
 

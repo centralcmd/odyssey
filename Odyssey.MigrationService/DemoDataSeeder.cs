@@ -48,6 +48,8 @@ public sealed class DemoDataSeeder(
         await SeedContactsAsync(context, data, cancellationToken);
         // Finance next: it owns the Files store, which the photo and attachment rows below reference.
         await SeedFinanceAsync(context, data, cancellationToken);
+        // After finance: a property smart tag names a TransactionTag, a RESTRICT principal it seeds.
+        await SeedPropertiesAsync(context, data, cancellationToken);
         // Photos before journal: a journal photo links a library Photo by PhotoId, a real FK.
         await SeedPhotosAsync(context, data, cancellationToken);
         await SeedJournalAsync(context, data, cancellationToken);
@@ -416,6 +418,29 @@ public sealed class DemoDataSeeder(
         logger.LogInformation(
             "Seeded {Accounts} accounts, {Budgets} budgets, {Transactions} transactions, {Contracts} contracts.",
             data.Accounts.Count, data.Budgets.Count, data.Transactions.Count, data.Contracts.Count);
+    }
+
+    /// <summary>
+    /// The demo properties (issue #167). Its own all-or-nothing sentinel rather than a share of
+    /// <see cref="SeedFinanceAsync"/>'s, so a dev database finance-seeded before properties existed
+    /// still gains them on the next run — and a second run inserts nothing.
+    /// </summary>
+    private async Task SeedPropertiesAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)
+    {
+        var sentinelId = data.Properties[0].PropertyId;
+        if (await context.Properties.AnyAsync(property => property.PropertyId == sentinelId, cancellationToken))
+        {
+            logger.LogInformation("Demo properties already present; skipping property seed.");
+            return;
+        }
+
+        // The detail rows travel on the Property navigations.
+        await context.Properties.AddRangeAsync(data.Properties, cancellationToken);
+        await context.PropertyEstimates.AddRangeAsync(data.PropertyEstimates, cancellationToken);
+        await context.PropertySmartTags.AddRangeAsync(data.PropertySmartTags, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Seeded {Properties} properties.", data.Properties.Count);
     }
 
     private async Task SeedContactsAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)

@@ -65,11 +65,12 @@ public class AuthorizationPolicyTests
     /// 102 before the standalone subscriptions feature was removed, taking its four
     /// <c>subscriptions.*</c> claims with it, and 98 before the standalone insurance-policy feature
     /// went the same way with its four <c>insurance.*</c> claims, and 94 before issue #190 moved
-    /// account terms onto contracts and deleted the account-term read/write claim pair.
+    /// account terms onto contracts and deleted the account-term read/write claim pair. 98 once issue
+    /// #167 added the six <c>properties.*</c> claims.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(92, DeclaredClaims().Count());
+        Assert.Equal(98, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).

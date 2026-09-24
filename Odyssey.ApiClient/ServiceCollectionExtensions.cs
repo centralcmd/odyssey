@@ -24,6 +24,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOdysseyApi, OdysseyApi>();
 
         services.AddScoped<IAccountsApiClient, AccountsApiClient>();
+        services.AddScoped<IPropertiesApiClient, PropertiesApiClient>();
         services.AddScoped<ITaxStatementsApiClient, TaxStatementsApiClient>();
         services.AddScoped<IBudgetsApiClient, BudgetsApiClient>();
         services.AddScoped<IBudgetItemsApiClient, BudgetItemsApiClient>();
@@ -65,6 +66,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUploadLimitsApiClient, UploadLimitsApiClient>();
         services.AddScoped<IAccountLimitsApiClient, AccountLimitsApiClient>();
         services.AddScoped<IContractLimitsApiClient, ContractLimitsApiClient>();
+        services.AddScoped<IPropertyLimitsApiClient, PropertyLimitsApiClient>();
         services.AddScoped<IFileAnalysisDisclosureApiClient, FileAnalysisDisclosureApiClient>();
 
         return services;

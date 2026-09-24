@@ -249,4 +249,15 @@ public static class SystemSettingsBounds
     /// </para>
     /// </summary>
     public const int ContractMaxSmartTagsPerContractMax = ListDefaults.MaxFilterArrayLength;
+
+    public const int PropertyMaxSmartTagsPerPropertyMin = 1;
+
+    /// <summary>
+    /// The ceiling <strong>names the constant</strong> rather than restating 50 (issue #167 §11). A
+    /// property's smart tags are resolved through <c>GET /api/transactions?tagIds=…</c>, whose
+    /// <c>TagIds</c> filter carries <c>[MaxLength(ListDefaults.MaxFilterArrayLength)]</c> — any value
+    /// above it would configure smart tags the feature's own resolution query rejects with a <c>400</c>.
+    /// The identical constraint as <see cref="ContractMaxSmartTagsPerContractMax"/>.
+    /// </summary>
+    public const int PropertyMaxSmartTagsPerPropertyMax = ListDefaults.MaxFilterArrayLength;
 }

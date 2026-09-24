@@ -25,6 +25,16 @@ public static class PermissionClaims
     public const string AccountsEstimatesRead = "accounts.estimates.read";
     public const string AccountsEstimatesWrite = "accounts.estimates.write";
 
+    // Properties (issue #167) — a family of their own rather than a reuse of accounts.*: a claim is a
+    // revocation lever that must exist BEFORE release, and a property is meant to outlive some account
+    // types.
+    public const string PropertiesCreate = "properties.create";
+    public const string PropertiesRead = "properties.read";
+    public const string PropertiesUpdate = "properties.update";
+    public const string PropertiesDelete = "properties.delete";
+    public const string PropertiesEstimatesRead = "properties.estimates.read";
+    public const string PropertiesEstimatesWrite = "properties.estimates.write";
+
     public const string BudgetsCreate = "budgets.create";
     public const string BudgetsRead = "budgets.read";
     public const string BudgetsUpdate = "budgets.update";

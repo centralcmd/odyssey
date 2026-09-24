@@ -123,13 +123,13 @@ public class TransactionTagService
 
     /// <summary>
     /// Every reason the tag cannot be hard-deleted, one explaining clause per blocker class
-    /// (issues #75 §7.9, #165, #166).
+    /// (issues #75 §7.9, #165, #166, #167).
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Each clause corresponds to one of the four <c>RESTRICT</c> foreign keys pointing at
+    /// Each clause corresponds to one of the five <c>RESTRICT</c> foreign keys pointing at
     /// <c>TransactionTags</c> — <c>BudgetItems</c>, <c>AccountSmartTags</c>,
-    /// <c>ContractSmartTags</c> and the <c>TransactionTagLinks</c> join table.
+    /// <c>ContractSmartTags</c>, <c>PropertySmartTags</c> and the <c>TransactionTagLinks</c> join table.
     /// Those keys say the same thing on MariaDB, but their violation reaches
     /// <c>GlobalExceptionHandler</c> as a generic 409 naming no surface — and the EF InMemory tiers
     /// enforce no foreign keys at all, so there the delete would simply succeed and leave the link
@@ -182,6 +182,16 @@ public class TransactionTagService
             blockers.Add(
                 $"This tag is a smart tag on {watchedByContracts} "
                 + $"contract{(watchedByContracts == 1 ? "" : "s")}. Remove it there first.");
+        }
+
+        var watchedByProperties = await context.PropertySmartTags
+            .CountAsync(link => link.TransactionTagId == id, cancellationToken);
+
+        if (watchedByProperties > 0)
+        {
+            blockers.Add(
+                $"This tag is a smart tag on {watchedByProperties} "
+                + $"propert{(watchedByProperties == 1 ? "y" : "ies")}. Remove it there first.");
         }
 
         var appliedTo = await context.TransactionTagLinks

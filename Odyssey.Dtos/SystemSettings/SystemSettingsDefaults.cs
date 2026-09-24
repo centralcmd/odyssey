@@ -263,6 +263,13 @@ public static class SystemSettingsDefaults
     /// </summary>
     public const int ContractMaxSmartTagsPerContract = 20;
 
+    /// <summary>
+    /// Smart tags one property may carry (issue #167). The same shipped default as its account and
+    /// contract siblings, and the same range — see
+    /// <c>SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMax</c>.
+    /// </summary>
+    public const int PropertyMaxSmartTagsPerProperty = 20;
+
     // ─────────────────────────────────────────────────────────────────────────────────────────────
     // The file-analysis kill switch, model and destination (issue #439). These three were the last
     // FileAnalysis values an administrator would reasonably want to change without a redeploy; the

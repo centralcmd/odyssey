@@ -21,6 +21,20 @@ public sealed class AccountsQueryParams : QueryParams<AccountSortBy>
     public AccountStatus[]? Statuses { get; set; }
 }
 
+/// <summary>
+/// Properties list query (issue #167): filter by subtype(s) and derived status(es). The status filter is
+/// translated to a predicate over the <c>Archived</c>/<c>DisposedDate</c> columns, the way accounts'
+/// is over <c>Archived</c>/<c>Closed</c>.
+/// </summary>
+public sealed class PropertiesQueryParams : QueryParams<PropertySortBy>
+{
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public PropertyType[]? Types { get; set; }
+
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public PropertyStatus[]? Statuses { get; set; }
+}
+
 /// <summary>Budgets list query: filter by archival status.</summary>
 public sealed class BudgetsQueryParams : QueryParams<BudgetSortBy>
 {

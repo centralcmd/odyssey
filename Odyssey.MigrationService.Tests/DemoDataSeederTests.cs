@@ -646,6 +646,50 @@ public class DemoDataSeederTests
         }
     }
 
+    /// <summary>
+    /// Issue #167 AC 26 — the demo properties land whole (detail rows, estimate histories, smart tags
+    /// drawn from the seeded tag pool), cover all three derived statuses, and re-running the seeder
+    /// inserts nothing. The dataset is fixed-seed, so two builds describe the same rows.
+    /// </summary>
+    [Fact]
+    public async Task Seeds_the_demo_properties_once_and_deterministically()
+    {
+        await using var provider = BuildProvider(out var seeder);
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var expected = DemoDataSet.Build();
+
+        Assert.Equal(expected.Properties.Count, await context.Properties.CountAsync());
+        Assert.Equal(expected.PropertyEstimates.Count, await context.PropertyEstimates.CountAsync());
+        Assert.Equal(expected.PropertySmartTags.Count, await context.PropertySmartTags.CountAsync());
+        Assert.Equal(
+            expected.Properties.Count,
+            await context.RealEstateDetails.CountAsync() + await context.VehicleDetails.CountAsync());
+
+        // Every smart tag names a seeded tag — the RESTRICT principal the finance seed provides.
+        var tagIds = await context.TransactionTags.Select(tag => tag.TransactionTagId).ToListAsync();
+        Assert.All(expected.PropertySmartTags, link => Assert.Contains(link.TransactionTagId, tagIds));
+
+        var now = DateTime.UtcNow;
+        var statuses = (await context.Properties.AsNoTracking().ToListAsync())
+            .Select(p => PropertyService.DeriveStatus(p.Archived, p.DisposedDate, now))
+            .ToHashSet();
+        Assert.Equal(
+            [Odyssey.Dtos.Finance.PropertyStatus.Owned, Odyssey.Dtos.Finance.PropertyStatus.Disposed, Odyssey.Dtos.Finance.PropertyStatus.Archived],
+            statuses.OrderBy(s => s));
+
+        // Deterministic ids: a second build describes exactly the same rows.
+        var again = DemoDataSet.Build();
+        Assert.Equal(expected.Properties.Select(p => p.PropertyId), again.Properties.Select(p => p.PropertyId));
+        Assert.Equal(
+            expected.PropertyEstimates.Select(e => (e.PropertyEstimateId, e.Value)),
+            again.PropertyEstimates.Select(e => (e.PropertyEstimateId, e.Value)));
+    }
+
     [Fact]
     public async Task Is_idempotent_across_repeated_runs()
     {

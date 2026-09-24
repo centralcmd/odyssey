@@ -3064,6 +3064,156 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("PhotoTagLinks");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.Property", b =>
+                {
+                    b.Property<Guid>("PropertyId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("AcquiredDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("Archived")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<DateTime?>("DisposedDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("PropertyId");
+
+                    b.HasIndex("Archived");
+
+                    b.HasIndex("Type", "Archived");
+
+                    b.ToTable("Properties");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PropertyEstimate", b =>
+                {
+                    b.Property<Guid>("PropertyEstimateId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CurrencyCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.HasKey("PropertyEstimateId");
+
+                    b.HasIndex("PropertyId", "EffectiveFrom");
+
+                    b.ToTable("PropertyEstimates");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PropertySmartTag", b =>
+                {
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("TransactionTagId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("AddedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("PropertyId", "TransactionTagId");
+
+                    b.HasIndex("AddedAt");
+
+                    b.HasIndex("TransactionTagId");
+
+                    b.ToTable("PropertySmartTags");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RealEstateDetails", b =>
+                {
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("AddressLine")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int?>("BuildYear")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CadastralNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("CountryCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("varchar(2)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("LivingAreaSqm")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("PlotAreaSqm")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.HasKey("PropertyId");
+
+                    b.ToTable("RealEstateDetails");
+                });
+
             modelBuilder.Entity("Odyssey.Context.RecurrencePattern", b =>
                 {
                     b.Property<Guid>("RecurrencePatternId")
@@ -3541,6 +3691,12 @@ namespace Odyssey.Context.Migrations
                         new
                         {
                             Key = "ContractMaxSmartTagsPerContract",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "20"
+                        },
+                        new
+                        {
+                            Key = "PropertyMaxSmartTagsPerProperty",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "20"
                         },
@@ -4144,6 +4300,41 @@ namespace Odyssey.Context.Migrations
                     b.HasKey("UserProfileImageId");
 
                     b.ToTable("UserProfileImageBlobs");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.VehicleDetails", b =>
+                {
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("FirstRegisteredDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Make")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int?>("ModelYear")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RegistrationNumber")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Vin")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.HasKey("PropertyId");
+
+                    b.ToTable("VehicleDetails");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -4798,6 +4989,47 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("PhotoTag");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.PropertyEstimate", b =>
+                {
+                    b.HasOne("Odyssey.Context.Property", "Property")
+                        .WithMany("Estimates")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PropertySmartTag", b =>
+                {
+                    b.HasOne("Odyssey.Context.Property", "Property")
+                        .WithMany("SmartTags")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.TransactionTag", "TransactionTag")
+                        .WithMany("PropertySmartTags")
+                        .HasForeignKey("TransactionTagId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+
+                    b.Navigation("TransactionTag");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RealEstateDetails", b =>
+                {
+                    b.HasOne("Odyssey.Context.Property", "Property")
+                        .WithOne("RealEstateDetails")
+                        .HasForeignKey("Odyssey.Context.RealEstateDetails", "PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+                });
+
             modelBuilder.Entity("Odyssey.Context.RecurrencePattern", b =>
                 {
                     b.HasOne("Odyssey.Context.Calendar", "Calendar")
@@ -4987,6 +5219,17 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("Image");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.VehicleDetails", b =>
+                {
+                    b.HasOne("Odyssey.Context.Property", "Property")
+                        .WithOne("VehicleDetails")
+                        .HasForeignKey("Odyssey.Context.VehicleDetails", "PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+                });
+
             modelBuilder.Entity("Odyssey.Context.Account", b =>
                 {
                     b.Navigation("AccountEstimates");
@@ -5100,6 +5343,17 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("PhotoTags");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.Property", b =>
+                {
+                    b.Navigation("Estimates");
+
+                    b.Navigation("RealEstateDetails");
+
+                    b.Navigation("SmartTags");
+
+                    b.Navigation("VehicleDetails");
+                });
+
             modelBuilder.Entity("Odyssey.Context.RecurrencePattern", b =>
                 {
                     b.Navigation("GeneratedEvents");
@@ -5126,6 +5380,8 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("BudgetItems");
 
                     b.Navigation("ContractSmartTags");
+
+                    b.Navigation("PropertySmartTags");
 
                     b.Navigation("TransactionTagLinks");
                 });

@@ -129,6 +129,16 @@ public sealed class FinanceDatabaseExport
     public IReadOnlyList<ContractFileExport> ContractFiles { get; init; } = [];
     public IReadOnlyList<ContractEventExport> ContractEvents { get; init; } = [];
     public IReadOnlyList<ContractSmartTagExport> ContractSmartTags { get; init; } = [];
+
+    // Issue #167 — the property aggregate. Added to the export rather than excluded: the address,
+    // registration number and VIN are personal data, but the bulk export is Admin-only (data.export)
+    // and Admin already reads them live under properties.read. The smart-tag link table is exported on
+    // the same precedent as its account and contract siblings.
+    public IReadOnlyList<PropertyExport> Properties { get; init; } = [];
+    public IReadOnlyList<RealEstateDetailsExport> RealEstateDetails { get; init; } = [];
+    public IReadOnlyList<VehicleDetailsExport> VehicleDetails { get; init; } = [];
+    public IReadOnlyList<PropertyEstimateExport> PropertyEstimates { get; init; } = [];
+    public IReadOnlyList<PropertySmartTagExport> PropertySmartTags { get; init; } = [];
 }
 
 public sealed class AccountExport
@@ -318,6 +328,75 @@ public sealed class AccountSmartTagExport
 public sealed class ContractSmartTagExport
 {
     public Guid ContractId { get; init; }
+    public Guid TransactionTagId { get; init; }
+    public DateTime AddedAt { get; init; }
+}
+
+// ── Issue #167: properties ────────────────────────────────────────────────────
+
+/// <summary>A property's base row; its subtype fields are the detail tables below, keyed by the same id.</summary>
+public sealed class PropertyExport
+{
+    public Guid PropertyId { get; init; }
+    public required string Name { get; init; }
+    public required string Description { get; init; }
+    public PropertyType Type { get; init; }
+    public required string CurrencyCode { get; init; }
+    public DateTime? AcquiredDate { get; init; }
+    public DateTime? DisposedDate { get; init; }
+    public string? Notes { get; init; }
+    public DateTime? Archived { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime UpdatedAt { get; init; }
+}
+
+/// <summary>The real-estate sub-record of a <see cref="PropertyExport"/>, sharing its key.</summary>
+public sealed class RealEstateDetailsExport
+{
+    public Guid PropertyId { get; init; }
+    public RealEstateKind Kind { get; init; }
+    public string? AddressLine { get; init; }
+    public string? PostalCode { get; init; }
+    public string? City { get; init; }
+    public string? CountryCode { get; init; }
+    public string? CadastralNumber { get; init; }
+    public decimal? LivingAreaSqm { get; init; }
+    public decimal? PlotAreaSqm { get; init; }
+    public int? BuildYear { get; init; }
+}
+
+/// <summary>The vehicle sub-record of a <see cref="PropertyExport"/>, sharing its key.</summary>
+public sealed class VehicleDetailsExport
+{
+    public Guid PropertyId { get; init; }
+    public VehicleKind Kind { get; init; }
+    public string? RegistrationNumber { get; init; }
+    public string? Vin { get; init; }
+    public string? Make { get; init; }
+    public string? Model { get; init; }
+    public int? ModelYear { get; init; }
+    public DateTime? FirstRegisteredDate { get; init; }
+}
+
+/// <summary>Time-versioned property value estimates — the sibling of <see cref="AccountEstimateExport"/>.</summary>
+public sealed class PropertyEstimateExport
+{
+    public Guid PropertyEstimateId { get; init; }
+    public Guid PropertyId { get; init; }
+    public decimal Value { get; init; }
+    public string? CurrencyCode { get; init; }
+    public DateTime EffectiveFrom { get; init; }
+    public string? Note { get; init; }
+    public DateTime CreatedAtUtc { get; init; }
+}
+
+/// <summary>
+/// A property's saved tag filter (issue #167). Keyed by the <c>(PropertyId, TransactionTagId)</c> pair —
+/// there is no surrogate id to export.
+/// </summary>
+public sealed class PropertySmartTagExport
+{
+    public Guid PropertyId { get; init; }
     public Guid TransactionTagId { get; init; }
     public DateTime AddedAt { get; init; }
 }

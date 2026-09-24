@@ -35,4 +35,6 @@ public class TransactionTag
     public ICollection<AccountSmartTag> AccountSmartTags { get; set; } = new List<AccountSmartTag>();
 
     public ICollection<ContractSmartTag> ContractSmartTags { get; set; } = new List<ContractSmartTag>();
+
+    public ICollection<PropertySmartTag> PropertySmartTags { get; set; } = new List<PropertySmartTag>();
 }

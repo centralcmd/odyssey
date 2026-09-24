@@ -460,6 +460,29 @@ tables they belong with — that guard reflects over every `DbSet` and fails the
 the picture to the whole-database admin export would export a face from a document that deliberately
 omits the subject's name and birth date, to a `data.export` holder who is never the data subject.
 
+**A property is a `Contact`-shaped aggregate that nothing else references** (issue #167).
+`Property` carries a `Type` (`RealEstate`/`Vehicle`) and exactly one 1:1 detail row sharing its key
+(`RealEstateDetails`/`VehicleDetails`), plus two **sibling** tables — `PropertyEstimates` and
+`PropertySmartTags` — rather than a second owner widened onto `AccountEstimates`/`AccountSmartTags`.
+In this codebase a new owner gets its own table: #173 declined the polymorphic widening for smart tags
+and #191 undid it for terms. Four rules are easy to get backwards:
+
+- **`Type` is immutable, unlike a contact's.** `PUT` with a different type is a `422` keyed on `Type`,
+  never a silent re-type and never a dropped detail row — a house that becomes a car is a different
+  asset whose estimate history no longer describes it. `PUT` is also **not an upsert** (`404` on an
+  unknown id), which deliberately differs from `PUT /api/accounts/{id}`.
+- **The two query-shaped estimate rules live once, in `EstimateEffectiveDating`** — the
+  duplicate-`EffectiveFrom` conflict and the current-as-of resolution (greatest `EffectiveFrom`, ties to
+  the newest `CreatedAtUtc`). Both `AccountEstimateService` and `PropertyEstimateService` call it, and
+  the list's `sortBy=value` uses its `CurrentValue` selector as a correlated subquery. A divergence there
+  fails *silently*, which is why they are shared while the scalar checks (non-negative value, owner
+  currency) stay duplicated like the smart-tag services' are. A source-lint in
+  `EstimateEffectiveDatingTests` fails on a second copy in any estimate file under `Odyssey.Core/Finance/`.
+- **The address, registration number and VIN are personal data** behind `properties.read` alone. They
+  go in no cross-claim projection, no embed, no error body and no log line; messages echo the route id.
+- **`TransactionTagService.CountDeleteBlockers` has a fifth clause** for `PropertySmartTags`, and the
+  `RESTRICT` key behind it is the backstop, not the guard — the same shape as the other four.
+
 **`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed to serialize a
 write path against a contact delete; once that path's call sites were gone it was a mutex with no
 counterparty, still taking a pinned connection and a blocking ten-second acquire on every contact
@@ -816,7 +839,7 @@ that same blind spot today and the same property would close it.
 
 | | Where | What |
 |---|---|---|
-| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 92 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
+| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 98 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
 | The **role mapping** | `Odyssey.Context/Authorization/RolePermissions.cs` | `AllClaims`, `AdminClaims`/`OwnerClaims`/`UserClaims`/`GuestClaims`, and the per-module arrays. Server-only, so the browser never ships the role-to-claim mapping. |
 
 **Adding a claim:** add the constant to `PermissionClaims`, then add it to `RolePermissions.AllClaims`

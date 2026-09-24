@@ -797,6 +797,23 @@ internal static class SystemSettingsRegistry
             Write = (dto, v) => dto.ContractMaxSmartTagsPerContract = v,
         },
 
+        // ── Properties: the smart-tag cap (issue #167) ────────────────────────────────────────────
+        //
+        // The ORDINARY write claim, matching its account and contract siblings, and its own cache key
+        // for the reason the contract entry gives.
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.PropertyMaxSmartTagsPerProperty,
+            Min = SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMin,
+            Max = SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMax,
+            FieldName = nameof(SystemSettingsUpdate.PropertyMaxSmartTagsPerProperty),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.PropertyMaxSmartTagsPerProperty),
+            CacheKeyToEvict = PropertyLimitsLookup.CacheKey,
+            Read = r => r.PropertyMaxSmartTagsPerProperty,
+            Write = (dto, v) => dto.PropertyMaxSmartTagsPerProperty = v,
+        },
+
     ];
 
     /// <summary>Descriptors by <see cref="SystemSettingDescriptor.Key"/>.</summary>
