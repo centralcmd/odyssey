@@ -76,6 +76,8 @@
 .con-run-tiles .odc-infotile { background: var(--mud-palette-background); box-shadow: none; }
 .con-run-tiles .odc-infotile.dir-out .odc-infotile-v { color: var(--finance-expense); }
 .con-run-tiles .odc-infotile.dir-in .odc-infotile-v { color: var(--finance-income); }
+.con-run-tiles .odc-infotile.dir-out .odc-infotile-ic { color: var(--finance-expense); background: color-mix(in srgb, var(--finance-expense) 14%, transparent); }
+.con-run-tiles .odc-infotile.dir-in .odc-infotile-ic { color: var(--finance-income); background: color-mix(in srgb, var(--finance-income) 14%, transparent); }
 
 /* ============================================================
    Collapsed-card headline (period anchor + relative-days word)
@@ -206,12 +208,26 @@
 .con-status-tile.expense .odc-infotile-v { color: var(--finance-expense); }
 .con-status-tile.muted .odc-infotile-v { color: var(--mud-palette-text-secondary); }
 .con-status-tile.pending .odc-infotile-v { color: var(--finance-pending); }
+/* Detail-tile icons (contracts + budgets): grey like the field name, unless the value carries a hue. */
+.con-card .odc-record-body .odc-infotile-ic, .bud-card .odc-record-body .odc-infotile-ic { color: var(--mud-palette-text-secondary); background: color-mix(in srgb, var(--mud-palette-text-secondary) 14%, transparent); }
+.con-card .odc-record-body .con-status-tile.income .odc-infotile-ic, .con-card .odc-record-body .odc-infotile.tone-income .odc-infotile-ic, .bud-card .odc-record-body .odc-infotile.tone-income .odc-infotile-ic { color: var(--finance-income); background: color-mix(in srgb, var(--finance-income) 14%, transparent); }
+.con-card .odc-record-body .con-status-tile.info .odc-infotile-ic { color: var(--mud-palette-info); background: color-mix(in srgb, var(--mud-palette-info) 14%, transparent); }
+.con-card .odc-record-body .con-status-tile.expense .odc-infotile-ic, .con-card .odc-record-body .odc-infotile.tone-expense .odc-infotile-ic, .bud-card .odc-record-body .odc-infotile.tone-expense .odc-infotile-ic { color: var(--finance-expense); background: color-mix(in srgb, var(--finance-expense) 14%, transparent); }
+.con-card .odc-record-body .con-status-tile.pending .odc-infotile-ic, .con-card .odc-record-body .odc-infotile.tone-pending .odc-infotile-ic { color: var(--finance-pending); background: color-mix(in srgb, var(--finance-pending) 14%, transparent); }
 
 /* UNSIGNED (Draft / Ready) — full brightness, because these are the rows most
    likely to need attention, and a dashed edge instead: nothing about the
    agreement is settled yet. The opposite reading to archived, which is dimmed
    because it is finished. Only the outer edge changes — density, type and
    every control inside stay identical, so the row is marked, not decorated. */
+/* Header mark follows the derived status tone (same as the chip + figure). Only
+   the mark: --rec stays the type accent for everything inside the card. */
+.con-card[data-tone] > .odc-record .odc-record-mark:not(.img) { color: var(--con-tone); background: color-mix(in srgb, var(--con-tone) 14%, transparent); }
+.con-card[data-tone="income"] { --con-tone: var(--finance-income); }
+.con-card[data-tone="expense"] { --con-tone: var(--finance-expense); }
+.con-card[data-tone="pending"] { --con-tone: var(--finance-pending); }
+.con-card[data-tone="info"] { --con-tone: var(--sea-400); }
+.con-card[data-tone="muted"] { --con-tone: var(--mud-palette-text-secondary); }
 .con-unsigned > .odc-record { border-style: dashed; border-color: color-mix(in srgb, var(--mud-palette-text-secondary) 40%, transparent); }
 
 /* An OBJECT party — the thing the agreement is about. The overline gains a

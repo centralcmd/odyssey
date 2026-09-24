@@ -333,7 +333,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
             A tile appears only once its stamp exists, so a plain Draft adds
             nothing to the grid — the Status tile has already said so. */}
         {contract.ready ? <InfoTile icon="draw" label="Ready for signature" value={CON_H.conDate(contract.ready)} valueVariant="sm" className={contract.signed ? undefined : 'con-status-tile pending'} foot={contract.signed ? 'sent out on this date' : 'waiting on a signature'} /> : null}
-        {contract.signed ? <InfoTile icon="history_edu" label="Signed" value={CON_H.conDate(contract.signed)} valueVariant="sm" className="con-status-tile income" foot="signed by all parties" /> : null}
+        {contract.signed ? <InfoTile icon="history_edu" label="Signed" value={CON_H.conDate(contract.signed)} valueVariant="sm" className={status === 'Expired' || status === 'Archived' ? undefined : 'con-status-tile income'} foot="signed by all parties" /> : null}
         {contract.paused ? <InfoTile icon="pause_circle" label="Paused" value={CON_H.conDate(contract.paused)} valueVariant="sm" className="con-status-tile pending" foot="still listed and editable, not costing" /> : null}
         {contract.archived ? <InfoTile icon="inventory_2" label="Archived" value={CON_H.conDate(contract.archived)} valueVariant="sm" foot="hidden from the default list" /> : null}
       </InfoTileGrid>
@@ -616,8 +616,10 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
     });
   }, [highlight]);
 
+  const statusTone = ['income', 'expense', 'pending', 'info'].includes(CON_H.conStatusMeta(status).tone) ? CON_H.conStatusMeta(status).tone : 'muted';
+  const figureTone = headline.cls === 'lapsed' || headline.cls === 'expired' ? 'expense' : (headline.cls === 'soon' || headline.cls === 'paused') ? 'pending' : statusTone;
   return (
-    <div ref={cardRef} className={unsigned ? 'con-unsigned' : undefined}>
+    <div ref={cardRef} className={`con-card${unsigned ? ' con-unsigned' : ''}`} data-tone={figureTone}>
       <RecordCard
         icon={typeInfo.icon}
         accent={typeInfo.color}
@@ -645,7 +647,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
         figure={{
           value: headline.value,
           caption: headline.word,
-          tone: headline.cls === 'lapsed' || headline.cls === 'expired' ? 'expense' : (headline.cls === 'soon' || headline.cls === 'paused') ? 'pending' : undefined,
+          tone: figureTone,
         }}
         dimmed={dimmed}
         highlight={highlight}
@@ -732,7 +734,7 @@ const ContractsSummary = ({ contracts, today, endingWindow }) => {
   // Distribution rows for the two BreakdownTile instances. Status tones map to
   // the same finance accents the pills / chips use — no new hue enters.
   const TONE_COLOR = { income: 'var(--finance-income)', info: 'var(--sea-400)', expense: 'var(--finance-expense)', outline: 'var(--mud-palette-text-secondary)', pending: 'var(--finance-pending)' };
-  const typeRows = s.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: r.color, label: r.label, count: r.count }));
+  const typeRows = s.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: 'var(--mud-palette-text-secondary)', label: r.label, count: r.count }));
   const statusRows = order.map(k => {
     const m = CON_H.conStatusMeta(k);
     return { key: k, icon: m.icon, iconColor: TONE_COLOR[m.tone] || TONE_COLOR.outline, label: m.label, count: s.countsByStatus[k] || 0 };
@@ -800,7 +802,7 @@ const ContractsSummary = ({ contracts, today, endingWindow }) => {
     if (!keys.length) return [];
     const rows = keys.map(k => {
       const ty = CON_H.contractTypeInfo(k);
-      return { key: k, icon: ty.icon, iconColor: ty.color, label: ty.label, count: netCell(netOf(k, getter)) };
+      return { key: k, icon: ty.icon, iconColor: 'var(--mud-palette-text-secondary)', label: ty.label, count: netCell(netOf(k, getter)) };
     });
     return rows;
   };

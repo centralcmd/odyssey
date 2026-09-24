@@ -473,6 +473,8 @@ html, body, #root {
   background: var(--mud-palette-background);
   border-radius: 8px; padding: 18px 20px;
 }
+.bgt-donuts.in .odc-legend-amt, .bgt-donuts.in .odc-legend-amt *, .bgt-donuts.in .odc-donut-total-amt, .bgt-donuts.in .odc-donut-total-amt * { color: var(--finance-income); }
+.bgt-donuts.out .odc-legend-amt, .bgt-donuts.out .odc-legend-amt *, .bgt-donuts.out .odc-donut-total-amt, .bgt-donuts.out .odc-donut-total-amt * { color: var(--finance-expense); }
 .bgt-donuts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
 @media (max-width: 760px) { .bgt-donuts-row { grid-template-columns: 1fr; } }
 .bgt-balance { gap: 14px; }

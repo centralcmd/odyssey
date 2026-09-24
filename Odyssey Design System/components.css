@@ -2982,6 +2982,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record-value.income { color: var(--finance-income); }
 .odc-record-value.expense { color: var(--finance-expense); }
 .odc-record-value.pending { color: var(--finance-pending); }
+.odc-record-value.info { color: var(--sea-400); }
+.odc-record-value.muted { color: var(--mud-palette-text-secondary); }
 .odc-record-caption {
   font: var(--fw-regular) 10.5px/1 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--mud-palette-text-secondary);

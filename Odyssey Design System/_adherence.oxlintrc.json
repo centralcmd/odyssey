@@ -1222,6 +1222,7 @@
       "--con-accent",
       "--con-accent-line",
       "--con-accent-soft",
+      "--con-tone",
       "--control-h",
       "--control-h-dense",
       "--coral-300",
@@ -1585,6 +1586,7 @@
       "--con-accent": "color",
       "--con-accent-soft": "color",
       "--con-accent-line": "color",
+      "--con-tone": "color",
       "--tkc-state": "color"
     },
     "fontFamilies": [

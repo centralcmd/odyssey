@@ -130,14 +130,6 @@ const BudgetTiles = ({ budget }) => {
       <InfoTile icon={budget.archived ? 'inventory_2' : 'check_circle'} label="Status" valueVariant="text"
         className={budget.archived ? 'tone-muted' : 'tone-income'} value={status.label}
         foot={budget.archived ? `since ${H.dateTime(budget.archived)}` : 'in the default list'} />
-      <InfoTile icon="trending_up" label="Planned income" className="tone-income"
-        value={H.money(totals.plannedIncome)} foot={lines(income.length, 'income line')} />
-      <InfoTile icon="shopping_cart" label="Planned expenses" className="tone-expense"
-        value={H.money(totals.plannedExpense)} foot={lines(expense.length, 'expense line')} />
-      <InfoTile icon="south_west" label="Actual income" className="tone-income"
-        value={H.money(totals.actualIncome)} foot="from matched transactions" />
-      <InfoTile icon="north_east" label="Actual expenses" className="tone-expense"
-        value={H.money(totals.actualExpense)} foot="from matched transactions" />
       <InfoTile icon="balance" label="Expected balance" value={H.money(totals.expectedDiff)}
         className={totals.expectedDiff < 0 ? 'tone-expense' : 'tone-income'} foot="planned in − planned out" />
       <InfoTile icon="account_balance" label="Actual balance" value={H.money(totals.actualDiff)}
@@ -160,6 +152,14 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
   const sliceName = (i) => (D.tagById[i.tagId] ? D.tagById[i.tagId].name : i.tagId);
   const incomeSlices  = income.map(i => ({ name: sliceName(i), value: i.planned })).filter(s => s.value > 0).sort((a, b) => b.value - a.value);
   const expenseSlices = expense.map(i => ({ name: sliceName(i), value: i.planned })).filter(s => s.value > 0).sort((a, b) => b.value - a.value);
+  // Actual slices keep the planned order so a tag keeps its colour across both rows.
+  const actualSlices = (lines, planned) => {
+    const rank = (i) => { const k = planned.findIndex(s => s.name === sliceName(i)); return k < 0 ? planned.length : k; };
+    return lines.slice().sort((a, b) => rank(a) - rank(b)).map(i => ({ name: sliceName(i), value: H.budgetItemActual(i, budget) }));
+  };
+  const incomeActual = actualSlices(income, incomeSlices);
+  const expenseActual = actualSlices(expense, expenseSlices);
+  const hasActual = (s) => s.some(x => x.value > 0);
 
   const deleteItem = (id) => setItems(prev => prev.filter(i => i.id !== id));
   const updateItem = (id, patch) => setItems(prev => prev.map(i => (i.id === id ? { ...i, ...patch } : i)));
@@ -168,17 +168,29 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
     <React.Fragment>
       {budget.items.length > 0 && (
         <div className="acct-section">
-          <SectionDivider label="Allocation" meta={`planned · ${budget.currency}`} />
+          <SectionDivider label="Allocation" meta={`planned & actual · ${budget.currency}`} />
           <div className="bgt-donuts-row">
-            <div className="bgt-donuts">
+            <div className="bgt-donuts in">
               <DonutPanel title="Planned income" centerLabel="Planned in" centerIcon="trending_up"
                 sub={`${income.length} income line${income.length === 1 ? '' : 's'}`}
                 colors={INCOME_COLORS} items={incomeSlices} />
             </div>
-            <div className="bgt-donuts">
+            <div className="bgt-donuts in">
+              <DonutPanel title="Actual income" centerLabel="Actual in" centerIcon="south_west"
+                sub="from matched transactions"
+                colors={INCOME_COLORS} items={hasActual(incomeActual) ? incomeActual : []} />
+            </div>
+          </div>
+          <div className="bgt-donuts-row">
+            <div className="bgt-donuts out">
               <DonutPanel title="Planned expenses" centerLabel="Planned out" centerIcon="shopping_cart"
                 sub={`${expense.length} expense line${expense.length === 1 ? '' : 's'}`}
                 colors={EXPENSE_COLORS} items={expenseSlices} />
+            </div>
+            <div className="bgt-donuts out">
+              <DonutPanel title="Actual expenses" centerLabel="Actual out" centerIcon="north_east"
+                sub="from matched transactions"
+                colors={EXPENSE_COLORS} items={hasActual(expenseActual) ? expenseActual : []} />
             </div>
           </div>
         </div>
@@ -254,7 +266,8 @@ const BudgetRecordCard = ({ b, open, onToggle, onDelete, onNavigate, canCreateTa
   const totals = H.budgetTotals(budget);
   const txnCount = H.budgetMatchedTxns(budget).length;
   const dimmed = !!budget.archived;
-  const tone = BUDGET_TONE[budget.tone] || BUDGET_TONE.tide;
+  const toneColor = status.tone === 'income' ? 'var(--finance-income)' : 'var(--mud-palette-text-secondary)';
+  const tone = { fg: toneColor, bg: `color-mix(in srgb, ${toneColor} 14%, transparent)` };
 
   const setItems = (updater) =>
     setBudget(prev => ({ ...prev, items: typeof updater === 'function' ? updater(prev.items) : updater }));
@@ -285,7 +298,7 @@ const BudgetRecordCard = ({ b, open, onToggle, onDelete, onNavigate, canCreateTa
   if (!RecordCard || !InfoTileGrid || !InfoTile) return null;
 
   return (
-    <div>
+    <div className="bud-card">
       <RecordCard
         icon={budget.icon || 'pie_chart'}
         accent={tone.fg}
