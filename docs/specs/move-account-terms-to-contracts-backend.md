@@ -1,4 +1,4 @@
-# Move Account Terms to Contracts — Backend (Draft v1)
+# Move Account Terms to Contracts — Backend (Draft v2)
 
 > **No frontend counterpart** — no new UI surface. The client code that references the removed claims and API-client methods is deleted in the same PR (§14), because it would not compile otherwise.
 
@@ -78,11 +78,18 @@ Accounts without terms are **not touched**.
 | Liability (`CreditCard`…`OtherLiability`, 9–15) | `Loan` (8) |
 | Unclassified (`Unknown`, 0) | `Other` (3) |
 
-Candidates = contracts of the **expected type** on which the account is a `ContractParty` in **any role**,
-archived or not.
+Candidates = `COUNT(DISTINCT ContractId)` over contracts of the **expected type** on which the account is a
+`ContractParty` in **any role**, archived or not. `DISTINCT` is required: the unique index is
+`(ContractId, AccountId, Role)`, so one account may hold two roles on one contract and must still count as
+one candidate *(architect finding 2)*. Contracts created by this migration are never candidates — the
+decision is taken once and persisted in the staging table (§3.7), not recomputed *(architect finding 1)*.
 
-- **Exactly 1 candidate** → move the terms onto it. The contract's fields and parties are **not changed**
-  (no `Object` party is added, the account keeps its existing role).
+- **Exactly 1 candidate, no series collision** → move the terms onto it. The contract's fields and parties
+  are **not changed** (no `Object` party is added, the account keeps its existing role).
+- **Exactly 1 candidate, but a series collision** — any of the account's terms shares `(LabelKey,
+  EffectiveFrom)` with a term already on that contract → **do not reuse**; create a contract (§3.3) and flag
+  A9. Merging would leave both rows permanently `409` on edit, because the index is non-unique and the
+  migration bypasses the service's duplicate guard *(security finding 1)*.
 - **0 candidates** → create a contract (§3.3) and move the terms onto it.
 - **≥ 2 candidates** → create a contract (§3.3), move the terms onto it, and flag the ambiguity (A2).
 
@@ -131,11 +138,30 @@ For each contract the migration created or moved terms onto, insert one `Contrac
 
 - `Type = Other` (8), `Source = System` (1), `OccurredAt = UTC_TIMESTAMP()`, `CreatedByUserId = NULL`
 - `Title` = `Terms migrated from account "<Account.Name>"` (truncated to 256)
-- `Description` (≤ 1024) = the applicable flag codes and one line each, from §3.6
+- `Description` (≤ 1024) = one line per applicable flag code, in code order:
+  `A8 (3): Interest rate, Expected return, +1 more` — the code, the count of affected rows or contracts,
+  then affected term labels until the line would push the total past the limit, then `+N more`. If even the
+  code-and-count lines exceed 1024 characters (not reachable with 15 codes, but pinned), the text is cut at
+  1 010 characters and suffixed `… (truncated)`. Built in SQL with `LEFT()` so a long value can never fail
+  the insert *(architect finding 3)*.
 
 The event is editable/deletable like any other system event — it is a to-do marker, not an audit log
-(consistent with `ContractEvent`'s own remarks). The immutable record is a migration log line per account
-(account id, contract id, created/reused, term count, flags).
+(consistent with `ContractEvent`'s own remarks). **There is no immutable record of the migration**: a
+`migrationBuilder.Sql` step cannot write to the application log, and the staging table is dropped at the
+end of `Up()`. That is accepted deliberately — single-tenant deployment, the pre-migration state is
+recoverable from any backup taken before upgrade, and the release note (§14) says to take one
+*(security finding 3; corrects the v1 claim of a per-account log line)*.
+
+### 3.7 Staging table (idempotency)
+
+`Up()` creates `__AccountTermMigration` (`CREATE TABLE IF NOT EXISTS`) with one row per account holding
+terms: `AccountId` (PK), `TargetContractId`, `EventId`, `Created` (bool), `CandidateCount`, and the flag
+inputs. Rows
+are inserted only for accounts **not already present**, and `TargetContractId` for a new contract is
+assigned `UUID()` **at that insert**, as is the `EventId` of its attention event. Every later step reads this table and inserts with
+`WHERE NOT EXISTS` on that id. A re-run after an interruption therefore reuses the decision and the id it
+already made — it can never see its own created contract as a second candidate. The table is dropped as the
+last data step, before the DDL in step 7.
 
 ### 3.6 Data loss and user attention — exhaustive list
 
@@ -147,7 +173,7 @@ The event is editable/deletable like any other system event — it is a to-do ma
 | L2 | Original `Direction` of flipped rows | Every account term was forced `Outgoing`; flipped rows (A8) keep no record of it except the event text. |
 | L3 | Terms deleted with their account | Before: deleting an account cascaded its terms. After: deleting the account removes only its `Object` party; the contract and its terms survive. **Behaviour change.** |
 | L4 | Guest read access to these terms | Guest held `accounts.terms.read` but not `contracts.read` (see §7.2). |
-| L5 | Per-term history events | Moved rows get no `ContractEvent`/log per term (only the one summary event, §3.5). |
+| L5 | Per-term history events and any immutable migration record | Moved rows get no `ContractEvent`/log per term; only the one editable summary event (§3.5). |
 | L6 | Account-level term count / current-term tiles | `ExistingAccount.TermCount` and `.CurrentTerms` removed from the API. |
 | L7 | `TermExport.AccountId` | Always `NULL` after migration; column removed from the export document. |
 
@@ -163,7 +189,7 @@ The event is editable/deletable like any other system event — it is a to-do ma
 | A6 | `ReferenceNumber` copied from the account number | Replace with the agreement's reference, if different. |
 | A7 | `Closed < Opened` on the account | Set the contract's end date. |
 | A8 | Percentage term flipped to `Incoming` on a Deposit | Verify — a negative rate or a percentage **fee** (e.g. platform fee %) should stay `Outgoing`. |
-| A9 | Reused contract already has a series with the same `LabelKey` + `EffectiveFrom` | Delete or relabel one row — any edit of either returns `409` until then. |
+| A9 | The single candidate contract already had a series with the same `LabelKey` + `EffectiveFrom`, so a new contract was created instead | Decide which contract the series belongs on; move or delete the duplicate. |
 | A10 | Reused contract now exceeds `ContractMaxTermsPerContract` | New terms are refused (`422`) until below the cap; edits still allowed. |
 | A11 | Reused contract is archived | Terms are hidden with it; unarchive or move them. |
 | A12 | `Amount` term currency filled from the account and that currency is inactive | Term cannot be re-saved until the currency is active or changed. |
@@ -251,9 +277,12 @@ that no longer exist.
    parties; for Admin/Owner/User that set already includes `accounts.read`. No new field.
 5. **Write exposure** — no new write path; the migration adds parties by scalar `AccountId`/`ContactId`.
 6. **Third-party flow / secrets** — none.
-7. **Audit** — one migration log line per account (§3.5); the system `ContractEvent` is a to-do, not an
-   audit record.
+7. **Audit** — no immutable record (§3.5): the system `ContractEvent` is a to-do, not an audit record, and
+   the collapse of per-term history into one event (L5) is a deliberate trade-off. Pre-upgrade backup is
+   the recovery path (§14).
 8. **Error disclosure** — removed routes return a plain `404`.
+9. **Retention** — L3 changes retention posture: deleting an account no longer deletes its terms. Terms
+   now follow their contract's lifecycle; the release note states this *(security finding 2)*.
 
 ## 8. Validation and Mapping Rules
 
@@ -272,7 +301,8 @@ that no longer exist.
 | Class | Behaviour |
 |---|---|
 | **MigrationLeftAccountTerms** | After the data steps, if any `Terms.AccountId IS NOT NULL` remains, the migration aborts (`SIGNAL SQLSTATE '45000'`) **before** any DDL, naming the count. No schema is dropped. |
-| **MigrationInterrupted** | Data steps are idempotent (`INSERT … WHERE NOT EXISTS`, `UPDATE … WHERE AccountId IS NOT NULL`); re-run completes. DDL follows the `MigrationRunner` drift guard (issue #468). |
+| **MigrationInterrupted (data steps)** | Idempotent via the staging table (§3.7) — re-run completes, reusing prior decisions and ids. |
+| **MigrationInterrupted (DDL, step 7)** | MariaDB commits DDL implicitly. The `MigrationRunner` guard (issue #468) only detects *a pending migration creating an object that already exists*; it does **not** detect a half-finished drop sequence. Repair is manual per `docs/migration-history-drift.md`; the migration's XML summary says so *(architect finding 4)*. |
 | **RemovedRoute** | `404`. |
 | **TermEditOnDuplicateSeries** (A9) | Existing `409` problem details. |
 | **TermCreateOverCap** (A10) | Existing `422`. |
@@ -295,12 +325,15 @@ dotnet ef migrations add MoveAccountTermsToContracts \
 ```
 
 - `Up()` order:
-  1. Temp mapping `account → (expected type, candidate count, target contract, created?)`.
+  1. Create/fill the staging table (§3.7): expected type, `COUNT(DISTINCT ContractId)`, collision check,
+     target contract id, created flag.
   2. `INSERT` created contracts (§3.3), then parties.
-  3. `UPDATE Terms` (§3.4).
-  4. `INSERT` one system `ContractEvent` per touched contract (§3.5).
+  3. `INSERT` one system `ContractEvent` per touched contract (§3.5) — before the term update, since the
+     flag inputs read the pre-move state.
+  4. `UPDATE Terms` (§3.4).
   5. Guard: abort if any `AccountId` remains (§9).
-  6. Drop check, FK, index, column; alter `ContractId` to `NOT NULL`.
+  6. Drop the staging table.
+  7. Drop check, FK, index, column; alter `ContractId` to `NOT NULL`.
 - `Down()`: restores the **schema** only (nullable `AccountId`, FK, index, check). Data is not moved back
   — lossy, documented in the XML summary, same precedent as `FoldRateTermKindsIntoFee`.
 - Seeds nothing (`HasData` unchanged).
@@ -322,13 +355,21 @@ dotnet ef migrations add MoveAccountTermsToContracts \
 6. Account with `CustodianId = NULL` → one party only; event contains A5.
 7. Account party on exactly one contract of the expected type → terms moved there; that contract's fields
    and parties byte-identical to before; no contract created.
+7a. Account holding **two roles on one** contract of the expected type counts as one candidate → terms moved
+   there, no contract created.
+7b. Single candidate with a colliding `(LabelKey, EffectiveFrom)` → a new contract is created, the candidate
+   is untouched, event contains A9.
 8. Account party on two such contracts → a new contract is created; event contains A2.
 9. `Amount` term with `NULL` currency gets the account's currency; `Percentage` keeps `NULL`.
 10. On a `Deposit` target, `Percentage` terms become `Incoming`, `Amount` terms stay `Outgoing`; on `Loan`
     and `Other` all stay `Outgoing`; event lists A8 per flipped row.
-11. A9, A10, A11 are each detected and listed on a fixture built to trigger them.
+11. A10 and A11 are each detected and listed on a fixture built to trigger them.
+11a. Every inserted `ContractEvent.Description` is ≤ 1024 characters, including a fixture with 200 flipped
+    terms on one account (the `+N more` path).
 12. Accounts with no terms: no contract, party or event created.
-13. Running `Up()`'s data steps twice produces no duplicate contract, party or event.
+13. Interrupting `Up()` after step 2 and re-running produces no duplicate contract, party or event — **for
+    every §3.2 path, the ≥ 2-candidate path included**. No `__AccountTermMigration` table remains after a
+    completed run.
 14. A remaining account term aborts the migration before any DDL.
 15. Deleting a migrated account leaves its contract and terms; removes only its `Object` party.
 16. All five removed routes return `404`.
@@ -357,4 +398,5 @@ dotnet ef migrations add MoveAccountTermsToContracts \
   deleted): `AccountTermsSection`, account branches of `AddTermDialog` / `TermVisuals`, `AccountsCard`
   term badge/tiles/menu item. No replacement UX in v1 (no frontend counterpart).
 - Docs: `Odyssey Design System/README.md` §terms note, `docs/deployment.md` claim table, release note
-  listing L1–L7 and A1–A15.
+  listing L1–L7 and A1–A15, stating that account deletion no longer removes terms (L3) and that a
+  database backup should be taken before upgrading (no immutable migration record exists).
