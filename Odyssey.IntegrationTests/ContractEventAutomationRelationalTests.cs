@@ -150,7 +150,7 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
     /// <summary>
     /// AC 25, the term half — the same property through the §8.7 staging seam. The delegate stages
     /// onto the change tracker the private method is about to save, so the term write and its
-    /// <c>PriceChanged</c> event are one transaction; a refused event insert takes the term with it.
+    /// <c>TermChanged</c> event are one transaction; a refused event insert takes the term with it.
     /// </summary>
     [SkippableFact]
     public async Task A_failed_term_save_commits_neither_the_term_nor_the_event()
@@ -179,7 +179,7 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
                     .Where(t => t.ContractId == contractId).ToListAsync());
                 Assert.Empty(await context.ContractEvents.AsNoTracking()
                     .Where(e => e.ContractId == contractId
-                        && e.Type == ContextContractEventType.PriceChanged)
+                        && e.Type == ContextContractEventType.TermChanged)
                     .ToListAsync());
             }
         }

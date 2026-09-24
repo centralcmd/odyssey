@@ -41,11 +41,11 @@
                         <OdsCombobox InputId="trm-label" FreeText="true" Clearable="true"
                                      Value="@_label" ValueChanged="OnLabelChanged"
                                      Options="NameOptions"
-                                     OnCreate="CreateNameOption" CreateLabel="New charge"
-                                     Placeholder="e.g. Monthly rent"
+                                     OnCreate="CreateNameOption" CreateLabel="New term"
+                                     Placeholder="e.g. Monthly rent, Notice period"
                                      AriaDescribedBy="trm-label-help"
                                      Required="true" Error="@(labelError is not null)"
-                                     EmptyText="@(NameOptions.Count > 0 ? "No matching charge — type to name a new one" : "No charges yet — type a name")" />
+                                     EmptyText="@(NameOptions.Count > 0 ? "No matching term — type to name a new one" : "No terms yet — type a name")" />
                     </ChildContent>
                 </OdsFieldShell>
             }
@@ -57,83 +57,143 @@
                priced — and a rate is asked the same way a fee is, because an arrears rate charges and
                a deposit rate pays. *@
 
-            @* Unit + value — the hero input *@
-            <div class="trm-value-block">
-                <div class="trm-field-head">
-                    <div class="trm-label" style="margin-bottom:0;">Value<span class="odc-field-req" aria-hidden="true">*</span></div>
-                    <div style="margin-left:auto;">
-                        <OdsSegmentedControl Value="@_unit.ToString()" ValueChanged="OnUnitChanged"
-                                             Options="_unitOptions" AriaLabel="Unit" />
-                    </div>
-                </div>
+            @* Kind — first, because it decides which fields exist below (issue #192). Percentage and
+               Amount are priced; Text and DateTime record a fact. On the two fact kinds the direction,
+               currency, cadence and first-billed date are not hidden-but-kept — they are NOT SENT: the
+               server refuses each one rather than clearing it, so a kind change on edit nulls them
+               here, and the line under the picker says so. *@
+            <OdsFieldShell Label="Kind" Required="true" Class="trm-kind-seg">
+                <ChildContent>
+                    <OdsSegmentedControl Value="@_unit.ToString()" ValueChanged="OnUnitChanged"
+                                         Options="_unitOptions" AriaLabel="Kind" Full="true" />
+                </ChildContent>
+            </OdsFieldShell>
+            @if (KindSwitchNote is { } switchNote)
+            {
+                <div class="trm-kind-switch" role="status">@switchNote</div>
+            }
 
-                @* A percentage has no currency, so it stays on OdsAmountField with a "%" suffix; a
-                   flat amount is money, and money carries its code inside the control. *@
-                @if (IsPercentage)
+            <div class="trm-value-block">
+                @if (IsText)
                 {
-                    @* The caption is the "Value" heading above, beside the unit toggle — not a label
-                       element — so the input carries its own accessible name. *@
-                    @* A percentage term carries the same direction lead as an amount, so the two
-                       units are one control with one unit swapped rather than two
-                       differently-shaped questions. *@
-                    @* No minus: the lead carries which way the money moves, so a typed minus would be
-                       a second and contradictory encoding of the same fact — the defect this feature
-                       exists to prevent. Note the consequence on EDIT: a pre-existing negative
-                       percentage (a term moved from an account by issue #190 can carry one) loses its
-                       minus on the next keystroke. That is a nudge toward the
-                       invariant rather than away from it, and the server still accepts the stored
-                       value untouched if nothing is typed. *@
-                    <OdsAmountField Size="lg" Required="true" AllowNegative="false" Suffix="%"
-                                    Value="@_valueStr" ValueChanged="OnValueChanged"
-                                    Direction="@DirectionValue"
-                                    DirectionChanged="OnDirectionChanged"
-                                    DirectionOptions="DirectionLead"
-                                    AriaLabel="Value"
-                                    Error="@(_errors.TryGetValue("value", out var pctErr) ? pctErr : null)">
-                        <HelpContent>
-                            <text><b>@DirectionInfo.Label</b> — @DirectionInfo.Sentence. Click <b>@DirectionInfo.Short</b> to switch. </text>
-                            <text>Stored as a fraction: <b>@PreviewFraction</b>@CadenceValueHint</text>
-                        </HelpContent>
-                    </OdsAmountField>
+                    @* One plain line, counted AFTER the trim — the same count the server applies — so the
+                       counter never says "fits" about a value the server would refuse. Tabs, line
+                       breaks and bidi marks are refused inline, and no message repeats the text. *@
+                    var textError = TextError;
+                    <OdsFieldShell Label="Text" HtmlFor="trm-text" Required="true" Error="@textError"
+                                   Help="@(textError is null ? "One line of plain text, as the contract words it." : null)">
+                        <Aside>
+                            <span class="@($"trm-text-count{(TrimmedTextLength > TermTextValue.MaxLength ? " over" : "")}")"
+                                  aria-hidden="true">@TrimmedTextLength / @TermTextValue.MaxLength</span>
+                        </Aside>
+                        <ChildContent>
+                            <input id="trm-text" class="odc-input" type="text"
+                                   value="@_textValue"
+                                   placeholder="e.g. 3 months, to the end of a month"
+                                   aria-required="true"
+                                   aria-invalid="@(textError is null ? null : "true")"
+                                   aria-describedby="trm-text-help"
+                                   @oninput="OnTextChanged" />
+                        </ChildContent>
+                    </OdsFieldShell>
+                }
+                else if (IsDateTime)
+                {
+                    @* The pickers read in the VIEWER's time zone; the offset in force at that instant is
+                       stated, and so is the UTC value the entry will be saved as. The request always
+                       carries a UTC instant, so the server's no-offset refusal cannot trigger. *@
+                    <OdsFormRow Cols="2">
+                        <OdsDatePicker Value="_dtDate" ValueChanged="OnDateTimeDateChanged"
+                                       Label="Date" Required="true"
+                                       HelperText="@DateTimeHelp"
+                                       Error="@_errors.ContainsKey("dateTimeDate")"
+                                       ErrorText="@(_errors.TryGetValue("dateTimeDate", out var dateErr) ? dateErr : null)" />
+                        <OdsTimeField Value="_dtTime" ValueChanged="OnDateTimeTimeChanged"
+                                      Label="Time" Required="true" Help="24-hour, in your time zone"
+                                      Error="@(_errors.TryGetValue("dateTimeTime", out var timeErr) ? timeErr : null)" />
+                    </OdsFormRow>
                 }
                 else
                 {
-                    @* No SIGN affordance: a fee amount can't be negative (this dialog rejects it, and
-                       so does the service), so a −/+ toggle would offer a state the form always
-                       refuses. What the lead carries instead on a contract fee is the DIRECTION
-                       (issue #159) — a different fact in the same slot, and the reason the amount can
-                       stay positive while still saying which way the money moves. *@
-                    @* An owner with a currency of its own lends it; a contract has none, so the
-                       picker opens unset with a placeholder, the helper says WHY, and submitting
-                       without an answer is refused inline. A silently-assigned currency would be
-                       indistinguishable from a chosen one on the next read. *@
-                    <OdsMoneyField Size="lg" Required="true" AllowNegative="false"
-                                   Value="@_valueStr" ValueChanged="OnValueChanged"
-                                   Direction="@DirectionValue"
-                                   DirectionChanged="OnDirectionChanged"
-                                   DirectionOptions="DirectionLead"
-                                   Currency="@_currency" CurrencyChanged="OnCurrencyChanged"
-                                   CurrencyOptions="_currencyOptions" CurrencySearchThreshold="0"
-                                   CurrencyPlaceholder="@CurrencyPlaceholder"
-                                   AriaLabel="Value"
-                                   Error="@MoneyError">
-                        <HelpContent>
-                            @if (string.IsNullOrEmpty(_currency))
-                            {
-                                <text>A contract has no currency of its own — <b>pick one</b> for this amount.</text>
-                                <text> The word on the left says which way the money moves.</text>
-                            }
-                            else
-                            {
-                                @* The amount stays POSITIVE either way — the direction carries the
-                                   sign, and a negative would make the sign mean two different things
-                                   depending on who typed it. *@
-                                <text><b>@DirectionInfo.Label</b> — @DirectionInfo.Sentence. Flat amount in <b>@_currency</b>@CadenceValueHint Click <b>@DirectionInfo.Short</b> to switch@(IsEdit ? " — a correction supersedes the entry, it never forks the history" : "").</text>
-                            }
-                        </HelpContent>
-                    </OdsMoneyField>
+                    <div class="trm-field-head">
+                        <div class="trm-label" style="margin-bottom:0;">Value<span class="odc-field-req" aria-hidden="true">*</span></div>
+                    </div>
+                    @* A percentage has no currency, so it stays on OdsAmountField with a "%" suffix; a
+                       flat amount is money, and money carries its code inside the control. *@
+                    @if (IsPercentage)
+                    {
+                        @* The caption is the "Value" heading above — not a label
+                           element — so the input carries its own accessible name. *@
+                        @* A percentage term carries the same direction lead as an amount, so the two
+                           units are one control with one unit swapped rather than two
+                           differently-shaped questions. *@
+                        @* No minus: the lead carries which way the money moves, so a typed minus would be
+                           a second and contradictory encoding of the same fact — the defect this feature
+                           exists to prevent. Note the consequence on EDIT: a pre-existing negative
+                           percentage (a term moved from an account by issue #190 can carry one) loses its
+                           minus on the next keystroke. That is a nudge toward the
+                           invariant rather than away from it, and the server still accepts the stored
+                           value untouched if nothing is typed. *@
+                        <OdsAmountField Size="lg" Required="true" AllowNegative="false" Suffix="%"
+                                        Value="@_valueStr" ValueChanged="OnValueChanged"
+                                        Direction="@DirectionValue"
+                                        DirectionChanged="OnDirectionChanged"
+                                        DirectionOptions="DirectionLead"
+                                        AriaLabel="Value"
+                                        Error="@(_errors.TryGetValue("value", out var pctErr) ? pctErr : null)">
+                            <HelpContent>
+                                <text><b>@DirectionInfo.Label</b> — @DirectionInfo.Sentence. Click <b>@DirectionInfo.Short</b> to switch. </text>
+                                <text>Stored as a fraction: <b>@PreviewFraction</b>@CadenceValueHint</text>
+                            </HelpContent>
+                        </OdsAmountField>
+                    }
+                    else
+                    {
+                        @* No SIGN affordance: a fee amount can't be negative (this dialog rejects it, and
+                           so does the service), so a −/+ toggle would offer a state the form always
+                           refuses. What the lead carries instead on a contract fee is the DIRECTION
+                           (issue #159) — a different fact in the same slot, and the reason the amount can
+                           stay positive while still saying which way the money moves. *@
+                        @* An owner with a currency of its own lends it; a contract has none, so the
+                           picker opens unset with a placeholder, the helper says WHY, and submitting
+                           without an answer is refused inline. A silently-assigned currency would be
+                           indistinguishable from a chosen one on the next read. *@
+                        <OdsMoneyField Size="lg" Required="true" AllowNegative="false"
+                                       Value="@_valueStr" ValueChanged="OnValueChanged"
+                                       Direction="@DirectionValue"
+                                       DirectionChanged="OnDirectionChanged"
+                                       DirectionOptions="DirectionLead"
+                                       Currency="@_currency" CurrencyChanged="OnCurrencyChanged"
+                                       CurrencyOptions="_currencyOptions" CurrencySearchThreshold="0"
+                                       CurrencyPlaceholder="@CurrencyPlaceholder"
+                                       AriaLabel="Value"
+                                       Error="@MoneyError">
+                            <HelpContent>
+                                @if (string.IsNullOrEmpty(_currency))
+                                {
+                                    <text>A contract has no currency of its own — <b>pick one</b> for this amount.</text>
+                                    <text> The word on the left says which way the money moves.</text>
+                                }
+                                else
+                                {
+                                    @* The amount stays POSITIVE either way — the direction carries the
+                                       sign, and a negative would make the sign mean two different things
+                                       depending on who typed it. *@
+                                    <text><b>@DirectionInfo.Label</b> — @DirectionInfo.Sentence. Flat amount in <b>@_currency</b>@CadenceValueHint Click <b>@DirectionInfo.Short</b> to switch@(IsEdit ? " — a correction supersedes the entry, it never forks the history" : "").</text>
+                                }
+                            </HelpContent>
+                        </OdsMoneyField>
+                    }
                 }
             </div>
+
+            @if (!IsNumeric)
+            {
+                <div class="trm-na-note">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>@(IsText ? "A text term" : "A date-time term") records a fact, not a charge. It has no direction, currency or cadence, and it doesn’t count toward the contract’s run rate.</span>
+                </div>
+            }
 
             @* Effective date — the currency lives inside the money field (amount mode); a percentage
                has no currency, so nothing about it is shown here. *@
@@ -152,40 +212,43 @@
                it has no meaning, and the request writes null. Beneath them, the anchor date: when the
                term is first actually charged, which is a different fact from when its price took
                effect. *@
-            <div class="trm-cadence">
-                <OdsFormRow Cols="@(IsPeriodicInterval ? 2 : 1)">
-                    @* The unit carries its own label, and the non-periodic branch's guidance
-                       rides its Help slot rather than a loose sibling — MudSelect wires that
-                       into aria-describedby, which a bare <div> beside the control is not. *@
-                    <OdsSelect Label="Interval" Help="@IntervalHelp"
-                               Value="@_interval" ValueChanged="OnIntervalChanged" Options="_intervalOptions" />
-                    @if (IsPeriodicInterval)
+            @if (IsNumeric)
+            {
+                <div class="trm-cadence">
+                    <OdsFormRow Cols="@(IsPeriodicInterval ? 2 : 1)">
+                        @* The unit carries its own label, and the non-periodic branch's guidance
+                           rides its Help slot rather than a loose sibling — MudSelect wires that
+                           into aria-describedby, which a bare <div> beside the control is not. *@
+                        <OdsSelect Label="Interval" Help="@IntervalHelp"
+                                   Value="@_interval" ValueChanged="OnIntervalChanged" Options="_intervalOptions" />
+                        @if (IsPeriodicInterval)
+                        {
+                            @* The echo below is named here, not left beside the field: it is what the
+                               typed count MEANS, so a screen-reader user landing on this control has
+                               to receive it the same way a sighted one sees it appear (WCAG 1.3.1).
+                               AriaDescribedBy appends to the field's own help and unit ids. *@
+                            <OdsNumberField Label="Every"
+                                            Min="TermIntervalCount.Min" Max="TermIntervalCount.Max" Step="1"
+                                            Unit="@IntervalUnitNoun" Placeholder="1"
+                                            Value="_intervalCount" ValueChanged="OnIntervalCountChanged"
+                                            Help="@IntervalCountHelp"
+                                            AriaDescribedBy="@(ShowsCadenceEcho ? CadenceEchoId : null)"
+                                            Error="@(_errors.TryGetValue("intervalCount", out var countErr) ? countErr : null)" />
+                        }
+                    </OdsFormRow>
+
+                    @* The cadence echoed in words, from the one helper every surface reads — so what
+                       the dialog promises and what the tile later shows cannot diverge. *@
+                    @if (ShowsCadenceEcho)
                     {
-                        @* The echo below is named here, not left beside the field: it is what the
-                           typed count MEANS, so a screen-reader user landing on this control has
-                           to receive it the same way a sighted one sees it appear (WCAG 1.3.1).
-                           AriaDescribedBy appends to the field's own help and unit ids. *@
-                        <OdsNumberField Label="Every"
-                                        Min="TermIntervalCount.Min" Max="TermIntervalCount.Max" Step="1"
-                                        Unit="@IntervalUnitNoun" Placeholder="1"
-                                        Value="_intervalCount" ValueChanged="OnIntervalCountChanged"
-                                        Help="@IntervalCountHelp"
-                                        AriaDescribedBy="@(ShowsCadenceEcho ? CadenceEchoId : null)"
-                                        Error="@(_errors.TryGetValue("intervalCount", out var countErr) ? countErr : null)" />
+                        <div class="trm-cadence-echo" id="@CadenceEchoId">Applies @CadenceEcho.</div>
                     }
-                </OdsFormRow>
 
-                @* The cadence echoed in words, from the one helper every surface reads — so what
-                   the dialog promises and what the tile later shows cannot diverge. *@
-                @if (ShowsCadenceEcho)
-                {
-                    <div class="trm-cadence-echo" id="@CadenceEchoId">Applies @CadenceEcho.</div>
-                }
-
-                <OdsDatePicker Value="_anchorDate" ValueChanged="OnAnchorDateChanged"
-                               Label="First billed on" Clearable="true"
-                               HelperText="When this is first actually charged, if that isn’t the effective date" />
-            </div>
+                    <OdsDatePicker Value="_anchorDate" ValueChanged="OnAnchorDateChanged"
+                                   Label="First billed on" Clearable="true"
+                                   HelperText="When this is first actually charged, if that isn’t the effective date" />
+                </div>
+            }
 
             @* Note *@
             <OdsNoteField Label="Note" MaxLength="512"
@@ -207,6 +270,6 @@
     private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit term" : "New term")</text>;
 
     private RenderFragment SubtitleFragment => IsEdit
-        ? @<text>Correct this entry in the contract’s price history.</text>
-        : @<text>Record what @OwnerName costs, effective from a date.</text>;
+        ? @<text>Correct this entry in the contract’s term history.</text>
+        : @<text>Record a price, a rate or a fact of @OwnerName, effective from a date.</text>;
 }

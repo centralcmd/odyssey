@@ -684,7 +684,51 @@ public static class ContractGenerator
             });
         }
 
+        terms.AddRange(BuildNonNumericTerms(startById));
+
         return terms;
+    }
+
+    /// <summary>
+    /// The lease's two non-numeric terms (issue #192): a <see cref="TermValueUnit.Text"/> notice
+    /// period and a <see cref="TermValueUnit.DateTime"/> break deadline, so the E2E tier and the client
+    /// have real rows of both kinds. Neither carries a direction other than <c>Outgoing</c>, a currency,
+    /// a cadence or an anchor — the shape <c>TermService</c> enforces on write — and neither reaches the
+    /// roll-up.
+    /// </summary>
+    private static IEnumerable<Term> BuildNonNumericTerms(IReadOnlyDictionary<Guid, DateTime> startById)
+    {
+        const string lease = "Apartment Lease";
+        var contractId = IdFor(lease);
+        var effectiveFrom = startById[contractId];
+
+        yield return new Term
+        {
+            TermId = TermIdFor(lease, "Notice period", effectiveFrom),
+            ContractId = contractId,
+            Label = "Notice period",
+            LabelKey = TermLabel.Key("Notice period"),
+            ValueUnit = TermValueUnit.Text,
+            Direction = TermDirection.Outgoing,
+            TextValue = "2 months, to the end of a rental period",
+            EffectiveFrom = effectiveFrom,
+            Note = "Clause 14.2.",
+            CreatedAtUtc = effectiveFrom,
+        };
+
+        yield return new Term
+        {
+            TermId = TermIdFor(lease, "Break notice deadline", effectiveFrom),
+            ContractId = contractId,
+            Label = "Break notice deadline",
+            LabelKey = TermLabel.Key("Break notice deadline"),
+            ValueUnit = TermValueUnit.DateTime,
+            Direction = TermDirection.Outgoing,
+            DateTimeValue = DateTime.SpecifyKind(effectiveFrom.Date.AddMonths(14).AddHours(17), DateTimeKind.Utc),
+            EffectiveFrom = effectiveFrom,
+            Note = "Written notice must reach the agent by then.",
+            CreatedAtUtc = effectiveFrom,
+        };
     }
 
     /// <summary>
@@ -724,7 +768,7 @@ public static class ContractGenerator
                 "Pets permitted by amendment",
                 "One cat. An extra deposit was agreed.",
                 null, -3, AuthorRole: null),
-            new("Apartment Lease", ContractEventType.PriceChanged,
+            new("Apartment Lease", ContractEventType.TermChanged,
                 "Rent renegotiated",
                 "Agreed by phone with the letting agent, then confirmed in writing.",
                 "Check last year's letter before the next review.", -2),

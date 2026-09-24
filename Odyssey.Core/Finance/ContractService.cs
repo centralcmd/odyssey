@@ -380,11 +380,12 @@ public class ContractService
         var byId = contracts.ToDictionary(c => c.ContractId);
         var ids = byId.Keys.ToList();
 
+        // Every kind is a candidate, not just Amount: the in-force entry of each series is resolved
+        // FIRST and only then filtered to Amount (issue #192 §8). Filtering in SQL would let a series
+        // whose amount was superseded by a Text or Percentage entry keep contributing that amount.
         var candidates = await context.Terms
             .AsNoTracking()
-            .Where(t => ids.Contains(t.ContractId)
-                && t.ValueUnit == ContextTermValueUnit.Amount
-                && t.EffectiveFrom <= today)
+            .Where(t => ids.Contains(t.ContractId) && t.EffectiveFrom <= today)
             .ToListAsync(cancellationToken);
 
         var priced = new List<PricedTerm>();
@@ -392,6 +393,11 @@ public class ContractService
         {
             foreach (var term in TermSeries.Current(group))
             {
+                if (term.ValueUnit != ContextTermValueUnit.Amount || term.Value is not { } amount)
+                {
+                    continue;
+                }
+
                 // A fee with no cadence names an occasion (OneTime, PerOccurrence, PerUnit) rather than
                 // a rhythm, so it carries neither a rate to project nor a next occurrence to predict.
                 if (term.Interval is not { } interval || !interval.IsPeriodic())
@@ -400,7 +406,7 @@ public class ContractService
                 }
 
                 priced.Add(new PricedTerm(
-                    byId[group.Key], term.Label, term.Value,
+                    byId[group.Key], term.Label, amount,
                     CurrencyValidationService.Normalize(term.CurrencyCode ?? string.Empty),
                     interval, Math.Max(1, term.IntervalCount ?? 1),
                     (term.AnchorDate ?? term.EffectiveFrom).Date,

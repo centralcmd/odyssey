@@ -309,6 +309,56 @@ public class DataExportApiTests
         Assert.Equal("atm · abroad", fee.GetProperty("labelKey").GetString());
     }
 
+    /// <summary>
+    /// Issue #192 AC 14 / 19 — the hand-written <c>TermsQuery()</c> projection carries the two new
+    /// value columns. It builds <c>TermExport</c> without Mapster, so a column it misses silently never
+    /// reaches the export; a Text row and a DateTime row are each asserted to carry their value, and
+    /// the numeric <c>value</c> to be null beside them.
+    /// </summary>
+    [Fact]
+    public async Task Export_Terms_CarryTextAndDateTimeValues()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        var instant = new DateTime(2027, 3, 31, 10, 0, 0, DateTimeKind.Utc);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var contractId = await context.Contracts.Select(c => c.ContractId).FirstAsync();
+            context.Terms.AddRange(
+                new Term
+                {
+                    TermId = Guid.NewGuid(), ContractId = contractId, Label = "Notice period", LabelKey = "notice period",
+                    ValueUnit = TermValueUnit.Text, TextValue = "3 months, to the end of a month",
+                    EffectiveFrom = DateTime.UtcNow, CreatedAtUtc = DateTime.UtcNow,
+                },
+                new Term
+                {
+                    TermId = Guid.NewGuid(), ContractId = contractId, Label = "Break deadline", LabelKey = "break deadline",
+                    ValueUnit = TermValueUnit.DateTime, DateTimeValue = instant,
+                    EffectiveFrom = DateTime.UtcNow, CreatedAtUtc = DateTime.UtcNow,
+                });
+            await context.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+        using var document = await GetExportDocumentAsync(client);
+        var terms = document.RootElement.GetProperty("databases").GetProperty("finance").GetProperty("terms")
+            .EnumerateArray().ToList();
+
+        var text = terms.Single(t => t.GetProperty("label").GetString() == "Notice period");
+        Assert.Equal((int)TermValueUnit.Text, text.GetProperty("valueUnit").GetInt32());
+        Assert.Equal("3 months, to the end of a month", text.GetProperty("textValue").GetString());
+        Assert.Equal(JsonValueKind.Null, text.GetProperty("value").ValueKind);
+        Assert.Equal(JsonValueKind.Null, text.GetProperty("dateTimeValue").ValueKind);
+
+        var dateTime = terms.Single(t => t.GetProperty("label").GetString() == "Break deadline");
+        Assert.Equal((int)TermValueUnit.DateTime, dateTime.GetProperty("valueUnit").GetInt32());
+        Assert.Equal(instant, dateTime.GetProperty("dateTimeValue").GetDateTime().ToUniversalTime());
+        Assert.Equal(JsonValueKind.Null, dateTime.GetProperty("value").ValueKind);
+        Assert.Equal(JsonValueKind.Null, dateTime.GetProperty("textValue").ValueKind);
+    }
+
     private static async Task AddLabelledFeeAsync(
         WebApplicationFactory<Program> factory, string label, string labelKey)
     {

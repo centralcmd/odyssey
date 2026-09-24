@@ -43,7 +43,7 @@
     }
     else if (_terms.Count == 0)
     {
-        <OdsEmptyLine>No terms yet — record what this agreement costs: a rent, a service fee, an interest rate. Each keeps its own dated history.</OdsEmptyLine>
+        <OdsEmptyLine>No terms yet — record what this agreement costs, like a rent or an interest rate, and the facts it fixes, like a notice period or a deadline. Each keeps its own dated history.</OdsEmptyLine>
     }
     else if (_current.Count == 0)
     {
@@ -57,6 +57,32 @@
             {
                 var term = t;
                 var info = TermVisuals.Info(term);
+                if (!TermVisuals.IsNumeric(term))
+                {
+                    @* Text and DateTime (issue #192): the fact itself, in the fact ink. No direction and
+                       no cadence — the kind's own glyph says what it is. A long text takes the full
+                       row; a date-time names its UTC instant as the tooltip, and its foot adds how far
+                       away it is. *@
+                    var isText = term.ValueUnit == TermValueUnit.Text;
+                    var isDateTime = term.ValueUnit == TermValueUnit.DateTime;
+                    <OdsInfoTile @key="term.TermId"
+                                 Class="@(isText ? "trm-text-tile" : "trm-dt-tile")"
+                                 Wide="@(isText && (term.TextValue?.Length ?? 0) > WideTextThreshold)"
+                                 Icon="@info.Icon" IconColor="@info.Color" IconSoft="@info.Soft"
+                                 ValueVariant="@(isDateTime ? OdsInfoTileVariant.Sm : OdsInfoTileVariant.Text)"
+                                 Label="@TermVisuals.DisplayName(term)"
+                                 Foot="@OdsInfoTile.Caption(FactTileFoot(term))">
+                        <Value>
+                            <span title="@(isDateTime ? TermVisuals.UtcStamp(term.DateTimeValue) : null)">@TermVisuals.FormatValue(term, FormatMoney)</span>
+                            @if (isDateTime)
+                            {
+                                @* The tooltip is mouse-only; the same instant is spoken for a screen reader. *@
+                                <span class="sr-only">@($" ({TermVisuals.UtcStamp(term.DateTimeValue)})")</span>
+                            }
+                        </Value>
+                    </OdsInfoTile>
+                    continue;
+                }
                 @* The cadence is what separates a 2,150 monthly rent from a 2,150 one-off, so it
                    rides in the foot beside the date. From the one helper every surface reads. *@
                 var cadence = TermVisuals.CadenceText(term);
@@ -90,7 +116,11 @@
 {
     <div class="con-section">
         <OdsSectionDivider Label="Term history" Meta="@($"{_terms.Count} {(_terms.Count == 1 ? "entry" : "entries")}")" />
-        <OdsTermHistoryChart Class="trm-seriesplot" Series="_chartSeries" />
+        @* Only priced series plot; a contract whose in-force terms are all facts has no chart. *@
+        @if (_chartSeries.Count > 0)
+        {
+            <OdsTermHistoryChart Class="trm-seriesplot" Series="_chartSeries" />
+        }
         <div class="con-tbl-frame">
             <TermHistoryTable Terms="_terms"
                               CurrentIds="_currentIds"

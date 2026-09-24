@@ -16,7 +16,19 @@ public sealed record CurrentTerm
     /// <summary>Which way the money moves, from the household's perspective (issue #159).</summary>
     public TermDirection Direction { get; set; }
 
-    public decimal Value { get; set; }
+    /// <summary>
+    /// The numeric value of a <c>Percentage</c> or <c>Amount</c> term; null on a <c>Text</c> or
+    /// <c>DateTime</c> term (issue #192). Exactly one of this, <see cref="TextValue"/> and
+    /// <see cref="DateTimeValue"/> is set, and it is the one <see cref="ValueUnit"/> names.
+    /// </summary>
+    public decimal? Value { get; set; }
+
+    /// <summary>A <c>Text</c> term's value, trimmed; null on every other kind.</summary>
+    [StringLength(TermTextValue.MaxLength)]
+    public string? TextValue { get; set; }
+
+    /// <summary>A <c>DateTime</c> term's value, in UTC; null on every other kind.</summary>
+    public DateTime? DateTimeValue { get; set; }
 
     [StringLength(3)]
     public string? CurrencyCode { get; set; }

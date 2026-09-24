@@ -382,7 +382,7 @@ public static class OdsTypeRegistries
         new() { Key = "Extended",     Label = "Extended",            Icon = "more_time",          Color = "oklch(0.78 0.14 145)", Soft = "oklch(0.78 0.14 145 / 0.16)" },
         new() { Key = "NoticeGiven",  Label = "Notice given",        Icon = "campaign",           Color = "oklch(0.79 0.14 60)",  Soft = "oklch(0.79 0.14 60 / 0.16)" },
         new() { Key = "Terminated",   Label = "Terminated",          Icon = "gavel",              Color = "oklch(0.72 0.15 25)",  Soft = "oklch(0.72 0.15 25 / 0.16)" },
-        new() { Key = "PriceChanged", Label = "Price changed",       Icon = "price_change",       Color = "oklch(0.76 0.14 320)", Soft = "oklch(0.76 0.14 320 / 0.16)" },
+        new() { Key = "TermChanged",  Label = "Term changed",        Icon = "price_change",       Color = "oklch(0.76 0.14 320)", Soft = "oklch(0.76 0.14 320 / 0.16)" },
         new() { Key = "EmailSent",    Label = "Email sent",          Icon = "outgoing_mail",      Color = "oklch(0.77 0.14 205)", Soft = "oklch(0.77 0.14 205 / 0.16)" },
         // ── The nine automation members (issue #154), ordinals 9-17 ──────────────
         new() { Key = "Paused",       Label = "Paused",              Icon = "pause_circle",       Color = "oklch(0.79 0.12 70)",  Soft = "oklch(0.79 0.12 70 / 0.16)" },

@@ -32,10 +32,29 @@ public sealed record NewTerm
     [EnumDataType(typeof(TermDirection))]
     public TermDirection Direction { get; set; }
 
-    // The permitted range depends on the unit (a fraction in [-1, 1] for percentages, >= 0 for
-    // amounts), so it cannot be expressed as a single [Range]; the service enforces it.
-    [Required]
-    public decimal Value { get; set; }
+    /// <summary>
+    /// The numeric value: required for <c>Percentage</c> and <c>Amount</c>, and must be null on
+    /// <c>Text</c> and <c>DateTime</c> (issue #192). Not <c>[Required]</c>, because whether it is
+    /// required depends on the unit; the permitted range does too (a fraction in [-1, 1] for
+    /// percentages, >= 0 for amounts). The service enforces both.
+    /// </summary>
+    public decimal? Value { get; set; }
+
+    /// <summary>
+    /// A <c>Text</c> term's value: one plain line, required on <c>Text</c> and null on every other
+    /// kind. Trimmed server-side; the length bound is counted after the trim, and control and bidi
+    /// characters are refused (<see cref="TermTextValue"/>).
+    /// </summary>
+    [StringLength(TermTextValue.MaxLength)]
+    public string? TextValue { get; set; }
+
+    /// <summary>
+    /// A <c>DateTime</c> term's value: an instant, required on <c>DateTime</c> and null on every other
+    /// kind. Must carry an offset or <c>Z</c> — a value with neither is refused rather than read as UTC —
+    /// and lie within <see cref="TermDateTimeValue.Min"/>…<see cref="TermDateTimeValue.Max"/>. No
+    /// attribute: the range applies only on one kind, so the service checks it.
+    /// </summary>
+    public DateTime? DateTimeValue { get; set; }
 
     // Required for amounts (defaults to the account currency when omitted), null for percentages.
     [StringLength(3)]

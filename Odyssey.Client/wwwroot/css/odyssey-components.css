@@ -2059,6 +2059,32 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-err { font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-error); }
 .trm-field-head { display: flex; align-items: center; }
 
+/* ---- Non-numeric term values (issue #192 — Text / DateTime) ----
+   No direction hue and no cadence: the kind's glyph carries the hue, and the value takes the
+   neutral orange of the Amount hue as its ink — a per-theme step so it holds text contrast on the
+   light surface as well as the dark one. */
+:root { --trm-fact-ink: oklch(0.50 0.13 55); }
+[data-theme='dark'] { --trm-fact-ink: oklch(0.77 0.14 55); }
+.trm-cell-value.trm-v-text { font-family: var(--font-sans); white-space: normal; text-wrap: pretty; overflow-wrap: anywhere; width: 34ch; color: var(--trm-fact-ink); }
+.trm-cell-value.trm-v-datetime { color: var(--trm-fact-ink); }
+.trm-cell-value.trm-v-unknown { color: var(--mud-palette-text-secondary); }
+.trm-text-tile .odc-infotile-v,
+.trm-dt-tile .odc-infotile-v { white-space: normal; overflow: visible; text-overflow: clip; text-wrap: pretty; overflow-wrap: anywhere; color: var(--trm-fact-ink); }
+.trm-text-tile .odc-infotile-v { font-size: 15px; line-height: 1.35; }
+.odc-infotile.wide.trm-text-tile .odc-infotile-v { font-size: 15px; color: var(--trm-fact-ink); }
+/* Dialog — the kind picker and the non-numeric value controls. */
+.trm-kind-seg .odc-seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+.trm-kind-seg .odc-seg-btn { justify-content: center; white-space: nowrap; }
+.trm-text-count { margin-left: auto; font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); font-variant-numeric: tabular-nums; }
+.trm-text-count.over { color: var(--mud-palette-error); }
+.trm-na-note { display: flex; gap: 8px; align-items: flex-start; font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); padding: 10px 12px; border-radius: 8px; background: var(--mud-palette-action-default-hover); }
+.trm-na-note .material-icons { font-size: 16px; margin-top: 1px; }
+.trm-kind-switch { font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.trm-kind-switch b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.trm-dt-help { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.trm-dt-help b { color: var(--mud-palette-text-primary); font-weight: 500; }
+.trm-dt-utc { font-family: var(--font-mono); color: var(--mud-palette-text-primary); }
+
 /* =============================================================
    Account value estimates — the "Estimates" section inside an
    expanded account record (positioned ABOVE the Rate & fees section),

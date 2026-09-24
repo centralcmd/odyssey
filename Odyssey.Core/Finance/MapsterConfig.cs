@@ -287,16 +287,26 @@ public static class MapsterConfig
         _ => ContextTaxStatementFileType.Other,
     };
 
+    // Exhaustive, and THROWING on anything else (issue #192 §8). A fallback arm here once read
+    // `_ => Percentage`, so an unmapped member would have been persisted — and shown — as a
+    // percentage. There is no safe member to fall back to, and an unknown ordinal cannot be stored
+    // (CK_Terms_ValueMatchesUnit), so reaching the throw means the schema itself was bypassed.
     private static DtoTermValueUnit ConvertContextToDto(ContextTermValueUnit src) => src switch
     {
+        ContextTermValueUnit.Percentage => DtoTermValueUnit.Percentage,
         ContextTermValueUnit.Amount => DtoTermValueUnit.Amount,
-        _ => DtoTermValueUnit.Percentage,
+        ContextTermValueUnit.Text => DtoTermValueUnit.Text,
+        ContextTermValueUnit.DateTime => DtoTermValueUnit.DateTime,
+        _ => throw new ArgumentOutOfRangeException(nameof(src), (int)src, "Unknown term value unit."),
     };
 
     private static ContextTermValueUnit ConvertDtoToContext(DtoTermValueUnit src) => src switch
     {
+        DtoTermValueUnit.Percentage => ContextTermValueUnit.Percentage,
         DtoTermValueUnit.Amount => ContextTermValueUnit.Amount,
-        _ => ContextTermValueUnit.Percentage,
+        DtoTermValueUnit.Text => ContextTermValueUnit.Text,
+        DtoTermValueUnit.DateTime => ContextTermValueUnit.DateTime,
+        _ => throw new ArgumentOutOfRangeException(nameof(src), (int)src, "Unknown term value unit."),
     };
 
     // Exhaustive and explicit, never a blanket Adapt: the context and DTO copies of this cadence enum

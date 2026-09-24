@@ -515,9 +515,9 @@ public class ContractEventAutomationTests
         EffectiveFrom = effectiveFrom,
     };
 
-    /// <summary>AC 15 and AC 17 — one <c>PriceChanged</c> per term verb, each attributed to the caller.</summary>
+    /// <summary>AC 15 and AC 17 — one <c>TermChanged</c> per term verb, each attributed to the caller.</summary>
     [Fact]
-    public async Task EachTermVerb_RecordsOnePriceChangedEventAttributedToTheCaller()
+    public async Task EachTermVerb_RecordsOneTermChangedEventAttributedToTheCaller()
     {
         await using var context = TestContextFactory.Create();
         var created = await Contracts(context).Create(New(), TestUserId);
@@ -527,7 +527,7 @@ public class ContractEventAutomationTests
         var term = await terms.CreateForContract(
             created.ContractId, Rent(14500m, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)), TestUserId);
         var added = SingleSystemEvent(context, created.ContractId);
-        Assert.Equal(EventType.PriceChanged, added.Type);
+        Assert.Equal(EventType.TermChanged, added.Type);
         Assert.Equal("Term added (Monthly rent)", added.Title);
         Assert.Equal("USD 14500 per month effective 1 January 2026.", added.Description);
         Assert.Equal(TestUserId, added.CreatedByUserId);
@@ -668,7 +668,7 @@ public class ContractEventAutomationTests
     /// AC 31 — the three term verbs each emit one line, in the shapes that make the line useful.
     /// </summary>
     /// <remarks>
-    /// The update's "before" half is the load-bearing one: once the resulting <c>PriceChanged</c> event
+    /// The update's "before" half is the load-bearing one: once the resulting <c>TermChanged</c> event
     /// is deleted, this line is the only record of what the term used to say. A line reading
     /// <c>X -&gt; X</c> means <c>OriginalValues</c> was not read from a TRACKED entity and is a
     /// failure, not a pass — so the two halves are asserted to differ. The create's <c>(none)</c> is
