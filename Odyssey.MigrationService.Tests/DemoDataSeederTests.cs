@@ -161,10 +161,14 @@ public class DemoDataSeederTests
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
-        var cardId = TestData.Catalog.Accounts.IdFor(TestData.Catalog.Accounts.TravelRewardsCard);
+        // Since issue #190 the card's terms sit on the Loan contract created for it, named after it.
+        var cardContractId = await context.Contracts
+            .Where(c => c.Name == TestData.Catalog.Accounts.TravelRewardsCard)
+            .Select(c => c.ContractId)
+            .SingleAsync();
         var fees = await context.Terms
             .AsNoTracking()
-            .Where(t => t.AccountId == cardId && t.LabelKey != "interest rate")
+            .Where(t => t.ContractId == cardContractId && t.LabelKey != "interest rate")
             .ToListAsync();
 
         // Every fee is named, and the names are what tell them apart.
@@ -255,7 +259,10 @@ public class DemoDataSeederTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var contracts = await context.Contracts.AsNoTracking().ToListAsync();
 
-        var draft = Assert.Single(contracts, c => c.Ready == null && c.Signed == null);
+        // The specified draft. Issue #190 adds more — the unsigned contracts created for the accounts
+        // whose terms it placed — which are drafts for a different reason and carry no quote.
+        var draft = Assert.Single(contracts, c => c.Ready == null && c.Signed == null
+            && c.Name == "Beacon Home Services — Cleaning");
         var ready = Assert.Single(contracts, c => c.Ready != null && c.Signed == null);
         var signedAndLive = contracts.Where(c => c.Signed != null && c.Archived == null).ToList();
         Assert.NotEmpty(signedAndLive);

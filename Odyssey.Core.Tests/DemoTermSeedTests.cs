@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
+using Odyssey.TestData;
 using Odyssey.TestData.Catalog;
 using Odyssey.TestData.Generators;
 using Xunit;
@@ -11,7 +12,8 @@ using NewTerm = Odyssey.Dtos.Finance.NewTerm;
 namespace Odyssey.Core.Tests;
 
 /// <summary>
-/// The demo term seed is a set <see cref="TermService"/> itself would accept.
+/// The demo term seed is a set <see cref="TermService"/> itself would accept, placed on the contracts
+/// the <c>MoveAccountTermsToContracts</c> migration would choose (issue #190).
 ///
 /// <para>
 /// <c>DemoDataSeeder</c> writes <c>Term</c> entities straight to the context, so it bypasses
@@ -32,22 +34,22 @@ public class DemoTermSeedTests
     [Fact]
     public async Task Every_seeded_term_is_accepted_by_the_write_path()
     {
-        await using var context = await SeededAccountsAsync();
+        await using var context = await SeededContractsAsync();
         var service = new TermService(context);
 
         foreach (var term in TermGenerator.Build())
         {
             // Throws DomainValidationException / DomainConflictException if the seed ever drifts from
-            // what the service permits — eligibility, unit, currency, the label rules, or the series
-            // duplicate guard.
-            await service.Create(term.AccountId!.Value, ToRequest(term));
+            // what the service permits — unit, currency, the label rules, or the series duplicate
+            // guard.
+            await service.CreateForContract(term.ContractId, ToRequest(term), userId: null);
         }
     }
 
     [Fact]
     public async Task The_seed_exercises_a_percentage_term_which_the_service_accepts()
     {
-        await using var context = await SeededAccountsAsync();
+        await using var context = await SeededContractsAsync();
         var service = new TermService(context);
 
         var percentageFees = TermGenerator.Build()
@@ -58,7 +60,7 @@ public class DemoTermSeedTests
 
         foreach (var fee in percentageFees)
         {
-            var created = await service.Create(fee.AccountId!.Value, ToRequest(fee));
+            var created = await service.CreateForContract(fee.ContractId, ToRequest(fee), userId: null);
 
             // A percentage carries no currency, and a term always carries its name.
             Assert.Null(created.CurrencyCode);
@@ -78,7 +80,7 @@ public class DemoTermSeedTests
         var terms = TermGenerator.Build();
 
         var duplicates = terms
-            .GroupBy(t => (t.AccountId, t.LabelKey, t.EffectiveFrom))
+            .GroupBy(t => (t.ContractId, t.LabelKey, t.EffectiveFrom))
             .Where(g => g.Count() > 1)
             .ToList();
 
@@ -88,39 +90,75 @@ public class DemoTermSeedTests
     [Fact]
     public void Every_seeded_term_has_a_distinct_id()
     {
-        // Two terms on one account can share a date, so the label is part of the seed
+        // Two terms on one owner can share a date, so the label is part of the seed
         // key; dropping it would hand both the same deterministic id.
         var terms = TermGenerator.Build();
 
         Assert.Equal(terms.Count, terms.Select(t => t.TermId).Distinct().Count());
     }
 
-    /// <summary>A context holding the demo portfolio, so a term can be written against the account it
-    /// names — the service resolves eligibility and the default currency from it.</summary>
-    private static async Task<OdysseyContext> SeededAccountsAsync()
+    /// <summary>A context holding the demo contracts, so a term can be written against the contract it
+    /// names. Parties are left out: the term service neither reads nor validates them.</summary>
+    private static async Task<OdysseyContext> SeededContractsAsync()
     {
         var context = TestContextFactory.Create();
-
-        var currencies = await context.Currencies.Select(c => c.CurrencyCode).ToListAsync();
-        var missing = Accounts.Build()
-            .Select(a => a.CurrencyCode)
-            .Distinct()
-            .Where(code => !currencies.Contains(code))
-            .Select(code => new Currency { CurrencyCode = code, Name = code, MinorUnits = 2, Symbol = code });
-        context.Currencies.AddRange(missing);
-
-        // The portfolio itself, custodian links dropped: this context holds no contacts, and the term
-        // service neither reads nor validates them.
-        foreach (var account in Accounts.Build())
-        {
-            account.CustodianId = null;
-            context.Accounts.Add(account);
-        }
-
+        context.Contracts.AddRange(ContractGenerator.Build(DemoDataDefaults.AnchorDate).Contracts);
         await context.SaveChangesAsync();
         return context;
     }
 
+    /// <summary>
+    /// Issue #190 AC 21 — the seeded account terms are placed by the migration's own rule: the two
+    /// accounts that already take part in exactly one Deposit/Loan keep their terms on it, and every
+    /// other account with terms gets its own contract of the expected type, left unsigned.
+    /// </summary>
+    [Fact]
+    public void Seeded_account_terms_land_on_the_contract_the_migration_would_choose()
+    {
+        var (contracts, parties, _, _) = ContractGenerator.Build(DemoDataDefaults.AnchorDate);
+        var terms = TermGenerator.Build();
+        var contractFor = (string account) => terms
+            .Where(t => t.TermId.Equals(TermGenerator.IdFor(account, t.EffectiveFrom, t.Label)))
+            .Select(t => t.ContractId)
+            .Distinct()
+            .Single();
+
+        Assert.Equal(ContractGenerator.IdFor("Fixed-term Deposit — 12 Months"), contractFor(Accounts.HighYieldSavings));
+        Assert.Equal(ContractGenerator.IdFor("Car Loan (Volvo XC60) — 60 Month"), contractFor(Accounts.CarLoanVolvo));
+
+        var mortgage = contracts.Single(c => c.ContractId == contractFor(Accounts.HomeMortgage));
+        Assert.Equal((Accounts.HomeMortgage, ContractType.Loan), (mortgage.Name, mortgage.Type));
+        Assert.Equal((null, null), (mortgage.Ready, mortgage.Signed));
+        Assert.Contains(parties, p => p.ContractId == mortgage.ContractId
+                                      && p.AccountId == Accounts.IdFor(Accounts.HomeMortgage)
+                                      && p.Role == ContractPartyRole.Object);
+        Assert.Contains(parties, p => p.ContractId == mortgage.ContractId && p.Role == ContractPartyRole.Lender);
+
+        var emergency = contracts.Single(c => c.ContractId == contractFor(Accounts.EmergencyFund));
+        Assert.Equal(ContractType.Deposit, emergency.Type);
+        Assert.Contains(parties, p => p.ContractId == emergency.ContractId && p.Role == ContractPartyRole.Custodian);
+
+        // Every term belongs to a contract that exists.
+        var ids = contracts.Select(c => c.ContractId).ToHashSet();
+        Assert.All(terms, t => Assert.Contains(t.ContractId, ids));
+    }
+
+    /// <summary>
+    /// On a Deposit a rate or an expected return is money in, while a percentage FEE stays money out —
+    /// the state the migration's A8 flag asks a user to reach, seeded already reached.
+    /// </summary>
+    [Fact]
+    public void Deposit_rates_are_incoming_and_percentage_fees_stay_outgoing()
+    {
+        var terms = TermGenerator.Build();
+
+        Assert.All(terms.Where(t => t.Label is "Interest rate" && t.ContractId == ContractGenerator.IdFor("Fixed-term Deposit — 12 Months")),
+            t => Assert.Equal(TermDirection.Incoming, t.Direction));
+        Assert.All(terms.Where(t => t.Label is "Platform fee" or "Management charge" or "Custody fee"),
+            t => Assert.Equal(TermDirection.Outgoing, t.Direction));
+        Assert.All(terms.Where(t => t.Label == "Expected return"),
+            t => Assert.Equal(TermDirection.Incoming, t.Direction));
+    }
 
     /// <summary>
     /// AC 40 — the seed reaches every state this change introduced, so each is demonstrable on the

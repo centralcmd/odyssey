@@ -44,11 +44,6 @@ public class ContractTermDirectionApiTests
         PermissionClaims.ContractsUpdate,
     ];
 
-    private static readonly string[] AccountTermWrite =
-    [
-        PermissionClaims.AccountsTermsRead, PermissionClaims.AccountsTermsWrite,
-    ];
-
     // ── Write path ───────────────────────────────────────────────────────────
 
     /// <summary>AC 1 / AC 2 — accepted on a fee, and an omitted direction means Outgoing.</summary>
@@ -98,44 +93,6 @@ public class ContractTermDirectionApiTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var created = await response.Content.ReadFromJsonAsync<ExistingTerm>();
         Assert.Equal(TermDirection.Incoming, created!.Direction);
-    }
-
-    /// <summary>
-    /// AC 4 — an account-owned term may not carry a non-default direction, and omitting it still
-    /// succeeds. No account surface READS a direction, so accepting one there would let a user record
-    /// a fact the product then contradicts.
-    /// </summary>
-    [Fact]
-    public async Task Post_OnAnAccountTerm_Refuses_Incoming_AndAcceptsAnOmittedDirection()
-    {
-        await using var factory = await NewFactoryAsync([.. ReadWrite, .. AccountTermWrite]);
-        using var client = factory.CreateClient();
-        var accountId = await SeedAccountAsync(factory);
-
-        var refused = await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
-        {
-            Label = "Interest received",
-            ValueUnit = TermValueUnit.Amount,
-            Value = 12m,
-            Direction = TermDirection.Incoming,
-            Interval = Interval.Monthly,
-            EffectiveFrom = FixedToday.AddDays(-30),
-        });
-        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-        var problem = await refused.Content.ReadFromJsonAsync<ApiProblemBody>();
-        Assert.True(problem!.Errors!.ContainsKey(nameof(NewTerm.Direction)));
-
-        var accepted = await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
-        {
-            Label = "Card fee",
-            ValueUnit = TermValueUnit.Amount,
-            Value = 4m,
-            Interval = Interval.Monthly,
-            EffectiveFrom = FixedToday.AddDays(-30),
-        });
-        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
-        Assert.Equal(TermDirection.Outgoing,
-            (await accepted.Content.ReadFromJsonAsync<ExistingTerm>())!.Direction);
     }
 
     /// <summary>
@@ -299,44 +256,6 @@ public class ContractTermDirectionApiTests
         AssertBothSides(updated.CurrentTerms.Select(t => (t.Label!, t.Direction)));
     }
 
-    /// <summary>
-    /// AC 12 — the embedded account projection carries the field for a principal holding
-    /// <b>accounts.read alone</b>. Two things are pinned here. The gate on
-    /// <c>ExistingAccount.CurrentTerms</c> is <c>accounts.read</c>, not <c>accounts.terms.read</c>,
-    /// which gates only the dedicated term endpoints — the same shared projection therefore sits behind
-    /// two independent claims depending on the route, and a future claim split would change that
-    /// silently. And <c>AccountService.ToCurrentTerm</c> is a HAND-WRITTEN initializer, so a field not
-    /// listed there is dropped without a compiler error; it would still read correctly today only
-    /// because the omitted value and the correct one coincide.
-    /// </summary>
-    [Fact]
-    public async Task AccountCurrentTerms_CarryTheDirection_ForAnAccountsReadHolderAlone()
-    {
-        await using var factory = await NewFactoryAsync([.. AccountTermWrite]);
-        var accountId = await SeedAccountAsync(factory);
-        using (var writer = factory.CreateClient())
-        {
-            (await writer.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
-            {
-                Label = "Card fee",
-                ValueUnit = TermValueUnit.Amount,
-                Value = 4m,
-                Interval = Interval.Monthly,
-                EffectiveFrom = FixedToday.AddDays(-30),
-            })).EnsureSuccessStatusCode();
-        }
-
-        // A SECOND principal against the first's data, which needs the shared store.
-        await using var readerFactory = await NewFactoryAsync([PermissionClaims.AccountsRead], factory);
-        using var reader = readerFactory.CreateClient();
-
-        var account = (await reader.GetFromJsonAsync<ExistingAccount>($"/api/accounts/{accountId}"))!;
-
-        Assert.Equal(TermDirection.Outgoing, Assert.Single(account.CurrentTerms).Direction);
-        Assert.Equal(HttpStatusCode.Forbidden,
-            (await reader.GetAsync($"/api/accounts/{accountId}/terms/current")).StatusCode);
-    }
-
     // ── The conversion half of the roll-up ───────────────────────────────────
 
     /// <summary>
@@ -484,25 +403,6 @@ public class ContractTermDirectionApiTests
         });
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<ExistingContract>())!.ContractId;
-    }
-
-    private static async Task<Guid> SeedAccountAsync(ApiFactory factory)
-    {
-        using var scope = factory.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        await context.Database.EnsureCreatedAsync();
-
-        var account = new Account
-        {
-            Name = "Savings",
-            Description = "Seeded for the account-side direction assertions.",
-            AccountType = ContextAccountType.SavingsAccount,
-            CurrencyCode = "USD",
-            Opened = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        };
-        context.Accounts.Add(account);
-        await context.SaveChangesAsync();
-        return account.AccountId;
     }
 
     private static async Task SeedRateAsync(

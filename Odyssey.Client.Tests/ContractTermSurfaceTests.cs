@@ -46,7 +46,6 @@ public class ContractTermSurfaceTests
     {
         TermId = Guid.NewGuid(),
         ContractId = ContractId,
-        AccountId = null,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -62,7 +61,7 @@ public class ContractTermSurfaceTests
     {
         TermId = Guid.NewGuid(),
         ContractId = ContractId,
-        AccountId = null,
+
         Label = "Interest rate",
         ValueUnit = TermValueUnit.Percentage,
         Value = value,

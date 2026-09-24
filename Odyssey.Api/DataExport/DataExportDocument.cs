@@ -145,16 +145,13 @@ public sealed class AccountExport
 }
 
 /// <summary>
-/// Time-versioned terms (interest rate, expected return, or fee price) — issue #172, widened to two
-/// owners by issue #135. Scalar columns and the two owner relationship columns only, exactly one of
-/// which is populated per row; without both, the export would attribute every contract term to no
-/// owner at all.
+/// Time-versioned terms (interest rate, expected return, or fee price) — issue #172. Scalar columns
+/// and the owning contract only; a term has had no account owner since issue #190.
 /// </summary>
 public sealed class TermExport
 {
     public Guid TermId { get; init; }
-    public Guid? AccountId { get; init; }
-    public Guid? ContractId { get; init; }
+    public Guid ContractId { get; init; }
     public string? Label { get; init; }
     public string? LabelKey { get; init; }
     public TermValueUnit ValueUnit { get; init; }

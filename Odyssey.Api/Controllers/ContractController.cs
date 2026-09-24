@@ -251,12 +251,8 @@ written — re-role those parties or detach them first.")]
     //
     // Gated on the parent contracts.read / contracts.update, NOT on a dedicated claim (issue #135
     // §7.2). That is this controller's own convention rather than a departure from it: parties and
-    // file attach/download are already gated the same way. The account module's separate
-    // accounts.terms.read/.write is the outlier being compared against. Reusing the parent claims
-    // also means no RolePermissions change and therefore no sign-out/sign-in on deploy.
-    //
-    // Route names are distinct from the five account ones (GetTerms / GetCurrentTerms / PostTerm /
-    // PutTerm / DeleteTerm) by construction — a collision is an ambiguous-route startup failure.
+    // file attach/download are already gated the same way. Since issue #190 these five are the only
+    // term API — the account-owned routes and their dedicated claim pair were removed.
 
     [HttpGet("{id}/terms", Name = "GetContractTerms")]
     [Authorize(Policy = PermissionClaims.ContractsRead)]
@@ -302,11 +298,10 @@ written — re-role those parties or detach them first.")]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Create a term (rate/fee) entry on a contract.",
-        Description = @"Fee and InterestRate only; ExpectedReturn prices invested principal, which a
-                        contract does not hold. A money-valued term must name its currency — a contract
-                        has none of its own to default from. 'direction' says which way the money moves
-                        from the household's perspective; it is optional, omitting it means Outgoing,
-                        and Incoming is refused on the two rate kinds.")]
+        Description = @"Every term is a labelled series; 'label' names what it prices. A money-valued
+                        term must name its currency — a contract has none of its own to default from.
+                        'direction' says which way the money moves from the household's perspective;
+                        it is optional, omitting it means Outgoing, and every unit accepts either.")]
     public async Task<IActionResult> PostTerm(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewTerm newTerm, CancellationToken cancellationToken = default)
@@ -319,7 +314,6 @@ written — re-role those parties or detach them first.")]
             id, newTerm, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
         // A term has no standalone GET (it is only ever read through its owner), so the 201 Location
         // points at the contract's term list — the addressable collection that now contains it.
-        // Mirrors the account term endpoint.
         return CreatedAtRoute("GetContractTerms", new { id }, term);
     }
 
@@ -332,8 +326,7 @@ written — re-role those parties or detach them first.")]
     [SwaggerOperation(
         Summary = "Replace a term entry on a contract.",
         Description = @"The owner is not changeable through this endpoint — the route is the only
-                        thing that names it. A term id belonging to an account or to a different
-                        contract is a 404, never a 403 and never a silent success.
+                        thing that names it. A term id belonging to a different contract is a 404, never a 403 and never a silent success.
 
                         This is a FULL replace and 'direction' is not exempt: omitting it resets the
                         term to Outgoing, exactly as omitting 'label', 'currencyCode', 'interval' or

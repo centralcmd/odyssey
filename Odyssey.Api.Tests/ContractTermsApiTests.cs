@@ -26,8 +26,8 @@ namespace Odyssey.Api.Tests;
 /// </summary>
 /// <remarks>
 /// Two things this tier reaches that the unit tier cannot: the claim gates (both reads on
-/// <c>contracts.read</c>, all three writes on <c>contracts.update</c> — and NOT on the account
-/// module's <c>accounts.terms.*</c>), and the application-code delete cascade, which exists precisely
+/// <c>contracts.read</c>, all three writes on <c>contracts.update</c> — the only term claims since
+/// issue #190), and the application-code delete cascade, which exists precisely
 /// because the EF InMemory provider this tier runs on enforces no database cascade.
 /// </remarks>
 public class ContractTermsApiTests
@@ -46,9 +46,9 @@ public class ContractTermsApiTests
     ];
 
     /// <summary>
-    /// Every claim in the vocabulary EXCEPT the two contract ones the endpoints gate on — including
-    /// <c>accounts.terms.read</c>/<c>.write</c>, so a principal that may write account terms is shown
-    /// to have no reach into a contract's.
+    /// Every claim in the vocabulary EXCEPT the two contract ones the endpoints gate on, so a principal
+    /// holding everything else — every account claim included — is shown to have no reach into a
+    /// contract's terms.
     /// </summary>
     private static readonly string[] EverythingButContracts =
         [.. RolePermissions.AllClaims.Where(c =>
@@ -70,7 +70,6 @@ public class ContractTermsApiTests
 
         var created = await response.Content.ReadFromJsonAsync<ExistingTerm>();
         Assert.Equal(contractId, created!.ContractId);
-        Assert.Null(created.AccountId);
         Assert.Equal("Monthly rent", created.Label);
         Assert.Equal("EUR", created.CurrencyCode);
     }
@@ -119,7 +118,6 @@ public class ContractTermsApiTests
         var created = await response.Content.ReadFromJsonAsync<ExistingTerm>();
 
         Assert.Equal(contractId, created!.ContractId);
-        Assert.Null(created.AccountId);
         Assert.NotEqual(forgedTermId, created.TermId);
         // The label is the server's normalization of what was submitted, and the key is derived from
         // it — never the supplied one.
@@ -130,8 +128,7 @@ public class ContractTermsApiTests
         var row = await context.Terms.SingleAsync();
         Assert.Equal("monthly rent", row.LabelKey);
         Assert.NotEqual(new DateTime(1990, 1, 1), row.CreatedAtUtc);
-        // Neither the named account nor the other contract gained anything.
-        Assert.Empty(await context.Terms.Where(t => t.AccountId != null).ToListAsync());
+        // The other contract gained nothing.
         Assert.Empty(await context.Terms.Where(t => t.ContractId == otherContractId).ToListAsync());
     }
 
@@ -152,15 +149,13 @@ public class ContractTermsApiTests
             (await client.PostAsJsonAsync(Terms(contractId), InterestRate(0.0325m, new DateTime(2026, 10, 1)))).StatusCode);
     }
 
-    /// <summary>AC 7 — an amount on a contract must name its currency; on an account it still defaults.</summary>
+    /// <summary>AC 7 — an amount on a contract must name its currency; a contract has none to default.</summary>
     [Fact]
-    public async Task Post_AmountWithoutCurrency_Returns400OnAContractButNotOnAnAccount()
+    public async Task Post_AmountWithoutCurrency_Returns400()
     {
-        await using var factory = await NewFactoryAsync(
-            [.. ReadWrite, PermissionClaims.AccountsTermsWrite, PermissionClaims.AccountsTermsRead]);
+        await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
-        var accountId = await SeedAccountAsync(factory);
 
         var refused = await client.PostAsJsonAsync(Terms(contractId), Rent(14500m, new DateTime(2026, 10, 1), currency: null));
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
@@ -169,17 +164,6 @@ public class ContractTermsApiTests
 
         var accepted = await client.PostAsJsonAsync(Terms(contractId), Rent(14500m, new DateTime(2026, 10, 1)));
         Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
-
-        // The account path is unchanged: no currency in the body, and the account's own is used.
-        var onAccount = await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
-        {
-            Label = "Monthly fee",
-            ValueUnit = TermValueUnit.Amount,
-            Value = 4m,
-            EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        });
-        Assert.Equal(HttpStatusCode.Created, onAccount.StatusCode);
-        Assert.Equal("USD", (await onAccount.Content.ReadFromJsonAsync<ExistingTerm>())!.CurrencyCode);
     }
 
     /// <summary>AC 10 — the duplicate guard is over the folded series key, within this contract.</summary>
@@ -249,29 +233,24 @@ public class ContractTermsApiTests
 
     // ── Reads ────────────────────────────────────────────────────────────────
 
-    /// <summary>AC 2 — newest effective first, and no account terms.</summary>
+    /// <summary>AC 2 — newest effective first, and only this contract's terms.</summary>
     [Fact]
-    public async Task Get_History_IsNewestFirstAndCarriesNoAccountTerms()
+    public async Task Get_History_IsNewestFirstAndCarriesOnlyThisContractsTerms()
     {
-        await using var factory = await NewFactoryAsync([.. ReadWrite, PermissionClaims.AccountsTermsWrite]);
+        await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
-        var accountId = await SeedAccountAsync(factory);
+        var otherContractId = await CreateContractAsync(client, name: "Other");
 
         await PostTermAsync(client, contractId, Rent(14000m, new DateTime(2024, 1, 1)));
         await PostTermAsync(client, contractId, Rent(14500m, new DateTime(2025, 1, 1)));
-        (await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
-        {
-            Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
-            EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        })).EnsureSuccessStatusCode();
+        await PostTermAsync(client, otherContractId, Rent(9000m, new DateTime(2026, 1, 1)));
 
         var history = (await client.GetFromJsonAsync<List<ExistingTerm>>(Terms(contractId)))!;
 
         Assert.Equal(2, history.Count);
         Assert.Equal(new DateTime(2025, 1, 1), history[0].EffectiveFrom);
         Assert.All(history, t => Assert.Equal(contractId, t.ContractId));
-        Assert.All(history, t => Assert.Null(t.AccountId));
     }
 
     /// <summary>AC 3 — one entry per series, the latest on or before today.</summary>
@@ -377,7 +356,6 @@ public class ContractTermsApiTests
         Assert.Equal(term.TermId, reloaded.TermId);
         Assert.Equal(15000m, reloaded.Value);
         Assert.Equal(contractId, reloaded.ContractId);
-        Assert.Null(reloaded.AccountId);
     }
 
     [Fact]
@@ -396,36 +374,24 @@ public class ContractTermsApiTests
     }
 
     /// <summary>
-    /// AC 9 — a term id belonging to an account, or to a different contract, is a 404 and the row is
-    /// untouched. Not a 403 and not a silent success, so the endpoint is no existence oracle across
-    /// owners.
+    /// AC 9 — a term id belonging to a different contract is a 404 and the row is untouched. Not a 403
+    /// and not a silent success, so the endpoint is no existence oracle across contracts.
     /// </summary>
     [Fact]
     public async Task PutAndDelete_WithAForeignTermId_Return404AndChangeNothing()
     {
-        await using var factory = await NewFactoryAsync([.. ReadWrite, PermissionClaims.AccountsTermsWrite, PermissionClaims.AccountsTermsRead]);
+        await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var otherContractId = await CreateContractAsync(client, name: "Other");
-        var accountId = await SeedAccountAsync(factory);
-
-        var accountTerm = await (await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
-        {
-            Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
-            EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        })).Content.ReadFromJsonAsync<ExistingTerm>();
 
         var otherTerm = await PostTermAsync(client, otherContractId, Rent(14500m, new DateTime(2026, 10, 1)));
 
-        foreach (var foreignId in new[] { accountTerm!.TermId, otherTerm.TermId })
-        {
-            Assert.Equal(HttpStatusCode.NotFound,
-                (await client.PutAsJsonAsync($"{Terms(contractId)}/{foreignId}", Rent(99m, new DateTime(2026, 10, 1)))).StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound,
-                (await client.DeleteAsync($"{Terms(contractId)}/{foreignId}")).StatusCode);
-        }
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.PutAsJsonAsync($"{Terms(contractId)}/{otherTerm.TermId}", Rent(99m, new DateTime(2026, 10, 1)))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.DeleteAsync($"{Terms(contractId)}/{otherTerm.TermId}")).StatusCode);
 
-        Assert.Equal(4m, (await client.GetFromJsonAsync<List<ExistingTerm>>($"/api/accounts/{accountId}/terms"))!.Single().Value);
         Assert.Equal(14500m, (await client.GetFromJsonAsync<List<ExistingTerm>>(Terms(otherContractId)))!.Single().Value);
     }
 
@@ -435,22 +401,16 @@ public class ContractTermsApiTests
     /// <c>ContractService.Delete</c> loses its <c>.Include(c =&gt; c.Terms)</c>.
     /// </summary>
     [Fact]
-    public async Task DeleteContract_RemovesItsTermsAndLeavesAccountTermsUntouched()
+    public async Task DeleteContract_RemovesItsTermsAndLeavesOtherContractsTermsUntouched()
     {
-        await using var factory = await NewFactoryAsync([.. ReadWrite, PermissionClaims.AccountsTermsWrite, PermissionClaims.AccountsTermsRead]);
+        await using var factory = await NewFactoryAsync(ReadWrite);
         using var client = factory.CreateClient();
         var contractId = await CreateContractAsync(client);
         var survivingContractId = await CreateContractAsync(client, name: "Survivor");
-        var accountId = await SeedAccountAsync(factory);
 
         await PostTermAsync(client, contractId, Rent(14500m, new DateTime(2026, 10, 1)));
         await PostTermAsync(client, contractId, Rent(450m, new DateTime(2026, 10, 1), label: "Service charge"));
         await PostTermAsync(client, survivingContractId, Rent(9000m, new DateTime(2026, 10, 1)));
-        (await client.PostAsJsonAsync($"/api/accounts/{accountId}/terms", new NewTerm
-        {
-            Label = "Monthly fee", ValueUnit = TermValueUnit.Amount, Value = 4m,
-            EffectiveFrom = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        })).EnsureSuccessStatusCode();
 
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{Path}/{contractId}")).StatusCode);
 
@@ -458,7 +418,6 @@ public class ContractTermsApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         Assert.Empty(await context.Terms.Where(t => t.ContractId == contractId).ToListAsync());
         Assert.Single(await context.Terms.Where(t => t.ContractId == survivingContractId).ToListAsync());
-        Assert.Single(await context.Terms.Where(t => t.AccountId == accountId).ToListAsync());
     }
 
     // ── Authorization (AC 5) ─────────────────────────────────────────────────

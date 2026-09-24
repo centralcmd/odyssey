@@ -25,9 +25,6 @@ public sealed record ExistingAccount
     /// <summary>Number of value-estimate entries recorded for this account (computed server-side).</summary>
     public int EstimateCount { get; set; }
 
-    /// <summary>Number of term (rate/fee) entries recorded for this account (computed server-side).</summary>
-    public int TermCount { get; set; }
-
     /// <summary>Number of smart tags configured on this account (computed server-side).</summary>
     public int SmartTagCount { get; set; }
 
@@ -55,16 +52,6 @@ public sealed record ExistingAccount
 
     /// <summary>When the current estimate took effect — the "in force since" on the card's Current band.</summary>
     public DateTime? CurrentEstimatedValueEffectiveFrom { get; set; }
-
-    /// <summary>
-    /// Every in-force term, one per series, for the record card's "Current" band.
-    ///
-    /// <para>
-    /// It costs no extra query: the enrichment runs one pass over the term composite index for every
-    /// account on the page rather than a per-account follow-up.
-    /// </para>
-    /// </summary>
-    public List<AccountCurrentTerm> CurrentTerms { get; set; } = new();
 
     /// <summary>The raw link to the contact that holds this account (its custodian), or
     /// <c>null</c> when there is no custodian.</summary>

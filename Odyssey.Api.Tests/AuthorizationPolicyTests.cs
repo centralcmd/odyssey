@@ -64,11 +64,12 @@ public class AuthorizationPolicyTests
     /// users and rows. Pins the count so a drive-by rename or deletion has to be deliberate.
     /// 102 before the standalone subscriptions feature was removed, taking its four
     /// <c>subscriptions.*</c> claims with it, and 98 before the standalone insurance-policy feature
-    /// went the same way with its four <c>insurance.*</c> claims.
+    /// went the same way with its four <c>insurance.*</c> claims, and 94 before issue #190 moved
+    /// account terms onto contracts and deleted the account-term read/write claim pair.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(94, DeclaredClaims().Count());
+        Assert.Equal(92, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).

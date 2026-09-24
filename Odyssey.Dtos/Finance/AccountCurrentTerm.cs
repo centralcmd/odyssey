@@ -3,8 +3,9 @@ using System.ComponentModel.DataAnnotations;
 namespace Odyssey.Dtos.Finance;
 
 /// <summary>
-/// One in-force term on an account — the projection the record card's "Current" band renders, and the
-/// only place the full set is exposed on <see cref="ExistingAccount"/>. There is at most one entry per
+/// One in-force term on a contract — the projection the record card's "Current" band renders on
+/// <see cref="ExistingContract"/>. The name predates issue #190, when accounts could own terms too;
+/// it is kept rather than renamed (issue #190 Non-Goal 5). There is at most one entry per
 /// SERIES — its <c>Label</c> — being the term with the latest <c>EffectiveFrom</c> on or
 /// before today, which is what "in force" means for a series that is a run of supersessions.
 /// </summary>
@@ -21,11 +22,8 @@ public sealed record AccountCurrentTerm
     public TermValueUnit ValueUnit { get; set; }
 
     /// <summary>
-    /// Which way the money moves, from the household's perspective (issue #159). This projection is
-    /// shared: it is what <c>ExistingContract.CurrentTerms</c> carries as well as
-    /// <c>ExistingAccount.CurrentTerms</c>, which is why the field belongs here and not on
-    /// <see cref="CurrentTerm"/> alone. On the account side it is constant — an account term may not
-    /// carry a non-default direction — but the contract side is the feature's primary read.
+    /// Which way the money moves, from the household's perspective (issue #159). Carried here because
+    /// <c>ExistingContract.CurrentTerms</c> is the feature's primary read.
     /// </summary>
     public TermDirection Direction { get; set; }
 

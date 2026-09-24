@@ -5,13 +5,13 @@ using Odyssey.Dtos;
 namespace Odyssey.ApiClient.Resources;
 
 /// <summary>
-/// Typed client for the accounts endpoints and their sub-resources — files, transactions, smart tags,
-/// rate/fee terms, and value estimates. Terms, estimates and smart tags live on their own server-side
+/// Typed client for the accounts endpoints and their sub-resources — files, transactions, smart tags
+/// and value estimates. Estimates and smart tags live on their own server-side
 /// controllers but are all routed under <c>api/accounts/{accountId}/…</c>, so they belong here rather
 /// than in clients of their own.
 /// </summary>
 /// <remarks>
-/// Every sub-resource route is built from its parent account id, so a file, term or estimate can never
+/// Every sub-resource route is built from its parent account id, so a file or estimate can never
 /// be addressed by its own id alone — the same scoping the contract client uses.
 /// </remarks>
 public interface IAccountsApiClient
@@ -129,16 +129,6 @@ public interface IAccountsApiClient
     Task<ApiResult> AddSmartTagAsync(Guid accountId, Guid tagId, CancellationToken ct = default);
 
     Task<ApiResult> RemoveSmartTagAsync(Guid accountId, Guid tagId, CancellationToken ct = default);
-
-    // ── Terms (rate & fees) ──────────────────────────────────────────────────
-
-    Task<ApiResult<List<ExistingTerm>>> ListTermsAsync(Guid accountId, CancellationToken ct = default);
-
-    Task<ApiResult> AddTermAsync(Guid accountId, NewTerm term, CancellationToken ct = default);
-
-    Task<ApiResult> UpdateTermAsync(Guid accountId, Guid termId, NewTerm term, CancellationToken ct = default);
-
-    Task<ApiResult> DeleteTermAsync(Guid accountId, Guid termId, CancellationToken ct = default);
 
     // ── Estimates ────────────────────────────────────────────────────────────
 
@@ -287,20 +277,6 @@ public sealed class AccountsApiClient(IOdysseyApi api) : IAccountsApiClient
     public Task<ApiResult> RemoveSmartTagAsync(Guid accountId, Guid tagId, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{SmartTags(accountId)}/{tagId}", null, ct);
 
-    // ── Terms ────────────────────────────────────────────────────────────────
-
-    public Task<ApiResult<List<ExistingTerm>>> ListTermsAsync(Guid accountId, CancellationToken ct = default) =>
-        api.GetAsync<List<ExistingTerm>>(Terms(accountId), ct);
-
-    public Task<ApiResult> AddTermAsync(Guid accountId, NewTerm term, CancellationToken ct = default) =>
-        api.SendAsync(HttpMethod.Post, Terms(accountId), term, ct);
-
-    public Task<ApiResult> UpdateTermAsync(Guid accountId, Guid termId, NewTerm term, CancellationToken ct = default) =>
-        api.SendAsync(HttpMethod.Put, $"{Terms(accountId)}/{termId}", term, ct);
-
-    public Task<ApiResult> DeleteTermAsync(Guid accountId, Guid termId, CancellationToken ct = default) =>
-        api.SendAsync(HttpMethod.Delete, $"{Terms(accountId)}/{termId}", null, ct);
-
     // ── Estimates ────────────────────────────────────────────────────────────
 
     public Task<ApiResult<List<ExistingAccountEstimate>>> ListEstimatesAsync(Guid accountId, CancellationToken ct = default) =>
@@ -326,6 +302,5 @@ public sealed class AccountsApiClient(IOdysseyApi api) : IAccountsApiClient
 
     private static string Files(Guid accountId) => $"{Base}/{accountId}/files";
     private static string SmartTags(Guid accountId) => $"{Base}/{accountId}/smart-tags";
-    private static string Terms(Guid accountId) => $"{Base}/{accountId}/terms";
     private static string Estimates(Guid accountId) => $"{Base}/{accountId}/estimates";
 }

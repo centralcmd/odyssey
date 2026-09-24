@@ -7,14 +7,10 @@ public sealed record ExistingTerm
     public required Guid TermId { get; set; }
 
     /// <summary>
-    /// The owning account, or null when this term belongs to a contract (issue #135). Exactly one of
-    /// this and <see cref="ContractId"/> is populated — the owner is taken from the route and is on no
+    /// The owning contract — the only owner a term has since issue #190. Taken from the route and on no
     /// request DTO, so it is not forgeable from a body.
     /// </summary>
-    public Guid? AccountId { get; set; }
-
-    /// <summary>The owning contract, or null when this term belongs to an account (issue #135).</summary>
-    public Guid? ContractId { get; set; }
+    public Guid ContractId { get; set; }
 
     /// <summary>The series name, as the user wrote it.</summary>
     [StringLength(TermLabel.MaxLength)]

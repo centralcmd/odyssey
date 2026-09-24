@@ -142,59 +142,28 @@ public static class TermVisuals
     // ---- Direction (issue #159) -------------------------------------------------------------
 
     /// <summary>
-    /// Whether direction MEANS something here: a term owned by a CONTRACT. An account term has no
-    /// surface that reads a direction — the server refuses <see cref="TermDirection.Incoming"/> there
-    /// with a <c>400</c>, so it is not offered one.
-    /// </summary>
-    /// <remarks>
-    /// ONE predicate, so the dialog's control, the read surfaces and the refusal copy can never
-    /// disagree about where a direction is a fact and where it is noise.
-    /// </remarks>
-    public static bool DirectionApplies(bool isContractOwned) => isContractOwned;
-
-    /// <inheritdoc cref="DirectionApplies(bool)"/>
-    public static bool DirectionApplies(ExistingTerm term) => DirectionApplies(term.ContractId is not null);
-
-    /// <summary>
-    /// Why direction is refused here, in the words the <c>400</c> uses; <c>null</c> when it is
-    /// allowed. The copy is the server's rule restated, so a user never meets a refusal the dialog
-    /// did not predict.
-    /// </summary>
-    public static string? DirectionRefusal(bool isContractOwned) =>
-        isContractOwned
-            ? null
-            : "Direction applies to a contract term. An account term is always money out.";
-
-    /// <summary>
-    /// Whether this term brings money IN — direction applies here AND it is
-    /// <see cref="TermDirection.Incoming"/>. A predicate of its own rather than a null-test on
+    /// Whether this term brings money IN. A predicate of its own rather than a test on
     /// <see cref="DirectionColor"/>: a caller that wants the fact should ask for the fact, or a later
     /// change to what the colour helper returns silently changes what the caller counts.
     /// </summary>
-    public static bool IsIncoming(ExistingTerm term) =>
-        DirectionApplies(term) && term.Direction == TermDirection.Incoming;
+    public static bool IsIncoming(ExistingTerm term) => term.Direction == TermDirection.Incoming;
 
     /// <summary>
-    /// The finance hue of the term's direction wherever direction is stated — coral out, mint in, on
-    /// every contract term — and <c>null</c> on an account term, which keeps its unit hue. One helper,
-    /// so the tiles, the table rows and the chart cannot disagree about which figure is which colour.
+    /// The finance hue of the term's direction — coral out, mint in. Every term states one: a term
+    /// is owned by a contract, and since issue #190 by nothing else. One helper, so the tiles, the
+    /// table rows and the chart cannot disagree about which figure is which colour.
     /// </summary>
-    public static string? DirectionColor(ExistingTerm term) =>
-        DirectionApplies(term) ? TermDirectionVisuals.Info(term.Direction).Color : null;
+    public static string DirectionColor(ExistingTerm term) => TermDirectionVisuals.Info(term.Direction).Color;
 
-    /// <summary>The soft ground behind a directed term's glyph; <c>null</c> where direction does not
-    /// apply.</summary>
-    public static string? DirectionSoft(ExistingTerm term) =>
-        DirectionApplies(term) ? TermDirectionVisuals.Info(term.Direction).Soft : null;
+    /// <summary>The soft ground behind a term's glyph, in its direction's hue.</summary>
+    public static string DirectionSoft(ExistingTerm term) => TermDirectionVisuals.Info(term.Direction).Soft;
 
-    /// <summary>The figure's colour: its direction's hue where one is stated, else its unit's text ink.</summary>
-    public static string ValueColor(ExistingTerm term) => DirectionColor(term) ?? Info(term).Ink;
+    /// <summary>The figure's colour: its direction's hue.</summary>
+    public static string ValueColor(ExistingTerm term) => DirectionColor(term);
 
-    /// <summary>The glyph's colour and ground — the direction's where one is stated, else the unit's.</summary>
+    /// <summary>The glyph's colour and ground — the direction's.</summary>
     public static (string Color, string Soft) IconColors(ExistingTerm term) =>
-        DirectionApplies(term)
-            ? (DirectionColor(term)!, DirectionSoft(term)!)
-            : (Info(term).Color, Info(term).Soft);
+        (DirectionColor(term), DirectionSoft(term));
 }
 
 /// <summary>
@@ -227,8 +196,8 @@ public sealed record TermDirectionInfo(string Label, string Short, string Senten
 /// the finance hue — which is what a reader parses first anyway.
 /// </para>
 /// <para>
-/// <b>Read with a DEFAULT, never a truthiness test.</b> A row written before the field existed, and
-/// every account term, is <see cref="TermDirection.Outgoing"/>.
+/// <b>Read with a DEFAULT, never a truthiness test.</b> A row written before the field existed is
+/// <see cref="TermDirection.Outgoing"/>.
 /// </para>
 /// </remarks>
 public static class TermDirectionVisuals

@@ -2,17 +2,14 @@
 @using Odyssey.Dtos.Finance
 @inject IReferenceDataCache ReferenceData
 @inject ISnackbar Snackbar
-@inject IAccountsApiClient Accounts
 @inject IContractsApiClient Contracts
 
 @*
-    AddTermDialog — New / Edit dialog for a term on either of the two owners the Term table
-    serves: an ACCOUNT (its rate & fee history) or a CONTRACT (its price history, issue
-    #135). Built on the shared OdsModal shell like every other create/edit dialog. The field
+    AddTermDialog — New / Edit dialog for a term on a CONTRACT (its price history) — the only
+    owner a term has since issue #190. Built on the shared OdsModal shell like every other create/edit dialog. The field
     set mirrors the NewTerm DTO and the TermService validation: the series name (required),
     percentage-or-amount value, currency (amount only), effective date, the two-part cadence
-    and the anchor date, and a note. The body a contract POSTs is byte-identical to the one an
-    account POSTs — the owner is never in it, it comes from the route.
+    and the anchor date, and a note. The owner is never in the body; it comes from the route.
     Rejects a (label, effectiveFrom) duplicate client-side on the SAME normalized,
     case-folded key the server writes — the shared TermLabel delegate, not a second
     implementation. The API still has the final say (400 / 409 surfaced as a toast).
@@ -32,8 +29,7 @@
                or STARTS one, so the field suggests the names this contract already uses
                — a free-text combobox, never a constrained select: a new name is a first-class answer,
                and the help line names which of the two writes is about to happen. *@
-            @if (IsContractOwner)
-            {
+            @{
                 var labelError = _errors.TryGetValue("label", out var contractLabelErr) ? contractLabelErr : null;
                 @* Help and error are mutually exclusive, as in AddContractPartyDialog: with no help
                    node the error takes the help line's id, which is what the combobox's
@@ -53,33 +49,13 @@
                     </ChildContent>
                 </OdsFieldShell>
             }
-            else
-            {
-                <OdsField Label="Name" Required="true" MaxLength="TermLabelMaxLength"
-                          Value="@_label" ValueChanged="OnLabelChanged"
-                          Placeholder="e.g. Interest rate · ATM withdrawal abroad"
-                          Help="Names this term so it keeps its own history, separate from the account’s other terms."
-                          Error="@(_errors.TryGetValue("label", out var labelErr) ? labelErr : null)" />
-            }
 
             @* Direction — which way the money moves, from the HOUSEHOLD's side, not from either
                named party's. It rides in the VALUE control itself, in the slot a sign would occupy:
                the record stores a direction, not a sign, so the word IS the sign. Both units carry
                the same lead, so there is exactly ONE control for the value whichever way it is
                priced — and a rate is asked the same way a fee is, because an arrears rate charges and
-               a deposit rate pays. Only an ACCOUNT term refuses it, and there the control is replaced
-               by one muted line stating the asymmetry, so the missing field reads as a decision
-               rather than an omission. No label: on an account the field never exists at all, so a
-               label would imply a missing field rather than an absent one. *@
-            @if (DirectionRefusal is { Length: > 0 } refusal)
-            {
-                <div class="trm-field trm-dir-field">
-                    <div class="trm-dir-refused">
-                        <span class="material-icons" aria-hidden="true">block</span>
-                        <span>@refusal</span>
-                    </div>
-                </div>
-            }
+               a deposit rate pays. *@
 
             @* Unit + value — the hero input *@
             <div class="trm-value-block">
@@ -100,15 +76,14 @@
                     @* A percentage term carries the same direction lead as an amount, so the two
                        units are one control with one unit swapped rather than two
                        differently-shaped questions. *@
-                    @* AllowNegative follows the DIRECTION: where the lead carries which way the money
-                       moves, a typed minus would be a second and contradictory encoding of the same
-                       fact — the defect this feature exists to prevent. On an account term the sign
-                       is kept, where a negative genuinely means something (negative-rate deposits and
-                       mortgages both exist). Note the consequence on EDIT: a pre-existing negative
-                       percentage on a contract loses its minus on the next keystroke. That is a nudge toward the
+                    @* No minus: the lead carries which way the money moves, so a typed minus would be
+                       a second and contradictory encoding of the same fact — the defect this feature
+                       exists to prevent. Note the consequence on EDIT: a pre-existing negative
+                       percentage (a term moved from an account by issue #190 can carry one) loses its
+                       minus on the next keystroke. That is a nudge toward the
                        invariant rather than away from it, and the server still accepts the stored
                        value untouched if nothing is typed. *@
-                    <OdsAmountField Size="lg" Required="true" AllowNegative="@(!DirectionApplies)" Suffix="%"
+                    <OdsAmountField Size="lg" Required="true" AllowNegative="false" Suffix="%"
                                     Value="@_valueStr" ValueChanged="OnValueChanged"
                                     Direction="@DirectionValue"
                                     DirectionChanged="OnDirectionChanged"
@@ -116,10 +91,7 @@
                                     AriaLabel="Value"
                                     Error="@(_errors.TryGetValue("value", out var pctErr) ? pctErr : null)">
                         <HelpContent>
-                            @if (DirectionApplies)
-                            {
-                                <text><b>@DirectionInfo.Label</b> — @DirectionInfo.Sentence. Click <b>@DirectionInfo.Short</b> to switch. </text>
-                            }
+                            <text><b>@DirectionInfo.Label</b> — @DirectionInfo.Sentence. Click <b>@DirectionInfo.Short</b> to switch. </text>
                             <text>Stored as a fraction: <b>@PreviewFraction</b>@CadenceValueHint</text>
                         </HelpContent>
                     </OdsAmountField>
@@ -148,22 +120,15 @@
                         <HelpContent>
                             @if (string.IsNullOrEmpty(_currency))
                             {
-                                <text>A @OwnerNoun has no currency of its own — <b>pick one</b> for this amount.</text>
-                                @if (DirectionApplies)
-                                {
-                                    <text> The word on the left says which way the money moves.</text>
-                                }
+                                <text>A contract has no currency of its own — <b>pick one</b> for this amount.</text>
+                                <text> The word on the left says which way the money moves.</text>
                             }
-                            else if (DirectionApplies)
+                            else
                             {
                                 @* The amount stays POSITIVE either way — the direction carries the
                                    sign, and a negative would make the sign mean two different things
                                    depending on who typed it. *@
                                 <text><b>@DirectionInfo.Label</b> — @DirectionInfo.Sentence. Flat amount in <b>@_currency</b>@CadenceValueHint Click <b>@DirectionInfo.Short</b> to switch@(IsEdit ? " — a correction supersedes the entry, it never forks the history" : "").</text>
-                            }
-                            else
-                            {
-                                <text>Flat amount in <b>@_currency</b>@CadenceValueHint</text>
                             }
                         </HelpContent>
                     </OdsMoneyField>
@@ -242,10 +207,6 @@
     private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit term" : "New term")</text>;
 
     private RenderFragment SubtitleFragment => IsEdit
-        ? (IsContractOwner
-            ? @<text>Correct this entry in the contract’s price history.</text>
-            : @<text>Correct this entry.</text>)
-        : (IsContractOwner
-            ? @<text>Record what @OwnerName costs, effective from a date.</text>
-            : @<text>Record a term on @OwnerName, effective from a date.</text>);
+        ? @<text>Correct this entry in the contract’s price history.</text>
+        : @<text>Record what @OwnerName costs, effective from a date.</text>;
 }

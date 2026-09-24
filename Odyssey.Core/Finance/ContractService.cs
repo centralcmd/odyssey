@@ -351,13 +351,11 @@ public class ContractService
 
         var candidates = await context.Terms
             .AsNoTracking()
-            .Where(t => t.ContractId != null
-                && contractIds.Contains(t.ContractId.Value)
-                && t.EffectiveFrom <= today)
+            .Where(t => contractIds.Contains(t.ContractId) && t.EffectiveFrom <= today)
             .ToListAsync(cancellationToken);
 
         return [.. candidates
-            .GroupBy(t => t.ContractId!.Value)
+            .GroupBy(t => t.ContractId)
             .Where(group => TermSeries.Current(group).Any(t => t.Direction == ContextTermDirection.Incoming))
             .Select(group => group.Key)];
     }
@@ -384,14 +382,13 @@ public class ContractService
 
         var candidates = await context.Terms
             .AsNoTracking()
-            .Where(t => t.ContractId != null
-                && ids.Contains(t.ContractId.Value)
+            .Where(t => ids.Contains(t.ContractId)
                 && t.ValueUnit == ContextTermValueUnit.Amount
                 && t.EffectiveFrom <= today)
             .ToListAsync(cancellationToken);
 
         var priced = new List<PricedTerm>();
-        foreach (var group in candidates.GroupBy(t => t.ContractId!.Value))
+        foreach (var group in candidates.GroupBy(t => t.ContractId))
         {
             foreach (var term in TermSeries.Current(group))
             {

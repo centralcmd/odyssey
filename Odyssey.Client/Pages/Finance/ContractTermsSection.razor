@@ -67,25 +67,17 @@
                    No chip — the FIGURE carries the direction in its own finance hue, and the word
                    sits on its own line under the tile's title, the slot a party tile gives its
                    from–to dates. There is room there for the whole word, so it reads "Incoming". *@
-                var directed = TermVisuals.DirectionApplies(term);
                 var direction = TermDirectionVisuals.Info(term.Direction);
                 var valueColor = TermVisuals.ValueColor(term);
                 var (iconColor, iconSoft) = TermVisuals.IconColors(term);
                 <OdsInfoTile @key="term.TermId"
-                             Class="@(directed ? "trm-dir-tile" : null)"
+                             Class="trm-dir-tile"
                              Icon="@info.Icon" IconColor="@iconColor" IconSoft="@iconSoft"
                              ValueVariant="OdsInfoTileVariant.Text"
                              Foot="@OdsInfoTile.Caption(TileFoot(term, cadence))">
                     <LabelContent>
-                        @if (directed)
-                        {
-                            <span class="trm-dir-name"><span>@TermVisuals.DisplayName(term)</span></span>
-                            <span class="trm-dir-sub">@direction.Label</span>
-                        }
-                        else
-                        {
-                            @TermVisuals.DisplayName(term)
-                        }
+                        <span class="trm-dir-name"><span>@TermVisuals.DisplayName(term)</span></span>
+                        <span class="trm-dir-sub">@direction.Label</span>
                     </LabelContent>
                     <Value>
                         <span style="color:@valueColor;">@TermVisuals.FormatValue(term, FormatMoney)</span>

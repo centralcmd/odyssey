@@ -29,7 +29,6 @@
             var term = t;
             var info = TermVisuals.Info(term);
             var (iconColor, iconSoft) = TermVisuals.IconColors(term);
-            var directed = TermVisuals.DirectionApplies(term);
             var isCurrent = CurrentIds.Contains(term.TermId);
             var cadence = TermVisuals.CadenceText(term);
             <tr class="@(isCurrent ? "current" : "")" @key="term.TermId">
@@ -50,14 +49,11 @@
                                 <span class="trm-name">
                                     <span class="trm-row-kind-name">@TermVisuals.DisplayName(term)</span>
                                 </span>
-                                @if (directed)
-                                {
-                                    @* The WORD beside the name, on every contract term and both ways
-                                       round. The figure's hue is the other carrier; neither is alone, so
-                                       the direction never rests on colour (WCAG 1.4.1). *@
-                                    <span class="trm-row-dot" aria-hidden="true"></span>
-                                    <span class="trm-dir">@TermDirectionVisuals.Info(term.Direction).Label</span>
-                                }
+                                @* The WORD beside the name, on every term and both ways round. The
+                                   figure's hue is the other carrier; neither is alone, so the
+                                   direction never rests on colour (WCAG 1.4.1). *@
+                                <span class="trm-row-dot" aria-hidden="true"></span>
+                                <span class="trm-dir">@TermDirectionVisuals.Info(term.Direction).Label</span>
                             </div>
                             @if (!string.IsNullOrWhiteSpace(term.Note))
                             {
@@ -72,7 +68,7 @@
                    SCHEDULED one draws the entry that is next as though it were already history. The
                    hierarchy is carried by the in-force row's tinted ground, its heavier figure and the
                    status cell's own words — none of which costs contrast. *@
-                <td class="trm-cell-value" style="@ValueStyle(term, isCurrent)">
+                <td class="trm-cell-value" style="@ValueStyle(term)">
                     @TermVisuals.FormatValue(term, FormatMoney)@if (cadence is not null)
                     {@* The separator is an explicit string: Razor trims leading whitespace inside an
                          element, which glued "$45.00" to "every 3 months". *@
@@ -113,9 +109,7 @@
 
 @code {
     /// <summary>
-    /// The figure's colour: a contract term's direction hue on every row, else the unit hue on the
-    /// in-force row only.
+    /// The figure's colour: the term's direction hue on every row.
     /// </summary>
-    private static string ValueStyle(ExistingTerm term, bool isCurrent) =>
-        TermVisuals.DirectionApplies(term) || isCurrent ? $"color:{TermVisuals.ValueColor(term)};" : "";
+    private static string ValueStyle(ExistingTerm term) => $"color:{TermVisuals.ValueColor(term)};";
 }

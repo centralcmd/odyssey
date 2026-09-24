@@ -111,9 +111,9 @@ public sealed class DemoDataSet
             ContactAvatarFiles = contactAvatars.Files,
             Accounts = accounts,
             AccountEstimates = AccountEstimateGenerator.Build(),
-            // One table, two owners (issue #135): the account terms and the contracts' fee terms share
-            // the Terms set, and the generators never touch each other's owner column.
-            Terms = [.. TermGenerator.Build(), .. contractTerms],
+            // Every term is owned by a contract (issue #190): ContractGenerator places the account-derived
+            // terms from TermGenerator on their resolved contracts alongside the contracts' own fees.
+            Terms = contractTerms,
             Budgets = budgets,
             BudgetItems = budgetItems,
             Transactions = transactions,

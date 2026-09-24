@@ -113,36 +113,6 @@ public class ContractTermDirectionPermissionTests(ApiStackFixture fixture)
         }
     }
 
-    /// <summary>
-    /// AC 12 — the account side of the shared <c>AccountCurrentTerm</c> projection carries the field
-    /// too, reached through <c>GET /api/accounts/{id}</c>, which is gated on <c>accounts.read</c> and
-    /// NOT on <c>accounts.terms.read</c>. Asserted against Guest, the lowest role holding
-    /// <c>accounts.read</c>, because the same projection sitting behind two independent claims
-    /// depending on the route is exactly the shape a future claim split would change silently.
-    /// </summary>
-    /// <remarks>
-    /// An account term is always <c>Outgoing</c>, so the value here is constant and the exposure delta
-    /// is nil. What the pin protects is the mapper: <c>AccountService.ToCurrentTerm</c> is a
-    /// hand-written initializer, so a field not listed there is dropped with no compiler error — and
-    /// for this one field the omitted value and the correct one happen to coincide.
-    /// </remarks>
-    [SkippableFact]
-    public async Task The_embedded_account_projection_carries_the_direction_for_an_accounts_read_holder()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-
-        var guest = UserIn("Guest");
-        var client = await fixture.CreateAuthenticatedClientAsync(guest.Email, guest.Password);
-
-        using var accounts = await client.GetFromJsonAsync<JsonDocument>("/api/accounts?limit=100");
-        var withTerms = accounts!.RootElement.GetProperty("items").EnumerateArray()
-            .FirstOrDefault(a => a.GetProperty("currentTerms").GetArrayLength() > 0);
-
-        Assert.NotEqual(JsonValueKind.Undefined, withTerms.ValueKind);
-        Assert.All(withTerms.GetProperty("currentTerms").EnumerateArray(), term =>
-            Assert.Equal("Outgoing", term.GetProperty("direction").GetString()));
-    }
-
     private static void AssertBothSides(JsonElement.ArrayEnumerator rows)
     {
         var byLabel = rows.ToDictionary(

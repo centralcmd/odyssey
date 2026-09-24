@@ -192,26 +192,8 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
         modelBuilder.Entity<Term>(entity =>
         {
-            // Exactly-one-owner invariant (issue #135): a term prices an account OR a contract, never
-            // both and never neither. The domain service is the real guard — the owner is taken from
-            // the route and is on no request DTO, so a caller cannot forge it — and returns 400; this
-            // CHECK is the database backstop against a direct writer, declared on the model so it
-            // lands in the snapshot. It mirrors CK_ContractParties_ExactlyOneTarget. The EF InMemory
-            // provider honours neither this nor the two foreign keys, so the fast tiers see only the
-            // service guard; the constraint itself is covered in Odyssey.IntegrationTests.
-            entity.ToTable(tb => tb.HasCheckConstraint(
-                "CK_Terms_ExactlyOneOwner",
-                "((`AccountId` IS NOT NULL) + (`ContractId` IS NOT NULL)) = 1"));
-
-            // Cascade-delete a term history along with its parent account: the timeline is
-            // meaningless once the account is gone, and terms are only reachable through it.
-            entity.HasOne(term => term.Account)
-                .WithMany(account => account.Terms)
-                .HasForeignKey(term => term.AccountId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // The same reasoning for the contract owner: a contract's price history is meaningless
-            // once the contract is gone and is only reachable through it.
+            // A contract's price history is meaningless once the contract is gone and is only
+            // reachable through it. The contract is the only owner since issue #190.
             entity.HasOne(term => term.Contract)
                 .WithMany(contract => contract.Terms)
                 .HasForeignKey(term => term.ContractId)

@@ -248,7 +248,6 @@ public sealed class DataExportService
             .Select(term => new TermExport
             {
                 TermId = term.TermId,
-                AccountId = term.AccountId,
                 ContractId = term.ContractId,
                 Label = term.Label,
                 LabelKey = term.LabelKey,

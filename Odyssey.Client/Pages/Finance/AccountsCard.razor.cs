@@ -98,8 +98,6 @@ public partial class AccountsCard
     private bool _canAnalyzeFiles;
     private bool _canCreateTransactions;
     private bool _canReadTransactions;
-    private bool _canReadTerms;
-    private bool _canWriteTerms;
     private bool _canReadEstimates;
     private bool _canWriteEstimates;
     private bool _canReadContracts;
@@ -294,8 +292,6 @@ public partial class AccountsCard
                              && user.HasPermission(PermissionClaims.FileAnalysisImport);
         _canCreateTransactions = user.HasPermission(PermissionClaims.TransactionsCreate);
         _canReadTransactions   = user.HasPermission(PermissionClaims.TransactionsRead);
-        _canReadTerms          = user.HasPermission(PermissionClaims.AccountsTermsRead);
-        _canWriteTerms         = user.HasPermission(PermissionClaims.AccountsTermsWrite);
         _canReadEstimates      = user.HasPermission(PermissionClaims.AccountsEstimatesRead);
         _canWriteEstimates     = user.HasPermission(PermissionClaims.AccountsEstimatesWrite);
         _canReadContracts      = user.HasPermission(PermissionClaims.ContractsRead);
@@ -452,27 +448,6 @@ public partial class AccountsCard
         _txnOpen = true;
     }
 
-    private ExistingAccount? _termAccount;
-    private Guid _termKey;
-    private bool _termOpen;
-    private Guid _termsRefreshToken = Guid.NewGuid();
-
-    private void AddTerm(ExistingAccount account)
-    {
-        if (!_canWriteTerms) return;
-        _termAccount = account;
-        _termKey = Guid.NewGuid();
-        _termOpen = true;
-    }
-
-    // Recreate any open Rate & fees section so a menu-triggered create shows immediately,
-    // and reload the accounts so the header subtitle picks up the new in-force rate.
-    private async Task OnTermCreated()
-    {
-        _termsRefreshToken = Guid.NewGuid();
-        await GetAccounts();
-    }
-
     private ExistingAccount? _estimateAccount;
     private Guid _estimateKey;
     private bool _estimateOpen;
@@ -596,30 +571,11 @@ public partial class AccountsCard
         _ => OdsInfoTileTone.Muted,
     };
 
-    /// <summary>Adapts a current-term projection to the shape TermVisuals formats, so the Current
-    /// band's tiles read exactly like the same term does in the Terms section.</summary>
-    private static ExistingTerm ToTerm(ExistingAccount a, AccountCurrentTerm term) => new()
-    {
-        TermId = Guid.Empty,
-        AccountId = a.AccountId,
-        // Carried, because the card renders one tile per in-force series: without the label a travel
-        // card's six fees would be six identical tiles.
-        Label = term.Label,
-        ValueUnit = term.ValueUnit,
-        Value = term.Value,
-        CurrencyCode = term.CurrencyCode,
-        // Both halves of the cadence, since one without the other cannot say "every 3 months" —
-        // and the anchor, so a tile adapted here carries everything the projection holds.
-        Interval = term.Interval,
-        IntervalCount = term.IntervalCount,
-        AnchorDate = term.AnchorDate,
-        EffectiveFrom = term.EffectiveFrom,
-    };
-
     /// <summary>How many values are in force — the estimate and its balance count as a pair, since the
-    /// balance is only shown as the estimate's secondary reading.</summary>
+    /// balance is only shown as the estimate's secondary reading. Terms are not among them: since
+    /// issue #190 they belong to the account's contracts, which the Contracts section lists.</summary>
     private static int InForceCount(ExistingAccount a) =>
-        a.CurrentTerms.Count + (a.CurrentEstimatedValue is not null ? 2 : 0);
+        a.CurrentEstimatedValue is not null ? 2 : 0;
 
     private static string? EstimateFoot(ExistingAccount a) =>
         a.CurrentEstimatedValueEffectiveFrom is { } from
@@ -630,21 +586,6 @@ public partial class AccountsCard
         a.TransactionCount == 0
             ? "No transactions"
             : $"{a.TransactionCount} transaction{(a.TransactionCount == 1 ? "" : "s")} · secondary";
-
-    /// <summary>A term's tile foot: when it took effect, plus its cadence where it has one. The
-    /// cadence is what separates a 695 annual fee from a 695 monthly one, so it rides along.</summary>
-    // internal rather than private so the caption composition can be asserted directly.
-    // Odyssey.Client already grants InternalsVisibleTo to its test project.
-    internal static string TermFoot(ExistingTerm term)
-    {
-        var since = $"since {term.EffectiveFrom.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture)}";
-
-        // The one cadence helper every surface reads, so the card's foot and the Terms section's
-        // tile cannot word the same term differently. A one-time charge carries no cadence.
-        return TermVisuals.CadenceText(term) is { } cadence
-            ? $"{since} · {cadence}"
-            : since;
-    }
 
     /// <summary>
     /// The Currency tile's foot, which only has something to say when the account is NOT already in
@@ -683,11 +624,6 @@ public partial class AccountsCard
         if (_canWriteEstimates)
         {
             items.Add(new OdsMenuItem { Icon = "monitor", Label = "New estimate", OnClick = EventCallback.Factory.Create(this, () => AddEstimate(account)) });
-        }
-
-        if (_canWriteTerms)
-        {
-            items.Add(new OdsMenuItem { Icon = "§", Label = "New term", OnClick = EventCallback.Factory.Create(this, () => AddTerm(account)) });
         }
 
         items.Add(new OdsMenuItem

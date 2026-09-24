@@ -47,16 +47,16 @@ public static class TermChartSeries
     {
         var pct = inForce.ValueUnit == TermValueUnit.Percentage;
         var currency = inForce.CurrencyCode;
-        var direction = TermVisuals.DirectionApplies(inForce) ? TermDirectionVisuals.Info(inForce.Direction) : null;
+        var direction = TermDirectionVisuals.Info(inForce.Direction);
 
         return new OdsTermHistorySeries
         {
             Key = labelKey ?? "",
             Label = TermVisuals.DisplayName(inForce),
             Value = TermVisuals.FormatValue(inForce, formatMoney),
-            ToneLabel = direction?.Label,
-            ToneColor = direction?.Color,
-            Color = direction?.Color ?? TermVisuals.Info(inForce).Ink,
+            ToneLabel = direction.Label,
+            ToneColor = direction.Color,
+            Color = direction.Color,
             Group = pct ? "pct" : $"amt:{currency}",
             // One line is one unit and one currency. A series repriced into another currency keeps
             // its name (the series key is the label, as on the server) but only the entries

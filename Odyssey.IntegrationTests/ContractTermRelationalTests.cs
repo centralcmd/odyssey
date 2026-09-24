@@ -20,13 +20,12 @@ using ContextAccountType = Odyssey.Context.AccountType;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #135: the exactly-one-owner CHECK constraint, the contract foreign
-/// key's cascade, and the nullability change on <c>Terms.AccountId</c>.
+/// The relational half of the contract term owner (issues #135 and #190): <c>Terms.ContractId</c> is
+/// required, the contract foreign key cascades, and an account delete no longer reaches a term.
 /// </summary>
 /// <remarks>
-/// None of this is observable on the fast tiers. The EF InMemory provider enforces neither CHECK
-/// constraints nor foreign keys, so the service guard is the only implementation those tiers see — and
-/// the guard is application code, which is precisely what the constraint backstops. The cascade has an
+/// None of this is observable on the fast tiers. The EF InMemory provider enforces neither
+/// nullability nor foreign keys, so the service is the only implementation those tiers see. The cascade has an
 /// application-code twin (<c>ContractService.Delete</c>'s <c>.Include(c =&gt; c.Terms)</c>) asserted in
 /// <c>Odyssey.Api.Tests</c>; this is the other half of AC 13, where the database does the work.
 /// </remarks>
@@ -35,79 +34,47 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contract_terms";
 
-    /// <summary>AC 14 — a row with BOTH owners set is refused by the constraint.</summary>
+    /// <summary>
+    /// Issue #190 AC 1 — a term with no contract is refused by the column itself: the contract is the
+    /// only owner, so there is no longer an exactly-one-owner CHECK to do it.
+    /// </summary>
     [SkippableFact]
-    public async Task A_term_naming_two_owners_is_refused_by_the_check_constraint()
+    public async Task A_term_naming_no_contract_is_refused_by_the_column()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await MigrateAsync();
 
         await using var context = NewContext();
-        var (accountId, contractId) = await SeedOwnersAsync(context);
 
         var error = await Assert.ThrowsAsync<MySqlException>(() =>
-            InsertTermAsync(context, Guid.NewGuid(), accountId: accountId, contractId: contractId));
+            InsertTermAsync(context, Guid.NewGuid(), contractId: null));
 
-        Assert.Contains("CK_Terms_ExactlyOneOwner", error.Message, StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>AC 14 — a row with NEITHER owner set is refused by the same constraint.</summary>
-    [SkippableFact]
-    public async Task A_term_naming_no_owner_is_refused_by_the_check_constraint()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await MigrateAsync();
-
-        await using var context = NewContext();
-        await SeedOwnersAsync(context);
-
-        var error = await Assert.ThrowsAsync<MySqlException>(() =>
-            InsertTermAsync(context, Guid.NewGuid(), accountId: null, contractId: null));
-
-        Assert.Contains("CK_Terms_ExactlyOneOwner", error.Message, StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>Either owner alone is accepted — the constraint is exactly-one, not at-most-one.</summary>
-    [SkippableFact]
-    public async Task A_term_naming_exactly_one_owner_is_accepted_for_either_owner()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await MigrateAsync();
-
-        await using var context = NewContext();
-        var (accountId, contractId) = await SeedOwnersAsync(context);
-
-        await InsertTermAsync(context, Guid.NewGuid(), accountId: accountId, contractId: null);
-        await InsertTermAsync(context, Guid.NewGuid(), accountId: null, contractId: contractId);
-
-        Assert.Equal(2, await context.Terms.CountAsync());
+        Assert.Contains("ContractId", error.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
     /// AC 13, the relational half — deleting a contract cascades its term rows away, and leaves every
-    /// account term and every other contract's terms untouched.
+    /// other contract's terms untouched.
     /// </summary>
     [SkippableFact]
-    public async Task Deleting_a_contract_cascades_its_terms_and_spares_every_other_owner()
+    public async Task Deleting_a_contract_cascades_its_terms_and_spares_every_other_contract()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await MigrateAsync();
 
-        Guid accountTerm, doomedTerm, survivingTerm;
+        Guid doomedTerm, survivingTerm;
 
         await using (var context = NewContext())
         {
-            var (accountId, contractId) = await SeedOwnersAsync(context);
+            var (_, contractId) = await SeedOwnersAsync(context);
             var survivorId = Guid.NewGuid();
             await SeedContractAsync(context, survivorId, "Survivor");
 
-            accountTerm = Guid.NewGuid();
             doomedTerm = Guid.NewGuid();
             survivingTerm = Guid.NewGuid();
 
-            await InsertTermAsync(context, accountTerm, accountId: accountId, contractId: null);
-            await InsertTermAsync(context, doomedTerm, accountId: null, contractId: contractId);
-            await InsertTermAsync(context, survivingTerm, accountId: null, contractId: survivorId);
+            await InsertTermAsync(context, doomedTerm, contractId: contractId);
+            await InsertTermAsync(context, survivingTerm, contractId: survivorId);
 
             await context.Database.ExecuteSqlRawAsync(
                 $"DELETE FROM `Contracts` WHERE `ContractId` = '{contractId}'");
@@ -118,31 +85,35 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
             var remaining = await context.Terms.AsNoTracking().Select(t => t.TermId).ToListAsync();
 
             Assert.DoesNotContain(doomedTerm, remaining);
-            Assert.Contains(accountTerm, remaining);
             Assert.Contains(survivingTerm, remaining);
         }
     }
 
     /// <summary>
-    /// Deleting an ACCOUNT still cascades its terms — the behaviour that predates issue #135 and must
-    /// not have been disturbed by the column becoming nullable.
+    /// Issue #190 L3 — deleting an ACCOUNT no longer deletes any term. It removes only the account's
+    /// party row; the contract and its terms survive and follow the contract's lifecycle.
     /// </summary>
     [SkippableFact]
-    public async Task Deleting_an_account_still_cascades_its_terms()
+    public async Task Deleting_an_account_removes_its_party_and_leaves_the_contracts_terms()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await MigrateAsync();
 
-        Guid accountTerm, contractTerm;
+        Guid contractId, contractTerm;
 
         await using (var context = NewContext())
         {
-            var (accountId, contractId) = await SeedOwnersAsync(context);
-            accountTerm = Guid.NewGuid();
-            contractTerm = Guid.NewGuid();
+            (var accountId, contractId) = await SeedOwnersAsync(context);
+            context.ContractParties.Add(new ContractParty
+            {
+                ContractId = contractId,
+                AccountId = accountId,
+                Role = Odyssey.Context.ContractPartyRole.Object,
+            });
+            await context.SaveChangesAsync();
 
-            await InsertTermAsync(context, accountTerm, accountId: accountId, contractId: null);
-            await InsertTermAsync(context, contractTerm, accountId: null, contractId: contractId);
+            contractTerm = Guid.NewGuid();
+            await InsertTermAsync(context, contractTerm, contractId: contractId);
 
             await context.Database.ExecuteSqlRawAsync(
                 $"DELETE FROM `Accounts` WHERE `AccountId` = '{accountId}'");
@@ -150,10 +121,9 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
 
         await using (var context = NewContext())
         {
-            var remaining = await context.Terms.AsNoTracking().Select(t => t.TermId).ToListAsync();
-
-            Assert.DoesNotContain(accountTerm, remaining);
-            Assert.Contains(contractTerm, remaining);
+            Assert.Contains(contractTerm, await context.Terms.AsNoTracking().Select(t => t.TermId).ToListAsync());
+            Assert.True(await context.Contracts.AnyAsync(c => c.ContractId == contractId));
+            Assert.False(await context.ContractParties.AnyAsync(p => p.ContractId == contractId));
         }
     }
 
@@ -179,12 +149,11 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
     }
 
     /// <summary>
-    /// The contract-side index exists and mirrors the account one, column for column. A history read
-    /// filtered on the contract is the query it backs, and without it every contract term read is a
-    /// full scan of a table both owners share.
+    /// The contract index exists, column for column. A history read filtered on the contract is the
+    /// query it backs, and it also serves the contract foreign key (InnoDB errno 1553).
     /// </summary>
     [SkippableFact]
-    public async Task The_contract_index_mirrors_the_account_one()
+    public async Task The_contract_index_backs_the_history_read()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await MigrateAsync();
@@ -224,7 +193,7 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
                 await SeedContractAsync(seed, contractId, $"Lease {i:D2}");
                 for (var t = 0; t < TermsEach; t++)
                 {
-                    await InsertTermAsync(seed, Guid.NewGuid(), accountId: null, contractId: contractId);
+                    await InsertTermAsync(seed, Guid.NewGuid(), contractId: contractId);
                 }
             }
         }
@@ -332,12 +301,11 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
     }
 
     /// <summary>
-    /// Raw SQL on purpose: the domain service cannot produce a two-owner or no-owner row, which is
-    /// what makes a direct writer the only thing the constraint can be observed refusing.
+    /// Raw SQL on purpose: the domain service cannot produce an ownerless row, which is what makes a
+    /// direct writer the only thing the column can be observed refusing.
     /// </summary>
-    private static Task InsertTermAsync(OdysseyContext context, Guid termId, Guid? accountId, Guid? contractId)
+    private static Task InsertTermAsync(OdysseyContext context, Guid termId, Guid? contractId)
     {
-        var account = accountId is { } a ? $"'{a}'" : "NULL";
         var contract = contractId is { } c ? $"'{c}'" : "NULL";
         var effectiveFrom = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc)
             .ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
@@ -347,11 +315,11 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
         return context.Database.ExecuteSqlRawAsync(
             $"""
              INSERT INTO `Terms`
-               (`TermId`, `AccountId`, `ContractId`, `Label`, `LabelKey`, `ValueUnit`,
+               (`TermId`, `ContractId`, `Label`, `LabelKey`, `ValueUnit`,
                 `Value`, `CurrencyCode`, `Interval`, `IntervalCount`, `AnchorDate`, `EffectiveFrom`,
                 `Note`, `CreatedAtUtc`)
              VALUES
-               ('{termId}', {account}, {contract}, 'Monthly rent', 'monthly rent', 1,
+               ('{termId}', {contract}, 'Monthly rent', 'monthly rent', 1,
                 14500.000000, 'USD', NULL, NULL, NULL, '{effectiveFrom}',
                 NULL, '{createdAt}')
              """);

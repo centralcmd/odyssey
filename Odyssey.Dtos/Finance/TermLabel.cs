@@ -1,7 +1,7 @@
 namespace Odyssey.Dtos.Finance;
 
 /// <summary>
-/// The one normalization rule for an account term's user-authored <c>Label</c>, shared by the
+/// The one normalization rule for a term's user-authored <c>Label</c>, shared by the
 /// server's write path and the client's duplicate pre-check. It lives in <c>Odyssey.Dtos</c> — a leaf
 /// assembly with no project references, reachable from both halves of the stack including the WASM
 /// client — so the two sides run the <em>same</em> delegate rather than two implementations that can

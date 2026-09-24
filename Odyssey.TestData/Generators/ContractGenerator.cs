@@ -161,6 +161,9 @@ public static class ContractGenerator
 
     public static Guid IdFor(string name) => DeterministicGuid.From($"contract::{name}");
 
+    /// <summary>The contract a seeded account's terms were placed on, and that contract's type.</summary>
+    public sealed record AccountTermTarget(Guid ContractId, ContractType Type);
+
     /// <summary>
     /// The id of one seeded contract term. The label is part of the key because it is part of the
     /// series key — two fees on one contract can share a kind and a date.
@@ -436,8 +439,105 @@ public static class ContractGenerator
             }
         }
 
-        return (contracts, parties, BuildTerms(anchor, contracts), BuildEvents(anchor, contracts));
+        // Events first, over the specified contracts only: the account-term contracts below carry none.
+        var events = BuildEvents(anchor, contracts);
+        var terms = BuildTerms(anchor, contracts);
+        var targets = AddAccountTermContracts(contracts, parties, terms, createdAt);
+        terms.AddRange(TermGenerator.Build(targets));
+
+        return (contracts, parties, terms, events);
     }
+
+    /// <summary>
+    /// The contract each seeded account term belongs on (issue #190), resolved by the same rule the
+    /// <c>MoveAccountTermsToContracts</c> migration applies, so a freshly seeded database and a migrated
+    /// one hold the same shape. The expected type is <c>Deposit</c> for an asset account,
+    /// <c>Loan</c> for a liability and <c>Other</c> otherwise; exactly one contract of that type naming
+    /// the account (in any role, counted once per contract) with no series collision is reused, and
+    /// anything else gets a new contract built from the account and appended to
+    /// <paramref name="contracts"/>/<paramref name="parties"/>.
+    /// </summary>
+    /// <remarks>
+    /// A created contract is left unsigned — Draft, like the migration's — with the account as
+    /// <c>Object</c> and its custodian contact as <c>Custodian</c>/<c>Lender</c>/<c>Other</c>. Unlike
+    /// the migration it gets no attention event: freshly seeded data has nothing for anyone to review.
+    /// </remarks>
+    private static Dictionary<string, AccountTermTarget> AddAccountTermContracts(
+        List<Contract> contracts, List<ContractParty> parties, List<Term> contractTerms, DateTime createdAt)
+    {
+        var accounts = Catalog.Accounts.Build().ToDictionary(a => a.Name, StringComparer.Ordinal);
+        var seriesByContract = contractTerms.ToLookup(t => t.ContractId, t => (t.LabelKey, t.EffectiveFrom));
+        var accountSeries = TermGenerator.SeriesKeys().ToLookup(k => k.AccountName, k => (k.LabelKey, k.EffectiveFrom));
+        var targets = new Dictionary<string, AccountTermTarget>(StringComparer.Ordinal);
+
+        foreach (var accountName in TermGenerator.AccountNames())
+        {
+            var account = accounts[accountName];
+            var expected = ExpectedContractType(account.AccountType);
+            var candidates = parties
+                .Where(p => p.AccountId == account.AccountId)
+                .Select(p => p.ContractId)
+                .Distinct()
+                .Where(id => contracts.Single(c => c.ContractId == id).Type == expected)
+                .ToList();
+
+            if (candidates.Count == 1 && !accountSeries[accountName].Intersect(seriesByContract[candidates[0]]).Any())
+            {
+                targets[accountName] = new AccountTermTarget(candidates[0], expected);
+                continue;
+            }
+
+            var contractId = DeterministicGuid.From($"account-term-contract::{accountName}");
+            contracts.Add(new Contract
+            {
+                ContractId = contractId,
+                Name = account.Name,
+                Type = expected,
+                Description = string.IsNullOrEmpty(account.Description) ? null : account.Description,
+                ReferenceNumber = string.IsNullOrEmpty(account.AccountNumber) ? null : account.AccountNumber,
+                StartDate = account.Opened,
+                EndDate = account.Closed is { } closed && closed >= account.Opened ? closed : null,
+                Archived = account.Archived,
+                CreatedAtUtc = createdAt,
+            });
+
+            parties.Add(new ContractParty
+            {
+                ContractPartyId = PartyIdFor(account.Name, 0),
+                ContractId = contractId,
+                AccountId = account.AccountId,
+                Role = ContractPartyRole.Object,
+            });
+
+            if (account.CustodianId is { } custodian)
+            {
+                parties.Add(new ContractParty
+                {
+                    ContractPartyId = PartyIdFor(account.Name, 1),
+                    ContractId = contractId,
+                    ContactId = custodian,
+                    Role = expected switch
+                    {
+                        ContractType.Deposit => ContractPartyRole.Custodian,
+                        ContractType.Loan => ContractPartyRole.Lender,
+                        _ => ContractPartyRole.Other,
+                    },
+                });
+            }
+
+            targets[accountName] = new AccountTermTarget(contractId, expected);
+        }
+
+        return targets;
+    }
+
+    /// <summary>The §3.2 table of issue #190: asset → Deposit, liability → Loan, otherwise Other.</summary>
+    private static ContractType ExpectedContractType(AccountType type) => (int)type switch
+    {
+        >= 1 and <= 8 => ContractType.Deposit,
+        >= 9 and <= 15 => ContractType.Loan,
+        _ => ContractType.Other,
+    };
 
     /// <summary>
     /// The two signature stamps for one spec (issue #145), derived from dates the spec already has so
@@ -567,7 +667,6 @@ public static class ContractGenerator
             {
                 TermId = TermIdFor(spec.ContractName, spec.Label, effectiveFrom),
                 ContractId = contractId,
-                AccountId = null,
                 Label = spec.Label,
                 LabelKey = TermLabel.Key(spec.Label),
                 ValueUnit = TermValueUnit.Amount,

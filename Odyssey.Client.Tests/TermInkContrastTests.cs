@@ -47,17 +47,6 @@ public class TermInkContrastTests
         }
     }
 
-    /// <summary>Every figure and chart line reads the ink; only the glyph keeps the raw design hue.</summary>
-    [Fact]
-    public void Figures_and_chart_lines_read_the_ink_token()
-    {
-        var account = new ExistingTerm { TermId = Guid.NewGuid(), AccountId = Guid.NewGuid(), Label = "APR", ValueUnit = TermValueUnit.Percentage, Value = 0.05m };
-
-        Assert.Equal("var(--term-percentage-ink)", TermVisuals.ValueColor(account));
-        Assert.Equal("var(--term-amount-ink)", TermVisuals.UnitInfo(TermValueUnit.Amount).Ink);
-        Assert.Equal("var(--term-percentage-ink)", Assert.Single(TermChartSeries.Build([account], DateTime.UtcNow, (v, _) => v.ToString(CultureInfo.InvariantCulture))).Color);
-    }
-
     // ── Parsing ─────────────────────────────────────────────────────────────────────────────────
 
     private static string TokenValue(string token, bool dark)

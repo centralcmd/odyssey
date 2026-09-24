@@ -3,7 +3,7 @@ using Odyssey.Context;
 namespace Odyssey.Core.Finance;
 
 /// <summary>
-/// The single home for the temporal "value in force" rule shared by account terms and estimates: the
+/// The single home for the temporal "value in force" rule shared by terms and account estimates: the
 /// entry with the greatest <see cref="IEffectiveDated.EffectiveFrom"/> wins, ties broken by the most
 /// recently created row (<see cref="IEffectiveDated.CreatedAtUtc"/>). Callers materialize the
 /// candidate rows (already narrowed to <c>EffectiveFrom &lt;= asOf</c>), group them by whatever

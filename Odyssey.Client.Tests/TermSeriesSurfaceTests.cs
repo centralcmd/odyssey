@@ -17,43 +17,34 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The client half of the series key, rendered rather than derived.
+/// The client half of the series key and the cadence sub-form, in <c>AddTermDialog</c>: the
+/// (label, effectiveFrom) duplicate guard on the SAME normalized key the server writes, and the count
+/// field's presence, bound and echo. The rendered term surfaces are covered by
+/// <see cref="ContractTermSurfaceTests"/> — a term has had no other owner since issue #190.
 ///
 /// <para>
-/// Issue #57 §9 names THREE sites that must group by series (now the label alone) — the term service,
-/// the account read projection, and the client's own local recompute. The first two are covered by
-/// service and API tests; this file is the third. It matters because the recompute is not a shared
-/// helper: it is its own implementation inside <c>AccountTermsSection</c>, so a server that groups
-/// per series and a client that grouped any other way would disagree the moment a second labelled fee
-/// existed — and the surface a user checks is this one.
-/// </para>
-///
-/// <para>
-/// These tests RENDER the components. <c>Recompute</c>, <c>SubmitAsync</c>'s validation and the record
-/// card's tile caption are private, and the rules under test are about what the markup ends up saying,
-/// so asserting on rendered text is both the reachable route and the honest one. The section loads its
-/// terms on first expand (<c>ToggleOpen</c>), which is what lets a test drive it at all: its
-/// <c>OnInitializedAsync</c> returns early outside the browser.
+/// These tests RENDER the dialog. <c>SubmitAsync</c>'s validation is private, and the rules under test
+/// are about what the markup ends up saying, so asserting on rendered text is both the reachable route
+/// and the honest one.
 /// </para>
 /// </summary>
 public class TermSeriesSurfaceTests
 {
-    private static readonly Guid AccountId = Guid.NewGuid();
+    private static readonly Guid ContractId = Guid.NewGuid();
 
-    private static ExistingAccount Card(AccountType type = AccountType.CreditCard) => new()
+    private static ExistingContract Card() => new()
     {
-        AccountId = AccountId,
-        Name = "Travel card",
-        Description = "Rewards card",
-        Opened = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-        AccountType = type,
-        CurrencyCode = "USD",
+        ContractId = ContractId,
+        Name = "Travel card agreement",
+        Type = ContractType.Loan,
+        StartDate = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        CreatedAtUtc = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc),
     };
 
     private static ExistingTerm Fee(string label, decimal value, DateTime effectiveFrom) => new()
     {
         TermId = Guid.NewGuid(),
-        AccountId = AccountId,
+        ContractId = ContractId,
         Label = label,
         ValueUnit = TermValueUnit.Amount,
         Value = value,
@@ -64,107 +55,12 @@ public class TermSeriesSurfaceTests
 
     private static DateTime Past(int daysAgo) => DateTime.UtcNow.Date.AddDays(-daysAgo);
 
-    // ── The third grouping site: the section's local recompute ───────────────
-
-    [Fact]
-    public void Two_labelled_fees_on_one_date_render_as_two_current_tiles()
-    {
-        var cut = RenderSection(Card(), [
-            Fee("ATM · abroad", 25m, Past(30)),
-            Fee("ATM · domestic", 5m, Past(30)),
-        ]);
-
-        var tiles = TileNames(cut);
-
-        Assert.Equal(["ATM · abroad", "ATM · domestic"], tiles);
-    }
-
-    [Fact]
-    public void Supersession_applies_within_one_label_and_leaves_its_sibling_alone()
-    {
-        var cut = RenderSection(Card(), [
-            Fee("ATM · abroad", 25m, Past(400)),
-            Fee("ATM · domestic", 5m, Past(400)),
-            Fee("ATM · abroad", 30m, Past(30)),
-        ]);
-
-        // Three rows in history, two series in force.
-        Assert.Equal(["ATM · abroad", "ATM · domestic"], TileNames(cut));
-
-        var abroad = TileValueFor(cut, "ATM · abroad");
-        var domestic = TileValueFor(cut, "ATM · domestic");
-
-        Assert.Contains("30", abroad, StringComparison.Ordinal);
-        Assert.Contains("5", domestic, StringComparison.Ordinal);
-        Assert.DoesNotContain("25", abroad, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void A_future_dated_entry_is_not_yet_in_force()
-    {
-        var cut = RenderSection(Card(), [
-            Fee("Annual card fee", 95m, Past(400)),
-            Fee("Annual card fee", 120m, DateTime.UtcNow.Date.AddDays(30)),
-        ]);
-
-        Assert.Equal(["Annual card fee"], TileNames(cut));
-        Assert.Contains("95", TileValueFor(cut, "Annual card fee"), StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void A_tile_is_named_by_its_label_with_no_kind_caption()
-    {
-        // Every term is one kind of thing, so a caption naming a kind would say nothing.
-        var cut = RenderSection(Card(), [Fee("Interest rate", 0.2249m, Past(30))]);
-
-        var tile = cut.Find(".trm-tile");
-
-        Assert.Equal("Interest rate", tile.QuerySelector(".trm-tile-name")!.TextContent.Trim());
-        Assert.Null(tile.QuerySelector(".trm-kind-caption"));
-    }
-
-    /// <summary>
-    /// The account surface leads with the same series chart a contract's history has (design system
-    /// aeeb3ce) — one per labelled series, opening on the one whose latest entry is the most recent. A
-    /// term named "Interest rate" is a series like any other: there is no headline-rate hero.
-    /// </summary>
-    [Fact]
-    public void The_section_leads_with_the_series_chart_opening_on_the_latest_change()
-    {
-        var rate = Fee("Interest rate", 0.0385m, Past(400));
-        rate.ValueUnit = TermValueUnit.Percentage;
-        rate.CurrencyCode = null;
-        var cut = RenderSection(Card(), [
-            rate,
-            Fee("Annual card fee", 95m, Past(400)),
-            Fee("Annual card fee", 120m, Past(20)),
-        ]);
-
-        Assert.Single(cut.FindAll(".odc-thc.trm-seriesplot"));
-        var legend = Assert.Single(cut.FindAll(".odc-sc-leg"));
-        Assert.Contains("Annual card fee", legend.TextContent, StringComparison.Ordinal);
-        Assert.Empty(cut.FindAll(".trm-hero"));
-    }
-
-    [Fact]
-    public void History_rows_are_named_by_their_label_too()
-    {
-        var cut = RenderSection(Card(), [
-            Fee("ATM · abroad", 25m, Past(400)),
-            Fee("ATM · abroad", 30m, Past(30)),
-        ]);
-
-        var rowNames = cut.FindAll(".trm-row-kind-name").Select(n => n.TextContent.Trim()).ToList();
-
-        Assert.Equal(["ATM · abroad", "ATM · abroad"], rowNames);
-    }
-
     // ── The dialog's validation ──────────────────────────────────────────────
 
     [Fact]
     public void A_term_with_no_name_is_refused_before_a_request_is_made()
     {
-        var (cut, client) = RenderDialog(Card(AccountType.Cash), []);
+        var (cut, client) = RenderDialog(Card(), []);
 
         Submit(cut);
 
@@ -183,8 +79,9 @@ public class TermSeriesSurfaceTests
     public void A_name_differing_only_by_case_or_spacing_is_caught_client_side(string colliding)
     {
         var existing = Fee("ATM · abroad", 25m, DateTime.UtcNow.Date);
-        var (cut, client) = RenderDialog(Card(AccountType.Cash), [existing]);
+        var (cut, client) = RenderDialog(Card(), [existing]);
 
+        Percentage(cut);
         Type(cut, "Name", colliding);
         Type(cut, "Value", "30");
         Submit(cut);
@@ -201,83 +98,34 @@ public class TermSeriesSurfaceTests
     public void A_differently_named_fee_on_the_same_date_is_allowed_through()
     {
         var existing = Fee("ATM · abroad", 25m, DateTime.UtcNow.Date);
-        var (cut, client) = RenderDialog(Card(AccountType.Cash), [existing]);
+        var (cut, client) = RenderDialog(Card(), [existing]);
 
+        Percentage(cut);
         Type(cut, "Name", "ATM · domestic");
         Type(cut, "Value", "5");
         Submit(cut);
 
         client.Verify(
-            c => c.AddTermAsync(AccountId, It.Is<NewTerm>(t => t.Label == "ATM · domestic"), It.IsAny<CancellationToken>()),
+            c => c.AddTermAsync(ContractId, It.Is<NewTerm>(t => t.Label == "ATM · domestic"), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
     public void The_posted_label_is_normalized_by_the_shared_rule()
     {
-        var (cut, client) = RenderDialog(Card(AccountType.Cash), []);
+        var (cut, client) = RenderDialog(Card(), []);
 
+        Percentage(cut);
         Type(cut, "Name", "  ATM   Abroad  ");
         Type(cut, "Value", "25");
         Submit(cut);
 
         client.Verify(
-            c => c.AddTermAsync(AccountId, It.Is<NewTerm>(t => t.Label == "ATM Abroad"), It.IsAny<CancellationToken>()),
+            c => c.AddTermAsync(ContractId, It.Is<NewTerm>(t => t.Label == "ATM Abroad"), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
-    // ── The record card's tile caption ───────────────────────────────────────
-
-    [Fact]
-    public void The_record_cards_tile_foot_states_the_date_and_the_cadence()
-    {
-        var term = Fee("Annual card fee", 95m, new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc));
-        term.Interval = Interval.Annually;
-        term.IntervalCount = 1;
-
-        var foot = AccountsCard.TermFoot(term);
-
-        Assert.StartsWith("since ", foot, StringComparison.Ordinal);
-        // The cadence in words, from the one shared helper — not a chip label.
-        Assert.EndsWith(" · annually", foot, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void A_one_time_fee_states_no_period_in_its_foot()
-    {
-        // "One-time" is the absence of a period, not a period; saying it would be noise.
-        var term = Fee("Card replacement", 15m, new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc));
-        term.Interval = Interval.OneTime;
-
-        Assert.DoesNotContain("One-time", AccountsCard.TermFoot(term), StringComparison.Ordinal);
-    }
-
     // ── Harness ──────────────────────────────────────────────────────────────
-
-    private static IRenderedComponent<AccountTermsSection> RenderSection(
-        ExistingAccount account, IReadOnlyList<ExistingTerm> terms)
-    {
-        var ctx = NewContext();
-        var client = new Mock<IAccountsApiClient>();
-        client
-            .Setup(c => c.ListTermsAsync(account.AccountId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<List<ExistingTerm>>.Success([.. terms], HttpStatusCode.OK));
-        ctx.Services.AddSingleton(client.Object);
-
-        var cut = ctx.Render<AccountTermsSection>(p => p
-            .Add(s => s.Account, account)
-            .Add(s => s.CanWrite, false)
-            .Add(s => s.FormatMoney, (decimal value, string? currency) =>
-                value.ToString("0.##", CultureInfo.InvariantCulture) + " " + (currency ?? "USD")));
-
-        // The section loads on first expand — outside the browser its OnInitializedAsync returns
-        // early, so the click is what drives the load and the recompute under test.
-        cut.Find(".odc-collapsible-trigger").Click();
-        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".trm-section")), TimeSpan.FromSeconds(10));
-
-        return cut;
-    }
-
 
     // ── The cadence sub-form in the New / Edit dialog (issue #120) ────────────
     //
@@ -426,6 +274,7 @@ public class TermSeriesSurfaceTests
     {
         var (cut, client) = RenderDialog(Card(), []);
 
+        Percentage(cut);
         Type(cut, "Name", "Paper statement");
         Type(cut, "Value", "2");
         Submit(cut);
@@ -464,11 +313,11 @@ public class TermSeriesSurfaceTests
     private static string? CadenceEcho(IRenderedComponent<DialogHost> cut) =>
         cut.FindAll(".trm-cadence-echo").SingleOrDefault()?.TextContent.Trim();
 
-    private static (IRenderedComponent<DialogHost> Cut, Mock<IAccountsApiClient> Client) RenderDialog(
-        ExistingAccount account, IReadOnlyList<ExistingTerm> existing, ExistingTerm? editing = null)
+    private static (IRenderedComponent<DialogHost> Cut, Mock<IContractsApiClient> Client) RenderDialog(
+        ExistingContract contract, IReadOnlyList<ExistingTerm> existing, ExistingTerm? editing = null)
     {
         var ctx = NewContext();
-        var client = new Mock<IAccountsApiClient>();
+        var client = new Mock<IContractsApiClient>();
         client
             .Setup(c => c.AddTermAsync(It.IsAny<Guid>(), It.IsAny<NewTerm>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult.Success(HttpStatusCode.Created));
@@ -478,7 +327,7 @@ public class TermSeriesSurfaceTests
         ctx.Services.AddSingleton(client.Object);
 
         var cut = ctx.Render<DialogHost>(p => p
-            .Add(h => h.Account, account)
+            .Add(h => h.Contract, contract)
             .Add(h => h.Existing, existing)
             .Add(h => h.Term, editing));
 
@@ -493,17 +342,13 @@ public class TermSeriesSurfaceTests
         // either breaks the providers the modal renders through.
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
-        // AddTermDialog serves BOTH owners of the Term table since issue #135, so it injects the
-        // contracts client too. These tests drive the account owner; the default mock is never
-        // reached, and a test that did reach it would fail loudly rather than silently pass.
-        ctx.Services.AddSingleton(Mock.Of<IContractsApiClient>());
         return ctx;
     }
 
     /// <summary>The dialog beside MudBlazor's providers, which portal the modal it renders into.</summary>
     public sealed class DialogHost : ComponentBase
     {
-        [Parameter] public ExistingAccount Account { get; set; } = default!;
+        [Parameter] public ExistingContract Contract { get; set; } = default!;
 
         [Parameter] public IReadOnlyList<ExistingTerm> Existing { get; set; } = [];
 
@@ -518,25 +363,13 @@ public class TermSeriesSurfaceTests
             builder.OpenComponent<MudPopoverProvider>(1);
             builder.CloseComponent();
             builder.OpenComponent<AddTermDialog>(2);
-            builder.AddComponentParameter(3, nameof(AddTermDialog.Account), Account);
+            builder.AddComponentParameter(3, nameof(AddTermDialog.Contract), Contract);
             builder.AddComponentParameter(4, nameof(AddTermDialog.Existing), Existing);
             builder.AddComponentParameter(5, nameof(AddTermDialog.Open), true);
             builder.AddComponentParameter(6, nameof(AddTermDialog.Term), Term);
             builder.CloseComponent();
         }
     }
-
-    /// <summary>The names on the Current terms tiles, in render order.</summary>
-    private static List<string> TileNames(IRenderedComponent<AccountTermsSection> cut) =>
-        cut.FindAll(".trm-tile .trm-tile-name, .trm-tile .trm-tile-kind")
-            .Select(n => n.TextContent.Trim())
-            .ToList();
-
-    private static string TileValueFor(IRenderedComponent<AccountTermsSection> cut, string name) =>
-        cut.FindAll(".trm-tile")
-            .Single(t => t.QuerySelector(".trm-tile-name, .trm-tile-kind")!.TextContent.Trim() == name)
-            .QuerySelector(".trm-tile-value")!
-            .TextContent.Trim();
 
     /// <summary>
     /// The input a caption names. THREE shapes are in play: the Name field is an OdsField, which
@@ -564,13 +397,33 @@ public class TermSeriesSurfaceTests
     // a handler that yields (MudBlazor's inputs do) could finish after the next step, so on a loaded
     // runner Submit read a stale field and posted nothing. Finding inside the same InvokeAsync also
     // stops a re-render retiring the handler id between the find and the dispatch.
-    private static void Type(IRenderedComponent<DialogHost> cut, string label, string value) =>
+    /// <remarks>
+    /// The Name field is a free-text combobox that commits a typed name on blur, so the blur is part
+    /// of typing into it — as it is for a user tabbing to the next field.
+    /// </remarks>
+    private static void Type(IRenderedComponent<DialogHost> cut, string label, string value)
+    {
         cut.InvokeAsync(() =>
         {
             var input = FindInput(cut, label)
                 ?? throw new InvalidOperationException($"No input labelled '{label}'. Markup: {cut.Markup}");
             return input.InputAsync(new ChangeEventArgs { Value = value });
         }).GetAwaiter().GetResult();
+
+        if (label == "Name")
+        {
+            cut.InvokeAsync(() => FindInput(cut, label)!.FocusOutAsync(new FocusEventArgs())).GetAwaiter().GetResult();
+        }
+    }
+
+    /// <summary>
+    /// Switches the value to a percentage. A contract has no currency of its own, so an AMOUNT would be
+    /// refused for its currency before the rule a test is about could decide anything.
+    /// </summary>
+    private static void Percentage(IRenderedComponent<DialogHost> cut) =>
+        cut.InvokeAsync(() => cut.FindAll("button")
+            .Single(b => b.TextContent.Contains("Percentage", StringComparison.Ordinal))
+            .ClickAsync(new MouseEventArgs())).GetAwaiter().GetResult();
 
     private static void Submit(IRenderedComponent<DialogHost> cut) =>
         cut.InvokeAsync(() => cut.FindAll("button")
