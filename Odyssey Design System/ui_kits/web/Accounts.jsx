@@ -566,6 +566,41 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
         </RecordSection>
       ) : null}
 
+      {(() => {
+        const conRows = H.conContractsForAccount ? H.conContractsForAccount(a.id) : [];
+        return (
+          <RecordSection className="acct-section" label="Contracts" meta={`${conRows.length} contract${conRows.length === 1 ? '' : 's'}`}
+            empty={conRows.length === 0} emptyText="This account is not a party to any contract.">
+            <InfoTileGrid>
+              {conRows.map(({ contract: c, parties }) => {
+                const ct = H.contractTypeInfo(c.type);
+                const st = H.conStatusMeta(H.conStatus(c));
+                const roles = parties.map(p => H.conPartyRoleInfo(p.role).label).join(' · ');
+                return (
+                  <div className="con-party-tile" key={c.id}>
+                    <InfoTile icon={ct.icon} iconColor={ct.color} iconSoft={ct.soft}
+                      label={(
+                        <React.Fragment>
+                          <span className="con-role"><span>{ct.label}</span></span>
+                          <span className="con-tile-menu">
+                            <ActionMenu items={[
+                              ...(onNavigate ? [{ icon: 'visibility', label: 'View', onClick: () => onNavigate('contracts') }] : []),
+                              { icon: 'content_copy', label: 'Copy name', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.name); } },
+                              { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.id); } },
+                            ]} />
+                          </span>
+                        </React.Fragment>
+                      )}
+                      value={c.name} valueVariant="text" className="wrapvalue"
+                      foot={`${roles} · ${st.label}`} />
+                  </div>
+                );
+              })}
+            </InfoTileGrid>
+          </RecordSection>
+        );
+      })()}
+
       <RecordSection className="acct-section" label="Files" meta={`${files.length} file${files.length === 1 ? '' : 's'}`}
         empty={files.length === 0} emptyText="No files attached to this account yet.">
         <div className="acct-table-frame odc-scroll">
@@ -615,6 +650,7 @@ const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJu
   const cardRef = useRef(null);
   const status = H.accountStatus(acct);
   const files = H.filesForAccount(acct.id);
+  const conCount = H.conContractsForAccount ? H.conContractsForAccount(acct.id).length : 0;
   const [txns, setTxns] = useState(() => H.txnsForAccount(acct.id));
   const dimmed = !!(acct.closed || acct.archived);
   const ti = typeInfo(acct.type);
@@ -750,6 +786,7 @@ const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJu
         counts={[
           { icon: 'receipt_long', value: txns.length, label: 'Transactions' },
           { icon: 'attach_file', value: files.length, label: 'Files' },
+          ...(conCount > 0 ? [{ icon: 'handshake', value: conCount, label: 'Contracts' }] : []),
           ...(estimates.length > 0 ? [{ icon: 'monitor', value: estimates.length, label: 'Estimates' }] : []),
           ...(terms.length > 0 ? [{ icon: '§', value: terms.length, label: 'Terms' }] : []),
           ...(smartTagIds.length > 0 ? [{ icon: 'sell', value: smartTagIds.length, label: 'Smart tags' }] : []),

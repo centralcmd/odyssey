@@ -119,7 +119,7 @@ const ContractFilesTable = ({ files, onDelete, onSave, empty, readOnly }) => {
    the answer to it. Under the role sits the TERM, when the party's term is not
    simply the contract's own extent (both dates null, which needs no caption).
    The tile's ⋯ menu carries Edit (the new PUT) and Detach. */
-const PartyTile = ({ party, today, onEdit, onDetach }) => {
+const PartyTile = ({ party, today, onEdit, onDetach, onNavigate }) => {
   const r = CON_H.conResolveParty(party);
   const role = CON_H.conPartyRoleInfo(party.role);
   const term = CON_H.conPartyTermText(party);
@@ -141,12 +141,12 @@ const PartyTile = ({ party, today, onEdit, onDetach }) => {
         label={(
           <React.Fragment>
             <span className={`con-role${plain ? ' unset' : ''}${object ? ' object' : ''}`}>
-              {object ? <span className="material-icons con-role-mark" aria-hidden="true">north_east</span> : null}
               <span>{role.label}</span>
             </span>
             {term ? <span className={`con-term${past ? ' past' : ''}`}>{term}</span> : null}
             <span className="con-tile-menu">
               <ActionMenu items={[
+                ...(onNavigate && r.target ? [{ icon: 'visibility', label: 'View', onClick: () => onNavigate(r.kind === 'account' ? 'accounts' : 'contacts') }] : []),
                 { icon: 'edit', label: 'Edit party', onClick: () => onEdit && onEdit(party) },
                 { icon: 'content_copy', label: 'Copy name', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(r.name); } },
                 { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(party.id); } },
@@ -347,7 +347,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         <SectionDivider label="Parties" meta={`${parties.length} linked`} />
         {parties.length ? (
           <InfoTileGrid>
-            {CON_H.conSortParties(parties).map(p => <PartyTile key={p.id} party={p} today={nowDate} onEdit={onEditParty} onDetach={detachParty} />)}
+            {CON_H.conSortParties(parties).map(p => <PartyTile key={p.id} party={p} today={nowDate} onEdit={onEditParty} onDetach={detachParty} onNavigate={onNavigate} />)}
           </InfoTileGrid>
         ) : (
           <EmptyLine>No parties yet — link the account or contact this contract relates to, and say what it does in the agreement.</EmptyLine>

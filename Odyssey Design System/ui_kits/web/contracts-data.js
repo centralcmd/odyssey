@@ -572,6 +572,16 @@
         .map(c => ({ contractId: c.id, contractName: c.name, type: c.type }));
     },
 
+    /* Every contract naming an account as a party, one row per contract with
+       each role it holds there (a record may be linked in several roles). */
+    conContractsForAccount(accountId) {
+      return (D.contracts || []).reduce((out, c) => {
+        const links = (c.parties || []).filter(p => p.accountId === accountId);
+        if (links.length) out.push({ contract: c, parties: links });
+        return out;
+      }, []);
+    },
+
     // Short date for the tile caption: 'YYYY-MM-DD' → "Feb 1 2026".
     conDateShort(iso) {
       if (!iso) return '';
