@@ -26,6 +26,18 @@ public static class BudgetBalanceVisuals
         value < 0 ? OdsInfoTileTone.Expense : OdsInfoTileTone.Income;
 
     /// <summary>
+    /// The record card's accent, which follows the status chip: income while active, grey once
+    /// archived. A budget has no type to take a hue from, and a colour picked by list position would
+    /// repaint the card on every re-sort.
+    /// </summary>
+    public static string Accent(bool archived) =>
+        archived ? "var(--mud-palette-text-secondary)" : "var(--finance-income)";
+
+    /// <summary>The accent's 14% ground, for the header mark.</summary>
+    public static string AccentSoft(bool archived) =>
+        $"color-mix(in srgb, {Accent(archived)} 14%, transparent)";
+
+    /// <summary>
     /// "1 income line" / "3 income lines" — the count a planned tile's foot carries. The noun is
     /// passed singular; only a count of exactly one stays that way.
     /// </summary>

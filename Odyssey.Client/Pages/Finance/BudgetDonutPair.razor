@@ -31,7 +31,17 @@
     <Second>
         @if (!HasReport)
         {
-            @Empty(ActualTitle, ActualSub, "Loading matched transactions…")
+            @* Transient, so it is announced — the same live-region shape the other record-card
+               sections use while their data loads. The terminal lines below stay plain text. *@
+            <div class="donut-panel">
+                <div class="chart-head">
+                    <div>
+                        <div class="chart-ttl">@ActualTitle</div>
+                        <div class="chart-sub">@ActualSub</div>
+                    </div>
+                </div>
+                <div class="donut-legend-empty" role="status" aria-live="polite" aria-busy="true">Loading matched transactions…</div>
+            </div>
         }
         else if (!ActualSlices.Any(s => s.Value > 0))
         {

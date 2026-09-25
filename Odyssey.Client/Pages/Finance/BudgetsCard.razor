@@ -85,8 +85,8 @@
                    unless their value carries a hue (bud-card). *@
                 <OdsRecordCard Id="@($"bdg-{budget.BudgetId}")"
                                Icon="pie_chart"
-                               Accent="@BudgetAccent(archived)"
-                               AccentSoft="@BudgetAccentSoft(archived)"
+                               Accent="@BudgetBalanceVisuals.Accent(archived)"
+                               AccentSoft="@BudgetBalanceVisuals.AccentSoft(archived)"
                                Class="bud-card"
                                Name="@budget.Name"
                                Meta="meta"
@@ -175,20 +175,20 @@
                            currency. Each total row closes on the budget's own figure for that donut. *@
                         @if (itemCount > 0)
                         {
-                            var plannedIncome = BuildSlices(BudgetItemSlices(budget, BudgetCategoryType.Income));
-                            var plannedExpense = BuildSlices(BudgetItemSlices(budget, BudgetCategoryType.Expense));
+                            var plannedIncome = BudgetAllocationSlices.Planned(budget, BudgetCategoryType.Income);
+                            var plannedExpense = BudgetAllocationSlices.Planned(budget, BudgetCategoryType.Expense);
                             <div class="acct-section">
                                 <OdsSectionDivider Label="Allocation" Meta="@($"planned & actual · {budget.BaseCurrencyCode}")" />
                                 <BudgetDonutPair Income="true"
                                                  PlannedSlices="plannedIncome"
-                                                 ActualSlices="ActualSlices(budget, BudgetCategoryType.Income, actualByTag, plannedIncome)"
+                                                 ActualSlices="BudgetAllocationSlices.Actual(budget, BudgetCategoryType.Income, actualByTag, plannedIncome)"
                                                  HasReport="hasReport"
                                                  PlannedSub="@Lines(incomeItemCount, "income line")"
                                                  PlannedFormat="@((v, slice) => slice is null ? FormatMoney(budget.ExpectedIncomes, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))"
                                                  ActualFormat="@((v, slice) => slice is null ? FormatMoney(actualIncome, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))" />
                                 <BudgetDonutPair Income="false"
                                                  PlannedSlices="plannedExpense"
-                                                 ActualSlices="ActualSlices(budget, BudgetCategoryType.Expense, actualByTag, plannedExpense)"
+                                                 ActualSlices="BudgetAllocationSlices.Actual(budget, BudgetCategoryType.Expense, actualByTag, plannedExpense)"
                                                  HasReport="hasReport"
                                                  PlannedSub="@Lines(expenseItemCount, "expense line")"
                                                  PlannedFormat="@((v, slice) => slice is null ? FormatMoney(budget.ExpectedExpenses, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))"
