@@ -1,79 +1,105 @@
 @using Odyssey.Dtos.Finance
 
-@* Planned income + expenses donuts side by side (divider between), shared by the
-   Budgets page header (aggregate across budgets) and each budget's expanded detail.
-   Empty panels keep the title with a short line. The host supplies the slices, the
-   sub-captions, and the legend/total formatters (the total row is slice == null). *@
+@* One direction of a budget's Allocation section: its planned donut beside its actual one, each in
+   its own recessed well. The budget detail renders two of these, income above expenses. The
+   direction tints every legend and total amount in its finance hue (.bgt-donuts.in / .out), so the
+   row reads as money coming in or going out before a label is read.
 
-<OdsDonutPair>
+   Actual slices are ordered by, and coloured from, the planned slices, so a tag keeps its colour
+   across the pair. The host supplies the slices and the legend/total formatters (the total row is
+   passed a null slice). *@
+
+<OdsDonutPair Class="@($"bgt-donuts {(Income ? "in" : "out")}")">
     <First>
-        @* Planned income *@
-        @if (IncomeSlices.Count == 0)
+        @if (PlannedSlices.Count == 0)
         {
-            <div class="donut-panel">
-                <div class="chart-head">
-                    <div>
-                        <div class="chart-ttl">Planned income</div>
-                        <div class="chart-sub">@IncomeSub</div>
-                    </div>
-                </div>
-                <div class="donut-legend-empty">No planned income yet</div>
-            </div>
+            @Empty(PlannedTitle, PlannedSub, $"No planned {Noun} yet")
         }
         else
         {
             <OdsDonut Layout="OdsDonutLayout.Stack"
-                      CenterIcon="trending_up"
-                      Data="IncomeSlices"
-                      TotalLabel="Total planned in"
-                      Format="IncomeFormat"
-                      AriaLabel="Planned income by item">
-                <Title>Planned income</Title>
-                <Sub>@IncomeSub</Sub>
+                      CenterIcon="@(Income ? "trending_up" : "shopping_cart")"
+                      Data="PlannedSlices"
+                      TotalLabel="@($"Total planned {Direction}")"
+                      Format="PlannedFormat"
+                      AriaLabel="@($"{PlannedTitle} by item")">
+                <Title>@PlannedTitle</Title>
+                <Sub>@PlannedSub</Sub>
             </OdsDonut>
         }
     </First>
     <Second>
-        @* Planned expenses *@
-        @if (ExpenseSlices.Count == 0)
+        @if (!HasReport)
         {
+            @* Transient, so it is announced — the same live-region shape the other record-card
+               sections use while their data loads. The terminal lines below stay plain text. *@
             <div class="donut-panel">
                 <div class="chart-head">
                     <div>
-                        <div class="chart-ttl">Planned expenses</div>
-                        <div class="chart-sub">@ExpenseSub</div>
+                        <div class="chart-ttl">@ActualTitle</div>
+                        <div class="chart-sub">@ActualSub</div>
                     </div>
                 </div>
-                <div class="donut-legend-empty">No planned expenses yet</div>
+                <div class="donut-legend-empty" role="status" aria-live="polite" aria-busy="true">Loading matched transactions…</div>
             </div>
+        }
+        else if (!ActualSlices.Any(s => s.Value > 0))
+        {
+            @Empty(ActualTitle, ActualSub, $"No actual {Noun} yet")
         }
         else
         {
             <OdsDonut Layout="OdsDonutLayout.Stack"
-                      CenterIcon="shopping_cart"
-                      Data="ExpenseSlices"
-                      TotalLabel="Total planned out"
-                      Format="ExpenseFormat"
-                      AriaLabel="Planned expenses by item">
-                <Title>Planned expenses</Title>
-                <Sub>@ExpenseSub</Sub>
+                      CenterIcon="@(Income ? "south_west" : "north_east")"
+                      Data="ActualSlices"
+                      TotalLabel="@($"Total actual {Direction}")"
+                      Format="ActualFormat"
+                      AriaLabel="@($"{ActualTitle} by item")">
+                <Title>@ActualTitle</Title>
+                <Sub>@ActualSub</Sub>
             </OdsDonut>
         }
     </Second>
 </OdsDonutPair>
 
 @code {
-    [Parameter, EditorRequired] public IReadOnlyList<OdsDonutSlice> IncomeSlices { get; set; } = [];
+    /// <summary>Income when true, expenses otherwise — drives titles, glyphs and the amount hue.</summary>
+    [Parameter] public bool Income { get; set; }
 
-    [Parameter, EditorRequired] public IReadOnlyList<OdsDonutSlice> ExpenseSlices { get; set; } = [];
+    [Parameter, EditorRequired] public IReadOnlyList<OdsDonutSlice> PlannedSlices { get; set; } = [];
 
-    /// <summary>Caption under each title (e.g. "Across 3 active budgets" or "4 items").</summary>
-    [Parameter] public string? IncomeSub { get; set; }
+    /// <summary>Actual slices, already ordered and coloured to match <see cref="PlannedSlices"/>.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<OdsDonutSlice> ActualSlices { get; set; } = [];
 
-    [Parameter] public string? ExpenseSub { get; set; }
+    /// <summary>False until the budget's transaction report lands; the actual panel waits on it.</summary>
+    [Parameter] public bool HasReport { get; set; }
+
+    /// <summary>Caption under the planned title (e.g. "4 income lines").</summary>
+    [Parameter] public string? PlannedSub { get; set; }
 
     /// <summary>Legend/total formatter; the total row is passed a null slice.</summary>
-    [Parameter, EditorRequired] public Func<decimal, OdsDonutSlice?, string> IncomeFormat { get; set; } = (v, _) => v.ToString();
+    [Parameter, EditorRequired] public Func<decimal, OdsDonutSlice?, string> PlannedFormat { get; set; } = (v, _) => v.ToString();
 
-    [Parameter, EditorRequired] public Func<decimal, OdsDonutSlice?, string> ExpenseFormat { get; set; } = (v, _) => v.ToString();
+    [Parameter, EditorRequired] public Func<decimal, OdsDonutSlice?, string> ActualFormat { get; set; } = (v, _) => v.ToString();
+
+    private const string ActualSub = "from matched transactions";
+
+    private string Noun => Income ? "income" : "expenses";
+
+    private string Direction => Income ? "in" : "out";
+
+    private string PlannedTitle => Income ? "Planned income" : "Planned expenses";
+
+    private string ActualTitle => Income ? "Actual income" : "Actual expenses";
+
+    private static RenderFragment Empty(string title, string? sub, string line) =>
+        @<div class="donut-panel">
+            <div class="chart-head">
+                <div>
+                    <div class="chart-ttl">@title</div>
+                    <div class="chart-sub">@sub</div>
+                </div>
+            </div>
+            <div class="donut-legend-empty">@line</div>
+        </div>;
 }

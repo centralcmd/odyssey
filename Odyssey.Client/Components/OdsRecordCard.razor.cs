@@ -178,6 +178,8 @@ public partial class OdsRecordCard
         OdsRecordFigureTone.Income => "income",
         OdsRecordFigureTone.Expense => "expense",
         OdsRecordFigureTone.Pending => "pending",
+        OdsRecordFigureTone.Info => "info",
+        OdsRecordFigureTone.Muted => "muted",
         _ => null,
     };
 

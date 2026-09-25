@@ -300,16 +300,6 @@ public partial class BudgetsCard
     private int ActiveCount => _summary?.ActiveCount ?? 0;
     private decimal PlannedBalance => _summary?.PlannedBalance ?? 0m;
 
-    // Planned amounts by TAG NAME within a single budget, for that budget's detail donuts — the item
-    // has no name of its own. The label comes from the embedded tag, not from a second lookup, so a
-    // slice is never labelled from a list the caller may not hold.
-    private static List<KeyValuePair<string, decimal>> BudgetItemSlices(ExistingBudget budget, BudgetCategoryType category) =>
-        budget.BudgetItems
-            .Where(i => i.CategoryType == category && i.PlannedAmount > 0)
-            .GroupBy(i => i.Tag.Name)
-            .Select(g => new KeyValuePair<string, decimal>(g.Key, g.Sum(i => i.PlannedAmount)))
-            .OrderByDescending(kv => kv.Value)
-            .ToList();
 
     // Per-budget signed actual sums keyed by transaction-tag id, derived from its report.
     private Dictionary<Guid, decimal> ActualByTag(Guid budgetId)
@@ -574,10 +564,4 @@ public partial class BudgetsCard
         _minorUnitsCache[key] = units;
         return units;
     }
-
-    // ── Per-budget detail donuts ─────────────────────────────────────────
-    // One slice per item name, sized by planned amount — OdsDonut owns the ring
-    // geometry, gaps, and categorical --chart-* coloring.
-    private static List<OdsDonutSlice> BuildSlices(List<KeyValuePair<string, decimal>> entries) =>
-        entries.Select(e => new OdsDonutSlice { Label = e.Key, Value = e.Value }).ToList();
 }

@@ -849,16 +849,6 @@ public partial class ContractsCard
 
     // ── Record-card presentation ──────────────────────────────────────────────────
 
-    /// <summary>The headline figure's colour role. A lapsed term reads expense, one ending inside the
-    /// window or one suspended reads pending; everything else keeps the neutral ink, archived
-    /// included — a retired record is not a problem.</summary>
-    private static OdsRecordFigureTone HeadlineTone(string cls) => cls switch
-    {
-        "expired" => OdsRecordFigureTone.Expense,
-        "soon" or "paused" => OdsRecordFigureTone.Pending,
-        _ => OdsRecordFigureTone.Neutral,
-    };
-
     /// <summary>The Status tile's value tint, from the same registry the status chip reads, so the
     /// chip in the header and the tile in the body can never disagree.</summary>
     private static OdsInfoTileTone StatusTone(string chipTone) => chipTone switch

@@ -10,7 +10,7 @@
     well; the row collapses to a single column at ≤760px.
 *@
 
-<div class="odc-donut-pair">
+<div class="@RootClass">
     @if (First is not null)
     {
         <div class="odc-donut-card">@First</div>
@@ -31,4 +31,9 @@
 
     /// <summary>Alternative free-form content when not using First/Second.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Extra classes on the row (e.g. <c>bgt-donuts in</c> to tint a budget row's amounts).</summary>
+    [Parameter] public string? Class { get; set; }
+
+    private string RootClass => string.IsNullOrEmpty(Class) ? "odc-donut-pair" : $"odc-donut-pair {Class}";
 }
