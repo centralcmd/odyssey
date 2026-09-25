@@ -850,14 +850,26 @@ public partial class ContractsCard
     // ── Record-card presentation ──────────────────────────────────────────────────
 
     /// <summary>The headline figure's colour role. A lapsed term reads expense, one ending inside the
-    /// window or one suspended reads pending; everything else keeps the neutral ink, archived
-    /// included — a retired record is not a problem.</summary>
-    private static OdsRecordFigureTone HeadlineTone(string cls) => cls switch
+    /// window or one suspended reads pending; everything else takes the status chip's own tone, so an
+    /// outline status (Draft, Archived) reads muted rather than in the default ink.</summary>
+    private static OdsRecordFigureTone HeadlineTone(string cls, ContractStatus status) => cls switch
     {
         "expired" => OdsRecordFigureTone.Expense,
         "soon" or "paused" => OdsRecordFigureTone.Pending,
-        _ => OdsRecordFigureTone.Neutral,
+        _ => OdsContractStatus.Meta(status).Tone switch
+        {
+            "income" => OdsRecordFigureTone.Income,
+            "expense" => OdsRecordFigureTone.Expense,
+            "pending" => OdsRecordFigureTone.Pending,
+            "info" => OdsRecordFigureTone.Info,
+            _ => OdsRecordFigureTone.Muted,
+        },
     };
+
+    /// <summary>The card root's classes: <c>con-tone-*</c> tints the header mark with the same tone as
+    /// the figure, and <c>con-unsigned</c> dashes the edge of a Draft or Ready row.</summary>
+    private static string CardClass(OdsRecordFigureTone tone, bool unsigned) =>
+        $"con-card con-tone-{tone.ToString().ToLowerInvariant()}{(unsigned ? " con-unsigned" : "")}";
 
     /// <summary>The Status tile's value tint, from the same registry the status chip reads, so the
     /// chip in the header and the tile in the body can never disagree.</summary>

@@ -526,6 +526,12 @@
 @media (max-width: 760px) {
     .odc-donut-pair { grid-template-columns: 1fr; }
 }
+/* A budget's Allocation rows: one direction per row (planned beside actual), every legend and total
+   amount in that direction's finance hue. */
+.bgt-donuts.in .odc-legend-amt, .bgt-donuts.in .odc-legend-amt *,
+.bgt-donuts.in .odc-donut-total-amt, .bgt-donuts.in .odc-donut-total-amt * { color: var(--finance-income); }
+.bgt-donuts.out .odc-legend-amt, .bgt-donuts.out .odc-legend-amt *,
+.bgt-donuts.out .odc-donut-total-amt, .bgt-donuts.out .odc-donut-total-amt * { color: var(--finance-expense); }
 
 /* ---------- File upload (dropzone + ready-file list) ---------- */
 .odc-upload { display: flex; flex-direction: column; gap: var(--space-4); }
@@ -2616,6 +2622,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-run-tiles .odc-infotile { background: var(--mud-palette-background); box-shadow: none; }
 .con-run-tiles .odc-infotile.dir-out .odc-infotile-v { color: var(--finance-expense); }
 .con-run-tiles .odc-infotile.dir-in .odc-infotile-v { color: var(--finance-income); }
+.con-run-tiles .odc-infotile.dir-out .odc-infotile-ic { color: var(--finance-expense); background: color-mix(in srgb, var(--finance-expense) 14%, transparent); }
+.con-run-tiles .odc-infotile.dir-in .odc-infotile-ic { color: var(--finance-income); background: color-mix(in srgb, var(--finance-income) 14%, transparent); }
 /* A money breakdown row carries ONE figure: the net for that type, signed and coloured. The ruled
    total row is the component's own (OdsBreakdownTile TotalValue). */
 .con-bd-net { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); }
@@ -2766,6 +2774,45 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record.con-unsigned {
     border-style: dashed;
     border-color: color-mix(in srgb, var(--mud-palette-text-secondary) 40%, transparent);
+}
+
+/* Header mark follows the derived status tone (the same one the figure takes). Only the mark: --rec
+   stays the type accent for everything inside the card. The design keys this on data-tone; the
+   record card takes classes, so it is con-tone-* here, like con-unsigned above. */
+.odc-record.con-card { --con-tone: var(--mud-palette-text-secondary); }
+.odc-record.con-card.con-tone-income  { --con-tone: var(--finance-income); }
+.odc-record.con-card.con-tone-expense { --con-tone: var(--finance-expense); }
+.odc-record.con-card.con-tone-pending { --con-tone: var(--finance-pending); }
+.odc-record.con-card.con-tone-info    { --con-tone: var(--sea-400); }
+.odc-record.con-card > .odc-record-head .odc-record-mark:not(.img) {
+    color: var(--con-tone);
+    background: color-mix(in srgb, var(--con-tone) 14%, transparent);
+}
+
+/* Detail-tile icons (contracts + budgets): grey like the field name, unless the value carries a hue.
+   A tile given IconColor inline (a party's own record mark, a term) keeps it — inline wins. */
+.odc-record.con-card .odc-record-body .odc-infotile-ic,
+.odc-record.bud-card .odc-record-body .odc-infotile-ic {
+    color: var(--mud-palette-text-secondary);
+    background: color-mix(in srgb, var(--mud-palette-text-secondary) 14%, transparent);
+}
+.odc-record.con-card .odc-record-body .odc-infotile.tone-income .odc-infotile-ic,
+.odc-record.bud-card .odc-record-body .odc-infotile.tone-income .odc-infotile-ic {
+    color: var(--finance-income);
+    background: color-mix(in srgb, var(--finance-income) 14%, transparent);
+}
+.odc-record.con-card .odc-record-body .con-status-tile.tone-info .odc-infotile-ic {
+    color: var(--mud-palette-info);
+    background: color-mix(in srgb, var(--mud-palette-info) 14%, transparent);
+}
+.odc-record.con-card .odc-record-body .odc-infotile.tone-expense .odc-infotile-ic,
+.odc-record.bud-card .odc-record-body .odc-infotile.tone-expense .odc-infotile-ic {
+    color: var(--finance-expense);
+    background: color-mix(in srgb, var(--finance-expense) 14%, transparent);
+}
+.odc-record.con-card .odc-record-body .odc-infotile.tone-pending .odc-infotile-ic {
+    color: var(--finance-pending);
+    background: color-mix(in srgb, var(--finance-pending) 14%, transparent);
 }
 
 /* ---------- Target-size helpers (WCAG 2.5.8) ----------
@@ -4124,6 +4171,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record-value.income  { color: var(--finance-income); }
 .odc-record-value.expense { color: var(--finance-expense); }
 .odc-record-value.pending { color: var(--finance-pending); }
+.odc-record-value.info    { color: var(--sea-400); }
+.odc-record-value.muted   { color: var(--mud-palette-text-secondary); }
 .odc-record-caption {
     font: var(--fw-regular) 10.5px/1 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;
     color: var(--mud-palette-text-secondary);

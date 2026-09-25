@@ -47,6 +47,8 @@
         @* "By type" sums the records on file, so it closes with a total. "By status" is given its
            total EXPLICITLY: its rows carry an "Ending soon" slice of Active, which an arithmetic sum
            would double-count. *@
+        @* By-type glyphs are grey like their labels (here and in the net tiles below): the type hues
+           would compete with the finance and status colours the Overview is read by. *@
         <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No active contracts." />
         <OdsBreakdownTile Label="By status" Rows="StatusRows" TotalValue="Summary.TotalContracts" Empty="No contracts." />
         @* One tile per period carrying the NET per type — signed and coloured. Two figures per row
@@ -73,7 +75,7 @@
         .Select(r =>
         {
             var info = OdsTypeRegistries.ContractTypeOf(r.Type);
-            return new OdsBreakdownRow { Key = r.Type, Icon = info.Icon, IconColor = info.Color, Label = info.Label, Count = r.Count };
+            return new OdsBreakdownRow { Key = r.Type, Icon = info.Icon, IconColor = "var(--mud-palette-text-secondary)", Label = info.Label, Count = r.Count };
         })
         .ToList();
 
@@ -142,7 +144,7 @@
                     {
                         Key = type,
                         Icon = info.Icon,
-                        IconColor = info.Color,
+                        IconColor = "var(--mud-palette-text-secondary)",
                         Label = info.Label,
                         Count = NetCell(inValue - outValue),
                     };

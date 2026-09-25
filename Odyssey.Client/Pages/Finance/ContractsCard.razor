@@ -123,9 +123,16 @@
                            contract too. *@
                         new OdsRecordCount("history", c.EventCount.ToString(CultureInfo.CurrentCulture), "Events"),
                     };
+
+                    @* The figure and the header mark read ONE derived tone: the headline's own
+                       urgency when it has one, the status's hue otherwise. The type accent still
+                       colours everything inside the card. *@
+                    var figureTone = HeadlineTone(headline.Cls, c.Status);
                 }
-                @* One accent per record, taken from the contract's TYPE — the header mark, every tile
-                   icon chip in the body and the party rows' own marks all resolve from it.
+                @* One accent per record, taken from the contract's TYPE — the body's accent-reading
+                   surfaces resolve from it. The header mark alone follows the status tone
+                   (con-tone-*), and the body's field tiles draw their icons grey unless their value
+                   carries a hue.
 
                    Dimmed follows ARCHIVE alone: a paused contract stays at full brightness, which is
                    most of what distinguishes the two states. Pausing suspends what an agreement
@@ -138,9 +145,9 @@
                                Meta="meta"
                                Counts="counts"
                                FigureCaption="@headline.Word"
-                               FigureTone="@HeadlineTone(headline.Cls)"
+                               FigureTone="@figureTone"
                                Dimmed="archived"
-                               Class="@(unsigned ? "con-unsigned" : null)"
+                               Class="@CardClass(figureTone, unsigned)"
                                Highlight="@(_flashId == c.ContractId)"
                                Open="IsExpanded(c.ContractId)"
                                OnToggle="@(_ => ToggleExpand(c.ContractId))">
@@ -233,7 +240,7 @@
 
                                 @* A DERIVED summary: it carries the state and the date that state
                                    began, while the dates it derives from keep their own tiles. *@
-                                <OdsInfoTile Icon="@statusMeta.Icon" Label="Status"
+                                <OdsInfoTile Icon="@statusMeta.Icon" Label="Status" Class="con-status-tile"
                                              ValueVariant="OdsInfoTileVariant.Text"
                                              Tone="@StatusTone(statusMeta.Tone)"
                                              Foot="@OdsInfoTile.Caption(StatusFoot(detail, oneOff))">
@@ -261,8 +268,11 @@
 
                                 @if (detail.Signed is { } signedAt)
                                 {
+                                    @* A signature on an agreement that has ended is history, not
+                                       good news — the tile drops its tone once the status has. *@
                                     <OdsInfoTile Icon="history_edu" Label="Signed"
-                                                 ValueVariant="OdsInfoTileVariant.Sm" Tone="OdsInfoTileTone.Income"
+                                                 ValueVariant="OdsInfoTileVariant.Sm"
+                                                 Tone="@(detail.Status is ContractStatus.Expired or ContractStatus.Archived ? OdsInfoTileTone.Default : OdsInfoTileTone.Income)"
                                                  Foot="@OdsInfoTile.Caption("signed by all parties")">
                                         <Value>@LongDate(signedAt)</Value>
                                     </OdsInfoTile>

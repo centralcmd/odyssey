@@ -78,12 +78,16 @@
                         new OdsRecordCount("receipt_long", budget.TransactionCount.ToString(CultureInfo.CurrentCulture), "Transactions"),
                     };
                 }
-                @* A budget has no TYPE field and no type-equivalent registry, so it takes the brand
-                   accent rather than a hue picked out of the chart palette by list position — that
-                   would re-colour the whole body on every re-sort. Archived is derived state and
-                   stays with the status chip. *@
+                @* A budget has no TYPE field and no type-equivalent registry, so its accent follows
+                   its STATUS — the same tone as the chip: income while active, grey once archived.
+                   Never a hue picked out of the chart palette by list position, which would
+                   re-colour the whole body on every re-sort. Field-tile icons in the body are grey
+                   unless their value carries a hue (bud-card). *@
                 <OdsRecordCard Id="@($"bdg-{budget.BudgetId}")"
                                Icon="pie_chart"
+                               Accent="@BudgetAccent(archived)"
+                               AccentSoft="@BudgetAccentSoft(archived)"
+                               Class="bud-card"
                                Name="@budget.Name"
                                Meta="meta"
                                Counts="counts"
@@ -106,8 +110,8 @@
                     <Details>
                         @* The budget's FULL field set, including what the collapsed header already
                            shows: at tile scale a value arrives with its own label, so the body reads
-                           as the record rather than the remainder of one. The derived roll-ups never
-                           replace the planned tiles they are computed from. *@
+                           as the record rather than the remainder of one. The planned and actual
+                           in/out totals are not tiles: they close the Allocation donuts below. *@
                         <OdsInfoTileGrid>
                             <OdsInfoTile Icon="pie_chart" Label="Name"
                                          ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
@@ -135,38 +139,14 @@
                                 <Value>@(archived ? "Archived" : "Active")</Value>
                             </OdsInfoTile>
 
-                            <OdsInfoTile Icon="trending_up" Label="Planned income" Tone="OdsInfoTileTone.Income"
-                                         Foot="@OdsInfoTile.Caption(Lines(incomeItemCount, "income line"))">
-                                <Value>@FormatMoney(budget.ExpectedIncomes, budget.BaseCurrencyCode)</Value>
-                            </OdsInfoTile>
-
-                            <OdsInfoTile Icon="shopping_cart" Label="Planned expenses" Tone="OdsInfoTileTone.Expense"
-                                         Foot="@OdsInfoTile.Caption(Lines(expenseItemCount, "expense line"))">
-                                <Value>@FormatMoney(budget.ExpectedExpenses, budget.BaseCurrencyCode)</Value>
-                            </OdsInfoTile>
-
-                            @* The four derived tiles need the budget's transaction report, which is
-                               fetched when the record opens — until it lands they have no value, so
-                               they render no tile rather than an empty one. *@
-                            @if (hasReport)
-                            {
-                                <OdsInfoTile Icon="south_west" Label="Actual income" Tone="OdsInfoTileTone.Income"
-                                             Foot="@OdsInfoTile.Caption("from matched transactions")">
-                                    <Value>@FormatMoney(actualIncome, budget.BaseCurrencyCode)</Value>
-                                </OdsInfoTile>
-
-                                <OdsInfoTile Icon="north_east" Label="Actual expenses" Tone="OdsInfoTileTone.Expense"
-                                             Foot="@OdsInfoTile.Caption("from matched transactions")">
-                                    <Value>@FormatMoney(actualExpenses, budget.BaseCurrencyCode)</Value>
-                                </OdsInfoTile>
-                            }
-
                             <OdsInfoTile Icon="balance" Label="Expected balance"
                                          Tone="@BalanceTileTone(budget.ExpectedDifference)"
                                          Foot="@OdsInfoTile.Caption("planned in − planned out")">
                                 <Value>@FormatMoney(budget.ExpectedDifference, budget.BaseCurrencyCode)</Value>
                             </OdsInfoTile>
 
+                            @* Derived from the budget's transaction report, which is fetched when the
+                               record opens — until it lands there is no value, so no tile. *@
                             @if (hasReport)
                             {
                                 <OdsInfoTile Icon="account_balance" Label="Actual balance"
@@ -191,22 +171,28 @@
                     </Content>
 
                     <Sections>
-                        @* Planned income / expense donuts — amounts in the budget's base currency;
-                           the total row uses the budget's expected in/out. Planned, not actual. *@
+                        @* Planned beside actual, one row per direction — amounts in the budget's base
+                           currency. Each total row closes on the budget's own figure for that donut. *@
                         @if (itemCount > 0)
                         {
+                            var plannedIncome = BuildSlices(BudgetItemSlices(budget, BudgetCategoryType.Income));
+                            var plannedExpense = BuildSlices(BudgetItemSlices(budget, BudgetCategoryType.Expense));
                             <div class="acct-section">
-                                <OdsSectionDivider Label="Allocation" Meta="@($"planned · {budget.BaseCurrencyCode}")" />
-                                <MudCard Elevation="1" Class="ods-outline" Style="background:var(--mud-palette-background);">
-                                    <MudCardContent Class="pa-4">
-                                        <BudgetDonutPair IncomeSlices="BuildSlices(BudgetItemSlices(budget, BudgetCategoryType.Income))"
-                                                         ExpenseSlices="BuildSlices(BudgetItemSlices(budget, BudgetCategoryType.Expense))"
-                                                         IncomeSub="@Lines(incomeItemCount, "item")"
-                                                         ExpenseSub="@Lines(expenseItemCount, "item")"
-                                                         IncomeFormat="@((v, slice) => slice is null ? FormatMoney(budget.ExpectedIncomes, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))"
-                                                         ExpenseFormat="@((v, slice) => slice is null ? FormatMoney(budget.ExpectedExpenses, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))" />
-                                    </MudCardContent>
-                                </MudCard>
+                                <OdsSectionDivider Label="Allocation" Meta="@($"planned & actual · {budget.BaseCurrencyCode}")" />
+                                <BudgetDonutPair Income="true"
+                                                 PlannedSlices="plannedIncome"
+                                                 ActualSlices="ActualSlices(budget, BudgetCategoryType.Income, actualByTag, plannedIncome)"
+                                                 HasReport="hasReport"
+                                                 PlannedSub="@Lines(incomeItemCount, "income line")"
+                                                 PlannedFormat="@((v, slice) => slice is null ? FormatMoney(budget.ExpectedIncomes, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))"
+                                                 ActualFormat="@((v, slice) => slice is null ? FormatMoney(actualIncome, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))" />
+                                <BudgetDonutPair Income="false"
+                                                 PlannedSlices="plannedExpense"
+                                                 ActualSlices="ActualSlices(budget, BudgetCategoryType.Expense, actualByTag, plannedExpense)"
+                                                 HasReport="hasReport"
+                                                 PlannedSub="@Lines(expenseItemCount, "expense line")"
+                                                 PlannedFormat="@((v, slice) => slice is null ? FormatMoney(budget.ExpectedExpenses, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))"
+                                                 ActualFormat="@((v, slice) => slice is null ? FormatMoney(actualExpenses, budget.BaseCurrencyCode) : FormatMoney(v, budget.BaseCurrencyCode))" />
                             </div>
                         }
 

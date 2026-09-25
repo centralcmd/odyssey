@@ -580,4 +580,44 @@ public partial class BudgetsCard
     // geometry, gaps, and categorical --chart-* coloring.
     private static List<OdsDonutSlice> BuildSlices(List<KeyValuePair<string, decimal>> entries) =>
         entries.Select(e => new OdsDonutSlice { Label = e.Key, Value = e.Value }).ToList();
+
+    /// <summary>
+    /// A direction's actual slices, one per tag, ordered by and coloured from its PLANNED slices so a
+    /// tag keeps its colour across the planned/actual pair. The colour is set explicitly because the
+    /// donut assigns palette stops by index after dropping zero slices — a tag with no matched
+    /// transactions would otherwise shift every colour after it. A tag planned at zero follows the
+    /// planned ones.
+    /// </summary>
+    private static List<OdsDonutSlice> ActualSlices(
+        ExistingBudget budget, BudgetCategoryType category, Dictionary<Guid, decimal> actualByTag,
+        IReadOnlyList<OdsDonutSlice> planned)
+    {
+        var tags = budget.BudgetItems
+            .Where(i => i.CategoryType == category)
+            .GroupBy(i => i.Tag.Name)
+            .Select(g => (Name: g.Key, Actual: g.Sum(i => Signed(actualByTag.GetValueOrDefault(i.TransactionTagId)))))
+            .ToList();
+
+        var rank = planned.Select((s, i) => (s.Label, i)).ToDictionary(x => x.Label, x => x.i);
+        return tags
+            .Select((t, i) => (t.Name, t.Actual, Rank: rank.TryGetValue(t.Name, out var r) ? r : planned.Count + i))
+            .OrderBy(t => t.Rank)
+            .Select(t => new OdsDonutSlice
+            {
+                Label = t.Name,
+                Value = t.Actual,
+                Color = OdsDonutPalette.Default[t.Rank % OdsDonutPalette.Default.Count],
+            })
+            .ToList();
+
+        // Mirrors ActualIncome / ActualExpenses: income is the signed sum, an expense its magnitude.
+        decimal Signed(decimal sum) => category == BudgetCategoryType.Expense ? Math.Abs(sum) : sum;
+    }
+
+    // The record accent follows the status chip: income while active, grey once archived.
+    private static string BudgetAccent(bool archived) =>
+        archived ? "var(--mud-palette-text-secondary)" : "var(--finance-income)";
+
+    private static string BudgetAccentSoft(bool archived) =>
+        $"color-mix(in srgb, {BudgetAccent(archived)} 14%, transparent)";
 }

@@ -148,9 +148,10 @@ public enum OdsCredentialClearReason { Host, StartTls }
 
 /// <summary>
 /// Colour role for an <see cref="OdsRecordCard"/>'s right-hand headline figure — the finance
-/// vocabulary, never the record's own accent. Neutral leaves it in the default ink.
+/// vocabulary, never the record's own accent. Neutral leaves it in the default ink; Info and Muted
+/// carry a status reading (upcoming, and a settled or unsigned state) where the figure follows one.
 /// </summary>
-public enum OdsRecordFigureTone { Neutral, Income, Expense, Pending }
+public enum OdsRecordFigureTone { Neutral, Income, Expense, Pending, Info, Muted }
 
 /// <summary>
 /// Value tint for an <see cref="OdsInfoTile"/> whose value carries a state colour rather than the
