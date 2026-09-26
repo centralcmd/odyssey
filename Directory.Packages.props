@@ -77,6 +77,6 @@
          depth rather than the only thing holding the CVE off. Keep it, and keep it on the 2.5.x
          line: StreamJsonRpc targets the MessagePack 2.x API, so a 3.x bump risks runtime
          breakage for nothing. -->
-    <PackageVersion Include="MessagePack" Version="2.5.303" />
+    <PackageVersion Include="MessagePack" Version="2.5.305" />
   </ItemGroup>
 </Project>
