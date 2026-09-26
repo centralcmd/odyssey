@@ -35,6 +35,7 @@ public class OdsTypeRegistriesTests
         { nameof(OdsTypeRegistries.ContractPartyRoles), typeof(ContractPartyRole) },
         { nameof(OdsTypeRegistries.ContractEventTypes), typeof(ContractEventType) },
         { nameof(OdsTypeRegistries.BudgetCategoryTypes), typeof(BudgetCategoryType) },
+        { nameof(OdsTypeRegistries.PropertyFileTypes), typeof(PropertyFileType) },
     };
 
     /// <summary>
@@ -124,6 +125,7 @@ public class OdsTypeRegistriesTests
         AssertResolvesEveryMember<AccountFileType>(OdsTypeRegistries.AccountFileTypeOf);
         AssertResolvesEveryMember<TransactionFileType>(OdsTypeRegistries.TransactionFileTypeOf);
         AssertResolvesEveryMember<TaxStatementFileType>(OdsTypeRegistries.TaxStatementFileTypeOf);
+        AssertResolvesEveryMember<PropertyFileType>(OdsTypeRegistries.PropertyFileTypeOf);
     }
 
     [Fact]
@@ -151,6 +153,26 @@ public class OdsTypeRegistriesTests
         Assert.Equal("Other", OdsTypeRegistries.AccountFileTypeOf((AccountFileType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.TransactionFileTypeOf((TransactionFileType)99).Key);
         Assert.Equal("Other", OdsTypeRegistries.TaxStatementFileTypeOf((TaxStatementFileType)99).Key);
+        Assert.Equal("Other", OdsTypeRegistries.PropertyFileTypeOf((PropertyFileType)99).Key);
+    }
+
+    /// <summary>
+    /// <c>PropertyFileTypes</c> (issue #210) reads with <c>Other</c> LAST although it is the enum's zero
+    /// member — the AccountFileType shape. <c>PropertyFileTypeOf</c>'s fallback is positional
+    /// (<c>[^1]</c>), so a reorder that ends the list with anything else would render every unknown
+    /// ordinal as that member; and a picker opening on <c>Deed</c> by default would be the silent claim
+    /// the guess rule exists to avoid.
+    /// </summary>
+    [Fact]
+    public void PropertyFileTypes_reads_with_Other_last_although_it_is_ordinal_zero()
+    {
+        Assert.Equal(
+            ["Deed", "PurchaseAgreement", "Valuation", "Inspection", "Registration", "Insurance", "Warranty",
+             "Receipt", "Maintenance", "Tax", "Drawing", "Other"],
+            OdsTypeRegistries.PropertyFileTypes.Select(t => t.Key).ToList());
+
+        Assert.Equal(0, (int)PropertyFileType.Other);
+        Assert.Equal("Other", OdsTypeRegistries.PropertyFileTypeOf(default).Key);
     }
 
     /// <summary>
@@ -176,12 +198,15 @@ public class OdsTypeRegistriesTests
     /// <c>CONTRACT_TYPES</c> / <c>CONTRACT_PARTY_ROLES</c> exports on every key, label, glyph, colour,
     /// ordinal and the reading order. The internal-consistency tests above stay green while a hand-copied
     /// row drifts from its source; this is what catches the drift, the same way
-    /// <see cref="ContractEventTypes_agrees_with_the_design_systems_registry"/> does for events.
+    /// <see cref="ContractEventTypes_agrees_with_the_design_systems_registry"/> does for events. Issue #210
+    /// adds <c>PROPERTY_FILE_TYPES</c>, whose reading order (Other last, ordinal 0) likewise differs from
+    /// its ordinal order.
     /// </summary>
     [Theory]
     [InlineData(nameof(OdsTypeRegistries.ContractTypes), "ContractTypeSelect.jsx", typeof(ContractType))]
     [InlineData(nameof(OdsTypeRegistries.ContractPartyRoles), "ContractPartyRoleSelect.jsx", typeof(ContractPartyRole))]
-    public void Contract_type_and_role_registries_agree_with_the_design_system(
+    [InlineData(nameof(OdsTypeRegistries.PropertyFileTypes), "PropertyFileTypeSelect.jsx", typeof(PropertyFileType))]
+    public void Select_backed_registries_agree_with_the_design_system(
         string registryName, string dsFile, Type enumType)
     {
         var path = ClientSource.Sibling(Path.Combine("Odyssey Design System", "components", dsFile));
@@ -364,6 +389,7 @@ public class OdsTypeRegistriesTests
         { "ContractOptions", OdsTypeRegistries.ContractOptions, OdsTypeRegistries.ContractTypes },
         { "ContractFileOptions", OdsTypeRegistries.ContractFileOptions, OdsTypeRegistries.ContractFileTypes },
         { "ContractPartyRoleOptions", OdsTypeRegistries.ContractPartyRoleOptions, OdsTypeRegistries.ContractPartyRoles },
+        { "PropertyFileOptions", OdsTypeRegistries.PropertyFileOptions, OdsTypeRegistries.PropertyFileTypes },
     };
 
     [Theory]

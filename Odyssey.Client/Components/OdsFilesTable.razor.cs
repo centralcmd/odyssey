@@ -77,6 +77,15 @@ public partial class OdsFilesTable
     /// <summary>Detach/delete a file — appends the danger Delete item after a divider.</summary>
     [Parameter] public EventCallback<OdsFilesRow> OnDelete { get; set; }
 
+    /// <summary>
+    /// Label of the danger item <see cref="OnDelete"/> appends. Set "Detach" on link surfaces where the
+    /// verb removes only the link row and the file stays in the Files store (property documents).
+    /// </summary>
+    [Parameter] public string DeleteLabel { get; set; } = "Delete";
+
+    /// <summary>Material icon of that item; pair "Detach" with <c>link_off</c>.</summary>
+    [Parameter] public string DeleteIcon { get; set; } = "delete";
+
     /// <summary>Size cell renderer. Default: human-readable bytes (B / KB / MB).</summary>
     [Parameter] public Func<long, string>? FormatSize { get; set; }
 
@@ -188,8 +197,8 @@ public partial class OdsFilesTable
             items.Add(new OdsMenuItem { Divider = true });
             items.Add(new OdsMenuItem
             {
-                Icon = "delete",
-                Label = "Delete",
+                Icon = DeleteIcon,
+                Label = DeleteLabel,
                 Danger = true,
                 OnClick = EventCallback.Factory.Create(this, ctx.Remove),
             });

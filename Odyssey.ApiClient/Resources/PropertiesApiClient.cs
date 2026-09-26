@@ -78,6 +78,23 @@ public interface IPropertiesApiClient
     Task<ApiResult> AddSmartTagAsync(Guid propertyId, Guid tagId, CancellationToken ct = default);
 
     Task<ApiResult> RemoveSmartTagAsync(Guid propertyId, Guid tagId, CancellationToken ct = default);
+
+    // ── Documents (issue #210) ───────────────────────────────────────────────
+
+    /// <summary>The property's documents, oldest attachment first; an empty list when it has none.</summary>
+    Task<ApiResult<List<ExistingPropertyFile>>> ListFilesAsync(Guid propertyId, CancellationToken ct = default);
+
+    /// <summary>Attaches a file already uploaded through the Files API. Needs properties.update + files.read.</summary>
+    Task<ApiResult> AttachFileAsync(Guid propertyId, AttachPropertyFileRequest request, CancellationToken ct = default);
+
+    /// <summary>A full replacement of the type and validity metadata — a null date or issuer clears it.</summary>
+    Task<ApiResult> UpdateFileAsync(
+        Guid propertyId, Guid fileId, UpdatePropertyFileRequest request, CancellationToken ct = default);
+
+    Task<ApiResult<ApiFile>> DownloadFileAsync(Guid propertyId, Guid fileId, CancellationToken ct = default);
+
+    /// <summary>Removes the link only; the file stays in the Files store.</summary>
+    Task<ApiResult> DetachFileAsync(Guid propertyId, Guid fileId, CancellationToken ct = default);
 }
 
 /// <inheritdoc cref="IPropertiesApiClient" />
@@ -172,6 +189,25 @@ public sealed class PropertiesApiClient(IOdysseyApi api) : IPropertiesApiClient
     public Task<ApiResult> RemoveSmartTagAsync(Guid propertyId, Guid tagId, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{SmartTags(propertyId)}/{tagId}", null, ct);
 
+    // ── Documents ────────────────────────────────────────────────────────────
+
+    public Task<ApiResult<List<ExistingPropertyFile>>> ListFilesAsync(Guid propertyId, CancellationToken ct = default) =>
+        api.GetAsync<List<ExistingPropertyFile>>(Files(propertyId), ct);
+
+    public Task<ApiResult> AttachFileAsync(Guid propertyId, AttachPropertyFileRequest request, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Post, Files(propertyId), request, ct);
+
+    public Task<ApiResult> UpdateFileAsync(
+        Guid propertyId, Guid fileId, UpdatePropertyFileRequest request, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Put, $"{Files(propertyId)}/{fileId}", request, ct);
+
+    public Task<ApiResult<ApiFile>> DownloadFileAsync(Guid propertyId, Guid fileId, CancellationToken ct = default) =>
+        api.GetFileAsync($"{Files(propertyId)}/{fileId}", "property-file", ct: ct);
+
+    public Task<ApiResult> DetachFileAsync(Guid propertyId, Guid fileId, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Delete, $"{Files(propertyId)}/{fileId}", null, ct);
+
+    private static string Files(Guid propertyId) => $"{Base}/{propertyId}/files";
     private static string SmartTags(Guid propertyId) => $"{Base}/{propertyId}/smart-tags";
     private static string Estimates(Guid propertyId) => $"{Base}/{propertyId}/estimates";
 }

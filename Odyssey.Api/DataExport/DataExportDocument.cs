@@ -139,6 +139,10 @@ public sealed class FinanceDatabaseExport
     public IReadOnlyList<VehicleDetailsExport> VehicleDetails { get; init; } = [];
     public IReadOnlyList<PropertyEstimateExport> PropertyEstimates { get; init; } = [];
     public IReadOnlyList<PropertySmartTagExport> PropertySmartTags { get; init; } = [];
+
+    // Issue #210 — the property's document links. The bytes travel in the separate files export, as
+    // for every other attachment table.
+    public IReadOnlyList<PropertyFileExport> PropertyFiles { get; init; } = [];
 }
 
 public sealed class AccountExport
@@ -399,6 +403,25 @@ public sealed class PropertySmartTagExport
     public Guid PropertyId { get; init; }
     public Guid TransactionTagId { get; init; }
     public DateTime AddedAt { get; init; }
+}
+
+/// <summary>
+/// A property's document link (issue #210) — the sibling of <see cref="ContractFileExport"/>, carrying
+/// the user-entered type and validity metadata as well, since a field the subject typed that the export
+/// omitted would be its own silent hole.
+/// </summary>
+public sealed class PropertyFileExport
+{
+    public Guid PropertyFileId { get; init; }
+    public Guid PropertyId { get; init; }
+    public Guid FileMetadataId { get; init; }
+    public PropertyFileType FileType { get; init; }
+    public string? AttachedByUserId { get; init; }
+    public DateTime AttachedAtUtc { get; init; }
+    public DateTime? ValidFrom { get; init; }
+    public DateTime? ValidTo { get; init; }
+    public DateTime? IssuedAt { get; init; }
+    public Guid? IssuedBy { get; init; }
 }
 
 /// <summary>

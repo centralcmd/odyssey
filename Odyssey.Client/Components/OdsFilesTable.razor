@@ -23,7 +23,8 @@
       • Actions(file) supplies the file-specific menu items — Preview (the
         document viewer) / Download / Analyze / Copy ID — slotted between Edit and
         Delete per the menu convention. Host any modals those open OUTSIDE the table.
-      • OnDelete appends the danger Delete item after a divider.
+      • OnDelete appends the danger Delete item after a divider. DeleteLabel / DeleteIcon rename it
+        on link surfaces where the verb only detaches ("Detach" · link_off on property documents).
 *@
 
 @* The validity variant is wider than its card, so it scrolls. A scrollable region has to be
@@ -76,7 +77,9 @@
     private RenderFragment TypeChip(OdsFilesRow file)
     {
         var kind = ResolveKind(file);
-        return @<span class="odc-ft-type" style="background:@kind.Soft;color:@kind.Color;">@file.Kind</span>;
+        // The registry label when the host supplied Kinds ("Purchase agreement"), else the raw key.
+        var label = Kinds?.FirstOrDefault(k => k.Value == file.Kind)?.Label ?? file.Kind;
+        return @<span class="odc-ft-type" style="background:@kind.Soft;color:@kind.Color;">@label</span>;
     }
 
     private List<OdsRecordColumn<OdsFilesRow>> BuildColumns()

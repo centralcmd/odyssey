@@ -93,7 +93,7 @@ public class PropertiesApiClientTests
     };
 
     /// <summary>
-    /// Every route the client builds, and the method it uses. The estimate and smart-tag operations are
+    /// Every route the client builds, and the method it uses. The estimate, smart-tag and document operations are
     /// addressed through their property id, never by their own id alone — the parent scoping the server's
     /// IDOR guarantee rests on, which a refactor flattening one route would otherwise break silently.
     /// </summary>
@@ -113,6 +113,11 @@ public class PropertiesApiClientTests
         { "smart tags list",  $"/api/properties/{Parent}/smart-tags",             "GET" },
         { "smart tag add",    $"/api/properties/{Parent}/smart-tags/{Child}",     "POST" },
         { "smart tag remove", $"/api/properties/{Parent}/smart-tags/{Child}",     "DELETE" },
+        { "files list",       $"/api/properties/{Parent}/files",                  "GET" },
+        { "file attach",      $"/api/properties/{Parent}/files",                  "POST" },
+        { "file update",      $"/api/properties/{Parent}/files/{Child}",          "PUT" },
+        { "file download",    $"/api/properties/{Parent}/files/{Child}",          "GET" },
+        { "file detach",      $"/api/properties/{Parent}/files/{Child}",          "DELETE" },
     };
 
     [Theory]
@@ -137,7 +142,12 @@ public class PropertiesApiClientTests
             "estimate delete" => client.DeleteEstimateAsync(Parent, Child),
             "smart tags list" => client.ListSmartTagsAsync(Parent),
             "smart tag add" => client.AddSmartTagAsync(Parent, Child),
-            _ => client.RemoveSmartTagAsync(Parent, Child),
+            "smart tag remove" => client.RemoveSmartTagAsync(Parent, Child),
+            "files list" => client.ListFilesAsync(Parent),
+            "file attach" => client.AttachFileAsync(Parent, new AttachPropertyFileRequest { FileMetadataId = Child }),
+            "file update" => client.UpdateFileAsync(Parent, Child, new UpdatePropertyFileRequest { FileType = PropertyFileType.Deed }),
+            "file download" => client.DownloadFileAsync(Parent, Child),
+            _ => client.DetachFileAsync(Parent, Child),
         };
         await call;
 

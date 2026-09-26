@@ -159,6 +159,7 @@ public sealed class DataExportService
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.VehicleDetails), VehicleDetailsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyEstimates), PropertyEstimatesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertySmartTags), PropertySmartTagsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyFiles), PropertyFilesQuery(), cancellationToken);
     }
 
     /// <summary>
@@ -587,6 +588,23 @@ public sealed class DataExportService
                 PropertyId = smartTag.PropertyId,
                 TransactionTagId = smartTag.TransactionTagId,
                 AddedAt = smartTag.AddedAt,
+            });
+
+    private IQueryable<PropertyFileExport> PropertyFilesQuery() =>
+        context.PropertyFiles.AsNoTracking()
+            .OrderBy(propertyFile => propertyFile.PropertyFileId)
+            .Select(propertyFile => new PropertyFileExport
+            {
+                PropertyFileId = propertyFile.PropertyFileId,
+                PropertyId = propertyFile.PropertyId,
+                FileMetadataId = propertyFile.FileMetadataId,
+                FileType = (FinanceDtos.PropertyFileType)propertyFile.FileType,
+                AttachedByUserId = propertyFile.AttachedByUserId,
+                AttachedAtUtc = propertyFile.AttachedAtUtc,
+                ValidFrom = propertyFile.ValidFrom,
+                ValidTo = propertyFile.ValidTo,
+                IssuedAt = propertyFile.IssuedAt,
+                IssuedBy = propertyFile.IssuedBy,
             });
 
     private IQueryable<ContractExport> ContractsQuery() =>

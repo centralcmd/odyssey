@@ -526,7 +526,7 @@ is gone, and with it the one `__EFMigrationsHistory` table shared between two co
 `EntityFrameworkCore.Relational`, so any cleanup written in them is unrunnable on the tier the
 application-code cascade exists to serve — a fix written that way passes review and can never pass its
 own test. Use tracked `RemoveRange` for anything the fast tiers must exercise. The exception is
-`ContactReferenceGuard.ClearAndCascadeReferencesAsync`, whose six statements are relational-only and
+`ContactReferenceGuard.ClearAndCascadeReferencesAsync`, whose seven statements are relational-only and
 predate the rule; the consequence is that **no full contact delete runs under `Odyssey.Api.Tests`**, so
 that path's coverage lives in `Odyssey.IntegrationTests`.
 

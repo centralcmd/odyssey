@@ -1,0 +1,162 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+
+@*
+    PropertyAttachDialog — attach documents to a property (issue #210 §5.1; design system ·
+    AddPropertyFileModal.jsx). There is no upload endpoint on the property: a document is a
+    FileMetadata in the one Files store, linked here by id. Two ways to get that id:
+
+      • Upload new — the shared OdsFileUpload. Each file goes through the Files API (files.create) and
+        is then attached, so the same file can later be attached to the loan contract that financed the
+        property without a second copy. Offered only with files.create.
+      • From Files — pick files already in the store (files.read, which the attach needs anyway). A
+        file already linked to this property is shown but disabled ("Already attached") — the 409 the
+        server would answer. A file whose SERVER-RECORDED content type is off the shared document
+        allow-list is disabled with the reason in text — the 400. Both states read DocumentContentTypes
+        from Odyssey.Dtos, the symbol the server enforces, never a client-side copy.
+
+    Every picked file carries a PropertyFileType (guessed from the name; Other when nothing matches,
+    never Deed) and, behind the "Add validity" toggle contract uploads use, the four optional validity
+    fields. ValidTo before ValidFrom is refused on the dialog, as the service does.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="attach_file" Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="afm-dialog">
+    <ChildContent>
+        <div class="ods-modal-body prop-doc-modal">
+            @if (CanUpload)
+            {
+                <OdsSegmentedControl Full="true" AriaLabel="Where the document comes from"
+                                     Options="Tabs" Value="@_tab" ValueChanged="OnTabChanged" />
+            }
+
+            @if (_tab == UploadTab)
+            {
+                <OdsFileUpload Files="_uploads" FilesChanged="OnUploadsChanged"
+                               Accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
+                               Kinds="Kinds" GuessKind="PropertyFileTypeGuess.GuessKey"
+                               Error="@_error"
+                               Hint="@($"{DocumentContentTypes.Label} · up to {_uploadLimits.MaxUploadMegabytes} MB each · multiple at once")"
+                               RenderFileExtra="ValidityEditor" />
+            }
+            else
+            {
+                <div class="prop-lib">
+                    <OdsSearchField Value="@_query" ValueChanged="@(v => _query = v ?? string.Empty)"
+                                    Placeholder="Search files by name…" AriaLabel="Search files by name" />
+                    @if (_libraryLoading)
+                    {
+                        <div role="status" aria-live="polite" aria-busy="true">
+                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+                            <span class="sr-only">Loading files…</span>
+                        </div>
+                    }
+                    else if (_libraryFailed)
+                    {
+                        <OdsEmptyLine>Couldn’t load your files. <OdsButton Variant="OdsButtonVariant.Text" OnClick="LoadLibraryAsync">Try again</OdsButton></OdsEmptyLine>
+                    }
+                    else
+                    {
+                        <div class="prop-lib-list" role="group" aria-label="Files">
+                            @if (LibraryRows.Count == 0)
+                            {
+                                <OdsEmptyLine>@(string.IsNullOrWhiteSpace(_query) ? "Files is empty — upload a document instead." : $"No files match “{_query}”.")</OdsEmptyLine>
+                            }
+                            @foreach (var file in LibraryRows)
+                            {
+                                var state = StateOf(file);
+                                var picked = _picked.GetValueOrDefault(file.Id);
+                                var disabled = state != LibraryState.Available;
+                                <div class="prop-lib-row @(picked is not null ? "on" : null) @(disabled ? "off" : null)" @key="file.Id">
+                                    <button type="button" class="prop-lib-main" disabled="@disabled"
+                                            aria-pressed="@(picked is not null ? "true" : "false")"
+                                            @onclick="@(() => TogglePick(file))">
+                                        <span class="prop-lib-check"><OdsMIcon Name="@CheckIcon(state, picked is not null)" Size="20" /></span>
+                                        <span class="prop-lib-ic"><OdsMIcon Name="@ContentTypeIcon(file.ContentType)" Size="16" /></span>
+                                        <span class="prop-lib-text">
+                                            <span class="prop-lib-name">@file.FileName</span>
+                                            <span class="prop-lib-meta">@ContentTypeShort(file.ContentType) · @OdsFileUploadDefaults.FmtSize(file.SizeBytes) · uploaded @LongDate(file.UploadedAtUtc)</span>
+                                        </span>
+                                        @if (ReasonOf(state, file) is { } reason)
+                                        {
+                                            <span class="prop-lib-reason">@reason</span>
+                                        }
+                                    </button>
+                                    @if (picked is not null)
+                                    {
+                                        <div class="prop-lib-extra">
+                                            <div class="prop-lib-type">
+                                                <OdsPropertyFileTypeSelect Label="Document type" Value="@picked.Kind"
+                                                                           ValueChanged="@(v => picked.Kind = v ?? nameof(PropertyFileType.Other))" />
+                                            </div>
+                                            @ValidityEditor(new OdsUploadFileExtraContext(picked, EventCallback.Factory.Create(this, () => { })))
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        @if (_error is not null)
+                        {
+                            <div class="helper aam-err" role="alert">@_error</div>
+                        }
+                    }
+                    <div class="prop-lib-foot">
+                        <OdsMIcon Name="info" Size="14" />
+                        Only @DocumentContentTypes.Label files can be attached — the same rule as contract documents.
+                    </div>
+                </div>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(_tab == UploadTab ? "upload_file" : "link")"
+                   Disabled="@(_tab == LibraryTab && _picked.Count == 0)"
+                   Loading="_busy" OnClick="SubmitAsync">@SubmitText</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+
+    // Razor syntax (@<text>), so these inline render fragments cannot live in the code-behind.
+    private RenderFragment TitleFragment => @<text>Attach documents</text>;
+
+    private RenderFragment SubtitleFragment => @<text>Keep @Noun with @Property.Name. Files stay in Files; attaching links them here.</text>;
+
+    // One validity editor for both tabs — an upload row and a picked library row are both an
+    // OdsUploadFile — so the two read identically, and identically to the contract upload dialog.
+    private RenderFragment<OdsUploadFileExtraContext> ValidityEditor => ctx =>
+    @<div>
+        <button type="button" class="afm-meta-toggle @(_metaOpen.Contains(ctx.File.Uid) ? "on" : "")"
+                aria-expanded="@(_metaOpen.Contains(ctx.File.Uid) ? "true" : "false")"
+                @onclick="@(() => ToggleMeta(ctx.File))">
+            <OdsMIcon Name="event" Size="14" />
+            @(_metaOpen.Contains(ctx.File.Uid) ? "Hide validity" : "Add validity")
+        </button>
+        @if (_metaOpen.Contains(ctx.File.Uid))
+        {
+            <div class="afm-meta">
+                <div class="afm-meta-grid">
+                    <OdsDateField Label="Valid from" Value="ctx.File.ValidFrom" Max="ctx.File.ValidTo"
+                                  ValueChanged="@(v => Patch(ctx, f => f.ValidFrom = v))" />
+                    <OdsDateField Label="Valid to" Value="ctx.File.ValidTo" Min="ctx.File.ValidFrom"
+                                  Placeholder="No end date" Help="Leave blank if the document has no expiry."
+                                  ValueChanged="@(v => Patch(ctx, f => f.ValidTo = v))" />
+                    <OdsDateField Label="Issued" Value="ctx.File.IssuedAt"
+                                  ValueChanged="@(v => Patch(ctx, f => f.IssuedAt = v))" />
+                    @if (_canReadContacts)
+                    {
+                        <OdsContactSelect Label="Issued by" Value="@ctx.File.IssuedBy"
+                                          Options="_issuerOptions"
+                                          AllowCreate="@_canCreateContact" OnCreate="CreateContactOption"
+                                          ValueChanged="@(v => Patch(ctx, f => f.IssuedBy = v))" />
+                    }
+                </div>
+                @if (RangeBad(ctx.File))
+                {
+                    <div class="afm-meta-err">“Valid to” can’t be before “Valid from”.</div>
+                }
+            </div>
+        }
+    </div>;
+}

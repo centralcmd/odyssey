@@ -172,6 +172,8 @@ public class DataExportApiTests
                      // Issue #167.
                      "properties", "realEstateDetails", "vehicleDetails", "propertyEstimates",
                      "propertySmartTags",
+                     // Issue #210.
+                     "propertyFiles",
                  })
         {
             Assert.Equal(JsonValueKind.Array, finance.GetProperty(collection).ValueKind);
@@ -755,14 +757,20 @@ public class DataExportApiTests
         var smartTag = Assert.Single(finance.GetProperty("propertySmartTags").EnumerateArray());
         Assert.Equal(houseId, smartTag.GetProperty("propertyId").GetGuid());
         Assert.NotEqual(Guid.Empty, smartTag.GetProperty("transactionTagId").GetGuid());
+
+        // Issue #210 AC 19 — the document links, with the user-entered metadata.
+        var propertyFile = Assert.Single(finance.GetProperty("propertyFiles").EnumerateArray());
+        Assert.Equal(houseId, propertyFile.GetProperty("propertyId").GetGuid());
+        Assert.NotEqual(Guid.Empty, propertyFile.GetProperty("fileMetadataId").GetGuid());
+        Assert.Equal(new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc), propertyFile.GetProperty("validTo").GetDateTime());
     }
 
     // ── Deterministic ordering, every collection (spec §10.1.9) ───────────────
 
     /// <summary>
     /// The collections and the key columns each is ordered by, with the kind of comparison that
-    /// key uses. All 26 of them appear here — ordering was pinned for <c>accounts</c> alone, so a
-    /// dropped or wrong <c>OrderBy</c> on any of the other 25 queries passed the whole suite.
+    /// key uses. All 27 of them appear here — ordering was pinned for <c>accounts</c> alone, so a
+    /// dropped or wrong <c>OrderBy</c> on any of the other 26 queries passed the whole suite.
     /// Deterministic order is what makes two exports of unchanged data diffable, so it is a
     /// property of the format, not of one table.
     /// </summary>
@@ -799,6 +807,8 @@ public class DataExportApiTests
         { "vehicleDetails", ["propertyId"], KeyKind.Guid },
         { "propertyEstimates", ["propertyEstimateId"], KeyKind.Guid },
         { "propertySmartTags", ["propertyId", "transactionTagId"], KeyKind.Guid },
+        // Issue #210.
+        { "propertyFiles", ["propertyFileId"], KeyKind.Guid },
     };
 
     /// <summary>
@@ -1015,6 +1025,10 @@ public class DataExportApiTests
             context.PropertySmartTags.Add(new PropertySmartTag
             {
                 PropertyId = id, TransactionTagId = tagId, AddedAt = now,
+            });
+            context.PropertyFiles.Add(new PropertyFile
+            {
+                PropertyFileId = id, PropertyId = id, FileMetadataId = fileMetadataId, AttachedAtUtc = now,
             });
         }
 
@@ -1344,6 +1358,12 @@ public class DataExportApiTests
         {
             ContractPartyId = Guid.NewGuid(), ContractId = contractId, PropertyId = houseId,
             Role = ContractPartyRole.Property,
+        });
+        context.PropertyFiles.Add(new PropertyFile
+        {
+            PropertyId = houseId, FileMetadataId = fileMetadataId, FileType = Odyssey.Context.PropertyFileType.Deed,
+            AttachedByUserId = "uploader", AttachedAtUtc = DateTime.UtcNow,
+            ValidTo = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         });
         context.ContractFiles.Add(new ContractFile
         {

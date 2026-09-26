@@ -1,0 +1,70 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+
+@*
+    PropertyDocumentsSection — a property's documents (issue #210; design system · Properties.jsx
+    PropertyDocuments). GET /api/properties/{id}/files (properties.read) — unpaged, oldest attachment
+    first, metadata only — drawn with the shared OdsFilesTable in its contract configuration:
+
+      • Validity columns, and no rename — the name belongs to the FileMetadata, and the PUT carries the
+        type and the four validity fields only.
+      • RequireType — the PUT is a full replacement, so an unsent type is refused rather than reset.
+      • The danger item reads Detach · link_off: DELETE removes the link only; the file stays in Files.
+      • Edit and Detach need properties.update; Download is a read.
+      • issuedBy arrives as an id only (§7.3). Its name is resolved from the caller's OWN contacts read,
+        and reads "Contact (no access)" without contacts.read — never a name the server withheld.
+
+    The section owns its list: it loads on mount, re-reads after every write, and reports the count up
+    so the delete dialog can say how many links go. There is no count on ExistingProperty (backend
+    Non-Goal 4), so the collapsed card carries none either — a count the list endpoint alone knows
+    would read "0" on every closed card.
+*@
+
+<div class="con-section">
+    <OdsSectionDivider Label="Documents" Meta="@SectionMeta" />
+
+    @if (_isLoading && _files.Count == 0)
+    {
+        <div role="status" aria-live="polite" aria-busy="true">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+            <span class="sr-only">Loading documents…</span>
+        </div>
+    }
+    else if (_loadFailed)
+    {
+        <OdsEmptyLine>Couldn’t load the documents. <OdsButton Variant="OdsButtonVariant.Text" OnClick="LoadAsync">Try again</OdsButton></OdsEmptyLine>
+    }
+    else if (_files.Count == 0)
+    {
+        <OdsEmptyLine>@EmptyText</OdsEmptyLine>
+    }
+    else
+    {
+        <div class="con-files con-tbl-frame">
+            <OdsInlinePager Items="FileRows.ToList()" Context="pageRows">
+                <OdsFilesTable Files="pageRows"
+                               TypeFor="@(row => KindMeta(FileById(row.Id).FileType))"
+                               Kinds="OdsTypeRegistries.PropertyFileOptions"
+                               Actions="@BuildMenu"
+                               ValidityColumns="true"
+                               Issuers="@(CanUpdate ? _issuerOptions : null)"
+                               IssuerFor="@(row => IssuerName(FileById(row.Id).IssuedBy))"
+                               OnCreateContact="@(CanUpdate && _canCreateContact ? CreateContactOption : null)"
+                               Renameable="false"
+                               RequireType="true"
+                               OnSave="@SaveAction"
+                               OnDelete="@DetachAction"
+                               DeleteLabel="Detach"
+                               DeleteIcon="link_off"
+                               AriaLabel="@($"Documents for {Property.Name}")" />
+            </OdsInlinePager>
+        </div>
+    }
+</div>
+
+@if (_attachKey != Guid.Empty)
+{
+    <PropertyAttachDialog @key="_attachKey" @bind-Open="_attachOpen" Property="Property"
+                          Attached="_files" CanUpload="CanUpload"
+                          OnAttached="LoadAsync" />
+}

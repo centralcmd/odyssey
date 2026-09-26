@@ -31,6 +31,17 @@ public partial class PropertiesCard
     /// <see cref="PropertyEstimatesSection.NewEstimateRequestToken"/>.</summary>
     private readonly Dictionary<Guid, Guid> _newEstimateTokens = new();
 
+    /// <summary>One token per property whose row menu asked to attach documents; see
+    /// <see cref="PropertyDocumentsSection.AttachRequestToken"/>.</summary>
+    private readonly Dictionary<Guid, Guid> _attachTokens = new();
+
+    /// <summary>
+    /// Document counts the Documents section has reported. There is no count on
+    /// <see cref="ExistingProperty"/> (issue #210 Non-Goal 4), so a property never opened has none and
+    /// the delete dialog states the cascade without a number rather than as "no documents".
+    /// </summary>
+    private readonly Dictionary<Guid, int> _documentCounts = new();
+
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "properties-page";
     private bool _overviewOpen = true;
@@ -69,6 +80,11 @@ public partial class PropertiesCard
     private bool _canWriteEstimates;
     private bool _canReadTransactions;
     private bool _canReadContracts;
+    private bool _canReadFiles;
+    private bool _canUploadFiles;
+
+    /// <summary>POST …/files needs properties.update AND files.read (issue #210 §7.2).</summary>
+    private bool CanAttachDocuments => _canUpdate && _canReadFiles;
 
     // ── Dialogs ──────────────────────────────────────────────────────────────────
     private Guid _createKey = Guid.Empty;
@@ -119,6 +135,8 @@ public partial class PropertiesCard
         _canWriteEstimates = user.HasPermission(PermissionClaims.PropertiesEstimatesWrite);
         _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
         _canReadContracts = user.HasPermission(PermissionClaims.ContractsRead);
+        _canReadFiles = user.HasPermission(PermissionClaims.FilesRead);
+        _canUploadFiles = user.HasPermission(PermissionClaims.FilesCreate);
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────
@@ -242,6 +260,10 @@ public partial class PropertiesCard
         StateHasChanged();
     }
 
+    private void OnDocumentCountChanged(Guid id, int count) => _documentCounts[id] = count;
+
+    private int? DocumentCountFor(Guid id) => _documentCounts.TryGetValue(id, out var count) ? count : null;
+
     private void OnSmartTagCountChanged(ExistingProperty property, int count)
     {
         property.SmartTagCount = count;
@@ -251,7 +273,17 @@ public partial class PropertiesCard
     // ── Expand ──────────────────────────────────────────────────────────────────
     private bool IsExpanded(Guid id) => _expandedId == id;
 
-    private void ToggleExpand(Guid id) => _expandedId = _expandedId == id ? null : id;
+    /// <summary>
+    /// Any change of the open card consumes the pending row-menu requests. A section is created afresh
+    /// on every expand and cannot remember a token it already handled, so a token left in place would
+    /// reopen its dialog each time the card is reopened.
+    /// </summary>
+    private void ToggleExpand(Guid id)
+    {
+        _expandedId = _expandedId == id ? null : id;
+        _attachTokens.Clear();
+        _newEstimateTokens.Clear();
+    }
 
     // ── Row menu ──────────────────────────────────────────────────────────────────
     private IReadOnlyList<OdsMenuItem> RowActions(ExistingProperty p)
@@ -275,6 +307,16 @@ public partial class PropertiesCard
                 Icon = "monitor",
                 Label = "New estimate",
                 OnClick = EventCallback.Factory.Create(this, () => NewEstimate(p.PropertyId)),
+            });
+        }
+
+        if (CanAttachDocuments)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "attach_file",
+                Label = "Attach documents",
+                OnClick = EventCallback.Factory.Create(this, () => AttachDocuments(p.PropertyId)),
             });
         }
 
@@ -341,6 +383,15 @@ public partial class PropertiesCard
     // yields Guid.Empty, which the section would read as a fresh request and open the dialog on expand.
     private Guid? NewEstimateTokenFor(Guid id) => _newEstimateTokens.TryGetValue(id, out var token) ? token : null;
 
+    private Guid? AttachTokenFor(Guid id) => _attachTokens.TryGetValue(id, out var token) ? token : null;
+
+    private void AttachDocuments(Guid id)
+    {
+        // Expand first, as for a new estimate: the dialog writes into a section that has to be in view.
+        _expandedId = id;
+        _attachTokens[id] = Guid.NewGuid();
+    }
+
     private void NewEstimate(Guid id)
     {
         // Expand first: the dialog writes into a section the reader has to be able to see the result in.
@@ -378,6 +429,8 @@ public partial class PropertiesCard
 
         _properties.RemoveAll(x => x.PropertyId == p.PropertyId);
         _newEstimateTokens.Remove(p.PropertyId);
+        _attachTokens.Remove(p.PropertyId);
+        _documentCounts.Remove(p.PropertyId);
         if (_expandedId == p.PropertyId)
             _expandedId = null;
         if (_editProperty?.PropertyId == p.PropertyId)

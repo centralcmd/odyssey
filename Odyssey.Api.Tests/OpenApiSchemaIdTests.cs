@@ -40,6 +40,7 @@ public class OpenApiSchemaIdTests
 
         // A non-ambiguous type keeps its short, readable id.
         Assert.Contains("ExistingAccount", ids);
+        Assert.Contains("ExistingPropertyFile", ids);
     }
 
     /// <summary>
@@ -55,6 +56,7 @@ public class OpenApiSchemaIdTests
     [InlineData("BudgetCategoryType")]
     [InlineData("AccountFileType")]
     [InlineData("TransactionFileType")]
+    [InlineData("PropertyFileType")]
     public async Task AnEnumDuplicatedOnlyByItsEntityCounterpart_KeepsItsShortId(string name)
     {
         var ids = await SchemaIdsAsync();

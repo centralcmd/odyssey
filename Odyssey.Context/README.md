@@ -25,9 +25,10 @@ nothing stopping a write path that forgot to call either. One context makes them
 
 | Reference | On delete |
 |---|---|
-| `Transaction.ContactId`, `Account.CustodianId`, `AccountFile.IssuedBy`, `FileAnalysisCandidateTransaction.MatchedContactId` → `Contact` | `SET NULL` |
+| `Transaction.ContactId`, `Account.CustodianId`, `AccountFile.IssuedBy`, `PropertyFile.IssuedBy`, `FileAnalysisCandidateTransaction.MatchedContactId` → `Contact` | `SET NULL` |
 | `ContractParty.ContactId` → `Contact` | `CASCADE` |
-| `Photo.FileId`, `JournalEntryAttachment.FileId`, `JournalTaskAttachment.FileId` → `FileMetadata` | `CASCADE` |
+| `Photo.FileId`, `JournalEntryAttachment.FileId`, `JournalTaskAttachment.FileId`, `PropertyFile.FileMetadataId` → `FileMetadata` | `CASCADE` |
+| `PropertyFile.PropertyId` → `Property` (issue #210; the document link dies with its property, the file survives) | `CASCADE` |
 | `Contact.AvatarFileId` → `FileMetadata` | `SET NULL` |
 
 They are declared as relationships with **no navigation properties** (`HasOne<Contact>().WithMany()`),
@@ -106,7 +107,7 @@ The lookup services (`IContactLookup`, `IFileLookup`, `IPhotoLookup`, `IContactR
 Columns across the model name the user who created, updated, attached, uploaded, requested or reviewed
 a row — `CreatedByUserId`/`UpdatedByUserId` on `Calendar`, `CalendarEvent`, `JournalEntry`,
 `JournalTask`, `Photo`, `PhotoAlbum` and `RecurrencePattern`; `AttachedByUserId` on the file-link
-tables; `FileMetadata.UploadedByUserId`; `FileAnalysisJob.RequestedByUserId`; and
+tables (`AccountFiles`, `ContractFiles`, `PropertyFiles`, `TransactionFiles`, `TaxStatementFiles`); `FileMetadata.UploadedByUserId`; `FileAnalysisJob.RequestedByUserId`; and
 `FileAnalysisCandidateTransaction.ReviewedByUserId`.
 
 They were bare strings while identity lived in its own context, so deleting a user left every one of

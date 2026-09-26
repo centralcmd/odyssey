@@ -43,6 +43,7 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         ("RecurrencePatterns", "CreatedByUserId"), ("RecurrencePatterns", "UpdatedByUserId"),
         ("AccountFiles", "AttachedByUserId"),
         ("ContractFiles", "AttachedByUserId"),
+        ("PropertyFiles", "AttachedByUserId"),
         ("TransactionFiles", "AttachedByUserId"),
         ("TaxStatementFiles", "AttachedByUserId"),
         // The contract event log (issue #138 §4). An event is the household's shared record of what

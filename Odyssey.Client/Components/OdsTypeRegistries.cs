@@ -408,6 +408,27 @@ public static class OdsTypeRegistries
         new() { Key = "Other",          Label = "Other",          Icon = "insert_drive_file", Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
+    /// <summary>PropertyFileType — the kind of document attached to a property (issue #210). Mirrors
+    /// the DS PROPERTY_FILE_TYPES registry and the C# PropertyFileType enum. Keys shared with another
+    /// file enum reuse its icon and colour so a key reads the same on every surface. Other is the
+    /// enum's zero member but sorts LAST, and must stay last — the unknown-ordinal fallback is
+    /// positional.</summary>
+    public static readonly IReadOnlyList<OdsTypeOption> PropertyFileTypes =
+    [
+        new() { Key = "Deed",              Label = "Deed",               Icon = "workspace_premium", Color = "oklch(0.74 0.15 290)", Soft = "oklch(0.74 0.15 290 / 0.16)" },
+        new() { Key = "PurchaseAgreement", Label = "Purchase agreement", Icon = "sell",              Color = "oklch(0.79 0.14 60)",  Soft = "oklch(0.79 0.14 60 / 0.16)" },
+        new() { Key = "Valuation",         Label = "Valuation",          Icon = "price_check",       Color = "oklch(0.80 0.15 140)", Soft = "oklch(0.80 0.15 140 / 0.16)" },
+        new() { Key = "Inspection",        Label = "Inspection",         Icon = "troubleshoot",      Color = "oklch(0.78 0.12 180)", Soft = "oklch(0.78 0.12 180 / 0.16)" },
+        new() { Key = "Registration",      Label = "Registration",       Icon = "app_registration",  Color = "oklch(0.74 0.15 310)", Soft = "oklch(0.74 0.15 310 / 0.16)" },
+        new() { Key = "Insurance",         Label = "Insurance",          Icon = "shield",            Color = "oklch(0.74 0.15 30)",  Soft = "oklch(0.74 0.15 30 / 0.16)" },
+        new() { Key = "Warranty",          Label = "Warranty",           Icon = "verified",          Color = "oklch(0.77 0.13 205)", Soft = "oklch(0.77 0.13 205 / 0.16)" },
+        new() { Key = "Receipt",           Label = "Receipt",            Icon = "receipt_long",      Color = "oklch(0.80 0.15 150)", Soft = "oklch(0.80 0.15 150 / 0.16)" },
+        new() { Key = "Maintenance",       Label = "Maintenance",        Icon = "build",             Color = "oklch(0.80 0.14 95)",  Soft = "oklch(0.80 0.14 95 / 0.16)" },
+        new() { Key = "Tax",               Label = "Tax",                Icon = "request_quote",     Color = "oklch(0.75 0.16 330)", Soft = "oklch(0.75 0.16 330 / 0.16)" },
+        new() { Key = "Drawing",           Label = "Drawing",            Icon = "architecture",      Color = "oklch(0.76 0.12 240)", Soft = "oklch(0.76 0.12 240 / 0.16)" },
+        new() { Key = "Other",             Label = "Other",              Icon = "insert_drive_file", Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+    ];
+
     /// <summary>BudgetCategoryType — the two directions a budget line can take: Expense (money out)
     /// and Income (money in). Mirrors the DS BUDGET_CATEGORY_TYPES and the C# BudgetCategoryType enum
     /// (Expense = 0, Income = 1). Expense reads as a debit (warm red), Income as a credit (green).</summary>
@@ -536,6 +557,10 @@ public static class OdsTypeRegistries
     /// </remarks>
     public static OdsTypeOption ContractEventTypeOf(ContractEventType type) =>
         ContractEventTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? ContractEventTypes[^1];
+
+    /// <summary>The PropertyFileType descriptor for an enum value (falls back to "Other").</summary>
+    public static OdsTypeOption PropertyFileTypeOf(PropertyFileType type) =>
+        PropertyFileTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? PropertyFileTypes[^1];
 
     /// <summary>The ContractFileType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption ContractFileTypeOf(ContractFileType type) =>
@@ -676,6 +701,7 @@ public static class OdsTypeRegistries
     public static readonly IReadOnlyList<OdsOption> ContractOptions = ToOptions(ContractTypes);
     public static readonly IReadOnlyList<OdsOption> PropertyOptions = ToOptions(PropertyTypes);
     public static readonly IReadOnlyList<OdsOption> ContractFileOptions = ToOptions(ContractFileTypes);
+    public static readonly IReadOnlyList<OdsOption> PropertyFileOptions = ToOptions(PropertyFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractPartyRoleOptions = ToOptions(ContractPartyRoles);
 }
 

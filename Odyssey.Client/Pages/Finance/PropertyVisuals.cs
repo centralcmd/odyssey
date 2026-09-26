@@ -140,3 +140,43 @@ public static class PropertyWrites
         VehicleDetails = property.Type == PropertyType.Vehicle ? property.VehicleDetails : null,
     };
 }
+
+/// <summary>
+/// The attach dialog's name → <see cref="PropertyFileType"/> guess (issue #210; design system ·
+/// properties-data.js <c>propGuessFileType</c>). A convenience only — the user re-tags freely, and an
+/// unmatched name falls to <see cref="PropertyFileType.Other"/>, never to <see cref="PropertyFileType.Deed"/>.
+/// </summary>
+public static class PropertyFileTypeGuess
+{
+    private static readonly (System.Text.RegularExpressions.Regex Pattern, PropertyFileType Type)[] Rules =
+    [
+        (Rule("deed|skjøte|skjote|grunnbok|title"), PropertyFileType.Deed),
+        (Rule("purchase|kjøpekontrakt|sale"), PropertyFileType.PurchaseAgreement),
+        (Rule("apprais|valuation|takst|verdi"), PropertyFileType.Valuation),
+        (Rule("inspect|tilstand|eu-kontroll|survey|smog"), PropertyFileType.Inspection),
+        (Rule("regist|vognkort"), PropertyFileType.Registration),
+        (Rule("insur|policy|forsikring"), PropertyFileType.Insurance),
+        (Rule("warrant|guarantee|garanti"), PropertyFileType.Warranty),
+        (Rule("receipt|invoice|kvittering|faktura"), PropertyFileType.Receipt),
+        (Rule("service|maint|repair"), PropertyFileType.Maintenance),
+        (Rule("tax|skatt"), PropertyFileType.Tax),
+        (Rule("plan|drawing|tegning|site"), PropertyFileType.Drawing),
+    ];
+
+    public static PropertyFileType Guess(string fileName)
+    {
+        foreach (var (pattern, type) in Rules)
+        {
+            if (pattern.IsMatch(fileName))
+                return type;
+        }
+
+        return PropertyFileType.Other;
+    }
+
+    /// <summary>The guess as the enum key the upload and picker controls carry.</summary>
+    public static string GuessKey(string fileName) => Guess(fileName).ToString();
+
+    private static System.Text.RegularExpressions.Regex Rule(string pattern) =>
+        new(pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+}

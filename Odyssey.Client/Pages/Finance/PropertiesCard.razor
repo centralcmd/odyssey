@@ -15,10 +15,11 @@
 @*
     /properties (issue #167; design system · Properties.jsx). A sibling of Accounts and Contracts: the
     same PageHeader and expandable OdsRecordCard list, one card open at a time. A property has no links
-    to contacts, accounts or files, no photos, and its value is NOT summed into net worth, but it can
-    be named as a contract party (issue #208) — so the open card holds its details (the common fields
-    plus the one detail sub-object its type has), its estimated value, the contracts naming it, and
-    its smart tags.
+    to contacts or accounts and no photos, and its value is NOT summed into net worth, but it can be
+    named as a contract party (issue #208) and carries documents (issue #210 — PropertyFile links into
+    the one Files store) — so the open card holds its details (the common fields plus the one detail
+    sub-object its type has), its estimated value, the contracts naming it, its documents and its
+    smart tags.
 *@
 
 <PageTitle>Properties</PageTitle>
@@ -259,6 +260,12 @@
                                 </OdsRecordSection>
                             }
 
+                            <PropertyDocumentsSection @key="@($"docs-{p.PropertyId}")" Property="p"
+                                                      CanUpdate="_canUpdate" CanAttach="CanAttachDocuments"
+                                                      CanUpload="_canUploadFiles"
+                                                      AttachRequestToken="@AttachTokenFor(p.PropertyId)"
+                                                      OnCountChanged="@(count => OnDocumentCountChanged(p.PropertyId, count))" />
+
                             @* Resolved through GET /api/transactions?tagIds=…, so a reader without
                                transactions.read would see chips and an error where the ledger belongs —
                                the section is withheld instead, as on accounts and contracts. *@
@@ -312,6 +319,7 @@
 @if (_deleteProperty is not null)
 {
     <DeletePropertyDialog @key="_deleteKey" @bind-Open="_deleteOpen" Property="_deleteProperty"
+                          DocumentCount="@DocumentCountFor(_deleteProperty.PropertyId)"
                           CanArchive="_canUpdate"
                           CanReadContracts="_canReadContracts"
                           OnDelete="@(() => DeleteAsync(_deleteProperty))"
