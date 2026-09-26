@@ -48,6 +48,7 @@ public static class NavModel
             new("Money",
             [
                 new("accounts", "Accounts", "account_balance_wallet", "accounts"),
+                new("properties", "Properties", "home_work", "properties", PermissionClaims.PropertiesRead),
                 new("transactions", "Transactions", "receipt_long", "transactions"),
                 new("budgets", "Budgets", "pie_chart", "budgets"),
             ]),

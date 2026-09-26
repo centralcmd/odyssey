@@ -22,6 +22,9 @@ public partial class OdsTermHistoryChart
     /// <summary>Picker label, standing in for the card title.</summary>
     [Parameter] public string PickerLabel { get; set; } = "Terms";
 
+    /// <summary>How each line joins its entries — passed straight to the plot.</summary>
+    [Parameter] public OdsStepCurve Curve { get; set; } = OdsStepCurve.Step;
+
     /// <summary>Picker glyph — a typeset mark the icon font has no ligature for.</summary>
     [Parameter] public string Glyph { get; set; } = "§";
 

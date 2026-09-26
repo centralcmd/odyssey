@@ -685,6 +685,7 @@ public class EmailTransportSurfaceTests : IDisposable
         ctx.Services.AddSingleton(new Mock<IUploadLimitsCache>().Object);
         ctx.Services.AddSingleton(new Mock<IAccountLimitsCache>().Object);
         ctx.Services.AddSingleton(new Mock<IContractLimitsCache>().Object);
+        ctx.Services.AddSingleton(new Mock<IPropertyLimitsCache>().Object);
         ctx.Services.AddSingleton(new Mock<IFileAnalysisDisclosureCache>().Object);
         ctx.Services.AddSingleton<AuthenticationStateProvider>(
             new StubAuthenticationStateProvider(claims ??

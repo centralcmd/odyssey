@@ -94,6 +94,29 @@ public enum OdsStepScale
     Absolute = 2,
 }
 
+/// <summary>
+/// How an <c>OdsStepChart</c> joins its entries (mirrors the DS <c>StepChart</c> <c>curve</c>).
+/// </summary>
+/// <remarks>
+/// A price does not drift — it holds until the day it changes — so <see cref="Step"/> is the default.
+/// The other two are for data that DOES move between readings, such as an estimated value. Whichever is
+/// chosen, the last entry holds flat to the edge: nothing is known past it.
+/// </remarks>
+public enum OdsStepCurve
+{
+    /// <summary>A staircase: the value holds, then jumps on the day it changes.</summary>
+    Step = 0,
+
+    /// <summary>Straight segments from entry to entry.</summary>
+    Linear = 1,
+
+    /// <summary>
+    /// A monotone cubic through the entries. It never overshoots one, so it invents no peak or dip the
+    /// data does not have.
+    /// </summary>
+    Smooth = 2,
+}
+
 /// <summary>How a chart's head delta is coloured (mirrors the DS <c>deltaTone</c>).</summary>
 public enum OdsDeltaTone
 {

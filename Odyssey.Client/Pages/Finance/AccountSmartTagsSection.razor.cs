@@ -19,6 +19,9 @@ public enum SmartTagHost
 {
     Account,
     Contract,
+
+    /// <summary>A property (issue #167) — its own endpoints and its own <c>/api/property-limits</c> cap.</summary>
+    Property,
 }
 
 public partial class AccountSmartTagsSection
@@ -26,10 +29,11 @@ public partial class AccountSmartTagsSection
     /// <summary>The record the watchlist hangs off.</summary>
     [Parameter] public SmartTagHost Host { get; set; } = SmartTagHost.Account;
 
-    /// <summary>The record's id — an <c>AccountId</c> or a <c>ContractId</c>, per <see cref="Host"/>.</summary>
+    /// <summary>The record's id — an <c>AccountId</c>, a <c>ContractId</c> or a <c>PropertyId</c>, per <see cref="Host"/>.</summary>
     [Parameter, EditorRequired] public Guid SubjectId { get; set; }
 
-    /// <summary>Gates the add/remove controls (<c>accounts.update</c> / <c>contracts.update</c>).
+    /// <summary>Gates the add/remove controls (<c>accounts.update</c> / <c>contracts.update</c> /
+    /// <c>properties.update</c>).
     /// Read-only viewers keep the chips + table.</summary>
     [Parameter] public bool CanWrite { get; set; }
 
@@ -103,7 +107,12 @@ public partial class AccountSmartTagsSection
     private bool _atCap => _capKnown && _smartTags.Count >= _maxTags;
     private decimal _total => _transactions.Sum(t => t.Amount);
 
-    private string Subject => Host == SmartTagHost.Contract ? "contract" : "account";
+    private string Subject => Host switch
+    {
+        SmartTagHost.Contract => "contract",
+        SmartTagHost.Property => "property",
+        _ => "account",
+    };
 
     /// <summary>
     /// The cap sentence, shown both inside the adder and on the bar. It interpolates the effective
@@ -199,14 +208,24 @@ public partial class AccountSmartTagsSection
             return;
         }
 
+        if (Host == SmartTagHost.Property)
+        {
+            var limits = await PropertyLimits.GetAsync();
+            _maxTags = limits.MaxSmartTagsPerProperty;
+            _limitsDegraded = limits.IsDegraded;
+            return;
+        }
+
         _maxTags = (await AccountLimits.GetAsync()).MaxSmartTagsPerAccount;
         _limitsDegraded = false;
     }
 
-    private Task<ApiResult<List<ExistingTransactionTag>>> ListSmartTagsAsync() =>
-        Host == SmartTagHost.Contract
-            ? Contracts.ListSmartTagsAsync(SubjectId)
-            : Accounts.ListSmartTagsAsync(SubjectId);
+    private Task<ApiResult<List<ExistingTransactionTag>>> ListSmartTagsAsync() => Host switch
+    {
+        SmartTagHost.Contract => Contracts.ListSmartTagsAsync(SubjectId),
+        SmartTagHost.Property => Properties.ListSmartTagsAsync(SubjectId),
+        _ => Accounts.ListSmartTagsAsync(SubjectId),
+    };
 
     private async Task LoadTransactionsAsync()
     {
@@ -244,9 +263,12 @@ public partial class AccountSmartTagsSection
     {
         // Empty body — the association is identified entirely by the URL path.
         var id = Guid.Parse(tagId);
-        var result = Host == SmartTagHost.Contract
-            ? await Contracts.AddSmartTagAsync(SubjectId, id)
-            : await Accounts.AddSmartTagAsync(SubjectId, id);
+        var result = Host switch
+        {
+            SmartTagHost.Contract => await Contracts.AddSmartTagAsync(SubjectId, id),
+            SmartTagHost.Property => await Properties.AddSmartTagAsync(SubjectId, id),
+            _ => await Accounts.AddSmartTagAsync(SubjectId, id),
+        };
 
         if (result.IsSuccess)
         {
@@ -267,9 +289,12 @@ public partial class AccountSmartTagsSection
     private async Task RemoveTag(string tagId)
     {
         var id = Guid.Parse(tagId);
-        var result = Host == SmartTagHost.Contract
-            ? await Contracts.RemoveSmartTagAsync(SubjectId, id)
-            : await Accounts.RemoveSmartTagAsync(SubjectId, id);
+        var result = Host switch
+        {
+            SmartTagHost.Contract => await Contracts.RemoveSmartTagAsync(SubjectId, id),
+            SmartTagHost.Property => await Properties.RemoveSmartTagAsync(SubjectId, id),
+            _ => await Accounts.RemoveSmartTagAsync(SubjectId, id),
+        };
 
         if (result.Toast(Snackbar, "Could not remove tag"))
         {

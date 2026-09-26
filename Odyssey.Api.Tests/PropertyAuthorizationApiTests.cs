@@ -9,8 +9,8 @@ using static Odyssey.Api.Tests.PropertyApiTestSupport;
 namespace Odyssey.Api.Tests;
 
 /// <summary>
-/// The property authorization matrix over HTTP (issue #167, AC 10-11): each of the thirteen
-/// claim-gated endpoints is reachable by its gating claim alone, and by no combination of every OTHER
+/// The property authorization matrix over HTTP (issue #167, AC 10-11): each of the fourteen
+/// claim-gated endpoints — the spec's thirteen plus the <c>/properties</c> page's summary is reachable by its gating claim alone, and by no combination of every OTHER
 /// claim in the vocabulary.
 /// </summary>
 public class PropertyAuthorizationApiTests
@@ -26,6 +26,7 @@ public class PropertyAuthorizationApiTests
         {
             ["GET list"] = (PermissionClaims.PropertiesRead, HttpStatusCode.OK),
             ["GET one"] = (PermissionClaims.PropertiesRead, HttpStatusCode.OK),
+            ["GET summary"] = (PermissionClaims.PropertiesRead, HttpStatusCode.OK),
             ["POST property"] = (PermissionClaims.PropertiesCreate, HttpStatusCode.Created),
             ["PUT property"] = (PermissionClaims.PropertiesUpdate, HttpStatusCode.NoContent),
             ["DELETE property"] = (PermissionClaims.PropertiesDelete, HttpStatusCode.NoContent),
@@ -42,9 +43,9 @@ public class PropertyAuthorizationApiTests
     public static TheoryData<string> EndpointNames() => [.. Endpoints.Keys];
 
     [Fact]
-    public void TheMatrix_CoversThirteenEndpoints_AndAllSixPropertyClaims()
+    public void TheMatrix_CoversFourteenEndpoints_AndAllSixPropertyClaims()
     {
-        Assert.Equal(13, Endpoints.Count);
+        Assert.Equal(14, Endpoints.Count);
         Assert.Equal(
             new[]
             {
@@ -110,6 +111,7 @@ public class PropertyAuthorizationApiTests
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.OK, (await CallAsync(client, "GET list", fixture)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await CallAsync(client, "GET summary", fixture)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await CallAsync(client, "GET estimates", fixture)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await CallAsync(client, "GET current estimate", fixture)).StatusCode);
 
@@ -143,6 +145,7 @@ public class PropertyAuthorizationApiTests
     {
         "GET list" => client.GetAsync(PropertiesPath),
         "GET one" => client.GetAsync(PropertyPath(f.PropertyId)),
+        "GET summary" => client.GetAsync(SummaryPath),
         "POST property" => client.PostAsJsonAsync(PropertiesPath, VehicleBody()),
         "PUT property" => client.PutAsJsonAsync(PropertyPath(f.PropertyId), RealEstateBody("Renamed")),
         "DELETE property" => client.DeleteAsync(PropertyPath(f.PropertyId)),

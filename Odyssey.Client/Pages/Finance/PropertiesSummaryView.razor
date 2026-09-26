@@ -1,0 +1,96 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+
+@*
+    PropertiesSummaryView — the /properties header overview (issue #167; design system ·
+    Properties.jsx PropertiesSummary). Counts by type and by derived status, and — for a reader holding
+    properties.estimates.read — the in-force estimates of the OWNED properties summed per currency,
+    with a total converted to the reader's currency at the latest rate. A currency with no rate is
+    named beside the total, never counted 1:1. Nothing here feeds net worth.
+*@
+
+<div class="con-stats prop-stats">
+    @* "By type" counts LIVE properties (archived ones are left out), so its total is the arithmetic
+       sum. "By status" partitions the whole file, so its total is the file. *@
+    <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No properties." />
+    <OdsBreakdownTile Label="By status" Rows="StatusRows" TotalValue="Summary.TotalProperties" Empty="No properties." />
+    @if (Summary.Value is { } value)
+    {
+        <OdsBreakdownTile Class="con-bd-money" Label="Estimated value, owned" Rows="ValueRows(value)"
+                          Total="@(value.ByCurrency.Count > 0)"
+                          TotalValue="@(value.ByCurrency.Count > 0 ? TotalCell(value) : null)"
+                          TotalLabel="@($"Total · {value.BaseCurrency}")"
+                          Empty="No estimates in force." />
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public PropertySummary Summary { get; set; } = default!;
+
+    /// <summary>Formats an amount in its currency. Supplied by the page, which owns the currency cache.</summary>
+    [Parameter, EditorRequired] public Func<decimal, string?, string> FormatMoney { get; set; } = default!;
+
+    private IReadOnlyList<OdsBreakdownRow> TypeRows =>
+    [
+        .. Summary.ByType.Select(r =>
+        {
+            var info = OdsTypeRegistries.PropertyTypeOf(r.Type);
+            return new OdsBreakdownRow { Key = r.Type, Icon = info.Icon, IconColor = info.Color, Label = info.Label, Count = r.Count };
+        }),
+    ];
+
+    private IReadOnlyList<OdsBreakdownRow> StatusRows =>
+    [
+        .. PropertyVisuals.Statuses.Select(s => new OdsBreakdownRow
+        {
+            Key = s.Status,
+            Icon = s.Icon,
+            IconColor = s.Tone == OdsChipTone.Income ? "var(--finance-income)" : "var(--mud-palette-text-secondary)",
+            Label = s.Label,
+            Count = s.Status switch
+            {
+                PropertyStatus.Owned => Summary.ByStatus.Owned,
+                PropertyStatus.Disposed => Summary.ByStatus.Disposed,
+                _ => Summary.ByStatus.Archived,
+            },
+        }),
+    ];
+
+    private IReadOnlyList<OdsBreakdownRow> ValueRows(PropertyValueSummary value) =>
+    [
+        .. value.ByCurrency.Select(c => new OdsBreakdownRow
+        {
+            Key = c.CurrencyCode,
+            Icon = "payments",
+            IconColor = "var(--mud-palette-text-secondary)",
+            Label = $"{c.CurrencyCode} · {c.Count} {(c.Count == 1 ? "property" : "properties")}",
+            Count = ValueCell(c.Total, c.CurrencyCode),
+        }),
+    ];
+
+    private RenderFragment ValueCell(decimal amount, string currency) => builder =>
+    {
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"con-bd-net {(amount > 0 ? "net-pos" : amount < 0 ? "net-neg" : "net-flat")}");
+        builder.AddContent(2, FormatMoney(amount, currency));
+        builder.CloseElement();
+    };
+
+    private RenderFragment TotalCell(PropertyValueSummary value) => builder =>
+    {
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "title", value.UnconvertedCurrencies.Count > 0
+            ? $"{string.Join(", ", value.UnconvertedCurrencies)} excluded — no rate to {value.BaseCurrency}"
+            : $"Converted to {value.BaseCurrency} at the latest rate");
+        builder.AddContent(2, ValueCell(value.Total ?? 0m, value.BaseCurrency));
+        if (value.UnconvertedCurrencies.Count > 0)
+        {
+            builder.OpenElement(3, "span");
+            builder.AddAttribute(4, "class", "prop-excl");
+            builder.AddContent(5, $" · {string.Join(", ", value.UnconvertedCurrencies)} excl.");
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    };
+}

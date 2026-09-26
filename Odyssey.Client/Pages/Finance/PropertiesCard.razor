@@ -1,0 +1,300 @@
+@page "/properties"
+@using System.Globalization
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.PropertiesRead)]
+@inject IPropertiesApiClient Properties
+@inject ISnackbar Snackbar
+@inject IClipboardService Clipboard
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject IReferenceDataCache ReferenceData
+@inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
+
+@*
+    /properties (issue #167; design system · Properties.jsx). A sibling of Accounts and Contracts: the
+    same PageHeader and expandable OdsRecordCard list, one card open at a time. A property is standalone
+    in v1 — no links to contacts, accounts, contracts or files, no photos, and its value is NOT summed
+    into net worth — so the open card holds exactly three things: its details (the common fields plus
+    the one detail sub-object its type has), its estimated value, and its smart tags.
+*@
+
+<PageTitle>Properties</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<MudStack Spacing="4">
+    <PageHeader Title="Properties"
+                Icon="@Icons.Material.Filled.HomeWork"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New property"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@SubLineText</SubLine>
+
+        <OverviewContent>
+            @if (_summary is { TotalProperties: > 0 })
+            {
+                <PropertiesSummaryView Summary="_summary" FormatMoney="FormatMoney" />
+            }
+        </OverviewContent>
+
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="LoadProperties"
+                                Placeholder="Search name, address, registration, VIN…"
+                                Class="ph-search" />
+                <OdsMultiSelect Label="Any type" Icon="home_work" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged"
+                                Options="OdsTypeRegistries.PropertyOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Any status" Icon="check_circle" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="PropertyVisuals.StatusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="ExistingProperty" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Properties per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+            @if (MixedCurrencySort)
+            {
+                <div class="prop-sort-note">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    Sorted by the raw amount in each property’s own currency. Values in different currencies are not converted.
+                </div>
+            }
+        </SearchContent>
+    </PageHeader>
+
+    <div class="acct-list">
+        <OdsInfiniteList TItem="ExistingProperty" Items="_properties" BatchSize="_batch"
+                         ItemKey="@(p => (object)p.PropertyId)" Noun="properties" RevealKey="_flashId"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="LoadProperties"
+                         HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                         EmptyIcon="home_work"
+                         EmptyTitle="No properties yet"
+                         EmptyDescription="Record a house, cabin, car or boat with its address or registration, track what it’s worth over time, and watch the transactions that belong to it.">
+            <RenderItem Context="p">
+                @{
+                    var typeInfo = OdsTypeRegistries.PropertyTypeOf(p.Type);
+                    var kind = PropertyVisuals.KindOf(p);
+                }
+                @* One accent per record, taken from its TYPE; the header glyph is the KIND, so a cabin and
+                   a house read apart at a glance while sharing the real-estate hue. *@
+                <OdsRecordCard Id="@($"prop-{p.PropertyId}")"
+                               Icon="@kind.Icon"
+                               Accent="@typeInfo.Color"
+                               AccentSoft="@typeInfo.Soft"
+                               Name="@p.Name"
+                               Meta="MetaFor(p, kind)"
+                               Counts="CountsFor(p)"
+                               FigureCaption="@FigureCaption(p)"
+                               FigureTone="@FigureTone(p)"
+                               Dimmed="@(p.Archived is not null)"
+                               Highlight="@(_flashId == p.PropertyId)"
+                               Open="IsExpanded(p.PropertyId)"
+                               OnToggle="@(_ => ToggleExpand(p.PropertyId))">
+
+                    <Chips>
+                        @if (p.Status != PropertyStatus.Owned)
+                        {
+                            var status = PropertyVisuals.StatusOf(p.Status);
+                            <OdsChip Tone="status.Tone" Dot="status.Dot" Class="sm">@status.Label</OdsChip>
+                        }
+                    </Chips>
+
+                    <Figure>
+                        @if (_canReadEstimates)
+                        {
+                            @(p.CurrentEstimatedValue is { } value ? FormatMoney(value, p.CurrencyCode) : "—")
+                        }
+                    </Figure>
+
+                    <Actions>
+                        <OdsMenu Items="RowActions(p)" AriaLabel="@($"Actions for {p.Name}")" />
+                    </Actions>
+
+                    <Details>
+                        @{
+                            var disposedFuture = p.DisposedDate is { } dd && dd.Date > Today;
+                        }
+                        <OdsInfoTileGrid>
+                            <OdsInfoTile Icon="@kind.Icon" Label="Kind" ValueVariant="OdsInfoTileVariant.Text"
+                                         Foot="@OdsInfoTile.Caption(typeInfo.Label)">
+                                <Value>@kind.Label</Value>
+                            </OdsInfoTile>
+                            <OdsInfoTile Icon="payments" Label="Currency" Foot="@OdsInfoTile.Caption(CurrencyName(p.CurrencyCode))">
+                                <Value>@p.CurrencyCode</Value>
+                            </OdsInfoTile>
+                            <OdsInfoTile Icon="event_available" Label="Acquired"
+                                         ValueVariant="@(p.AcquiredDate is null ? OdsInfoTileVariant.Text : OdsInfoTileVariant.Sm)">
+                                <Value>@(p.AcquiredDate is { } acquired ? LongDate(acquired) : "Unknown")</Value>
+                            </OdsInfoTile>
+                            @if (p.DisposedDate is { } disposed)
+                            {
+                                <OdsInfoTile Icon="output" Label="@(disposedFuture ? "Disposal on" : "Disposed")"
+                                             ValueVariant="OdsInfoTileVariant.Sm"
+                                             Tone="@(disposedFuture ? OdsInfoTileTone.Info : OdsInfoTileTone.Default)"
+                                             Foot="@OdsInfoTile.Caption(disposedFuture ? "still owned until then" : "sold, written off or scrapped")">
+                                    <Value>@LongDate(disposed)</Value>
+                                </OdsInfoTile>
+                            }
+                            @if (p.Archived is { } archivedAt)
+                            {
+                                <OdsInfoTile Icon="inventory_2" Label="Archived" ValueVariant="OdsInfoTileVariant.Sm"
+                                             Tone="OdsInfoTileTone.Muted" Foot="@OdsInfoTile.Caption("hidden from the default list")">
+                                    <Value>@LongDate(archivedAt)</Value>
+                                </OdsInfoTile>
+                            }
+                        </OdsInfoTileGrid>
+                    </Details>
+
+                    <Sections>
+                        @if (IsExpanded(p.PropertyId))
+                        {
+                            <div class="con-section">
+                                <OdsSectionDivider Label="@(p.Type == PropertyType.Vehicle ? "Vehicle" : "Real estate")" Meta="@kind.Label" />
+                                @if (p.Type == PropertyType.Vehicle && p.VehicleDetails is { } v && HasVehicleTiles(v))
+                                {
+                                    <OdsInfoTileGrid>
+                                        @if (!string.IsNullOrWhiteSpace(v.RegistrationNumber))
+                                        {
+                                            <OdsInfoTile Icon="pin" Label="Registration"><Value>@v.RegistrationNumber</Value></OdsInfoTile>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(v.Vin))
+                                        {
+                                            <OdsInfoTile Icon="qr_code_2" Label="@(v.Kind == VehicleKind.Boat ? "Hull number" : "VIN")" WrapValue="true">
+                                                <Value>@v.Vin</Value>
+                                            </OdsInfoTile>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(v.Make) || !string.IsNullOrWhiteSpace(v.Model))
+                                        {
+                                            <OdsInfoTile Icon="@kind.Icon" Label="Make and model" ValueVariant="OdsInfoTileVariant.Text">
+                                                <Value>@string.Join(" ", new[] { v.Make, v.Model }.Where(x => !string.IsNullOrWhiteSpace(x)))</Value>
+                                            </OdsInfoTile>
+                                        }
+                                        @if (v.ModelYear is { } modelYear)
+                                        {
+                                            <OdsInfoTile Icon="calendar_today" Label="Model year"><Value>@modelYear.ToString(CultureInfo.InvariantCulture)</Value></OdsInfoTile>
+                                        }
+                                        @if (v.FirstRegisteredDate is { } firstRegistered)
+                                        {
+                                            <OdsInfoTile Icon="app_registration" Label="First registered" ValueVariant="OdsInfoTileVariant.Sm">
+                                                <Value>@LongDate(firstRegistered)</Value>
+                                            </OdsInfoTile>
+                                        }
+                                    </OdsInfoTileGrid>
+                                }
+                                else if (p.Type == PropertyType.RealEstate && p.RealEstateDetails is { } re && HasRealEstateTiles(re))
+                                {
+                                    <OdsInfoTileGrid>
+                                        @if (PropertyVisuals.AddressText(re) is { } address)
+                                        {
+                                            <OdsInfoTile Icon="location_on" Label="Address" Wide="true" WrapValue="true"
+                                                         ValueVariant="OdsInfoTileVariant.Text" Class="prop-addr-tile"
+                                                         Foot="@OdsInfoTile.Caption(kind.Label)">
+                                                <Value>@address</Value>
+                                            </OdsInfoTile>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(re.CadastralNumber))
+                                        {
+                                            <OdsInfoTile Icon="map" Label="Cadastral number" Foot="@OdsInfoTile.Caption("land registry")">
+                                                <Value>@re.CadastralNumber</Value>
+                                            </OdsInfoTile>
+                                        }
+                                        @if (re.LivingAreaSqm is { } living)
+                                        {
+                                            <OdsInfoTile Icon="square_foot" Label="Living area"><Value>@Area(living)</Value></OdsInfoTile>
+                                        }
+                                        @if (re.PlotAreaSqm is { } plot)
+                                        {
+                                            <OdsInfoTile Icon="crop_free" Label="Plot area"><Value>@Area(plot)</Value></OdsInfoTile>
+                                        }
+                                        @if (re.BuildYear is { } buildYear)
+                                        {
+                                            <OdsInfoTile Icon="construction" Label="Built"><Value>@buildYear.ToString(CultureInfo.InvariantCulture)</Value></OdsInfoTile>
+                                        }
+                                    </OdsInfoTileGrid>
+                                }
+                                else
+                                {
+                                    <OdsEmptyLine>
+                                        @(p.Type == PropertyType.Vehicle
+                                            ? "No registration, VIN or model recorded."
+                                            : "No address, registry number or areas recorded.")@(_canUpdate ? " Edit the property to add them." : "")
+                                    </OdsEmptyLine>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(p.Notes))
+                                {
+                                    <OdsInfoTileGrid>
+                                        <OdsInfoTile Icon="sticky_note_2" Label="Notes" Wide="true" WrapValue="true" ValueVariant="OdsInfoTileVariant.Text">
+                                            <Value>@p.Notes</Value>
+                                        </OdsInfoTile>
+                                    </OdsInfoTileGrid>
+                                }
+                            </div>
+
+                            @if (_canReadEstimates)
+                            {
+                                <PropertyEstimatesSection @key="p.PropertyId" Property="p" CanWrite="_canWriteEstimates"
+                                                          FormatMoney="FormatMoney"
+                                                          NewEstimateRequestToken="@NewEstimateTokenFor(p.PropertyId)"
+                                                          OnChanged="@(() => ReloadProperty(p.PropertyId))" />
+                            }
+
+                            @* Resolved through GET /api/transactions?tagIds=…, so a reader without
+                               transactions.read would see chips and an error where the ledger belongs —
+                               the section is withheld instead, as on accounts and contracts. *@
+                            @if (_canReadTransactions)
+                            {
+                                <div class="con-section">
+                                    <OdsSectionDivider Label="Smart tags"
+                                                       Meta="@(p.SmartTagCount > 0 ? $"{p.SmartTagCount} watched" : "none watched")" />
+                                    <AccountSmartTagsSection Host="SmartTagHost.Property" SubjectId="p.PropertyId"
+                                                             Chrome="false" CanWrite="_canUpdate" FormatMoney="FormatMoney"
+                                                             EmptyDesc="@(_canUpdate
+                                                                 ? "Pin the tags its costs are booked under — maintenance, tax, fuel, insurance — and those transactions read here."
+                                                                 : "No tags are being watched on this property.")"
+                                                             NoMatchDesc="No transactions carry the watched tags yet."
+                                                             OnCountChanged="@(count => OnSmartTagCountChanged(p, count))" />
+                                </div>
+                            }
+                        }
+                    </Sections>
+                </OdsRecordCard>
+            </RenderItem>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New property</OdsButton>
+                }
+            </CreateAction>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New property"
+                               Sub="A house, apartment, cabin or plot — or a car, motorcycle, boat or trailer."
+                               OnClick="AddClicked" />
+                }
+            </Trailing>
+        </OdsInfiniteList>
+    </div>
+</MudStack>
+
+@if (_createKey != Guid.Empty)
+{
+    <PropertyDialog @key="_createKey" @bind-Open="_createOpen" OnCreated="OnPropertyCreated" />
+}
+
+@if (_editProperty is not null)
+{
+    <PropertyDialog @key="_editKey" @bind-Open="_editOpen" Property="_editProperty"
+                    OnSaved="@(() => ReloadProperty(_editProperty.PropertyId))" />
+}
+
+@if (_deleteProperty is not null)
+{
+    <DeletePropertyDialog @key="_deleteKey" @bind-Open="_deleteOpen" Property="_deleteProperty"
+                          CanArchive="_canUpdate"
+                          OnDelete="@(() => DeleteAsync(_deleteProperty))"
+                          OnArchive="@(() => SetArchived(_deleteProperty, archived: true))" />
+}

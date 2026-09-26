@@ -17,6 +17,7 @@ internal static class PropertyApiTestSupport
 {
     public const string PropertiesPath = "/api/properties";
     public const string LimitsPath = "/api/property-limits";
+    public const string SummaryPath = "/api/properties/summary";
 
     public static string PropertyPath(Guid propertyId) => $"{PropertiesPath}/{propertyId}";
 

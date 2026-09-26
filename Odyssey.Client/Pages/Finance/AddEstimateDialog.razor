@@ -3,6 +3,7 @@
 @inject IReferenceDataCache ReferenceData
 @inject ISnackbar Snackbar
 @inject IAccountsApiClient Accounts
+@inject IPropertiesApiClient Properties
 
 @*
     AddEstimateDialog — New / Edit dialog for an account value estimate, built on the shared
@@ -25,12 +26,12 @@
             <div class="est-value-block">
                 <OdsMoneyField Label="Estimated value" Required="true" Size="lg" AllowNegative="false"
                                Value="@_valueStr" ValueChanged="OnValueChanged"
-                               Currency="@Account.CurrencyCode" CurrencyEditable="false"
+                               Currency="@OwnerCurrency" CurrencyEditable="false"
                                Error="@(_errors.TryGetValue("value", out var valErr) ? valErr : null)">
                     <HelpContent>
                         @if (Preview is null)
                         {
-                            <text>Account currency · <b>@Account.CurrencyCode</b></text>
+                            <text>@(ForProperty ? "Property" : "Account") currency · <b>@OwnerCurrency</b></text>
                         }
                         else
                         {
@@ -57,17 +58,17 @@
                           Error="@(_errors.TryGetValue("note", out var noteErr) ? noteErr : null)" />
 
             @* Recommendation hint — never gates; just orients *@
-            @if (!IsEdit)
+            @if (ShowHint)
             {
                 <div class="est-rec-hint">
                     <span class="material-icons">@(_recommended ? "recommend" : "info")</span>
                     @if (_recommended)
                     {
-                        <span>Estimates suit <b>@AccountTypeVisuals.Label(Account.AccountType)</b> accounts — their worth isn’t captured by transactions. The current estimate stands in for this account’s value in your net worth.</span>
+                        <span>Estimates suit <b>@AccountTypeVisuals.Label(Account!.AccountType)</b> accounts — their worth isn’t captured by transactions. The current estimate stands in for this account’s value in your net worth.</span>
                     }
                     else
                     {
-                        <span>Estimates are typically used on asset accounts like property or vehicles. You can still record one on a <b>@AccountTypeVisuals.Label(Account.AccountType)</b> account.</span>
+                        <span>Estimates are typically used on asset accounts like property or vehicles. You can still record one on a <b>@AccountTypeVisuals.Label(Account!.AccountType)</b> account.</span>
                     }
                 </div>
             }
@@ -87,5 +88,5 @@
 
     private RenderFragment SubtitleFragment => IsEdit
         ? @<text>Correct this value entry.</text>
-        : @<text>Record what @Account.Name is worth, effective from a date.</text>;
+        : @<text>Record what @OwnerName is worth, effective from a date.</text>;
 }

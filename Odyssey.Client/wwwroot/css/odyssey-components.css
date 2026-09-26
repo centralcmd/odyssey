@@ -4438,3 +4438,21 @@ tr:focus-within > .odc-rowactions.reveal,
 @media (prefers-reduced-motion: reduce) {
     .odc-picedit-actions, .odc-picedit-badge { transition: none; }
 }
+
+/* ── Properties (/properties, issue #167) — page-specific bits only; everything else is the shared
+   record scaffold (design system · ui_kits/web/properties.css). ─────────────────────────────── */
+.prop-type-locked { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-lines-default); border-radius: 10px; background: var(--rec-soft); }
+.prop-type-glyph { flex: none; width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: var(--mud-palette-surface); color: var(--rec); }
+.prop-type-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.prop-type-label { display: flex; align-items: center; gap: var(--space-2); font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.prop-type-label .material-icons { font-size: var(--fs-body2); color: var(--mud-palette-text-secondary); }
+.prop-type-help { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.prop-sort-note { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.prop-sort-note .material-icons { font-size: var(--fs-body2); }
+.prop-stats { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.prop-excl { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); }
+.prop-del-list { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: var(--space-3) var(--space-4); list-style: none; border-radius: 10px; background: var(--mud-palette-background-gray); font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
+.prop-del-list > li { display: flex; align-items: center; gap: var(--space-3); }
+.prop-del-list .material-icons { font-size: var(--fs-body1); color: var(--mud-palette-text-secondary); }
+.prop-del-foot { margin: var(--space-3) 0 0; font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.prop-addr-tile .odc-infotile-v { white-space: normal; word-break: break-word; overflow: visible; text-overflow: clip; }

@@ -299,6 +299,7 @@ builder.Services.AddScoped<AccountEstimateService>();
 builder.Services.AddScoped<AccountSmartTagService>();
 builder.Services.AddScoped<ContractSmartTagService>();
 builder.Services.AddScoped<PropertyService>();
+builder.Services.AddScoped<PropertySummaryService>();
 builder.Services.AddScoped<PropertyEstimateService>();
 builder.Services.AddScoped<PropertySmartTagService>();
 builder.Services.AddScoped<BudgetItemService>();
