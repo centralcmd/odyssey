@@ -11,7 +11,7 @@
     <PackageVersion Include="Xunit.SkippableFact" Version="1.5.85" />
     <PackageVersion Include="MailKit" Version="4.18.0" />
     <PackageVersion Include="Ical.Net" Version="5.2.3" />
-    <PackageVersion Include="Mapster" Version="10.0.12" />
+    <PackageVersion Include="Mapster" Version="10.0.13" />
     <!-- Pure-managed (Apache-2.0) EXIF/IPTC/XMP reader for the Photos module (issue #321). No native
          dependency — deliberately chosen over ImageSharp (Split license) / Magick.NET / SkiaSharp. -->
     <PackageVersion Include="MetadataExtractor" Version="2.9.3" />
