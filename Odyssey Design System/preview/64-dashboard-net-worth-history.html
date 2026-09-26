@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Components" name="Net-worth chart states" subtitle="The dashboard chart's ten states — loading, the three marked-series presentations, four cause-specific empty reasons, and the two partial-failure rules." viewport="700x760" -->
+<!-- @dsCard group="Components" name="Net-worth chart states" subtitle="The dashboard chart's states — loading, marked-series presentations, property inclusion, five cause-specific empty reasons (property-aware), and the partial-failure rules." viewport="700x1180" -->
 <html lang="en" data-theme="dark"><head>
   <title>Odyssey · Net-worth chart states</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css"></head>
 <body>
@@ -15,7 +15,7 @@
   </style>
 
   <div class="label" style="margin-bottom:8px">Dashboard · Net worth</div>
-  <p class="lead">Every series point is reconstructed from stored data as of that point's instant. There is no fallback series: when the data is not there, the chart is not there, and the copy names which of the four causes applies rather than saying "no data".</p>
+  <p class="lead">Every series point is reconstructed from stored data as of that point's instant. There is no fallback series: when the data is not there, the chart is not there, and the copy names which cause applies rather than saying "no data". Property value is its own asset line; every property term below applies only when that response's <code>PropertiesIncluded</code> is true (see <code>64b</code>).</p>
 
   <table>
     <thead><tr><th scope="col">State</th><th scope="col">Presentation</th></tr></thead>
@@ -25,19 +25,28 @@
 
       <tr><th colspan="2" class="sect">Points</th></tr>
       <tr><th scope="row">None flagged</th><td>Chart, head figure and the delta badge — an absolute money difference between the endpoints, not a percentage.</td></tr>
-      <tr><th scope="row">Some understated</th><td>Hollow markers, dashed adjoining segments, a note sentence naming the account and period. The delta is withheld when an endpoint is understated.</td></tr>
-      <tr><th scope="row">Some revalued</th><td>Ticked markers and their own note sentence. A revaluation is a real movement, so the delta still renders.</td></tr>
+      <tr><th scope="row">Some understated</th><td>Hollow markers, dashed adjoining segments, a note sentence naming the account or property (or its kind) and period. The delta is withheld when an endpoint is understated.</td></tr>
+      <tr><th scope="row">Some revalued</th><td>Ticked markers and their own note sentence naming the kind of estimate — account, property or both. A revaluation is a real movement, so the delta still renders.</td></tr>
 
-      <tr><th colspan="2" class="sect">Empty — the cause is on the response</th></tr>
+      <tr><th scope="row">Unvalued property only</th><td>Not marked; the delta stays. Disclosed once, in the header rollup.</td></tr>
+
+      <tr><th colspan="2" class="sect">Property inclusion</th></tr>
+      <tr><th scope="row">PopulatedWithProperties</th><td>Composition sentence after the caption, from the last point: <q>Includes 3,450,000.00 NOK in property estimates from 3 valued properties; accounts alone: −127,000.00 NOK.</q> A <code>null</code> <code>PropertyValue</code> yields no sentence.</td></tr>
+      <tr><th scope="row">PopulatedIncludedNoValue</th><td>No composition sentence; header reads as today.</td></tr>
+      <tr><th scope="row">AccountsOnly</th><td>Today's output plus <q> · accounts only</q> in the caption and <q>, accounts only</q> in the accessible name. Nothing else mentions property.</td></tr>
+
+      <tr><th colspan="2" class="sect">Empty — the cause is on the response · accounts only / included</th></tr>
       <tr><th scope="row">NotBuilt</th><td><q>Net-worth history is not available yet.</q></td></tr>
-      <tr><th scope="row">NoAccounts</th><td><q>No accounts to chart yet.</q></td></tr>
+      <tr><th scope="row">NoAccounts</th><td><q>No accounts to chart yet.</q> / <q>No accounts or valued properties to chart yet.</q></td></tr>
       <tr><th scope="row">NothingConvertible</th><td><q>Net worth could not be converted to NOK for any period.</q></td></tr>
-      <tr><th scope="row">WindowBeforeFirstAccount</th><td><q>No accounts existed in this period.</q></td></tr>
+      <tr><th scope="row">WindowBeforeFirstAccount</th><td><q>No accounts existed in this period.</q> / <q>No accounts or valued properties existed in this period.</q></td></tr>
+      <tr><th scope="row">WindowAfterAllAccountsClosed</th><td><q>Every account had closed before this period.</q> / <q>No account was open and no valued property was held during this period.</q></td></tr>
 
       <tr><th colspan="2" class="sect">Failure</th></tr>
       <tr><th scope="row">History call failed</th><td><q>Net-worth history could not be loaded.</q> — plus the header problem rollup, never a toast.</td></tr>
       <tr><th scope="row">Totals failed, history fine</th><td>The chart withholds unless the money <em>format</em> resolved. A figure must never render in the main currency's amount under another currency's symbol.</td></tr>
       <tr><th scope="row">No <code>accounts.read</code></th><td>The section is not rendered at all.</td></tr>
+      <tr><th scope="row">No property claim</th><td>Not a denied state — the server returns <code>PropertiesIncluded = false</code>, so it renders AccountsOnly.</td></tr>
     </tbody>
   </table>
 </body></html>

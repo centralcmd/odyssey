@@ -1,0 +1,96 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Net-worth chart · properties" subtitle="#215 — property in net worth: header sub-line, grouped rollup, composition sentence, accounts-only caption, notes by member kind." viewport="700x1380" -->
+<html lang="en" data-theme="dark"><head>
+<title>Odyssey · Net-worth chart · properties</title><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+.lead{font:400 12px/1.5 var(--font-sans);color:var(--mud-palette-text-secondary);max-width:64ch;margin:0 0 14px;text-wrap:pretty}
+.sect{font:500 10px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--brand-text);margin:22px 0 10px}
+.cap{font:400 11px/1.45 var(--font-mono);color:var(--mud-palette-text-secondary);margin:8px 0 0}
+.cap b{color:var(--mud-palette-text-primary);font-weight:500}
+.card{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:8px;padding:16px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.h{font:300 24px/1 var(--font-sans);letter-spacing:-.02em;margin:0;color:var(--mud-palette-text-primary)}
+.sub{font:400 13px/1.4 var(--font-sans);color:var(--mud-palette-text-secondary);margin-top:6px}
+.btn{font:500 13px/1 var(--font-sans);letter-spacing:.04em;text-transform:uppercase;padding:9px 14px;border-radius:4px;border:1px solid transparent;display:inline-flex;align-items:center;gap:7px;flex:none}
+.btn .material-icons{font-size:18px}
+.cnt{font:600 11px/1 var(--font-mono);padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.22)}
+.btn.warning.active{background:var(--finance-pending);color:var(--ink-900)}
+.btn.info{background:rgba(56,189,248,.10);color:var(--sea-400);border-color:rgba(56,189,248,.34)}
+.btn.info .cnt{background:var(--sea-400);color:var(--mud-palette-surface)}
+.region{border-top:1px solid var(--mud-palette-divider);margin-top:16px;padding-top:14px;display:flex;flex-direction:column;gap:8px}
+.grp{font:500 11px/1.4 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:6px 0 0}
+.grp:first-child{margin-top:0}
+.alert{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;border:1px solid transparent;font:400 13px/1.5 var(--font-sans)}
+.alert .material-icons{font-size:18px;flex:none}
+.alert .body{flex:1;min-width:0;color:var(--mud-palette-text-primary);text-wrap:pretty}
+.alert .body strong{font-weight:600}
+.alert.info{background:rgba(56,189,248,.10);border-color:rgba(56,189,248,.28);color:var(--sea-400)}
+.alert.warning{background:var(--finance-pending-soft);border-color:color-mix(in srgb,var(--finance-pending) 32%,transparent);color:var(--finance-pending)}
+.fix{flex:none;font:600 12px/1 var(--font-sans);color:inherit;background:transparent;border:none;padding:6px 8px;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
+.chart-ttl{font:500 15px/1.3 var(--font-sans);color:var(--mud-palette-text-primary)}
+.chart-sub{display:flex;flex-direction:column;gap:4px;margin-top:4px;font:400 12.5px/1.5 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.note{color:var(--mud-palette-text-primary);text-wrap:pretty}
+.slot{margin-top:14px;height:96px;border:1px dashed var(--mud-palette-lines-inputs);border-radius:6px;background-image:repeating-linear-gradient(135deg,rgba(199,208,224,.05) 0 9px,transparent 9px 18px);display:flex;align-items:center;justify-content:center;font:400 11px/1 var(--font-mono);color:var(--mud-palette-text-secondary)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;vertical-align:top;padding:8px 12px 8px 0;border-bottom:1px solid var(--mud-palette-divider);font:400 12px/1.45 var(--font-sans);color:var(--mud-palette-text-secondary)}
+thead th{font:500 10px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase}
+tbody th{font-family:var(--font-mono);color:var(--mud-palette-text-primary);white-space:nowrap;width:190px}
+td q{color:var(--mud-palette-text-primary);quotes:'"' '"'}
+</style></head>
+<body>
+<div class="label" style="margin-bottom:8px">Dashboard · Property in net worth</div>
+<p class="lead">Property value is an asset line of its own. Every property-derived surface reads that response's <code>PropertiesIncluded</code> and fails closed: with the flag false the page renders today's output plus one "accounts only" segment, whatever else the payload carries.</p>
+
+<div class="sect">Header · mixed rollup (Warning + Information)</div>
+<div class="card">
+<div class="top">
+<div><h1 class="h">Good morning, Ingrid</h1><div class="sub">Net worth 3,323,000.00 NOK across 12 accounts and 4 properties</div></div>
+<span class="btn warning active"><span class="material-icons" aria-hidden="true">warning_amber</span>Net worth issues<span class="cnt">3</span></span>
+</div>
+<div class="region">
+<h3 class="grp">Needs attention</h3>
+<div class="alert warning"><span class="material-icons" aria-hidden="true">warning_amber</span><div class="body"><strong>City apartment.</strong> No exchange rate from EUR to NOK, so this property counts as 0 towards net worth.</div><span class="fix">Properties</span></div>
+<h3 class="grp">For your information</h3>
+<div class="alert info"><span class="material-icons" aria-hidden="true">info_outline</span><div class="body">1 property has no estimate yet, so it counts as 0 towards net worth.</div><span class="fix">Properties</span></div>
+<div class="alert info"><span class="material-icons" aria-hidden="true">info_outline</span><div class="body">2 accounts are of type Property or Vehicle. If one describes the same asset as a property, that asset is counted twice.</div><span class="fix">Accounts</span></div>
+</div>
+</div>
+<p class="cap">Headings appear <b>only when both severities are present</b>. Warnings first. M = held properties (contributing + unvalued + unconverted), from <b>/totals</b>.</p>
+
+<div class="sect">Header · information only</div>
+<div class="card">
+<div class="top">
+<div><h1 class="h">Good morning, Ingrid</h1><div class="sub">Net worth 3,323,000.00 NOK across 12 accounts and 4 properties</div></div>
+<span class="btn info"><span class="material-icons" aria-hidden="true">info_outline</span>Net worth notes<span class="cnt">2</span></span>
+</div>
+</div>
+<p class="cap">No heading, toggle reads <b>Net worth notes</b>, so a standing advisory does not read as a fault. A warnings-only panel renders exactly as today.</p>
+
+<div class="sect">Chart sub-line</div>
+<div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+<div class="card">
+<div class="chart-ttl">Net worth</div>
+<div class="chart-sub"><span>23 monthly points · Nov ’24 – Sep ’26 · NOK</span><span class="note">Includes 3,450,000.00 NOK in property estimates from 3 valued properties; accounts alone: −127,000.00 NOK.</span></div>
+<div class="slot">line chart</div>
+<p class="cap" style="margin-top:10px">PopulatedWithProperties — from the <b>last history point</b>. Aria: <b>, including property estimates</b></p>
+</div>
+<div class="card">
+<div class="chart-ttl">Net worth</div>
+<div class="chart-sub"><span>23 monthly points · Nov ’24 – Sep ’26 · NOK · accounts only</span></div>
+<div class="slot">line chart</div>
+<p class="cap" style="margin-top:10px">AccountsOnly — flag false. Nothing else mentions property. Aria: <b>, accounts only</b></p>
+</div>
+</div>
+
+<div class="sect">Notes by member kind (history, gated)</div>
+<table>
+<thead><tr><th scope="col">Condition</th><th scope="col">Note sentence</th></tr></thead>
+<tbody>
+<tr><th scope="row">Understated · one entry</th><td><q>Mar ’25 is understated — City apartment (EUR) had no exchange rate.</q></td></tr>
+<tr><th scope="row">Understated · several</th><td><q>… — an account had</q> · <q>a property had</q> · <q>an account or property had no exchange rate.</q></td></tr>
+<tr><th scope="row">Revalued</th><td><q>… because an account</q> · <q>a property</q> · <q>an account or property estimate took effect — a real movement, not a correction.</q></td></tr>
+<tr><th scope="row">Unvalued only</th><td>Point stays Normal, delta kept, no chart sentence — the rollup says it once.</td></tr>
+<tr><th scope="row">Table State column</th><td><q>Understated — a property had no exchange rate for this period</q>; same kind rule as the note. <code>null</code> keeps today's text.</td></tr>
+</tbody>
+</table>
+</body></html>
