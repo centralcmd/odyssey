@@ -1,0 +1,40 @@
+@* DS parity — no consumer yet: the design system ships this filter for a property-documents
+   filter that no page draws today (the Documents section is short enough to need none). Adopt it
+   when a surface filters documents by PropertyFileType. *@
+@*
+    OdsPropertyFileTypeMultiSelect — a checkbox-list filter pre-wired to the
+    PropertyFileType vocabulary (Odyssey Design System ·
+    components/PropertyFileTypeMultiSelect).
+
+    Each row carries the type's Material icon in its category color, with a count badge
+    on the trigger. A thin wrapper over OdsMultiSelect — Values + Align pass straight
+    through. Defaults: trigger label "Any type", trigger glyph `home_work`. Bind the
+    chosen keys via @bind-Values.
+*@
+
+<OdsMultiSelect Values="@Values"
+                ValuesChanged="ValuesChanged"
+                Options="OdsTypeRegistries.PropertyFileOptions"
+                Label="@Label"
+                Icon="@Icon"
+                Align="@Align"
+                Class="@Class"
+                @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Selected enum keys. Bindable via @bind-Values.</summary>
+    [Parameter] public IReadOnlyCollection<string> Values { get; set; } = [];
+
+    [Parameter] public EventCallback<IReadOnlyCollection<string>> ValuesChanged { get; set; }
+
+    [Parameter] public string? Label { get; set; } = "Any type";
+
+    [Parameter] public string? Icon { get; set; } = "home_work";
+
+    [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+}

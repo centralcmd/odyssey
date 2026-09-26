@@ -5,14 +5,16 @@
 @*
     DeletePropertyDialog — the delete confirmation (issue #167; design system · Properties.jsx
     DeletePropertyModal). Deletion is hard and cascades the detail row, every estimate, every
-    smart-tag link AND every contract party link naming it (issue #208), in one transaction. Party
-    links do not block the delete — each contract survives with one fewer party and records a "Party
-    removed" event — so there is still no blocker to report, only a statement of what goes, and
-    Archive as the reversible alternative.
+    smart-tag link, every document link (issue #210 — the files themselves stay in Files) AND every
+    contract party link naming it (issue #208), in one transaction. Party links do not block the
+    delete — each contract survives with one fewer party and records a "Party removed" event — so
+    there is still no blocker to report, only a statement of what goes, and Archive as the reversible
+    alternative.
 
     The party-link line is counted only for a contracts.read holder. Without it ContractCount is null
     and the line is stated without numbers — never as "none", which would be a claim about contracts
-    the reader cannot see.
+    the reader cannot see. The document line follows the same rule for a property whose Documents
+    section never loaded (ExistingProperty carries no document count, issue #210 Non-Goal 4).
 *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
@@ -36,6 +38,16 @@
                 <li>
                     <span class="material-icons" aria-hidden="true">sell</span>
                     @(Property.SmartTagCount == 0 ? "No smart tags" : $"{Property.SmartTagCount} smart-tag link{(Property.SmartTagCount == 1 ? "" : "s")}")
+                </li>
+                <li>
+                    <span class="material-icons" aria-hidden="true">attach_file</span>
+                    @(DocumentCount switch
+                    {
+                        null => "Its document links, if it has any — the files stay in Files",
+                        0 => "No documents",
+                        1 => "1 document link — the file stays in Files",
+                        var n => $"{n} document links — the files stay in Files",
+                    })
                 </li>
                 <li>
                     <span class="material-icons" aria-hidden="true">link_off</span>
@@ -69,6 +81,12 @@
 
     [Parameter] public bool Open { get; set; }
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>
+    /// The document count the Documents section last reported, or <c>null</c> when the property was never
+    /// opened — ExistingProperty carries no count (issue #210 Non-Goal 4), so the line then goes unnumbered.
+    /// </summary>
+    [Parameter] public int? DocumentCount { get; set; }
 
     /// <summary>Offers "Archive instead" (<c>properties.update</c>).</summary>
     [Parameter] public bool CanArchive { get; set; }
