@@ -213,6 +213,26 @@ public class PropertyContractPartyServiceTests
     }
 
     [Fact]
+    public void AuditLine_StripsLineBreaksFromTheUserId()
+    {
+        var logger = new RecordingLogger<PropertyService>();
+        var party = new ContractParty
+        {
+            ContractPartyId = Guid.NewGuid(),
+            ContractId = Guid.NewGuid(),
+            PropertyId = Guid.NewGuid(),
+            Role = Context.ContractPartyRole.Other,
+        };
+
+        ContractPartyAudit.Log(logger, "added", party, previousRole: null, "user\r\nContract party forged");
+
+        var line = Assert.Single(logger.Lines);
+        Assert.DoesNotContain('\n', line);
+        Assert.DoesNotContain('\r', line);
+        Assert.EndsWith("by user userContract party forged.", line);
+    }
+
+    [Fact]
     public void AuditLine_NamesTheTargetKind_ForEachOfTheThreeColumns()
     {
         var logger = new RecordingLogger<ContractService>();

@@ -50,7 +50,7 @@ public static class ContractPartyAudit
         logger.LogInformation(
             "Contract party {Action}: contract {ContractId}, party {ContractPartyId}, target {TargetKind} {TargetId}, " +
             "role {RoleBefore} -> {RoleAfter}, by user {UserId}.",
-            action,
+            Safe(action),
             party.ContractId,
             party.ContractPartyId,
             TargetKind(party),
@@ -58,9 +58,20 @@ public static class ContractPartyAudit
             // No fabricated "previous role" on an add. Unspecified is gone and substituting Other
             // would assert a role the party never held, so the slot reads as genuinely absent.
             previousRole?.ToString() ?? NoRole,
-            roleAfter ?? party.Role.ToString(),
-            userId ?? "(unknown)");
+            Safe(roleAfter ?? party.Role.ToString()),
+            Safe(userId ?? "(unknown)"));
     }
+
+    /// <summary>
+    /// Strips CR/LF from the three string slots. Every other value is a <see cref="Guid"/> or a closed
+    /// enum, which cannot carry a line break. <paramref name="value"/> here is a constant or a claim
+    /// value in practice, but the user id is read off the principal three frames away, so the guarantee
+    /// is made a property of the log site — and this is the form CodeQL recognises as a
+    /// <c>cs/log-forging</c> barrier, as on <c>TermService</c>'s term line.
+    /// </summary>
+    private static string Safe(string value) =>
+        value.Replace("\r", string.Empty, StringComparison.Ordinal)
+             .Replace("\n", string.Empty, StringComparison.Ordinal);
 
     /// <summary>The wire kind's name for the column that is set — the same names the read path reports.</summary>
     private static string TargetKind(ContractParty party) =>
