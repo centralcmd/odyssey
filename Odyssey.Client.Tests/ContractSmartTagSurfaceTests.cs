@@ -346,6 +346,8 @@ public class ContractSmartTagSurfaceTests
         ctx.Services.AddSingleton(reference.Object);
         ctx.Services.AddSingleton(contractLimits.Object);
         ctx.Services.AddSingleton(accountLimits.Object);
+        ctx.Services.AddSingleton(new Mock<IPropertiesApiClient>().Object);
+        ctx.Services.AddSingleton(new Mock<IPropertyLimitsCache>().Object);
 
         var cut = ctx.Render<AccountSmartTagsSection>(p => p
             .Add(s => s.Host, SmartTagHost.Contract)

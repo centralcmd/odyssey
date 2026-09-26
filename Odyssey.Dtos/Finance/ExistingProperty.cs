@@ -47,4 +47,23 @@ public sealed record ExistingProperty
     public RealEstateDetailsDto? RealEstateDetails { get; set; }
 
     public VehicleDetailsDto? VehicleDetails { get; set; }
+
+    /// <summary>How many transaction tags the property watches.</summary>
+    public int SmartTagCount { get; set; }
+
+    /// <summary>
+    /// How many estimates the property carries. <c>null</c> when the caller does not hold
+    /// <c>properties.estimates.read</c> — the estimate figures below are gated the same way, so a
+    /// <c>properties.read</c>-only reader learns nothing about the value history from the list.
+    /// </summary>
+    public int? EstimateCount { get; set; }
+
+    /// <summary>
+    /// The estimate in force now, in <see cref="CurrencyCode"/>, or <c>null</c> when none is in force
+    /// or the caller does not hold <c>properties.estimates.read</c>.
+    /// </summary>
+    public decimal? CurrentEstimatedValue { get; set; }
+
+    /// <summary>When <see cref="CurrentEstimatedValue"/> took effect; <c>null</c> alongside it.</summary>
+    public DateTime? CurrentEstimatedValueEffectiveFrom { get; set; }
 }

@@ -660,18 +660,6 @@ public partial class Settings
                     "contractMaxSmartTagsPerContract", dto.ContractMaxSmartTagsPerContract),
                 Write: (p, req) => req.ContractMaxSmartTagsPerContract =
                     p.IntRequest("contractMaxSmartTagsPerContract")),
-            new("propertyMaxSmartTagsPerProperty", "sell", "Max smart tags per property",
-                "Upper limit on the saved tag filters one property may carry. Its ceiling is the number "
-                + "of tag ids the transactions list accepts in one query, because that is what the "
-                + "filter is resolved through.",
-                SettingClaim.Count, SettingControl.Number,
-                Min: SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMin,
-                Max: SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMax,
-                Field: nameof(SystemSettingsUpdate.PropertyMaxSmartTagsPerProperty),
-                Load: (p, dto) => p.SetIntLoaded(
-                    "propertyMaxSmartTagsPerProperty", dto.PropertyMaxSmartTagsPerProperty),
-                Write: (p, req) => req.PropertyMaxSmartTagsPerProperty =
-                    p.IntRequest("propertyMaxSmartTagsPerProperty")),
             new("contractMaxSummaryContracts", "list_alt", "Max contracts in summary",
                 "Safety ceiling on how many contracts the dashboard summary aggregates over.",
                 SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.ContractMaxSummaryContractsMin, Max: SystemSettingsBounds.ContractMaxSummaryContractsMax,
@@ -713,6 +701,23 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.ContractMaxSummaryCharges),
                 Load: (p, dto) => p.SetIntLoaded("contractMaxSummaryCharges", dto.ContractMaxSummaryCharges),
                 Write: (p, req) => req.ContractMaxSummaryCharges = p.IntRequest("contractMaxSummaryCharges")),
+        ]),
+        // Its own group, as the design system lays it out (system-settings-data.js): a property is not a
+        // kind of contract, and an administrator looking for the property cap looks under Properties.
+        new("Properties", Icons.Material.Filled.HomeWork,
+        [
+            new("propertyMaxSmartTagsPerProperty", "sell", "Smart tags per property",
+                $"How many smart tags one property may carry. Capped at {SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMax}, the most tags one transactions "
+                + "query can filter on. The Properties page reads this value, so the limit it shows always "
+                + "matches what the server enforces.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMin,
+                Max: SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMax,
+                Field: nameof(SystemSettingsUpdate.PropertyMaxSmartTagsPerProperty),
+                Load: (p, dto) => p.SetIntLoaded(
+                    "propertyMaxSmartTagsPerProperty", dto.PropertyMaxSmartTagsPerProperty),
+                Write: (p, req) => req.PropertyMaxSmartTagsPerProperty =
+                    p.IntRequest("propertyMaxSmartTagsPerProperty")),
         ]),
         // The two photo caps are TIGHTEN-ONLY, and this is the first use of MaxFrom: their ceiling is
         // a compile-time constant that also drives [MaxLength] on the photo request DTOs, so model
@@ -2356,6 +2361,8 @@ public partial class Settings
             // And the contract cap (issue #166), which has its own key, its own cache entry and its
             // own eviction on the server — so it needs its own invalidation here for the same reason.
             ContractLimits.Invalidate();
+            // And the property cap (issue #167) — its own key and its own cache, so its own call.
+            PropertyLimits.Invalidate();
             // The processor disclosure (issue #421 Wave 1, extended by #439). All three of the switch,
             // the model and the destination feed the consent gate — the switch decides whether the
             // Analyze affordance is offered at all — so an administrator toggling analysis off must see

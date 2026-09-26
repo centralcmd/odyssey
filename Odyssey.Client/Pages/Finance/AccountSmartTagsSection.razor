@@ -8,11 +8,14 @@
 @inject ISnackbar Snackbar
 @inject IAccountLimitsCache AccountLimits
 @inject IContractLimitsCache ContractLimits
+@inject IPropertyLimitsCache PropertyLimits
+@inject IPropertiesApiClient Properties
 
 @*
     AccountSmartTagsSection — the "Smart tags" disclosure inside an expanded record. ONE component,
-    TWO hosts (Odyssey Design System · components/AccountSmartTagsSection, subject="account" |
-    "contract"): the account record (issue #184) and the contract record (issue #166). It pins a
+    THREE hosts (Odyssey Design System · components/AccountSmartTagsSection, subject="account" |
+    "contract" | "property"): the account record (issue #184), the contract record (issue #166) and
+    the property record (issue #167). It pins a
     curated set of existing TransactionTags to the record as a saved filter, then surfaces every
     transaction carrying any of those tags.
 

@@ -1,0 +1,118 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject IPropertiesApiClient Properties
+@inject IReferenceDataCache ReferenceData
+@inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
+@inject ISnackbar Snackbar
+
+@*
+    PropertyDialog — New / Edit property (issue #167; design system · AddPropertyModal.jsx). Mirrors
+    NewProperty: the common fields plus EXACTLY ONE detail sub-object, the one matching Type.
+
+    Type is chosen once, on create. On edit it is shown locked: a PUT carrying a different type is a
+    422, so the dialog never offers the change and states the route instead (delete and re-create).
+    Switching type on create keeps both drafts in memory, but only the matching sub-object is sent, so
+    the XOR rule holds by construction. Archived is not here — it is the row menu's Archive / Restore,
+    which lands on the same PUT, so this dialog carries the stored flag forward.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="@(IsEdit ? "edit" : "home_work")" Title="@(IsEdit ? "Edit property" : "New property")"
+               Subtitle="@(IsEdit
+                   ? "Update the details. Estimates and smart tags are managed from the property."
+                   : "Record a house, cabin, car or boat. Add its estimated value and smart tags once it exists.")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create property")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               OnSubmit="SaveAsync">
+
+    @if (IsEdit)
+    {
+        <div class="prop-type-locked" style="@($"--rec:{TypeInfo.Color};--rec-soft:{TypeInfo.Soft}")">
+            <span class="prop-type-glyph"><span class="material-icons" aria-hidden="true">@TypeInfo.Icon</span></span>
+            <div class="prop-type-text">
+                <div class="prop-type-label">@TypeInfo.Label<span class="material-icons" aria-hidden="true">lock</span></div>
+                <div class="prop-type-help">A property’s type is fixed at creation. To change it, delete this property and create a new one of the right type.</div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <OdsFieldShell Label="What is it?" Required="true" LabelId="prop-type-label">
+            <OdsCardSelect AriaLabelledBy="prop-type-label" Required="true" Value="@_type.ToString()" ValueChanged="OnTypeChanged"
+                           Columns="2" MaxItemWidth="200" Center="true" Options="TypeOptions" />
+        </OdsFieldShell>
+    }
+
+    <OdsField Label="Name" Required="true" AutoFocus="true" MaxLength="256" @bind-Value="_name"
+              Placeholder="@(IsVehicle ? "e.g. Subaru Outback" : "e.g. Storgata 14")" Error="@Err("name")" />
+    <OdsField Label="Description" Required="true" MaxLength="256" @bind-Value="_description"
+              Placeholder="@(IsVehicle ? "e.g. Family car" : "e.g. Primary residence")" Error="@Err("description")" />
+
+    <OdsFormRow>
+        <OdsSelect Label="Kind" Required="true" Value="@CurrentKind" ValueChanged="OnKindChanged"
+                   Options="@PropertyVisuals.KindOptions(_type)" />
+        <OdsCurrencySelect Required="true" Value="@_currencyCode" ValueChanged="OnCurrencyChanged"
+                           Options="_currencyOptions" Help="Estimates are recorded in this currency."
+                           Error="@Err("currencyCode")" />
+    </OdsFormRow>
+
+    @if (CurrencyChangeBlocked)
+    {
+        <OdsAlert Severity="Severity.Warning">
+            @Property!.EstimateCount estimate@(Property.EstimateCount == 1 ? " is" : "s are") recorded in
+            <b>@Property.CurrencyCode</b>. Change the currency back, or delete the estimates first —
+            the currency can’t change while any exist.
+        </OdsAlert>
+    }
+
+    <OdsFormRow>
+        <OdsDateField Label="Acquired" @bind-Value="_acquired" Placeholder="Unknown"
+                      Help="Leave empty if you don’t know." />
+        <OdsDateField Label="Disposed" Value="_disposed" ValueChanged="OnDisposedChanged" Placeholder="Still owned"
+                      Help="Sold, written off or scrapped." Error="@Err("disposedDate")" />
+    </OdsFormRow>
+
+    <OdsSectionDivider Label="@(IsVehicle ? "Vehicle details" : "Real estate details")" />
+
+    @if (IsVehicle)
+    {
+        <OdsFormRow>
+            <OdsField Label="Registration number" MaxLength="32" @bind-Value="_registration"
+                      Help="@IdentifierHelp(_registration, "Spaces removed, uppercased.")" Error="@Err("registrationNumber")" />
+            <OdsField Label="VIN / hull number" MaxLength="32" @bind-Value="_vin"
+                      Help="@IdentifierHelp(_vin, "Stored as written — no check digit.")" Error="@Err("vin")" />
+        </OdsFormRow>
+        <OdsFormRow>
+            <OdsField Label="Make" MaxLength="64" @bind-Value="_make" Placeholder="e.g. Subaru" />
+            <OdsField Label="Model" MaxLength="64" @bind-Value="_model" Placeholder="e.g. Outback Limited" />
+        </OdsFormRow>
+        <OdsFormRow>
+            <OdsNumberField Label="Model year" Min="1900" Max="@(ThisYear + 1)" Step="1" Value="_modelYear"
+                            ValueChanged="@(v => { _modelYear = v; _errors.Remove("modelYear"); })" Error="@Err("modelYear")" />
+            <OdsDateField Label="First registered" @bind-Value="_firstRegistered" Placeholder="Unknown" />
+        </OdsFormRow>
+    }
+    else
+    {
+        <OdsField Label="Address" MaxLength="256" @bind-Value="_addressLine" Placeholder="Street and number" />
+        <OdsFormRow Cols="3">
+            <OdsField Label="Postal code" MaxLength="32" @bind-Value="_postalCode" />
+            <OdsField Label="City" MaxLength="128" @bind-Value="_city" />
+            <OdsField Label="Country" MaxLength="2" Value="@_countryCode" ValueChanged="OnCountryChanged"
+                      Placeholder="NO" Help="ISO code, two letters" Error="@Err("countryCode")" />
+        </OdsFormRow>
+        <OdsField Label="Cadastral number" MaxLength="64" @bind-Value="_cadastralNumber"
+                  Placeholder="e.g. 208/451 or APN 3612-044" Help="The land-registry identifier, as written. Not checked." />
+        <OdsFormRow Cols="3">
+            <OdsNumberField Label="Living area" Unit="m²" Min="0" Step="0.5" Value="_livingArea"
+                            ValueChanged="@(v => { _livingArea = v; _errors.Remove("livingAreaSqm"); })" Error="@Err("livingAreaSqm")" />
+            <OdsNumberField Label="Plot area" Unit="m²" Min="0" Step="1" Value="_plotArea"
+                            ValueChanged="@(v => { _plotArea = v; _errors.Remove("plotAreaSqm"); })" Error="@Err("plotAreaSqm")" />
+            <OdsNumberField Label="Build year" Min="1000" Max="ThisYear" Step="1" Value="_buildYear"
+                            ValueChanged="@(v => { _buildYear = v; _errors.Remove("buildYear"); })" Error="@Err("buildYear")" />
+        </OdsFormRow>
+    }
+
+    <OdsNoteField Label="Notes" MaxLength="1024" @bind-Value="_notes"
+                  Placeholder="Anything worth keeping with it — renovations, condition, where the keys are." />
+</OdsFormDialog>

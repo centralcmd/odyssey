@@ -43,8 +43,13 @@ public class PropertyService
     /// endpoints cannot disagree about which entry is current, and ordering happens in SQL before the
     /// page slice.
     /// </summary>
+    /// <param name="includeEstimates">
+    /// Whether the caller holds <c>properties.estimates.read</c>. Without it the estimate count and the
+    /// in-force value are left <c>null</c> on every row, and <see cref="PropertySortBy.Value"/> is
+    /// refused by the controller before this runs.
+    /// </param>
     public async Task<PagedResult<ExistingProperty>> ListAsync(
-        PropertiesQueryParams query, CancellationToken cancellationToken = default)
+        PropertiesQueryParams query, bool includeEstimates = false, CancellationToken cancellationToken = default)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var q = context.Properties.AsNoTracking().AsQueryable();
@@ -123,9 +128,12 @@ public class PropertyService
             .Take(safeLimit)
             .ToListAsync(cancellationToken);
 
+        var items = properties.Select(p => ToDto(p, now)).ToList();
+        await EnrichAsync(items, includeEstimates, now, cancellationToken);
+
         return new PagedResult<ExistingProperty>
         {
-            Items = properties.Select(p => ToDto(p, now)).ToList(),
+            Items = items,
             Offset = safeOffset,
             Limit = safeLimit,
             TotalCount = totalCount,
@@ -133,7 +141,8 @@ public class PropertyService
     }
 
     /// <summary>One property with its detail sub-object, or <c>null</c> when unknown.</summary>
-    public async Task<ExistingProperty?> Get(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ExistingProperty?> Get(
+        Guid id, bool includeEstimates = false, CancellationToken cancellationToken = default)
     {
         var property = await context.Properties
             .AsNoTracking()
@@ -141,7 +150,59 @@ public class PropertyService
             .Include(p => p.VehicleDetails)
             .FirstOrDefaultAsync(p => p.PropertyId == id, cancellationToken);
 
-        return property is null ? null : ToDto(property, timeProvider.GetUtcNow().UtcDateTime);
+        if (property is null)
+            return null;
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var dto = ToDto(property, now);
+        await EnrichAsync([dto], includeEstimates, now, cancellationToken);
+        return dto;
+    }
+
+    /// <summary>
+    /// Fills the row counts and, for a caller holding <c>properties.estimates.read</c>, the estimate in
+    /// force now — one batched query each over the page's ids, never one per row. "In force" is picked
+    /// by <see cref="EffectiveDatedExtensions.MostEffective{T}"/>, the in-memory counterpart of
+    /// <see cref="EstimateEffectiveDating"/> that the account list uses the same way.
+    /// </summary>
+    private async Task EnrichAsync(
+        IReadOnlyList<ExistingProperty> dtos, bool includeEstimates, DateTime now, CancellationToken cancellationToken)
+    {
+        if (dtos.Count == 0)
+            return;
+
+        var ids = dtos.Select(d => d.PropertyId).ToList();
+
+        var smartTagCounts = await context.PropertySmartTags
+            .AsNoTracking()
+            .Where(t => ids.Contains(t.PropertyId))
+            .GroupBy(t => t.PropertyId)
+            .Select(g => new { PropertyId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.PropertyId, x => x.Count, cancellationToken);
+
+        foreach (var dto in dtos)
+            dto.SmartTagCount = smartTagCounts.GetValueOrDefault(dto.PropertyId);
+
+        if (!includeEstimates)
+            return;
+
+        var estimates = await context.PropertyEstimates
+            .AsNoTracking()
+            .Where(e => ids.Contains(e.PropertyId))
+            .ToListAsync(cancellationToken);
+        var byProperty = estimates.ToLookup(e => e.PropertyId);
+
+        foreach (var dto in dtos)
+        {
+            var rows = byProperty[dto.PropertyId].ToList();
+            dto.EstimateCount = rows.Count;
+
+            if (rows.Where(e => e.EffectiveFrom <= now).MostEffective() is { } current)
+            {
+                dto.CurrentEstimatedValue = current.Value;
+                dto.CurrentEstimatedValueEffectiveFrom = current.EffectiveFrom;
+            }
+        }
     }
 
     /// <summary>

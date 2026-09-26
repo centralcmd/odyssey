@@ -475,6 +475,24 @@ public static class OdsTypeRegistries
             ? parsed
             : BudgetCategoryType.Expense;
 
+    /// <summary>
+    /// PropertyType (issue #167), in ordinal order. The hues are the Property / Vehicle ACCOUNT-type
+    /// hues on purpose (design system · properties-data.js): during the side-by-side v1 a house reads
+    /// the same whichever record it sits on.
+    /// </summary>
+    public static readonly IReadOnlyList<OdsTypeOption> PropertyTypes =
+    [
+        new() { Key = "RealEstate", Label = "Real estate", Icon = "home_work",      Color = "oklch(0.72 0.14 255)", Soft = "oklch(0.72 0.14 255 / 0.16)" },
+        new() { Key = "Vehicle",    Label = "Vehicle",     Icon = "directions_car", Color = "oklch(0.78 0.14 170)", Soft = "oklch(0.78 0.14 170 / 0.16)" },
+    ];
+
+    /// <summary>
+    /// The PropertyType descriptor for an enum value. An unrecognised ordinal falls back to the first
+    /// entry rather than the last: there is no "Other" type, and a stale client still has to draw a card.
+    /// </summary>
+    public static OdsTypeOption PropertyTypeOf(PropertyType type) =>
+        PropertyTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? PropertyTypes[0];
+
     /// <summary>The ContractType descriptor for an enum value (falls back to "Other").</summary>
     public static OdsTypeOption ContractTypeOf(ContractType type) =>
         ContractTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? ContractTypes[^1];
@@ -656,6 +674,7 @@ public static class OdsTypeRegistries
     public static readonly IReadOnlyList<OdsOption> TransactionFileOptions = ToOptions(TransactionFileTypes);
     public static readonly IReadOnlyList<OdsOption> TaxStatementFileOptions = ToOptions(TaxStatementFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractOptions = ToOptions(ContractTypes);
+    public static readonly IReadOnlyList<OdsOption> PropertyOptions = ToOptions(PropertyTypes);
     public static readonly IReadOnlyList<OdsOption> ContractFileOptions = ToOptions(ContractFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractPartyRoleOptions = ToOptions(ContractPartyRoles);
 }

@@ -37,6 +37,13 @@ public interface IPropertiesApiClient
 
     Task<ApiResult<ExistingProperty>> GetAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>
+    /// The header overview. Blank <paramref name="baseCurrency"/> lets the server pick the currency most
+    /// owned properties use; <see cref="PropertySummary.Value"/> is <c>null</c> without
+    /// <c>properties.estimates.read</c>.
+    /// </summary>
+    Task<ApiResult<PropertySummary>> GetSummaryAsync(string? baseCurrency = null, CancellationToken ct = default);
+
     Task<ApiResult<ExistingProperty>> CreateAsync(NewProperty property, CancellationToken ct = default);
 
     Task<ApiResult> UpdateAsync(Guid id, NewProperty property, CancellationToken ct = default);
@@ -104,6 +111,13 @@ public sealed class PropertiesApiClient(IOdysseyApi api) : IPropertiesApiClient
             .AddMany("statuses", statuses)
             .Add("sortBy", sortBy)
             .Add("sortDir", sortDir);
+
+    public Task<ApiResult<PropertySummary>> GetSummaryAsync(string? baseCurrency = null, CancellationToken ct = default) =>
+        api.GetAsync<PropertySummary>(
+            string.IsNullOrWhiteSpace(baseCurrency)
+                ? $"{Base}/summary"
+                : $"{Base}/summary?baseCurrency={Uri.EscapeDataString(baseCurrency)}",
+            ct);
 
     public Task<ApiResult<ExistingProperty>> GetAsync(Guid id, CancellationToken ct = default) =>
         api.GetAsync<ExistingProperty>($"{Base}/{id}", ct);

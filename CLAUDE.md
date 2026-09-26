@@ -482,6 +482,11 @@ and #191 undid it for terms. Four rules are easy to get backwards:
   go in no cross-claim projection, no embed, no error body and no log line; messages echo the route id.
 - **`TransactionTagService.CountDeleteBlockers` has a fifth clause** for `PropertySmartTags`, and the
   `RESTRICT` key behind it is the backstop, not the guard — the same shape as the other four.
+- **The estimate figures outside the estimate endpoints follow `properties.estimates.read`, not
+  `properties.read`.** `ExistingProperty.EstimateCount`/`CurrentEstimatedValue*` and
+  `PropertySummary.Value` are `null` without it, and `sortBy=Value` is a `403` — the order alone ranks
+  the properties by worth. The shape is `ExistingAccount.ContractCount` following `contracts.read`.
+  The smart-tag count is `properties.read` data and is always filled.
 
 **`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed to serialize a
 write path against a contact delete; once that path's call sites were gone it was a mutex with no

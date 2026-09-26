@@ -1,0 +1,168 @@
+@using System.Globalization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject IPropertiesApiClient Properties
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+@*
+    PropertyEstimatesSection — a property's value history (issue #167; design system ·
+    PropertyEstimates.jsx), laid out like a contract's Terms: a "Current value" band of InfoTiles, then
+    a "Value history" band with the term history chart over the trm-tbl ledger. Same in-force rule as
+    everywhere: the greatest EffectiveFrom on or before today, ties to the newest CreatedAtUtc.
+
+    The chart joins entries with a smooth monotone curve rather than a staircase — an estimate is a
+    reading of something that drifts between readings, not a price that holds and jumps — and holds
+    the last entry flat to the edge, because nothing is known past it.
+*@
+
+@if (_isLoading && _estimates.Count == 0)
+{
+    <div class="con-section" role="status" aria-live="polite" aria-busy="true">
+        <OdsSectionDivider Label="Estimated value" />
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+        <span class="sr-only">Loading estimates…</span>
+    </div>
+}
+else if (_loadFailed)
+{
+    <div class="con-section">
+        <OdsSectionDivider Label="Estimated value" />
+        <OdsEmptyLine>Couldn’t load the estimates. <OdsButton Variant="OdsButtonVariant.Text" OnClick="LoadAsync">Try again</OdsButton></OdsEmptyLine>
+    </div>
+}
+else if (_estimates.Count == 0)
+{
+    <div class="con-section">
+        <OdsSectionDivider Label="Estimated value" Meta="0 entries" />
+        <OdsEmptyLine>
+            No estimate yet — record what @Property.Name is worth, effective from a date. Each new estimate
+            supersedes the last from its date on; the history is kept.
+        </OdsEmptyLine>
+    </div>
+}
+else
+{
+    <div class="con-section">
+        <OdsSectionDivider Label="Current value"
+                           Meta="@(_current is null ? "none in force" : $"in force · {LongDate(Today)}")" />
+        @if (_current is { } current)
+        {
+            <OdsInfoTileGrid>
+                <OdsInfoTile Icon="monitor" IconColor="@TypeInfo.Color" IconSoft="@TypeInfo.Soft" Label="Estimated value"
+                             Foot="@OdsInfoTile.Caption(CurrentFoot(current))">
+                    <Value>@Money(current.Value)</Value>
+                </OdsInfoTile>
+
+                @if (_previous is { } previous)
+                {
+                    var diff = current.Value - previous.Value;
+                    <OdsInfoTile Icon="@TrendIcon(diff)" Label="Change vs previous" Tone="@TrendTone(diff)"
+                                 Foot="@OdsInfoTile.Caption($"from {Money(previous.Value)} · {MonthYear(previous.EffectiveFrom)}{Percent(diff, previous.Value)}")">
+                        <Value>@Signed(diff)</Value>
+                    </OdsInfoTile>
+                }
+
+                @if (_first is { } first && _pastCount > 2)
+                {
+                    var sinceFirst = current.Value - first.Value;
+                    <OdsInfoTile Icon="history" Label="Since first estimate" Tone="@TrendTone(sinceFirst)"
+                                 Foot="@OdsInfoTile.Caption($"from {Money(first.Value)} · {MonthYear(first.EffectiveFrom)}{Percent(sinceFirst, first.Value)}")">
+                        <Value>@Signed(sinceFirst)</Value>
+                    </OdsInfoTile>
+                }
+
+                @if (_scheduled is { } scheduled)
+                {
+                    <OdsInfoTile Icon="schedule" Label="Scheduled" Tone="OdsInfoTileTone.Pending"
+                                 Foot="@OdsInfoTile.Caption($"from {LongDate(scheduled.EffectiveFrom)}")">
+                        <Value>@Money(scheduled.Value)</Value>
+                    </OdsInfoTile>
+                }
+            </OdsInfoTileGrid>
+        }
+        else
+        {
+            <OdsEmptyLine>Nothing in force today — every estimate on this property is dated later.</OdsEmptyLine>
+        }
+    </div>
+
+    <div class="con-section">
+        <OdsSectionDivider Label="Value history"
+                           Meta="@($"{_estimates.Count} {(_estimates.Count == 1 ? "entry" : "entries")} · {Property.CurrencyCode}")" />
+        <OdsTermHistoryChart Class="trm-seriesplot" Series="_chartSeries" PickerLabel="Value" Glyph="¤"
+                             Curve="OdsStepCurve.Smooth" />
+        <div class="con-tbl-frame">
+            <table class="trm-tbl">
+                <thead>
+                    <tr>
+                        <th scope="col">Estimate</th>
+                        <th scope="col">Effective from</th>
+                        <th scope="col" class="num">Value</th>
+                        <th scope="col">Status</th>
+                        @if (CanWrite)
+                        {
+                            <th scope="col" class="act" aria-label="Actions"></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in _estimates)
+                    {
+                        var estimate = e;
+                        var isCurrent = _current?.PropertyEstimateId == estimate.PropertyEstimateId;
+                        var isScheduled = estimate.EffectiveFrom.Date > Today;
+                        <tr class="@(isCurrent ? "current" : "")" @key="estimate.PropertyEstimateId">
+                            <td>
+                                <div class="trm-row-kind">
+                                    <span class="trm-kind-ic sm" style="@($"background:{TypeInfo.Soft};color:{TypeInfo.Color};")">
+                                        <span class="material-icons" style="font-size:15px;" aria-hidden="true">monitor</span>
+                                    </span>
+                                    <div>
+                                        <div class="trm-row-top"><span class="trm-row-kind-name">Estimated value</span></div>
+                                        @if (!string.IsNullOrWhiteSpace(estimate.Note))
+                                        {
+                                            <div class="trm-row-note">@estimate.Note</div>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="trm-cell-date">@LongDate(estimate.EffectiveFrom)</td>
+                            <td class="trm-cell-value">@Money(estimate.Value)</td>
+                            <td>
+                                @if (isScheduled)
+                                {
+                                    <span class="trm-scheduled">Scheduled</span>
+                                }
+                                else if (isCurrent)
+                                {
+                                    <span class="trm-inforce"><span class="material-icons" aria-hidden="true">check_circle</span>In force</span>
+                                }
+                                else
+                                {
+                                    <span class="trm-superseded">Superseded</span>
+                                }
+                            </td>
+                            @if (CanWrite)
+                            {
+                                <td class="trm-cell-act">
+                                    <OdsRowActions Actions="@RowActions(estimate)" />
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (_dialogKey != Guid.Empty)
+{
+    <AddEstimateDialog @key="_dialogKey"
+                       @bind-Open="_dialogOpen"
+                       Property="Property"
+                       PropertyEstimate="_editing"
+                       ExistingPropertyEstimates="_estimates"
+                       OnSaved="OnEstimateChanged" />
+}

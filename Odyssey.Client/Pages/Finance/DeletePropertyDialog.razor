@@ -1,0 +1,94 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+
+@*
+    DeletePropertyDialog — the delete confirmation (issue #167; design system · Properties.jsx
+    DeletePropertyModal). Deletion is hard and cascades the detail row, every estimate and every
+    smart-tag link in one transaction. Nothing else references a property, so there is no blocker to
+    report — only a statement of what goes, and Archive as the reversible alternative.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="delete" IconTone="OdsModalTone.Error" RequiredLegend="false"
+          Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="prop-del-dialog">
+    <ChildContent>
+        <div class="ods-modal-body">
+            <ul class="prop-del-list">
+                <li><span class="material-icons" aria-hidden="true">home_work</span>The property and its @(Property.Type == PropertyType.Vehicle ? "vehicle" : "real estate") details</li>
+                @if (Property.EstimateCount is { } estimates)
+                {
+                    <li>
+                        <span class="material-icons" aria-hidden="true">monitor</span>
+                        @(estimates == 0 ? "No estimates" : $"{estimates} estimate{(estimates == 1 ? "" : "s")} — the whole value history")
+                    </li>
+                }
+                else
+                {
+                    <li><span class="material-icons" aria-hidden="true">monitor</span>Its estimate history, if it has one</li>
+                }
+                <li>
+                    <span class="material-icons" aria-hidden="true">sell</span>
+                    @(Property.SmartTagCount == 0 ? "No smart tags" : $"{Property.SmartTagCount} smart-tag link{(Property.SmartTagCount == 1 ? "" : "s")}")
+                </li>
+            </ul>
+            <p class="prop-del-foot">
+                The transaction tags themselves and the transactions carrying them are not affected. Archiving
+                keeps everything and hides the property from the default list.
+            </p>
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        @if (CanArchive && Property.Archived is null)
+        {
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="inventory_2" OnClick="ArchiveAsync">Archive instead</OdsButton>
+        }
+        <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete_forever" Loading="_busy" OnClick="DeleteAsync">Delete property</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter, EditorRequired] public ExistingProperty Property { get; set; } = default!;
+
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Offers "Archive instead" (<c>properties.update</c>).</summary>
+    [Parameter] public bool CanArchive { get; set; }
+
+    /// <summary>The host performs the delete; the dialog closes when it returns.</summary>
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    [Parameter] public EventCallback OnArchive { get; set; }
+
+    private bool _busy;
+
+    private RenderFragment TitleFragment => @<text>Delete @Property.Name?</text>;
+
+    private RenderFragment SubtitleFragment => @<text>This can’t be undone.</text>;
+
+    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+
+    private async Task DeleteAsync()
+    {
+        if (_busy)
+            return;
+
+        _busy = true;
+        try
+        {
+            await OnDelete.InvokeAsync();
+            await CloseAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        await OnArchive.InvokeAsync();
+        await CloseAsync();
+    }
+}

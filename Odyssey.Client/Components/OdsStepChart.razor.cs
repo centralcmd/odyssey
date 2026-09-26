@@ -27,6 +27,9 @@ public partial class OdsStepChart
     /// </summary>
     [Parameter] public OdsStepScale Scale { get; set; } = OdsStepScale.Auto;
 
+    /// <summary>How the entries are joined. A staircase unless the data drifts between readings.</summary>
+    [Parameter] public OdsStepCurve Curve { get; set; } = OdsStepCurve.Step;
+
     /// <summary>Line + area + dot colour for the single-series form. Default <c>var(--chart-1)</c>.</summary>
     [Parameter] public string Color { get; set; } = "var(--chart-1)";
 
@@ -183,13 +186,15 @@ public partial class OdsStepChart
             {
                 var px = Sx(Days(s.Pts[j].Date));
                 var py = Sy(Plotted(s.Pts, s.Pts[j].Value));
-                if (j == 0) walk.Add((px, py));
+                if (j == 0 || Curve != OdsStepCurve.Step) walk.Add((px, py));
                 else
                 {
                     walk.Add((px, walk[^1].Y));
                     walk.Add((px, py));
                 }
             }
+            if (Curve == OdsStepCurve.Smooth)
+                walk = Monotone(walk);
             walk.Add((Sx(_tMax), walk[^1].Y));
 
             var solid = Clip(walk, nowX, keepBelow: true);
@@ -288,6 +293,70 @@ public partial class OdsStepChart
     private double NowX => Sx(_now);
 
     internal static string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// A monotone cubic (Fritsch–Carlson) through <paramref name="pts"/>, sampled into a polyline so the
+    /// now-marker clip and the area fill work unchanged. It never overshoots an entry.
+    /// </summary>
+    internal static List<(double X, double Y)> Monotone(IReadOnlyList<(double X, double Y)> pts, int samples = 16)
+    {
+        if (pts.Count < 3)
+            return [.. pts];
+
+        var k = pts.Count;
+        var d = new double[k - 1];
+        var m = new double[k];
+        for (var i = 0; i < k - 1; i++)
+        {
+            var dx = pts[i + 1].X - pts[i].X;
+            d[i] = (pts[i + 1].Y - pts[i].Y) / (dx == 0 ? 1e-9 : dx);
+        }
+
+        m[0] = d[0];
+        m[k - 1] = d[k - 2];
+        for (var i = 1; i < k - 1; i++)
+            m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+
+        for (var i = 0; i < k - 1; i++)
+        {
+            if (d[i] == 0)
+            {
+                m[i] = 0;
+                m[i + 1] = 0;
+                continue;
+            }
+
+            var a = m[i] / d[i];
+            var b = m[i + 1] / d[i];
+            var h = a * a + b * b;
+            if (h > 9)
+            {
+                var t = 3 / Math.Sqrt(h);
+                m[i] = t * a * d[i];
+                m[i + 1] = t * b * d[i];
+            }
+        }
+
+        var output = new List<(double X, double Y)> { pts[0] };
+        for (var i = 0; i < k - 1; i++)
+        {
+            var (x0, y0) = pts[i];
+            var (x1, y1) = pts[i + 1];
+            var dx = x1 - x0;
+            for (var j = 1; j <= samples; j++)
+            {
+                var t = (double)j / samples;
+                var t2 = t * t;
+                var t3 = t2 * t;
+                output.Add((
+                    x0 + dx * t,
+                    ((2 * t3) - (3 * t2) + 1) * y0 + (t3 - (2 * t2) + t) * dx * m[i]
+                    + ((-2 * t3) + (3 * t2)) * y1 + (t3 - t2) * dx * m[i + 1]));
+            }
+        }
+
+        return output;
+    }
 
     private static string Path(List<(double X, double Y)> pts) =>
         pts.Count == 0 ? "" : "M " + string.Join(" L ", pts.Select(p => $"{F(p.X)} {F(p.Y)}"));

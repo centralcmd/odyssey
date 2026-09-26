@@ -1,6 +1,7 @@
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Authorization;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -25,11 +26,21 @@ namespace Odyssey.Api.Controllers;
 public class PropertyController : ControllerBase
 {
     private readonly PropertyService propertyService;
+    private readonly PropertySummaryService summaryService;
 
-    public PropertyController(PropertyService propertyService)
+    public PropertyController(PropertyService propertyService, PropertySummaryService summaryService)
     {
         this.propertyService = propertyService;
+        this.summaryService = summaryService;
     }
+
+    /// <summary>
+    /// The estimate figures on a property row and in the summary are the estimate history's data, so
+    /// they follow its claim rather than <c>properties.read</c> — the same shape as
+    /// <c>ExistingAccount.ContractCount</c> following <c>contracts.read</c>.
+    /// </summary>
+    private bool CanReadEstimates() =>
+        User.HasClaim(PermissionClaims.Type, PermissionClaims.PropertiesEstimatesRead);
 
     [HttpGet(Name = "GetProperties")]
     [Authorize(Policy = PermissionClaims.PropertiesRead)]
@@ -45,8 +56,31 @@ public class PropertyController : ControllerBase
     public async Task<IActionResult> Get(
         [FromQuery] PropertiesQueryParams query, CancellationToken cancellationToken = default)
     {
-        var result = await propertyService.ListAsync(query, cancellationToken);
+        // Ordering by value discloses how the properties rank by worth, which is estimate data.
+        if (query.SortBy == PropertySortBy.Value && !CanReadEstimates())
+            return Forbid();
+
+        var result = await propertyService.ListAsync(query, CanReadEstimates(), cancellationToken);
         return Ok(result);
+    }
+
+    [HttpGet("summary", Name = "GetPropertySummary")]
+    [Authorize(Policy = PermissionClaims.PropertiesRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PropertySummary))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Summarise the properties.",
+        Description = @"Counts by type (unarchived only) and by derived status. For a caller holding
+                        properties.estimates.read, also the in-force estimates of the owned properties
+                        summed per currency, and a total converted to baseCurrency at the latest rate;
+                        a currency with no rate is named in unconvertedCurrencies and left out of the
+                        total. Blank baseCurrency picks the currency most owned properties use.")]
+    public async Task<IActionResult> GetSummary(
+        [FromQuery, StringLength(3)] string? baseCurrency, CancellationToken cancellationToken = default)
+    {
+        var summary = await summaryService.GetAsync(baseCurrency, CanReadEstimates(), cancellationToken);
+        return Ok(summary);
     }
 
     [HttpGet("{id}", Name = "GetProperty")]
@@ -58,7 +92,7 @@ public class PropertyController : ControllerBase
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var property = await propertyService.Get(id, cancellationToken);
+        var property = await propertyService.Get(id, CanReadEstimates(), cancellationToken);
         if (property is null)
             return this.NotFoundProblem($"Property ID {id} not found.");
 
