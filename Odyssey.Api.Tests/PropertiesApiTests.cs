@@ -166,6 +166,44 @@ public class PropertiesApiTests
         Assert.Equal(0, await CountAsync<Property>(factory));
     }
 
+    /// <summary>AC 3, the Vehicle direction — only real-estate details is a 400 keyed on VehicleDetails.</summary>
+    [Fact]
+    public async Task Post_VehicleWithOnlyRealEstateDetails_ReturnsBadRequestKeyedOnVehicleDetails()
+    {
+        await using var factory = await NewFactoryAsync(FullAccess);
+        using var client = factory.CreateClient();
+
+        var body = VehicleBody() with
+        {
+            VehicleDetails = null,
+            RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.House },
+        };
+
+        var response = await client.PostAsJsonAsync(PropertiesPath, body);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(await ReadErrorKeysAsync(response),
+            key => string.Equals(key, nameof(NewProperty.VehicleDetails), StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(0, await CountAsync<Property>(factory));
+    }
+
+    /// <summary>AC 3, the Vehicle direction — both sub-objects is a 400 keyed on RealEstateDetails.</summary>
+    [Fact]
+    public async Task Post_VehicleWithBothDetailObjects_ReturnsBadRequestKeyedOnRealEstateDetails()
+    {
+        await using var factory = await NewFactoryAsync(FullAccess);
+        using var client = factory.CreateClient();
+
+        var body = VehicleBody() with { RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.House } };
+
+        var response = await client.PostAsJsonAsync(PropertiesPath, body);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(await ReadErrorKeysAsync(response),
+            key => string.Equals(key, nameof(NewProperty.RealEstateDetails), StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(0, await CountAsync<Property>(factory));
+    }
+
     /// <summary>An omitted type is a [Required] failure, never a silent bind to RealEstate (0).</summary>
     [Fact]
     public async Task Post_WithTypeOmitted_ReturnsBadRequestKeyedOnType()
