@@ -84,6 +84,26 @@ public sealed class ContractEventsQueryParams : QueryParams<ContractEventSortBy>
     public ContractEventSource? Source { get; set; }
 }
 
+/// <summary>
+/// One property's event log (issue #209 §5.1): filter by type(s), an inclusive <c>OccurredAt</c> window
+/// and the source. Always property-scoped by the route.
+/// </summary>
+public sealed class PropertyEventsQueryParams : QueryParams<PropertyEventSortBy>
+{
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public PropertyEventType[]? Types { get; set; }
+
+    /// <summary>Inclusive lower bound on <c>OccurredAt</c>.</summary>
+    public DateTime? From { get; set; }
+
+    /// <summary>Inclusive upper bound on <c>OccurredAt</c>.</summary>
+    public DateTime? To { get; set; }
+
+    /// <summary>Hand-written or server-recorded only; omitted returns both.</summary>
+    [EnumDataType(typeof(ContractEventSource))]
+    public ContractEventSource? Source { get; set; }
+}
+
 /// <summary>Currencies list query: filter by archival status.</summary>
 public sealed class CurrenciesQueryParams : QueryParams<CurrencySortBy>
 {

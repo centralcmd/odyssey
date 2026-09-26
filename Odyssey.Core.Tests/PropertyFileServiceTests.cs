@@ -33,7 +33,7 @@ public class PropertyFileServiceTests
         new(context, TestContextFactory.ContactLookup(context), clock ?? new MovableTimeProvider(Start));
 
     private static async Task<Guid> SeedProperty(OdysseyContext context, string name = "Storgata 14") =>
-        (await new PropertyService(context).Create(PropertyTestData.House(name))).PropertyId;
+        (await new PropertyService(context).Create(PropertyTestData.House(name), userId: null)).PropertyId;
 
     private static async Task<Guid> SeedFile(OdysseyContext context, string fileName = "deed.pdf")
     {

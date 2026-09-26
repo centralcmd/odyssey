@@ -49,7 +49,7 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         // The contract event log (issue #138 §4). An event is the household's shared record of what
         // happened to an agreement, not the author's personal data, so it must outlive their account
         // with only the name dropped.
-        ("ContractEvents", "CreatedByUserId"),
+        ("Events", "CreatedByUserId"),
         ("FileMetadata", "UploadedByUserId"),
         ("FileAnalysisJobs", "RequestedByUserId"),
         ("FileAnalysisCandidateTransactions", "ReviewedByUserId"),

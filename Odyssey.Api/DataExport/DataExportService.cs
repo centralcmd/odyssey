@@ -160,6 +160,7 @@ public sealed class DataExportService
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyEstimates), PropertyEstimatesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertySmartTags), PropertySmartTagsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyFiles), PropertyFilesQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyEvents), PropertyEventsQuery(), cancellationToken);
     }
 
     /// <summary>
@@ -655,10 +656,10 @@ public sealed class DataExportService
 
     private IQueryable<ContractEventExport> ContractEventsQuery() =>
         context.ContractEvents.AsNoTracking()
-            .OrderBy(contractEvent => contractEvent.ContractEventId)
+            .OrderBy(contractEvent => contractEvent.EventId)
             .Select(contractEvent => new ContractEventExport
             {
-                ContractEventId = contractEvent.ContractEventId,
+                ContractEventId = contractEvent.EventId,
                 ContractId = contractEvent.ContractId,
                 Type = (FinanceDtos.ContractEventType)contractEvent.Type,
                 // Hand-maintained, like every column here: this projection enumerates each one
@@ -671,6 +672,25 @@ public sealed class DataExportService
                 OccurredAt = contractEvent.OccurredAt,
                 CreatedByUserId = contractEvent.CreatedByUserId,
                 CreatedAtUtc = contractEvent.CreatedAtUtc,
+            });
+
+    // The property branch of the shared Events table (issue #209): context.PropertyEvents is filtered by
+    // discriminator, so this section holds property rows only and ContractEvents contract rows only.
+    private IQueryable<PropertyEventExport> PropertyEventsQuery() =>
+        context.PropertyEvents.AsNoTracking()
+            .OrderBy(propertyEvent => propertyEvent.EventId)
+            .Select(propertyEvent => new PropertyEventExport
+            {
+                PropertyEventId = propertyEvent.EventId,
+                PropertyId = propertyEvent.PropertyId,
+                Type = (FinanceDtos.PropertyEventType)propertyEvent.Type,
+                Source = (FinanceDtos.ContractEventSource)propertyEvent.Source,
+                Title = propertyEvent.Title,
+                Description = propertyEvent.Description,
+                Notes = propertyEvent.Notes,
+                OccurredAt = propertyEvent.OccurredAt,
+                CreatedByUserId = propertyEvent.CreatedByUserId,
+                CreatedAtUtc = propertyEvent.CreatedAtUtc,
             });
 }
 

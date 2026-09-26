@@ -498,6 +498,36 @@ and #191 undid it for terms. Four rules are easy to get backwards:
   the properties by worth. The shape is `ExistingAccount.ContractCount` following `contracts.read`.
   The smart-tag count is `properties.read` data and is always filled.
 
+**A property also carries an event log, and it shares ONE table with the contract log** (issue #209).
+`ContractEvent` and `PropertyEvent` are TPH branches of the abstract `OwnedEvent`, stored in `Events`
+(formerly `ContractEvents`) with an `OwnerKind` discriminator. **This is a recorded, deliberate exception
+to the sibling-table rule above** — a product-owner decision, not an oversight — so do not "fix" it back
+into two tables. What contains it, and must not be loosened:
+
+- **Disjoint ordinals.** `ContractEventType` stays below **100**; `PropertyEventType` lives in
+  **100–199**. `CK_Events_TypeMatchesOwner` enforces it in the database (with an explicit
+  `Type IS NOT NULL`, because TPH makes the shared column NULLable and an UNKNOWN CHECK passes), and
+  `PropertyEventTypeGuardTests` is its build-time twin — a contract member appended at 100 fails a unit
+  test, not a production insert.
+- **Exactly one owner, the one the discriminator names** — `CK_Events_ExactlyOneOwner`.
+- **Every query is owner-scoped twice**: the `DbSet` by discriminator, and the service by the route's
+  owner id, so a contract event id on a property route (or the reverse) is a `404`.
+- **The shared `Type` column keeps `DEFAULT 8`** (contract `Other`). `PropertyEvent.Type` restates that
+  default only because EF demands shared columns agree; its sentinel `0` and the fact that no property
+  member is `8` make an omitted property type fail the range CHECK instead of passing.
+- **Which types a property may carry is `PropertyEventTypeMatrix`** (`Odyssey.Dtos/Finance`, shared with
+  the client picker, the `ContractPartyRoleMatrix` precedent): 17 legal cells per property type, 34 of
+  42. Four members are **system-only** (`Archived`, `Unarchived`, `AcquisitionDateCleared`,
+  `DisposalReversed`) — refused on `POST`, keepable but never introducible on `PUT`. Both refusals are
+  `422` keyed `type`, and so is a future `occurredAt` on this log — unlike the contract log's `400`,
+  which predates it and keeps its wire behaviour. The tolerance itself is `EventFieldRules`, shared.
+- **System rows are recorded by `PropertyService.Create`/`Update`** (which therefore take the acting
+  `userId`) through `PropertyEventRecorder`, staged on the caller's context in the same save. Their
+  prose is `PropertyEventCatalogue` and takes **only** the transition and its date — never a property
+  name, detail, note or estimate figure. There are deliberately **no** automatic estimate events: an
+  event is read under `properties.read`, and an "estimate added" line would disclose what
+  `properties.estimates.read` withholds.
+
 **`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed to serialize a
 write path against a contact delete; once that path's call sites were gone it was a mutex with no
 counterparty, still taking a pinned connection and a blocking ten-second acquire on every contact

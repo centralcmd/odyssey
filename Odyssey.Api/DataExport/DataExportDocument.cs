@@ -143,6 +143,10 @@ public sealed class FinanceDatabaseExport
     // Issue #210 — the property's document links. The bytes travel in the separate files export, as
     // for every other attachment table.
     public IReadOnlyList<PropertyFileExport> PropertyFiles { get; init; } = [];
+
+    // Issue #209 — a property's event log, exported like the rest of the finance domain. Stored in the
+    // shared Events table beside contract events but exported as its own section.
+    public IReadOnlyList<PropertyEventExport> PropertyEvents { get; init; } = [];
 }
 
 public sealed class AccountExport
@@ -556,6 +560,24 @@ public sealed class ContractEventExport
     /// </summary>
     public ContractEventSource Source { get; init; }
 
+    public string Title { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public string? Notes { get; init; }
+    public DateTime OccurredAt { get; init; }
+    public string? CreatedByUserId { get; init; }
+    public DateTime CreatedAtUtc { get; init; }
+}
+
+/// <summary>
+/// One property event (issue #209), the <see cref="ContractEventExport"/> shape with the property as
+/// owner. <see cref="CreatedByUserId"/> is the raw column, as for every attribution column here.
+/// </summary>
+public sealed class PropertyEventExport
+{
+    public Guid PropertyEventId { get; init; }
+    public Guid PropertyId { get; init; }
+    public PropertyEventType Type { get; init; }
+    public ContractEventSource Source { get; init; }
     public string Title { get; init; } = string.Empty;
     public string? Description { get; init; }
     public string? Notes { get; init; }

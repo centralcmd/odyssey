@@ -173,7 +173,27 @@ Because this is one model with keys throughout, its halves **cannot be pointed a
 databases**. There is one connection string, `OdysseyConnection`.
 
 Two check constraints are declared on the model and so are reproduced by the initial migration:
-`CK_ContractParties_ExactlyOneTarget` and `CK_TransactionFiles_Type_AllowedValues`.
+`CK_ContractParties_ExactlyOneTarget` and `CK_TransactionFiles_Type_AllowedValues`. Later migrations
+added `CK_Terms_ValueMatchesUnit` and, with `WidenEventsForProperties` (issue #209), the two that contain
+the shared `Events` table: `CK_Events_ExactlyOneOwner` and `CK_Events_TypeMatchesOwner`.
+
+### The shared `Events` table
+
+`ContractEvent` and `PropertyEvent` are the two TPH branches of the abstract `OwnedEvent` and share one
+table, `Events` (renamed from `ContractEvents`; its key column from `ContractEventId` to `EventId`). The
+`OwnerKind` discriminator is `0` for a contract row and `1` for a property row. This is a **deliberate
+exception** to "a new owner gets its own table" — see issue #209 §3.2 and CLAUDE.md — contained by:
+
+| Control | Closes |
+|---|---|
+| `CK_Events_ExactlyOneOwner` | a row naming both owners, neither, or not the one its discriminator says |
+| `CK_Events_TypeMatchesOwner` | a `Type` from the other owner's range: contract `0`–`99`, property `100`–`199`. Its explicit `Type IS NOT NULL` is load-bearing — TPH maps a column declared on derived types as NULLable, and a CHECK whose predicate is UNKNOWN passes |
+| discriminator-filtered `DbSet`s plus owner-scoped service queries | one owner's log leaking into the other's |
+
+The physical `Type` column keeps the contract branch's `DEFAULT 8`. EF requires every property sharing a
+column to declare the same default, so `PropertyEvent.Type` restates it with a sentinel of `0` — no
+`PropertyEventType` member equals either, so EF always sends a real property type, and a property row
+that ever fell back to `8` is refused by the range CHECK rather than stored as a contract `Other`.
 
 ## Database Migrations
 

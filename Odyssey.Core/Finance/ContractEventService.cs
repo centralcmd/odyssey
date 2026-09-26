@@ -59,10 +59,8 @@ public class ContractEventService
     /// ordinary "now" from a client whose clock runs slightly fast must not be spuriously refused, and
     /// a minute is far short of anything a user would mean by a future-dated event (issue #138 §8.3).
     /// </summary>
-    public static readonly TimeSpan FutureTolerance = TimeSpan.FromSeconds(60);
-
-    private const string OccurredAtField = "occurredAt";
-    private const string TitleField = "title";
+    /// <remarks>The one shared value, <see cref="EventFieldRules.FutureTolerance"/> — never a copy.</remarks>
+    public static readonly TimeSpan FutureTolerance = EventFieldRules.FutureTolerance;
 
     private readonly OdysseyContext context;
     private readonly TimeProvider timeProvider;
@@ -147,17 +145,17 @@ public class ContractEventService
         q = query.SortBy switch
         {
             ContractEventSortBy.Title => ascending
-                ? q.OrderBy(e => e.Title).ThenBy(e => e.ContractEventId)
-                : q.OrderByDescending(e => e.Title).ThenBy(e => e.ContractEventId),
+                ? q.OrderBy(e => e.Title).ThenBy(e => e.EventId)
+                : q.OrderByDescending(e => e.Title).ThenBy(e => e.EventId),
             ContractEventSortBy.Type => ascending
-                ? q.OrderBy(e => e.Type).ThenBy(e => e.ContractEventId)
-                : q.OrderByDescending(e => e.Type).ThenBy(e => e.ContractEventId),
+                ? q.OrderBy(e => e.Type).ThenBy(e => e.EventId)
+                : q.OrderByDescending(e => e.Type).ThenBy(e => e.EventId),
             ContractEventSortBy.CreatedAtUtc => ascending
-                ? q.OrderBy(e => e.CreatedAtUtc).ThenBy(e => e.ContractEventId)
-                : q.OrderByDescending(e => e.CreatedAtUtc).ThenBy(e => e.ContractEventId),
+                ? q.OrderBy(e => e.CreatedAtUtc).ThenBy(e => e.EventId)
+                : q.OrderByDescending(e => e.CreatedAtUtc).ThenBy(e => e.EventId),
             _ => ascending
-                ? q.OrderBy(e => e.OccurredAt).ThenBy(e => e.ContractEventId)
-                : q.OrderByDescending(e => e.OccurredAt).ThenBy(e => e.ContractEventId),
+                ? q.OrderBy(e => e.OccurredAt).ThenBy(e => e.EventId)
+                : q.OrderByDescending(e => e.OccurredAt).ThenBy(e => e.EventId),
         };
 
         // Hand-materialised rather than ListQuery.ToPagedResultAsync, for one reason: the author id has
@@ -172,7 +170,7 @@ public class ContractEventService
             .Take(safeLimit)
             .Select(e => new EventRow
             {
-                ContractEventId = e.ContractEventId,
+                ContractEventId = e.EventId,
                 ContractId = e.ContractId,
                 Type = e.Type,
                 Source = e.Source,
@@ -257,7 +255,7 @@ public class ContractEventService
         ArgumentNullException.ThrowIfNull(request);
 
         var entity = await context.ContractEvents
-            .FirstOrDefaultAsync(e => e.ContractEventId == eventId && e.ContractId == contractId, cancellationToken);
+            .FirstOrDefaultAsync(e => e.EventId == eventId && e.ContractId == contractId, cancellationToken);
         if (entity is null)
         {
             return null;
@@ -288,7 +286,7 @@ public class ContractEventService
         // Tracked Remove rather than ExecuteDeleteAsync: the latter lives in the relational package and
         // throws on the EF InMemory provider the fast test tiers run on.
         var entity = await context.ContractEvents
-            .FirstOrDefaultAsync(e => e.ContractEventId == eventId && e.ContractId == contractId, cancellationToken);
+            .FirstOrDefaultAsync(e => e.EventId == eventId && e.ContractId == contractId, cancellationToken);
         if (entity is null)
         {
             return false;
@@ -301,7 +299,7 @@ public class ContractEventService
 
     private static ExistingContractEvent ToDto(ContractEvent e) => new()
     {
-        ContractEventId = e.ContractEventId,
+        ContractEventId = e.EventId,
         ContractId = e.ContractId,
         Type = (DtoContractEventType)e.Type,
         Source = (DtoContractEventSource)e.Source,
@@ -325,47 +323,14 @@ public class ContractEventService
         CreatedAtUtc = row.CreatedAtUtc,
     };
 
-    /// <summary>
-    /// The "not in the future" bound. It is the server clock — runtime state, not a compile-time
-    /// constant — so it belongs here and not in a <c>[Range]</c> attribute.
-    /// </summary>
-    private DateTime ValidateOccurredAt(DateTime occurredAt)
-    {
-        var utc = NormalizeToUtc(occurredAt);
-        if (utc > UtcNow + FutureTolerance)
-        {
-            throw new DomainValidationException(
-                "An event cannot have occurred in the future.", code: null, field: OccurredAtField);
-        }
+    private DateTime ValidateOccurredAt(DateTime occurredAt) =>
+        EventFieldRules.ValidateOccurredAt(occurredAt, UtcNow);
 
-        return utc;
-    }
+    private static string RequireTitle(string? title) => EventFieldRules.RequireTitle(title);
 
-    /// <summary>
-    /// <c>[StringLength(MinimumLength = 1)]</c> accepts a string of spaces, so the whitespace-only case
-    /// is rejected here — as empty, which is what it is.
-    /// </summary>
-    private static string RequireTitle(string? title)
-    {
-        var trimmed = title?.Trim();
-        if (string.IsNullOrEmpty(trimmed))
-        {
-            throw new DomainValidationException("Title is required.", code: null, field: TitleField);
-        }
+    private static string? Blank(string? value) => EventFieldRules.Blank(value);
 
-        return trimmed;
-    }
-
-    /// <summary>A blank optional field is stored as absent, not as a string of spaces.</summary>
-    private static string? Blank(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private static DateTime NormalizeToUtc(DateTime value) => value.Kind switch
-    {
-        DateTimeKind.Utc => value,
-        DateTimeKind.Local => value.ToUniversalTime(),
-        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
-    };
+    private static DateTime NormalizeToUtc(DateTime value) => EventFieldRules.NormalizeToUtc(value);
 
     /// <summary>
     /// The SQL-side row shape: the DTO's fields plus the author id the DTO does not carry. Private, so

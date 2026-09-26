@@ -351,28 +351,85 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .HasConversion<int>();
         });
 
+        // ── The shared event log (issue #209) ────────────────────────────────────────────────────
+        // ContractEvent and PropertyEvent share one table through TPH — a recorded, deliberate
+        // exception to the sibling-table convention. The four controls that contain it are the
+        // discriminator, the two CHECKs below, and owner-scoped service queries (issue #209 §3.2).
+        modelBuilder.Entity<OwnedEvent>(entity =>
+        {
+            entity.ToTable("Events", tb =>
+            {
+                // A row names exactly one owner, and the one the discriminator says.
+                tb.HasCheckConstraint(
+                    "CK_Events_ExactlyOneOwner",
+                    "(`OwnerKind` = 0 AND `ContractId` IS NOT NULL AND `PropertyId` IS NULL) OR " +
+                    "(`OwnerKind` = 1 AND `PropertyId` IS NOT NULL AND `ContractId` IS NULL)");
+
+                // Each owner's Type stays inside its own disjoint ordinal range, so a stored value always
+                // identifies its enum. The build-time twin is the ordinal-range guard test. The explicit
+                // IS NOT NULL is load-bearing: TPH maps a column declared on derived types as NULLable,
+                // and a CHECK whose predicate evaluates to UNKNOWN passes — BETWEEN alone would admit a
+                // NULL Type.
+                tb.HasCheckConstraint(
+                    "CK_Events_TypeMatchesOwner",
+                    "`Type` IS NOT NULL AND (" +
+                    "(`OwnerKind` = 0 AND `Type` BETWEEN 0 AND 99) OR " +
+                    "(`OwnerKind` = 1 AND `Type` BETWEEN 100 AND 199))");
+            });
+
+            entity.HasDiscriminator<EventOwnerKind>("OwnerKind")
+                .HasValue<ContractEvent>(EventOwnerKind.Contract)
+                .HasValue<PropertyEvent>(EventOwnerKind.Property);
+
+            entity.Property<EventOwnerKind>("OwnerKind").HasConversion<int>();
+
+            // Same treatment, same reason (issue #154 §4): stored as the int ordinal, User is both the
+            // entity default and every pre-#154 row's value, and the sentinel keeps a hand-written row
+            // out of the INSERT's column list. Declared here rather than left to the migration's raw
+            // default, so the model snapshot and the database agree on it.
+            entity.Property(e => e.Source)
+                .IsRequired()
+                .HasDefaultValue(ContractEventSource.User)
+                .HasSentinel(ContractEventSource.User)
+                .HasConversion<int>();
+        });
+
         modelBuilder.Entity<ContractEvent>(entity =>
         {
             // Stored as the int ordinal issue #138 §4 pins. Other is both the catch-all member and the
             // entity default, so the HasDefaultValue / HasSentinel pair matches Contract.Type: an
             // omitted type binds to Other rather than failing, and EF leaves it out of the INSERT.
             entity.Property(e => e.Type)
+                .HasColumnName("Type")
                 .IsRequired()
                 .HasDefaultValue(ContractEventType.Other)
                 .HasSentinel(ContractEventType.Other)
                 .HasConversion<int>();
 
-            // Same treatment, same reason (issue #154 §4): stored as the int ordinal, User is both the
-            // entity default and every pre-#154 row's value, and the sentinel keeps a hand-written row
-            // out of the INSERT's column list. Declared here rather than left to the migration's raw
-            // default, so the model snapshot and the database agree on it — the column would otherwise
-            // read as a bare int in the snapshot while the database carried a default the model did not
-            // know about.
-            entity.Property(e => e.Source)
+            entity.HasIndex(e => new { e.ContractId, e.OccurredAt });
+        });
+
+        modelBuilder.Entity<PropertyEvent>(entity =>
+        {
+            // One physical column with ContractEvent.Type. EF requires every property sharing a column
+            // to declare the same default, so this restates the contract branch's DEFAULT 8 — it is
+            // NOT a property default: 8 is no PropertyEventType member. The sentinel is 0, which no
+            // member equals either, so EF always sends a real property Type; only an unset (0) value
+            // would fall back to the column's 8, and CK_Events_TypeMatchesOwner rejects that rather
+            // than letting it pass as a contract type (issue #209 §3.2, AC 3a).
+            entity.Property(e => e.Type)
+                .HasColumnName("Type")
                 .IsRequired()
-                .HasDefaultValue(ContractEventSource.User)
-                .HasSentinel(ContractEventSource.User)
+                .HasDefaultValue((PropertyEventType)(int)ContractEventType.Other)
+                .HasSentinel((PropertyEventType)0)
                 .HasConversion<int>();
+
+            entity.HasOne(e => e.Property)
+                .WithMany(p => p.Events)
+                .HasForeignKey(e => e.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.PropertyId, e.OccurredAt });
         });
 
         modelBuilder.Entity<ContractSmartTag>(entity =>
@@ -1099,7 +1156,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<PropertyFile>(modelBuilder, nameof(PropertyFile.AttachedByUserId));
         DeclareUserAttribution<TransactionFile>(modelBuilder, nameof(TransactionFile.AttachedByUserId));
         DeclareUserAttribution<TaxStatementFile>(modelBuilder, nameof(TaxStatementFile.AttachedByUserId));
-        DeclareUserAttribution<ContractEvent>(modelBuilder, nameof(ContractEvent.CreatedByUserId));
+        DeclareUserAttribution<OwnedEvent>(modelBuilder, nameof(OwnedEvent.CreatedByUserId));
 
         DeclareUserAttribution<FileMetadata>(modelBuilder, nameof(Odyssey.Context.FileMetadata.UploadedByUserId));
         DeclareUserAttribution<FileAnalysisJob>(modelBuilder, nameof(FileAnalysisJob.RequestedByUserId));
@@ -1333,6 +1390,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<PropertyEstimate> PropertyEstimates { get; set; }
     public DbSet<PropertySmartTag> PropertySmartTags { get; set; }
     public DbSet<PropertyFile> PropertyFiles { get; set; }
+    public DbSet<PropertyEvent> PropertyEvents { get; set; }
 
     // ── Journal, tasks, photos, calendars and contacts ────────────────────────────────────────
     public DbSet<JournalEntry> JournalEntries { get; set; }

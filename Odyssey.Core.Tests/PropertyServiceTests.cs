@@ -29,7 +29,7 @@ public class PropertyServiceTests
         await using var context = TestContextFactory.Create();
         var service = Service(context);
 
-        var created = await service.Create(PropertyTestData.House());
+        var created = await service.Create(PropertyTestData.House(), userId: null);
         var read = await service.Get(created.PropertyId);
 
         Assert.NotNull(read);
@@ -55,7 +55,7 @@ public class PropertyServiceTests
         await using var context = TestContextFactory.Create();
         var service = Service(context);
 
-        var created = await service.Create(PropertyTestData.Car());
+        var created = await service.Create(PropertyTestData.Car(), userId: null);
 
         Assert.Null(created.RealEstateDetails);
         Assert.Equal("EL12345", created.VehicleDetails!.RegistrationNumber);
@@ -73,8 +73,8 @@ public class PropertyServiceTests
         var wrong = PropertyTestData.House() with { RealEstateDetails = null, VehicleDetails = PropertyTestData.Car().VehicleDetails };
         var both = PropertyTestData.House() with { VehicleDetails = PropertyTestData.Car().VehicleDetails };
 
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(wrong));
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(both));
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(wrong, userId: null));
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(both, userId: null));
         Assert.Empty(context.Properties);
     }
 
@@ -84,7 +84,7 @@ public class PropertyServiceTests
         await using var context = TestContextFactory.Create();
 
         await Assert.ThrowsAsync<DomainValidationException>(
-            () => Service(context).Create(PropertyTestData.House(currency: "ZZZ")));
+            () => Service(context).Create(PropertyTestData.House(currency: "ZZZ"), userId: null));
     }
 
     [Fact]
@@ -95,15 +95,15 @@ public class PropertyServiceTests
 
         var house = PropertyTestData.House();
         house.RealEstateDetails!.BuildYear = Now.Year + 1;
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(house));
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(house, userId: null));
 
         var car = PropertyTestData.Car();
         car.VehicleDetails!.ModelYear = Now.Year + 2;
-        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(car));
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(car, userId: null));
 
         // Next year's model is on sale this year, so exactly one year ahead is accepted.
         car.VehicleDetails.ModelYear = Now.Year + 1;
-        await service.Create(car);
+        await service.Create(car, userId: null);
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class PropertyServiceTests
         var house = PropertyTestData.House();
         house.DisposedDate = house.AcquiredDate!.Value.AddDays(-1);
 
-        await Assert.ThrowsAsync<DomainValidationException>(() => Service(context).Create(house));
+        await Assert.ThrowsAsync<DomainValidationException>(() => Service(context).Create(house, userId: null));
     }
 
     [Fact]
@@ -121,11 +121,11 @@ public class PropertyServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = Service(context);
-        var created = await service.Create(PropertyTestData.House());
+        var created = await service.Create(PropertyTestData.House(), userId: null);
 
         var retyped = PropertyTestData.Car("Renamed");
         var error = await Assert.ThrowsAsync<DomainUnprocessableException>(
-            () => service.Update(created.PropertyId, retyped));
+            () => service.Update(created.PropertyId, retyped, userId: null));
 
         Assert.Contains(nameof(NewProperty.Type), error.Errors!.Keys);
         var read = await service.Get(created.PropertyId);
@@ -139,12 +139,12 @@ public class PropertyServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = Service(context);
-        var created = await service.Create(PropertyTestData.House());
+        var created = await service.Create(PropertyTestData.House(), userId: null);
 
         var put = PropertyTestData.House("Storgata 16");
         put.RealEstateDetails!.City = "Bergen";
         put.Archived = true;
-        var updated = await service.Update(created.PropertyId, put);
+        var updated = await service.Update(created.PropertyId, put, userId: null);
 
         Assert.Equal("Storgata 16", updated!.Name);
         Assert.Equal("Bergen", updated.RealEstateDetails!.City);
@@ -157,7 +157,7 @@ public class PropertyServiceTests
     {
         await using var context = TestContextFactory.Create();
 
-        Assert.Null(await Service(context).Update(Guid.NewGuid(), PropertyTestData.House()));
+        Assert.Null(await Service(context).Update(Guid.NewGuid(), PropertyTestData.House(), userId: null));
         Assert.Empty(context.Properties);
     }
 
@@ -166,7 +166,7 @@ public class PropertyServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = Service(context);
-        var created = await service.Create(PropertyTestData.House());
+        var created = await service.Create(PropertyTestData.House(), userId: null);
         await new PropertyEstimateService(context).Create(created.PropertyId, new NewPropertyEstimate
         {
             Value = 1m,
@@ -174,7 +174,7 @@ public class PropertyServiceTests
         });
 
         await Assert.ThrowsAsync<DomainValidationException>(
-            () => service.Update(created.PropertyId, PropertyTestData.House(currency: "EUR")));
+            () => service.Update(created.PropertyId, PropertyTestData.House(currency: "EUR"), userId: null));
     }
 
     [Fact]
@@ -182,7 +182,7 @@ public class PropertyServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = Service(context);
-        var created = await service.Create(PropertyTestData.House());
+        var created = await service.Create(PropertyTestData.House(), userId: null);
         await new PropertyEstimateService(context).Create(created.PropertyId, new NewPropertyEstimate
         {
             Value = 1m,
@@ -224,14 +224,14 @@ public class PropertyServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = Service(context);
-        await service.Create(PropertyTestData.House("Alpha house"));
-        await service.Create(PropertyTestData.House("Beta house"));
+        await service.Create(PropertyTestData.House("Alpha house"), userId: null);
+        await service.Create(PropertyTestData.House("Beta house"), userId: null);
         var sold = PropertyTestData.Car("Old car");
         sold.DisposedDate = Now.UtcDateTime.AddDays(-10);
-        await service.Create(sold);
+        await service.Create(sold, userId: null);
         var archived = PropertyTestData.Car("Boat-ish");
         archived.Archived = true;
-        await service.Create(archived);
+        await service.Create(archived, userId: null);
 
         var vehicles = await service.ListAsync(new PropertiesQueryParams { Types = [PropertyType.Vehicle] });
         Assert.Equal(2, vehicles.TotalCount);
@@ -259,9 +259,9 @@ public class PropertyServiceTests
         await using var context = TestContextFactory.Create();
         var service = Service(context);
         var estimates = new PropertyEstimateService(context, new FixedTimeProvider(Now));
-        var cheap = await service.Create(PropertyTestData.House("Cheap"));
-        var dear = await service.Create(PropertyTestData.House("Dear"));
-        await service.Create(PropertyTestData.House("Unvalued"));
+        var cheap = await service.Create(PropertyTestData.House("Cheap"), userId: null);
+        var dear = await service.Create(PropertyTestData.House("Dear"), userId: null);
+        await service.Create(PropertyTestData.House("Unvalued"), userId: null);
         var past = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         await estimates.Create(cheap.PropertyId, new NewPropertyEstimate { Value = 100m, EffectiveFrom = past });
         await estimates.Create(dear.PropertyId, new NewPropertyEstimate { Value = 900m, EffectiveFrom = past });
@@ -281,9 +281,9 @@ public class PropertyServiceTests
     {
         await using var context = TestContextFactory.Create();
         var service = Service(context);
-        await service.Create(PropertyTestData.House("Charlie"));
-        await service.Create(PropertyTestData.House("Alpha"));
-        await service.Create(PropertyTestData.Car("Bravo"));
+        await service.Create(PropertyTestData.House("Charlie"), userId: null);
+        await service.Create(PropertyTestData.House("Alpha"), userId: null);
+        await service.Create(PropertyTestData.Car("Bravo"), userId: null);
 
         var page = await service.ListAsync(new PropertiesQueryParams());
 

@@ -60,6 +60,13 @@ public sealed record ExistingProperty
     public int? ContractCount { get; set; }
 
     /// <summary>
+    /// How many entries the property's event log holds (issue #209), system-recorded ones included.
+    /// <c>properties.read</c> data like <see cref="SmartTagCount"/>, and always filled: the log itself is
+    /// readable under the same claim.
+    /// </summary>
+    public int EventCount { get; set; }
+
+    /// <summary>
     /// How many estimates the property carries. <c>null</c> when the caller does not hold
     /// <c>properties.estimates.read</c> — the estimate figures below are gated the same way, so a
     /// <c>properties.read</c>-only reader learns nothing about the value history from the list.

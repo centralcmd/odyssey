@@ -416,7 +416,7 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
             Type = PropertyType.RealEstate,
             CurrencyCode = "USD",
             RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.House, City = "Oslo", CountryCode = "NO" },
-        })).PropertyId;
+        }, userId: null)).PropertyId;
 
     private static async Task<Guid> SeedFileAsync(OdysseyContext context, string uploaderId = Attacher)
     {

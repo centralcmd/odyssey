@@ -15,7 +15,7 @@ namespace Odyssey.Context;
 /// Standalone in v1: no account type is retired and no data moves, so a property and an account of type
 /// <c>Property</c>/<c>Vehicle</c> live side by side. Contract parties may name a property (issue #208),
 /// and those links cascade with it — each removal evented on its contract — so a delete still has no
-/// blocker; its detail row, estimates, smart-tag links and document links (issue #210) cascade too.
+/// blocker; its detail row, estimates, smart-tag links, document links (issue #210) and events cascade too.
 /// </para>
 ///
 /// <para>
@@ -85,4 +85,10 @@ public class Property
     /// reason as <see cref="Estimates"/>; the files themselves survive the delete.
     /// </summary>
     public ICollection<PropertyFile> Files { get; set; } = new List<PropertyFile>();
+
+    /// <summary>
+    /// The property's event log (issue #209). Included by <c>PropertyService.Delete</c> for the same
+    /// reason as <see cref="Estimates"/>.
+    /// </summary>
+    public ICollection<PropertyEvent> Events { get; set; } = new List<PropertyEvent>();
 }

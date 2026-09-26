@@ -31,6 +31,7 @@ public sealed class DemoDataSet
     public required IReadOnlyList<Property> Properties { get; init; }
     public required IReadOnlyList<PropertyEstimate> PropertyEstimates { get; init; }
     public required IReadOnlyList<PropertySmartTag> PropertySmartTags { get; init; }
+    public required IReadOnlyList<PropertyEvent> PropertyEvents { get; init; }
     public required IReadOnlyList<TaxStatement> TaxStatements { get; init; }
     public required IReadOnlyList<TaxStatementTag> TaxStatementTags { get; init; }
     public required IReadOnlyList<FileBlob> FileBlobs { get; init; }
@@ -129,6 +130,7 @@ public sealed class DemoDataSet
             Properties = properties,
             PropertyEstimates = propertyEstimates,
             PropertySmartTags = propertySmartTags,
+            PropertyEvents = PropertyGenerator.BuildEvents(properties),
             TaxStatements = taxStatements,
             TaxStatementTags = taxStatementTags,
             FileBlobs = allFileBlobs,
