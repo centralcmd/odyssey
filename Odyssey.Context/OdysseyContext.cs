@@ -432,6 +432,22 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<PropertyFile>(entity =>
+        {
+            // Other is ordinal 0 here (issue #210 §4), so the default/sentinel pair names the CLR
+            // default: an omitted type binds to Other and EF leaves it out of the INSERT.
+            entity.Property(f => f.FileType)
+                .IsRequired()
+                .HasDefaultValue(PropertyFileType.Other)
+                .HasSentinel(PropertyFileType.Other)
+                .HasConversion<int>();
+
+            entity.HasOne(f => f.Property)
+                .WithMany(property => property.Files)
+                .HasForeignKey(f => f.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<PropertySmartTag>(entity =>
         {
             // Composite key, exactly as ContractSmartTag: one association per pair, idempotent at the
@@ -748,6 +764,12 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .HasOne<Contact>()
             .WithMany()
             .HasForeignKey(contractFile => contractFile.IssuedBy)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<PropertyFile>()
+            .HasOne<Contact>()
+            .WithMany()
+            .HasForeignKey(propertyFile => propertyFile.IssuedBy)
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<FileAnalysisCandidateTransaction>()
@@ -1074,6 +1096,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
         DeclareUserAttribution<AccountFile>(modelBuilder, nameof(AccountFile.AttachedByUserId));
         DeclareUserAttribution<ContractFile>(modelBuilder, nameof(ContractFile.AttachedByUserId));
+        DeclareUserAttribution<PropertyFile>(modelBuilder, nameof(PropertyFile.AttachedByUserId));
         DeclareUserAttribution<TransactionFile>(modelBuilder, nameof(TransactionFile.AttachedByUserId));
         DeclareUserAttribution<TaxStatementFile>(modelBuilder, nameof(TaxStatementFile.AttachedByUserId));
         DeclareUserAttribution<ContractEvent>(modelBuilder, nameof(ContractEvent.CreatedByUserId));
@@ -1309,6 +1332,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<VehicleDetails> VehicleDetails { get; set; }
     public DbSet<PropertyEstimate> PropertyEstimates { get; set; }
     public DbSet<PropertySmartTag> PropertySmartTags { get; set; }
+    public DbSet<PropertyFile> PropertyFiles { get; set; }
 
     // ── Journal, tasks, photos, calendars and contacts ────────────────────────────────────────
     public DbSet<JournalEntry> JournalEntries { get; set; }

@@ -12,6 +12,8 @@ using DtoAccountType = Odyssey.Dtos.Finance.AccountType;
 using DtoBudgetCategoryType = Odyssey.Dtos.Finance.BudgetCategoryType;
 using DtoTransactionFileType = Odyssey.Dtos.Finance.TransactionFileType;
 using DtoTaxStatementFileType = Odyssey.Dtos.Finance.TaxStatementFileType;
+using ContextPropertyFileType = Odyssey.Context.PropertyFileType;
+using DtoPropertyFileType = Odyssey.Dtos.Finance.PropertyFileType;
 using ContextTermValueUnit = Odyssey.Context.TermValueUnit;
 using ContextInterval = Odyssey.Context.Interval;
 using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
@@ -88,6 +90,20 @@ public static class MapsterConfig
             TypeAdapterConfig<DtoTaxStatementFileType, ContextTaxStatementFileType>
                 .NewConfig()
                 .MapWith(src => ConvertDtoToContext(src));
+
+            // Issue #210: the two enums share every ordinal by contract (a guard test pins the member
+            // lists), so the ordinal is the mapping — an unknown stored value degrades to Other.
+            TypeAdapterConfig<ContextPropertyFileType, DtoPropertyFileType>
+                .NewConfig()
+                .MapWith(src => Enum.IsDefined((DtoPropertyFileType)(int)src)
+                    ? (DtoPropertyFileType)(int)src
+                    : DtoPropertyFileType.Other);
+
+            TypeAdapterConfig<DtoPropertyFileType, ContextPropertyFileType>
+                .NewConfig()
+                .MapWith(src => Enum.IsDefined((ContextPropertyFileType)(int)src)
+                    ? (ContextPropertyFileType)(int)src
+                    : ContextPropertyFileType.Other);
 
             TypeAdapterConfig<ContextTermValueUnit, DtoTermValueUnit>
                 .NewConfig()

@@ -6,7 +6,7 @@ namespace Odyssey.Dtos.Finance;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The five implementations — transaction, account, contract, tax-statement and policy-renewal files —
+/// The implementations — transaction, account, contract, property, tax-statement and policy-renewal files —
 /// each pair an <c>AttachedByUserId</c> with an <see cref="ExistingFileMetadata"/> that carries an
 /// <c>UploadedByUserId</c>. Returned bare, those are a harvesting primitive: a caller who holds the
 /// module's read claim collects user ids for people the application never names to them, and maps them

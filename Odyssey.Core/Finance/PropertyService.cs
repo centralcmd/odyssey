@@ -327,9 +327,10 @@ public class PropertyService
     }
 
     /// <summary>
-    /// Hard-deletes a property. Returns <c>false</c> when unknown. The detail row, estimates and
-    /// smart-tag links cascade — included here so the cascade also happens under the EF InMemory
-    /// provider, which enforces no foreign keys. There is no blocker and no <c>409</c>.
+    /// Hard-deletes a property. Returns <c>false</c> when unknown. The detail row, estimates, smart-tag
+    /// links and document links cascade — included here so the cascade also happens under the EF
+    /// InMemory provider, which enforces no foreign keys. The attached files themselves survive. There
+    /// is no blocker and no <c>409</c>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -354,6 +355,7 @@ public class PropertyService
             .Include(p => p.VehicleDetails)
             .Include(p => p.Estimates)
             .Include(p => p.SmartTags)
+            .Include(p => p.Files)
             .FirstOrDefaultAsync(p => p.PropertyId == id, cancellationToken);
         if (property is null)
             return false;

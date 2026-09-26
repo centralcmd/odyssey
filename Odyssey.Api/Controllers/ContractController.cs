@@ -18,14 +18,6 @@ namespace Odyssey.Api.Controllers;
 [Route("api/contracts")]
 public class ContractController : ControllerBase
 {
-    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "application/pdf",
-        "image/png",
-        "image/jpeg",
-        "image/webp",
-    };
-
     private readonly ILogger<ContractController> logger;
     private readonly ContractService service;
     private readonly TermService termService;
@@ -494,7 +486,7 @@ written — re-role those parties or detach them first.")]
             return this.NotFoundProblem($"Contract ID {id} not found.");
         }
 
-        if (await ValidateAttachableFile(request.FileMetadataId, cancellationToken) is { } problem)
+        if (await this.ValidateAttachableDocumentAsync(fileService, request.FileMetadataId, "contract", cancellationToken) is { } problem)
         {
             return problem;
         }
@@ -567,7 +559,7 @@ written — re-role those parties or detach them first.")]
             return this.NotFoundProblem($"File ID {fileId} is not attached to contract ID {id}.");
         }
 
-        return await StreamFile(fileId, cancellationToken);
+        return await this.StreamDocumentAsync(fileService, fileId, cancellationToken);
     }
 
     [HttpDelete("{id}/files/{fileId}", Name = "DetachContractFile")]
@@ -615,41 +607,6 @@ written — re-role those parties or detach them first.")]
     {
         read.Event.CreatedBy = await displayNames.ResolveAsync(User, read.AuthorId, cancellationToken);
         return read.Event;
-    }
-
-    /// <summary>
-    /// Validates an attach target: the file must exist and its server-recorded content type must be on
-    /// the allow-list. Returns a problem result to short-circuit, or null when the file is allowed.
-    /// </summary>
-    private async Task<IActionResult?> ValidateAttachableFile(Guid fileId, CancellationToken cancellationToken = default)
-    {
-        var metadata = await fileService.GetFileMetadataAsync(fileId, cancellationToken);
-        if (metadata is null)
-        {
-            return this.NotFoundProblem($"File ID {fileId} not found.");
-        }
-
-        if (!AllowedContentTypes.Contains(metadata.ContentType))
-        {
-            return this.BadRequestProblem($"Content type '{metadata.ContentType}' is not allowed for contract documents.");
-        }
-
-        return null;
-    }
-
-    private async Task<IActionResult> StreamFile(Guid fileId, CancellationToken cancellationToken = default)
-    {
-        var (metadata, content) = await fileService.GetFileContentAsync(fileId, cancellationToken);
-        if (metadata is null || content is null)
-        {
-            return NotFound();
-        }
-
-        // Safe-download headers (§10): force a download and forbid content-type sniffing so a
-        // mislabeled upload cannot be rendered/executed inline in the browser.
-        Response.Headers.XContentTypeOptions = "nosniff";
-        Response.Headers.ETag = $"\"{metadata.Sha256Hash}\"";
-        return File(content, metadata.ContentType, metadata.FileName);
     }
 
 }
