@@ -502,7 +502,8 @@ public class PropertiesApiTests
     [Fact]
     public async Task List_SortByValue_UsesTheCurrentEstimate_WithNullsLastInBothDirections()
     {
-        await using var factory = await NewFactoryAsync(FullAccess);
+        // Sorting by value ranks the properties by worth, so it needs the estimates claim as well.
+        await using var factory = await NewFactoryAsync([.. FullAccess, PermissionClaims.PropertiesEstimatesRead]);
         var cheap = await SeedPropertyAsync(factory, "Cheap");
         var dear = await SeedPropertyAsync(factory, "Dear");
         await SeedPropertyAsync(factory, "Unvalued");
