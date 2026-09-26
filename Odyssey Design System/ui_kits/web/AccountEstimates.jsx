@@ -98,7 +98,7 @@ const estSmoothPoly = (P, loY, hiY) => {
   return out;
 };
 
-const EstimateValueChart = ({ series, mode, color }) => {
+const EstimateValueChart = ({ series, mode, color, currency = 'USD' }) => {
   const W = 680, Hh = 210;
   const padL = 54, padR = 18, padT = 16, padB = 28;
   const plotW = W - padL - padR;
@@ -159,7 +159,7 @@ const EstimateValueChart = ({ series, mode, color }) => {
       {yticks.map((v, i) => (
         <g key={i}>
           <line className="grid" x1={padL} y1={y(v)} x2={W - padR} y2={y(v)} />
-          <text className="axis" x={padL - 8} y={y(v) + 3} textAnchor="end">{EST_H.moneyCompact(v)}</text>
+          <text className="axis" x={padL - 8} y={y(v) + 3} textAnchor="end">{EST_H.moneyCompact(v, currency)}</text>
         </g>
       ))}
 
@@ -192,7 +192,7 @@ const EstimateValueChart = ({ series, mode, color }) => {
 /* =============================================================
    Hero — current value + change + the value chart
    ============================================================= */
-const EstimateHero = ({ estimates, account, chartMode }) => {
+const EstimateHero = ({ estimates, account, chartMode, chartStyle = 'estimate' }) => {
   const series = estSeriesFromList(estimates);
   if (!series.length) return null;
   const ti = estTypeInfo(account);
@@ -202,6 +202,37 @@ const EstimateHero = ({ estimates, account, chartMode }) => {
   const diff = prev ? current.value - prev.value : 0;
   const dir = !prev ? 'flat' : diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
 
+  /* chartStyle="term" — the contract-term hero card verbatim (trm-* classes), value in money. */
+  if (chartStyle === 'term' && window.TermStepChart) {
+    return (
+      <div className="trm-hero">
+        <div className="trm-hero-head">
+          <span className="trm-kind-ic lg" style={{ background: ti.soft, color: ti.color }}>
+            <MIcon name="monitor" size={22} />
+          </span>
+          <div className="trm-hero-titles">
+            <div className="trm-hero-kind">Estimated value <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400 }}>· history</span></div>
+            <div className="trm-hero-sub">
+              {series.length} estimate{series.length === 1 ? '' : 's'} since {estMonY(series[0].date)} · in force since {EST_H.dateLong(current.date)}
+            </div>
+          </div>
+          <div className="trm-hero-figs">
+            <div className="trm-hero-value" style={{ color: ti.color }}>{EST_H.money(current.value, account.currency)}</div>
+            {prev && (
+              <span className="trm-delta flat">
+                <MIcon name={dir === 'up' ? 'arrow_upward' : dir === 'down' ? 'arrow_downward' : 'remove'} size={14} />
+                {EST_H.money(Math.abs(diff), account.currency)} {dir === 'up' ? 'higher' : dir === 'down' ? 'lower' : 'same'} vs {estMonY(prev.date)}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="trm-chart-wrap">
+          <TermStepChart series={series} color={ti.color} ariaLabel="Estimated value history" padLeft={76}
+            fmtAxis={(v) => EST_H.moneyCompact(v, account.currency)} />
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="est-hero">
       <div className="est-hero-head">
@@ -225,7 +256,7 @@ const EstimateHero = ({ estimates, account, chartMode }) => {
         </div>
       </div>
       <div className="est-chart-wrap">
-        <EstimateValueChart series={series} mode={chartMode} color={color} />
+        <EstimateValueChart series={series} mode={chartMode} color={color} currency={account.currency} />
       </div>
     </div>
   );
@@ -294,7 +325,7 @@ const estChangeById = (estimates) => {
   return map;
 };
 
-const EstimateTable = ({ rows, currentId, changes, onEdit, onDelete, account }) => (
+const EstimateTable = ({ rows, currentId, changes, onEdit, onDelete, account, canWrite = true }) => (
   <table className="est-tbl">
     <thead>
       <tr>
@@ -302,7 +333,7 @@ const EstimateTable = ({ rows, currentId, changes, onEdit, onDelete, account }) 
         <th scope="col" className="num">Value</th>
         <th scope="col" className="num">Change</th>
         <th scope="col">Status</th>
-        <th scope="col" className="act" aria-label="Actions"></th>
+        {canWrite ? <th scope="col" className="act" aria-label="Actions"></th> : null}
       </tr>
     </thead>
     <tbody>
@@ -315,14 +346,14 @@ const EstimateTable = ({ rows, currentId, changes, onEdit, onDelete, account }) 
           <td className="est-cell-value">{EST_H.money(e.value, account.currency)}</td>
           <td className="num"><EstChange change={changes[e.id]} account={account} /></td>
           <td><EstStatus e={e} currentId={currentId} /></td>
-          <td className="est-cell-act"><EstRowActions onEdit={() => onEdit(e)} onDelete={() => onDelete(e)} /></td>
+          {canWrite ? <td className="est-cell-act"><EstRowActions onEdit={() => onEdit(e)} onDelete={() => onDelete(e)} /></td> : null}
         </tr>
       ))}
     </tbody>
   </table>
 );
 
-const EstimateTimeline = ({ rows, currentId, changes, onEdit, onDelete, account }) => (
+const EstimateTimeline = ({ rows, currentId, changes, onEdit, onDelete, account, canWrite = true }) => (
   <div className="est-timeline">
     {rows.map(e => (
       <div className={`est-tl-item ${e.id === currentId ? 'current' : ''}`} key={e.id}>
@@ -339,10 +370,10 @@ const EstimateTimeline = ({ rows, currentId, changes, onEdit, onDelete, account 
         <div className="est-tl-figs">
           <span className="est-tl-value">{EST_H.money(e.value, account.currency)}</span>
           <EstChange change={changes[e.id]} account={account} />
-          <span className="est-rowbtns est-tl-actions">
+          {canWrite ? <span className="est-rowbtns est-tl-actions">
             <button type="button" className="est-iconbtn" aria-label="Edit estimate" onClick={() => onEdit(e)}><MIcon name="edit" size={16} /></button>
             <button type="button" className="est-iconbtn danger" aria-label="Delete estimate" onClick={() => onDelete(e)}><MIcon name="delete" size={16} /></button>
-          </span>
+          </span> : null}
         </div>
       </div>
     ))}
@@ -399,7 +430,7 @@ const EstimateEmpty = ({ account, txns, emptyStyle, onNew }) => {
    AccountEstimates — composes the section + owns create/edit/delete
    ============================================================= */
 const AccountEstimates = ({ account, historyStyle = 'table', chartMode = 'step', emptyStyle = 'standard',
-  defaultOpen = false, chrome = true, bareAction = true, showCurrent = true,
+  defaultOpen = false, chrome = true, bareAction = true, showCurrent = true, canWrite = true, chartStyle = 'estimate',
   estimates: estProp, txns: txnsProp, onNew, onEdit, onDelete: onDeleteProp }) => {
   const { useState, useMemo } = React;
   const controlled = estProp != null;
@@ -424,7 +455,7 @@ const AccountEstimates = ({ account, historyStyle = 'table', chartMode = 'step',
   const remove = (e) => (controlled ? (onDeleteProp && onDeleteProp(e)) : setInternal(prev => prev.filter(x => x.id !== e.id)));
 
   const empty = estimates.length === 0;
-  const newBtn = <Button variant="text" color="primary" icon="add" onClick={openNew}>New estimate</Button>;
+  const newBtn = canWrite ? <Button variant="text" color="primary" icon="add" onClick={openNew}>New estimate</Button> : null;
   const View = historyStyle === 'timeline' ? EstimateTimeline : EstimateTable;
 
   const body = (
@@ -433,7 +464,7 @@ const AccountEstimates = ({ account, historyStyle = 'table', chartMode = 'step',
         <EstimateEmpty account={account} txns={txns} emptyStyle={emptyStyle} onNew={openNew} />
       ) : (
         <React.Fragment>
-          <EstimateHero estimates={estimates} account={account} chartMode={chartMode} />
+          <EstimateHero estimates={estimates} account={account} chartMode={chartMode} chartStyle={chartStyle} />
 
           {showCurrent ? (
           <div>
@@ -458,7 +489,7 @@ const AccountEstimates = ({ account, historyStyle = 'table', chartMode = 'step',
               </div>
             ) : null}
             <div className="est-history">
-              <View rows={rows} currentId={currentId} changes={changes} account={account} onEdit={openEdit} onDelete={remove} />
+              <View rows={rows} currentId={currentId} changes={changes} account={account} onEdit={openEdit} onDelete={remove} canWrite={canWrite} />
             </div>
           </div>
         </React.Fragment>

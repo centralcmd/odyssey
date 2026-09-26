@@ -488,6 +488,17 @@ const SS_GROUPS = [
         min: 1, max: 1000, meta: null },
     ],
   },
+  {
+    group: 'Properties', icon: 'home_work',
+    rows: [
+      /* PropertyMaxSmartTagsPerProperty — ceiling names ListDefaults.MaxFilterArrayLength (50):
+         past it the resolution query's tagIds filter is rejected. */
+      { key: 'propertyMaxSmartTagsPerProperty', type: 'number', claim: 'count', icon: 'sell',
+        title: 'Smart tags per property',
+        desc: 'How many smart tags one property may carry. Capped at 50, the most tags one transactions query can filter on. The Properties page reads this value, so the limit it shows always matches what the server enforces.',
+        min: 1, max: 50, meta: null },
+    ],
+  },
 ];
 
 // Saved state as it'd come back from GET /api/system-settings. Booleans and
@@ -571,6 +582,7 @@ const SS_SAVED = {
   importMaxSamplesPerSkipReason: 100,
 
   accountMaxSmartTagsPerAccount: 20,
+  propertyMaxSmartTagsPerProperty: 20,
 };
 
 Object.assign(window, { SS_GROUPS, SS_SAVED, SS_PROCESSOR_HOST, SS_DEFAULT_BASE_URL, SS_DEFAULT_MODEL });

@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"77a2688a5486","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d56735c7fe2d","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"5a8b2c825711","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"34681302441f","ui_kits/web/AccountTerms.jsx":"a97a01a9279b","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"e361647ccece","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"282729722be6","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"0487ec4e9d16","ui_kits/web/Budgets.jsx":"e6834a138aea","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"247fb5488f6f","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"66fc54cff8b0","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"5118424de926","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"854a34963f77","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"0fc117954b43","ui_kits/web/contracts-data.js":"1f142d62ba22","ui_kits/web/data.js":"2f39d2338da7","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/system-settings-data.js":"b7eea7ed2b3c","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"77a2688a5486","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"e68a84da1aec","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"7c36cba24537","ui_kits/web/AccountTerms.jsx":"31d6d8102e0d","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"e361647ccece","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"b253e86d3c83","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddPropertyModal.jsx":"9f8324bcdeb3","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/Budgets.jsx":"e6834a138aea","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"247fb5488f6f","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"66fc54cff8b0","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"3ad3d1b2b7cf","ui_kits/web/PropertyEstimates.jsx":"19fbc1ab18df","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"f3bf3f5cb39e","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"854a34963f77","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"0fc117954b43","ui_kits/web/contracts-data.js":"1f142d62ba22","ui_kits/web/data.js":"2f39d2338da7","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"b6cb8b04033a","ui_kits/web/system-settings-data.js":"d79a776631a0","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -14818,9 +14818,12 @@ try { (() => {
  *     ahead has not happened yet. The line holds solid to the now marker and
  *     dashes past it, so a scheduled increase is visibly not yet true.
  *
- * The line is a STAIRCASE by construction — the value holds until the day it
- * changes, then jumps. There is no smoothing option, because a price does not
- * drift.
+ * The line is a STAIRCASE by default — the value holds until the day it
+ * changes, then jumps, because a price does not drift. `curve` opts out for
+ * data that DOES drift between readings — an estimated value, an appraisal:
+ * `"linear"` joins the entries with straight segments, `"smooth"` with a
+ * monotone curve (never overshoots an entry, so no invented peak or dip).
+ * Either way the last entry holds flat to the edge — nothing is known past it.
  *
  * Data is `series: { date, value, id?, note? }[]` (ISO dates, oldest → newest),
  * or `lines: { id, label, color, points }[]` to compare SEVERAL histories.
@@ -14901,11 +14904,55 @@ function scClip(pts, bound, keepBelow) {
   return out;
 }
 const scPath = pts => pts.length ? 'M ' + pts.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ') : '';
+/** Monotone cubic (Fritsch–Carlson) through pts, sampled into a polyline so
+ *  the now-marker clip and the area fill work unchanged. Never overshoots. */
+function scMonotone(pts, n = 16) {
+  if (pts.length < 3) return pts.slice();
+  const k = pts.length,
+    d = [],
+    m = new Array(k);
+  for (let i = 0; i < k - 1; i++) d.push((pts[i + 1].y - pts[i].y) / (pts[i + 1].x - pts[i].x || 1e-9));
+  m[0] = d[0];
+  m[k - 1] = d[k - 2];
+  for (let i = 1; i < k - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < k - 1; i++) {
+    if (d[i] === 0) {
+      m[i] = 0;
+      m[i + 1] = 0;
+      continue;
+    }
+    const a = m[i] / d[i],
+      b = m[i + 1] / d[i],
+      h = a * a + b * b;
+    if (h > 9) {
+      const t = 3 / Math.sqrt(h);
+      m[i] = t * a * d[i];
+      m[i + 1] = t * b * d[i];
+    }
+  }
+  const out = [pts[0]];
+  for (let i = 0; i < k - 1; i++) {
+    const p0 = pts[i],
+      p1 = pts[i + 1],
+      dx = p1.x - p0.x;
+    for (let j = 1; j <= n; j++) {
+      const t = j / n,
+        t2 = t * t,
+        t3 = t2 * t;
+      out.push({
+        x: p0.x + dx * t,
+        y: (2 * t3 - 3 * t2 + 1) * p0.y + (t3 - 2 * t2 + t) * dx * m[i] + (-2 * t3 + 3 * t2) * p1.y + (t3 - t2) * dx * m[i + 1]
+      });
+    }
+  }
+  return out;
+}
 const scSort = pts => (pts || []).filter(p => p && p.value != null && p.date).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
 function StepChart({
   series = [],
   lines,
   scale = 'auto',
+  curve = 'step',
   color = 'var(--chart-1)',
   title,
   sub,
@@ -15058,11 +15105,11 @@ function StepChart({
     /* Every series is drawn, including one that has never changed: flat at 0%
        beside a rising line is an answer to "which of these is moving", not an
        absence of one. Coincidence is handled below, where it happens. */
-    const walk = [];
+    let walk = [];
     s.pts.forEach((p, i) => {
       const px = sx(scMs(p.date)),
         py = sy(plotted(s, p.value));
-      if (i === 0) walk.push({
+      if (i === 0 || curve !== 'step') walk.push({
         x: px,
         y: py
       });else {
@@ -15076,6 +15123,7 @@ function StepChart({
         });
       }
     });
+    if (curve === 'smooth') walk = scMonotone(walk);
     walk.push({
       x: sx(tMax),
       y: walk[walk.length - 1].y
@@ -16484,6 +16532,7 @@ function TermHistoryChart({
   searchLabel = 'Search terms',
   emptyText = 'No matching term',
   textEquivalentLabel = 'Effective from',
+  curve = 'step',
   className
 }) {
   const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
@@ -16589,6 +16638,7 @@ function TermHistoryChart({
     lines: lines,
     showFigure: false,
     scale: scale || 'auto',
+    curve: curve,
     color: lines[0].color,
     format: head.format,
     axisFormat: head.axisFormat,
@@ -20104,7 +20154,8 @@ const estSmoothPoly = (P, loY, hiY) => {
 const EstimateValueChart = ({
   series,
   mode,
-  color
+  color,
+  currency = 'USD'
 }) => {
   const W = 680,
     Hh = 210;
@@ -20211,7 +20262,7 @@ const EstimateValueChart = ({
     x: padL - 8,
     y: y(v) + 3,
     textAnchor: "end"
-  }, EST_H.moneyCompact(v)))), areaPath && /*#__PURE__*/React.createElement("path", {
+  }, EST_H.moneyCompact(v, currency)))), areaPath && /*#__PURE__*/React.createElement("path", {
     d: areaPath,
     fill: `url(#${fillId})`
   }), /*#__PURE__*/React.createElement("path", {
@@ -20270,7 +20321,8 @@ const EstimateValueChart = ({
 const EstimateHero = ({
   estimates,
   account,
-  chartMode
+  chartMode,
+  chartStyle = 'estimate'
 }) => {
   const series = estSeriesFromList(estimates);
   if (!series.length) return null;
@@ -20280,6 +20332,55 @@ const EstimateHero = ({
   const prev = series.length > 1 ? series[series.length - 2] : null;
   const diff = prev ? current.value - prev.value : 0;
   const dir = !prev ? 'flat' : diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
+
+  /* chartStyle="term" — the contract-term hero card verbatim (trm-* classes), value in money. */
+  if (chartStyle === 'term' && window.TermStepChart) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "trm-hero"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "trm-hero-head"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "trm-kind-ic lg",
+      style: {
+        background: ti.soft,
+        color: ti.color
+      }
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: "monitor",
+      size: 22
+    })), /*#__PURE__*/React.createElement("div", {
+      className: "trm-hero-titles"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "trm-hero-kind"
+    }, "Estimated value ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--mud-palette-text-secondary)',
+        fontWeight: 400
+      }
+    }, "\xB7 history")), /*#__PURE__*/React.createElement("div", {
+      className: "trm-hero-sub"
+    }, series.length, " estimate", series.length === 1 ? '' : 's', " since ", estMonY(series[0].date), " \xB7 in force since ", EST_H.dateLong(current.date))), /*#__PURE__*/React.createElement("div", {
+      className: "trm-hero-figs"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "trm-hero-value",
+      style: {
+        color: ti.color
+      }
+    }, EST_H.money(current.value, account.currency)), prev && /*#__PURE__*/React.createElement("span", {
+      className: "trm-delta flat"
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: dir === 'up' ? 'arrow_upward' : dir === 'down' ? 'arrow_downward' : 'remove',
+      size: 14
+    }), EST_H.money(Math.abs(diff), account.currency), " ", dir === 'up' ? 'higher' : dir === 'down' ? 'lower' : 'same', " vs ", estMonY(prev.date)))), /*#__PURE__*/React.createElement("div", {
+      className: "trm-chart-wrap"
+    }, /*#__PURE__*/React.createElement(TermStepChart, {
+      series: series,
+      color: ti.color,
+      ariaLabel: "Estimated value history",
+      padLeft: 76,
+      fmtAxis: v => EST_H.moneyCompact(v, account.currency)
+    })));
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: "est-hero"
   }, /*#__PURE__*/React.createElement("div", {
@@ -20318,7 +20419,8 @@ const EstimateHero = ({
   }, /*#__PURE__*/React.createElement(EstimateValueChart, {
     series: series,
     mode: chartMode,
-    color: color
+    color: color,
+    currency: account.currency
   })));
 };
 
@@ -20432,7 +20534,8 @@ const EstimateTable = ({
   changes,
   onEdit,
   onDelete,
-  account
+  account,
+  canWrite = true
 }) => /*#__PURE__*/React.createElement("table", {
   className: "est-tbl"
 }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
@@ -20445,11 +20548,11 @@ const EstimateTable = ({
   className: "num"
 }, "Change"), /*#__PURE__*/React.createElement("th", {
   scope: "col"
-}, "Status"), /*#__PURE__*/React.createElement("th", {
+}, "Status"), canWrite ? /*#__PURE__*/React.createElement("th", {
   scope: "col",
   className: "act",
   "aria-label": "Actions"
-}))), /*#__PURE__*/React.createElement("tbody", null, rows.map(e => /*#__PURE__*/React.createElement("tr", {
+}) : null)), /*#__PURE__*/React.createElement("tbody", null, rows.map(e => /*#__PURE__*/React.createElement("tr", {
   key: e.id,
   className: e.id === currentId ? 'current' : ''
 }, /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("div", {
@@ -20466,19 +20569,20 @@ const EstimateTable = ({
 })), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(EstStatus, {
   e: e,
   currentId: currentId
-})), /*#__PURE__*/React.createElement("td", {
+})), canWrite ? /*#__PURE__*/React.createElement("td", {
   className: "est-cell-act"
 }, /*#__PURE__*/React.createElement(EstRowActions, {
   onEdit: () => onEdit(e),
   onDelete: () => onDelete(e)
-}))))));
+})) : null))));
 const EstimateTimeline = ({
   rows,
   currentId,
   changes,
   onEdit,
   onDelete,
-  account
+  account,
+  canWrite = true
 }) => /*#__PURE__*/React.createElement("div", {
   className: "est-timeline"
 }, rows.map(e => /*#__PURE__*/React.createElement("div", {
@@ -20509,7 +20613,7 @@ const EstimateTimeline = ({
 }, EST_H.money(e.value, account.currency)), /*#__PURE__*/React.createElement(EstChange, {
   change: changes[e.id],
   account: account
-}), /*#__PURE__*/React.createElement("span", {
+}), canWrite ? /*#__PURE__*/React.createElement("span", {
   className: "est-rowbtns est-tl-actions"
 }, /*#__PURE__*/React.createElement("button", {
   type: "button",
@@ -20527,7 +20631,7 @@ const EstimateTimeline = ({
 }, /*#__PURE__*/React.createElement(MIcon, {
   name: "delete",
   size: 16
-})))))));
+}))) : null))));
 
 /* =============================================================
    Empty state — two treatments
@@ -20610,6 +20714,8 @@ const AccountEstimates = ({
   chrome = true,
   bareAction = true,
   showCurrent = true,
+  canWrite = true,
+  chartStyle = 'estimate',
   estimates: estProp,
   txns: txnsProp,
   onNew,
@@ -20650,12 +20756,12 @@ const AccountEstimates = ({
   });
   const remove = e => controlled ? onDeleteProp && onDeleteProp(e) : setInternal(prev => prev.filter(x => x.id !== e.id));
   const empty = estimates.length === 0;
-  const newBtn = /*#__PURE__*/React.createElement(Button, {
+  const newBtn = canWrite ? /*#__PURE__*/React.createElement(Button, {
     variant: "text",
     color: "primary",
     icon: "add",
     onClick: openNew
-  }, "New estimate");
+  }, "New estimate") : null;
   const View = historyStyle === 'timeline' ? EstimateTimeline : EstimateTable;
   const body = /*#__PURE__*/React.createElement("div", {
     className: "est-section"
@@ -20667,7 +20773,8 @@ const AccountEstimates = ({
   }) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(EstimateHero, {
     estimates: estimates,
     account: account,
-    chartMode: chartMode
+    chartMode: chartMode,
+    chartStyle: chartStyle
   }), showCurrent ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "est-sub"
   }, /*#__PURE__*/React.createElement("span", {
@@ -20700,7 +20807,8 @@ const AccountEstimates = ({
     changes: changes,
     account: account,
     onEdit: openEdit,
-    onDelete: remove
+    onDelete: remove,
+    canWrite: canWrite
   })))));
   const dialog = !controlled && modal && /*#__PURE__*/React.createElement(AddEstimateModal, {
     account: account,
@@ -20851,11 +20959,12 @@ const TermStepChart = ({
   series,
   color,
   fmtAxis,
-  ariaLabel
+  ariaLabel,
+  padLeft = 48
 }) => {
   const W = 680,
     Hh = 210;
-  const padL = 48,
+  const padL = padLeft,
     padR = 18,
     padT = 16,
     padB = 28;
@@ -25956,7 +26065,9 @@ const AddEstimateModal = ({
   existing = [],
   onClose,
   onSave,
-  leadIcon
+  leadIcon,
+  ownerNoun = 'account',
+  showHint = true
 }) => {
   const {
     useState
@@ -25989,7 +26100,7 @@ const AddEstimateModal = ({
     if (!draft.effectiveFrom) next.effectiveFrom = 'Pick the date this takes effect.';
     if (draft.note.length > 512) next.note = 'Keep the note under 512 characters.';
     const dup = existing.some(e => e.id !== (estimate && estimate.id) && e.effectiveFrom === draft.effectiveFrom);
-    if (dup) next.effectiveFrom = 'This account already has an estimate on that date.';
+    if (dup) next.effectiveFrom = `This ${ownerNoun} already has an estimate on that date.`;
     if (Object.keys(next).length) {
       setErrors(next);
       return;
@@ -26034,7 +26145,7 @@ const AddEstimateModal = ({
     currency: currency,
     currencyEditable: false,
     error: errors.value,
-    help: preview == null ? /*#__PURE__*/React.createElement(React.Fragment, null, "Account currency \xB7 ", /*#__PURE__*/React.createElement("b", null, currency)) : /*#__PURE__*/React.createElement(React.Fragment, null, "Recorded as ", /*#__PURE__*/React.createElement("b", null, preview))
+    help: preview == null ? /*#__PURE__*/React.createElement(React.Fragment, null, ownerNoun === 'account' ? 'Account' : 'Property', " currency \xB7 ", /*#__PURE__*/React.createElement("b", null, currency)) : /*#__PURE__*/React.createElement(React.Fragment, null, "Recorded as ", /*#__PURE__*/React.createElement("b", null, preview))
   })), /*#__PURE__*/React.createElement("div", {
     className: "est-row2"
   }, /*#__PURE__*/React.createElement(DateField, {
@@ -26056,7 +26167,7 @@ const AddEstimateModal = ({
     onChange: set('note'),
     placeholder: "Where this came from \u2014 e.g. \u201CRefinance appraisal\u201D or \u201CComparable sales\u201D.",
     error: errors.note
-  }), !isEdit && /*#__PURE__*/React.createElement("div", {
+  }), !isEdit && showHint && /*#__PURE__*/React.createElement("div", {
     className: "est-rec-hint"
   }, /*#__PURE__*/React.createElement(MIcon, {
     name: recommended ? 'recommend' : 'info',
@@ -26308,6 +26419,379 @@ Object.assign(window, {
   AFM_KINDS
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddFileModal.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/web/AddPropertyModal.jsx
+try { (() => {
+/* AddPropertyModal — New / Edit property. Mirrors NewProperty (§5 endpoint 3/4):
+   the common fields plus EXACTLY ONE detail sub-object, the one matching Type.
+
+   • Type is chosen once, on create (CardSelect). On edit it is shown locked:
+     the PUT must carry the stored type and a different one is a 422, so the
+     dialog never offers the change — it states the route instead (delete and
+     re-create). Switching type on CREATE keeps both drafts in memory but only
+     the matching sub-object is sent, so the XOR rule holds by construction.
+   • Currency is the property's own (its estimates are recorded in it).
+   • Registration number / VIN preview the service's uppercase + strip.
+   • BuildYear rejects the future; ModelYear allows at most next year.
+   • Archived is not here — it is the row menu's Archive / Restore, which lands
+     on the same PUT. */
+
+const APM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({
+  value: c.code,
+  label: c.name
+}));
+const AddPropertyModal = ({
+  property = null,
+  onClose,
+  onSave,
+  estimateCount = 0
+}) => {
+  const {
+    useState
+  } = React;
+  const H = window.OdysseyHelpers,
+    D = window.OdysseyData;
+  const editing = !!property;
+  const thisYear = new Date().getFullYear();
+  const [type, setType] = useState(property ? property.type : 'RealEstate');
+  const [draft, setDraft] = useState(() => ({
+    name: property?.name || '',
+    description: property?.description || '',
+    currencyCode: property?.currencyCode || 'USD',
+    acquiredDate: property?.acquiredDate || '',
+    disposedDate: property?.disposedDate || '',
+    notes: property?.notes || ''
+  }));
+  const [re, setRe] = useState(() => ({
+    kind: 'House',
+    addressLine: '',
+    postalCode: '',
+    city: '',
+    countryCode: '',
+    cadastralNumber: '',
+    livingAreaSqm: null,
+    plotAreaSqm: null,
+    buildYear: null,
+    ...(property?.realEstateDetails || {})
+  }));
+  const [ve, setVe] = useState(() => ({
+    kind: 'Car',
+    registrationNumber: '',
+    vin: '',
+    make: '',
+    model: '',
+    modelYear: null,
+    firstRegisteredDate: '',
+    ...(property?.vehicleDetails || {})
+  }));
+  const [errors, setErrors] = useState({});
+  const clr = k => {
+    if (errors[k]) setErrors(e => ({
+      ...e,
+      [k]: undefined
+    }));
+  };
+  const set = k => v => {
+    setDraft(d => ({
+      ...d,
+      [k]: v
+    }));
+    clr(k);
+  };
+  const setR = k => v => {
+    setRe(d => ({
+      ...d,
+      [k]: v
+    }));
+    clr('re.' + k);
+  };
+  const setV = k => v => {
+    setVe(d => ({
+      ...d,
+      [k]: v
+    }));
+    clr('ve.' + k);
+  };
+  const ti = H.propTypeInfo(type);
+  const currencyChanged = editing && draft.currencyCode !== property.currencyCode && estimateCount > 0;
+  const blank = v => {
+    const t = (v == null ? '' : String(v)).trim();
+    return t === '' ? null : t;
+  };
+  const submit = () => {
+    const n = {};
+    if (!draft.name.trim()) n.name = 'Give the property a name.';else if (draft.name.length > 256) n.name = 'Keep the name under 256 characters.';
+    if (!draft.description.trim()) n.description = 'Add a short description.';
+    if (draft.acquiredDate && draft.disposedDate && draft.disposedDate < draft.acquiredDate) n.disposedDate = 'Disposed can’t be before Acquired.';
+    if (type === 'RealEstate') {
+      if (re.countryCode && !/^[A-Za-z]{2}$/.test(re.countryCode)) n['re.countryCode'] = 'Two letters, e.g. NO or US.';
+      if (re.buildYear != null && (re.buildYear < 1000 || re.buildYear > thisYear)) n['re.buildYear'] = re.buildYear > thisYear ? 'Build year can’t be in the future.' : 'Enter a year after 1000.';
+      ['livingAreaSqm', 'plotAreaSqm'].forEach(k => {
+        if (re[k] != null && (re[k] < 0 || re[k] > 1000000)) n['re.' + k] = 'Between 0 and 1,000,000 m².';
+      });
+    } else {
+      if (ve.modelYear != null && (ve.modelYear < 1900 || ve.modelYear > thisYear + 1)) n['ve.modelYear'] = ve.modelYear > thisYear + 1 ? `No later than ${thisYear + 1}.` : 'Enter a year after 1900.';
+      if (H.propNormPlate(ve.registrationNumber).length > 16) n['ve.registrationNumber'] = 'At most 16 characters.';
+    }
+    if (Object.keys(n).length) {
+      setErrors(n);
+      return;
+    }
+    const dto = {
+      name: draft.name.trim(),
+      description: draft.description.trim(),
+      type,
+      currencyCode: draft.currencyCode,
+      acquiredDate: draft.acquiredDate || null,
+      disposedDate: draft.disposedDate || null,
+      notes: blank(draft.notes),
+      realEstateDetails: type === 'RealEstate' ? {
+        kind: re.kind,
+        addressLine: blank(re.addressLine),
+        postalCode: blank(re.postalCode),
+        city: blank(re.city),
+        countryCode: re.countryCode ? re.countryCode.toUpperCase() : null,
+        cadastralNumber: blank(re.cadastralNumber),
+        livingAreaSqm: re.livingAreaSqm ?? null,
+        plotAreaSqm: re.plotAreaSqm ?? null,
+        buildYear: re.buildYear ?? null
+      } : null,
+      vehicleDetails: type === 'Vehicle' ? {
+        kind: ve.kind,
+        registrationNumber: blank(H.propNormPlate(ve.registrationNumber)),
+        vin: blank(H.propNormPlate(ve.vin)),
+        make: blank(ve.make),
+        model: blank(ve.model),
+        modelYear: ve.modelYear ?? null,
+        firstRegisteredDate: ve.firstRegisteredDate || null
+      } : null
+    };
+    onSave(dto);
+  };
+  const kindOpts = arr => arr.map(k => ({
+    value: k.key,
+    label: k.label,
+    icon: k.icon
+  }));
+  const plate = H.propNormPlate(ve.registrationNumber);
+  const vin = H.propNormPlate(ve.vin);
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: editing ? 'Edit property' : 'New property',
+    subtitle: editing ? 'Update the details. Estimates and smart tags are managed from the property.' : 'Record a house, cabin, car or boat. Add its estimated value and smart tags once it exists.',
+    icon: editing ? 'edit' : 'home_work',
+    className: "prop-dialog",
+    onClose: onClose,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: onClose
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      color: "primary",
+      icon: editing ? 'check' : 'add',
+      onClick: submit
+    }, editing ? 'Save changes' : 'Create property'))
+  }, editing ? /*#__PURE__*/React.createElement("div", {
+    className: "prop-type-locked",
+    style: {
+      '--rec': ti.color,
+      '--rec-soft': ti.soft
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "prop-type-glyph"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: ti.icon,
+    size: 20
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "prop-type-text"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "prop-type-label"
+  }, ti.label, /*#__PURE__*/React.createElement(MIcon, {
+    name: "lock",
+    size: 14
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "prop-type-help"
+  }, "A property\u2019s type is fixed at creation. To change it, delete this property and create a new one of the right type."))) : /*#__PURE__*/React.createElement(FieldShell, {
+    label: "What is it?",
+    required: true
+  }, /*#__PURE__*/React.createElement(CardSelect, {
+    ariaLabel: "Property type",
+    value: type,
+    onChange: setType,
+    columns: 2,
+    maxItemWidth: 200,
+    center: true,
+    options: D.propertyTypes.map(t => ({
+      value: t.key,
+      label: t.label,
+      icon: t.icon,
+      color: t.color,
+      soft: t.soft
+    }))
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Name",
+    required: true,
+    value: draft.name,
+    onChange: set('name'),
+    autoFocus: true,
+    error: errors.name,
+    placeholder: type === 'Vehicle' ? 'e.g. Subaru Outback' : 'e.g. Storgata 14'
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Description",
+    required: true,
+    value: draft.description,
+    onChange: set('description'),
+    error: errors.description,
+    placeholder: type === 'Vehicle' ? 'e.g. Family car' : 'e.g. Primary residence'
+  }), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(Select, {
+    label: "Kind",
+    required: true,
+    value: type === 'Vehicle' ? ve.kind : re.kind,
+    onChange: type === 'Vehicle' ? setV('kind') : setR('kind'),
+    options: kindOpts(type === 'Vehicle' ? D.vehicleKinds : D.realEstateKinds)
+  }), /*#__PURE__*/React.createElement(CurrencySelect, {
+    required: true,
+    value: draft.currencyCode,
+    onChange: set('currencyCode'),
+    options: APM_CURRENCIES,
+    searchThreshold: 0,
+    helper: "Estimates are recorded in this currency."
+  })), currencyChanged ? /*#__PURE__*/React.createElement(Alert, {
+    severity: "warning"
+  }, estimateCount, " estimate", estimateCount === 1 ? ' is' : 's are', " recorded in ", /*#__PURE__*/React.createElement("b", null, property.currencyCode), ". They keep that currency; new estimates must use ", /*#__PURE__*/React.createElement("b", null, draft.currencyCode), ".") : null, /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement(Field, {
+    type: "date",
+    label: "Acquired",
+    value: draft.acquiredDate,
+    onChange: set('acquiredDate'),
+    placeholder: "Unknown"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "helper"
+  }, "Leave empty if you don\u2019t know.")), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement(Field, {
+    type: "date",
+    label: "Disposed",
+    value: draft.disposedDate,
+    onChange: set('disposedDate'),
+    placeholder: "Still owned"
+  }), errors.disposedDate ? /*#__PURE__*/React.createElement("div", {
+    className: "helper aam-err"
+  }, errors.disposedDate) : /*#__PURE__*/React.createElement("div", {
+    className: "helper"
+  }, "Sold, written off or scrapped."))), /*#__PURE__*/React.createElement(SectionDivider, {
+    label: type === 'Vehicle' ? 'Vehicle details' : 'Real estate details',
+    meta: "all optional"
+  }), type === 'RealEstate' ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
+    label: "Address",
+    value: re.addressLine || '',
+    onChange: setR('addressLine'),
+    placeholder: "Street and number"
+  }), /*#__PURE__*/React.createElement(FormRow, {
+    cols: 3
+  }, /*#__PURE__*/React.createElement(Field, {
+    label: "Postal code",
+    value: re.postalCode || '',
+    onChange: setR('postalCode')
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "City",
+    value: re.city || '',
+    onChange: setR('city')
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Country",
+    value: re.countryCode || '',
+    onChange: v => setR('countryCode')(v.slice(0, 2).toUpperCase()),
+    placeholder: "NO",
+    error: errors['re.countryCode'],
+    helper: "ISO code, two letters"
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Cadastral number",
+    value: re.cadastralNumber || '',
+    onChange: setR('cadastralNumber'),
+    placeholder: "e.g. 208/451 or APN 3612-044",
+    helper: "The land-registry identifier, as written. Not checked."
+  }), /*#__PURE__*/React.createElement(FormRow, {
+    cols: 3
+  }, /*#__PURE__*/React.createElement(NumberField, {
+    label: "Living area",
+    unit: "m\xB2",
+    min: 0,
+    step: 0.5,
+    value: re.livingAreaSqm,
+    onChange: setR('livingAreaSqm'),
+    error: errors['re.livingAreaSqm'],
+    optional: true
+  }), /*#__PURE__*/React.createElement(NumberField, {
+    label: "Plot area",
+    unit: "m\xB2",
+    min: 0,
+    step: 1,
+    value: re.plotAreaSqm,
+    onChange: setR('plotAreaSqm'),
+    error: errors['re.plotAreaSqm'],
+    optional: true
+  }), /*#__PURE__*/React.createElement(NumberField, {
+    label: "Build year",
+    min: 1000,
+    max: thisYear,
+    step: 1,
+    value: re.buildYear,
+    onChange: setR('buildYear'),
+    error: errors['re.buildYear'],
+    optional: true
+  }))) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(Field, {
+    label: "Registration number",
+    value: ve.registrationNumber || '',
+    onChange: setV('registrationNumber'),
+    error: errors['ve.registrationNumber'],
+    helper: plate && plate !== ve.registrationNumber ? /*#__PURE__*/React.createElement(React.Fragment, null, "Saved as ", /*#__PURE__*/React.createElement("b", {
+      className: "mono"
+    }, plate)) : 'Spaces removed, uppercased.'
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "VIN / hull number",
+    value: ve.vin || '',
+    onChange: setV('vin'),
+    helper: vin && vin !== ve.vin ? /*#__PURE__*/React.createElement(React.Fragment, null, "Saved as ", /*#__PURE__*/React.createElement("b", {
+      className: "mono"
+    }, vin)) : 'Stored as written — no check digit.'
+  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(Field, {
+    label: "Make",
+    value: ve.make || '',
+    onChange: setV('make'),
+    placeholder: "e.g. Subaru"
+  }), /*#__PURE__*/React.createElement(Field, {
+    label: "Model",
+    value: ve.model || '',
+    onChange: setV('model'),
+    placeholder: "e.g. Outback Limited"
+  })), /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement(NumberField, {
+    label: "Model year",
+    min: 1900,
+    max: thisYear + 1,
+    step: 1,
+    value: ve.modelYear,
+    onChange: setV('modelYear'),
+    error: errors['ve.modelYear'],
+    optional: true
+  }), /*#__PURE__*/React.createElement(Field, {
+    type: "date",
+    label: "First registered",
+    value: ve.firstRegisteredDate || '',
+    onChange: setV('firstRegisteredDate'),
+    placeholder: "Unknown"
+  }))), /*#__PURE__*/React.createElement(NoteField, {
+    label: "Notes",
+    optional: true,
+    maxLength: 1024,
+    value: draft.notes,
+    onChange: set('notes'),
+    placeholder: "Anything worth keeping with it \u2014 renovations, condition, where the keys are."
+  }));
+};
+Object.assign(window, {
+  AddPropertyModal
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddPropertyModal.jsx", error: String((e && e.message) || e) }); }
 
 // ui_kits/web/AddTaxStatementModal.jsx
 try { (() => {
@@ -28691,6 +29175,10 @@ const MODULES = [{
       key: 'accounts',
       label: 'Accounts',
       icon: 'account_balance_wallet'
+    }, {
+      key: 'properties',
+      label: 'Properties',
+      icon: 'home_work'
     }, {
       key: 'transactions',
       label: 'Transactions',
@@ -48278,6 +48766,1051 @@ Object.assign(window, {
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/ProfilePicture.jsx", error: String((e && e.message) || e) }); }
 
+// ui_kits/web/Properties.jsx
+try { (() => {
+/* Properties — /properties
+   ----------------------------------------------------------------------------
+   The frontend for *Property — Backend (Draft v8)*. A sibling of Accounts and
+   Contracts: the same PageHeader + expandable RecordCard list, one card open at
+   a time. A property is standalone in v1 — no links to contacts, accounts,
+   contracts or files, no photos, and its value is NOT summed into net worth —
+   so the expanded record holds exactly three things:
+
+     1. DETAILS   — the common fields + the one detail sub-object its type has.
+     2. ESTIMATED VALUE — the shared estimate surface (AccountEstimates) over the
+                    sibling PropertyEstimates table: same chart, same history,
+                    same in-force rule. The "Current value" block is omitted: it
+                    compares against a transaction balance and says "In net
+                    worth", and neither is true of a property.
+     3. SMART TAGS — the shared DS AccountSmartTagsSection, subject "property",
+                    capped by GET /api/property-limits.
+
+   Claims (§7): properties.read / create / update / delete and
+   properties.estimates.read / write. User and Guest get the two reads only; the
+   Tweaks panel switches between the Owner/Admin and User/Guest grants. */
+
+const PR_H = window.OdysseyHelpers;
+const PR_D = window.OdysseyData;
+const PropertyStatusChip = ({
+  status
+}) => {
+  const m = PR_H.propStatusMeta(status);
+  return /*#__PURE__*/React.createElement(Chip, {
+    tone: m.tone,
+    dot: m.dot
+  }, m.label);
+};
+
+/* The estimate surface expects an account-shaped owner; this is the adapter.
+   `type` picks the glyph + hue from the Property / Vehicle account types. */
+const propEstOwner = p => ({
+  id: p.id,
+  name: p.name,
+  currency: p.currencyCode,
+  type: PR_H.propTypeInfo(p.type).estimateType
+});
+
+/* ====================== Smart tags ====================== */
+const PropertySmartTags = ({
+  property,
+  tagIds,
+  setTagIds,
+  onNavigate,
+  canWrite,
+  cap,
+  limitsDegraded
+}) => {
+  const {
+    useState,
+    useEffect,
+    useRef
+  } = React;
+  const DSSection = (window.OdysseyDesignSystem_d5aa51 || {}).AccountSmartTagsSection;
+  const [loading, setLoading] = useState(false);
+  const [addError, setAddError] = useState(null);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    setLoading(true);
+    const t = setTimeout(() => setLoading(false), 420);
+    return () => clearTimeout(t);
+  }, [tagIds.join(',')]);
+  if (!DSSection) return null;
+  const matches = PR_D.transactions.filter(t => PR_D.txnTagIds(t).some(id => tagIds.includes(id)));
+  const configured = tagIds.map(id => PR_D.tagById[id]).filter(Boolean).map(t => ({
+    id: t.id,
+    label: t.name
+  }));
+  const options = PR_D.tags.filter(t => !t.archived).map(t => ({
+    value: t.id,
+    label: t.name
+  }));
+  /* The server answers 422 with the effective number interpolated; the page
+     only pre-checks, and stops doing so when the limits read is degraded. */
+  const add = id => {
+    if (cap != null && tagIds.length >= cap) {
+      setAddError(`A property may have at most ${cap} smart tags.`);
+      return;
+    }
+    setAddError(null);
+    setTagIds(prev => prev.includes(id) ? prev : [...prev, id]);
+  };
+  const remove = id => {
+    setAddError(null);
+    setTagIds(prev => prev.filter(x => x !== id));
+  };
+  return /*#__PURE__*/React.createElement(DSSection, {
+    chrome: false,
+    subject: "property",
+    tags: configured,
+    tagOptions: options,
+    transactions: matches,
+    onAddTag: add,
+    onRemoveTag: remove,
+    canWrite: canWrite,
+    loading: loading,
+    maxTags: cap,
+    limitsDegraded: limitsDegraded,
+    addError: addError,
+    onDismissAddError: () => setAddError(null),
+    emptyDesc: canWrite ? 'Pin the tags its costs are booked under — maintenance, tax, fuel, insurance — and those transactions read here.' : 'No tags are being watched on this property.',
+    noMatchDesc: "No transactions carry the watched tags yet.",
+    formatAmount: n => PR_H.signedMoney(n, 'USD'),
+    renderTable: rows => /*#__PURE__*/React.createElement("div", {
+      className: "acct-txn-table"
+    }, /*#__PURE__*/React.createElement(InlinePager, {
+      items: rows
+    }, pageRows => /*#__PURE__*/React.createElement(TxnTable, {
+      txns: pageRows,
+      onNavigate: onNavigate
+    })))
+  });
+};
+
+/* ====================== Expanded detail ====================== */
+const PropertyDetail = ({
+  property: p,
+  estimates,
+  tagIds,
+  setTagIds,
+  perms,
+  cap,
+  limitsDegraded,
+  onNavigate,
+  onNewEstimate,
+  onEditEstimate,
+  onDeleteEstimate
+}) => {
+  const ti = PR_H.propTypeInfo(p.type);
+  const kind = PR_H.propKindInfo(p);
+  const d = PR_H.propDetails(p);
+  const status = PR_H.propStatus(p);
+  const today = PR_H.propToday();
+  const disposeFuture = p.disposedDate && p.disposedDate > today;
+  const cur = PR_D.currencies.find(c => c.code === p.currencyCode);
+  const subtypeTiles = p.type === 'Vehicle' ? [d.registrationNumber && /*#__PURE__*/React.createElement(InfoTile, {
+    key: "reg",
+    icon: "pin",
+    label: "Registration",
+    value: d.registrationNumber
+  }), d.vin && /*#__PURE__*/React.createElement(InfoTile, {
+    key: "vin",
+    icon: "qr_code_2",
+    label: d.kind === 'Boat' ? 'Hull number' : 'VIN',
+    value: d.vin,
+    className: "wrapvalue"
+  }), (d.make || d.model) && /*#__PURE__*/React.createElement(InfoTile, {
+    key: "mm",
+    icon: kind.icon,
+    label: "Make and model",
+    value: [d.make, d.model].filter(Boolean).join(' '),
+    valueVariant: "text"
+  }), d.modelYear && /*#__PURE__*/React.createElement(InfoTile, {
+    key: "my",
+    icon: "calendar_today",
+    label: "Model year",
+    value: String(d.modelYear)
+  }), d.firstRegisteredDate && /*#__PURE__*/React.createElement(InfoTile, {
+    key: "fr",
+    icon: "app_registration",
+    label: "First registered",
+    value: PR_H.dateLong(d.firstRegisteredDate),
+    valueVariant: "sm"
+  })] : [
+  /* Same treatment as a contact's address tile: location_on in the address
+     hue, the one-line summary in that hue, full row. */
+  (d.addressLine || d.city) && /*#__PURE__*/React.createElement(InfoTile, {
+    key: "addr",
+    icon: "location_on",
+    iconColor: "oklch(0.77 0.14 55)",
+    iconSoft: "oklch(0.77 0.14 55 / 0.15)",
+    label: "Address",
+    value: /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'oklch(0.77 0.14 55)'
+      }
+    }, PR_H.propAddressText(d)),
+    className: "prop-addr-tile",
+    wide: true,
+    foot: kind.label
+  }), d.cadastralNumber && /*#__PURE__*/React.createElement(InfoTile, {
+    key: "cad",
+    icon: "map",
+    label: "Cadastral number",
+    value: d.cadastralNumber,
+    foot: "land registry"
+  }), d.livingAreaSqm != null && /*#__PURE__*/React.createElement(InfoTile, {
+    key: "la",
+    icon: "square_foot",
+    label: "Living area",
+    value: PR_H.propArea(d.livingAreaSqm)
+  }), d.plotAreaSqm != null && /*#__PURE__*/React.createElement(InfoTile, {
+    key: "pa",
+    icon: "crop_free",
+    label: "Plot area",
+    value: PR_H.propArea(d.plotAreaSqm)
+  }), d.buildYear && /*#__PURE__*/React.createElement(InfoTile, {
+    key: "by",
+    icon: "construction",
+    label: "Built",
+    value: String(d.buildYear)
+  })];
+  const shownSubtype = subtypeTiles.filter(Boolean);
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(InfoTileGrid, null, /*#__PURE__*/React.createElement(InfoTile, {
+    icon: kind.icon,
+    label: "Kind",
+    value: kind.label,
+    valueVariant: "text",
+    foot: ti.label
+  }), /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "payments",
+    label: "Currency",
+    value: p.currencyCode,
+    foot: cur ? cur.name : null
+  }), /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "event_available",
+    label: "Acquired",
+    value: p.acquiredDate ? PR_H.dateLong(p.acquiredDate) : 'Unknown',
+    valueVariant: p.acquiredDate ? 'sm' : 'text'
+  }), p.disposedDate ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "output",
+    label: disposeFuture ? 'Disposal on' : 'Disposed',
+    value: PR_H.dateLong(p.disposedDate),
+    valueVariant: "sm",
+    className: disposeFuture ? 'tone-info' : undefined,
+    foot: disposeFuture ? 'still owned until then' : 'sold, written off or scrapped'
+  }) : null, p.archived ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "inventory_2",
+    label: "Archived",
+    value: PR_H.dateLong(p.archived),
+    valueVariant: "sm",
+    foot: "hidden from the default list"
+  }) : null), /*#__PURE__*/React.createElement("div", {
+    className: "con-section"
+  }, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: p.type === 'Vehicle' ? 'Vehicle' : 'Real estate',
+    meta: kind.label
+  }), shownSubtype.length ? /*#__PURE__*/React.createElement(InfoTileGrid, null, shownSubtype) : /*#__PURE__*/React.createElement(EmptyLine, null, p.type === 'Vehicle' ? 'No registration, VIN or model recorded.' : 'No address, registry number or areas recorded.', perms.update ? ' Edit the property to add them.' : ''), p.notes ? /*#__PURE__*/React.createElement(InfoTileGrid, null, /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "sticky_note_2",
+    label: "Notes",
+    value: p.notes,
+    wide: true
+  })) : null), perms.estimatesRead ? /*#__PURE__*/React.createElement(PropertyEstimates, {
+    property: p,
+    estimates: estimates,
+    canWrite: perms.estimatesWrite,
+    onNew: onNewEstimate,
+    onEdit: onEditEstimate,
+    onDelete: onDeleteEstimate
+  }) : null, /*#__PURE__*/React.createElement("div", {
+    className: "con-section"
+  }, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Smart tags",
+    meta: tagIds.length ? `${tagIds.length} watched` : 'none watched'
+  }), /*#__PURE__*/React.createElement(PropertySmartTags, {
+    property: p,
+    tagIds: tagIds,
+    setTagIds: setTagIds,
+    onNavigate: onNavigate,
+    canWrite: perms.update,
+    cap: cap,
+    limitsDegraded: limitsDegraded
+  })));
+};
+
+/* ====================== Delete confirmation ======================
+   Deletion is hard and cascades the detail row, every estimate and every
+   smart-tag link in one transaction. Nothing else references a property, so
+   there is no blocker — only the statement of what goes. */
+const DeletePropertyModal = ({
+  property,
+  estimateCount,
+  tagCount,
+  canArchive,
+  onArchive,
+  onClose,
+  onConfirm
+}) => /*#__PURE__*/React.createElement(Modal, {
+  title: `Delete ${property.name}?`,
+  icon: "delete",
+  onClose: onClose,
+  subtitle: "This can\u2019t be undone.",
+  footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+    variant: "text",
+    onClick: onClose
+  }, "Cancel"), canArchive && !property.archived ? /*#__PURE__*/React.createElement(Button, {
+    variant: "outlined",
+    icon: "inventory_2",
+    onClick: onArchive
+  }, "Archive instead") : null, /*#__PURE__*/React.createElement(Button, {
+    variant: "danger",
+    icon: "delete_forever",
+    onClick: onConfirm
+  }, "Delete property"))
+}, /*#__PURE__*/React.createElement("div", {
+  className: "prop-del-list"
+}, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(MIcon, {
+  name: "home_work",
+  size: 16
+}), "The property and its ", property.type === 'Vehicle' ? 'vehicle' : 'real estate', " details"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(MIcon, {
+  name: "monitor",
+  size: 16
+}), estimateCount === 0 ? 'No estimates' : `${estimateCount} estimate${estimateCount === 1 ? '' : 's'} — the whole value history`), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(MIcon, {
+  name: "sell",
+  size: 16
+}), tagCount === 0 ? 'No smart tags' : `${tagCount} smart-tag link${tagCount === 1 ? '' : 's'}`)), /*#__PURE__*/React.createElement("p", {
+  className: "prop-del-foot"
+}, "The transaction tags themselves and the transactions carrying them are not affected. Archiving keeps everything and hides the property from the default list."));
+
+/* ====================== One list item ====================== */
+const PropertyListItem = ({
+  row,
+  perms,
+  cap,
+  limitsDegraded,
+  open,
+  onToggle,
+  onNavigate,
+  onUpdate,
+  onDelete,
+  estimates,
+  setEstimates,
+  tagIds,
+  setTagIds
+}) => {
+  const {
+    useState
+  } = React;
+  const p = row;
+  const [showEdit, setShowEdit] = useState(false);
+  const [estModal, setEstModal] = useState(null);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const ti = PR_H.propTypeInfo(p.type);
+  const kind = PR_H.propKindInfo(p);
+  const d = PR_H.propDetails(p);
+  const status = PR_H.propStatus(p);
+  const current = PR_H.propCurrentEstimate(estimates);
+  const saveEstimate = (dto, id) => {
+    setEstimates(prev => id ? prev.map(e => e.id === id ? {
+      ...e,
+      ...dto
+    } : e) : [...prev, {
+      id: `pe-new-${Date.now()}`,
+      propertyId: p.id,
+      createdAtUtc: new Date().toISOString(),
+      ...dto
+    }]);
+    setEstModal(null);
+  };
+  const toggleArchive = () => onUpdate({
+    ...p,
+    archived: p.archived ? null : new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+  const where = p.type === 'Vehicle' ? [d.make, d.model, d.modelYear].filter(Boolean).join(' ') : [d.city, d.countryCode].filter(Boolean).join(', ');
+  const menu = [...(perms.update ? [{
+    icon: 'edit',
+    label: 'Edit property',
+    onClick: () => setShowEdit(true)
+  }] : []), ...(perms.estimatesWrite ? [{
+    icon: 'monitor',
+    label: 'New estimate',
+    onClick: () => {
+      onToggle(true);
+      setEstModal({
+        mode: 'new'
+      });
+    }
+  }] : []), {
+    icon: 'fingerprint',
+    label: 'Copy ID',
+    trailingIcon: 'content_copy',
+    onClick: () => {
+      if (navigator.clipboard) navigator.clipboard.writeText(p.id);
+    }
+  }, ...(perms.update || perms.delete ? [{
+    divider: true
+  }] : []), ...(perms.update ? [{
+    icon: p.archived ? 'unarchive' : 'inventory_2',
+    label: p.archived ? 'Restore' : 'Archive',
+    onClick: toggleArchive
+  }] : []), ...(perms.delete ? [{
+    icon: 'delete',
+    label: 'Delete',
+    danger: true,
+    onClick: () => setConfirmDel(true)
+  }] : [])];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "prop-card"
+  }, /*#__PURE__*/React.createElement(RecordCard, {
+    icon: kind.icon,
+    accent: ti.color,
+    accentSoft: ti.soft,
+    name: p.name,
+    chips: status !== 'Owned' ? /*#__PURE__*/React.createElement(PropertyStatusChip, {
+      status: status
+    }) : null,
+    meta: [kind.label, p.description, ...(where ? [where] : [])],
+    counts: [...(perms.estimatesRead ? [{
+      icon: 'monitor',
+      value: estimates.length,
+      label: 'Estimates'
+    }] : []), {
+      icon: 'sell',
+      value: tagIds.length,
+      label: 'Smart tags'
+    }],
+    figure: perms.estimatesRead ? {
+      value: current ? PR_H.money(current.value, p.currencyCode) : '—',
+      caption: current ? `estimated · ${new Date(current.effectiveFrom + 'T00:00:00').toLocaleDateString('en-US', {
+        month: 'short',
+        year: 'numeric'
+      })}` : 'no estimate',
+      tone: status === 'Owned' && current ? 'income' : 'muted'
+    } : undefined,
+    dimmed: !!p.archived,
+    open: open,
+    onToggle: onToggle,
+    actions: /*#__PURE__*/React.createElement(ActionMenu, {
+      items: menu
+    })
+  }, /*#__PURE__*/React.createElement(PropertyDetail, {
+    property: p,
+    estimates: estimates,
+    tagIds: tagIds,
+    setTagIds: setTagIds,
+    perms: perms,
+    cap: cap,
+    limitsDegraded: limitsDegraded,
+    onNavigate: onNavigate,
+    onNewEstimate: () => setEstModal({
+      mode: 'new'
+    }),
+    onEditEstimate: e => setEstModal({
+      mode: 'edit',
+      estimate: e
+    }),
+    onDeleteEstimate: e => setEstimates(prev => prev.filter(x => x.id !== e.id))
+  })), showEdit && /*#__PURE__*/React.createElement(AddPropertyModal, {
+    property: p,
+    estimateCount: estimates.length,
+    onClose: () => setShowEdit(false),
+    onSave: dto => {
+      onUpdate({
+        ...p,
+        ...dto,
+        updatedAt: new Date().toISOString()
+      });
+      setShowEdit(false);
+    }
+  }), estModal && /*#__PURE__*/React.createElement(AddEstimateModal, {
+    account: propEstOwner(p),
+    ownerNoun: "property",
+    showHint: false,
+    leadIcon: "monitor",
+    estimate: estModal.mode === 'edit' ? estModal.estimate : null,
+    existing: estimates,
+    onClose: () => setEstModal(null),
+    onSave: saveEstimate
+  }), confirmDel && /*#__PURE__*/React.createElement(DeletePropertyModal, {
+    property: p,
+    estimateCount: estimates.length,
+    tagCount: tagIds.length,
+    canArchive: perms.update,
+    onClose: () => setConfirmDel(false),
+    onArchive: () => {
+      toggleArchive();
+      setConfirmDel(false);
+    },
+    onConfirm: () => {
+      setConfirmDel(false);
+      onDelete(p.id);
+    }
+  }));
+};
+
+/* ====================== Header overview ======================
+   Counts by type and status, and the in-force estimates summed PER CURRENCY.
+   Nothing is converted and nothing here feeds net worth (Non-Goal 6). */
+const PropertiesSummary = ({
+  properties,
+  estById,
+  perms
+}) => {
+  const live = properties.filter(p => !p.archived);
+  const typeRows = PR_D.propertyTypes.map(t => ({
+    key: t.key,
+    icon: t.icon,
+    iconColor: t.color,
+    label: t.label,
+    count: live.filter(p => p.type === t.key).length
+  }));
+  const TONE = {
+    income: 'var(--finance-income)',
+    outline: 'var(--mud-palette-text-secondary)'
+  };
+  const statusRows = PR_D.propertyStatuses.map(s => ({
+    key: s.key,
+    icon: s.icon,
+    iconColor: TONE[s.tone],
+    label: s.label,
+    count: properties.filter(p => PR_H.propStatus(p) === s.key).length
+  }));
+  const valCell = (v, c) => /*#__PURE__*/React.createElement("span", {
+    className: `con-bd-net ${v > 0 ? 'net-pos' : v < 0 ? 'net-neg' : 'net-flat'}`
+  }, PR_H.money(v, c));
+  const byCur = {};
+  properties.filter(p => PR_H.propStatus(p) === 'Owned').forEach(p => {
+    const c = PR_H.propCurrentEstimate(estById[p.id]);
+    if (!c) return;
+    byCur[p.currencyCode] = byCur[p.currencyCode] || {
+      sum: 0,
+      n: 0
+    };
+    byCur[p.currencyCode].sum += c.value;
+    byCur[p.currencyCode].n += 1;
+  });
+  const valueRows = Object.keys(byCur).sort().map(k => ({
+    key: k,
+    icon: 'payments',
+    iconColor: 'var(--mud-palette-text-secondary)',
+    label: `${k} · ${byCur[k].n} ${byCur[k].n === 1 ? 'property' : 'properties'}`,
+    count: valCell(byCur[k].sum, k)
+  }));
+  /* Total in the main currency, via the latest rate (same convert the contract
+     run rate uses). A currency with no rate is named, never counted 1:1. */
+  const main = (PR_D.userPreferences || {}).mainCurrency || 'USD';
+  /* Latest AsOf for the pair, either direction (rates are append-only). */
+  const rateOf = (f, t) => {
+    const pick = (a, b) => (PR_D.exchangeRates || []).filter(r => r.from === a && r.to === b).sort((x, y) => x.asOf < y.asOf ? 1 : -1)[0];
+    const d = pick(f, t);
+    if (d) return d.rate;
+    const i = pick(t, f);
+    return i ? 1 / i.rate : null;
+  };
+  const convert = (a, f, t) => {
+    if (f === t) return a;
+    const r = rateOf(f, t);
+    return r == null ? null : a * r;
+  };
+  let total = 0;
+  const missing = [];
+  Object.keys(byCur).forEach(k => {
+    const v = convert(byCur[k].sum, k, main);
+    if (v == null) missing.push(k);else total += v;
+  });
+  const totalCell = valueRows.length ? /*#__PURE__*/React.createElement("span", {
+    title: missing.length ? `${missing.join(', ')} excluded — no rate to ${main}` : `Converted to ${main} at the latest rate`
+  }, valCell(Math.round(total * 100) / 100, main), missing.length ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--mud-palette-text-secondary)',
+      fontWeight: 400
+    }
+  }, " \xB7 ", missing.join(', '), " excl.") : null) : false;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "con-stats prop-stats"
+  }, /*#__PURE__*/React.createElement(BreakdownTile, {
+    label: "By type",
+    rows: typeRows,
+    empty: "No properties."
+  }), /*#__PURE__*/React.createElement(BreakdownTile, {
+    label: "By status",
+    rows: statusRows,
+    total: properties.length,
+    empty: "No properties."
+  }), perms.estimatesRead ? /*#__PURE__*/React.createElement(BreakdownTile, {
+    className: "con-bd-money",
+    label: "Estimated value, owned",
+    rows: valueRows,
+    total: totalCell,
+    totalLabel: `Total · ${main}`,
+    empty: "No estimates in force."
+  }) : null);
+};
+
+/* ====================== Page ====================== */
+const Properties = ({
+  tweaks = {},
+  onNavigate
+}) => {
+  const {
+    useState
+  } = React;
+  const DS = window.OdysseyDesignSystem_d5aa51 || {};
+  const role = tweaks.propRole || 'owner';
+  const perms = role === 'owner' ? {
+    read: true,
+    create: true,
+    update: true,
+    delete: true,
+    estimatesRead: true,
+    estimatesWrite: true
+  } : {
+    read: true,
+    create: false,
+    update: false,
+    delete: false,
+    estimatesRead: true,
+    estimatesWrite: false
+  };
+  /* GET /api/property-limits — a 503 leaves the cap unknown. */
+  const limitsDegraded = !!tweaks.propLimitsDegraded;
+  const cap = limitsDegraded ? null : tweaks.propSmartTagCap != null ? tweaks.propSmartTagCap : PR_D.PROPERTY_MAX_SMART_TAGS_PER_PROPERTY;
+  const [properties, setProperties] = useState(() => tweaks.propEmpty ? [] : PR_D.properties);
+  const [estById, setEstById] = useState(() => Object.fromEntries(PR_D.properties.map(p => [p.id, (PR_D.propertyEstimates[p.id] || []).slice()])));
+  /* The tag-delete blocker (TransactionTags) reads this live seed. */
+  const [tagsById, setTagsById] = useState(() => Object.fromEntries(PR_D.properties.map(p => [p.id, (PR_D.propertySmartTagSeed[p.id] || []).slice()])));
+  const [openId, setOpenId] = useState('p-storgata');
+  const [q, setQ] = useState('');
+  const [types, setTypes] = useState([]);
+  const [statuses, setStatuses] = useState([]);
+  const [sort, setSort] = useState({
+    key: 'name',
+    dir: 'asc'
+  });
+  const [batch, setBatch] = useState(25);
+  const [showAdd, setShowAdd] = useState(false);
+  React.useEffect(() => {
+    setProperties(tweaks.propEmpty ? [] : PR_D.properties);
+  }, [tweaks.propEmpty]);
+  const setEst = id => fn => setEstById(m => ({
+    ...m,
+    [id]: typeof fn === 'function' ? fn(m[id] || []) : fn
+  }));
+  const setTags = id => fn => setTagsById(m => {
+    const next = {
+      ...m,
+      [id]: typeof fn === 'function' ? fn(m[id] || []) : fn
+    };
+    PR_D.propertySmartTagSeed = next;
+    return next;
+  });
+  const sortFields = [{
+    key: 'name',
+    label: 'Name',
+    type: 'text',
+    sortValue: p => (p.name || '').toLowerCase()
+  }, {
+    key: 'type',
+    label: 'Type',
+    type: 'status',
+    sortValue: p => PR_H.propTypeInfo(p.type).enumValue
+  }, {
+    key: 'acquired',
+    label: 'Acquired',
+    type: 'date',
+    sortValue: p => p.acquiredDate || null
+  },
+  /* PropertySortBy.Value — the in-force estimate as of now, raw magnitude in
+     each property's own currency, nulls last in both directions. */
+  ...(perms.estimatesRead ? [{
+    key: 'value',
+    label: 'Value',
+    type: 'number',
+    sortValue: p => {
+      const c = PR_H.propCurrentEstimate(estById[p.id]);
+      return c ? c.value : null;
+    }
+  }] : [])];
+  const rows = properties.filter(p => {
+    if (types.length && !types.includes(p.type)) return false;
+    if (statuses.length && !statuses.includes(PR_H.propStatus(p))) return false;
+    if (q && !PR_H.propSearchHay(p).includes(q.toLowerCase())) return false;
+    return true;
+  });
+  const sorted = DS.SortHelpers ? DS.SortHelpers.sortRows(rows, sortFields, sort, p => p.id) : rows;
+  const mixedCurrencies = sort.key === 'value' && new Set(rows.map(p => p.currencyCode)).size > 1;
+  const owned = properties.filter(p => PR_H.propStatus(p) === 'Owned').length;
+  const create = dto => {
+    const id = `p-new-${Date.now()}`;
+    const now = new Date().toISOString();
+    setEstById(m => ({
+      ...m,
+      [id]: []
+    }));
+    setTagsById(m => ({
+      ...m,
+      [id]: []
+    }));
+    setProperties(prev => [{
+      id,
+      archived: null,
+      createdAt: now,
+      updatedAt: now,
+      ...dto
+    }, ...prev]);
+    setOpenId(id);
+    setShowAdd(false);
+  };
+  const update = p => setProperties(prev => prev.map(x => x.id === p.id ? p : x));
+  const remove = id => {
+    setProperties(prev => prev.filter(x => x.id !== id));
+    setTags(id)([]);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "col gap-6"
+  }, /*#__PURE__*/React.createElement(PageHeader, {
+    title: "Properties",
+    icon: "home_work",
+    sub: `${owned} owned · ${properties.length} on file`,
+    overview: properties.length ? /*#__PURE__*/React.createElement(PropertiesSummary, {
+      properties: properties,
+      estById: estById,
+      perms: perms
+    }) : null,
+    overviewDefaultOpen: true,
+    searchDefaultOpen: true,
+    search: /*#__PURE__*/React.createElement("div", {
+      className: "col gap-2"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "row gap-3 acct-filter-bar",
+      style: {
+        flexWrap: 'wrap'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        minWidth: 280,
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement(SearchField, {
+      placeholder: "Search name, address, registration, VIN\u2026",
+      value: q,
+      onChange: setQ
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        minWidth: 160
+      }
+    }, /*#__PURE__*/React.createElement(MultiSelect, {
+      allLabel: "Any type",
+      value: types,
+      onChange: setTypes,
+      options: PR_D.propertyTypes.map(t => ({
+        value: t.key,
+        label: t.label,
+        icon: t.icon,
+        iconColor: t.color
+      }))
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        minWidth: 160
+      }
+    }, /*#__PURE__*/React.createElement(MultiSelect, {
+      allLabel: "Any status",
+      value: statuses,
+      onChange: setStatuses,
+      options: PR_D.propertyStatuses.map(s => ({
+        value: s.key,
+        label: s.label
+      }))
+    })), /*#__PURE__*/React.createElement(SortSelect, {
+      sort: sort,
+      onSort: setSort,
+      fields: sortFields
+    }), /*#__PURE__*/React.createElement(PageSizeSelect, {
+      prefix: "Load",
+      suffix: "at a time",
+      label: "Properties per batch",
+      value: batch,
+      onChange: setBatch,
+      options: [25, 50, 100]
+    })), mixedCurrencies ? /*#__PURE__*/React.createElement("div", {
+      className: "prop-sort-note"
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: "info",
+      size: 15
+    }), "Sorted by the raw amount in each property\u2019s own currency. Values in different currencies are not converted.") : null),
+    primary: perms.create ? {
+      label: 'New property',
+      icon: 'add',
+      onClick: () => setShowAdd(true)
+    } : undefined
+  }), properties.length === 0 ? /*#__PURE__*/React.createElement(EmptyState, {
+    icon: "home_work",
+    title: "No properties yet",
+    description: "Record a house, cabin, car or boat with its address or registration, track what it\u2019s worth over time, and watch the transactions that belong to it.",
+    action: perms.create ? /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      color: "primary",
+      icon: "add",
+      onClick: () => setShowAdd(true)
+    }, "New property") : null
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "acct-list"
+  }, /*#__PURE__*/React.createElement(InfiniteList, {
+    items: sorted,
+    batchSize: batch,
+    itemKey: p => p.id,
+    noun: "properties",
+    renderItem: p => /*#__PURE__*/React.createElement(PropertyListItem, {
+      row: p,
+      perms: perms,
+      cap: cap,
+      limitsDegraded: limitsDegraded,
+      onNavigate: onNavigate,
+      open: openId === p.id,
+      onToggle: o => setOpenId(o ? p.id : null),
+      estimates: estById[p.id] || [],
+      setEstimates: setEst(p.id),
+      tagIds: tagsById[p.id] || [],
+      setTagIds: setTags(p.id),
+      onUpdate: update,
+      onDelete: remove
+    }),
+    empty: /*#__PURE__*/React.createElement(EmptyLine, {
+      align: "center",
+      pad: "lg"
+    }, "No properties match your filters."),
+    trailing: perms.create ? /*#__PURE__*/React.createElement(AddRow, {
+      title: "New property",
+      sub: "A house, apartment, cabin or plot \u2014 or a car, motorcycle, boat or trailer.",
+      onClick: () => setShowAdd(true)
+    }) : null
+  })), showAdd && /*#__PURE__*/React.createElement(AddPropertyModal, {
+    onClose: () => setShowAdd(false),
+    onSave: create
+  }));
+};
+Object.assign(window, {
+  Properties,
+  PropertyStatusChip
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/Properties.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/web/PropertyEstimates.jsx
+try { (() => {
+/* PropertyEstimates — the property's value history, laid out like a contract's
+   Terms: a "Current value" section of InfoTiles, then a "Value history" section
+   with the DS TermHistoryChart over the trm-tbl ledger. Same in-force rule as
+   everywhere (greatest EffectiveFrom ≤ today, tie → CreatedAtUtc). */
+
+const PropertyEstimates = ({
+  property: p,
+  estimates,
+  canWrite,
+  onNew,
+  onEdit,
+  onDelete
+}) => {
+  const H = window.OdysseyHelpers;
+  const DS = window.OdysseyDesignSystem_d5aa51 || {};
+  const ti = H.propTypeInfo(p.type);
+  const today = H.propToday();
+  const cur = p.currencyCode;
+  const monY = iso => {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-US', {
+      month: 'short'
+    }) + ' ’' + String(d.getFullYear()).slice(2);
+  };
+  const current = H.propCurrentEstimate(estimates);
+  const past = estimates.filter(e => e.effectiveFrom <= today).sort((a, b) => a.effectiveFrom < b.effectiveFrom ? -1 : 1);
+  const prev = current ? past.filter(e => e.id !== current.id).pop() : null;
+  const scheduled = estimates.filter(e => e.effectiveFrom > today).sort((a, b) => a.effectiveFrom < b.effectiveFrom ? -1 : 1)[0];
+  const first = past[0];
+  const diff = current && prev ? current.value - prev.value : null;
+  const sinceFirst = current && first && first.id !== current.id ? current.value - first.value : null;
+  const up = 'var(--finance-income)',
+    down = 'var(--finance-expense)';
+  const tone = d => d > 0 ? up : d < 0 ? down : 'var(--mud-palette-text-secondary)';
+  const signed = d => (d > 0 ? '+' : d < 0 ? '−' : '') + H.money(Math.abs(d), cur);
+  const pct = (d, base) => base ? ` · ${d >= 0 ? '+' : '−'}${Math.abs(d / base * 100).toFixed(1)}%` : '';
+  if (estimates.length === 0) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "con-section"
+    }, /*#__PURE__*/React.createElement(SectionDivider, {
+      label: "Estimated value",
+      meta: "0 entries"
+    }), /*#__PURE__*/React.createElement(EmptyLine, null, "No estimate yet \u2014 record what ", p.name, " is worth, effective from a date. Each new estimate supersedes the last from its date on; the history is kept."));
+  }
+  const sorted = estimates.slice().sort((a, b) => a.effectiveFrom < b.effectiveFrom ? 1 : a.effectiveFrom > b.effectiveFrom ? -1 : a.createdAtUtc < b.createdAtUtc ? 1 : -1);
+  const points = estimates.slice().sort((a, b) => a.effectiveFrom < b.effectiveFrom ? -1 : 1).map(e => ({
+    id: e.id,
+    date: e.effectiveFrom,
+    value: e.value
+  }));
+  const series = [{
+    key: 'value',
+    label: 'Estimated value',
+    value: current ? H.money(current.value, cur) : '—',
+    color: ti.color,
+    group: `amt:${cur}`,
+    points,
+    format: v => H.money(v, cur),
+    /* No currency code on the tick (as ContractTerms): compact so 5.14M fits. */
+    axisFormat: v => {
+      const a = Math.abs(v),
+        s = v < 0 ? '−' : '';
+      return s + (a >= 1e6 ? (a / 1e6).toFixed(2) + 'M' : a >= 1e4 ? Math.round(a / 1e3) + 'K' : a.toLocaleString('en-US', {
+        maximumFractionDigits: 0
+      }));
+    }
+  }];
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "con-section"
+  }, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Current value",
+    meta: current ? `in force · ${H.dateLong(today)}` : 'none in force'
+  }), current ? /*#__PURE__*/React.createElement(InfoTileGrid, null, /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "monitor",
+    iconColor: ti.color,
+    iconSoft: ti.soft,
+    label: "Estimated value",
+    value: /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: ti.color
+      }
+    }, H.money(current.value, cur)),
+    foot: `since ${H.dateLong(current.effectiveFrom)}${current.note ? ` · ${current.note}` : ''}`
+  }), diff != null ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: diff > 0 ? 'trending_up' : diff < 0 ? 'trending_down' : 'trending_flat',
+    iconColor: tone(diff),
+    iconSoft: `color-mix(in srgb, ${tone(diff)} 16%, transparent)`,
+    label: "Change vs previous",
+    value: /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: tone(diff)
+      }
+    }, signed(diff)),
+    foot: `from ${H.money(prev.value, cur)} · ${monY(prev.effectiveFrom)}${pct(diff, prev.value)}`
+  }) : null, sinceFirst != null && past.length > 2 ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "history",
+    iconColor: tone(sinceFirst),
+    iconSoft: `color-mix(in srgb, ${tone(sinceFirst)} 16%, transparent)`,
+    label: "Since first estimate",
+    value: /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: tone(sinceFirst)
+      }
+    }, signed(sinceFirst)),
+    foot: `from ${H.money(first.value, cur)} · ${monY(first.effectiveFrom)}${pct(sinceFirst, first.value)}`
+  }) : null, scheduled ? /*#__PURE__*/React.createElement(InfoTile, {
+    icon: "schedule",
+    iconColor: "oklch(0.80 0.13 85)",
+    label: "Scheduled",
+    value: H.money(scheduled.value, cur),
+    foot: `from ${H.dateLong(scheduled.effectiveFrom)}`
+  }) : null) : /*#__PURE__*/React.createElement(EmptyLine, null, "Nothing in force today \u2014 every estimate on this property is dated later.")), /*#__PURE__*/React.createElement("div", {
+    className: "con-section"
+  }, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Value history",
+    meta: `${estimates.length} ${estimates.length === 1 ? 'entry' : 'entries'} · ${cur}`
+  }), DS.TermHistoryChart ? /*#__PURE__*/React.createElement(DS.TermHistoryChart, {
+    className: "trm-seriesplot",
+    series: series,
+    pickerLabel: "Value",
+    glyph: "\xA4",
+    curve: "smooth"
+  }) : null, /*#__PURE__*/React.createElement("div", {
+    className: "trm-history"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "trm-tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+    scope: "col"
+  }, "Estimate"), /*#__PURE__*/React.createElement("th", {
+    scope: "col"
+  }, "Effective from"), /*#__PURE__*/React.createElement("th", {
+    scope: "col",
+    className: "num"
+  }, "Value"), /*#__PURE__*/React.createElement("th", {
+    scope: "col"
+  }, "Status"), canWrite ? /*#__PURE__*/React.createElement("th", {
+    scope: "col",
+    className: "act",
+    "aria-label": "Actions"
+  }) : null)), /*#__PURE__*/React.createElement("tbody", null, sorted.map(e => {
+    const isCur = current && e.id === current.id;
+    const isSched = e.effectiveFrom > today;
+    return /*#__PURE__*/React.createElement("tr", {
+      key: e.id,
+      className: isCur ? 'current' : ''
+    }, /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("div", {
+      className: "trm-row-kind"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "trm-kind-ic sm",
+      style: {
+        background: ti.soft,
+        color: ti.color
+      }
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: "monitor",
+      size: 15
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "trm-row-top"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "trm-row-kind-name"
+    }, "Estimated value")), e.note && /*#__PURE__*/React.createElement("div", {
+      className: "trm-row-note"
+    }, e.note)))), /*#__PURE__*/React.createElement("td", {
+      className: "trm-cell-date"
+    }, H.dateLong(e.effectiveFrom)), /*#__PURE__*/React.createElement("td", {
+      className: "trm-cell-value",
+      style: isCur ? {
+        color: ti.color
+      } : undefined
+    }, H.money(e.value, e.currencyCode || cur)), /*#__PURE__*/React.createElement("td", null, isSched ? /*#__PURE__*/React.createElement("span", {
+      className: "trm-superseded",
+      style: {
+        color: 'oklch(0.80 0.13 85)',
+        opacity: 1
+      }
+    }, "Scheduled") : isCur ? /*#__PURE__*/React.createElement("span", {
+      className: "trm-inforce"
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: "check_circle",
+      size: 12
+    }), "In force") : /*#__PURE__*/React.createElement("span", {
+      className: "trm-superseded"
+    }, "Superseded")), canWrite ? /*#__PURE__*/React.createElement("td", {
+      className: "trm-cell-act"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "trm-rowbtns"
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "trm-iconbtn",
+      "aria-label": "Edit estimate",
+      onClick: () => onEdit(e)
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: "edit",
+      size: 17
+    })), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "trm-iconbtn danger",
+      "aria-label": "Delete estimate",
+      onClick: () => onDelete(e)
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: "delete",
+      size: 17
+    })))) : null);
+  }))))));
+};
+Object.assign(window, {
+  PropertyEstimates
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/PropertyEstimates.jsx", error: String((e && e.message) || e) }); }
+
 // ui_kits/web/ResetPassword.jsx
 try { (() => {
 /* ResetPassword — the /reset-password?code=<token> page (mirrors
@@ -52733,7 +54266,9 @@ const TransactionTags = createTagsPage({
   blockers: (tag, d) => {
     const items = (d.budgets || []).reduce((n, b) => n + (b.items || []).filter(i => i.tagId === tag.id).length, 0);
     const contracts = Object.values(d.contractSmartTagSeed || {}).filter(ids => ids.includes(tag.id)).length;
-    return [items ? `${items} budget item${items === 1 ? '' : 's'} plan${items === 1 ? 's' : ''} for this tag.` : null, contracts ? `This tag is a smart tag on ${contracts} contract${contracts === 1 ? '' : 's'}.` : null].filter(Boolean);
+    // Fifth clause (Property backend §5): PropertySmartTags, counts only.
+    const properties = Object.values(d.propertySmartTagSeed || {}).filter(ids => ids.includes(tag.id)).length;
+    return [items ? `${items} budget item${items === 1 ? '' : 's'} plan${items === 1 ? 's' : ''} for this tag.` : null, contracts ? `This tag is a smart tag on ${contracts} contract${contracts === 1 ? '' : 's'}.` : null, properties ? `This tag is a smart tag on ${properties} propert${properties === 1 ? 'y' : 'ies'}. Remove it there first.` : null].filter(Boolean);
   }
 });
 const JournalTags = createTagsPage({
@@ -55033,14 +56568,14 @@ try { (() => {
     soft: 'oklch(0.72 0.15 25 / 0.16)',
     desc: 'The agreement was brought to an end. This does not change the contract’s status.'
   }, {
-    key: 'TermChanged',
+    key: 'PriceChanged',
     label: 'Term changed',
     enumValue: 6,
     icon: 'price_change',
     color: 'oklch(0.76 0.14 320)',
     soft: 'oklch(0.76 0.14 320 / 0.16)',
-    auto: 'a term of the agreement was changed',
-    desc: 'A term of the agreement (a price, rate, date or clause) was set or changed.'
+    auto: 'the agreement was re-priced',
+    desc: 'What the agreement costs was renegotiated or re-set.'
   }, {
     key: 'EmailSent',
     label: 'Email sent',
@@ -55195,7 +56730,7 @@ try { (() => {
       id: 'cev-l3',
       contractId: 'ct-lease',
       source: 'user',
-      type: 'TermChanged',
+      type: 'PriceChanged',
       title: 'Rent renegotiated to 2,250 USD',
       description: 'Agreed by phone with the letting agent, then confirmed in writing. A CPI basis was requested and refused; settled at 4.7%.',
       notes: 'Check last year’s letter before the next review.',
@@ -55291,7 +56826,7 @@ try { (() => {
       id: 'cev-f2',
       contractId: 'ct-fiber',
       source: 'user',
-      type: 'TermChanged',
+      type: 'PriceChanged',
       title: 'Monthly charge raised to $84',
       description: 'Annual CPI+3.9% uplift clause. No right to exit on the increase.',
       notes: null,
@@ -63482,6 +65017,409 @@ Object.assign(window, {
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/profile-fields.jsx", error: String((e && e.message) || e) }); }
 
+// ui_kits/web/properties-data.js
+try { (() => {
+/* Properties seed + registries — the frontend half of *Property — Backend (Draft v8)*.
+   A Property is a standalone record (not an account) with a fixed subtype
+   (RealEstate = 0, Vehicle = 1), one detail sub-object matching it, an
+   effective-dated estimate history (PropertyEstimates, sibling of
+   AccountEstimates) and a smart-tag set (PropertySmartTags, sibling of
+   ContractSmartTags). Ordinals are a wire contract: never renumbered. */
+(() => {
+  const D = window.OdysseyData;
+  const H = window.OdysseyHelpers;
+
+  /* PropertyType. Colours reuse the Property / Vehicle account-type hues so a
+     house reads the same whichever record it is on during the side-by-side v1. */
+  D.propertyTypes = [{
+    key: 'RealEstate',
+    enumValue: 0,
+    label: 'Real estate',
+    icon: 'home_work',
+    color: 'oklch(0.72 0.14 255)',
+    soft: 'oklch(0.72 0.14 255 / 0.16)',
+    estimateType: 'Property',
+    detailsKey: 'realEstateDetails'
+  }, {
+    key: 'Vehicle',
+    enumValue: 1,
+    label: 'Vehicle',
+    icon: 'directions_car',
+    color: 'oklch(0.78 0.14 170)',
+    soft: 'oklch(0.78 0.14 170 / 0.16)',
+    estimateType: 'Vehicle',
+    detailsKey: 'vehicleDetails'
+  }];
+  D.realEstateKinds = [{
+    key: 'House',
+    enumValue: 0,
+    label: 'House',
+    icon: 'house'
+  }, {
+    key: 'Apartment',
+    enumValue: 1,
+    label: 'Apartment',
+    icon: 'apartment'
+  }, {
+    key: 'Cabin',
+    enumValue: 2,
+    label: 'Cabin',
+    icon: 'cabin'
+  }, {
+    key: 'Plot',
+    enumValue: 3,
+    label: 'Plot',
+    icon: 'landscape'
+  }, {
+    key: 'Commercial',
+    enumValue: 4,
+    label: 'Commercial',
+    icon: 'storefront'
+  }, {
+    key: 'Other',
+    enumValue: 5,
+    label: 'Other',
+    icon: 'home_work'
+  }];
+  D.vehicleKinds = [{
+    key: 'Car',
+    enumValue: 0,
+    label: 'Car',
+    icon: 'directions_car'
+  }, {
+    key: 'Motorcycle',
+    enumValue: 1,
+    label: 'Motorcycle',
+    icon: 'two_wheeler'
+  }, {
+    key: 'Boat',
+    enumValue: 2,
+    label: 'Boat',
+    icon: 'sailing'
+  }, {
+    key: 'Trailer',
+    enumValue: 3,
+    label: 'Trailer',
+    icon: 'rv_hookup'
+  }, {
+    key: 'Other',
+    enumValue: 4,
+    label: 'Other',
+    icon: 'commute'
+  }];
+  /* PropertyStatus — DERIVED, never stored: Archived > Disposed (on/before now) > Owned. */
+  D.propertyStatuses = [{
+    key: 'Owned',
+    label: 'Owned',
+    icon: 'check_circle',
+    tone: 'income',
+    dot: true
+  }, {
+    key: 'Disposed',
+    label: 'Disposed',
+    icon: 'output',
+    tone: 'outline',
+    dot: true
+  }, {
+    key: 'Archived',
+    label: 'Archived',
+    icon: 'inventory_2',
+    tone: 'outline',
+    dot: false
+  }];
+
+  /* PropertyMaxSmartTagsPerProperty — shipped default; the page reads it from
+     GET /api/property-limits, never as a constant. Ceiling = MaxFilterArrayLength. */
+  D.PROPERTY_MAX_SMART_TAGS_PER_PROPERTY = 20;
+  D.PROPERTY_MAX_SMART_TAGS_CEILING = 50;
+
+  /* Tags and ledger rows the demo properties watch. Appended to the shared pool. */
+  const newTags = [{
+    id: 't20',
+    name: 'Home maintenance',
+    description: 'Repairs, trades and materials for the house',
+    archived: null
+  }, {
+    id: 't21',
+    name: 'Property tax',
+    description: 'Municipal property tax and fees',
+    archived: null
+  }, {
+    id: 't22',
+    name: 'Fuel',
+    description: 'Petrol and charging',
+    archived: null
+  }, {
+    id: 't23',
+    name: 'Car service',
+    description: 'Servicing, tyres and inspections',
+    archived: null
+  }, {
+    id: 't24',
+    name: 'Mooring',
+    description: 'Marina berth and boat upkeep',
+    archived: null
+  }];
+  newTags.forEach(t => {
+    if (!D.tagById[t.id]) {
+      D.tags.push(t);
+      D.tagById[t.id] = t;
+    }
+  });
+  const tx = (id, date, desc, tags, amount, icon) => ({
+    id,
+    date,
+    desc,
+    account: '1',
+    tags,
+    currency: 'USD',
+    amount,
+    status: 'Approved',
+    icon,
+    dir: amount < 0 ? 'expense' : 'income'
+  });
+  [tx('xp1', '2026-09-12', 'Bay Roofing · Gutter repair', ['t20'], -840.00, 'roofing'), tx('xp2', '2026-08-03', 'Home Depot · Paint & fixings', ['t20'], -212.35, 'handyman'), tx('xp3', '2026-04-10', 'SF Treasurer · Property tax (2nd inst.)', ['t21'], -4310.00, 'account_balance'), tx('xp4', '2026-09-18', 'Chevron · Fuel', ['t22'], -64.10, 'local_gas_station'), tx('xp5', '2026-09-02', 'Shell · Fuel', ['t22'], -58.72, 'local_gas_station'), tx('xp6', '2026-06-21', 'Subaru of SF · 36k service', ['t23'], -389.00, 'car_repair'), tx('xp7', '2026-09-01', 'Sausalito Marina · Berth Sep', ['t24'], -310.00, 'anchor'), tx('xp8', '2026-08-01', 'Sausalito Marina · Berth Aug', ['t24'], -310.00, 'anchor')].forEach(t => {
+    if (!D.transactions.some(x => x.id === t.id)) D.transactions.push(t);
+  });
+  const re = o => ({
+    kind: 'House',
+    addressLine: null,
+    postalCode: null,
+    city: null,
+    countryCode: null,
+    cadastralNumber: null,
+    livingAreaSqm: null,
+    plotAreaSqm: null,
+    buildYear: null,
+    ...o
+  });
+  const ve = o => ({
+    kind: 'Car',
+    registrationNumber: null,
+    vin: null,
+    make: null,
+    model: null,
+    modelYear: null,
+    firstRegisteredDate: null,
+    ...o
+  });
+  const base = {
+    acquiredDate: null,
+    disposedDate: null,
+    notes: null,
+    archived: null,
+    realEstateDetails: null,
+    vehicleDetails: null,
+    createdAt: '2026-01-10T09:00:00Z',
+    updatedAt: '2026-01-10T09:00:00Z'
+  };
+  D.properties = [{
+    ...base,
+    id: 'p-maple',
+    name: 'Maple St Residence',
+    description: 'Primary residence',
+    type: 'RealEstate',
+    currencyCode: 'USD',
+    acquiredDate: '2018-09-05',
+    notes: 'Seismic retrofit done 2021. Roof last replaced 2016.',
+    realEstateDetails: re({
+      kind: 'House',
+      addressLine: '1482 Maple St',
+      postalCode: '94110',
+      city: 'San Francisco',
+      countryCode: 'US',
+      cadastralNumber: 'APN 3612-044',
+      livingAreaSqm: 186,
+      plotAreaSqm: 412,
+      buildYear: 1928
+    })
+  }, {
+    ...base,
+    id: 'p-storgata',
+    name: 'Storgata 14',
+    description: 'Inherited apartment, let to a tenant',
+    type: 'RealEstate',
+    currencyCode: 'NOK',
+    acquiredDate: '2019-06-01',
+    realEstateDetails: re({
+      kind: 'Apartment',
+      addressLine: 'Storgata 14',
+      postalCode: '0155',
+      city: 'Oslo',
+      countryCode: 'NO',
+      cadastralNumber: '208/451',
+      livingAreaSqm: 72.5,
+      buildYear: 1968
+    })
+  }, {
+    ...base,
+    id: 'p-cabin',
+    name: 'Lakeview cabin',
+    description: 'Weekend cabin, shared with siblings',
+    type: 'RealEstate',
+    currencyCode: 'USD',
+    notes: 'Acquisition date unknown — passed down in the family.',
+    realEstateDetails: re({
+      kind: 'Cabin',
+      addressLine: 'Lot 7, North Shore Rd',
+      postalCode: '96143',
+      city: 'Kings Beach',
+      countryCode: 'US',
+      livingAreaSqm: 58,
+      plotAreaSqm: 2100,
+      buildYear: 1974
+    })
+  }, {
+    ...base,
+    id: 'p-ridge',
+    name: 'Ridge lot',
+    description: 'Undeveloped plot — plans shelved',
+    type: 'RealEstate',
+    currencyCode: 'USD',
+    acquiredDate: '2017-04-18',
+    archived: '2025-10-01T09:00:00Z',
+    realEstateDetails: re({
+      kind: 'Plot',
+      city: 'Sonoma',
+      countryCode: 'US',
+      cadastralNumber: 'APN 128-220-017',
+      plotAreaSqm: 8100
+    })
+  }, {
+    ...base,
+    id: 'p-outback',
+    name: 'Subaru Outback',
+    description: 'Family car',
+    type: 'Vehicle',
+    currencyCode: 'USD',
+    acquiredDate: '2022-03-14',
+    vehicleDetails: ve({
+      kind: 'Car',
+      registrationNumber: '8XKR214',
+      vin: '4S4BTGND5N3123456',
+      make: 'Subaru',
+      model: 'Outback Limited',
+      modelYear: 2022,
+      firstRegisteredDate: '2022-03-10'
+    })
+  }, {
+    ...base,
+    id: 'p-wren',
+    name: 'Sea Wren',
+    description: 'Daysailer, moored at Sausalito',
+    type: 'Vehicle',
+    currencyCode: 'USD',
+    acquiredDate: '2020-05-02',
+    vehicleDetails: ve({
+      kind: 'Boat',
+      registrationNumber: 'CF4417KP',
+      make: 'Catalina',
+      model: '22 Sport',
+      modelYear: 2004
+    })
+  }, {
+    ...base,
+    id: 'p-civic',
+    name: 'Honda Civic',
+    description: 'First car — sold privately',
+    type: 'Vehicle',
+    currencyCode: 'USD',
+    acquiredDate: '2012-08-01',
+    disposedDate: '2022-03-12',
+    vehicleDetails: ve({
+      kind: 'Car',
+      registrationNumber: '6ABC123',
+      vin: '19XFB2F59BE012345',
+      make: 'Honda',
+      model: 'Civic LX',
+      modelYear: 2011,
+      firstRegisteredDate: '2011-06-20'
+    })
+  }];
+  const es = (pid, n, value, cur, from, note) => ({
+    id: `pe-${pid}-${n}`,
+    propertyId: pid,
+    value,
+    currencyCode: cur,
+    effectiveFrom: from,
+    note: note || null,
+    createdAtUtc: from + 'T09:00:00Z'
+  });
+  D.propertyEstimates = {
+    'p-maple': [es('p-maple', 1, 540000, 'USD', '2018-09-05', 'Purchase price at closing'), es('p-maple', 2, 612000, 'USD', '2021-05-14', 'Refinance appraisal'), es('p-maple', 3, 668000, 'USD', '2023-08-01', 'Comparable sales'), es('p-maple', 4, 705000, 'USD', '2025-11-20', 'Broker valuation')],
+    'p-storgata': [es('p-storgata', 1, 3900000, 'NOK', '2019-06-01', 'Probate valuation'), es('p-storgata', 2, 4600000, 'NOK', '2023-02-01'), es('p-storgata', 3, 4950000, 'NOK', '2026-01-01', 'Eiendomsverdi estimate')],
+    'p-cabin': [],
+    'p-ridge': [es('p-ridge', 1, 95000, 'USD', '2017-04-18', 'Purchase price')],
+    'p-outback': [es('p-outback', 1, 38500, 'USD', '2022-03-14', 'Purchase price'), es('p-outback', 2, 31200, 'USD', '2024-03-01', 'KBB private-party'), es('p-outback', 3, 26800, 'USD', '2026-03-01', 'KBB private-party')],
+    'p-wren': [es('p-wren', 1, 14000, 'USD', '2020-05-02', 'Purchase price'), es('p-wren', 2, 12500, 'USD', '2025-04-15')],
+    'p-civic': [es('p-civic', 1, 17000, 'USD', '2012-08-01', 'Purchase price'), es('p-civic', 2, 5200, 'USD', '2021-09-01')]
+  };
+  /* Composite key (PropertyId, TransactionTagId); oldest association first. */
+  D.propertySmartTagSeed = {
+    'p-maple': ['t20', 't21', 't7'],
+    'p-storgata': ['t21'],
+    'p-outback': ['t22', 't23'],
+    'p-wren': ['t24']
+  };
+  const byKey = arr => Object.fromEntries(arr.map(x => [x.key, x]));
+  const TY = byKey(D.propertyTypes),
+    RK = byKey(D.realEstateKinds),
+    VK = byKey(D.vehicleKinds),
+    ST = byKey(D.propertyStatuses);
+  const today = () => new Date().toISOString().slice(0, 10);
+  Object.assign(H, {
+    propToday: today,
+    propTypeInfo: k => TY[k] || {
+      key: k,
+      label: 'Unrecognised type',
+      icon: 'help',
+      color: 'var(--ink-300)',
+      soft: 'rgba(199,208,224,0.12)',
+      estimateType: 'OtherAsset'
+    },
+    propKindInfo: p => {
+      const d = p.type === 'Vehicle' ? p.vehicleDetails : p.realEstateDetails;
+      const reg = p.type === 'Vehicle' ? VK : RK;
+      return d && reg[d.kind] || {
+        label: 'Other',
+        icon: (TY[p.type] || {}).icon || 'category'
+      };
+    },
+    propDetails: p => (p.type === 'Vehicle' ? p.vehicleDetails : p.realEstateDetails) || {},
+    propStatusMeta: k => ST[k] || ST.Owned,
+    /* The server's projection: Archived when Archived is set, else Disposed when
+       DisposedDate is set and on or before now, else Owned. */
+    propStatus: (p, asOf) => {
+      if (p.archived) return 'Archived';
+      if (p.disposedDate && p.disposedDate <= (asOf || today())) return 'Disposed';
+      return 'Owned';
+    },
+    /* The in-force estimate: greatest EffectiveFrom on/before the cutoff,
+       tie-broken by CreatedAtUtc — the one rule EstimateEffectiveDating owns. */
+    propCurrentEstimate: (list, asOf) => {
+      const cut = asOf || today();
+      let cur = null;
+      for (const e of list || []) {
+        if (e.effectiveFrom > cut) continue;
+        if (!cur || e.effectiveFrom > cur.effectiveFrom || e.effectiveFrom === cur.effectiveFrom && e.createdAtUtc > cur.createdAtUtc) cur = e;
+      }
+      return cur;
+    },
+    /* `search` covers Name, Description, Notes and the subtype identity fields. */
+    propSearchHay: p => {
+      const d = H.propDetails(p);
+      return [p.name, p.description, p.notes, d.addressLine, d.city, d.cadastralNumber, d.registrationNumber, d.vin, d.make, d.model].filter(Boolean).join(' ').toLowerCase();
+    },
+    /* Service normalisation, previewed live in the dialog. */
+    propNormPlate: v => (v || '').replace(/\s+/g, '').toUpperCase(),
+    propAddressText: d => [d.addressLine, [d.postalCode, d.city].filter(Boolean).join(' '), d.countryCode].filter(Boolean).join(', '),
+    propArea: n => n == null ? null : `${Number(n).toLocaleString('en-US', {
+      maximumFractionDigits: 2
+    })} m²`
+  });
+})();
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/properties-data.js", error: String((e && e.message) || e) }); }
+
 // ui_kits/web/system-settings-data.js
 try { (() => {
 /* =============================================================
@@ -64410,6 +66348,23 @@ const SS_GROUPS = [{
     max: 1000,
     meta: null
   }]
+}, {
+  group: 'Properties',
+  icon: 'home_work',
+  rows: [
+  /* PropertyMaxSmartTagsPerProperty — ceiling names ListDefaults.MaxFilterArrayLength (50):
+     past it the resolution query's tagIds filter is rejected. */
+  {
+    key: 'propertyMaxSmartTagsPerProperty',
+    type: 'number',
+    claim: 'count',
+    icon: 'sell',
+    title: 'Smart tags per property',
+    desc: 'How many smart tags one property may carry. Capped at 50, the most tags one transactions query can filter on. The Properties page reads this value, so the limit it shows always matches what the server enforces.',
+    min: 1,
+    max: 50,
+    meta: null
+  }]
 }];
 
 // Saved state as it'd come back from GET /api/system-settings. Booleans and
@@ -64479,7 +66434,8 @@ const SS_SAVED = {
   calendarMaxEventDurationDays: 366,
   recurrenceMaxGeneratedOccurrences: 1000,
   importMaxSamplesPerSkipReason: 100,
-  accountMaxSmartTagsPerAccount: 20
+  accountMaxSmartTagsPerAccount: 20,
+  propertyMaxSmartTagsPerProperty: 20
 };
 Object.assign(window, {
   SS_GROUPS,

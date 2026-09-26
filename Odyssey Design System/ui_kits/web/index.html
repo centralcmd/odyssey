@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="photos.css" />
   <link rel="stylesheet" href="calendar.css" />
   <link rel="stylesheet" href="contacts.css" />
+  <link rel="stylesheet" href="properties.css" />
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
@@ -41,6 +42,7 @@
   <script src="calendar-data.js"></script>
   <script src="system-settings-data.js"></script>
   <script src="net-worth-data.js"></script>
+  <script src="properties-data.js"></script>
 </head>
 <body>
   <div id="root"></div>
@@ -63,6 +65,9 @@
   <script type="text/babel" src="AddEstimateModal.jsx"></script>
   <script type="text/babel" src="AccountEstimates.jsx"></script>
   <script type="text/babel" src="Accounts.jsx"></script>
+  <script type="text/babel" src="AddPropertyModal.jsx"></script>
+  <script type="text/babel" src="PropertyEstimates.jsx"></script>
+  <script type="text/babel" src="Properties.jsx"></script>
   <script type="text/babel" src="Files.jsx"></script>
   <script type="text/babel" src="Transactions.jsx"></script>
   <script type="text/babel" src="TransactionTags.jsx"></script>
@@ -112,7 +117,7 @@
 
     function App() {
       const [authed, setAuthed] = useState(true); // start on dashboard for review
-      const [view, setView] = useState('contracts'); // open on Contracts to review party roles + terms
+      const [view, setView] = useState('properties'); // open on Properties (new feature under review)
       const [authMode, setAuthMode] = useState('login');
       const [dark, setDark] = useState(true);
       const [tweaks, setTweak] = useTweaks({ reportLayout: 'table', summaryBaseCurrency: 'USD', endingWindowDays: 45, chargeWindowDays: 45, contractTermCap: 12, showOnboarding: false, cpCanImport: true, cpExportCap: false, cpImportOutcome: 'skips', cpResidualLabel: false, cpCanCreate: true, cpCanUpdate: true, cpCanDelete: true, cpAliasCap: 32, cpAvatarOutcome: 'ok', cpAvatarBroken: false, tCanImport: true, tExportCap: false, tImportOutcome: 'skips', jCanImport: true, jCanReadCp: true, jExportCap: false, jImportOutcome: 'skips', showPasswordGate: false, cprOutcome: 'success', usersResetOutcome: 'delivered', bgtCanCreateTag: true, bgtTagsFailed: false });
@@ -181,6 +186,7 @@
         >
           {view === 'home'         && <Dashboard onNavigate={setView} />}
           {view === 'accounts'     && <Accounts onNavigate={setView} />}
+          {view === 'properties'   && <Properties tweaks={tweaks} onNavigate={setView} />}
           {view === 'files'        && <Files onNavigate={setView} />}
           {view === 'transactions' && <Transactions onNavigate={setView} />}
           {view === 'tags'           && <TransactionTags />}
@@ -239,6 +245,23 @@
               <TweakRadio label="Layout" value={tweaks.reportLayout}
                           options={[{ value: 'table', label: 'Table' }, { value: 'tiles', label: 'Tiles' }]}
                           onChange={(v) => setTweak('reportLayout', v)} />
+            </React.Fragment>
+          )}
+          {view === 'properties' && (
+            <React.Fragment>
+              <TweakSection label="Properties · claims" />
+              <TweakRadio label="Role" value={tweaks.propRole || 'owner'}
+                          options={[{ value: 'owner', label: 'Owner / Admin' }, { value: 'user', label: 'User / Guest' }]}
+                          onChange={(v) => setTweak('propRole', v)} />
+              <TweakSection label="Property smart tags" />
+              <TweakSlider label="PropertyMaxSmartTagsPerProperty" min={1} max={50} step={1}
+                           value={tweaks.propSmartTagCap != null ? tweaks.propSmartTagCap : 20}
+                           unit=" tags" onChange={(v) => setTweak('propSmartTagCap', v)} />
+              <TweakToggle label="/api/property-limits degraded (503)" value={!!tweaks.propLimitsDegraded}
+                           onChange={(v) => setTweak('propLimitsDegraded', v)} />
+              <TweakSection label="List" />
+              <TweakToggle label="No properties yet" value={!!tweaks.propEmpty}
+                           onChange={(v) => setTweak('propEmpty', v)} />
             </React.Fragment>
           )}
           {view === 'contracts' && (

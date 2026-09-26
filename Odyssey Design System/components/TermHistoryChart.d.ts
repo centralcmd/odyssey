@@ -41,6 +41,9 @@ export interface TermHistoryChartProps {
   emptyText?: string;
   /** Header of the date column in the text-equivalent table. */
   textEquivalentLabel?: string;
+  /** Passed to StepChart. `"step"` (default) for terms; `"smooth"` or
+   *  `"linear"` for values that drift between entries, e.g. estimates. */
+  curve?: 'step' | 'linear' | 'smooth';
   className?: string;
 }
 

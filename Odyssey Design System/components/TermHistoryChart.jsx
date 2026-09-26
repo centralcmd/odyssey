@@ -33,6 +33,7 @@ export function TermHistoryChart({
   searchLabel = 'Search terms',
   emptyText = 'No matching term',
   textEquivalentLabel = 'Effective from',
+  curve = 'step',
   className,
 }) {
   const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
@@ -120,6 +121,7 @@ export function TermHistoryChart({
         lines={lines}
         showFigure={false}
         scale={scale || 'auto'}
+        curve={curve}
         color={lines[0].color}
         format={head.format}
         axisFormat={head.axisFormat}

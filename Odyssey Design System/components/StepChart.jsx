@@ -14,9 +14,12 @@
  *     ahead has not happened yet. The line holds solid to the now marker and
  *     dashes past it, so a scheduled increase is visibly not yet true.
  *
- * The line is a STAIRCASE by construction — the value holds until the day it
- * changes, then jumps. There is no smoothing option, because a price does not
- * drift.
+ * The line is a STAIRCASE by default — the value holds until the day it
+ * changes, then jumps, because a price does not drift. `curve` opts out for
+ * data that DOES drift between readings — an estimated value, an appraisal:
+ * `"linear"` joins the entries with straight segments, `"smooth"` with a
+ * monotone curve (never overshoots an entry, so no invented peak or dip).
+ * Either way the last entry holds flat to the edge — nothing is known past it.
  *
  * Data is `series: { date, value, id?, note? }[]` (ISO dates, oldest → newest),
  * or `lines: { id, label, color, points }[]` to compare SEVERAL histories.
@@ -92,6 +95,30 @@ function scClip(pts, bound, keepBelow) {
   return out;
 }
 const scPath = (pts) => (pts.length ? 'M ' + pts.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ') : '');
+/** Monotone cubic (Fritsch–Carlson) through pts, sampled into a polyline so
+ *  the now-marker clip and the area fill work unchanged. Never overshoots. */
+function scMonotone(pts, n = 16) {
+  if (pts.length < 3) return pts.slice();
+  const k = pts.length, d = [], m = new Array(k);
+  for (let i = 0; i < k - 1; i++) d.push((pts[i + 1].y - pts[i].y) / ((pts[i + 1].x - pts[i].x) || 1e-9));
+  m[0] = d[0]; m[k - 1] = d[k - 2];
+  for (let i = 1; i < k - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < k - 1; i++) {
+    if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / d[i], b = m[i + 1] / d[i], h = a * a + b * b;
+    if (h > 9) { const t = 3 / Math.sqrt(h); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
+  }
+  const out = [pts[0]];
+  for (let i = 0; i < k - 1; i++) {
+    const p0 = pts[i], p1 = pts[i + 1], dx = p1.x - p0.x;
+    for (let j = 1; j <= n; j++) {
+      const t = j / n, t2 = t * t, t3 = t2 * t;
+      out.push({ x: p0.x + dx * t,
+        y: (2 * t3 - 3 * t2 + 1) * p0.y + (t3 - 2 * t2 + t) * dx * m[i] + (-2 * t3 + 3 * t2) * p1.y + (t3 - t2) * dx * m[i + 1] });
+    }
+  }
+  return out;
+}
 const scSort = (pts) => (pts || [])
   .filter((p) => p && p.value != null && p.date)
   .slice()
@@ -101,6 +128,7 @@ export function StepChart({
   series = [],
   lines,
   scale = 'auto',
+  curve = 'step',
   color = 'var(--chart-1)',
   title,
   sub,
@@ -260,12 +288,13 @@ export function StepChart({
     /* Every series is drawn, including one that has never changed: flat at 0%
        beside a rising line is an answer to "which of these is moving", not an
        absence of one. Coincidence is handled below, where it happens. */
-    const walk = [];
+    let walk = [];
     s.pts.forEach((p, i) => {
       const px = sx(scMs(p.date)), py = sy(plotted(s, p.value));
-      if (i === 0) walk.push({ x: px, y: py });
+      if (i === 0 || curve !== 'step') walk.push({ x: px, y: py });
       else { walk.push({ x: px, y: walk[walk.length - 1].y }); walk.push({ x: px, y: py }); }
     });
+    if (curve === 'smooth') walk = scMonotone(walk);
     walk.push({ x: sx(tMax), y: walk[walk.length - 1].y });
     const solid = scClip(walk, nowX, true);
     const dashed = scClip(walk, nowX, false);

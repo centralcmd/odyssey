@@ -19,7 +19,7 @@
    the house money() format — several shipped currencies share a glyph, so a
    symbol is ambiguous exactly where the figure matters. */
 
-const AddEstimateModal = ({ account, estimate, existing = [], onClose, onSave, leadIcon }) => {
+const AddEstimateModal = ({ account, estimate, existing = [], onClose, onSave, leadIcon, ownerNoun = 'account', showHint = true }) => {
   const { useState } = React;
   const H = window.OdysseyHelpers;
   const isEdit = !!estimate;
@@ -50,7 +50,7 @@ const AddEstimateModal = ({ account, estimate, existing = [], onClose, onSave, l
 
     const dup = existing.some(e =>
       e.id !== (estimate && estimate.id) && e.effectiveFrom === draft.effectiveFrom);
-    if (dup) next.effectiveFrom = 'This account already has an estimate on that date.';
+    if (dup) next.effectiveFrom = `This ${ownerNoun} already has an estimate on that date.`;
 
     if (Object.keys(next).length) { setErrors(next); return; }
 
@@ -98,7 +98,7 @@ const AddEstimateModal = ({ account, estimate, existing = [], onClose, onSave, l
           currencyEditable={false}
           error={errors.value}
           help={preview == null
-            ? <React.Fragment>Account currency · <b>{currency}</b></React.Fragment>
+            ? <React.Fragment>{ownerNoun === 'account' ? 'Account' : 'Property'} currency · <b>{currency}</b></React.Fragment>
             : <React.Fragment>Recorded as <b>{preview}</b></React.Fragment>}
         />
       </div>
@@ -116,7 +116,7 @@ const AddEstimateModal = ({ account, estimate, existing = [], onClose, onSave, l
         error={errors.note} />
 
       {/* Recommendation hint — never gates; just orients */}
-      {!isEdit && (
+      {!isEdit && showHint && (
         <div className="est-rec-hint">
           <MIcon name={recommended ? 'recommend' : 'info'} size={16} />
           {recommended

@@ -304,9 +304,12 @@ const TransactionTags = createTagsPage({
   blockers: (tag, d) => {
     const items = (d.budgets || []).reduce((n, b) => n + (b.items || []).filter(i => i.tagId === tag.id).length, 0);
     const contracts = Object.values(d.contractSmartTagSeed || {}).filter(ids => ids.includes(tag.id)).length;
+    // Fifth clause (Property backend §5): PropertySmartTags, counts only.
+    const properties = Object.values(d.propertySmartTagSeed || {}).filter(ids => ids.includes(tag.id)).length;
     return [
       items ? `${items} budget item${items === 1 ? '' : 's'} plan${items === 1 ? 's' : ''} for this tag.` : null,
       contracts ? `This tag is a smart tag on ${contracts} contract${contracts === 1 ? '' : 's'}.` : null,
+      properties ? `This tag is a smart tag on ${properties} propert${properties === 1 ? 'y' : 'ies'}. Remove it there first.` : null,
     ].filter(Boolean);
   },
 });

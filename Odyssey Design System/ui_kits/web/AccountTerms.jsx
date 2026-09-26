@@ -96,9 +96,9 @@ const ptsToPath = (pts) => pts.length ? 'M ' + pts.map(p => `${p.x.toFixed(1)} $
    terms are usually AMOUNTS, not rates, and an axis reading "2.7%" beside a
    monthly rent is simply wrong. Percentage is the default, so the account hero
    is unchanged. */
-const TermStepChart = ({ series, color, fmtAxis, ariaLabel }) => {
+const TermStepChart = ({ series, color, fmtAxis, ariaLabel, padLeft = 48 }) => {
   const W = 680, Hh = 210;
-  const padL = 48, padR = 18, padT = 16, padB = 28;
+  const padL = padLeft, padR = 18, padT = 16, padB = 28;
   const plotW = W - padL - padR;
   const plotH = Hh - padT - padB;
   const baseY = padT + plotH;

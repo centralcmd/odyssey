@@ -24,6 +24,7 @@ const MODULES = [
     groups: [
       { label: 'Money', items: [
         { key: 'accounts', label: 'Accounts', icon: 'account_balance_wallet' },
+        { key: 'properties', label: 'Properties', icon: 'home_work' },
         { key: 'transactions', label: 'Transactions', icon: 'receipt_long' },
         { key: 'budgets', label: 'Budgets', icon: 'pie_chart' },
       ] },

@@ -52,6 +52,14 @@ export interface StepChartProps {
    * control rather than choosing for the reader.
    */
   scale?: 'auto' | 'indexed' | 'absolute';
+  /**
+   * How entries are joined. `"step"` (default) holds each value until the
+   * next entry, then jumps — right for a price, a rate, a term. `"linear"`
+   * draws straight segments between entries and `"smooth"` a monotone curve
+   * (no overshoot) — for a value that drifts between readings, such as an
+   * estimated market value. The last entry holds flat to the edge in all modes.
+   */
+  curve?: 'step' | 'linear' | 'smooth';
   /** Line + area + dot color for the single-series form. Default `var(--chart-1)`. */
   color?: string;
   /** Card title (left of the head). */
@@ -135,8 +143,9 @@ export interface StepChartProps {
  * `lines` compares several histories, as indexed change by default or real
  * figures with `scale="absolute"`.
  *
- * The line is a staircase by construction: a price does not drift, it holds
- * until the day it changes. Every figure it states — head, delta, legend, text
+ * The line is a staircase by default: a price does not drift, it holds
+ * until the day it changes. `curve="linear" | "smooth"` joins entries directly,
+ * for values that drift between readings (estimates). Every figure it states — head, delta, legend, text
  * equivalent — is the value **in force** (the latest entry that has already
  * taken effect), never a scheduled one: a future increase is drawn and
  * disclosed in `sub`, but it is not what the thing costs. Backs the contract &

@@ -1,0 +1,14 @@
+/* Properties — page-specific bits only; everything else is the shared record scaffold. */
+.prop-type-locked{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--mud-palette-lines-default);border-radius:10px;background:var(--rec-soft)}
+.prop-type-glyph{flex:none;width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--mud-palette-surface);color:var(--rec)}
+.prop-type-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.prop-type-label{display:flex;align-items:center;gap:6px;font:600 14px/1.3 var(--font-sans);color:var(--mud-palette-text-primary)}
+.prop-type-label .material-symbols-rounded,.prop-type-label .material-icons{color:var(--mud-palette-text-secondary)}
+.prop-type-help{font:400 12.5px/1.5 var(--font-sans);color:var(--mud-palette-text-secondary);text-wrap:pretty}
+.prop-sort-note{display:flex;align-items:center;gap:6px;font:400 12.5px/1.4 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.prop-stats{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.prop-del-list{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:10px;background:var(--mud-palette-background-gray,rgba(127,127,127,.08));font:400 13.5px/1.4 var(--font-sans);color:var(--mud-palette-text-primary)}
+.prop-del-list>div{display:flex;align-items:center;gap:10px}
+.prop-del-list .material-symbols-rounded,.prop-del-list .material-icons{color:var(--mud-palette-text-secondary)}
+.prop-del-foot{margin:0;font:400 13px/1.55 var(--font-sans);color:var(--mud-palette-text-secondary);text-wrap:pretty}
+.prop-addr-tile .odc-infotile-v{white-space:normal;word-break:break-word;overflow:visible;text-overflow:clip}
