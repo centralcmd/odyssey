@@ -70,7 +70,7 @@ public class ContractPartyTileTests
 
     private static IRenderedComponent<DetailHost> Render(
         ExistingContractParty party, bool canWrite = true, bool canView = false,
-        bool? canViewAccounts = null, bool? canViewContacts = null)
+        bool? canViewAccounts = null, bool? canViewContacts = null, bool canViewProperties = false)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -88,7 +88,8 @@ public class ContractPartyTileTests
             .Add(h => h.Party, party)
             .Add(h => h.CanWrite, canWrite)
             .Add(h => h.CanViewAccounts, canViewAccounts ?? canView)
-            .Add(h => h.CanViewContacts, canViewContacts ?? canView));
+            .Add(h => h.CanViewContacts, canViewContacts ?? canView)
+            .Add(h => h.CanViewProperties, canViewProperties));
     }
 
     /// <summary>The same fixture with SEVERAL parties, for the cases about tile order.</summary>
@@ -462,6 +463,55 @@ public class ContractPartyTileTests
         Assert.EndsWith("/contacts", cut.Services.GetRequiredService<NavigationManager>().Uri, StringComparison.Ordinal);
     }
 
+    /// <summary>A property party (issue #208): the minimal reference is all the tile has to draw from.</summary>
+    private static ExistingContractParty PropertyParty(bool resolved = true) => new()
+    {
+        ContractPartyId = PartyId,
+        ContractId = ContractId,
+        Kind = ContractPartyKind.Property,
+        Property = resolved
+            ? new ContractPropertyReference { PropertyId = AccountId, Name = "Cabin at Hafjell", Type = PropertyType.Vehicle }
+            : null,
+        Role = ContractPartyRole.Object,
+    };
+
+    /// <summary>
+    /// Issue #208 — a property party names the property and captions it with the property's TYPE,
+    /// drawn in the type's glyph; it is never misread as a contact ("Institution").
+    /// </summary>
+    [Fact]
+    public void A_property_party_names_the_property_and_captions_its_type()
+    {
+        var cut = Render(PropertyParty());
+
+        Assert.Contains("Cabin at Hafjell", cut.Find(".con-party-tile").TextContent, StringComparison.Ordinal);
+        Assert.Equal("Vehicle", cut.Find(".con-party-tile .odc-infotile-foot").TextContent.Trim());
+        Assert.Contains("directions_car", cut.Find(".con-party-tile").InnerHtml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_unresolved_property_party_keeps_its_role_and_reads_as_a_bare_party()
+    {
+        var cut = Render(PropertyParty(resolved: false));
+
+        Assert.Equal("Party", cut.Find(".con-party-tile .odc-infotile-foot").TextContent.Trim());
+        Assert.DoesNotContain("Edit party", MenuLabels(cut));
+    }
+
+    /// <summary>A property party's View opens the Properties page, gated on properties.read alone.</summary>
+    [Fact]
+    public void View_opens_the_properties_page_for_a_property_party_only_with_properties_read()
+    {
+        Assert.DoesNotContain("View", MenuLabels(Render(PropertyParty(), canViewAccounts: true, canViewContacts: true)));
+
+        var cut = Render(PropertyParty(), canViewProperties: true);
+        var labels = MenuLabels(cut);
+        Assert.Equal("View", labels[0]);
+        Assert.Contains("Edit party", labels);
+        cut.FindAll(".mud-menu-item").First(i => i.TextContent.Contains("View", StringComparison.Ordinal)).Click();
+        Assert.EndsWith("/properties", cut.Services.GetRequiredService<NavigationManager>().Uri, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// Each kind is gated on ITS OWN target's claim: accounts.read opens nothing for a contact party,
     /// and contacts.read opens nothing for an account party. A swapped claim check fails here.
@@ -551,6 +601,9 @@ public class ContractPartyTileTests
         /// <summary>Stands in for contacts.read.</summary>
         [Parameter] public bool CanViewContacts { get; set; }
 
+        /// <summary>Stands in for properties.read.</summary>
+        [Parameter] public bool CanViewProperties { get; set; }
+
         public List<ExistingContractParty> Edited { get; } = [];
 
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
@@ -568,6 +621,7 @@ public class ContractPartyTileTests
             builder.AddComponentParameter(3, nameof(ContractDetailView.CanWrite), CanWrite);
             builder.AddComponentParameter(5, nameof(ContractDetailView.CanViewAccounts), CanViewAccounts);
             builder.AddComponentParameter(6, nameof(ContractDetailView.CanViewContacts), CanViewContacts);
+            builder.AddComponentParameter(7, nameof(ContractDetailView.CanViewProperties), CanViewProperties);
             if (CanWrite)
             {
                 builder.AddComponentParameter(4, nameof(ContractDetailView.OnEditParty),

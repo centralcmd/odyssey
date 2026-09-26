@@ -68,6 +68,7 @@ public partial class PropertiesCard
     private bool _canReadEstimates;
     private bool _canWriteEstimates;
     private bool _canReadTransactions;
+    private bool _canReadContracts;
 
     // ── Dialogs ──────────────────────────────────────────────────────────────────
     private Guid _createKey = Guid.Empty;
@@ -117,6 +118,7 @@ public partial class PropertiesCard
         _canReadEstimates = user.HasPermission(PermissionClaims.PropertiesEstimatesRead);
         _canWriteEstimates = user.HasPermission(PermissionClaims.PropertiesEstimatesWrite);
         _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
+        _canReadContracts = user.HasPermission(PermissionClaims.ContractsRead);
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────
@@ -415,13 +417,24 @@ public partial class PropertiesCard
         return [OdsRecordMeta.Text(kind.Label), OdsRecordMeta.Text(p.Description), OdsRecordMeta.Text(where)];
     }
 
-    private IReadOnlyList<OdsRecordCount> CountsFor(ExistingProperty p)
+    private IReadOnlyList<OdsRecordCount> CountsFor(ExistingProperty p) => CountsFor(p, _canReadEstimates);
+
+    /// <summary>
+    /// The collapsed card's counts. Estimates follow <c>properties.estimates.read</c>; the contract
+    /// count needs no claim of its own, because the server already withholds it (null) without
+    /// <c>contracts.read</c> — and, as on an account, a property party to nothing states no count.
+    /// </summary>
+    internal static IReadOnlyList<OdsRecordCount> CountsFor(ExistingProperty p, bool canReadEstimates)
     {
-        var counts = new List<OdsRecordCount>(2);
-        if (_canReadEstimates)
+        var counts = new List<OdsRecordCount>(3);
+        if (canReadEstimates)
             counts.Add(new OdsRecordCount("monitor", (p.EstimateCount ?? 0).ToString(CultureInfo.CurrentCulture), "Estimates"));
 
         counts.Add(new OdsRecordCount("sell", p.SmartTagCount.ToString(CultureInfo.CurrentCulture), "Smart tags"));
+
+        if (p.ContractCount is > 0 and var contractCount)
+            counts.Add(new OdsRecordCount("handshake", contractCount.ToString(CultureInfo.CurrentCulture), "Contracts"));
+
         return counts;
     }
 

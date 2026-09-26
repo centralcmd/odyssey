@@ -28,6 +28,9 @@ public partial class ContractDetailView : IAsyncDisposable
     /// <inheritdoc cref="CanViewAccounts"/>
     [Parameter] public bool CanViewContacts { get; set; }
 
+    /// <inheritdoc cref="CanViewAccounts"/>
+    [Parameter] public bool CanViewProperties { get; set; }
+
     /// <summary>
     /// Gates the Smart tags section (issue #166), which resolves its watchlist through the
     /// transactions endpoint. Without <c>transactions.read</c> the section could only show chips and
@@ -210,6 +213,14 @@ public partial class ContractDetailView : IAsyncDisposable
                 var m = OdsTypeRegistries.ContactTypeOf(c.Type.ToString());
                 return new PartyVisual("Contact", c.Name, m.Label, m.Icon, m.Color, m.Soft);
             }
+            // Issue #208. The reference carries id, name and TYPE only — never the detail row — so the
+            // caption is the type ("Real estate", "Vehicle"), the design system's own fallback when the
+            // finer kind is not known, and never an address, registration or VIN.
+            case ContractPartyKind.Property when party.Property is { } pr:
+            {
+                var t = OdsTypeRegistries.PropertyTypeOf(pr.Type);
+                return new PartyVisual("Property", pr.Name, t.Label, t.Icon, t.Color, t.Soft);
+            }
             default:
                 // Neither reference projection resolved. The ROLE still reads on the overline — it is a
                 // top-level field on the party and does not depend on the target — but there is no
@@ -222,7 +233,7 @@ public partial class ContractDetailView : IAsyncDisposable
     /// The party's actions. View leads, for any caller who may open the target's page; everything
     /// after it needs <see cref="CanWrite"/>, so a read-only caller's menu is View alone or absent.
     /// For a writer Copy ID is unconditional, which is what keeps the menu non-empty for a party whose
-    /// target did not resolve. Detach removes the LINK; the account or contact itself is
+    /// target did not resolve. Detach removes the LINK; the account, contact or property itself is
     /// untouched, which is why it is not worded as a delete.
     /// </summary>
     /// <remarks>
@@ -236,7 +247,7 @@ public partial class ContractDetailView : IAsyncDisposable
     private IReadOnlyList<OdsMenuItem> MenuFor(ExistingContractParty party, PartyVisual visual)
     {
         var items = new List<OdsMenuItem>();
-        var resolved = party.Account is not null || party.Institution is not null;
+        var resolved = party.Account is not null || party.Institution is not null || party.Property is not null;
 
         // View is navigation, not a write, so it is offered to a read-only caller too — the one item
         // such a caller gets. It needs a resolved target: an unresolved party names no record.
@@ -300,6 +311,7 @@ public partial class ContractDetailView : IAsyncDisposable
     {
         { Kind: ContractPartyKind.Account, Account: not null } when CanViewAccounts => "accounts",
         { Kind: ContractPartyKind.Institution, Institution: not null } when CanViewContacts => "contacts",
+        { Kind: ContractPartyKind.Property, Property: not null } when CanViewProperties => "properties",
         _ => null,
     };
 

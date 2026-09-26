@@ -5,9 +5,10 @@ namespace Odyssey.Dtos.Finance;
 /// <summary>
 /// Writes ONE party onto a contract — the body of both the add (<c>POST …/parties</c>) and the edit
 /// (<c>PUT …/parties/{partyId}</c>), which take identical fields (issue #121 §5). Exactly one of the
-/// two scalar ids must be set — the one-of-two (XOR) invariant. Deliberately carries scalar ids only
-/// (no nested account/contact object) so a party link can never over-post or mutate the target entity
-/// (issue #174 §10 #3); the edit inherits that invariant unchanged.
+/// three scalar ids must be set — the one-of-three invariant (issue #208 added <see cref="PropertyId"/>).
+/// Deliberately carries scalar ids only (no nested account/contact/property object) so a party link can
+/// never over-post or mutate the target entity (issue #174 §10 #3); the edit inherits that invariant
+/// unchanged.
 /// </summary>
 /// <remarks>
 /// <b><c>null</c> means the default term here, not "unchanged".</b> This is the one place the contract
@@ -34,6 +35,9 @@ public sealed record ContractPartyRequest
     public Guid? AccountId { get; set; }
 
     public Guid? ContactId { get; set; }
+
+    /// <summary>A property as the party (issue #208). A GUID has no length or range to annotate.</summary>
+    public Guid? PropertyId { get; set; }
 
     /// <summary>
     /// What the linked record does in the agreement. <b>Required</b> (issue #157 §8.1): with

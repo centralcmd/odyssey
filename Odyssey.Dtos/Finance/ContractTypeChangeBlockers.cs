@@ -38,7 +38,8 @@ public sealed record BlockingContractParty
     public required ContractPartyRole Role { get; set; }
 
     /// <summary>
-    /// The party's target as the caller already sees it on the contract — an account or contact name.
+    /// The party's target as the caller already sees it on the contract — a contact, account or
+    /// property name.
     /// <see langword="null"/> when the target no longer resolves: the id is what keeps the round trip
     /// honest, the name is the personal data and stays out.
     /// </summary>

@@ -207,10 +207,19 @@ That last group is what makes `users.delete` genuinely atomic: `UserAdministrati
 opens one transaction, and the cascades and set-nulls now resolve inside it. See
 `Odyssey.Context/README.md` for both tables.
 
-**A contract party is one-of-TWO** — an `Account` or a `Contact` ("Institution"). A third target,
-`ContractParty.InsurancePolicyId`, was dropped when the design system reduced parties to two kinds.
-`ContractPartyKind` keeps the surviving ordinals (`Account = 0`, `Institution = 1`), so no persisted or
-wire value shifted meaning.
+**A contract party is one-of-THREE** — an `Account`, a `Contact` ("Institution") or a `Property`
+(issue #208). An earlier third target, `ContractParty.InsurancePolicyId`, was dropped when the design
+system reduced parties to two kinds, and its ordinal stays a permanent hole: `ContractPartyKind` is
+`Account = 0`, `Institution = 1`, `Property = 3` — never `2`, which a stale payload read as
+`InsurancePolicy`. `ContractPartyRole.Property` (18, what the contract is *about*) and
+`ContractPartyKind.Property` (the target *is* a property record) are different enums answering
+different questions; no validation links them. A property party exposes only
+`ContractPropertyReference` (id, name, type) under `contracts.read` — never an address, registration
+number or VIN — and the write stays gated on `contracts.update` alone, which is licensed only while no
+role holds it without `properties.read` (`AuthorizationPolicyTests` pins that). `PropertyService.Delete`
+removes the property's party rows by tracked `RemoveRange`, stages a `PartyRemoved` event on each
+contract and writes the shared `ContractPartyAudit` line per row — deliberately stricter than
+`AccountService.Delete`, which relies on the FK cascade alone.
 
 **Which party roles are legal is decided by the contract's TYPE, and the matrix is declared ONCE**
 (issue #157). `ContractPartyRoleMatrix` lives in `Odyssey.Dtos/Finance/`, which holds zero project
@@ -460,7 +469,8 @@ tables they belong with — that guard reflects over every `DbSet` and fails the
 the picture to the whole-database admin export would export a face from a document that deliberately
 omits the subject's name and birth date, to a `data.export` holder who is never the data subject.
 
-**A property is a `Contact`-shaped aggregate that nothing else references** (issue #167).
+**A property is a `Contact`-shaped aggregate that only contract parties reference** (issue #167;
+issue #208 added the party link, which cascades with the property and never blocks its delete).
 `Property` carries a `Type` (`RealEstate`/`Vehicle`) and exactly one 1:1 detail row sharing its key
 (`RealEstateDetails`/`VehicleDetails`), plus two **sibling** tables — `PropertyEstimates` and
 `PropertySmartTags` — rather than a second owner widened onto `AccountEstimates`/`AccountSmartTags`.

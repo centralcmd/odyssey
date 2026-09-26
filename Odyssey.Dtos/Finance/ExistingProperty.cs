@@ -52,6 +52,14 @@ public sealed record ExistingProperty
     public int SmartTagCount { get; set; }
 
     /// <summary>
+    /// Number of distinct contracts naming this property as a party (issue #208), or <c>null</c> when the
+    /// caller does not hold <c>contracts.read</c> — withheld rather than zeroed, as
+    /// <c>ExistingAccount.ContractCount</c> is: a zero would state "no contracts" to a caller who may
+    /// not know either way.
+    /// </summary>
+    public int? ContractCount { get; set; }
+
+    /// <summary>
     /// How many estimates the property carries. <c>null</c> when the caller does not hold
     /// <c>properties.estimates.read</c> — the estimate figures below are gated the same way, so a
     /// <c>properties.read</c>-only reader learns nothing about the value history from the list.

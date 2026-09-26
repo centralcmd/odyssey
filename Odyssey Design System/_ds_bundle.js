@@ -58071,14 +58071,14 @@ try { (() => {
     soft: 'oklch(0.72 0.15 25 / 0.16)',
     desc: 'The agreement was brought to an end. This does not change the contract’s status.'
   }, {
-    key: 'PriceChanged',
+    key: 'TermChanged',
     label: 'Term changed',
     enumValue: 6,
     icon: 'price_change',
     color: 'oklch(0.76 0.14 320)',
     soft: 'oklch(0.76 0.14 320 / 0.16)',
-    auto: 'the agreement was re-priced',
-    desc: 'What the agreement costs was renegotiated or re-set.'
+    auto: 'a term of the agreement was changed',
+    desc: 'A term of the agreement (a price, rate, date or clause) was set or changed.'
   }, {
     key: 'EmailSent',
     label: 'Email sent',
@@ -58233,7 +58233,7 @@ try { (() => {
       id: 'cev-l3',
       contractId: 'ct-lease',
       source: 'user',
-      type: 'PriceChanged',
+      type: 'TermChanged',
       title: 'Rent renegotiated to 2,250 USD',
       description: 'Agreed by phone with the letting agent, then confirmed in writing. A CPI basis was requested and refused; settled at 4.7%.',
       notes: 'Check last year’s letter before the next review.',
@@ -58329,7 +58329,7 @@ try { (() => {
       id: 'cev-f2',
       contractId: 'ct-fiber',
       source: 'user',
-      type: 'PriceChanged',
+      type: 'TermChanged',
       title: 'Monthly charge raised to $84',
       description: 'Annual CPI+3.9% uplift clause. No right to exit on the increase.',
       notes: null,

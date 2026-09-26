@@ -968,10 +968,53 @@ public class ContractService
         ];
     }
 
+    /// <summary>
+    /// Every contract naming <paramref name="propertyId"/> as a party, one row per contract with each
+    /// role the property holds there, for the property record's Contracts section (issue #208 §5.5).
+    /// <see cref="ListForAccountAsync"/> line for line: <see langword="null"/> when the property does
+    /// not exist, archived contracts included, ordered by name then id.
+    /// </summary>
+    public async Task<List<PropertyContractLink>?> ListForPropertyAsync(
+        Guid propertyId, CancellationToken cancellationToken = default)
+    {
+        if (!await context.Properties.AnyAsync(p => p.PropertyId == propertyId, cancellationToken))
+            return null;
+
+        var today = Today;
+        var rows = await context.Contracts
+            .AsNoTracking()
+            .Where(c => c.Parties.Any(p => p.PropertyId == propertyId))
+            .Select(c => new
+            {
+                Contract = c,
+                Roles = c.Parties
+                    .Where(p => p.PropertyId == propertyId)
+                    .OrderBy(p => p.ContractPartyId)
+                    .Select(p => p.Role)
+                    .ToList(),
+            })
+            .ToListAsync(cancellationToken);
+
+        return
+        [
+            .. rows
+                .Select(x => new PropertyContractLink
+                {
+                    ContractId = x.Contract.ContractId,
+                    Name = x.Contract.Name,
+                    Type = x.Contract.Type.Adapt<DtoContractType>(),
+                    Status = DeriveStatus(x.Contract, today),
+                    Roles = [.. x.Roles.Select(r => r.Adapt<DtoContractPartyRole>())],
+                })
+                .OrderBy(l => l.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(l => l.ContractId),
+        ];
+    }
+
     // ── Parties ──────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Links one account or contact to a contract, in a role, optionally for a term (issue #121 §5).
+    /// Links one account, contact or property to a contract, in a role, optionally for a term (issue #121 §5).
     /// Returns <see langword="null"/> when the contract does not exist.
     /// </summary>
     public async Task<ExistingContractParty?> AddParty(
@@ -1005,6 +1048,7 @@ public class ContractService
             ContractId = contractId,
             AccountId = request.AccountId,
             ContactId = request.ContactId,
+            PropertyId = request.PropertyId,
             Role = role,
             FromDate = fromDate,
             ToDate = toDate,
@@ -1064,7 +1108,7 @@ public class ContractService
 
         // Only a NEW target is validated for existence, so re-dating a party whose contact was deleted
         // meanwhile does not fail.
-        if (party.AccountId != request.AccountId || party.ContactId != request.ContactId)
+        if (!SameTarget(party, request))
         {
             await EnsureTargetExists(request, cancellationToken);
         }
@@ -1079,10 +1123,11 @@ public class ContractService
         // in place and stays one party (issue #121), but from the agreement's point of view one party
         // left and another joined — which is exactly the change a reader of the log needs to see, and
         // which would otherwise let a party vanish from the tiles with a silent log (issue #154 §8.2).
-        var targetChanged = party.AccountId != request.AccountId || party.ContactId != request.ContactId;
+        var targetChanged = !SameTarget(party, request);
 
         party.AccountId = request.AccountId;
         party.ContactId = request.ContactId;
+        party.PropertyId = request.PropertyId;
         party.Role = role;
         party.FromDate = fromDate;
         party.ToDate = toDate;
@@ -1132,48 +1177,25 @@ public class ContractService
     }
 
     /// <summary>What the "after" slot reads when there is no role after the write, i.e. on a detach.</summary>
-    private const string NoRole = "(none)";
+    private const string NoRole = ContractPartyAudit.NoRole;
 
     /// <summary>
     /// One structured <c>Information</c> line per party write (issue #121 §7.7). <c>ContractParty</c>
-    /// deliberately carries no <c>CreatedByUserId</c> column — no v1 role confers or transfers an
-    /// entitlement that must not vanish silently — but the <c>PUT</c> is a full
-    /// replacement in which an omitted <c>role</c> silently resets to <c>Unspecified</c>, so without
-    /// this line an accidental employment-relationship downgrade would leave no trace anywhere.
+    /// deliberately carries no <c>CreatedByUserId</c> column, so without this line an accidental role
+    /// downgrade on the full-replacement <c>PUT</c> would leave no trace anywhere. A thin call to
+    /// <see cref="ContractPartyAudit"/>, which <c>PropertyService.Delete</c> shares (issue #208), so the
+    /// two sites cannot drift.
     /// </summary>
-    /// <remarks>
-    /// Every value is an opaque identifier or a closed enum — never a name, an address or any free
-    /// text — so the line identifies the rows a reader would then have to hold <c>contracts.read</c>
-    /// to resolve, and discloses nothing by itself. The target is read back off the persisted
-    /// <paramref name="party"/> rather than from the request, so it records what was actually written.
-    ///
-    /// <para>
-    /// The one-of-two target collapses to a single <c>targetId</c> here because that is what the line
-    /// means: which record this link points at. Which of the two columns held it is already implied by
-    /// the party row, and naming it per-column would make the log shape depend on the target kind.
-    /// </para>
-    /// </remarks>
     private void LogPartyWrite(
         string action, ContractParty party, ContextContractPartyRole? previousRole, string? userId,
-        string? roleAfter = null)
-    {
-        // A Guid, so it cannot carry the CR/LF a forged log line would need, and an opaque row id
-        // rather than a credential. Both are why this is safe to record verbatim.
-        Guid? targetId = party.AccountId ?? party.ContactId;
+        string? roleAfter = null) =>
+        ContractPartyAudit.Log(logger, action, party, previousRole, userId, roleAfter);
 
-        logger.LogInformation(
-            "Contract party {Action}: contract {ContractId}, party {ContractPartyId}, target {TargetId}, " +
-            "role {RoleBefore} -> {RoleAfter}, by user {UserId}.",
-            action,
-            party.ContractId,
-            party.ContractPartyId,
-            targetId,
-            // No fabricated "previous role" on an add. Unspecified is gone and substituting Other
-            // would assert a role the party never held, so the slot reads as genuinely absent.
-            previousRole?.ToString() ?? NoRole,
-            roleAfter ?? party.Role.ToString(),
-            userId ?? "(unknown)");
-    }
+    /// <summary>Whether <paramref name="request"/> names the same target the stored row does.</summary>
+    private static bool SameTarget(ContractParty party, ContractPartyRequest request) =>
+        party.AccountId == request.AccountId &&
+        party.ContactId == request.ContactId &&
+        party.PropertyId == request.PropertyId;
 
     private async Task<ExistingContractParty> ProjectPartyAsync(Guid partyId, CancellationToken cancellationToken)
     {
@@ -1299,6 +1321,7 @@ public class ContractService
                 p.Role,
                 p.ContactId,
                 AccountName = p.Account != null ? p.Account.Name : null,
+                PropertyName = p.Property != null ? p.Property.Name : null,
             })
             .OrderBy(p => p.ContractPartyId)
             .ToListAsync(cancellationToken);
@@ -1324,34 +1347,43 @@ public class ContractService
                 Role = p.Role.Adapt<DtoContractPartyRole>(),
                 // An unresolvable target keeps its row and loses its name — the rule the link
                 // link collections already follow.
+                // Resolved contact → account → property (issue #208 §8).
                 DisplayName = p.ContactId is { } contactId
                     ? contacts.GetValueOrDefault(contactId)?.Name
-                    : p.AccountName,
+                    : p.AccountName ?? p.PropertyName,
             }),
         ];
     }
 
-    // One-of-two (XOR): exactly one target id must be set.
+    // One-of-three: exactly one target id must be set (issue #208 widened it from one-of-two).
     private static void EnsurePartyTargetXor(ContractPartyRequest request)
     {
         var setCount =
             (request.AccountId is not null ? 1 : 0) +
-            (request.ContactId is not null ? 1 : 0);
+            (request.ContactId is not null ? 1 : 0) +
+            (request.PropertyId is not null ? 1 : 0);
         if (setCount != 1)
         {
-            throw new DomainValidationException(
-                "Exactly one of accountId or contactId must be set.");
+            // Keyed on the property field when it is one of several targets sent, so a client that
+            // offered the property picker renders the message there (issue #208 §5.1).
+            const string message = "Exactly one of accountId, contactId or propertyId must be set.";
+            if (setCount > 1 && request.PropertyId is not null)
+            {
+                throw new DomainValidationException(message, code: null, field: nameof(ContractPartyRequest.PropertyId));
+            }
+
+            throw new DomainValidationException(message);
         }
     }
 
     /// <summary>
-    /// The field key the inline-rendered party failures are attributed to: whichever of the two target
+    /// The field key the inline-rendered party failures are attributed to: whichever of the three target
     /// ids the caller actually sent, since that is the control the client rendered.
     /// </summary>
     private static string PartyTargetField(ContractPartyRequest request) =>
-        request.AccountId is not null
-            ? nameof(ContractPartyRequest.AccountId)
-            : nameof(ContractPartyRequest.ContactId);
+        request.AccountId is not null ? nameof(ContractPartyRequest.AccountId)
+        : request.ContactId is not null ? nameof(ContractPartyRequest.ContactId)
+        : nameof(ContractPartyRequest.PropertyId);
 
     /// <summary>
     /// A party's term is the party's own fact, with one tie to the contract: it cannot begin before the
@@ -1977,6 +2009,16 @@ public class ContractService
                     $"Contact ID {contactId} not found.", nameof(ContractPartyRequest.ContactId));
             }
         }
+        else if (request.PropertyId is { } propertyId)
+        {
+            // An archived or disposed property may still be linked: history must stay recordable
+            // (issue #208 §8), exactly as an archived account can be.
+            if (!await context.Properties.AnyAsync(p => p.PropertyId == propertyId, cancellationToken))
+            {
+                throw new DomainNotFoundException(
+                    $"Property ID {propertyId} not found.", nameof(ContractPartyRequest.PropertyId));
+            }
+        }
     }
 
     /// <summary>
@@ -2001,7 +2043,8 @@ public class ContractService
             p.Role == role &&
             (excludingPartyId == null || p.ContractPartyId != excludingPartyId) &&
             ((request.AccountId != null && p.AccountId == request.AccountId) ||
-             (request.ContactId != null && p.ContactId == request.ContactId)), cancellationToken);
+             (request.ContactId != null && p.ContactId == request.ContactId) ||
+             (request.PropertyId != null && p.PropertyId == request.PropertyId)), cancellationToken);
         if (duplicate)
         {
             throw new DomainConflictException(
@@ -2016,6 +2059,7 @@ public class ContractService
     {
         return await context.Contracts
             .Include(c => c.Parties).ThenInclude(p => p.Account)
+            .Include(c => c.Parties).ThenInclude(p => p.Property)
             .Include(c => c.Files).ThenInclude(f => f.FileMetadata)
             .FirstOrDefaultAsync(c => c.ContractId == id, cancellationToken);
     }
@@ -2042,6 +2086,7 @@ public class ContractService
     {
         return await context.ContractParties
             .Include(p => p.Account)
+            .Include(p => p.Property)
             .FirstOrDefaultAsync(p => p.ContractPartyId == partyId, cancellationToken);
     }
 
@@ -2091,53 +2136,65 @@ public class ContractService
         };
     }
 
-    // Explicit member mapping (never a permissive Adapt) so a future field added to Account or
-    // Contact cannot silently re-leak into this cross-claim projection (§9/§10 #2).
+    // Explicit member mapping (never a permissive Adapt) so a future field added to Account, Contact or
+    // Property cannot silently re-leak into this cross-claim projection (§9/§10 #2, issue #208 §7.3).
+    // Each branch tests its OWN column: a bare trailing else would classify every property party as an
+    // Institution (issue #208 §8).
     private static ExistingContractParty ToPartyDto(ContractParty party, IReadOnlyDictionary<Guid, ContactRef> contacts)
     {
+        var dto = new ExistingContractParty
+        {
+            ContractPartyId = party.ContractPartyId,
+            ContractId = party.ContractId,
+            // A top-level field on the party, so it survives an unresolved target reference.
+            Role = party.Role.Adapt<DtoContractPartyRole>(),
+            FromDate = party.FromDate,
+            ToDate = party.ToDate,
+        };
+
         if (party.AccountId is not null)
         {
-            return new ExistingContractParty
+            dto.Kind = ContractPartyKind.Account;
+            dto.Account = party.Account is null ? null : new ContractAccountReference
             {
-                ContractPartyId = party.ContractPartyId,
-                ContractId = party.ContractId,
-                Kind = ContractPartyKind.Account,
-                Account = party.Account is null ? null : new ContractAccountReference
-                {
-                    AccountId = party.Account.AccountId,
-                    Name = party.Account.Name,
-                    Type = party.Account.AccountType.Adapt<DtoAccountType>(),
-                },
-                Role = party.Role.Adapt<DtoContractPartyRole>(),
-                FromDate = party.FromDate,
-                ToDate = party.ToDate,
+                AccountId = party.Account.AccountId,
+                Name = party.Account.Name,
+                Type = party.Account.AccountType.Adapt<DtoAccountType>(),
             };
+        }
+        else if (party.ContactId is { } contactId)
+        {
+            // Resolve via the batched lookup. An unresolved link nulls the reference, as the read path
+            // does for any missing link.
+            var contact = contacts.GetValueOrDefault(contactId);
+            dto.Kind = ContractPartyKind.Institution;
+            dto.Institution = contact is null ? null : new ContractContactReference
+            {
+                ContactId = contact.ContactId,
+                Name = contact.Name,
+                // No .Adapt here (unlike Account): ContactRef already declares Type as the Dtos
+                // ContactType, so this is a same-type assignment.
+                Type = contact.Type,
+            };
+        }
+        else if (party.PropertyId is not null)
+        {
+            dto.Kind = ContractPartyKind.Property;
+            dto.Property = party.Property is null ? null : new ContractPropertyReference
+            {
+                PropertyId = party.Property.PropertyId,
+                Name = party.Property.Name,
+                Type = party.Property.Type,
+            };
+        }
+        else
+        {
+            // Unreachable under CK_ContractParties_ExactlyOneTarget; refusing beats guessing a kind.
+            throw new InvalidOperationException(
+                $"Contract party {party.ContractPartyId} names no target.");
         }
 
-        {
-            // Resolve via the batched lookup (Contact lives in OdysseyContext). An unresolved link
-            // (contact deleted across the context boundary) nulls the reference, as the read path
-            // does for any missing link.
-            var contact = party.ContactId is { } contactId ? contacts.GetValueOrDefault(contactId) : null;
-            return new ExistingContractParty
-            {
-                ContractPartyId = party.ContractPartyId,
-                ContractId = party.ContractId,
-                Kind = ContractPartyKind.Institution,
-                Institution = contact is null ? null : new ContractContactReference
-                {
-                    ContactId = contact.ContactId,
-                    Name = contact.Name,
-                    // No .Adapt here (unlike Account): ContactRef already declares Type as the Dtos
-                    // ContactType, so this is a same-type assignment.
-                    Type = contact.Type,
-                },
-                // A top-level field on the party, so it survives an unresolved target reference.
-                Role = party.Role.Adapt<DtoContractPartyRole>(),
-                FromDate = party.FromDate,
-                ToDate = party.ToDate,
-            };
-        }
+        return dto;
     }
 
     private static ExistingContractFile ToFileDto(ContractFile file) => new()

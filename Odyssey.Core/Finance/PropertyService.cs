@@ -1,6 +1,8 @@
 using System.Linq.Expressions;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
@@ -29,11 +31,14 @@ public class PropertyService
 {
     private readonly OdysseyContext context;
     private readonly TimeProvider timeProvider;
+    private readonly ILogger<PropertyService> logger;
 
-    public PropertyService(OdysseyContext context, TimeProvider? timeProvider = null)
+    public PropertyService(
+        OdysseyContext context, TimeProvider? timeProvider = null, ILogger<PropertyService>? logger = null)
     {
         this.context = context;
         this.timeProvider = timeProvider ?? TimeProvider.System;
+        this.logger = logger ?? NullLogger<PropertyService>.Instance;
     }
 
     /// <summary>
@@ -48,8 +53,14 @@ public class PropertyService
     /// in-force value are left <c>null</c> on every row, and <see cref="PropertySortBy.Value"/> is
     /// refused by the controller before this runs.
     /// </param>
+    /// <param name="includeContractCount">
+    /// Whether the caller holds <c>contracts.read</c> (issue #208). Without it
+    /// <see cref="ExistingProperty.ContractCount"/> is left <c>null</c>. Pass it by name: it sits beside
+    /// another <see cref="bool"/>.
+    /// </param>
     public async Task<PagedResult<ExistingProperty>> ListAsync(
-        PropertiesQueryParams query, bool includeEstimates = false, CancellationToken cancellationToken = default)
+        PropertiesQueryParams query, bool includeEstimates = false, CancellationToken cancellationToken = default,
+        bool includeContractCount = false)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var q = context.Properties.AsNoTracking().AsQueryable();
@@ -129,7 +140,7 @@ public class PropertyService
             .ToListAsync(cancellationToken);
 
         var items = properties.Select(p => ToDto(p, now)).ToList();
-        await EnrichAsync(items, includeEstimates, now, cancellationToken);
+        await EnrichAsync(items, includeEstimates, includeContractCount, now, cancellationToken);
 
         return new PagedResult<ExistingProperty>
         {
@@ -141,8 +152,10 @@ public class PropertyService
     }
 
     /// <summary>One property with its detail sub-object, or <c>null</c> when unknown.</summary>
+    /// <param name="includeContractCount">As on <see cref="ListAsync"/>.</param>
     public async Task<ExistingProperty?> Get(
-        Guid id, bool includeEstimates = false, CancellationToken cancellationToken = default)
+        Guid id, bool includeEstimates = false, CancellationToken cancellationToken = default,
+        bool includeContractCount = false)
     {
         var property = await context.Properties
             .AsNoTracking()
@@ -155,7 +168,7 @@ public class PropertyService
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var dto = ToDto(property, now);
-        await EnrichAsync([dto], includeEstimates, now, cancellationToken);
+        await EnrichAsync([dto], includeEstimates, includeContractCount, now, cancellationToken);
         return dto;
     }
 
@@ -166,7 +179,8 @@ public class PropertyService
     /// <see cref="EstimateEffectiveDating"/> that the account list uses the same way.
     /// </summary>
     private async Task EnrichAsync(
-        IReadOnlyList<ExistingProperty> dtos, bool includeEstimates, DateTime now, CancellationToken cancellationToken)
+        IReadOnlyList<ExistingProperty> dtos, bool includeEstimates, bool includeContractCount, DateTime now,
+        CancellationToken cancellationToken)
     {
         if (dtos.Count == 0)
             return;
@@ -182,6 +196,13 @@ public class PropertyService
 
         foreach (var dto in dtos)
             dto.SmartTagCount = smartTagCounts.GetValueOrDefault(dto.PropertyId);
+
+        if (includeContractCount)
+        {
+            var contractCounts = await CountContractsAsync(ids, cancellationToken);
+            foreach (var dto in dtos)
+                dto.ContractCount = contractCounts.GetValueOrDefault(dto.PropertyId);
+        }
 
         if (!includeEstimates)
             return;
@@ -204,6 +225,20 @@ public class PropertyService
             }
         }
     }
+
+    /// <summary>
+    /// Distinct contracts per property — a property named in two roles on one contract counts once. One
+    /// batched query over the page's ids, the <c>AccountService.CountContractsAsync</c> shape.
+    /// </summary>
+    private async Task<Dictionary<Guid, int>> CountContractsAsync(
+        IReadOnlyCollection<Guid> propertyIds, CancellationToken cancellationToken) =>
+        await context.ContractParties
+            .Where(p => p.PropertyId != null && propertyIds.Contains(p.PropertyId.Value))
+            .Select(p => new { PropertyId = p.PropertyId!.Value, p.ContractId })
+            .Distinct()
+            .GroupBy(x => x.PropertyId)
+            .Select(g => new { PropertyId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.PropertyId, x => x.Count, cancellationToken);
 
     /// <summary>
     /// Creates a property and exactly one detail row in a single <c>SaveChangesAsync</c>; the detail row
@@ -294,10 +329,25 @@ public class PropertyService
     /// <summary>
     /// Hard-deletes a property. Returns <c>false</c> when unknown. The detail row, estimates and
     /// smart-tag links cascade — included here so the cascade also happens under the EF InMemory
-    /// provider, which enforces no foreign keys. Nothing else references a property, so there is no
-    /// blocker and no <c>409</c>.
+    /// provider, which enforces no foreign keys. There is no blocker and no <c>409</c>.
     /// </summary>
-    public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
+    /// <remarks>
+    /// <para>
+    /// <b>Contract parties naming the property are removed too, and each removal is evented</b>
+    /// (issue #208 §3 step 5, §7.7). The rows go by tracked <c>RemoveRange</c> — never
+    /// <c>ExecuteDeleteAsync</c>, which the InMemory tier cannot run — with the FK <c>CASCADE</c> as the
+    /// backstop on MariaDB. Each gets a <c>PartyRemoved</c> event on its own contract in the same
+    /// <c>SaveChangesAsync</c>, and after the commit one shared-format log line
+    /// (<see cref="ContractPartyAudit.DetachedByPropertyDelete"/>), so a contract's history explains
+    /// why a party disappeared. The contracts themselves survive.
+    /// </para>
+    /// <para>
+    /// Deliberately stricter than <c>AccountService.Delete</c>, which relies on the FK cascade alone.
+    /// One clock reading stamps every event and line the delete produces.
+    /// </para>
+    /// </remarks>
+    /// <param name="userId">The deleting caller, to whom each staged contract event is attributed.</param>
+    public async Task<bool> Delete(Guid id, string? userId, CancellationToken cancellationToken = default)
     {
         var property = await context.Properties
             .Include(p => p.RealEstateDetails)
@@ -308,8 +358,30 @@ public class PropertyService
         if (property is null)
             return false;
 
+        var parties = await context.ContractParties
+            .Where(p => p.PropertyId == id)
+            .OrderBy(p => p.ContractPartyId)
+            .ToListAsync(cancellationToken);
+
+        var deletedAt = timeProvider.GetUtcNow().UtcDateTime;
+        foreach (var party in parties)
+        {
+            ContractEventRecorder.Stage(
+                context, party.ContractId, ContractEventCatalogue.PartyRemoved(party.Role, deletedAt), userId, deletedAt);
+        }
+
+        context.ContractParties.RemoveRange(parties);
         context.Properties.Remove(property);
         await context.SaveChangesAsync(cancellationToken);
+
+        // After the save: a log line describes a committed fact.
+        foreach (var party in parties)
+        {
+            ContractPartyAudit.Log(
+                logger, ContractPartyAudit.DetachedByPropertyDelete, party, party.Role, userId,
+                roleAfter: ContractPartyAudit.NoRole);
+        }
+
         return true;
     }
 

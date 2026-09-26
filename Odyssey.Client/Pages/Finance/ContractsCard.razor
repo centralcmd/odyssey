@@ -13,6 +13,7 @@
 @inject Odyssey.Client.Services.IPageStateService PageState
 @inject IReferenceDataCache ReferenceData
 @inject IAccountsApiClient Accounts
+@inject IPropertiesApiClient PropertiesApi
 @inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
 
 <PageTitle>Contracts</PageTitle>
@@ -326,6 +327,7 @@
                                                 CanDownload="_canDownloadFiles"
                                                 CanViewAccounts="_canViewAccounts"
                                                 CanViewContacts="_canViewContacts"
+                                                CanViewProperties="_canViewProperties"
                                                 OnEditParty="@(p => EditParty(c.ContractId, p))"
                                                 OnAnnounce="@(m => Announce(m))"
                                                 OnChanged="@(() => ReloadContract(c.ContractId))"
@@ -377,6 +379,8 @@
                             Party="_editingParty"
                             Accounts="_accountOptions"
                             Institutions="_institutionOptions"
+                            Properties="_propertyOptions"
+                            PropertyStates="_propertyStates"
                             OnAnnounce="@(m => Announce(m))"
                             OnSaved="@(() => ReloadContract(_partyContract.ContractId))" />
 }

@@ -137,5 +137,5 @@
     /// own payload allows a null display name.
     /// </summary>
     private static string PartyDisplayName(ExistingContractParty party) =>
-        party.Account?.Name ?? party.Institution?.Name ?? "Unnamed party";
+        party.Account?.Name ?? party.Institution?.Name ?? party.Property?.Name ?? "Unnamed party";
 }

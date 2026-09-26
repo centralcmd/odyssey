@@ -200,7 +200,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         var tagId = await SeedTagAsync(context, "Maintenance");
         var propertyId = await SeedWatchedPropertyAsync(context, "Doomed", tagId);
 
-        Assert.True(await new PropertyService(context).Delete(propertyId));
+        Assert.True(await new PropertyService(context).Delete(propertyId, userId: null));
 
         await using var verify = NewContext();
         Assert.False(await verify.Properties.AnyAsync());
