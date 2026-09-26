@@ -39,7 +39,9 @@
                 </li>
                 <li>
                     <span class="material-icons" aria-hidden="true">link_off</span>
-                    @ContractLinksLine
+                    @* A status region: the line narrows from the contract count to the party count once
+                       GET …/contracts returns, after the dialog may already have been read (WCAG 4.1.3). *@
+                    <span role="status" aria-live="polite">@ContractLinksLine</span>
                 </li>
             </ul>
             <p class="prop-del-foot">

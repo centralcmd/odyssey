@@ -103,6 +103,9 @@ public class PropertyContractPartyClientTests
         var cut = RenderDelete(ctx, Property(contractCount: 2), canReadContracts: true);
 
         cut.WaitForAssertion(() => Assert.Contains("3 party links on 2 contracts", cut.Markup, StringComparison.Ordinal));
+        // Announced: the count lands after the dialog has rendered (WCAG 4.1.3).
+        Assert.Contains(cut.FindAll("[role='status'][aria-live='polite']"),
+            e => e.TextContent.Contains("3 party links on 2 contracts", StringComparison.Ordinal));
         Assert.Contains("Contracts are kept", cut.Markup, StringComparison.Ordinal);
     }
 
