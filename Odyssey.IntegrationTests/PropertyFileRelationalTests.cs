@@ -33,7 +33,7 @@ namespace Odyssey.IntegrationTests;
 public class PropertyFileRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_property_files";
-    private const string PreviousMigration = "_AddProperties";
+    private const string PreviousMigration = "_AddPropertyContractParties";
     private const string ThisMigration = "_AddPropertyFiles";
     private const string Attacher = "property-doc-attacher";
 
@@ -175,7 +175,7 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
             fileId = await SeedFileAsync(context);
             await Service(context).AttachFile(propertyId, new AttachPropertyFileRequest { FileMetadataId = fileId }, Attacher);
 
-            Assert.True(await new PropertyService(context).Delete(propertyId));
+            Assert.True(await new PropertyService(context).Delete(propertyId, userId: null));
         }
 
         await using var verify = NewContext();

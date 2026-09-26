@@ -465,7 +465,7 @@ public class PropertyFileServiceTests
         await service.AttachFile(propertyId, new AttachPropertyFileRequest { FileMetadataId = second }, TestUserId);
         await service.AttachFile(otherId, new AttachPropertyFileRequest { FileMetadataId = first }, TestUserId);
 
-        Assert.True(await new PropertyService(context).Delete(propertyId));
+        Assert.True(await new PropertyService(context).Delete(propertyId, userId: null));
 
         var remaining = Assert.Single(context.PropertyFiles);
         Assert.Equal(otherId, remaining.PropertyId);

@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
+using Moq;
+using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Dtos.Finance;
@@ -235,6 +237,10 @@ public class PropertyDocumentsSurfaceTests
         await using var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
+
+        // The dialog reads the property's contract links (issue #208); it never calls here without
+        // contracts.read, which this host does not grant.
+        ctx.Services.AddSingleton(new Mock<IPropertiesApiClient>().Object);
 
         var cut = ctx.Render<DeleteHost>(p => p.Add(h => h.DocumentCount, count));
 

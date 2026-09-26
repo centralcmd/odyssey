@@ -12,7 +12,7 @@ using Odyssey.Context;
 namespace Odyssey.Context.Migrations
 {
     [DbContext(typeof(OdysseyContext))]
-    [Migration("20260926172942_AddPropertyFiles")]
+    [Migration("20260926202812_AddPropertyFiles")]
     partial class AddPropertyFiles
     {
         /// <inheritdoc />
@@ -888,6 +888,9 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("FromDate")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<Guid?>("PropertyId")
+                        .HasColumnType("char(36)");
+
                     b.Property<int>("Role")
                         .HasColumnType("int");
 
@@ -902,15 +905,20 @@ namespace Odyssey.Context.Migrations
 
                     b.HasIndex("ContractId");
 
+                    b.HasIndex("PropertyId");
+
                     b.HasIndex("ContractId", "AccountId", "Role")
                         .IsUnique();
 
                     b.HasIndex("ContractId", "ContactId", "Role")
                         .IsUnique();
 
+                    b.HasIndex("ContractId", "PropertyId", "Role")
+                        .IsUnique();
+
                     b.ToTable("ContractParties", t =>
                         {
-                            t.HasCheckConstraint("CK_ContractParties_ExactlyOneTarget", "((`AccountId` IS NOT NULL) + (`ContactId` IS NOT NULL)) = 1");
+                            t.HasCheckConstraint("CK_ContractParties_ExactlyOneTarget", "((`AccountId` IS NOT NULL) + (`ContactId` IS NOT NULL) + (`PropertyId` IS NOT NULL)) = 1");
                         });
                 });
 
@@ -4662,9 +4670,16 @@ namespace Odyssey.Context.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Odyssey.Context.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.Navigation("Account");
 
                     b.Navigation("Contract");
+
+                    b.Navigation("Property");
                 });
 
             modelBuilder.Entity("Odyssey.Context.ContractSmartTag", b =>
