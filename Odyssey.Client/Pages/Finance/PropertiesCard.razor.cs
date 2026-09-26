@@ -273,7 +273,17 @@ public partial class PropertiesCard
     // ── Expand ──────────────────────────────────────────────────────────────────
     private bool IsExpanded(Guid id) => _expandedId == id;
 
-    private void ToggleExpand(Guid id) => _expandedId = _expandedId == id ? null : id;
+    /// <summary>
+    /// Any change of the open card consumes the pending row-menu requests. A section is created afresh
+    /// on every expand and cannot remember a token it already handled, so a token left in place would
+    /// reopen its dialog each time the card is reopened.
+    /// </summary>
+    private void ToggleExpand(Guid id)
+    {
+        _expandedId = _expandedId == id ? null : id;
+        _attachTokens.Clear();
+        _newEstimateTokens.Clear();
+    }
 
     // ── Row menu ──────────────────────────────────────────────────────────────────
     private IReadOnlyList<OdsMenuItem> RowActions(ExistingProperty p)
