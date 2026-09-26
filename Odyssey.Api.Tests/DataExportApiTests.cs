@@ -444,8 +444,9 @@ public class DataExportApiTests
     // ── Issue #33: the previously-omitted tables ──────────────────────────────
 
     /// <summary>
-    /// A contract party is one-of-two with no kind discriminator on the row, so both nullable
-    /// relationship columns are exported and which one is set is what says which kind it is.
+    /// A contract party is one-of-three with no kind discriminator on the row, so every nullable
+    /// relationship column is exported and which one is set is what says which kind it is
+    /// (issue #208 added <c>propertyId</c>).
     /// </summary>
     [Fact]
     public async Task Export_IncludesContractsAndParties_AsIdsOnly()
@@ -468,7 +469,7 @@ public class DataExportApiTests
             // Role and the term ride along since issue #121: they are columns on the link row, not a
             // resolved name, so exporting them discloses nothing the two target ids did not already.
             Assert.Equal(
-                new[] { "contractPartyId", "contractId", "accountId", "contactId", "role", "fromDate", "toDate" }
+                new[] { "contractPartyId", "contractId", "accountId", "contactId", "propertyId", "role", "fromDate", "toDate" }
                     .Order(StringComparer.Ordinal),
                 party.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
         });
@@ -478,10 +479,12 @@ public class DataExportApiTests
         var institution = Assert.Single(parties, party => party.GetProperty("contactId").ValueKind != JsonValueKind.Null);
         Assert.NotEqual(Guid.Empty, institution.GetProperty("contactId").GetGuid());
         Assert.Equal(JsonValueKind.Null, institution.GetProperty("accountId").ValueKind);
+        Assert.Equal(JsonValueKind.Null, institution.GetProperty("propertyId").ValueKind);
 
         var accountParty = Assert.Single(parties, party => party.GetProperty("accountId").ValueKind != JsonValueKind.Null);
         Assert.NotEqual(Guid.Empty, accountParty.GetProperty("accountId").GetGuid());
         Assert.Equal(JsonValueKind.Null, accountParty.GetProperty("contactId").ValueKind);
+        Assert.Equal(JsonValueKind.Null, accountParty.GetProperty("propertyId").ValueKind);
 
         Assert.Single(finance.GetProperty("contractFiles").EnumerateArray());
     }

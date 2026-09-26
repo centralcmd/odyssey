@@ -616,6 +616,7 @@ public sealed class DataExportService
                 ContractId = party.ContractId,
                 AccountId = party.AccountId,
                 ContactId = party.ContactId,
+                PropertyId = party.PropertyId,
                 Role = (FinanceDtos.ContractPartyRole)party.Role,
                 FromDate = party.FromDate,
                 ToDate = party.ToDate,

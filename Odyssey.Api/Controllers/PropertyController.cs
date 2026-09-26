@@ -2,6 +2,7 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Authorization;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,11 +28,14 @@ public class PropertyController : ControllerBase
 {
     private readonly PropertyService propertyService;
     private readonly PropertySummaryService summaryService;
+    private readonly ContractService contractService;
 
-    public PropertyController(PropertyService propertyService, PropertySummaryService summaryService)
+    public PropertyController(
+        PropertyService propertyService, PropertySummaryService summaryService, ContractService contractService)
     {
         this.propertyService = propertyService;
         this.summaryService = summaryService;
+        this.contractService = contractService;
     }
 
     /// <summary>
@@ -41,6 +45,13 @@ public class PropertyController : ControllerBase
     /// </summary>
     private bool CanReadEstimates() =>
         User.HasClaim(PermissionClaims.Type, PermissionClaims.PropertiesEstimatesRead);
+
+    /// <summary>
+    /// A count of contracts is contract data, so <see cref="ExistingProperty.ContractCount"/> follows
+    /// <c>contracts.read</c> (issue #208 §5.6) — decided here because the service has no principal.
+    /// </summary>
+    private bool CanReadContracts() =>
+        User.HasClaim(PermissionClaims.Type, PermissionClaims.ContractsRead);
 
     [HttpGet(Name = "GetProperties")]
     [Authorize(Policy = PermissionClaims.PropertiesRead)]
@@ -60,7 +71,9 @@ public class PropertyController : ControllerBase
         if (query.SortBy == PropertySortBy.Value && !CanReadEstimates())
             return Forbid();
 
-        var result = await propertyService.ListAsync(query, CanReadEstimates(), cancellationToken);
+        var result = await propertyService.ListAsync(
+            query, includeEstimates: CanReadEstimates(), cancellationToken,
+            includeContractCount: CanReadContracts());
         return Ok(result);
     }
 
@@ -92,11 +105,34 @@ public class PropertyController : ControllerBase
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var property = await propertyService.Get(id, CanReadEstimates(), cancellationToken);
+        var property = await propertyService.Get(
+            id, includeEstimates: CanReadEstimates(), cancellationToken,
+            includeContractCount: CanReadContracts());
         if (property is null)
             return this.NotFoundProblem($"Property ID {id} not found.");
 
         return Ok(property);
+    }
+
+    [HttpGet("{propertyId}/contracts", Name = "GetPropertyContracts")]
+    [Authorize(Policy = PermissionClaims.PropertiesRead)]
+    [Authorize(Policy = PermissionClaims.ContractsRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<PropertyContractLink>))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Get the contracts that name a property as a party.",
+        Description = @"One row per contract, with every role the property holds on it. Requires both
+                        properties.read and contracts.read: the rows name contracts, which
+                        properties.read alone does not license.")]
+    public async Task<IActionResult> GetPropertyContracts(
+        [FromRoute(Name = "propertyId")] Guid propertyId, CancellationToken cancellationToken = default)
+    {
+        var contracts = await contractService.ListForPropertyAsync(propertyId, cancellationToken);
+        if (contracts is null)
+            return this.NotFoundProblem($"Property ID {propertyId} not found.");
+
+        return Ok(contracts);
     }
 
     [HttpPost(Name = "PostProperty")]
@@ -143,12 +179,14 @@ public class PropertyController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Delete a property.",
-        Description = @"Hard delete. Cascades the detail row, the estimate history and the smart-tag
-                        links; the tags themselves are untouched.")]
+        Description = @"Hard delete. Cascades the detail row, the estimate history, the smart-tag
+                        links and every contract party naming the property (each removal recorded as
+                        a PartyRemoved event on its contract); the tags and contracts are untouched.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var deleted = await propertyService.Delete(id, cancellationToken);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var deleted = await propertyService.Delete(id, userId, cancellationToken);
         if (!deleted)
             return this.NotFoundProblem($"Property ID {id} not found.");
 

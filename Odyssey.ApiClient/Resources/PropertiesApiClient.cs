@@ -50,6 +50,14 @@ public interface IPropertiesApiClient
 
     Task<ApiResult> DeleteAsync(Guid id, CancellationToken ct = default);
 
+    // ── Contracts ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The contracts naming the property as a party, one row per contract with every role it holds
+    /// there (issue #208). Needs <c>contracts.read</c> as well as <c>properties.read</c>.
+    /// </summary>
+    Task<ApiResult<List<PropertyContractLink>>> ListContractsAsync(Guid propertyId, CancellationToken ct = default);
+
     // ── Estimates ────────────────────────────────────────────────────────────
 
     Task<ApiResult<List<ExistingPropertyEstimate>>> ListEstimatesAsync(Guid propertyId, CancellationToken ct = default);
@@ -130,6 +138,11 @@ public sealed class PropertiesApiClient(IOdysseyApi api) : IPropertiesApiClient
 
     public Task<ApiResult> DeleteAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Base}/{id}", null, ct);
+
+    // ── Contracts ────────────────────────────────────────────────────────────
+
+    public Task<ApiResult<List<PropertyContractLink>>> ListContractsAsync(Guid propertyId, CancellationToken ct = default) =>
+        api.GetAsync<List<PropertyContractLink>>($"{Base}/{propertyId}/contracts", ct);
 
     // ── Estimates ────────────────────────────────────────────────────────────
 

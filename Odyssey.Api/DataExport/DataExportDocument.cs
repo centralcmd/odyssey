@@ -487,6 +487,9 @@ public sealed class ContractPartyExport
     public Guid? AccountId { get; init; }
     public Guid? ContactId { get; init; }
 
+    /// <summary>A property as the party (issue #208). Exactly one of the three target ids is set.</summary>
+    public Guid? PropertyId { get; init; }
+
     /// <summary>What the linked record does in the agreement (issue #121). Orthogonal to which column is set.</summary>
     public ContractPartyRole Role { get; init; }
 

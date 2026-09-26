@@ -194,14 +194,14 @@ public class PropertyServiceTests
         await new PropertySmartTagService(context, new FakePropertyLimitsLookup())
             .AddSmartTag(created.PropertyId, tag.TransactionTagId);
 
-        Assert.True(await service.Delete(created.PropertyId));
+        Assert.True(await service.Delete(created.PropertyId, userId: null));
 
         Assert.Empty(context.Properties);
         Assert.Empty(context.RealEstateDetails);
         Assert.Empty(context.PropertyEstimates);
         Assert.Empty(context.PropertySmartTags);
         Assert.Single(context.TransactionTags);
-        Assert.False(await service.Delete(created.PropertyId));
+        Assert.False(await service.Delete(created.PropertyId, userId: null));
     }
 
     [Theory]

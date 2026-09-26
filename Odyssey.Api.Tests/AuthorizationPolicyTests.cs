@@ -212,6 +212,29 @@ public class AuthorizationPolicyTests
             + "argument before granting them apart. Roles that do: " + string.Join(", ", gaps));
     }
 
+    /// <summary>
+    /// Issue #208 §7.2 keeps the party write gated on <c>contracts.update</c> alone, so a caller may name
+    /// a property as a party exactly as it may name an account or contact — and the write echoes the
+    /// property's name and type back. That is only harmless while no role reaches
+    /// <c>contracts.update</c> without <c>properties.read</c>. This pins it: a role granted one without
+    /// the other fails the build and forces the write-side gate to be revisited.
+    /// </summary>
+    [Fact]
+    public void No_role_holds_ContractsUpdate_without_PropertiesRead()
+    {
+        var gaps = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.ContractsUpdate, StringComparer.Ordinal))
+            .Where(role => !role.Claims.Contains(PermissionClaims.PropertiesRead, StringComparer.Ordinal))
+            .Select(role => role.Role)
+            .ToList();
+
+        Assert.True(gaps.Count == 0,
+            "Issue #208 §7.2 lets contracts.update name a property as a party without properties.read "
+            + "because no shipped role holds the first without the second. Re-make that argument, or "
+            + "gate the property party write on properties.read, before granting them apart. Roles "
+            + "that do: " + string.Join(", ", gaps));
+    }
+
     [Fact]
     public void PermissionClaimsConfigurePolicies()
     {

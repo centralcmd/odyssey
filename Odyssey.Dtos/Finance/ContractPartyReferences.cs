@@ -28,3 +28,18 @@ public sealed record ContractContactReference
 
     public ContactType Type { get; set; }
 }
+
+/// <summary>
+/// Minimal, data-minimised projection of a property linked as a contract party (issue #208 §7.3).
+/// Carries the id, name and type and nothing else: the description, notes, currency, dates, estimates
+/// and every detail-row field (address, cadastral numbers, registration number, VIN) stay behind
+/// <c>properties.read</c>, so a <c>contracts.read</c>-only caller cannot read the richer record.
+/// </summary>
+public sealed record ContractPropertyReference
+{
+    public required Guid PropertyId { get; set; }
+
+    public required string Name { get; set; }
+
+    public PropertyType Type { get; set; }
+}
