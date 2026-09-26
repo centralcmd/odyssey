@@ -483,6 +483,15 @@ const TaxStatementFileTypeMultiSelect = ({ types, ...props }) => {
   if (DS.TaxStatementFileTypeMultiSelect) return <DS.TaxStatementFileTypeMultiSelect types={types} {...props} />;
   return <DS.MultiSelect label="Any type" icon="request_quote" options={types ? optsFrom(types) : taxFileOpts()} {...props} />;
 };
+const propFileOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.propertyFileTypes);
+const PropertyFileTypeSelect = ({ helper, types, ...props }) => {
+  if (DS.PropertyFileTypeSelect) return <DS.PropertyFileTypeSelect help={helper} types={types} {...props} />;
+  return <DS.Select help={helper} options={types ? optsFrom(types) : propFileOpts()} {...props} />;
+};
+const PropertyFileTypeMultiSelect = ({ types, ...props }) => {
+  if (DS.PropertyFileTypeMultiSelect) return <DS.PropertyFileTypeMultiSelect types={types} {...props} />;
+  return <DS.MultiSelect label="Any type" icon="home_work" options={types ? optsFrom(types) : propFileOpts()} {...props} />;
+};
 
 const contractTypeOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.contractTypes);
 const ContractTypeSelect = ({ helper, types, ...props }) => {
@@ -1391,6 +1400,7 @@ Object.assign(window, {
   AccountFileTypeSelect, AccountFileTypeMultiSelect,
   TransactionFileTypeSelect, TransactionFileTypeMultiSelect,
   TaxStatementFileTypeSelect, TaxStatementFileTypeMultiSelect,
+  PropertyFileTypeSelect, PropertyFileTypeMultiSelect,
   Combobox, MatchIndicator,
   SegmentedControl, CardSelect, ContactSelect, TransactionTagPicker,
   ODC_TONE, odcTypeRows, odcStatusRows,

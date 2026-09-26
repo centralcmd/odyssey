@@ -146,7 +146,7 @@ const PartyTile = ({ party, today, onEdit, onDetach, onNavigate }) => {
             {term ? <span className={`con-term${past ? ' past' : ''}`}>{term}</span> : null}
             <span className="con-tile-menu">
               <ActionMenu items={[
-                ...(onNavigate && r.target ? [{ icon: 'visibility', label: 'View', onClick: () => onNavigate(r.kind === 'account' ? 'accounts' : 'contacts') }] : []),
+                ...(onNavigate && r.target ? [{ icon: 'visibility', label: 'View', onClick: () => onNavigate(r.kind === 'account' ? 'accounts' : r.kind === 'property' ? 'properties' : 'contacts') }] : []),
                 { icon: 'edit', label: 'Edit party', onClick: () => onEdit && onEdit(party) },
                 { icon: 'content_copy', label: 'Copy name', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(r.name); } },
                 { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(party.id); } },

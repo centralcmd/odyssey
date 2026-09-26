@@ -89,6 +89,23 @@ window.OdysseyData = {
     { key: 'SupportingDocument', label: 'Supporting document', enumValue: 2, icon: 'attach_file',       color: 'oklch(0.77 0.14 110)', soft: 'oklch(0.77 0.14 110 / 0.16)', desc: 'Backing material — receipts, deduction evidence, schedules.' },
     { key: 'Other',              label: 'Other',               enumValue: 3, icon: 'insert_drive_file', color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)', desc: 'The enum default — anything that does not fit the categories above.' },
   ],
+  /* PropertyFileType (Odyssey.Dtos.Finance, field FileType on PropertyFile) —
+     documents on a property. Other is ordinal 0 (the AccountFileType shape) and
+     sorts last. Keys shared with another file enum reuse its icon and colour. */
+  propertyFileTypes: [
+    { key: 'Deed',              label: 'Deed',               enumValue: 1,  icon: 'workspace_premium', color: 'oklch(0.74 0.15 290)', soft: 'oklch(0.74 0.15 290 / 0.16)', desc: 'Title deed or land-registry extract — skøyte, grunnboksutskrift.' },
+    { key: 'PurchaseAgreement', label: 'Purchase agreement', enumValue: 2,  icon: 'sell',              color: 'oklch(0.79 0.14 60)',  soft: 'oklch(0.79 0.14 60 / 0.16)',  desc: 'The purchase or sale contract.' },
+    { key: 'Valuation',         label: 'Valuation',          enumValue: 3,  icon: 'price_check',       color: 'oklch(0.80 0.15 140)', soft: 'oklch(0.80 0.15 140 / 0.16)', desc: 'A valuation, appraisal or takst.' },
+    { key: 'Inspection',        label: 'Inspection',         enumValue: 4,  icon: 'troubleshoot',      color: 'oklch(0.78 0.12 180)', soft: 'oklch(0.78 0.12 180 / 0.16)', desc: 'A condition report (tilstandsrapport) or periodic vehicle inspection (EU-kontroll).' },
+    { key: 'Registration',      label: 'Registration',       enumValue: 5,  icon: 'app_registration',  color: 'oklch(0.74 0.15 310)', soft: 'oklch(0.74 0.15 310 / 0.16)', desc: 'Vehicle registration certificate — vognkort.' },
+    { key: 'Insurance',         label: 'Insurance',          enumValue: 6,  icon: 'shield',            color: 'oklch(0.74 0.15 30)',  soft: 'oklch(0.74 0.15 30 / 0.16)',  desc: 'An insurance certificate or policy schedule.' },
+    { key: 'Warranty',          label: 'Warranty',           enumValue: 7,  icon: 'verified',          color: 'oklch(0.77 0.13 205)', soft: 'oklch(0.77 0.13 205 / 0.16)', desc: 'A warranty or guarantee.' },
+    { key: 'Receipt',           label: 'Receipt',            enumValue: 8,  icon: 'receipt_long',      color: 'oklch(0.80 0.15 150)', soft: 'oklch(0.80 0.15 150 / 0.16)', desc: 'A purchase receipt, or the invoice for an improvement.' },
+    { key: 'Maintenance',       label: 'Maintenance',        enumValue: 9,  icon: 'build',             color: 'oklch(0.80 0.14 95)',  soft: 'oklch(0.80 0.14 95 / 0.16)',  desc: 'A service or maintenance record.' },
+    { key: 'Tax',               label: 'Tax',                enumValue: 10, icon: 'request_quote',     color: 'oklch(0.75 0.16 330)', soft: 'oklch(0.75 0.16 330 / 0.16)', desc: 'A property-tax or wealth-tax assessment.' },
+    { key: 'Drawing',           label: 'Drawing',            enumValue: 11, icon: 'architecture',      color: 'oklch(0.76 0.12 240)', soft: 'oklch(0.76 0.12 240 / 0.16)', desc: 'A floor plan, site plan or technical drawing.' },
+    { key: 'Other',             label: 'Other',              enumValue: 0,  icon: 'insert_drive_file', color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)', desc: 'The enum default — an omitted type degrades here, never to Deed.' },
+  ],
 
   // AccountFile collection — keyed by accountId. Each file mirrors ExistingAccountFile:
   //   { id, name, kind, size, uploaded }  plus the optional validity metadata added
@@ -785,11 +802,13 @@ window.OdysseyData.contactTypeByKey = Object.fromEntries(window.OdysseyData.cont
 window.OdysseyData.accountFileTypeByKey = Object.fromEntries(window.OdysseyData.accountFileTypes.map(t => [t.key, t]));
 window.OdysseyData.transactionFileTypeByKey = Object.fromEntries(window.OdysseyData.transactionFileTypes.map(t => [t.key, t]));
 window.OdysseyData.taxStatementFileTypeByKey = Object.fromEntries(window.OdysseyData.taxStatementFileTypes.map(t => [t.key, t]));
+window.OdysseyData.propertyFileTypeByKey = Object.fromEntries(window.OdysseyData.propertyFileTypes.map(t => [t.key, t]));
 /* Merged kind→icon/color lookup for rendering a file's avatar/chip on any surface,
    regardless of which enum it came from. Account types win the shared `Other`
    (identical icon/color anyway). Pickers use the per-context lists above. */
 window.OdysseyData.fileTypeByKey = Object.assign(
   {},
+  window.OdysseyData.propertyFileTypeByKey,
   window.OdysseyData.taxStatementFileTypeByKey,
   window.OdysseyData.transactionFileTypeByKey,
   window.OdysseyData.accountFileTypeByKey,

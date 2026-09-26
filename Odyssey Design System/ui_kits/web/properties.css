@@ -12,3 +12,24 @@
 .prop-del-list .material-symbols-rounded,.prop-del-list .material-icons{color:var(--mud-palette-text-secondary)}
 .prop-del-foot{margin:0;font:400 13px/1.55 var(--font-sans);color:var(--mud-palette-text-secondary);text-wrap:pretty}
 .prop-addr-tile .odc-infotile-v{white-space:normal;word-break:break-word;overflow:visible;text-overflow:clip}
+/* Property documents — the attach dialog's "From Files" picker. */
+.prop-doc-modal{display:flex;flex-direction:column;gap:14px}
+.prop-lib{display:flex;flex-direction:column;gap:10px}
+.prop-lib-list{display:flex;flex-direction:column;gap:4px;max-height:340px;overflow-y:auto;padding:2px}
+.prop-lib-row{display:flex;flex-direction:column;border:1px solid var(--mud-palette-divider);border-radius:10px;background:var(--mud-palette-surface)}
+.prop-lib-row.on{border-color:var(--tide-400)}
+.prop-lib-main{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-radius:10px;min-height:48px}
+.prop-lib-main:focus-visible{outline:2px solid var(--tide-400);outline-offset:2px}
+.prop-lib-main:disabled{cursor:default}
+.prop-lib-check{display:inline-flex;flex:none;color:var(--mud-palette-text-secondary)}
+.prop-lib-row.on .prop-lib-check{color:var(--tide-400)}
+.prop-lib-ic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;background:rgba(127,127,127,.12);color:var(--mud-palette-text-secondary)}
+.prop-lib-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.prop-lib-name{font:500 13px/1.3 var(--font-sans);color:var(--mud-palette-text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prop-lib-meta{font:400 12px/1.3 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.prop-lib-row.off .prop-lib-name{color:var(--mud-palette-text-secondary)}
+.prop-lib-reason{flex:none;font:500 11.5px/1 var(--font-sans);color:var(--mud-palette-text-secondary);border:1px solid var(--mud-palette-divider);border-radius:999px;padding:5px 9px}
+.prop-lib-extra{display:flex;flex-direction:column;gap:8px;padding:2px 12px 12px 42px}
+.prop-lib-type{max-width:280px}
+.prop-lib-foot{display:flex;align-items:center;gap:6px;font:400 12px/1.4 var(--font-sans);color:var(--mud-palette-text-secondary)}
+

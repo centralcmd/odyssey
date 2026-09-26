@@ -103,6 +103,74 @@
     'p-wren': ['t24'],
   };
 
+  /* ---- Property documents (*Property Documents — Backend, Draft v2*) ----
+     DOCUMENT_CONTENT_TYPES mirrors the ONE server declaration
+     (DocumentContentTypes.Allowed) that contract and property attach both name.
+     It is checked against the file's SERVER-RECORDED content type at attach. */
+  D.DOCUMENT_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
+  D.DOCUMENT_CONTENT_TYPE_LABEL = 'PDF, PNG, JPEG or WebP';
+
+  /* Issuers the demo documents name. Appended to the shared contact pool. */
+  [
+    { id: 'c40', name: 'Golden Gate Appraisal Co.', normalizedName: 'GOLDEN GATE APPRAISAL CO.', type: 'Organization', description: 'Residential appraiser — refinance and broker valuations.', archived: null },
+    { id: 'c41', name: 'Kartverket', normalizedName: 'KARTVERKET', type: 'Organization', description: 'Norwegian land registry — issues deeds and registry extracts.', archived: null },
+    { id: 'c42', name: 'Bay Roofing', normalizedName: 'BAY ROOFING', type: 'Organization', description: 'Roofing contractor — installed the 2016 roof.', archived: null },
+    { id: 'c43', name: 'California DMV', normalizedName: 'CALIFORNIA DMV', type: 'Organization', description: 'Vehicle and vessel registration.', archived: null },
+  ].forEach(c => { if (!(D.contactById || {})[c.id]) { D.contacts.push(c); if (D.contactById) D.contactById[c.id] = c; } });
+
+  /* Stored files (FileMetadata) the property documents reference, plus a few
+     the Files store holds that are attached nowhere yet — the "From Files"
+     picker lists this pool and the contract library together. */
+  const fm = (id, name, contentType, size, uploaded) => ({ id, name, contentType, size, uploaded, uploadedByName: 'Owner Demo' });
+  D.propertyFileLibrary = [
+    fm('fm-maple-deed',     'maple_st_grant_deed_2018.pdf',     'application/pdf', '1.2 MB', '2018-09-12'),
+    fm('fm-maple-purchase', 'maple_st_purchase_agreement.pdf',  'application/pdf', '2.4 MB', '2018-09-12'),
+    fm('fm-maple-apprais',  'refinance_appraisal_2021.pdf',     'application/pdf', '860 KB', '2021-05-20'),
+    fm('fm-maple-roof',     'roof_warranty_bay_roofing.pdf',    'application/pdf', '140 KB', '2016-07-02'),
+    fm('fm-maple-plan',     'maple_floor_plan.png',             'image/png',       '2.1 MB', '2019-03-11'),
+    fm('fm-maple-retro',    'seismic_retrofit_invoice.jpg',     'image/jpeg',      '1.4 MB', '2021-10-04'),
+    fm('fm-maple-tax',      'sf_property_tax_2026.pdf',         'application/pdf', '98 KB',  '2026-02-10'),
+    fm('fm-stor-deed',      'skjote_storgata_14.pdf',           'application/pdf', '420 KB', '2019-06-10'),
+    fm('fm-stor-tilstand',  'tilstandsrapport_2019.pdf',        'application/pdf', '3.1 MB', '2019-05-02'),
+    fm('fm-out-reg',        'outback_registration_card.jpg',    'image/jpeg',      '980 KB', '2026-03-02'),
+    fm('fm-out-ins',        'meridian_auto_id_card_2026.pdf',   'application/pdf', '64 KB',  '2026-01-05'),
+    fm('fm-out-service',    'subaru_36k_service.pdf',           'application/pdf', '210 KB', '2026-06-21'),
+    fm('fm-wren-reg',       'sea_wren_vessel_registration.pdf', 'application/pdf', '120 KB', '2025-04-18'),
+    fm('fm-wren-survey',    'hull_survey_photo.webp',           'image/webp',      '1.7 MB', '2025-04-15'),
+    fm('fm-home-inv',       'home_inventory_export.html',       'text/html',       '36 KB',  '2026-08-30'),
+    fm('fm-cabin-sheet',    'cabin_shared_costs.xlsx',          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '44 KB', '2026-07-19'),
+  ];
+  D.fileLibraryPool = () => [...D.propertyFileLibrary, ...(D.contractFileLibrary || [])];
+  D.fileLibraryById = () => Object.fromEntries(D.fileLibraryPool().map(f => [f.id, f]));
+
+  /* PropertyFile link rows, per property, oldest attachment first (the list
+     order). Type + validity live on the LINK, never on FileMetadata. */
+  const pf = (pid, n, fileMetadataId, kind, attachedAtUtc, v) => ({ id: `pf-${pid}-${n}`, propertyId: pid, fileMetadataId, kind,
+    attachedByUserId: 'u-owner', attachedByName: 'Owner Demo', attachedAtUtc,
+    validFrom: null, validTo: null, issuedAt: null, issuedBy: null, ...(v || {}) });
+  D.propertyFileSeed = {
+    'p-maple': [
+      pf('p-maple', 1, 'fm-maple-deed', 'Deed', '2026-01-10T09:05:00Z', { validFrom: '2018-09-05', issuedAt: '2018-09-05' }),
+      pf('p-maple', 2, 'fm-maple-purchase', 'PurchaseAgreement', '2026-01-10T09:06:00Z', { issuedAt: '2018-08-14' }),
+      pf('p-maple', 3, 'fm-maple-apprais', 'Valuation', '2026-01-10T09:08:00Z', { issuedAt: '2021-05-14', issuedBy: 'c40' }),
+      pf('p-maple', 4, 'fm-maple-roof', 'Warranty', '2026-01-11T18:20:00Z', { validFrom: '2016-06-30', validTo: '2036-06-30', issuedAt: '2016-06-30', issuedBy: 'c42' }),
+      pf('p-maple', 5, 'fm-maple-plan', 'Drawing', '2026-02-02T10:00:00Z'),
+      pf('p-maple', 6, 'fm-maple-tax', 'Tax', '2026-02-10T08:30:00Z', { validFrom: '2025-07-01', validTo: '2026-06-30', issuedAt: '2026-02-01' }),
+    ],
+    'p-storgata': [
+      pf('p-storgata', 1, 'fm-stor-deed', 'Deed', '2026-01-10T09:10:00Z', { validFrom: '2019-06-01', issuedAt: '2019-06-07', issuedBy: 'c41' }),
+      pf('p-storgata', 2, 'fm-stor-tilstand', 'Inspection', '2026-01-10T09:12:00Z', { issuedAt: '2019-05-02' }),
+    ],
+    'p-outback': [
+      pf('p-outback', 1, 'fm-out-reg', 'Registration', '2026-03-02T12:00:00Z', { validFrom: '2026-03-10', validTo: '2027-03-10', issuedBy: 'c43' }),
+      pf('p-outback', 2, 'fm-out-ins', 'Insurance', '2026-03-02T12:02:00Z', { validFrom: '2026-01-01', validTo: '2026-12-31', issuedAt: '2025-12-18', issuedBy: 'c20' }),
+      pf('p-outback', 3, 'fm-out-service', 'Maintenance', '2026-06-21T16:40:00Z', { issuedAt: '2026-06-21' }),
+    ],
+    'p-wren': [
+      pf('p-wren', 1, 'fm-wren-reg', 'Registration', '2025-04-18T11:00:00Z', { validFrom: '2025-04-18', validTo: '2027-04-18', issuedBy: 'c43' }),
+    ],
+  };
+
   const byKey = (arr) => Object.fromEntries(arr.map(x => [x.key, x]));
   const TY = byKey(D.propertyTypes), RK = byKey(D.realEstateKinds), VK = byKey(D.vehicleKinds), ST = byKey(D.propertyStatuses);
   const today = () => new Date().toISOString().slice(0, 10);
@@ -145,5 +213,29 @@
     propNormPlate: (v) => (v || '').replace(/\s+/g, '').toUpperCase(),
     propAddressText: (d) => [d.addressLine, [d.postalCode, d.city].filter(Boolean).join(' '), d.countryCode].filter(Boolean).join(', '),
     propArea: (n) => (n == null ? null : `${Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 })} m²`),
+    propFileTypeInfo: (k) => (D.propertyFileTypeByKey || {})[k]
+      || { key: k, label: k || 'Other', icon: 'insert_drive_file', color: 'var(--ink-300)', soft: 'rgba(199,208,224,0.12)' },
+    /* ExistingPropertyFile → FilesTable row. Name, size and content type come
+       from the referenced FileMetadata; kind + validity from the link. */
+    propFileRow: (pf) => {
+      const meta = D.fileLibraryById()[pf.fileMetadataId] || {};
+      return { id: pf.id, fileMetadataId: pf.fileMetadataId, name: pf.name || meta.name || pf.fileMetadataId,
+        kind: pf.kind, size: pf.size || meta.size || '—', uploaded: meta.uploaded || (pf.attachedAtUtc || '').slice(0, 10),
+        contentType: pf.contentType || meta.contentType,
+        validFrom: pf.validFrom || null, validTo: pf.validTo || null, issuedAt: pf.issuedAt || null, issuedBy: pf.issuedBy || null };
+    },
+    propContentTypeAllowed: (ct) => D.DOCUMENT_CONTENT_TYPES.includes(ct),
+    /* Content type the Files API would record for an upload — by extension in the kit. */
+    propContentTypeFor: (name) => ({ pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', html: 'text/html', htm: 'text/html' })[(name.split('.').pop() || '').toLowerCase()] || 'application/octet-stream',
+    propContentTypeShort: (ct) => ({ 'application/pdf': 'PDF', 'image/png': 'PNG', 'image/jpeg': 'JPEG', 'image/webp': 'WebP', 'text/html': 'HTML' })[ct] || (ct || '').split('/').pop().split('.').pop().toUpperCase(),
+    /* Name → PropertyFileType guess for uploads; the user re-tags freely. */
+    propGuessFileType: (name) => {
+      const n = name.toLowerCase();
+      const rules = [[/deed|skjøte|skjote|grunnbok|title/, 'Deed'], [/purchase|kjøpekontrakt|sale/, 'PurchaseAgreement'], [/apprais|valuation|takst|verdi/, 'Valuation'],
+        [/inspect|tilstand|eu-kontroll|survey|smog/, 'Inspection'], [/regist|vognkort/, 'Registration'], [/insur|policy|forsikring/, 'Insurance'], [/warrant|guarantee|garanti/, 'Warranty'],
+        [/receipt|invoice|kvittering|faktura/, 'Receipt'], [/service|maint|repair/, 'Maintenance'], [/tax|skatt/, 'Tax'], [/plan|drawing|tegning|site/, 'Drawing']];
+      const hit = rules.find(([re]) => re.test(n));
+      return hit ? hit[1] : 'Other';
+    },
   });
 })();

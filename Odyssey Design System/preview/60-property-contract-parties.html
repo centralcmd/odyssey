@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Property as a contract party" subtitle="Top: a contract's Parties section with all three kinds — Account, Contact, and the new Property kind drawn in the property type's hue and captioned with its kind (House, Car), never an address or VIN. Middle: the property record's Contracts section (GET /api/properties/{id}/contracts) — one tile per contract, roles in party order · derived status, archived included; empty state below it. Guest (no contracts.read) gets neither the section nor the collapsed count. The delete confirmation is its own card, 60b." viewport="1000x760" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Odyssey · Property as a contract party</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="../ui_kits/web/kit.css">
+<link rel="stylesheet" href="../ui_kits/web/account.css">
+<link rel="stylesheet" href="../ui_kits/web/contracts.css">
+<link rel="stylesheet" href="../ui_kits/web/properties.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<script src="../ui_kits/web/data.js"></script>
+<script src="../ui_kits/web/contracts-data.js"></script>
+<script src="../ui_kits/web/properties-data.js"></script>
+<style>
+body{margin:0;background:var(--mud-palette-background);font-family:var(--font-sans);color:var(--mud-palette-text-primary)}
+.sp{padding:32px 40px;display:flex;flex-direction:column;gap:28px;max-width:920px}
+.sp-h{font:600 11px/1 var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:0 0 10px}
+.sp-card{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:12px;padding:16px 18px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
+<script type="text/babel" src="../ui_kits/web/Properties.jsx"></script>
+<script type="text/babel" data-presets="env,react">
+const H = window.OdysseyHelpers, D = window.OdysseyData;
+const contract = D.contracts.find(c => c.id === 'ct-home-cover');
+const PartyTiles = ({ parties }) => (
+  <InfoTileGrid>
+    {parties.map(p => {
+      const r = H.conResolveParty(p), role = H.conPartyRoleInfo(p.role);
+      return (
+        <div className={`con-party-tile${role.object ? ' object' : ''}`} key={p.id}>
+          <InfoTile icon={r.icon} iconColor={r.color} iconSoft={r.soft}
+            label={<span className={`con-role${role.object ? ' object' : ''}`}><span>{role.label}</span></span>}
+            value={r.name} valueVariant="text" className="wrapvalue" foot={r.typeLabel || r.kindLabel} />
+        </div>
+      );
+    })}
+  </InfoTileGrid>
+);
+const maple = D.properties.find(p => p.id === 'p-maple');
+const rows = H.conContractsForProperty('p-maple');
+const App = () => (
+  <div className="sp">
+    <div>
+      <p className="sp-h">Contract · Parties — {contract.name}</p>
+      <div className="sp-card"><PartyTiles parties={[...contract.parties, D.contracts.find(c => c.id === 'ct-auto-loan').parties.find(p => p.propertyId)]} /></div>
+    </div>
+    <div>
+      <p className="sp-h">Property · Contracts — {maple.name}</p>
+      <div className="sp-card"><PropertyContracts rows={rows} onNavigate={() => {}} /></div>
+    </div>
+    <div>
+      <p className="sp-h">Property · Contracts — empty</p>
+      <div className="sp-card"><PropertyContracts rows={[]} /></div>
+    </div>
+  </div>
+);
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

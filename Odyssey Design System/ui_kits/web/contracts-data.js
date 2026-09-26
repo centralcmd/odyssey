@@ -205,9 +205,9 @@
       description: 'Twelve-month assured shorthold tenancy on the Maple St residence. Rent due on the 1st. Pets permitted by amendment.',
       startDate: '2025-09-01', endDate: '2026-08-31', ready: '2025-08-14T09:00:00Z', signed: '2025-08-20T09:00:00Z', paused: null, archived: null, createdAtUtc: '2025-08-14T10:00:00Z', createdByUserId: 'u-jane',
       parties: [
-        // The let flat itself — an OBJECT party. Before the object roles this
-        // was filed under the catch-all `Other` and lost what it meant.
-        { id: 'cp-lease-1', accountId: '7', role: 'Property', fromDate: null, toDate: null },
+        // The let house itself — an OBJECT party, and since the Property party
+        // kind (kind 3) the actual Property record rather than an account.
+        { id: 'cp-lease-1', propertyId: 'p-maple', role: 'Property', fromDate: null, toDate: null },
         // A party that joined partway through the term — the case the term
         // exists for. Rental now has its own vocabulary, so this is a Landlord
         // rather than the `Other` the pre-matrix seeder had to settle for.
@@ -224,8 +224,9 @@
       description: 'Purchase of the Maple St property — a one-off agreement recorded by its completion (closing) date, not a term. Kept as the deed of record for the property.',
       startDate: null, endDate: null, completionDate: '2021-04-15', ready: '2021-03-02T09:00:00Z', signed: '2021-03-30T09:00:00Z', paused: null, archived: null, createdAtUtc: '2021-03-02T09:00:00Z', createdByUserId: null,
       parties: [
-        // The property bought is the OBJECT of the purchase, not its buyer.
-        { id: 'cp-house-1', accountId: '7', role: 'Property', fromDate: null, toDate: null },
+        // The property bought is the OBJECT of the purchase, not its buyer —
+        // linked as the Property record itself (ContractPartyKind.Property).
+        { id: 'cp-house-1', propertyId: 'p-maple', role: 'Property', fromDate: null, toDate: null },
         { id: 'cp-house-3', contactId: 'c2', role: 'Buyer', fromDate: null, toDate: null },
         { id: 'cp-house-2', contactId: 'c9', role: 'Seller', fromDate: null, toDate: null },
       ],
@@ -245,8 +246,9 @@
         { id: 'cp-loan-2', accountId: '5', role: 'Borrower', fromDate: null, toDate: null },
         // Guarantor is universal now — legal on every type, suggested on none.
         { id: 'cp-loan-3', contactId: 'c9', role: 'Guarantor', fromDate: null, toDate: null },
-        // The security pledged against the loan — a Loan's own object role.
-        { id: 'cp-loan-4', accountId: '5', role: 'Collateral', fromDate: null, toDate: null },
+        // The security pledged against the loan — the car itself, a Property
+        // party in the Loan's own object role.
+        { id: 'cp-loan-4', propertyId: 'p-outback', role: 'Collateral', fromDate: null, toDate: null },
       ],
       files: [],
     },
@@ -276,9 +278,9 @@
       startDate: '2026-04-01', endDate: '2027-03-31', ready: '2026-03-10T09:00:00Z', signed: '2026-03-18T09:00:00Z', paused: null, archived: null, createdAtUtc: '2026-03-10T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
         { id: 'cp-cover-1', contactId: 'c12', role: 'Insurer', fromDate: null, toDate: null },
-        // One `Insured` member serves both party kinds — the kind discriminator
-        // already says whether the covered thing is an account or a contact.
-        { id: 'cp-cover-2', accountId: '7', role: 'Insured', fromDate: null, toDate: null },
+        // One `Insured` member serves every party kind — the kind discriminator
+        // already says whether the covered thing is an account, contact or property.
+        { id: 'cp-cover-2', propertyId: 'p-maple', role: 'Insured', fromDate: null, toDate: null },
         { id: 'cp-cover-3', contactId: 'c9', role: 'Beneficiary', fromDate: null, toDate: null },
       ],
       files: [],
@@ -642,6 +644,50 @@
       }, []);
     },
 
+    /* GET /api/properties/{id}/contracts — PropertyContractLink[]: one row per
+       CONTRACT naming the property, every role it holds there in party order
+       (never empty), archived contracts included, ordered by name
+       (case-insensitive) then id. Field-identical to AccountContractLink. */
+    conContractsForProperty(propertyId) {
+      return (D.contracts || []).reduce((out, c) => {
+        const links = (c.parties || []).filter(p => p.propertyId === propertyId);
+        if (links.length) out.push({ contract: c, parties: links });
+        return out;
+      }, []).sort((a, b) => {
+        const n = (a.contract.name || '').localeCompare(b.contract.name || '', undefined, { sensitivity: 'base' });
+        return n || (a.contract.id < b.contract.id ? -1 : a.contract.id > b.contract.id ? 1 : 0);
+      });
+    },
+    /* ExistingProperty.ContractCount — DISTINCT contracts, not party rows; null
+       when the caller lacks contracts.read (decided by the caller). */
+    conPropertyContractCount(propertyId) {
+      return (D.contracts || []).filter(c => (c.parties || []).some(p => p.propertyId === propertyId)).length;
+    },
+    /* The property-delete cascade (§3 step 5): every party row naming the
+       property is removed, and each removed row stages one system PartyRemoved
+       event on its own contract — role and ONE shared timestamp, attributed to
+       the deleting caller, no property name. The contracts survive. */
+    conDetachProperty(propertyId, userId) {
+      const at = new Date().toISOString();
+      const removed = [];
+      (D.contracts || []).forEach(c => {
+        const gone = (c.parties || []).filter(p => p.propertyId === propertyId);
+        if (!gone.length) return;
+        c.parties = c.parties.filter(p => p.propertyId !== propertyId);
+        gone.forEach(p => {
+          removed.push({ contractId: c.id, partyId: p.id, role: p.role });
+          if (D.contractEventSeed) {
+            D.contractEventSeed[c.id] = D.contractEventSeed[c.id] || [];
+            D.contractEventSeed[c.id].push({ id: 'cev-pd-' + p.id, contractId: c.id, source: 'system', type: 'PartyRemoved',
+              title: H.conPartyRoleInfo(p.role).label + ' party removed',
+              description: 'Detached when the property it named was deleted.', notes: null,
+              occurredAt: at, createdByUserId: userId || null, createdAtUtc: at });
+          }
+        });
+      });
+      return removed;
+    },
+
     // Short date for the tile caption: 'YYYY-MM-DD' → "Feb 1 2026".
     conDateShort(iso) {
       if (!iso) return '';
@@ -679,6 +725,18 @@
         return { kind: 'contact', kindLabel: 'Contact', name: c ? c.name : 'Unknown contact',
           typeLabel: m.label || '', icon: m.icon || 'groups', color: m.color, soft: m.soft, target: c };
       }
+      /* ContractPartyKind.Property (3) — the minimal ContractPropertyReference
+         { propertyId, name, type } only. The caption is the property's own
+         KIND (House, Car…) read from the property record, so the tile says
+         "what sort of thing" without ever touching address, cadastral number,
+         registration or VIN. An unresolved navigation keeps the kind. */
+      if (party.propertyId) {
+        const p = (D.properties || []).find(x => x.id === party.propertyId);
+        const ti = (p && H.propTypeInfo) ? H.propTypeInfo(p.type) : {};
+        const ki = (p && H.propKindInfo) ? H.propKindInfo(p) : {};
+        return { kind: 'property', kindLabel: 'Property', name: p ? p.name : 'Unknown property',
+          typeLabel: ki.label || ti.label || '', icon: ki.icon || 'home_work', color: ti.color, soft: ti.soft, target: p || null };
+      }
       return { kind: 'unknown', kindLabel: 'Party', name: '—', typeLabel: '', icon: 'help', color: undefined, soft: undefined, target: null };
     },
 
@@ -708,6 +766,21 @@
         const m = D.contactTypeByKey[c.type] || {};
         return { value: c.id, label: c.name, icon: m.icon, iconColor: m.color };
       });
+    },
+
+    /* Property options for the party picker. Archived and disposed properties
+       stay LINKABLE (history must stay recordable) and say so in the label. */
+    conPropertyOptions() {
+      return (D.properties || []).slice()
+        .sort((a, b) => (!!a.archived - !!b.archived) || (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }))
+        .map(p => {
+          const ti = H.propTypeInfo ? H.propTypeInfo(p.type) : {};
+          const ki = H.propKindInfo ? H.propKindInfo(p) : {};
+          const st = H.propStatus ? H.propStatus(p) : 'Owned';
+          const tag = p.archived ? 'archived' : (st !== 'Owned' && H.propStatusMeta ? H.propStatusMeta(st).label.toLowerCase() : null);
+          return { value: p.id, label: tag ? `${p.name} (${tag})` : p.name, icon: ki.icon || 'home_work', iconColor: ti.color,
+            archived: !!p.archived, status: st };
+        });
     },
 
     // The user's file-library options (pre-loaded for the attach picker).

@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Reference data" name="File types" subtitle="The three file-type enums — AccountFileType, TransactionFileType and TaxStatementFileType. Name, Material icon, fixed oklch color per member, plus the AccountFile validity metadata. Driven by the OdysseyData registries." viewport="1100x2400" -->
+<!-- @dsCard group="Reference data" name="File types" subtitle="The four file-type enums — AccountFileType, TransactionFileType, TaxStatementFileType and PropertyFileType. Name, Material icon, fixed oklch color per member, plus the AccountFile / ContractFile / PropertyFile validity metadata. Driven by the OdysseyData registries." viewport="1100x3000" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -52,10 +52,10 @@
 <body>
   <div class="spec-doc">
     <h2>File types</h2>
-    <p class="spec-lead">Files attach in three contexts, each with its own enum. <b>AccountFileType</b> (field <code>FileType</code> on <code>ExistingAccountFile</code>) covers documents filed against an account; <b>TransactionFileType</b> (field <code>Type</code> on <code>ExistingTransactionFile</code>) covers proof attached to a single transaction; <b>TaxStatementFileType</b> (field <code>FileType</code> on <code>TaxStatementFile</code>) covers documents on a tax statement. Each enum carries only a name; the <b>icon</b> and <b>color</b> are a design-system decision, defined once per registry so the Files table, the kind chip, the upload picker, and the file viewer render a kind identically. Hues share the categorical band with the account-type and contact-type registries. <b>Other</b> is the default in each and sorts last.</p>
+    <p class="spec-lead">Files attach in four contexts, each with its own enum. <b>AccountFileType</b> (field <code>FileType</code> on <code>ExistingAccountFile</code>) covers documents filed against an account; <b>TransactionFileType</b> (field <code>Type</code> on <code>ExistingTransactionFile</code>) covers proof attached to a single transaction; <b>TaxStatementFileType</b> (field <code>FileType</code> on <code>TaxStatementFile</code>) covers documents on a tax statement; <b>PropertyFileType</b> (field <code>FileType</code> on <code>PropertyFile</code>) covers a property’s deed, registration, valuation and warranty paperwork. Each enum carries only a name; the <b>icon</b> and <b>color</b> are a design-system decision, defined once per registry so the Files table, the kind chip, the upload picker, and the file viewer render a kind identically. Hues share the categorical band with the account-type and contact-type registries. <b>Other</b> is the default in each and sorts last.</p>
     <div class="spec-src">
-      <span class="pill">Enum <b>AccountFileType</b> · <b>TransactionFileType</b> · <b>TaxStatementFileType</b></span>
-      <span class="pill">Registry <b>accountFileTypes</b> · <b>transactionFileTypes</b> · <b>taxStatementFileTypes</b></span>
+      <span class="pill">Enum <b>AccountFileType</b> · <b>TransactionFileType</b> · <b>TaxStatementFileType</b> · <b>PropertyFileType</b></span>
+      <span class="pill">Registry <b>accountFileTypes</b> · <b>transactionFileTypes</b> · <b>taxStatementFileTypes</b> · <b>propertyFileTypes</b></span>
       <span class="pill">Source <b>data.js</b></span>
     </div>
   </div>
@@ -69,8 +69,11 @@
   <div class="stage-label"><span class="material-icons">request_quote</span>Tax-statement file types<span class="ctx">— TaxStatementFileType · attached to a tax statement</span></div>
   <div class="cpt-grid" id="tax-grid"></div>
 
+  <div class="stage-label"><span class="material-icons">home_work</span>Property file types<span class="ctx">— PropertyFileType · attached to a property</span></div>
+  <div class="cpt-grid" id="prop-grid"></div>
+
   <div class="spec-doc">
-    <h2>Document validity metadata <span style="font:500 11px/1 var(--font-mono);color:var(--mud-palette-text-disabled);">— AccountFile · ContractFile</span></h2>
+    <h2>Document validity metadata <span style="font:500 11px/1 var(--font-mono);color:var(--mud-palette-text-disabled);">— AccountFile · ContractFile · PropertyFile</span></h2>
     <p class="spec-lead">An account file and a contract document each carry the same four optional, nullable fields describing the <b>document's</b> validity (not the raw bytes). They ride on the <b>link</b> row, so the same stored file filed in two places can carry a different period in each. They surface in the Files-table validity columns and detail well, the inline edit dialog and the upload editors.</p>
     <dl class="cpt-meta" style="grid-template-columns:auto auto 1fr;border-top:none;padding-top:0;">
       <dt>ValidFrom</dt><dd>DateTime?</dd><dd style="font-family:var(--font-sans);">When the document takes effect — e.g. a policy start.</dd>
@@ -83,7 +86,7 @@
 
   <div class="spec-doc">
     <ul class="spec-notes">
-      <li><span class="material-icons">call_split</span><b>Three enums, three vocabularies.</b> Account: Other(0) · Message(1) · Statement(2) · Contract(3) · Tax(4) · Documentation(5) · InsurancePolicy(6) · LoanAgreement(7) · RepaymentSchedule(8) · PurchaseAgreement(9) · Valuation(10) · Warranty(11) · Registration(12) · Prospectus(13). Transaction: Receipt(0) · Invoice(1) · Other(2) · CreditNote(3) · Quote(4) · PaymentConfirmation(5) · Documentation(6). Tax statement: TaxReturn(0) · TaxAssessment(1) · SupportingDocument(2) · Other(3). They share only <code>Other</code>.</li>
+      <li><span class="material-icons">call_split</span><b>Four enums, four vocabularies.</b> Account: Other(0) · Message(1) · Statement(2) · Contract(3) · Tax(4) · Documentation(5) · InsurancePolicy(6) · LoanAgreement(7) · RepaymentSchedule(8) · PurchaseAgreement(9) · Valuation(10) · Warranty(11) · Registration(12) · Prospectus(13). Transaction: Receipt(0) · Invoice(1) · Other(2) · CreditNote(3) · Quote(4) · PaymentConfirmation(5) · Documentation(6). Tax statement: TaxReturn(0) · TaxAssessment(1) · SupportingDocument(2) · Other(3). Property: Other(0) · Deed(1) · PurchaseAgreement(2) · Valuation(3) · Inspection(4) · Registration(5) · Insurance(6) · Warranty(7) · Receipt(8) · Maintenance(9) · Tax(10) · Drawing(11) — its keys shared with another enum reuse that enum’s icon and color.</li>
       <li><span class="material-icons">badge</span><b>The avatar</b> uses the type's <code>soft</code> tint as background and <code>color</code> as the glyph; <b>the kind chip</b> in the table fills the same soft tint with colored text. A merged <code>fileTypeByKey</code> lookup renders any kind from either enum, so a file reads correctly wherever it appears.</li>
       <li><span class="material-icons">auto_fix_high</span><b>Only <code>Statement</code> (account) is analyzable</b> — the server rejects every other type. The Analyze action keys off this, not off the icon.</li>
       <li><span class="material-icons">hub</span><b>One source per enum.</b> Add or recolor a type in the registry and the table, picker, viewer, and account detail all update. The pickers are context-specific (AccountFileType… vs TransactionFileType…); keep each registry's keys in lockstep with its C# enum.</li>
@@ -118,6 +121,7 @@
       document.getElementById('acct-grid').innerHTML = (D.accountFileTypes || []).map(cardFor).join('');
       document.getElementById('txn-grid').innerHTML = (D.transactionFileTypes || []).map(cardFor).join('');
       document.getElementById('tax-grid').innerHTML = (D.taxStatementFileTypes || []).map(cardFor).join('');
+      document.getElementById('prop-grid').innerHTML = (D.propertyFileTypes || []).map(cardFor).join('');
     })();
   </script>
 </body>

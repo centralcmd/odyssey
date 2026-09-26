@@ -44,7 +44,7 @@
     // Pages that read tweak values (Contracts' ending-soon window and the
     // per-contract term cap) get the kit's own defaults; pages that don't read
     // them ignore the key.
-    tweaks: { endingWindowDays: 45, chargeWindowDays: 45, contractTermCap: 500 },
+    tweaks: { endingWindowDays: 45, chargeWindowDays: 45, contractTermCap: 500, propRole: 'owner' },
   };
 
   // ---- Stylesheets (mirror ui_kits/web/index.html) ----
@@ -63,7 +63,8 @@
    'ui_kits/web/journal.css',
    'ui_kits/web/photos.css',
    'ui_kits/web/calendar.css',
-   'ui_kits/web/contacts.css'].forEach(function (href) {
+   'ui_kits/web/contacts.css',
+   'ui_kits/web/properties.css'].forEach(function (href) {
     const l = document.createElement('link');
     l.rel = 'stylesheet';
     l.href = ROOT + href;
@@ -104,16 +105,16 @@
   // Plain JS first (compiled bundle + seed data), then the kit's JSX in the
   // same order ui_kits/web/index.html loads it. Eval order matters (shared
   // window globals), so we FETCH every file in parallel but EVAL in sequence.
-  const PLAIN = ['_ds_bundle.js', 'ui_kits/web/data.js', 'ui_kits/web/tax-data.js', 'ui_kits/web/contracts-data.js', 'ui_kits/web/contract-events-data.js', 'ui_kits/web/journal-data.js', 'ui_kits/web/photos-data.js', 'ui_kits/web/calendar-data.js', 'ui_kits/web/system-settings-data.js', 'ui_kits/web/net-worth-data.js', 'ui_kits/web/legal-data.js'];
+  const PLAIN = ['_ds_bundle.js', 'ui_kits/web/data.js', 'ui_kits/web/tax-data.js', 'ui_kits/web/contracts-data.js', 'ui_kits/web/contract-events-data.js', 'ui_kits/web/journal-data.js', 'ui_kits/web/photos-data.js', 'ui_kits/web/calendar-data.js', 'ui_kits/web/system-settings-data.js', 'ui_kits/web/net-worth-data.js', 'ui_kits/web/properties-data.js', 'ui_kits/web/property-events-data.js', 'ui_kits/web/legal-data.js'];
   const JSX = [
     'Components.jsx', 'profile-fields.jsx', 'AppShell.jsx', 'Login.jsx', 'ForgotPassword.jsx', 'ResetPassword.jsx', 'ChangePasswordRequired.jsx', 'Onboarding.jsx', 'Dashboard.jsx',
     'AddAccountModal.jsx', 'AddFileModal.jsx', 'FileViewerModal.jsx', 'AnalyzeFileModal.jsx',
     'AddTransactionModal.jsx', 'AccountTerms.jsx',
-    'AddEstimateModal.jsx', 'AccountEstimates.jsx', 'Accounts.jsx',
+    'AddEstimateModal.jsx', 'AccountEstimates.jsx', 'Accounts.jsx', 'AddPropertyModal.jsx', 'PropertyEstimates.jsx', 'AddPropertyEventModal.jsx', 'PropertyEvents.jsx', 'Properties.jsx',
     'Files.jsx', 'Transactions.jsx', 'TransactionTags.jsx', 'ContactAvatarDialog.jsx', 'ContactImportModal.jsx', 'Contacts.jsx',
     'Currencies.jsx', 'ExchangeRates.jsx', 'AddBudgetModal.jsx', 'AddBudgetItemModal.jsx',
     'Budgets.jsx', 'AddTaxStatementModal.jsx', 'TaxStatements.jsx',
-    'AddContractModal.jsx', 'AddContractPartyModal.jsx', 'AddContractFileModal.jsx', 'AddContractTermModal.jsx', 'ContractTerms.jsx', 'AddContractEventModal.jsx', 'ContractEvents.jsx', 'Contracts.jsx',
+    'AddContractModal.jsx', 'AddContractPartyModal.jsx', 'AddContractFileModal.jsx', 'AddPropertyFileModal.jsx', 'AddContractTermModal.jsx', 'ContractTerms.jsx', 'AddContractEventModal.jsx', 'ContractEvents.jsx', 'Contracts.jsx',
     'ImportJournalEntriesModal.jsx', 'Journal.jsx', 'ImportTasksModal.jsx', 'Tasks.jsx',
     'AddCalendarEventModal.jsx', 'ExportCalendarEventsModal.jsx', 'ManageCalendarsModal.jsx', 'ImportCalendarModal.jsx', 'Calendar.jsx',
     'ProfilePicture.jsx', 'Users.jsx', 'Roles.jsx', 'FileAnalysisLog.jsx', 'SystemSettings.jsx', 'Preferences.jsx', 'AccountTwoFactor.jsx',

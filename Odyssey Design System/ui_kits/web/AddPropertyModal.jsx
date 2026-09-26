@@ -124,11 +124,11 @@ const AddPropertyModal = ({ property = null, onClose, onSave, estimateCount = 0 
       <FormRow>
         <div className="field">
           <Field type="date" label="Acquired" value={draft.acquiredDate} onChange={set('acquiredDate')} placeholder="Unknown" />
-          <div className="helper">Leave empty if you don’t know.</div>
+          <div className="helper">Leave empty if you don’t know. Setting or clearing it records an event.</div>
         </div>
         <div className="field">
           <Field type="date" label="Disposed" value={draft.disposedDate} onChange={set('disposedDate')} placeholder="Still owned" />
-          {errors.disposedDate ? <div className="helper aam-err">{errors.disposedDate}</div> : <div className="helper">Sold, written off or scrapped.</div>}
+          {errors.disposedDate ? <div className="helper aam-err">{errors.disposedDate}</div> : <div className="helper">Sold, written off or scrapped. Setting or clearing it records an event.</div>}
         </div>
       </FormRow>
 

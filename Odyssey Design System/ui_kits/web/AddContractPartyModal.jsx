@@ -2,7 +2,7 @@
    POST …/parties and PUT …/parties/{partyId}).
 
    The accessible picker the spec mandates, now three decisions deep:
-     1. the party KIND — Account / Contact (the XOR target)
+     1. the party KIND — Account / Contact / Property (the one-of-three target)
      2. the ROLE the record plays in the agreement — a FIXED PER-TYPE LIST read
         off the shared contract-type × role matrix, suggested roles first. The
         picker offers no role the server would refuse, so the 422 is a backstop
@@ -17,9 +17,16 @@
    role is required on every write, so the control starts empty and Save stays
    disabled until one is picked — the client half of the server's `[Required]`.
 
-   The save carries SCALAR IDS ONLY (accountId xor contactId) — never a nested
-   Account or Contact object (§7.6 write-path invariant), so a party write can
-   never create or rename the linked record.
+   The save carries SCALAR IDS ONLY (exactly one of accountId / contactId /
+   propertyId) — never a nested Account, Contact or Property object (§7.4
+   write-path invariant), so a party write can never create or rename the
+   linked record.
+
+   PROPERTY kind: any role the contract's type allows — the kind implies no
+   role and no role implies the kind (Non-Goal 1). Archived and disposed
+   properties stay linkable so history can still be recorded; the helper says
+   so when one is picked. The property's detail fields (address, VIN…) never
+   appear here — the picker shows name + kind only.
 
    Duplicate guard: uniqueness is (contract, target, ROLE), so the picker only
    hides records already linked IN THE SELECTED ROLE, and the party being edited
@@ -33,19 +40,21 @@
 const CONTRACT_PARTY_KINDS = [
   { kind: 'account', label: 'Account', icon: 'account_balance_wallet', field: 'accountId' },
   { kind: 'contact', label: 'Contact', icon: 'groups',                 field: 'contactId' },
+  { kind: 'property', label: 'Property', icon: 'home_work',            field: 'propertyId' },
 ];
+const CP_ARTICLE = { account: 'an account', contact: 'a contact', property: 'a property' };
 
 const AddContractPartyModal = ({ contract, party = null, onClose, onAdd, onSave }) => {
   const { useState, useMemo } = React;
   const H = window.OdysseyHelpers;
   const editing = !!party;
 
-  const [kind, setKind] = useState(editing && party.contactId ? 'contact' : 'account');
+  const [kind, setKind] = useState(editing && party.contactId ? 'contact' : editing && party.propertyId ? 'property' : 'account');
   // No default: the role is chosen, never inherited. An edited party keeps the
   // role it holds — including a legacy one the matrix no longer accepts, which
   // is exactly the party this dialog exists to correct.
   const [role, setRole] = useState(editing ? (party.role || '') : '');
-  const [value, setValue] = useState(editing ? (party.accountId || party.contactId || '') : '');
+  const [value, setValue] = useState(editing ? (party.accountId || party.contactId || party.propertyId || '') : '');
   const [fromDate, setFromDate] = useState(editing ? (party.fromDate || null) : null);
   const [toDate, setToDate] = useState(editing ? (party.toDate || null) : null);
   const [error, setError] = useState(null);
@@ -68,16 +77,21 @@ const AddContractPartyModal = ({ contract, party = null, onClose, onAdd, onSave 
     () => H.conPartyTaken(contract.parties, def.field, role, editing ? party.id : null),
     [contract.parties, def.field, role, editing, party]);
 
-  const allOptions = kind === 'account' ? H.conAccountOptions() : H.conInstitutionOptions();
+  const allOptions = kind === 'account' ? H.conAccountOptions() : kind === 'property' ? H.conPropertyOptions() : H.conInstitutionOptions();
   const options = allOptions.filter(o => !taken.has(o.value));
   const roleNoun = role ? roleInfo.label.toLowerCase() : 'this role';
 
+  const pluralNoun = (n) => (kind === 'property' ? (n === 1 ? 'property' : 'properties') : `${def.label.toLowerCase()}${n === 1 ? '' : 's'}`);
+  const picked = kind === 'property' && value ? allOptions.find(o => o.value === value) : null;
+  const pickedNote = picked && (picked.archived || picked.status !== 'Owned')
+    ? `This property is ${picked.archived ? 'archived' : picked.status.toLowerCase()} — it can still be linked, so the contract’s history stays complete.`
+    : null;
   const pickKind = (k) => { setKind(k); setValue(''); setError(null); };
   const pickRole = (r) => { setRole(r); setError(null); setRoleError(null); };
 
   const submit = () => {
     if (!role) { setError(null); setRoleError('Pick the role this record plays in the agreement.'); return; }
-    if (!value) { setError(`Select an ${def.label.toLowerCase()} to link.`); return; }
+    if (!value) { setError(`Select ${CP_ARTICLE[kind]} to link.`); return; }
     const de = {};
     if (fromDate && startDate && fromDate < startDate)
       de.fromDate = `This contract starts ${H.conDate(startDate)} — a party can’t be in the role before that.`;
@@ -87,6 +101,7 @@ const AddContractPartyModal = ({ contract, party = null, onClose, onAdd, onSave 
       id: editing ? party.id : `cp-new-${Date.now()}`,
       accountId: kind === 'account' ? value : null,
       contactId: kind === 'contact' ? value : null,
+      propertyId: kind === 'property' ? value : null,
       role, fromDate: fromDate || null, toDate: toDate || null,
     };
     if (editing) onSave && onSave(dto); else onAdd && onAdd(dto);
@@ -97,7 +112,7 @@ const AddContractPartyModal = ({ contract, party = null, onClose, onAdd, onSave 
       title={editing ? 'Edit party' : 'New party'}
       subtitle={editing
         ? 'Change the role, the linked record, or the dates this party is in the role.'
-        : 'Link the account or contact this contract relates to, and say what it does in the agreement.'}
+        : 'Link the account, contact or property this contract relates to, and say what it does in the agreement.'}
       icon="group_add"
       onClose={onClose}
       footer={
@@ -112,7 +127,7 @@ const AddContractPartyModal = ({ contract, party = null, onClose, onAdd, onSave 
       <FieldShell label="Party kind" required>
         <CardSelect ariaLabel="Party kind" value={kind} onChange={pickKind}
           accent="var(--con-accent)" accentLine="var(--con-accent-line)" accentSoft="var(--con-accent-soft)"
-          columns={2} maxItemWidth={180} center
+          columns={3} maxItemWidth={180} center
           options={CONTRACT_PARTY_KINDS.map(k => ({ value: k.kind, label: k.label, icon: k.icon }))} />
       </FieldShell>
 
@@ -143,12 +158,12 @@ const AddContractPartyModal = ({ contract, party = null, onClose, onAdd, onSave 
           options={options} placeholder="Search contacts…" ariaLabel={def.label} />
       ) : (
         <FieldShell label={def.label} htmlFor="acp-target" required error={error}
-          helper={error ? undefined : (options.length
-            ? `${options.length} ${def.label.toLowerCase()}${options.length === 1 ? '' : 's'} available in this role.`
-            : `Every ${def.label.toLowerCase()} already holds ${roleNoun} on this contract.`)}>
+          helper={error ? undefined : (pickedNote || (options.length
+            ? `${options.length} ${pluralNoun(options.length)} available in this role.`
+            : `Every ${def.label.toLowerCase()} already holds ${roleNoun} on this contract.`))}>
           <Combobox id="acp-target" value={value} onChange={(v) => { setValue(v || ''); if (error) setError(null); }}
             options={options}
-            placeholder={`Search ${def.label.toLowerCase()}s…`}
+            placeholder={`Search ${pluralNoun(2)}…`}
             ariaLabel={def.label} invalid={!!error} />
         </FieldShell>
       )}

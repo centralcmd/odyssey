@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Now opening on Contracts, where object parties (Object / Property / Collateral) name what the agreement is about and Guarantor is legal on every type — all decided by one shared matrix — Landlord/Tenant on a lease, Insurer/Policyholder/Insured/Beneficiary on insurance, Lender/Borrower on a Loan, Depositor/Custodian on the new Deposit type (its mirror; the seeded fixed-term deposit’s interest counts as incoming under Deposit) — with Unspecified and Service provider retired, a role required on every write, and a type change refused while it would orphan an existing party. Party tiles lead with the role, show a non-default term under it, and their ⋯ menu opens the edit-in-place dialog (role, record and both dates are replaced as one). Plus the contact import/export family across the productivity surfaces, Tasks, Budgets, the Calendar module, the User Profile, Accounts, Tax and the rest." viewport="1440x1100" -->
+<!-- @dsCard group="UI Kit — Web" name="Web UI kit click-thru" subtitle="Opens on Properties, where each property now carries its documents — deed, registration, valuation, warranty — attached by upload or from Files, with validity dates, edit and detach." viewport="1440x1100" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -43,6 +43,7 @@
   <script src="system-settings-data.js"></script>
   <script src="net-worth-data.js"></script>
   <script src="properties-data.js"></script>
+  <script src="property-events-data.js"></script>
 </head>
 <body>
   <div id="root"></div>
@@ -67,6 +68,8 @@
   <script type="text/babel" src="Accounts.jsx"></script>
   <script type="text/babel" src="AddPropertyModal.jsx"></script>
   <script type="text/babel" src="PropertyEstimates.jsx"></script>
+  <script type="text/babel" src="AddPropertyEventModal.jsx"></script>
+  <script type="text/babel" src="PropertyEvents.jsx"></script>
   <script type="text/babel" src="Properties.jsx"></script>
   <script type="text/babel" src="Files.jsx"></script>
   <script type="text/babel" src="Transactions.jsx"></script>
@@ -86,6 +89,7 @@
   <script type="text/babel" src="AddContractModal.jsx"></script>
   <script type="text/babel" src="AddContractPartyModal.jsx"></script>
   <script type="text/babel" src="AddContractFileModal.jsx"></script>
+  <script type="text/babel" src="AddPropertyFileModal.jsx"></script>
   <script type="text/babel" src="AddContractTermModal.jsx"></script>
   <script type="text/babel" src="ContractTerms.jsx"></script>
   <script type="text/babel" src="AddContractEventModal.jsx"></script>
@@ -251,7 +255,7 @@
             <React.Fragment>
               <TweakSection label="Properties · claims" />
               <TweakRadio label="Role" value={tweaks.propRole || 'owner'}
-                          options={[{ value: 'owner', label: 'Owner / Admin' }, { value: 'user', label: 'User / Guest' }]}
+                          options={[{ value: 'owner', label: 'Owner' }, { value: 'user', label: 'User' }, { value: 'guest', label: 'Guest' }]}
                           onChange={(v) => setTweak('propRole', v)} />
               <TweakSection label="Property smart tags" />
               <TweakSlider label="PropertyMaxSmartTagsPerProperty" min={1} max={50} step={1}

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · Property events</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="../ui_kits/web/kit.css" />
+<link rel="stylesheet" href="../ui_kits/web/admin.css" />
+<link rel="stylesheet" href="../ui_kits/web/account.css" />
+<link rel="stylesheet" href="../ui_kits/web/contracts.css" />
+<link rel="stylesheet" href="../ui_kits/web/contract-events.css" />
+<link rel="stylesheet" href="../ui_kits/web/properties.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<script src="../ui_kits/web/data.js"></script>
+<script src="../ui_kits/web/contracts-data.js"></script>
+<script src="../ui_kits/web/contract-events-data.js"></script>
+<script src="../ui_kits/web/properties-data.js"></script>
+<script src="../ui_kits/web/property-events-data.js"></script>
+<style>
+html,body{min-height:0;background:var(--mud-palette-background)}
+body{max-width:1200px;margin:0 auto;padding:24px;box-sizing:border-box}
+a{color:var(--tide-400)}a:hover{color:var(--tide-300)}
+.spec-doc{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:12px;padding:18px 20px;margin-bottom:18px}
+.spec-doc h2{font:600 15px/1.3 var(--font-sans);color:var(--mud-palette-text-primary);margin:0 0 6px}
+.spec-lead{font:400 13px/1.55 var(--font-sans);color:var(--mud-palette-text-secondary);margin:0 0 14px;max-width:96ch;text-wrap:pretty}
+.spec-lead b{color:var(--mud-palette-text-primary);font-weight:500}
+.spec-src{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.spec-src .pill{font:500 11px/1 var(--font-mono);color:var(--mud-palette-text-secondary);background:rgba(255,255,255,0.05);border:1px solid var(--mud-palette-divider);border-radius:999px;padding:5px 10px}
+.spec-src .pill b{color:var(--tide-400);font-weight:600}
+.spec-notes{margin:0;padding:0;list-style:none;display:grid;gap:7px}
+.spec-notes li{position:relative;padding-left:20px;font:400 12.5px/1.5 var(--font-sans);color:var(--mud-palette-text-secondary);text-wrap:pretty}
+.spec-notes li b{color:var(--mud-palette-text-primary);font-weight:500}
+.spec-notes li .material-icons{position:absolute;left:0;top:1px;font-size:15px;color:var(--tide-400)}
+.spec-open{border:1px solid var(--mud-palette-warning);border-radius:10px;padding:13px 15px;margin:16px 0 0}
+.spec-open h3{font:600 12px/1 var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--mud-palette-warning);margin:0 0 9px}
+.spec-open ol{margin:0;padding-left:18px;display:grid;gap:7px}
+.spec-open li{font:400 12.5px/1.5 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.spec-open li b{color:var(--mud-palette-text-primary);font-weight:500}
+.twk{position:sticky;top:0;z-index:5;display:flex;align-items:center;flex-wrap:wrap;gap:18px;background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:10px;padding:11px 16px;margin-bottom:18px}
+.twk-grp{display:flex;align-items:center;gap:9px}
+.twk-lab{font:600 10px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.twk-seg{display:inline-flex;gap:3px;padding:3px;border-radius:9px;background:var(--mud-palette-background);border:1px solid var(--mud-palette-divider)}
+.twk-seg button{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 13px;border:none;border-radius:7px;background:transparent;cursor:pointer;font:500 12px/1 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.twk-seg button .material-icons{font-size:16px}
+.twk-seg button.on{background:var(--tide-400);color:var(--ink-950)}
+.twk-spacer{flex:1}
+.stage{display:flex;flex-direction:column;gap:18px}
+.stage-label{font:500 11px/1.4 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:2px 0 -4px 2px;display:flex;align-items:center;gap:8px}
+.stage-label .material-icons{font-size:15px;color:var(--tide-400)}
+.dcard{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:12px;overflow:hidden;padding-bottom:14px}
+.dcard .con-section{padding:0 18px}
+.dcard-head{display:flex;align-items:center;gap:14px;padding:16px 18px;border-bottom:1px solid var(--mud-palette-divider-light);margin-bottom:8px}
+.dcard-id{display:flex;flex-direction:column;gap:3px;min-width:0}
+.dcard-name-row{display:flex;align-items:center;gap:10px}
+.dcard-name{font:500 16px/1.2 var(--font-sans);color:var(--mud-palette-text-primary)}
+.dcard-tags{font:400 12px/1 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.dcard-acts{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="spec-doc">
+  <h2>Property events <span style="color:var(--mud-palette-text-secondary);font-weight:400;">· properties/{id} → Events</span></h2>
+  <p class="spec-lead">What happened to a house, cabin, car or boat over time. The section is the contract events log on the same <b>EventRail</b>, as the last zone of the property record. It differs in two places: the type list depends on the property's type, and the server records only <b>acquired, disposed and archive</b> changes. The buttons on each card simulate those property edits, so you can watch the system rows land.</p>
+  <div class="spec-src">
+    <span class="pill">Issue <b>#167</b> · Draft v2</span>
+    <span class="pill">API <b>/api/properties/{id}/events</b></span>
+    <span class="pill">Enum <b>PropertyEventType</b> 100–120</span>
+    <span class="pill">Matrix <b>17 / 21</b> per type</span>
+    <span class="pill">Claims <b>properties.{read,update}</b></span>
+    <span class="pill">DS <b>PropertyEventTypeSelect</b></span>
+  </div>
+  <ul class="spec-notes">
+    <li><span class="material-icons">rule</span><b>The picker is the matrix.</b> A vehicle offers Serviced, Tyre change, Periodic inspection and Registration first; real estate offers Renovation, Tax assessed and the two tenancy types. The 13 universal members follow, Other last. The 422 is not reachable through the dialog.</li>
+    <li><span class="material-icons">smart_toy</span><b>System-only types are never offered on create.</b> Editing a recorded Archived row shows its type alone under “Recorded automatically”, so the edit can keep it (AC 5).</li>
+    <li><span class="material-icons">visibility_off</span><b>Estimates write nothing.</b> The log is read under properties.read; an “estimate added” row would leak what properties.estimates.read withholds. The dialog says a Valued event is a log line, not an estimate.</li>
+    <li><span class="material-icons">toggle_off</span><b>No event changes the property.</b> A hand-written “Disposed of” does not set the disposed date; the Type field's help says so and points to Edit property.</li>
+  </ul>
+  <div class="spec-open">
+    <h3>Open questions</h3>
+    <ol>
+      <li><b>Collapsed Events count.</b> Drawn on the card, but ExistingProperty has no EventCount. Needs adding alongside FileCount, or the count comes off.</li>
+      <li><b>Filters.</b> The endpoint takes <code>search</code>, <code>types</code> and <code>source</code>; none are surfaced in v1. Which comes first when they are?</li>
+    </ol>
+  </div>
+</div>
+<div id="root"></div>
+<script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
+<script type="text/babel" src="../ui_kits/web/PropertyEvents.jsx"></script>
+<script type="text/babel" src="../ui_kits/web/AddPropertyEventModal.jsx"></script>
+<script type="text/babel" data-presets="env,react">
+const { useState } = React;
+const D = window.OdysseyData, H = window.OdysseyHelpers;
+const byId = Object.fromEntries(D.properties.map(p => [p.id, p]));
+const Seg = ({ value, onChange, options }) => (
+  <div className="twk-seg" role="tablist">
+    {options.map(o => (
+      <button key={String(o.value)} role="tab" aria-selected={value === o.value} className={value === o.value ? 'on' : ''} onClick={() => onChange(o.value)}>
+        {o.icon && <span className="material-icons">{o.icon}</span>}{o.label}
+      </button>
+    ))}
+  </div>
+);
+const DetailCard = ({ seed, canUpdate }) => {
+  const [p, setP] = useState(seed);
+  const [events, setEvents] = useState(() => H.pevFor(seed.id));
+  const [dialog, setDialog] = useState(null);
+  const kind = H.propKindInfo(p), ti = H.propTypeInfo(p.type);
+  const change = (patch) => { const next = { ...p, ...patch }; const rows = H.pevTransitions(p, next, 'u-owner'); setEvents(prev => [...rows, ...prev]); setP(next); };
+  const save = (dto) => { setEvents(prev => prev.some(e => e.id === dto.id) ? prev.map(e => e.id === dto.id ? dto : e) : [dto, ...prev]); setDialog(null); };
+  return (
+    <div className="dcard">
+      <div className="dcard-head">
+        <Avatar icon={kind.icon} tone={{ bg: ti.soft, fg: ti.color }} square size="lg" />
+        <div className="dcard-id">
+          <div className="dcard-name-row"><span className="dcard-name">{p.name}</span>{H.propStatus(p) !== 'Owned' ? <PropertyStatusChipLite status={H.propStatus(p)} /> : null}</div>
+          <div className="dcard-tags">{kind.label} · {ti.label}</div>
+        </div>
+        {canUpdate ? (
+          <div className="dcard-acts">
+            <Button variant="outlined" size="sm" icon={p.archived ? 'unarchive' : 'inventory_2'} onClick={() => change({ archived: p.archived ? null : new Date().toISOString() })}>{p.archived ? 'Restore' : 'Archive'}</Button>
+            <Button variant="outlined" size="sm" icon="output" onClick={() => change({ disposedDate: p.disposedDate ? null : H.propToday() })}>{p.disposedDate ? 'Clear disposed date' : 'Set disposed today'}</Button>
+            <ActionMenu ariaLabel={`Actions for ${p.name}`} items={[{ icon: 'history', label: 'New event', onClick: () => setDialog({}) }]} />
+          </div>
+        ) : null}
+      </div>
+      <PropertyEvents property={p} events={events} canUpdate={canUpdate}
+        onEdit={(ev) => setDialog({ event: ev })} onDelete={(ev) => setEvents(prev => prev.filter(x => x.id !== ev.id))} />
+      {dialog && <AddPropertyEventModal property={p} event={dialog.event || null} onClose={() => setDialog(null)} onSave={save} />}
+    </div>
+  );
+};
+const PropertyStatusChipLite = ({ status }) => { const m = H.propStatusMeta(status); return <Chip tone={m.tone} dot={m.dot}>{m.label}</Chip>; };
+function Explore() {
+  const [canUpdate, setCanUpdate] = useState(true);
+  const [theme, setTheme] = useState('dark');
+  React.useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+  return (
+    <React.Fragment>
+      <div className="twk">
+        <div className="twk-grp"><span className="twk-lab">Claims</span>
+          <Seg value={canUpdate} onChange={setCanUpdate} options={[{ value: true, label: 'properties.update', icon: 'edit' }, { value: false, label: 'Guest · read only', icon: 'visibility' }]} /></div>
+        <div className="twk-spacer" />
+        <div className="twk-grp"><span className="twk-lab">Theme</span>
+          <Seg value={theme} onChange={setTheme} options={[{ value: 'dark', label: 'Dark', icon: 'dark_mode' }, { value: 'light', label: 'Light', icon: 'light_mode' }]} /></div>
+      </div>
+      <div className="stage" key={String(canUpdate)}>
+        <div className="stage-label"><span className="material-icons">directions_car</span>Vehicle · tyre changes, service, inspection — the Acquired row was recorded when the property was added</div>
+        <DetailCard seed={byId['p-outback']} canUpdate={canUpdate} />
+        <div className="stage-label"><span className="material-icons">house</span>Real estate · renovation, damage, repair, tax — notes stay off the rail</div>
+        <DetailCard seed={byId['p-maple']} canUpdate={canUpdate} />
+        <div className="stage-label"><span className="material-icons">inventory_2</span>Archived · an automatic Archived row; still writable</div>
+        <DetailCard seed={byId['p-ridge']} canUpdate={canUpdate} />
+        <div className="stage-label"><span className="material-icons">inbox</span>Empty · no acquired date, so nothing was recorded automatically</div>
+        <DetailCard seed={byId['p-cabin']} canUpdate={canUpdate} />
+      </div>
+    </React.Fragment>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Explore />);
+</script>
+</body>
+</html>

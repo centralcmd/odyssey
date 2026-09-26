@@ -499,6 +499,26 @@
         "message": "<ProfilePictureField> variant must be one of 'row' | 'overlay'."
       },
       {
+        "selector": "JSXOpeningElement[name.name='PropertyEventType'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|scope|systemOnly|auto|desc|key|ref|className|style|children)$/]",
+        "message": "<PropertyEventType> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft, scope, systemOnly, auto, desc."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='PropertyEventType'] > JSXAttribute[name.name='scope'] > Literal[value!=/^(?:common|RealEstate|Vehicle)$/]",
+        "message": "<PropertyEventType> scope must be one of 'common' | 'RealEstate' | 'Vehicle'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='PropertyFileTypeMultiSelect'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|onChange|label|icon|align|types|className|key|ref|className|style|children)$/]",
+        "message": "<PropertyFileTypeMultiSelect> doesn't accept that prop. Declared props: value, onChange, label, icon, align, types, className."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='PropertyFileTypeMultiSelect'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:left|right)$/]",
+        "message": "<PropertyFileTypeMultiSelect> align must be one of 'left' | 'right'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='PropertyFileType'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|key|ref|className|style|children)$/]",
+        "message": "<PropertyFileType> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='RadioOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|disabled|key|ref|className|style|children)$/]",
         "message": "<RadioOption> doesn't accept that prop. Declared props: value, label, disabled."
       },
@@ -1029,6 +1049,15 @@
         "replaces": []
       },
       "ProfilePictureField": {
+        "replaces": []
+      },
+      "PropertyEventType": {
+        "replaces": []
+      },
+      "PropertyFileTypeMultiSelect": {
+        "replaces": []
+      },
+      "PropertyFileType": {
         "replaces": []
       },
       "RadioOption": {

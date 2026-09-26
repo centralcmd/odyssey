@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"4fc4715df0f0","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"77a2688a5486","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"e68a84da1aec","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"7c36cba24537","ui_kits/web/AccountTerms.jsx":"31d6d8102e0d","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"e361647ccece","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"0b432bb2ea38","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"b253e86d3c83","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddPropertyModal.jsx":"9f8324bcdeb3","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/Budgets.jsx":"e6834a138aea","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"247fb5488f6f","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"5639c1c06dd9","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"66fc54cff8b0","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"3ad3d1b2b7cf","ui_kits/web/PropertyEstimates.jsx":"19fbc1ab18df","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"f3bf3f5cb39e","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"854a34963f77","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"0fc117954b43","ui_kits/web/contracts-data.js":"1f142d62ba22","ui_kits/web/data.js":"2f39d2338da7","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"b6cb8b04033a","ui_kits/web/system-settings-data.js":"d79a776631a0","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"PROPERTY_EVENT_TYPES","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_SYSTEM_ONLY","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_TYPE_MATRIX","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyEventTypeSelect","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyFileTypeMultiSelect","sourcePath":"components/PropertyFileTypeMultiSelect.jsx"},{"name":"PROPERTY_FILE_TYPES","sourcePath":"components/PropertyFileTypeSelect.jsx"},{"name":"PropertyFileTypeSelect","sourcePath":"components/PropertyFileTypeSelect.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"69e39bbd6589","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"303c5a5986de","components/FormRow.jsx":"760803e7e9a9","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"77a2688a5486","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/PropertyEventTypeSelect.jsx":"e9232a5f7149","components/PropertyFileTypeMultiSelect.jsx":"9391985612da","components/PropertyFileTypeSelect.jsx":"7a590c69bc2b","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"e68a84da1aec","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"1138a58e805f","ui_kits/web/AccountEstimates.jsx":"7c36cba24537","ui_kits/web/AccountTerms.jsx":"31d6d8102e0d","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"e361647ccece","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"5671cc00067f","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"b253e86d3c83","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddPropertyEventModal.jsx":"7bd99a614e1c","ui_kits/web/AddPropertyFileModal.jsx":"71fc7170d954","ui_kits/web/AddPropertyModal.jsx":"2285bfba323f","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"02ea8ec9b4e2","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/Budgets.jsx":"e6834a138aea","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"8977571643ca","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"17aff36699b6","ui_kits/web/ContractEvents.jsx":"373416693132","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"55f2a9a3f733","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"3eab738d57c3","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"66cf599b1b01","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"7473854c87bc","ui_kits/web/PropertyEstimates.jsx":"19fbc1ab18df","ui_kits/web/PropertyEvents.jsx":"64d436cd345d","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"83a5940b0efa","ui_kits/web/TransactionTags.jsx":"f3bf3f5cb39e","ui_kits/web/Transactions.jsx":"f39c0718ee9b","ui_kits/web/Users.jsx":"854a34963f77","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"0fc117954b43","ui_kits/web/contracts-data.js":"bc9ea1bba476","ui_kits/web/data.js":"daa4b07bfc86","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"6285e25d3f53","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"da264fd92b48","ui_kits/web/property-events-data.js":"2c6c4672c3ac","ui_kits/web/system-settings-data.js":"d79a776631a0","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"propertyEventTypeLegality","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"propertyEventTypesFor","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -7521,6 +7521,8 @@ try { (() => {
  *     menu convention. "Preview" opens the document (FileViewerModal).
  *     Host any modals OUTSIDE the table.
  *   • `onDelete(file)` appends the danger Delete item after a divider.
+ *     `deleteLabel` / `deleteIcon` rename it on link surfaces where the
+ *     verb only detaches (e.g. "Detach" · link_off on property documents).
  *
  * Sorting defaults to Uploaded, newest first — uncontrolled unless the host
  * binds `sort` ({key,dir}) + `onSortChange` (forwarded to RecordTable), which
@@ -7755,6 +7757,8 @@ function FilesTable({
   issuers,
   onCreateContact,
   onDelete,
+  deleteLabel = 'Delete',
+  deleteIcon = 'delete',
   renameable = true,
   requireType = false,
   formatDate = ftDate,
@@ -7920,8 +7924,8 @@ function FilesTable({
     }] : []), ...(actions || defaultExtra)(f), ...(onDelete ? [{
       divider: true
     }, {
-      icon: 'delete',
-      label: 'Delete',
+      icon: deleteIcon,
+      label: deleteLabel,
       danger: true,
       onClick: ctx.remove
     }] : [])],
@@ -11625,6 +11629,484 @@ function ProfilePictureField({
 }
 Object.assign(__ds_scope, { ProfilePictureField });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/ProfilePictureField.jsx", error: String((e && e.message) || e) }); }
+
+// components/PropertyEventTypeSelect.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/**
+ * Odyssey DS — PropertyEventTypeSelect
+ * A single-select pre-wired to the PropertyEventType vocabulary — what happened
+ * to a house, cabin, car or boat. Like ContractPartyRoleSelect, its option list
+ * depends on ANOTHER field: pass `propertyType` ('RealEstate' | 'Vehicle') and
+ * the control offers exactly the legal members for that type, the
+ * type-specific ones first under their own heading.
+ *
+ * SYSTEM-ONLY MEMBERS (Archived · Restored · Acquired date cleared · Disposal
+ * reversed) are never offered. They are rejected on POST and cannot be
+ * introduced by PUT. A PUT on a row that already carries one may keep it, so
+ * pass that key as `keepType` and it is offered alone under "Recorded
+ * automatically", so the edit can keep it.
+ *
+ * `PROPERTY_EVENT_TYPES` is the canonical registry (key · label · enumValue ·
+ * icon · color · soft · desc · auto). Ordinals start at 100, disjoint from
+ * ContractEventType (0–99): one shared table, a stored Type always names its
+ * enum. `Other` is ordinal 108 but reads LAST — the unknown-ordinal fallback is
+ * positional. `PROPERTY_EVENT_TYPE_MATRIX` is the client half of the server's
+ * `PropertyEventTypeMatrix`: 17 legal cells per property type, 34 of 42.
+ */
+
+const PROPERTY_EVENT_TYPES = [{
+  key: 'Acquired',
+  label: 'Acquired',
+  enumValue: 100,
+  icon: 'key',
+  color: 'oklch(0.79 0.14 145)',
+  soft: 'oklch(0.79 0.14 145 / 0.16)',
+  scope: 'common',
+  auto: 'the acquired date was set',
+  desc: 'Bought, inherited or received.'
+}, {
+  key: 'Disposed',
+  label: 'Disposed of',
+  enumValue: 101,
+  icon: 'output',
+  color: 'oklch(0.74 0.13 25)',
+  soft: 'oklch(0.74 0.13 25 / 0.16)',
+  scope: 'common',
+  auto: 'the disposed date was set',
+  desc: 'Sold, scrapped or written off.'
+}, {
+  key: 'Valued',
+  label: 'Valued',
+  enumValue: 102,
+  icon: 'price_check',
+  color: 'oklch(0.78 0.13 110)',
+  soft: 'oklch(0.78 0.13 110 / 0.16)',
+  scope: 'common',
+  desc: 'An appraisal or valuation was obtained.'
+}, {
+  key: 'Maintenance',
+  label: 'Maintenance',
+  enumValue: 103,
+  icon: 'build',
+  color: 'oklch(0.80 0.14 95)',
+  soft: 'oklch(0.80 0.14 95 / 0.16)',
+  scope: 'common',
+  desc: 'Routine upkeep.'
+}, {
+  key: 'Repair',
+  label: 'Repair',
+  enumValue: 104,
+  icon: 'handyman',
+  color: 'oklch(0.79 0.14 60)',
+  soft: 'oklch(0.79 0.14 60 / 0.16)',
+  scope: 'common',
+  desc: 'A defect was fixed.'
+}, {
+  key: 'Damage',
+  label: 'Damage',
+  enumValue: 105,
+  icon: 'report',
+  color: 'oklch(0.72 0.15 20)',
+  soft: 'oklch(0.72 0.15 20 / 0.16)',
+  scope: 'common',
+  desc: 'An incident, accident, storm or water damage.'
+}, {
+  key: 'Inspection',
+  label: 'Inspection',
+  enumValue: 106,
+  icon: 'troubleshoot',
+  color: 'oklch(0.78 0.12 180)',
+  soft: 'oklch(0.78 0.12 180 / 0.16)',
+  scope: 'common',
+  desc: 'A general inspection or survey.'
+}, {
+  key: 'InsuranceChanged',
+  label: 'Insurance changed',
+  enumValue: 107,
+  icon: 'shield',
+  color: 'oklch(0.74 0.15 30)',
+  soft: 'oklch(0.74 0.15 30 / 0.16)',
+  scope: 'common',
+  desc: 'A policy was taken out, renewed or changed.'
+}, {
+  key: 'Renovation',
+  label: 'Renovation',
+  enumValue: 113,
+  icon: 'format_paint',
+  color: 'oklch(0.76 0.14 320)',
+  soft: 'oklch(0.76 0.14 320 / 0.16)',
+  scope: 'RealEstate',
+  desc: 'A renovation or extension.'
+}, {
+  key: 'TaxAssessed',
+  label: 'Tax assessed',
+  enumValue: 114,
+  icon: 'request_quote',
+  color: 'oklch(0.75 0.16 330)',
+  soft: 'oklch(0.75 0.16 330 / 0.16)',
+  scope: 'RealEstate',
+  desc: 'A property-tax assessment.'
+}, {
+  key: 'TenancyStarted',
+  label: 'Tenancy started',
+  enumValue: 115,
+  icon: 'vpn_key',
+  color: 'oklch(0.79 0.13 55)',
+  soft: 'oklch(0.79 0.13 55 / 0.16)',
+  scope: 'RealEstate',
+  desc: 'Let to a tenant.'
+}, {
+  key: 'TenancyEnded',
+  label: 'Tenancy ended',
+  enumValue: 116,
+  icon: 'key_off',
+  color: 'oklch(0.72 0.10 40)',
+  soft: 'oklch(0.72 0.10 40 / 0.16)',
+  scope: 'RealEstate',
+  desc: 'A tenancy came to an end.'
+}, {
+  key: 'Serviced',
+  label: 'Serviced',
+  enumValue: 117,
+  icon: 'car_repair',
+  color: 'oklch(0.77 0.13 205)',
+  soft: 'oklch(0.77 0.13 205 / 0.16)',
+  scope: 'Vehicle',
+  desc: 'A workshop service.'
+}, {
+  key: 'TyreChange',
+  label: 'Tyre change',
+  enumValue: 118,
+  icon: 'tire_repair',
+  color: 'oklch(0.76 0.10 240)',
+  soft: 'oklch(0.76 0.10 240 / 0.16)',
+  scope: 'Vehicle',
+  desc: 'Seasonal or replacement tyres.'
+}, {
+  key: 'PeriodicInspection',
+  label: 'Periodic inspection',
+  enumValue: 119,
+  icon: 'fact_check',
+  color: 'oklch(0.78 0.13 170)',
+  soft: 'oklch(0.78 0.13 170 / 0.16)',
+  scope: 'Vehicle',
+  desc: 'The statutory roadworthiness test (e.g. EU-kontroll).'
+}, {
+  key: 'Registered',
+  label: 'Registration',
+  enumValue: 120,
+  icon: 'app_registration',
+  color: 'oklch(0.74 0.15 310)',
+  soft: 'oklch(0.74 0.15 310 / 0.16)',
+  scope: 'Vehicle',
+  desc: 'Registered, re-registered or deregistered.'
+}, {
+  key: 'Archived',
+  label: 'Archived',
+  enumValue: 109,
+  icon: 'inventory_2',
+  color: 'oklch(0.75 0.06 250)',
+  soft: 'oklch(0.75 0.06 250 / 0.16)',
+  scope: 'common',
+  systemOnly: true,
+  auto: 'the property was archived',
+  desc: 'The property was archived.'
+}, {
+  key: 'Unarchived',
+  label: 'Restored',
+  enumValue: 110,
+  icon: 'unarchive',
+  color: 'oklch(0.78 0.12 185)',
+  soft: 'oklch(0.78 0.12 185 / 0.16)',
+  scope: 'common',
+  systemOnly: true,
+  auto: 'the property was restored from the archive',
+  desc: 'The property was restored from the archive.'
+}, {
+  key: 'AcquisitionDateCleared',
+  label: 'Acquired date cleared',
+  enumValue: 111,
+  icon: 'event_busy',
+  color: 'oklch(0.74 0.08 150)',
+  soft: 'oklch(0.74 0.08 150 / 0.16)',
+  scope: 'common',
+  systemOnly: true,
+  auto: 'the acquired date was removed',
+  desc: 'The acquired date was removed.'
+}, {
+  key: 'DisposalReversed',
+  label: 'Disposal reversed',
+  enumValue: 112,
+  icon: 'undo',
+  color: 'oklch(0.76 0.10 60)',
+  soft: 'oklch(0.76 0.10 60 / 0.16)',
+  scope: 'common',
+  systemOnly: true,
+  auto: 'the disposed date was removed',
+  desc: 'The disposed date was removed.'
+}, {
+  key: 'Other',
+  label: 'Other',
+  enumValue: 108,
+  icon: 'more_horiz',
+  color: 'oklch(0.74 0.02 250)',
+  soft: 'oklch(0.74 0.02 250 / 0.16)',
+  scope: 'common',
+  desc: 'Anything the named types do not cover. The title carries it.'
+}];
+const PROPERTY_EVENT_SYSTEM_ONLY = ['Archived', 'Unarchived', 'AcquisitionDateCleared', 'DisposalReversed'];
+const common = PROPERTY_EVENT_TYPES.filter(t => t.scope === 'common').map(t => t.key);
+const scoped = s => PROPERTY_EVENT_TYPES.filter(t => t.scope === s).map(t => t.key);
+
+/** Legal members per PropertyType — 13 universal + 4 type-specific each. */
+const PROPERTY_EVENT_TYPE_MATRIX = {
+  RealEstate: scoped('RealEstate').concat(common),
+  Vehicle: scoped('Vehicle').concat(common)
+};
+
+/** 'legal' | 'systemOnly' | 'illegal' for one (property type, event type) cell. */
+function propertyEventTypeLegality(propertyType, key) {
+  const cell = PROPERTY_EVENT_TYPE_MATRIX[propertyType];
+  if (cell && cell.indexOf(key) === -1) return 'illegal';
+  if (PROPERTY_EVENT_SYSTEM_ONLY.indexOf(key) !== -1) return 'systemOnly';
+  return 'legal';
+}
+
+/** The pickable registry rows for a property type, each tagged `group`. */
+function propertyEventTypesFor(propertyType, keepType, types) {
+  const all = types || PROPERTY_EVENT_TYPES;
+  const out = [];
+  all.forEach(t => {
+    const legality = propertyEventTypeLegality(propertyType, t.key);
+    if (legality === 'illegal') return;
+    if (legality === 'systemOnly') {
+      if (t.key === keepType) out.push({
+        ...t,
+        group: 'system'
+      });
+      return;
+    }
+    out.push({
+      ...t,
+      group: propertyType && t.scope === propertyType ? 'specific' : 'common'
+    });
+  });
+  const rank = {
+    specific: 0,
+    common: 1,
+    system: 2
+  };
+  return out.sort((a, b) => rank[a.group] - rank[b.group]);
+}
+function PropertyEventTypeSelect({
+  value,
+  onChange,
+  label = 'Type',
+  propertyType,
+  keepType,
+  types,
+  ...rest
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    RegistrySelect
+  } = NS;
+  if (!RegistrySelect) return null;
+  const list = propertyEventTypesFor(propertyType, keepType, types);
+  const groups = propertyType ? [{
+    key: 'specific',
+    label: propertyType === 'Vehicle' ? 'For vehicles' : 'For real estate'
+  }, {
+    key: 'common',
+    label: 'Any property'
+  }, ...(keepType ? [{
+    key: 'system',
+    label: 'Recorded automatically'
+  }] : [])] : undefined;
+  return /*#__PURE__*/React.createElement(RegistrySelect, _extends({
+    value: value,
+    onChange: onChange,
+    label: label,
+    types: list,
+    groups: groups
+  }, rest));
+}
+Object.assign(__ds_scope, { PROPERTY_EVENT_TYPES, PROPERTY_EVENT_SYSTEM_ONLY, PROPERTY_EVENT_TYPE_MATRIX, propertyEventTypeLegality, propertyEventTypesFor, PropertyEventTypeSelect });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/PropertyEventTypeSelect.jsx", error: String((e && e.message) || e) }); }
+
+// components/PropertyFileTypeMultiSelect.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/**
+ * Odyssey DS — PropertyFileTypeMultiSelect
+ * A checkbox-list filter pre-wired to the PropertyFileType vocabulary: each row
+ * carries its Material icon in its category color, with a count badge on the
+ * trigger. A thin wrapper over `RegistryMultiSelect` — `value` (array of enum
+ * keys) + `onChange` pass straight through, as do `icon` and `align`.
+ *
+ * Defaults: trigger label "Any type", trigger glyph `home_work`. The registry is
+ * the canonical `PROPERTY_FILE_TYPES` exported by PropertyFileTypeSelect, read
+ * off the DS namespace at render time (bundle components can't import each other).
+ */
+
+function PropertyFileTypeMultiSelect({
+  value = [],
+  onChange,
+  label = 'Any type',
+  icon = 'home_work',
+  align,
+  types,
+  ...rest
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    RegistryMultiSelect
+  } = NS;
+  const registry = types || NS.PROPERTY_FILE_TYPES || [];
+  if (!RegistryMultiSelect) return null;
+  return /*#__PURE__*/React.createElement(RegistryMultiSelect, _extends({
+    value: value,
+    onChange: onChange,
+    label: label,
+    icon: icon,
+    align: align,
+    types: registry
+  }, rest));
+}
+Object.assign(__ds_scope, { PropertyFileTypeMultiSelect });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/PropertyFileTypeMultiSelect.jsx", error: String((e && e.message) || e) }); }
+
+// components/PropertyFileTypeSelect.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/**
+ * Odyssey DS — PropertyFileTypeSelect
+ * A single-select pre-wired to the PropertyFileType vocabulary — the kind of
+ * document attached to a *property* (house, cabin, car, boat): Deed ·
+ * PurchaseAgreement · Valuation · Inspection · Registration · Insurance ·
+ * Warranty · Receipt · Maintenance · Tax · Drawing · Other. Each option renders
+ * with its Material icon in its category color. A thin, domain-typed wrapper
+ * over the base `RegistrySelect`; every Select prop passes straight through.
+ *
+ * Value is the enum key. Controlled: pass `value` + `onChange(key, event)`.
+ *
+ * `PROPERTY_FILE_TYPES` (exported here) is the canonical registry — name · icon ·
+ * color · soft tint · enumValue — mirroring `OdysseyData.propertyFileTypes` and
+ * the C# `PropertyFileType` enum (field `FileType` on `PropertyFile`). Ordinals
+ * are a wire and persistence contract: never renumbered, never reused. `Other`
+ * is ordinal 0 (the AccountFileType shape) and sorts last. Keys shared with
+ * another file enum (PurchaseAgreement, Valuation, Warranty, Registration, Tax,
+ * Receipt, Other) reuse that enum's icon and color, so a key reads the same on
+ * every surface.
+ */
+
+const PROPERTY_FILE_TYPES = [{
+  key: 'Deed',
+  label: 'Deed',
+  enumValue: 1,
+  icon: 'workspace_premium',
+  color: 'oklch(0.74 0.15 290)',
+  soft: 'oklch(0.74 0.15 290 / 0.16)'
+}, {
+  key: 'PurchaseAgreement',
+  label: 'Purchase agreement',
+  enumValue: 2,
+  icon: 'sell',
+  color: 'oklch(0.79 0.14 60)',
+  soft: 'oklch(0.79 0.14 60 / 0.16)'
+}, {
+  key: 'Valuation',
+  label: 'Valuation',
+  enumValue: 3,
+  icon: 'price_check',
+  color: 'oklch(0.80 0.15 140)',
+  soft: 'oklch(0.80 0.15 140 / 0.16)'
+}, {
+  key: 'Inspection',
+  label: 'Inspection',
+  enumValue: 4,
+  icon: 'troubleshoot',
+  color: 'oklch(0.78 0.12 180)',
+  soft: 'oklch(0.78 0.12 180 / 0.16)'
+}, {
+  key: 'Registration',
+  label: 'Registration',
+  enumValue: 5,
+  icon: 'app_registration',
+  color: 'oklch(0.74 0.15 310)',
+  soft: 'oklch(0.74 0.15 310 / 0.16)'
+}, {
+  key: 'Insurance',
+  label: 'Insurance',
+  enumValue: 6,
+  icon: 'shield',
+  color: 'oklch(0.74 0.15 30)',
+  soft: 'oklch(0.74 0.15 30 / 0.16)'
+}, {
+  key: 'Warranty',
+  label: 'Warranty',
+  enumValue: 7,
+  icon: 'verified',
+  color: 'oklch(0.77 0.13 205)',
+  soft: 'oklch(0.77 0.13 205 / 0.16)'
+}, {
+  key: 'Receipt',
+  label: 'Receipt',
+  enumValue: 8,
+  icon: 'receipt_long',
+  color: 'oklch(0.80 0.15 150)',
+  soft: 'oklch(0.80 0.15 150 / 0.16)'
+}, {
+  key: 'Maintenance',
+  label: 'Maintenance',
+  enumValue: 9,
+  icon: 'build',
+  color: 'oklch(0.80 0.14 95)',
+  soft: 'oklch(0.80 0.14 95 / 0.16)'
+}, {
+  key: 'Tax',
+  label: 'Tax',
+  enumValue: 10,
+  icon: 'request_quote',
+  color: 'oklch(0.75 0.16 330)',
+  soft: 'oklch(0.75 0.16 330 / 0.16)'
+}, {
+  key: 'Drawing',
+  label: 'Drawing',
+  enumValue: 11,
+  icon: 'architecture',
+  color: 'oklch(0.76 0.12 240)',
+  soft: 'oklch(0.76 0.12 240 / 0.16)'
+}, {
+  key: 'Other',
+  label: 'Other',
+  enumValue: 0,
+  icon: 'insert_drive_file',
+  color: 'oklch(0.74 0.02 250)',
+  soft: 'oklch(0.74 0.02 250 / 0.16)'
+}];
+function PropertyFileTypeSelect({
+  value,
+  onChange,
+  label = 'Type',
+  types,
+  ...rest
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    RegistrySelect
+  } = NS;
+  if (!RegistrySelect) return null;
+  return /*#__PURE__*/React.createElement(RegistrySelect, _extends({
+    value: value,
+    onChange: onChange,
+    label: label,
+    types: types || PROPERTY_FILE_TYPES
+  }, rest));
+}
+Object.assign(__ds_scope, { PROPERTY_FILE_TYPES, PropertyFileTypeSelect });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/PropertyFileTypeSelect.jsx", error: String((e && e.message) || e) }); }
 
 // components/RadioGroup.jsx
 try { (() => {
@@ -25315,7 +25797,7 @@ try { (() => {
    POST …/parties and PUT …/parties/{partyId}).
 
    The accessible picker the spec mandates, now three decisions deep:
-     1. the party KIND — Account / Contact (the XOR target)
+     1. the party KIND — Account / Contact / Property (the one-of-three target)
      2. the ROLE the record plays in the agreement — a FIXED PER-TYPE LIST read
         off the shared contract-type × role matrix, suggested roles first. The
         picker offers no role the server would refuse, so the 422 is a backstop
@@ -25330,9 +25812,16 @@ try { (() => {
    role is required on every write, so the control starts empty and Save stays
    disabled until one is picked — the client half of the server's `[Required]`.
 
-   The save carries SCALAR IDS ONLY (accountId xor contactId) — never a nested
-   Account or Contact object (§7.6 write-path invariant), so a party write can
-   never create or rename the linked record.
+   The save carries SCALAR IDS ONLY (exactly one of accountId / contactId /
+   propertyId) — never a nested Account, Contact or Property object (§7.4
+   write-path invariant), so a party write can never create or rename the
+   linked record.
+
+   PROPERTY kind: any role the contract's type allows — the kind implies no
+   role and no role implies the kind (Non-Goal 1). Archived and disposed
+   properties stay linkable so history can still be recorded; the helper says
+   so when one is picked. The property's detail fields (address, VIN…) never
+   appear here — the picker shows name + kind only.
 
    Duplicate guard: uniqueness is (contract, target, ROLE), so the picker only
    hides records already linked IN THE SELECTED ROLE, and the party being edited
@@ -25353,7 +25842,17 @@ const CONTRACT_PARTY_KINDS = [{
   label: 'Contact',
   icon: 'groups',
   field: 'contactId'
+}, {
+  kind: 'property',
+  label: 'Property',
+  icon: 'home_work',
+  field: 'propertyId'
 }];
+const CP_ARTICLE = {
+  account: 'an account',
+  contact: 'a contact',
+  property: 'a property'
+};
 const AddContractPartyModal = ({
   contract,
   party = null,
@@ -25367,12 +25866,12 @@ const AddContractPartyModal = ({
   } = React;
   const H = window.OdysseyHelpers;
   const editing = !!party;
-  const [kind, setKind] = useState(editing && party.contactId ? 'contact' : 'account');
+  const [kind, setKind] = useState(editing && party.contactId ? 'contact' : editing && party.propertyId ? 'property' : 'account');
   // No default: the role is chosen, never inherited. An edited party keeps the
   // role it holds — including a legacy one the matrix no longer accepts, which
   // is exactly the party this dialog exists to correct.
   const [role, setRole] = useState(editing ? party.role || '' : '');
-  const [value, setValue] = useState(editing ? party.accountId || party.contactId || '' : '');
+  const [value, setValue] = useState(editing ? party.accountId || party.contactId || party.propertyId || '' : '');
   const [fromDate, setFromDate] = useState(editing ? party.fromDate || null : null);
   const [toDate, setToDate] = useState(editing ? party.toDate || null : null);
   const [error, setError] = useState(null);
@@ -25391,9 +25890,12 @@ const AddContractPartyModal = ({
   // Records already holding THIS role on this contract — the only ones the
   // picker must withhold (uniqueness is per role).
   const taken = useMemo(() => H.conPartyTaken(contract.parties, def.field, role, editing ? party.id : null), [contract.parties, def.field, role, editing, party]);
-  const allOptions = kind === 'account' ? H.conAccountOptions() : H.conInstitutionOptions();
+  const allOptions = kind === 'account' ? H.conAccountOptions() : kind === 'property' ? H.conPropertyOptions() : H.conInstitutionOptions();
   const options = allOptions.filter(o => !taken.has(o.value));
   const roleNoun = role ? roleInfo.label.toLowerCase() : 'this role';
+  const pluralNoun = n => kind === 'property' ? n === 1 ? 'property' : 'properties' : `${def.label.toLowerCase()}${n === 1 ? '' : 's'}`;
+  const picked = kind === 'property' && value ? allOptions.find(o => o.value === value) : null;
+  const pickedNote = picked && (picked.archived || picked.status !== 'Owned') ? `This property is ${picked.archived ? 'archived' : picked.status.toLowerCase()} — it can still be linked, so the contract’s history stays complete.` : null;
   const pickKind = k => {
     setKind(k);
     setValue('');
@@ -25411,7 +25913,7 @@ const AddContractPartyModal = ({
       return;
     }
     if (!value) {
-      setError(`Select an ${def.label.toLowerCase()} to link.`);
+      setError(`Select ${CP_ARTICLE[kind]} to link.`);
       return;
     }
     const de = {};
@@ -25425,6 +25927,7 @@ const AddContractPartyModal = ({
       id: editing ? party.id : `cp-new-${Date.now()}`,
       accountId: kind === 'account' ? value : null,
       contactId: kind === 'contact' ? value : null,
+      propertyId: kind === 'property' ? value : null,
       role,
       fromDate: fromDate || null,
       toDate: toDate || null
@@ -25433,7 +25936,7 @@ const AddContractPartyModal = ({
   };
   return /*#__PURE__*/React.createElement(Modal, {
     title: editing ? 'Edit party' : 'New party',
-    subtitle: editing ? 'Change the role, the linked record, or the dates this party is in the role.' : 'Link the account or contact this contract relates to, and say what it does in the agreement.',
+    subtitle: editing ? 'Change the role, the linked record, or the dates this party is in the role.' : 'Link the account, contact or property this contract relates to, and say what it does in the agreement.',
     icon: "group_add",
     onClose: onClose,
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
@@ -25456,7 +25959,7 @@ const AddContractPartyModal = ({
     accent: "var(--con-accent)",
     accentLine: "var(--con-accent-line)",
     accentSoft: "var(--con-accent-soft)",
-    columns: 2,
+    columns: 3,
     maxItemWidth: 180,
     center: true,
     options: CONTRACT_PARTY_KINDS.map(k => ({
@@ -25496,7 +25999,7 @@ const AddContractPartyModal = ({
     htmlFor: "acp-target",
     required: true,
     error: error,
-    helper: error ? undefined : options.length ? `${options.length} ${def.label.toLowerCase()}${options.length === 1 ? '' : 's'} available in this role.` : `Every ${def.label.toLowerCase()} already holds ${roleNoun} on this contract.`
+    helper: error ? undefined : pickedNote || (options.length ? `${options.length} ${pluralNoun(options.length)} available in this role.` : `Every ${def.label.toLowerCase()} already holds ${roleNoun} on this contract.`)
   }, /*#__PURE__*/React.createElement(Combobox, {
     id: "acp-target",
     value: value,
@@ -25505,7 +26008,7 @@ const AddContractPartyModal = ({
       if (error) setError(null);
     },
     options: options,
-    placeholder: `Search ${def.label.toLowerCase()}s…`,
+    placeholder: `Search ${pluralNoun(2)}…`,
     ariaLabel: def.label,
     invalid: !!error
   })), /*#__PURE__*/React.createElement(SectionDivider, {
@@ -26420,6 +26923,451 @@ Object.assign(window, {
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddFileModal.jsx", error: String((e && e.message) || e) }); }
 
+// ui_kits/web/AddPropertyEventModal.jsx
+try { (() => {
+/* AddPropertyEventModal — add OR edit one event on a property
+   (POST / PUT /api/properties/{propertyId}/events). Mirrors
+   AddContractEventModal; the differences are the property rules:
+
+   1. THE TYPE LIST IS THE MATRIX. PropertyEventTypeSelect is given the
+      property's type and offers its 17 legal members, type-specific first.
+      Property.Type is immutable, so a legal event never becomes illegal.
+   2. SYSTEM-ONLY TYPES ARE NEVER OFFERED ON CREATE. Editing a recorded
+      Archived / Restored / Acquired date cleared / Disposal reversed row
+      passes that key as keepType, so the PUT may keep it (AC 5). Switching it
+      to a user type is allowed; switching back is not.
+   3. RECORDING AN EVENT DOES NOT CHANGE THE PROPERTY. A hand-written
+      "Disposed of" does not set the disposed date (Non-Goal 5). The sentence
+      is the Type field's help, so aria-describedby carries it.
+   4. VALUED IS NOT AN ESTIMATE. It writes a log line only; the estimate
+      history is a separate section behind its own claim.
+   5. PUT IS A FULL REPLACEMENT, stated in an Alert when editing.
+
+   `source`, the owner id and the attribution fields are not in the body. */
+
+const APE_NO_SIDE_EFFECTS = 'Recording an event does not change the property. To set its acquired or disposed date, edit the property.';
+const AddPropertyEventModal = ({
+  property,
+  event = null,
+  onClose,
+  onSave
+}) => {
+  const {
+    useState
+  } = React;
+  const H = window.OdysseyHelpers;
+  const D = window.OdysseyData;
+  const NS = window.OdysseyDesignSystem_d5aa51 || {};
+  const editing = !!event;
+  const system = H.pevIsSystem(event);
+  const keepType = editing && D.propertyEventSystemOnly.includes(event.type) ? event.type : undefined;
+  const [type, setType] = useState(editing ? event.type : 'Other');
+  const [title, setTitle] = useState(editing ? event.title : '');
+  const [description, setDescription] = useState(editing ? event.description || '' : '');
+  const [notes, setNotes] = useState(editing ? event.notes || '' : '');
+  const [date, setDate] = useState(editing ? event.occurredAt.slice(0, 10) : H.conToday());
+  const [time, setTime] = useState(editing ? event.occurredAt.slice(11, 16) : new Date().toISOString().slice(11, 16));
+  const [errors, setErrors] = useState({});
+  const info = H.pevTypeInfo(type);
+  const typeHelp = [info.desc, type === 'Valued' ? 'This is a log line, not an estimate — it does not change the estimated value.' : null, APE_NO_SIDE_EFFECTS].filter(Boolean).join(' ');
+  const systemTitleHelp = system ? `Recorded automatically when ${H.pevAutoClause(event.type)}. Editing changes this log line only; it does not change the property.` : null;
+  const submit = () => {
+    const err = {};
+    if (!title.trim()) err.title = 'Give this event a title — what happened, in your own words.';else if (title.length > 256) err.title = 'Keep the title under 256 characters.';
+    if (!date) err.date = 'Say when this happened.';
+    const occurredAt = date ? `${date}T${time || '00:00'}:00Z` : null;
+    if (occurredAt && new Date(occurredAt).getTime() > Date.now() + 60000) err.date = 'This can’t be in the future — events record what has already happened.';
+    const legal = H.pevLegality(property.type, type);
+    if (legal === 'illegal') err.type = `${info.label} can’t be recorded on ${property.type === 'Vehicle' ? 'a vehicle' : 'real estate'}.`;
+    if (legal === 'systemOnly' && type !== keepType) err.type = `${info.label} is recorded automatically and can’t be chosen.`;
+    if (Object.keys(err).length) {
+      setErrors(err);
+      return;
+    }
+    onSave && onSave({
+      id: editing ? event.id : `pev-new-${Date.now()}`,
+      propertyId: property.id,
+      type,
+      title: title.trim(),
+      description: description.trim() || null,
+      notes: notes.trim() || null,
+      occurredAt,
+      source: editing ? event.source || 'user' : 'user',
+      createdByUserId: editing ? event.createdByUserId : 'u-owner',
+      createdAtUtc: editing ? event.createdAtUtc : new Date().toISOString()
+    });
+  };
+  const TypeSel = NS.PropertyEventTypeSelect;
+  const placeholder = property.type === 'Vehicle' ? 'e.g. Winter tyres on' : 'e.g. Boiler serviced';
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: editing ? 'Edit event' : 'New event',
+    subtitle: editing ? system ? 'Recorded automatically. Changing it changes this log line, not the property.' : 'Change what this entry records. Who recorded it, and when, does not change.' : `Record something that has happened to ${property.name}.`,
+    icon: "history",
+    onClose: onClose,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: onClose
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      color: "primary",
+      icon: editing ? 'check' : 'add',
+      onClick: submit
+    }, editing ? 'Save changes' : 'Create event'))
+  }, TypeSel ? /*#__PURE__*/React.createElement(TypeSel, {
+    value: type,
+    onChange: v => {
+      setType(v);
+      setErrors(e => ({
+        ...e,
+        type: undefined
+      }));
+    },
+    propertyType: property.type,
+    keepType: keepType,
+    help: errors.type ? undefined : typeHelp,
+    error: errors.type
+  }) : /*#__PURE__*/React.createElement(Select, {
+    label: "Type",
+    value: type,
+    onChange: setType,
+    help: typeHelp,
+    options: (D.propertyEventTypeMatrix[property.type] || []).filter(k => !D.propertyEventSystemOnly.includes(k) || k === keepType).map(k => H.pevTypeInfo(k)).map(t => ({
+      value: t.key,
+      label: t.label,
+      icon: t.icon,
+      iconColor: t.color
+    }))
+  }), /*#__PURE__*/React.createElement(FieldShell, {
+    label: "When",
+    required: true,
+    error: errors.date,
+    helper: errors.date ? undefined : 'Date and time, in the past. A log, not a plan.'
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "cev-when"
+  }, /*#__PURE__*/React.createElement(DateField, {
+    value: date,
+    onChange: v => {
+      setDate(v);
+      setErrors(e => ({
+        ...e,
+        date: undefined
+      }));
+    },
+    max: H.conToday(),
+    placeholder: "Pick a date"
+  }), /*#__PURE__*/React.createElement(TimeField, {
+    value: time,
+    onChange: v => setTime(v || '00:00'),
+    step: 15
+  }))), /*#__PURE__*/React.createElement(Field, {
+    label: "Title",
+    required: true,
+    value: title,
+    onChange: setTitle,
+    error: errors.title,
+    autoFocus: true,
+    name: "property-event-title",
+    autoComplete: "off",
+    "data-1p-ignore": true,
+    "data-lpignore": "true",
+    "data-bwignore": true,
+    placeholder: placeholder,
+    help: systemTitleHelp || 'A short label. This is the line the timeline shows.'
+  }), /*#__PURE__*/React.createElement(NoteField, {
+    label: "Description",
+    maxLength: 1024,
+    value: description,
+    onChange: setDescription,
+    placeholder: "What was done, by whom, what it found\u2026",
+    help: "Shown on the timeline under the title."
+  }), /*#__PURE__*/React.createElement(NoteField, {
+    label: "Notes",
+    maxLength: 1024,
+    value: notes,
+    onChange: setNotes,
+    placeholder: "Reminders to yourself \u2014 when it is due next, what to check\u2026",
+    help: "Your working notes. Kept off the timeline, but anyone who can see this property can read them."
+  }), editing ? /*#__PURE__*/React.createElement(Alert, {
+    severity: "info"
+  }, "Saving replaces the whole event \u2014 type, title, description, notes and date. Text you clear is cleared, and a type you leave unset resets to ", /*#__PURE__*/React.createElement("strong", null, "Other"), ". Who recorded this event, and when, is never rewritten.", system ? ' Nothing regenerates a description you clear on a recorded event.' : '') : null);
+};
+Object.assign(window, {
+  AddPropertyEventModal
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddPropertyEventModal.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/web/AddPropertyFileModal.jsx
+try { (() => {
+/* AddPropertyFileModal — attach documents to a property (*Property Documents —
+   Backend, Draft v2* §3, §5.1). There is no upload endpoint on the property: a
+   document is a FileMetadata in the one Files store, linked here by id. The
+   dialog offers the two ways a file gets that id:
+
+     • Upload new — the DS FileUpload. Each file goes through the Files API
+       (files.create) and is then attached; the bytes land in Files like any
+       other upload, so the same file can later be attached to the loan
+       contract that financed the property without a second copy.
+     • From Files — pick files already in the store. A file already linked to
+       this property is shown but disabled ("Already attached"), which is the
+       409 the server would answer. A file whose SERVER-RECORDED content type
+       is off the shared document allow-list (DOCUMENT_CONTENT_TYPES — PDF,
+       PNG, JPEG, WebP, the one list contract documents use too) is disabled
+       with the reason in text: the server would answer 400.
+
+   Every picked file carries a PropertyFileType (default guessed from the name;
+   Other is the zero member, so an unset type degrades to Other, never Deed)
+   and, behind the same "Add validity" toggle contract uploads use, the four
+   optional validity fields. ValidTo before ValidFrom is refused on the
+   "Valid to" control, as the service does. */
+
+const APF_TABS = [{
+  value: 'upload',
+  label: 'Upload new',
+  icon: 'upload_file'
+}, {
+  value: 'library',
+  label: 'From Files',
+  icon: 'folder'
+}];
+const apfCtIcon = ct => ct === 'application/pdf' ? 'picture_as_pdf' : /^image\//.test(ct || '') ? 'image' : ct === 'text/html' ? 'code' : 'description';
+
+/* One pickable library row. Disabled rows say why in text, never colour alone. */
+const ApfLibraryRow = ({
+  file,
+  state,
+  picked,
+  onToggle,
+  onPatch,
+  issuers
+}) => {
+  const H = window.OdysseyHelpers;
+  const disabled = state !== 'ok';
+  const reason = state === 'attached' ? 'Already attached' : state === 'type' ? `${H.propContentTypeShort(file.contentType)} not accepted` : null;
+  const Validity = window.ConFileValidity;
+  return /*#__PURE__*/React.createElement("div", {
+    className: `prop-lib-row${picked ? ' on' : ''}${disabled ? ' off' : ''}`
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "prop-lib-main",
+    disabled: disabled,
+    "aria-pressed": !!picked,
+    onClick: onToggle
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "prop-lib-check"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: disabled ? state === 'attached' ? 'link' : 'block' : picked ? 'check_box' : 'check_box_outline_blank',
+    size: 20
+  })), /*#__PURE__*/React.createElement("span", {
+    className: "prop-lib-ic"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: apfCtIcon(file.contentType),
+    size: 16
+  })), /*#__PURE__*/React.createElement("span", {
+    className: "prop-lib-text"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "prop-lib-name"
+  }, file.name), /*#__PURE__*/React.createElement("span", {
+    className: "prop-lib-meta"
+  }, H.propContentTypeShort(file.contentType), " \xB7 ", file.size, " \xB7 uploaded ", H.conDate ? H.conDate(file.uploaded) : file.uploaded)), reason ? /*#__PURE__*/React.createElement("span", {
+    className: "prop-lib-reason"
+  }, reason) : null), picked ? /*#__PURE__*/React.createElement("div", {
+    className: "prop-lib-extra"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "prop-lib-type"
+  }, /*#__PURE__*/React.createElement(PropertyFileTypeSelect, {
+    label: "Document type",
+    value: picked.kind,
+    onChange: v => onPatch({
+      kind: v
+    })
+  })), Validity ? /*#__PURE__*/React.createElement(Validity, {
+    file: picked,
+    patch: onPatch,
+    issuers: issuers
+  }) : null) : null);
+};
+const AddPropertyFileModal = ({
+  property,
+  attached = [],
+  onClose,
+  onAttach
+}) => {
+  const {
+    useState
+  } = React;
+  const H = window.OdysseyHelpers;
+  const D = window.OdysseyData;
+  const issuers = (D.contacts || []).filter(c => !c.archived);
+  const [tab, setTab] = useState('upload');
+  const [files, setFiles] = useState([]);
+  const [picked, setPicked] = useState({});
+  const [q, setQ] = useState('');
+  const [error, setError] = useState(null);
+  const attachedIds = new Set(attached.map(a => a.fileMetadataId));
+  const pool = D.fileLibraryPool().filter(f => !q || f.name.toLowerCase().includes(q.toLowerCase()));
+  const stateOf = f => attachedIds.has(f.id) ? 'attached' : !H.propContentTypeAllowed(f.contentType) ? 'type' : 'ok';
+  const pickedList = Object.values(picked);
+  const togglePick = f => setPicked(p => {
+    const n = {
+      ...p
+    };
+    if (n[f.id]) delete n[f.id];else n[f.id] = {
+      fileMetadataId: f.id,
+      name: f.name,
+      kind: H.propGuessFileType(f.name)
+    };
+    return n;
+  });
+  const patchPick = id => partial => setPicked(p => ({
+    ...p,
+    [id]: {
+      ...p[id],
+      ...partial
+    }
+  }));
+  const badRange = f => f.validFrom && f.validTo && f.validTo < f.validFrom;
+  const nowIso = () => new Date().toISOString();
+  const link = (f, i, extra) => ({
+    id: `pf-new-${Date.now()}-${i}`,
+    propertyId: property.id,
+    fileMetadataId: f.fileMetadataId,
+    kind: f.kind || 'Other',
+    attachedByUserId: 'u-owner',
+    attachedByName: 'Owner Demo',
+    attachedAtUtc: nowIso(),
+    validFrom: f.validFrom || null,
+    validTo: f.validTo || null,
+    issuedAt: f.issuedAt || null,
+    issuedBy: f.issuedBy || null,
+    ...(extra || {})
+  });
+  const submit = () => {
+    if (tab === 'upload') {
+      if (!files.length) {
+        setError('Add at least one document to upload.');
+        return;
+      }
+      const rejected = files.find(f => !H.propContentTypeAllowed(H.propContentTypeFor(f.name)));
+      if (rejected) {
+        setError(`“${rejected.name}” is ${H.propContentTypeShort(H.propContentTypeFor(rejected.name))}. Property documents accept ${D.DOCUMENT_CONTENT_TYPE_LABEL} only.`);
+        return;
+      }
+      if (files.some(badRange)) {
+        setError('A document’s “Valid to” can’t be before its “Valid from”.');
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      const out = files.map((f, i) => {
+        const id = `fm-up-${Date.now()}-${i}`;
+        const size = window.afmFmtSize ? window.afmFmtSize(f.sizeBytes) : `${Math.round((f.sizeBytes || 0) / 1024)} KB`;
+        D.propertyFileLibrary.push({
+          id,
+          name: f.name.trim(),
+          contentType: H.propContentTypeFor(f.name),
+          size,
+          uploaded: today,
+          uploadedByName: 'Owner Demo'
+        });
+        return link({
+          ...f,
+          fileMetadataId: id
+        }, i);
+      });
+      onAttach && onAttach(out);
+      return;
+    }
+    if (!pickedList.length) {
+      setError('Pick at least one file to attach.');
+      return;
+    }
+    if (pickedList.some(badRange)) {
+      setError('A document’s “Valid to” can’t be before its “Valid from”.');
+      return;
+    }
+    onAttach && onAttach(pickedList.map((f, i) => link(f, i)));
+  };
+  const n = tab === 'upload' ? files.length : pickedList.length;
+  const cta = tab === 'upload' ? n > 1 ? `Upload and attach ${n}` : 'Upload and attach' : n > 1 ? `Attach ${n} documents` : 'Attach document';
+  const noun = property.type === 'Vehicle' ? 'the registration, an inspection, the insurance certificate or a warranty' : 'the deed, the purchase agreement, a valuation or a warranty';
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: "Attach documents",
+    subtitle: `Keep ${noun} with ${property.name}. Files stay in Files; attaching links them here.`,
+    icon: "attach_file",
+    className: "afm-dialog",
+    onClose: onClose,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: onClose
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      color: "primary",
+      icon: tab === 'upload' ? 'upload_file' : 'link',
+      disabled: tab === 'library' && n === 0,
+      onClick: submit
+    }, cta))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "prop-doc-modal"
+  }, /*#__PURE__*/React.createElement(SegmentedControl, {
+    full: true,
+    ariaLabel: "Where the document comes from",
+    value: tab,
+    onChange: v => {
+      setTab(v);
+      setError(null);
+    },
+    options: APF_TABS
+  }), tab === 'upload' ? /*#__PURE__*/React.createElement(FileUpload, {
+    files: files,
+    onChange: next => {
+      setFiles(next);
+      if (error) setError(null);
+    },
+    error: error,
+    kinds: D.propertyFileTypes,
+    guessKind: H.propGuessFileType,
+    accept: ".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp",
+    maxMegabytes: (window.__odysseyImportLimits || {}).upload || 64,
+    renderFileExtra: (file, patch) => window.ConFileValidity ? /*#__PURE__*/React.createElement(window.ConFileValidity, {
+      file: file,
+      patch: patch,
+      issuers: issuers
+    }) : null
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "prop-lib"
+  }, /*#__PURE__*/React.createElement(SearchField, {
+    placeholder: "Search files by name\u2026",
+    value: q,
+    onChange: setQ
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "prop-lib-list odc-scroll",
+    role: "group",
+    "aria-label": "Files"
+  }, pool.length === 0 ? /*#__PURE__*/React.createElement(EmptyLine, null, "No files match \u201C", q, "\u201D.") : pool.map(f => /*#__PURE__*/React.createElement(ApfLibraryRow, {
+    key: f.id,
+    file: f,
+    state: stateOf(f),
+    picked: picked[f.id],
+    issuers: issuers,
+    onToggle: () => {
+      togglePick(f);
+      if (error) setError(null);
+    },
+    onPatch: patchPick(f.id)
+  }))), error ? /*#__PURE__*/React.createElement("div", {
+    className: "helper aam-err",
+    role: "alert"
+  }, error) : null, /*#__PURE__*/React.createElement("div", {
+    className: "prop-lib-foot"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "info",
+    size: 14
+  }), "Only ", D.DOCUMENT_CONTENT_TYPE_LABEL, " files can be attached \u2014 the same rule as contract documents."))));
+};
+Object.assign(window, {
+  AddPropertyFileModal
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddPropertyFileModal.jsx", error: String((e && e.message) || e) }); }
+
 // ui_kits/web/AddPropertyModal.jsx
 try { (() => {
 /* AddPropertyModal — New / Edit property. Mirrors NewProperty (§5 endpoint 3/4):
@@ -26667,7 +27615,7 @@ const AddPropertyModal = ({
     placeholder: "Unknown"
   }), /*#__PURE__*/React.createElement("div", {
     className: "helper"
-  }, "Leave empty if you don\u2019t know.")), /*#__PURE__*/React.createElement("div", {
+  }, "Leave empty if you don\u2019t know. Setting or clearing it records an event.")), /*#__PURE__*/React.createElement("div", {
     className: "field"
   }, /*#__PURE__*/React.createElement(Field, {
     type: "date",
@@ -26679,7 +27627,7 @@ const AddPropertyModal = ({
     className: "helper aam-err"
   }, errors.disposedDate) : /*#__PURE__*/React.createElement("div", {
     className: "helper"
-  }, "Sold, written off or scrapped."))), /*#__PURE__*/React.createElement(SectionDivider, {
+  }, "Sold, written off or scrapped. Setting or clearing it records an event."))), /*#__PURE__*/React.createElement(SectionDivider, {
     label: type === 'Vehicle' ? 'Vehicle details' : 'Real estate details',
     meta: "all optional"
   }), type === 'RealEstate' ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Field, {
@@ -32488,6 +33436,34 @@ const TaxStatementFileTypeMultiSelect = ({
     options: types ? optsFrom(types) : taxFileOpts()
   }, props));
 };
+const propFileOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.propertyFileTypes);
+const PropertyFileTypeSelect = ({
+  helper,
+  types,
+  ...props
+}) => {
+  if (DS.PropertyFileTypeSelect) return /*#__PURE__*/React.createElement(DS.PropertyFileTypeSelect, _extends({
+    help: helper,
+    types: types
+  }, props));
+  return /*#__PURE__*/React.createElement(DS.Select, _extends({
+    help: helper,
+    options: types ? optsFrom(types) : propFileOpts()
+  }, props));
+};
+const PropertyFileTypeMultiSelect = ({
+  types,
+  ...props
+}) => {
+  if (DS.PropertyFileTypeMultiSelect) return /*#__PURE__*/React.createElement(DS.PropertyFileTypeMultiSelect, _extends({
+    types: types
+  }, props));
+  return /*#__PURE__*/React.createElement(DS.MultiSelect, _extends({
+    label: "Any type",
+    icon: "home_work",
+    options: types ? optsFrom(types) : propFileOpts()
+  }, props));
+};
 const contractTypeOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.contractTypes);
 const ContractTypeSelect = ({
   helper,
@@ -34292,6 +35268,8 @@ Object.assign(window, {
   TransactionFileTypeMultiSelect,
   TaxStatementFileTypeSelect,
   TaxStatementFileTypeMultiSelect,
+  PropertyFileTypeSelect,
+  PropertyFileTypeMultiSelect,
   Combobox,
   MatchIndicator,
   SegmentedControl,
@@ -38125,7 +39103,9 @@ const ContractEvents = ({
     };
     // Where it falls among this page's rows — appended only when this page
     // actually holds the end of the log.
-    const at = track.findIndex(x => x.ev && new Date(x.ev.occurredAt) < new Date(addedAt));
+    let at = track.findIndex(x => x.ev && new Date(x.ev.occurredAt) < new Date(addedAt));
+    // Never land under an older year's tick: go above it when the years differ.
+    if (at > 0 && track[at - 1].tick && track[at - 1].tick !== CEV_H.cevYear(addedAt)) at -= 1;
     if (at !== -1) track.splice(at, 0, cap);else if (lastPage) track.push(cap);
   }
 
@@ -38731,7 +39711,7 @@ const PartyTile = ({
       items: [...(onNavigate && r.target ? [{
         icon: 'visibility',
         label: 'View',
-        onClick: () => onNavigate(r.kind === 'account' ? 'accounts' : 'contacts')
+        onClick: () => onNavigate(r.kind === 'account' ? 'accounts' : r.kind === 'property' ? 'properties' : 'contacts')
       }] : []), {
         icon: 'edit',
         label: 'Edit party',
@@ -48772,9 +49752,11 @@ try { (() => {
    ----------------------------------------------------------------------------
    The frontend for *Property — Backend (Draft v8)*. A sibling of Accounts and
    Contracts: the same PageHeader + expandable RecordCard list, one card open at
-   a time. A property is standalone in v1 — no links to contacts, accounts,
-   contracts or files, no photos, and its value is NOT summed into net worth —
-   so the expanded record holds exactly three things:
+   a time. A property has no links to contacts or accounts and no photo
+   gallery, and its value is NOT summed into net worth. Since *Property as a
+   contract party (Draft v3)* it CAN be named on a contract, and since
+   *Property Documents (Draft v2)* it carries documents, so the expanded
+   record holds five things:
 
      1. DETAILS   — the common fields + the one detail sub-object its type has.
      2. ESTIMATED VALUE — the shared estimate surface (AccountEstimates) over the
@@ -48782,12 +49764,28 @@ try { (() => {
                     same in-force rule. The "Current value" block is omitted: it
                     compares against a transaction balance and says "In net
                     worth", and neither is true of a property.
-     3. SMART TAGS — the shared DS AccountSmartTagsSection, subject "property",
+     3. CONTRACTS — GET /api/properties/{id}/contracts: one tile per contract
+                    naming it, the roles it holds there and the contract's
+                    status. Needs properties.read AND contracts.read; without
+                    the second the section and the collapsed count are absent
+                    (ContractCount is null), never an empty list.
+     4. DOCUMENTS  — GET /api/properties/{id}/files: the property's deed,
+                    registration, valuation, warranty … as PropertyFile links
+                    to FileMetadata in the one Files store (*Property Documents
+                    — Backend, Draft v2*). Attach = upload through Files or
+                    pick from Files; detach removes the link only.
+     5. SMART TAGS — the shared DS AccountSmartTagsSection, subject "property",
                     capped by GET /api/property-limits.
+     6. EVENTS    — GET /api/properties/{id}/events (*Property Events — Backend,
+                    Draft v2*): the chronological log on the DS EventRail
+                    (PropertyEvents.jsx). Acquired / disposed / archive changes
+                    stage a System row in the same save; the rest is written by
+                    hand from the ⋯ menu's New event.
 
    Claims (§7): properties.read / create / update / delete and
-   properties.estimates.read / write. User and Guest get the two reads only; the
-   Tweaks panel switches between the Owner/Admin and User/Guest grants. */
+   properties.estimates.read / write, plus contracts.read for the Contracts
+   section. User and Guest get the two property reads only; User also holds
+   contracts.read, Guest does not. The Tweaks panel switches the three grants. */
 
 const PR_H = window.OdysseyHelpers;
 const PR_D = window.OdysseyData;
@@ -48890,6 +49888,145 @@ const PropertySmartTags = ({
   });
 };
 
+/* ====================== Contracts section ======================
+   PropertyContractLink[] drawn exactly like the account record's Contracts
+   section: overline = contract type, value = contract name, foot = the roles
+   this property holds there (party order) · the contract's derived status.
+   Archived contracts are listed (dimmed) — the link is history. */
+const PropertyContracts = ({
+  rows,
+  onNavigate
+}) => /*#__PURE__*/React.createElement("div", {
+  className: "con-section"
+}, /*#__PURE__*/React.createElement(SectionDivider, {
+  label: "Contracts",
+  meta: `${rows.length} contract${rows.length === 1 ? '' : 's'}`
+}), rows.length === 0 ? /*#__PURE__*/React.createElement(EmptyLine, null, "This property is not a party to any contract.") : /*#__PURE__*/React.createElement(InfoTileGrid, null, rows.map(({
+  contract: c,
+  parties
+}) => {
+  const ct = PR_H.contractTypeInfo(c.type);
+  const st = PR_H.conStatusMeta(PR_H.conStatus(c));
+  const roles = parties.map(p => PR_H.conPartyRoleInfo(p.role).label).join(' · ');
+  return /*#__PURE__*/React.createElement("div", {
+    className: "con-party-tile",
+    key: c.id
+  }, /*#__PURE__*/React.createElement(InfoTile, {
+    icon: ct.icon,
+    iconColor: ct.color,
+    iconSoft: ct.soft,
+    label: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+      className: "con-role"
+    }, /*#__PURE__*/React.createElement("span", null, ct.label)), /*#__PURE__*/React.createElement("span", {
+      className: "con-tile-menu"
+    }, /*#__PURE__*/React.createElement(ActionMenu, {
+      items: [...(onNavigate ? [{
+        icon: 'visibility',
+        label: 'View',
+        onClick: () => onNavigate('contracts')
+      }] : []), {
+        icon: 'content_copy',
+        label: 'Copy name',
+        onClick: () => {
+          if (navigator.clipboard) navigator.clipboard.writeText(c.name);
+        }
+      }, {
+        icon: 'fingerprint',
+        label: 'Copy ID',
+        trailingIcon: 'content_copy',
+        onClick: () => {
+          if (navigator.clipboard) navigator.clipboard.writeText(c.id);
+        }
+      }]
+    }))),
+    value: c.name,
+    valueVariant: "text",
+    className: `wrapvalue${c.archived ? ' tone-muted' : ''}`,
+    foot: `${roles} · ${st.label}`
+  }));
+})));
+
+/* ====================== Documents section ======================
+   *Property Documents — Backend (Draft v2)*. GET /api/properties/{id}/files
+   (properties.read) — unpaged, oldest attachment first, metadata only. Drawn
+   with the DS FilesTable in its contract configuration: validity columns, no
+   rename (the name belongs to FileMetadata), and a REQUIRED type on edit (the
+   PUT is a full replacement and must not default an unsent type). The row's
+   danger item reads Detach · link_off: DELETE removes the link only and the
+   file stays in Files. Edit and Detach need properties.update; Download is a
+   read. `issuedBy` arrives as an id only (§7.3) — its name is resolved from
+   the caller's own contacts read, and reads "Contact (no access)" without it.
+   The collapsed card shows a Documents count beside Estimates and Smart
+   tags. NOTE: the backend's v1 list endpoint carries no count (Non-Goal 4) —
+   the header needs `ExistingProperty.FileCount` added to ship as drawn. */
+const PropertyDocuments = ({
+  property,
+  files,
+  perms,
+  onAttach,
+  onSave,
+  onDetach
+}) => {
+  const DSFilesTable = (window.OdysseyDesignSystem_d5aa51 || {}).FilesTable;
+  const rows = files.map(PR_H.propFileRow);
+  const canWrite = perms.update;
+  const issuers = (PR_D.contacts || []).filter(c => !c.archived).map(c => {
+    const t = (PR_D.contactTypeByKey || {})[c.type] || {};
+    return {
+      value: c.id,
+      label: c.name,
+      icon: t.icon,
+      iconColor: t.color
+    };
+  });
+  const emptyText = property.type === 'Vehicle' ? 'No documents yet — attach the registration, an inspection, the insurance certificate or a warranty.' : 'No documents yet — attach the deed, the purchase agreement, a valuation or a warranty.';
+  return /*#__PURE__*/React.createElement("div", {
+    className: "con-section"
+  }, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Documents",
+    meta: `${files.length} file${files.length === 1 ? '' : 's'}`
+  }), rows.length === 0 || !DSFilesTable ? /*#__PURE__*/React.createElement(EmptyLine, null, canWrite ? emptyText : 'No documents are attached to this property.') : /*#__PURE__*/React.createElement("div", {
+    className: "con-files con-tbl-frame"
+  }, /*#__PURE__*/React.createElement(InlinePager, {
+    items: rows
+  }, pageRows => /*#__PURE__*/React.createElement(DSFilesTable, {
+    files: pageRows,
+    typeFor: f => PR_H.propFileTypeInfo(f.kind),
+    kinds: PR_D.propertyFileTypes,
+    formatDate: PR_H.conDate,
+    validityColumns: true,
+    issuers: canWrite ? issuers : undefined,
+    issuerFor: f => {
+      if (!f.issuedBy) return null;
+      if (!perms.contactsRead) return 'Contact (no access)';
+      const c = (PR_D.contactById || {})[f.issuedBy];
+      return c ? c.name : 'Unknown contact';
+    },
+    renameable: false,
+    requireType: true,
+    defaultSort: {
+      key: 'uploaded',
+      dir: 'desc'
+    },
+    onSave: canWrite ? onSave : undefined,
+    onDelete: canWrite ? onDetach : undefined,
+    deleteLabel: "Detach",
+    deleteIcon: "link_off",
+    actions: f => [{
+      icon: 'download',
+      label: 'Download',
+      onClick: () => PR_H.downloadFile && PR_H.downloadFile(f)
+    }, {
+      icon: 'fingerprint',
+      label: 'Copy ID',
+      trailingIcon: 'content_copy',
+      onClick: () => {
+        if (navigator.clipboard) navigator.clipboard.writeText(f.fileMetadataId);
+      }
+    }]
+  }))));
+};
+
 /* ====================== Expanded detail ====================== */
 const PropertyDetail = ({
   property: p,
@@ -48897,12 +50034,21 @@ const PropertyDetail = ({
   tagIds,
   setTagIds,
   perms,
+  contractRows,
   cap,
   limitsDegraded,
   onNavigate,
   onNewEstimate,
   onEditEstimate,
-  onDeleteEstimate
+  onDeleteEstimate,
+  files,
+  onAttachFile,
+  onSaveFile,
+  onDetachFile,
+  events,
+  onEditEvent,
+  onDeleteEvent,
+  onAnnounceEvent
 }) => {
   const ti = PR_H.propTypeInfo(p.type);
   const kind = PR_H.propKindInfo(p);
@@ -49025,7 +50171,17 @@ const PropertyDetail = ({
     onNew: onNewEstimate,
     onEdit: onEditEstimate,
     onDelete: onDeleteEstimate
-  }) : null, /*#__PURE__*/React.createElement("div", {
+  }) : null, contractRows ? /*#__PURE__*/React.createElement(PropertyContracts, {
+    rows: contractRows,
+    onNavigate: onNavigate
+  }) : null, /*#__PURE__*/React.createElement(PropertyDocuments, {
+    property: p,
+    files: files,
+    perms: perms,
+    onAttach: onAttachFile,
+    onSave: onSaveFile,
+    onDetach: onDetachFile
+  }), /*#__PURE__*/React.createElement("div", {
     className: "con-section"
   }, /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Smart tags",
@@ -49038,17 +50194,31 @@ const PropertyDetail = ({
     canWrite: perms.update,
     cap: cap,
     limitsDegraded: limitsDegraded
-  })));
+  })), /*#__PURE__*/React.createElement(PropertyEvents, {
+    property: p,
+    events: events || [],
+    canUpdate: perms.update,
+    onEdit: onEditEvent,
+    onDelete: onDeleteEvent,
+    onAnnounce: onAnnounceEvent
+  }));
 };
 
 /* ====================== Delete confirmation ======================
-   Deletion is hard and cascades the detail row, every estimate and every
-   smart-tag link in one transaction. Nothing else references a property, so
-   there is no blocker — only the statement of what goes. */
+   Deletion is hard and cascades the detail row, every estimate, every
+   smart-tag link AND every contract party link naming it, in one
+   transaction. Party links reference a property but do not block it: each
+   link is detached, its contract survives with one fewer party and records a
+   "Party removed" event. `contractLinks` is { parties, contracts } for a
+   contracts.read holder and null otherwise — then the line is stated without
+   counts, never as "no contracts". */
 const DeletePropertyModal = ({
   property,
   estimateCount,
   tagCount,
+  fileCount = 0,
+  eventCount = 0,
+  contractLinks,
   canArchive,
   onArchive,
   onClose,
@@ -49081,9 +50251,18 @@ const DeletePropertyModal = ({
 }), estimateCount === 0 ? 'No estimates' : `${estimateCount} estimate${estimateCount === 1 ? '' : 's'} — the whole value history`), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(MIcon, {
   name: "sell",
   size: 16
-}), tagCount === 0 ? 'No smart tags' : `${tagCount} smart-tag link${tagCount === 1 ? '' : 's'}`)), /*#__PURE__*/React.createElement("p", {
+}), tagCount === 0 ? 'No smart tags' : `${tagCount} smart-tag link${tagCount === 1 ? '' : 's'}`), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(MIcon, {
+  name: "history",
+  size: 16
+}), eventCount === 0 ? 'No events' : `${eventCount} event${eventCount === 1 ? '' : 's'} — the whole log, including recorded ones`), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(MIcon, {
+  name: "attach_file",
+  size: 16
+}), fileCount === 0 ? 'No documents' : `${fileCount} document link${fileCount === 1 ? '' : 's'} — the files stay in Files`), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(MIcon, {
+  name: "link_off",
+  size: 16
+}), contractLinks == null ? 'Any contract party links naming it' : contractLinks.parties === 0 ? 'No contract party links' : `${contractLinks.parties} party link${contractLinks.parties === 1 ? '' : 's'} on ${contractLinks.contracts} contract${contractLinks.contracts === 1 ? '' : 's'}`)), /*#__PURE__*/React.createElement("p", {
   className: "prop-del-foot"
-}, "The transaction tags themselves and the transactions carrying them are not affected. Archiving keeps everything and hides the property from the default list."));
+}, contractLinks == null || contractLinks.parties > 0 ? 'Contracts are kept — each loses this party and records a “Party removed” event. ' : '', "The transaction tags themselves and the transactions carrying them are not affected. Archiving keeps everything and hides the property from the default list."));
 
 /* ====================== One list item ====================== */
 const PropertyListItem = ({
@@ -49099,20 +50278,45 @@ const PropertyListItem = ({
   estimates,
   setEstimates,
   tagIds,
-  setTagIds
+  setTagIds,
+  files,
+  setFiles,
+  events = [],
+  setEvents
 }) => {
   const {
     useState
   } = React;
   const p = row;
   const [showEdit, setShowEdit] = useState(false);
+  const [showAttach, setShowAttach] = useState(false);
   const [estModal, setEstModal] = useState(null);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [eventModal, setEventModal] = useState(null);
+  /* The record's single polite announcer — the Events section raises its
+     delete sentence here. The nonce makes a repeated sentence re-read. */
+  const [announce, setAnnounce] = useState('');
+  const nonce = React.useRef(0);
+  const say = msg => {
+    nonce.current += 1;
+    setAnnounce(`${msg}${'\u200B'.repeat(nonce.current % 4 + 1)}`);
+  };
+  const saveEvent = dto => {
+    setEvents(prev => prev.some(e => e.id === dto.id) ? prev.map(e => e.id === dto.id ? dto : e) : [dto, ...prev]);
+    setEventModal(null);
+  };
   const ti = PR_H.propTypeInfo(p.type);
   const kind = PR_H.propKindInfo(p);
   const d = PR_H.propDetails(p);
   const status = PR_H.propStatus(p);
   const current = PR_H.propCurrentEstimate(estimates);
+  /* ExistingProperty.ContractCount — null without contracts.read. */
+  const contractRows = perms.contractsRead && PR_H.conContractsForProperty ? PR_H.conContractsForProperty(p.id) : null;
+  const contractCount = contractRows ? contractRows.length : null;
+  const contractLinks = contractRows ? {
+    contracts: contractRows.length,
+    parties: contractRows.reduce((n, r) => n + r.parties.length, 0)
+  } : null;
   const saveEstimate = (dto, id) => {
     setEstimates(prev => id ? prev.map(e => e.id === id ? {
       ...e,
@@ -49143,6 +50347,22 @@ const PropertyListItem = ({
       setEstModal({
         mode: 'new'
       });
+    }
+  }] : []), /* POST …/files needs properties.update AND files.read (§7.2). */
+  ...(perms.update && perms.filesRead ? [{
+    icon: 'attach_file',
+    label: 'Attach documents',
+    onClick: () => {
+      onToggle(true);
+      setShowAttach(true);
+    }
+  }] : []), /* POST …/events — properties.update. Offered on an archived property too. */
+  ...(perms.update ? [{
+    icon: 'history',
+    label: 'New event',
+    onClick: () => {
+      onToggle(true);
+      setEventModal({});
     }
   }] : []), {
     icon: 'fingerprint',
@@ -49179,10 +50399,22 @@ const PropertyListItem = ({
       value: estimates.length,
       label: 'Estimates'
     }] : []), {
+      icon: 'description',
+      value: files.length,
+      label: 'Documents'
+    }, {
       icon: 'sell',
       value: tagIds.length,
       label: 'Smart tags'
-    }],
+    }, {
+      icon: 'history',
+      value: events.length,
+      label: 'Events'
+    }, ...(contractCount ? [{
+      icon: 'handshake',
+      value: contractCount,
+      label: 'Contracts'
+    }] : [])],
     figure: perms.estimatesRead ? {
       value: current ? PR_H.money(current.value, p.currencyCode) : '—',
       caption: current ? `estimated · ${new Date(current.effectiveFrom + 'T00:00:00').toLocaleDateString('en-US', {
@@ -49203,6 +50435,7 @@ const PropertyListItem = ({
     tagIds: tagIds,
     setTagIds: setTagIds,
     perms: perms,
+    contractRows: contractRows,
     cap: cap,
     limitsDegraded: limitsDegraded,
     onNavigate: onNavigate,
@@ -49213,8 +50446,42 @@ const PropertyListItem = ({
       mode: 'edit',
       estimate: e
     }),
-    onDeleteEstimate: e => setEstimates(prev => prev.filter(x => x.id !== e.id))
-  })), showEdit && /*#__PURE__*/React.createElement(AddPropertyModal, {
+    onDeleteEstimate: e => setEstimates(prev => prev.filter(x => x.id !== e.id)),
+    files: files,
+    onAttachFile: () => setShowAttach(true),
+    onSaveFile: (id, patch) => setFiles(prev => prev.map(f => f.id === id ? {
+      ...f,
+      kind: patch.kind,
+      validFrom: patch.validFrom || null,
+      validTo: patch.validTo || null,
+      issuedAt: patch.issuedAt || null,
+      issuedBy: patch.issuedBy || null
+    } : f)),
+    onDetachFile: row => setFiles(prev => prev.filter(f => f.id !== row.id)),
+    events: events,
+    onEditEvent: ev => setEventModal({
+      event: ev
+    }),
+    onDeleteEvent: ev => setEvents(prev => prev.filter(x => x.id !== ev.id)),
+    onAnnounceEvent: say
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "odc-sr-only",
+    role: "status",
+    "aria-live": "polite"
+  }, announce), eventModal && /*#__PURE__*/React.createElement(AddPropertyEventModal, {
+    property: p,
+    event: eventModal.event || null,
+    onClose: () => setEventModal(null),
+    onSave: saveEvent
+  }), showAttach && /*#__PURE__*/React.createElement(AddPropertyFileModal, {
+    property: p,
+    attached: files,
+    onClose: () => setShowAttach(false),
+    onAttach: links => {
+      setFiles(prev => [...prev, ...links]);
+      setShowAttach(false);
+    }
+  }), showEdit && /*#__PURE__*/React.createElement(AddPropertyModal, {
     property: p,
     estimateCount: estimates.length,
     onClose: () => setShowEdit(false),
@@ -49239,6 +50506,9 @@ const PropertyListItem = ({
     property: p,
     estimateCount: estimates.length,
     tagCount: tagIds.length,
+    fileCount: files.length,
+    eventCount: events.length,
+    contractLinks: contractLinks,
     canArchive: perms.update,
     onClose: () => setConfirmDel(false),
     onArchive: () => {
@@ -49367,14 +50637,20 @@ const Properties = ({
     update: true,
     delete: true,
     estimatesRead: true,
-    estimatesWrite: true
+    estimatesWrite: true,
+    contractsRead: true,
+    filesRead: true,
+    contactsRead: true
   } : {
     read: true,
     create: false,
     update: false,
     delete: false,
     estimatesRead: true,
-    estimatesWrite: false
+    estimatesWrite: false,
+    contractsRead: role !== 'guest',
+    filesRead: true,
+    contactsRead: role !== 'guest'
   };
   /* GET /api/property-limits — a 503 leaves the cap unknown. */
   const limitsDegraded = !!tweaks.propLimitsDegraded;
@@ -49383,7 +50659,24 @@ const Properties = ({
   const [estById, setEstById] = useState(() => Object.fromEntries(PR_D.properties.map(p => [p.id, (PR_D.propertyEstimates[p.id] || []).slice()])));
   /* The tag-delete blocker (TransactionTags) reads this live seed. */
   const [tagsById, setTagsById] = useState(() => Object.fromEntries(PR_D.properties.map(p => [p.id, (PR_D.propertySmartTagSeed[p.id] || []).slice()])));
-  const [openId, setOpenId] = useState('p-storgata');
+  /* PropertyFiles per property — cascade with the property; files survive. */
+  const [filesById, setFilesById] = useState(() => Object.fromEntries(PR_D.properties.map(p => [p.id, (PR_D.propertyFileSeed[p.id] || []).slice()])));
+  const setFiles = id => fn => setFilesById(m => ({
+    ...m,
+    [id]: typeof fn === 'function' ? fn(m[id] || []) : fn
+  }));
+  /* PropertyEvents per property — cascade with the property. */
+  const [eventsById, setEventsById] = useState(() => Object.fromEntries(PR_D.properties.map(p => [p.id, PR_H.pevFor ? PR_H.pevFor(p.id) : []])));
+  const setEvents = id => fn => setEventsById(m => ({
+    ...m,
+    [id]: typeof fn === 'function' ? fn(m[id] || []) : fn
+  }));
+  /* The recorder: system rows staged in the same save as the change. */
+  const stage = (before, after) => {
+    const rows = PR_H.pevTransitions ? PR_H.pevTransitions(before, after, 'u-owner') : [];
+    if (rows.length) setEvents(after.id)(prev => [...rows, ...prev]);
+  };
+  const [openId, setOpenId] = useState('p-maple');
   const [q, setQ] = useState('');
   const [types, setTypes] = useState([]);
   const [statuses, setStatuses] = useState([]);
@@ -49455,20 +50748,36 @@ const Properties = ({
       ...m,
       [id]: []
     }));
-    setProperties(prev => [{
+    setFilesById(m => ({
+      ...m,
+      [id]: []
+    }));
+    const row = {
       id,
       archived: null,
       createdAt: now,
       updatedAt: now,
       ...dto
-    }, ...prev]);
+    };
+    setEventsById(m => ({
+      ...m,
+      [id]: []
+    }));
+    stage(null, row);
+    setProperties(prev => [row, ...prev]);
     setOpenId(id);
     setShowAdd(false);
   };
-  const update = p => setProperties(prev => prev.map(x => x.id === p.id ? p : x));
+  const update = p => {
+    stage(properties.find(x => x.id === p.id), p);
+    setProperties(prev => prev.map(x => x.id === p.id ? p : x));
+  };
   const remove = id => {
     setProperties(prev => prev.filter(x => x.id !== id));
     setTags(id)([]);
+    setFiles(id)([]);
+    /* Tracked removal of the party links + one PartyRemoved event per row. */
+    if (PR_H.conDetachProperty) PR_H.conDetachProperty(id, 'u-owner');
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "col gap-6"
@@ -49576,6 +50885,10 @@ const Properties = ({
       setEstimates: setEst(p.id),
       tagIds: tagsById[p.id] || [],
       setTagIds: setTags(p.id),
+      files: filesById[p.id] || [],
+      setFiles: setFiles(p.id),
+      events: eventsById[p.id] || [],
+      setEvents: setEvents(p.id),
       onUpdate: update,
       onDelete: remove
     }),
@@ -49595,7 +50908,9 @@ const Properties = ({
 };
 Object.assign(window, {
   Properties,
-  PropertyStatusChip
+  PropertyStatusChip,
+  PropertyContracts,
+  DeletePropertyModal
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/Properties.jsx", error: String((e && e.message) || e) }); }
 
@@ -49810,6 +51125,194 @@ Object.assign(window, {
   PropertyEstimates
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/PropertyEstimates.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/web/PropertyEvents.jsx
+try { (() => {
+/* PropertyEvents — the "Events" section, the last zone in an expanded property
+   record. Frontend for *Property Events — Backend (Draft v2)* / issue #167.
+
+   The same log as a contract's (ContractEvents.jsx), on the same DS EventRail,
+   with the same attribution sentence, the same Today / "added" anchors and the
+   same no-create-button rule: "New event" lives in the property's ⋯ menu.
+
+   What differs, and why:
+
+   • THE TYPE LIST DEPENDS ON THE PROPERTY'S TYPE. PropertyEventTypeMatrix
+     makes 17 of 21 members legal for each type. The dialog only offers
+     those, so the 422 is never met through the UI.
+
+   • NO FILTERS IN V1. The endpoint carries search, types, from/to, source and
+     the sort keys; the section surfaces none of them — newest first, paged,
+     exactly as on contracts.
+
+   • SYSTEM ROWS COME FROM THREE PROPERTY FIELDS ONLY: acquired date, disposed
+     date, archive. Never from estimates (a properties.read reader must not
+     learn what properties.estimates.read withholds) and never from detail
+     edits. The empty state names exactly those three.
+
+   • THE FOOT MARKER HAS NO AUTHOR. Property carries CreatedAt but no
+     CreatedByUserId, so the marker is a date only. An Acquired event is
+     usually older than the record (the purchase came before the data entry)
+     and correctly sorts below it.
+
+   No event changes the property: a hand-written Disposed does not set
+   DisposedDate (Non-Goal 5), so nothing here touches the status chip.
+
+   Props: property, events, canUpdate (properties.update — presentation only),
+   pageSize, onEdit, onDelete, onAnnounce (the record's single live region). */
+
+const PEV_H = window.OdysseyHelpers;
+const PEV_D = window.OdysseyData;
+const PropertyEvents = ({
+  property,
+  events = [],
+  canUpdate = true,
+  pageSize = 25,
+  onEdit,
+  onDelete,
+  onAnnounce
+}) => {
+  const {
+    useState,
+    useMemo,
+    useEffect
+  } = React;
+  const NS = window.OdysseyDesignSystem_d5aa51 || {};
+  const DSRowActions = NS.RowActions,
+    DSPager = NS.Pager;
+  const {
+    EventRail,
+    EventRailItem,
+    EventRailMarker
+  } = NS;
+  const headingId = `prop-events-heading-${property.id}`;
+  const [page, setPage] = useState(1);
+  useEffect(() => {
+    setPage(1);
+  }, [events]);
+  const filtered = useMemo(() => events.slice().sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt)), [events]);
+  const total = filtered.length;
+  const start = (page - 1) * pageSize;
+  const rows = filtered.slice(start, start + pageSize);
+  const removeEvent = ev => {
+    onDelete && onDelete(ev);
+    setTimeout(() => {
+      const h = document.getElementById(headingId);
+      if (h) h.focus();
+    }, 0);
+    const left = Math.max(events.length - 1, 0);
+    onAnnounce && onAnnounce(`Event deleted. ${left} ${left === 1 ? 'entry' : 'entries'} in the log.`);
+  };
+  const examples = property.type === 'Vehicle' ? 'a service, a tyre change, the periodic inspection' : 'a repair, a renovation, a tenancy';
+  if (events.length === 0) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "con-section"
+    }, /*#__PURE__*/React.createElement(SectionDivider, {
+      label: "Events",
+      headingId: headingId,
+      meta: "0 entries"
+    }), /*#__PURE__*/React.createElement(EmptyLine, null, "No events yet. Odyssey records when this property is acquired, disposed of, archived or restored, and you can add anything else: ", examples, "."));
+  }
+
+  /* Anchors: Today on page 1, the record's creation placed chronologically. */
+  const track = [];
+  const firstPage = page === 1;
+  const lastPage = start + rows.length >= total;
+  if (firstPage) track.push({
+    cap: 'now'
+  });
+  let lastYear = firstPage ? new Date().getUTCFullYear() : null;
+  for (const ev of rows) {
+    const y = PEV_H.cevYear(ev.occurredAt);
+    if (y !== lastYear) {
+      track.push({
+        tick: y
+      });
+      lastYear = y;
+    }
+    track.push({
+      ev
+    });
+  }
+  const addedAt = property.createdAt;
+  if (addedAt) {
+    const cap = {
+      cap: 'origin',
+      text: `Property added ${PEV_H.cevDate(addedAt)}`
+    };
+    let at = track.findIndex(x => x.ev && new Date(x.ev.occurredAt) < new Date(addedAt));
+    // Never land under an older year's tick: go above it when the years differ.
+    if (at > 0 && track[at - 1].tick && track[at - 1].tick !== PEV_H.cevYear(addedAt)) at -= 1;
+    if (at !== -1) track.splice(at, 0, cap);else if (lastPage) track.push(cap);
+  }
+  const item = ev => {
+    const info = PEV_H.pevTypeInfo(ev.type);
+    const system = PEV_H.pevIsSystem(ev);
+    return /*#__PURE__*/React.createElement(EventRailItem, {
+      key: ev.id,
+      icon: info.icon,
+      iconLabel: info.label,
+      title: ev.title,
+      date: PEV_H.cevDateTime(ev.occurredAt),
+      desc: ev.description || undefined,
+      actions: canUpdate ? /*#__PURE__*/React.createElement(DSRowActions, {
+        actions: [{
+          icon: 'edit',
+          label: `Edit ${ev.title}`,
+          onClick: () => onEdit && onEdit(ev)
+        }, {
+          icon: 'delete',
+          label: `Delete ${ev.title}`,
+          danger: true,
+          onClick: () => removeEvent(ev)
+        }]
+      }) : undefined
+    }, /*#__PURE__*/React.createElement("div", {
+      className: `odc-er-meta${ev.createdByUserId ? '' : ' cev-by-unknown'}`
+    }, "Recorded by ", /*#__PURE__*/React.createElement("span", {
+      className: "cev-by-who"
+    }, PEV_H.cevCreatedBy(ev.createdByUserId)), " at ", PEV_H.cevDateTime(ev.createdAtUtc), system ? /*#__PURE__*/React.createElement("span", {
+      className: "cev-auto-note"
+    }, " (automatically generated)") : null));
+  };
+  const meta = `${total} ${total === 1 ? 'entry' : 'entries'} · newest first`;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "con-section"
+  }, /*#__PURE__*/React.createElement(SectionDivider, {
+    label: "Events",
+    headingId: headingId,
+    meta: meta
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "cev-rail"
+  }, /*#__PURE__*/React.createElement(EventRail, {
+    capTop: firstPage,
+    capEnd: lastPage
+  }, track.map(x => {
+    if (x.cap === 'now') return /*#__PURE__*/React.createElement(EventRailMarker, {
+      tone: "open",
+      key: "cap-now"
+    }, "Today \xB7 ", PEV_H.cevDate(new Date().toISOString()));
+    if (x.cap === 'origin') return /*#__PURE__*/React.createElement(EventRailMarker, {
+      tone: "filled",
+      key: "cap-origin"
+    }, x.text);
+    if (x.tick) return /*#__PURE__*/React.createElement(EventRailMarker, {
+      key: `y${x.tick}`
+    }, x.tick);
+    return item(x.ev);
+  }))), total > pageSize ? /*#__PURE__*/React.createElement(DSPager, {
+    page: page,
+    pageSize: pageSize,
+    totalCount: total,
+    showPageSize: false,
+    onPageChange: setPage,
+    label: "Event log pagination"
+  }) : null);
+};
+Object.assign(window, {
+  PropertyEvents
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/PropertyEvents.jsx", error: String((e && e.message) || e) }); }
 
 // ui_kits/web/ResetPassword.jsx
 try { (() => {
@@ -56568,14 +58071,14 @@ try { (() => {
     soft: 'oklch(0.72 0.15 25 / 0.16)',
     desc: 'The agreement was brought to an end. This does not change the contract’s status.'
   }, {
-    key: 'TermChanged',
+    key: 'PriceChanged',
     label: 'Term changed',
     enumValue: 6,
     icon: 'price_change',
     color: 'oklch(0.76 0.14 320)',
     soft: 'oklch(0.76 0.14 320 / 0.16)',
-    auto: 'a term of the agreement was changed',
-    desc: 'A term of the agreement (a price, rate, date or clause) was set or changed.'
+    auto: 'the agreement was re-priced',
+    desc: 'What the agreement costs was renegotiated or re-set.'
   }, {
     key: 'EmailSent',
     label: 'Email sent',
@@ -56730,7 +58233,7 @@ try { (() => {
       id: 'cev-l3',
       contractId: 'ct-lease',
       source: 'user',
-      type: 'TermChanged',
+      type: 'PriceChanged',
       title: 'Rent renegotiated to 2,250 USD',
       description: 'Agreed by phone with the letting agent, then confirmed in writing. A CPI basis was requested and refused; settled at 4.7%.',
       notes: 'Check last year’s letter before the next review.',
@@ -56826,7 +58329,7 @@ try { (() => {
       id: 'cev-f2',
       contractId: 'ct-fiber',
       source: 'user',
-      type: 'TermChanged',
+      type: 'PriceChanged',
       title: 'Monthly charge raised to $84',
       description: 'Annual CPI+3.9% uplift clause. No right to exit on the increase.',
       notes: null,
@@ -57652,11 +59155,11 @@ try { (() => {
     createdAtUtc: '2025-08-14T10:00:00Z',
     createdByUserId: 'u-jane',
     parties: [
-    // The let flat itself — an OBJECT party. Before the object roles this
-    // was filed under the catch-all `Other` and lost what it meant.
+    // The let house itself — an OBJECT party, and since the Property party
+    // kind (kind 3) the actual Property record rather than an account.
     {
       id: 'cp-lease-1',
-      accountId: '7',
+      propertyId: 'p-maple',
       role: 'Property',
       fromDate: null,
       toDate: null
@@ -57718,10 +59221,11 @@ try { (() => {
     createdAtUtc: '2021-03-02T09:00:00Z',
     createdByUserId: null,
     parties: [
-    // The property bought is the OBJECT of the purchase, not its buyer.
+    // The property bought is the OBJECT of the purchase, not its buyer —
+    // linked as the Property record itself (ContractPartyKind.Property).
     {
       id: 'cp-house-1',
-      accountId: '7',
+      propertyId: 'p-maple',
       role: 'Property',
       fromDate: null,
       toDate: null
@@ -57788,10 +59292,11 @@ try { (() => {
       fromDate: null,
       toDate: null
     },
-    // The security pledged against the loan — a Loan's own object role.
+    // The security pledged against the loan — the car itself, a Property
+    // party in the Loan's own object role.
     {
       id: 'cp-loan-4',
-      accountId: '5',
+      propertyId: 'p-outback',
       role: 'Collateral',
       fromDate: null,
       toDate: null
@@ -57859,11 +59364,11 @@ try { (() => {
       fromDate: null,
       toDate: null
     },
-    // One `Insured` member serves both party kinds — the kind discriminator
-    // already says whether the covered thing is an account or a contact.
+    // One `Insured` member serves every party kind — the kind discriminator
+    // already says whether the covered thing is an account, contact or property.
     {
       id: 'cp-cover-2',
-      accountId: '7',
+      propertyId: 'p-maple',
       role: 'Insured',
       fromDate: null,
       toDate: null
@@ -58516,6 +60021,66 @@ try { (() => {
         return out;
       }, []);
     },
+    /* GET /api/properties/{id}/contracts — PropertyContractLink[]: one row per
+       CONTRACT naming the property, every role it holds there in party order
+       (never empty), archived contracts included, ordered by name
+       (case-insensitive) then id. Field-identical to AccountContractLink. */
+    conContractsForProperty(propertyId) {
+      return (D.contracts || []).reduce((out, c) => {
+        const links = (c.parties || []).filter(p => p.propertyId === propertyId);
+        if (links.length) out.push({
+          contract: c,
+          parties: links
+        });
+        return out;
+      }, []).sort((a, b) => {
+        const n = (a.contract.name || '').localeCompare(b.contract.name || '', undefined, {
+          sensitivity: 'base'
+        });
+        return n || (a.contract.id < b.contract.id ? -1 : a.contract.id > b.contract.id ? 1 : 0);
+      });
+    },
+    /* ExistingProperty.ContractCount — DISTINCT contracts, not party rows; null
+       when the caller lacks contracts.read (decided by the caller). */
+    conPropertyContractCount(propertyId) {
+      return (D.contracts || []).filter(c => (c.parties || []).some(p => p.propertyId === propertyId)).length;
+    },
+    /* The property-delete cascade (§3 step 5): every party row naming the
+       property is removed, and each removed row stages one system PartyRemoved
+       event on its own contract — role and ONE shared timestamp, attributed to
+       the deleting caller, no property name. The contracts survive. */
+    conDetachProperty(propertyId, userId) {
+      const at = new Date().toISOString();
+      const removed = [];
+      (D.contracts || []).forEach(c => {
+        const gone = (c.parties || []).filter(p => p.propertyId === propertyId);
+        if (!gone.length) return;
+        c.parties = c.parties.filter(p => p.propertyId !== propertyId);
+        gone.forEach(p => {
+          removed.push({
+            contractId: c.id,
+            partyId: p.id,
+            role: p.role
+          });
+          if (D.contractEventSeed) {
+            D.contractEventSeed[c.id] = D.contractEventSeed[c.id] || [];
+            D.contractEventSeed[c.id].push({
+              id: 'cev-pd-' + p.id,
+              contractId: c.id,
+              source: 'system',
+              type: 'PartyRemoved',
+              title: H.conPartyRoleInfo(p.role).label + ' party removed',
+              description: 'Detached when the property it named was deleted.',
+              notes: null,
+              occurredAt: at,
+              createdByUserId: userId || null,
+              createdAtUtc: at
+            });
+          }
+        });
+      });
+      return removed;
+    },
     // Short date for the tile caption: 'YYYY-MM-DD' → "Feb 1 2026".
     conDateShort(iso) {
       if (!iso) return '';
@@ -58572,6 +60137,26 @@ try { (() => {
           target: c
         };
       }
+      /* ContractPartyKind.Property (3) — the minimal ContractPropertyReference
+         { propertyId, name, type } only. The caption is the property's own
+         KIND (House, Car…) read from the property record, so the tile says
+         "what sort of thing" without ever touching address, cadastral number,
+         registration or VIN. An unresolved navigation keeps the kind. */
+      if (party.propertyId) {
+        const p = (D.properties || []).find(x => x.id === party.propertyId);
+        const ti = p && H.propTypeInfo ? H.propTypeInfo(p.type) : {};
+        const ki = p && H.propKindInfo ? H.propKindInfo(p) : {};
+        return {
+          kind: 'property',
+          kindLabel: 'Property',
+          name: p ? p.name : 'Unknown property',
+          typeLabel: ki.label || ti.label || '',
+          icon: ki.icon || 'home_work',
+          color: ti.color,
+          soft: ti.soft,
+          target: p || null
+        };
+      }
       return {
         kind: 'unknown',
         kindLabel: 'Party',
@@ -58616,6 +60201,26 @@ try { (() => {
           label: c.name,
           icon: m.icon,
           iconColor: m.color
+        };
+      });
+    },
+    /* Property options for the party picker. Archived and disposed properties
+       stay LINKABLE (history must stay recordable) and say so in the label. */
+    conPropertyOptions() {
+      return (D.properties || []).slice().sort((a, b) => !!a.archived - !!b.archived || (a.name || '').localeCompare(b.name || '', undefined, {
+        sensitivity: 'base'
+      })).map(p => {
+        const ti = H.propTypeInfo ? H.propTypeInfo(p.type) : {};
+        const ki = H.propKindInfo ? H.propKindInfo(p) : {};
+        const st = H.propStatus ? H.propStatus(p) : 'Owned';
+        const tag = p.archived ? 'archived' : st !== 'Owned' && H.propStatusMeta ? H.propStatusMeta(st).label.toLowerCase() : null;
+        return {
+          value: p.id,
+          label: tag ? `${p.name} (${tag})` : p.name,
+          icon: ki.icon || 'home_work',
+          iconColor: ti.color,
+          archived: !!p.archived,
+          status: st
         };
       });
     },
@@ -60543,6 +62148,106 @@ window.OdysseyData = {
     color: 'oklch(0.74 0.02 250)',
     soft: 'oklch(0.74 0.02 250 / 0.16)',
     desc: 'The enum default — anything that does not fit the categories above.'
+  }],
+  /* PropertyFileType (Odyssey.Dtos.Finance, field FileType on PropertyFile) —
+     documents on a property. Other is ordinal 0 (the AccountFileType shape) and
+     sorts last. Keys shared with another file enum reuse its icon and colour. */
+  propertyFileTypes: [{
+    key: 'Deed',
+    label: 'Deed',
+    enumValue: 1,
+    icon: 'workspace_premium',
+    color: 'oklch(0.74 0.15 290)',
+    soft: 'oklch(0.74 0.15 290 / 0.16)',
+    desc: 'Title deed or land-registry extract — skøyte, grunnboksutskrift.'
+  }, {
+    key: 'PurchaseAgreement',
+    label: 'Purchase agreement',
+    enumValue: 2,
+    icon: 'sell',
+    color: 'oklch(0.79 0.14 60)',
+    soft: 'oklch(0.79 0.14 60 / 0.16)',
+    desc: 'The purchase or sale contract.'
+  }, {
+    key: 'Valuation',
+    label: 'Valuation',
+    enumValue: 3,
+    icon: 'price_check',
+    color: 'oklch(0.80 0.15 140)',
+    soft: 'oklch(0.80 0.15 140 / 0.16)',
+    desc: 'A valuation, appraisal or takst.'
+  }, {
+    key: 'Inspection',
+    label: 'Inspection',
+    enumValue: 4,
+    icon: 'troubleshoot',
+    color: 'oklch(0.78 0.12 180)',
+    soft: 'oklch(0.78 0.12 180 / 0.16)',
+    desc: 'A condition report (tilstandsrapport) or periodic vehicle inspection (EU-kontroll).'
+  }, {
+    key: 'Registration',
+    label: 'Registration',
+    enumValue: 5,
+    icon: 'app_registration',
+    color: 'oklch(0.74 0.15 310)',
+    soft: 'oklch(0.74 0.15 310 / 0.16)',
+    desc: 'Vehicle registration certificate — vognkort.'
+  }, {
+    key: 'Insurance',
+    label: 'Insurance',
+    enumValue: 6,
+    icon: 'shield',
+    color: 'oklch(0.74 0.15 30)',
+    soft: 'oklch(0.74 0.15 30 / 0.16)',
+    desc: 'An insurance certificate or policy schedule.'
+  }, {
+    key: 'Warranty',
+    label: 'Warranty',
+    enumValue: 7,
+    icon: 'verified',
+    color: 'oklch(0.77 0.13 205)',
+    soft: 'oklch(0.77 0.13 205 / 0.16)',
+    desc: 'A warranty or guarantee.'
+  }, {
+    key: 'Receipt',
+    label: 'Receipt',
+    enumValue: 8,
+    icon: 'receipt_long',
+    color: 'oklch(0.80 0.15 150)',
+    soft: 'oklch(0.80 0.15 150 / 0.16)',
+    desc: 'A purchase receipt, or the invoice for an improvement.'
+  }, {
+    key: 'Maintenance',
+    label: 'Maintenance',
+    enumValue: 9,
+    icon: 'build',
+    color: 'oklch(0.80 0.14 95)',
+    soft: 'oklch(0.80 0.14 95 / 0.16)',
+    desc: 'A service or maintenance record.'
+  }, {
+    key: 'Tax',
+    label: 'Tax',
+    enumValue: 10,
+    icon: 'request_quote',
+    color: 'oklch(0.75 0.16 330)',
+    soft: 'oklch(0.75 0.16 330 / 0.16)',
+    desc: 'A property-tax or wealth-tax assessment.'
+  }, {
+    key: 'Drawing',
+    label: 'Drawing',
+    enumValue: 11,
+    icon: 'architecture',
+    color: 'oklch(0.76 0.12 240)',
+    soft: 'oklch(0.76 0.12 240 / 0.16)',
+    desc: 'A floor plan, site plan or technical drawing.'
+  }, {
+    key: 'Other',
+    label: 'Other',
+    enumValue: 0,
+    icon: 'insert_drive_file',
+    color: 'oklch(0.74 0.02 250)',
+    soft: 'oklch(0.74 0.02 250 / 0.16)',
+    desc: 'The enum default — an omitted type degrades here, never to Deed.'
   }],
   // AccountFile collection — keyed by accountId. Each file mirrors ExistingAccountFile:
   //   { id, name, kind, size, uploaded }  plus the optional validity metadata added
@@ -62512,10 +64217,11 @@ window.OdysseyData.contactTypeByKey = Object.fromEntries(window.OdysseyData.cont
 window.OdysseyData.accountFileTypeByKey = Object.fromEntries(window.OdysseyData.accountFileTypes.map(t => [t.key, t]));
 window.OdysseyData.transactionFileTypeByKey = Object.fromEntries(window.OdysseyData.transactionFileTypes.map(t => [t.key, t]));
 window.OdysseyData.taxStatementFileTypeByKey = Object.fromEntries(window.OdysseyData.taxStatementFileTypes.map(t => [t.key, t]));
+window.OdysseyData.propertyFileTypeByKey = Object.fromEntries(window.OdysseyData.propertyFileTypes.map(t => [t.key, t]));
 /* Merged kind→icon/color lookup for rendering a file's avatar/chip on any surface,
    regardless of which enum it came from. Account types win the shared `Other`
    (identical icon/color anyway). Pickers use the per-context lists above. */
-window.OdysseyData.fileTypeByKey = Object.assign({}, window.OdysseyData.taxStatementFileTypeByKey, window.OdysseyData.transactionFileTypeByKey, window.OdysseyData.accountFileTypeByKey);
+window.OdysseyData.fileTypeByKey = Object.assign({}, window.OdysseyData.propertyFileTypeByKey, window.OdysseyData.taxStatementFileTypeByKey, window.OdysseyData.transactionFileTypeByKey, window.OdysseyData.accountFileTypeByKey);
 window.OdysseyData.contactById = Object.fromEntries(window.OdysseyData.contacts.map(c => [c.id, c]));
 /* Resolve an account's custodian to the slim Custodian projection the read DTO
    carries (identifying fields only — no free-text description). Returns null for
@@ -65361,6 +67067,125 @@ try { (() => {
     'p-outback': ['t22', 't23'],
     'p-wren': ['t24']
   };
+
+  /* ---- Property documents (*Property Documents — Backend, Draft v2*) ----
+     DOCUMENT_CONTENT_TYPES mirrors the ONE server declaration
+     (DocumentContentTypes.Allowed) that contract and property attach both name.
+     It is checked against the file's SERVER-RECORDED content type at attach. */
+  D.DOCUMENT_CONTENT_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
+  D.DOCUMENT_CONTENT_TYPE_LABEL = 'PDF, PNG, JPEG or WebP';
+
+  /* Issuers the demo documents name. Appended to the shared contact pool. */
+  [{
+    id: 'c40',
+    name: 'Golden Gate Appraisal Co.',
+    normalizedName: 'GOLDEN GATE APPRAISAL CO.',
+    type: 'Organization',
+    description: 'Residential appraiser — refinance and broker valuations.',
+    archived: null
+  }, {
+    id: 'c41',
+    name: 'Kartverket',
+    normalizedName: 'KARTVERKET',
+    type: 'Organization',
+    description: 'Norwegian land registry — issues deeds and registry extracts.',
+    archived: null
+  }, {
+    id: 'c42',
+    name: 'Bay Roofing',
+    normalizedName: 'BAY ROOFING',
+    type: 'Organization',
+    description: 'Roofing contractor — installed the 2016 roof.',
+    archived: null
+  }, {
+    id: 'c43',
+    name: 'California DMV',
+    normalizedName: 'CALIFORNIA DMV',
+    type: 'Organization',
+    description: 'Vehicle and vessel registration.',
+    archived: null
+  }].forEach(c => {
+    if (!(D.contactById || {})[c.id]) {
+      D.contacts.push(c);
+      if (D.contactById) D.contactById[c.id] = c;
+    }
+  });
+
+  /* Stored files (FileMetadata) the property documents reference, plus a few
+     the Files store holds that are attached nowhere yet — the "From Files"
+     picker lists this pool and the contract library together. */
+  const fm = (id, name, contentType, size, uploaded) => ({
+    id,
+    name,
+    contentType,
+    size,
+    uploaded,
+    uploadedByName: 'Owner Demo'
+  });
+  D.propertyFileLibrary = [fm('fm-maple-deed', 'maple_st_grant_deed_2018.pdf', 'application/pdf', '1.2 MB', '2018-09-12'), fm('fm-maple-purchase', 'maple_st_purchase_agreement.pdf', 'application/pdf', '2.4 MB', '2018-09-12'), fm('fm-maple-apprais', 'refinance_appraisal_2021.pdf', 'application/pdf', '860 KB', '2021-05-20'), fm('fm-maple-roof', 'roof_warranty_bay_roofing.pdf', 'application/pdf', '140 KB', '2016-07-02'), fm('fm-maple-plan', 'maple_floor_plan.png', 'image/png', '2.1 MB', '2019-03-11'), fm('fm-maple-retro', 'seismic_retrofit_invoice.jpg', 'image/jpeg', '1.4 MB', '2021-10-04'), fm('fm-maple-tax', 'sf_property_tax_2026.pdf', 'application/pdf', '98 KB', '2026-02-10'), fm('fm-stor-deed', 'skjote_storgata_14.pdf', 'application/pdf', '420 KB', '2019-06-10'), fm('fm-stor-tilstand', 'tilstandsrapport_2019.pdf', 'application/pdf', '3.1 MB', '2019-05-02'), fm('fm-out-reg', 'outback_registration_card.jpg', 'image/jpeg', '980 KB', '2026-03-02'), fm('fm-out-ins', 'meridian_auto_id_card_2026.pdf', 'application/pdf', '64 KB', '2026-01-05'), fm('fm-out-service', 'subaru_36k_service.pdf', 'application/pdf', '210 KB', '2026-06-21'), fm('fm-wren-reg', 'sea_wren_vessel_registration.pdf', 'application/pdf', '120 KB', '2025-04-18'), fm('fm-wren-survey', 'hull_survey_photo.webp', 'image/webp', '1.7 MB', '2025-04-15'), fm('fm-home-inv', 'home_inventory_export.html', 'text/html', '36 KB', '2026-08-30'), fm('fm-cabin-sheet', 'cabin_shared_costs.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '44 KB', '2026-07-19')];
+  D.fileLibraryPool = () => [...D.propertyFileLibrary, ...(D.contractFileLibrary || [])];
+  D.fileLibraryById = () => Object.fromEntries(D.fileLibraryPool().map(f => [f.id, f]));
+
+  /* PropertyFile link rows, per property, oldest attachment first (the list
+     order). Type + validity live on the LINK, never on FileMetadata. */
+  const pf = (pid, n, fileMetadataId, kind, attachedAtUtc, v) => ({
+    id: `pf-${pid}-${n}`,
+    propertyId: pid,
+    fileMetadataId,
+    kind,
+    attachedByUserId: 'u-owner',
+    attachedByName: 'Owner Demo',
+    attachedAtUtc,
+    validFrom: null,
+    validTo: null,
+    issuedAt: null,
+    issuedBy: null,
+    ...(v || {})
+  });
+  D.propertyFileSeed = {
+    'p-maple': [pf('p-maple', 1, 'fm-maple-deed', 'Deed', '2026-01-10T09:05:00Z', {
+      validFrom: '2018-09-05',
+      issuedAt: '2018-09-05'
+    }), pf('p-maple', 2, 'fm-maple-purchase', 'PurchaseAgreement', '2026-01-10T09:06:00Z', {
+      issuedAt: '2018-08-14'
+    }), pf('p-maple', 3, 'fm-maple-apprais', 'Valuation', '2026-01-10T09:08:00Z', {
+      issuedAt: '2021-05-14',
+      issuedBy: 'c40'
+    }), pf('p-maple', 4, 'fm-maple-roof', 'Warranty', '2026-01-11T18:20:00Z', {
+      validFrom: '2016-06-30',
+      validTo: '2036-06-30',
+      issuedAt: '2016-06-30',
+      issuedBy: 'c42'
+    }), pf('p-maple', 5, 'fm-maple-plan', 'Drawing', '2026-02-02T10:00:00Z'), pf('p-maple', 6, 'fm-maple-tax', 'Tax', '2026-02-10T08:30:00Z', {
+      validFrom: '2025-07-01',
+      validTo: '2026-06-30',
+      issuedAt: '2026-02-01'
+    })],
+    'p-storgata': [pf('p-storgata', 1, 'fm-stor-deed', 'Deed', '2026-01-10T09:10:00Z', {
+      validFrom: '2019-06-01',
+      issuedAt: '2019-06-07',
+      issuedBy: 'c41'
+    }), pf('p-storgata', 2, 'fm-stor-tilstand', 'Inspection', '2026-01-10T09:12:00Z', {
+      issuedAt: '2019-05-02'
+    })],
+    'p-outback': [pf('p-outback', 1, 'fm-out-reg', 'Registration', '2026-03-02T12:00:00Z', {
+      validFrom: '2026-03-10',
+      validTo: '2027-03-10',
+      issuedBy: 'c43'
+    }), pf('p-outback', 2, 'fm-out-ins', 'Insurance', '2026-03-02T12:02:00Z', {
+      validFrom: '2026-01-01',
+      validTo: '2026-12-31',
+      issuedAt: '2025-12-18',
+      issuedBy: 'c20'
+    }), pf('p-outback', 3, 'fm-out-service', 'Maintenance', '2026-06-21T16:40:00Z', {
+      issuedAt: '2026-06-21'
+    })],
+    'p-wren': [pf('p-wren', 1, 'fm-wren-reg', 'Registration', '2025-04-18T11:00:00Z', {
+      validFrom: '2025-04-18',
+      validTo: '2027-04-18',
+      issuedBy: 'c43'
+    })]
+  };
   const byKey = arr => Object.fromEntries(arr.map(x => [x.key, x]));
   const TY = byKey(D.propertyTypes),
     RK = byKey(D.realEstateKinds),
@@ -65415,10 +67240,418 @@ try { (() => {
     propAddressText: d => [d.addressLine, [d.postalCode, d.city].filter(Boolean).join(' '), d.countryCode].filter(Boolean).join(', '),
     propArea: n => n == null ? null : `${Number(n).toLocaleString('en-US', {
       maximumFractionDigits: 2
-    })} m²`
+    })} m²`,
+    propFileTypeInfo: k => (D.propertyFileTypeByKey || {})[k] || {
+      key: k,
+      label: k || 'Other',
+      icon: 'insert_drive_file',
+      color: 'var(--ink-300)',
+      soft: 'rgba(199,208,224,0.12)'
+    },
+    /* ExistingPropertyFile → FilesTable row. Name, size and content type come
+       from the referenced FileMetadata; kind + validity from the link. */
+    propFileRow: pf => {
+      const meta = D.fileLibraryById()[pf.fileMetadataId] || {};
+      return {
+        id: pf.id,
+        fileMetadataId: pf.fileMetadataId,
+        name: pf.name || meta.name || pf.fileMetadataId,
+        kind: pf.kind,
+        size: pf.size || meta.size || '—',
+        uploaded: meta.uploaded || (pf.attachedAtUtc || '').slice(0, 10),
+        contentType: pf.contentType || meta.contentType,
+        validFrom: pf.validFrom || null,
+        validTo: pf.validTo || null,
+        issuedAt: pf.issuedAt || null,
+        issuedBy: pf.issuedBy || null
+      };
+    },
+    propContentTypeAllowed: ct => D.DOCUMENT_CONTENT_TYPES.includes(ct),
+    /* Content type the Files API would record for an upload — by extension in the kit. */
+    propContentTypeFor: name => ({
+      pdf: 'application/pdf',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      webp: 'image/webp',
+      html: 'text/html',
+      htm: 'text/html'
+    })[(name.split('.').pop() || '').toLowerCase()] || 'application/octet-stream',
+    propContentTypeShort: ct => ({
+      'application/pdf': 'PDF',
+      'image/png': 'PNG',
+      'image/jpeg': 'JPEG',
+      'image/webp': 'WebP',
+      'text/html': 'HTML'
+    })[ct] || (ct || '').split('/').pop().split('.').pop().toUpperCase(),
+    /* Name → PropertyFileType guess for uploads; the user re-tags freely. */
+    propGuessFileType: name => {
+      const n = name.toLowerCase();
+      const rules = [[/deed|skjøte|skjote|grunnbok|title/, 'Deed'], [/purchase|kjøpekontrakt|sale/, 'PurchaseAgreement'], [/apprais|valuation|takst|verdi/, 'Valuation'], [/inspect|tilstand|eu-kontroll|survey|smog/, 'Inspection'], [/regist|vognkort/, 'Registration'], [/insur|policy|forsikring/, 'Insurance'], [/warrant|guarantee|garanti/, 'Warranty'], [/receipt|invoice|kvittering|faktura/, 'Receipt'], [/service|maint|repair/, 'Maintenance'], [/tax|skatt/, 'Tax'], [/plan|drawing|tegning|site/, 'Drawing']];
+      const hit = rules.find(([re]) => re.test(n));
+      return hit ? hit[1] : 'Other';
+    }
   });
 })();
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/properties-data.js", error: String((e && e.message) || e) }); }
+
+// ui_kits/web/property-events-data.js
+try { (() => {
+/* property-events-data.js — PropertyEvent registry, matrix, seed and helpers.
+   Frontend half of *Property Events — Backend (Draft v2)*, issue #167.
+
+   Property events share ONE table with contract events (TPH, discriminator
+   OwnerKind). Nothing here depends on that: every read and write is scoped to
+   a property route, and a contract event id on it is a 404.
+
+   ORDINALS START AT 100, disjoint from ContractEventType (0–99), and are a
+   wire contract. The registry is a mirror of the DS PROPERTY_EVENT_TYPES
+   (components/PropertyEventTypeSelect.jsx) — keep them in lockstep. Reading
+   order is the registry's: type-specific members sit beside the universal
+   ones, system-only members after, `Other` LAST because the unknown-ordinal
+   fallback is positional.
+
+   Two halves, one chronology, exactly as on contracts:
+     'user'   — written through the dialog.
+     'system' — staged by PropertyService in the same save as the change that
+                caused it: acquired date set / cleared, disposed date set /
+                cleared, archived / restored. Attributed to the person who
+                acted. Editable and deletable like any row.
+
+   NO ESTIMATE EVENTS (Non-Goal 1). Estimates sit behind
+   properties.estimates.read and the log is read under properties.read, so an
+   automatic "estimate added" row would leak what that claim withholds. A user
+   may still write a Valued event by hand. NO DETAIL-CHANGE EVENTS (Non-Goal 2)
+   — address, registration, VIN or make/model never enter a generated string. */
+(function () {
+  const D = window.OdysseyData;
+  const H = window.OdysseyHelpers;
+  D.propertyEventTypes = [{
+    key: 'Acquired',
+    label: 'Acquired',
+    enumValue: 100,
+    icon: 'key',
+    color: 'oklch(0.79 0.14 145)',
+    soft: 'oklch(0.79 0.14 145 / 0.16)',
+    scope: 'common',
+    auto: 'the acquired date was set',
+    desc: 'Bought, inherited or received.'
+  }, {
+    key: 'Disposed',
+    label: 'Disposed of',
+    enumValue: 101,
+    icon: 'output',
+    color: 'oklch(0.74 0.13 25)',
+    soft: 'oklch(0.74 0.13 25 / 0.16)',
+    scope: 'common',
+    auto: 'the disposed date was set',
+    desc: 'Sold, scrapped or written off.'
+  }, {
+    key: 'Valued',
+    label: 'Valued',
+    enumValue: 102,
+    icon: 'price_check',
+    color: 'oklch(0.78 0.13 110)',
+    soft: 'oklch(0.78 0.13 110 / 0.16)',
+    scope: 'common',
+    desc: 'An appraisal or valuation was obtained.'
+  }, {
+    key: 'Maintenance',
+    label: 'Maintenance',
+    enumValue: 103,
+    icon: 'build',
+    color: 'oklch(0.80 0.14 95)',
+    soft: 'oklch(0.80 0.14 95 / 0.16)',
+    scope: 'common',
+    desc: 'Routine upkeep.'
+  }, {
+    key: 'Repair',
+    label: 'Repair',
+    enumValue: 104,
+    icon: 'handyman',
+    color: 'oklch(0.79 0.14 60)',
+    soft: 'oklch(0.79 0.14 60 / 0.16)',
+    scope: 'common',
+    desc: 'A defect was fixed.'
+  }, {
+    key: 'Damage',
+    label: 'Damage',
+    enumValue: 105,
+    icon: 'report',
+    color: 'oklch(0.72 0.15 20)',
+    soft: 'oklch(0.72 0.15 20 / 0.16)',
+    scope: 'common',
+    desc: 'An incident, accident, storm or water damage.'
+  }, {
+    key: 'Inspection',
+    label: 'Inspection',
+    enumValue: 106,
+    icon: 'troubleshoot',
+    color: 'oklch(0.78 0.12 180)',
+    soft: 'oklch(0.78 0.12 180 / 0.16)',
+    scope: 'common',
+    desc: 'A general inspection or survey.'
+  }, {
+    key: 'InsuranceChanged',
+    label: 'Insurance changed',
+    enumValue: 107,
+    icon: 'shield',
+    color: 'oklch(0.74 0.15 30)',
+    soft: 'oklch(0.74 0.15 30 / 0.16)',
+    scope: 'common',
+    desc: 'A policy was taken out, renewed or changed.'
+  }, {
+    key: 'Renovation',
+    label: 'Renovation',
+    enumValue: 113,
+    icon: 'format_paint',
+    color: 'oklch(0.76 0.14 320)',
+    soft: 'oklch(0.76 0.14 320 / 0.16)',
+    scope: 'RealEstate',
+    desc: 'A renovation or extension.'
+  }, {
+    key: 'TaxAssessed',
+    label: 'Tax assessed',
+    enumValue: 114,
+    icon: 'request_quote',
+    color: 'oklch(0.75 0.16 330)',
+    soft: 'oklch(0.75 0.16 330 / 0.16)',
+    scope: 'RealEstate',
+    desc: 'A property-tax assessment.'
+  }, {
+    key: 'TenancyStarted',
+    label: 'Tenancy started',
+    enumValue: 115,
+    icon: 'vpn_key',
+    color: 'oklch(0.79 0.13 55)',
+    soft: 'oklch(0.79 0.13 55 / 0.16)',
+    scope: 'RealEstate',
+    desc: 'Let to a tenant.'
+  }, {
+    key: 'TenancyEnded',
+    label: 'Tenancy ended',
+    enumValue: 116,
+    icon: 'key_off',
+    color: 'oklch(0.72 0.10 40)',
+    soft: 'oklch(0.72 0.10 40 / 0.16)',
+    scope: 'RealEstate',
+    desc: 'A tenancy came to an end.'
+  }, {
+    key: 'Serviced',
+    label: 'Serviced',
+    enumValue: 117,
+    icon: 'car_repair',
+    color: 'oklch(0.77 0.13 205)',
+    soft: 'oklch(0.77 0.13 205 / 0.16)',
+    scope: 'Vehicle',
+    desc: 'A workshop service.'
+  }, {
+    key: 'TyreChange',
+    label: 'Tyre change',
+    enumValue: 118,
+    icon: 'tire_repair',
+    color: 'oklch(0.76 0.10 240)',
+    soft: 'oklch(0.76 0.10 240 / 0.16)',
+    scope: 'Vehicle',
+    desc: 'Seasonal or replacement tyres.'
+  }, {
+    key: 'PeriodicInspection',
+    label: 'Periodic inspection',
+    enumValue: 119,
+    icon: 'fact_check',
+    color: 'oklch(0.78 0.13 170)',
+    soft: 'oklch(0.78 0.13 170 / 0.16)',
+    scope: 'Vehicle',
+    desc: 'The statutory roadworthiness test (e.g. EU-kontroll).'
+  }, {
+    key: 'Registered',
+    label: 'Registration',
+    enumValue: 120,
+    icon: 'app_registration',
+    color: 'oklch(0.74 0.15 310)',
+    soft: 'oklch(0.74 0.15 310 / 0.16)',
+    scope: 'Vehicle',
+    desc: 'Registered, re-registered or deregistered.'
+  }, {
+    key: 'Archived',
+    label: 'Archived',
+    enumValue: 109,
+    icon: 'inventory_2',
+    color: 'oklch(0.75 0.06 250)',
+    soft: 'oklch(0.75 0.06 250 / 0.16)',
+    scope: 'common',
+    systemOnly: true,
+    auto: 'the property was archived',
+    desc: 'The property was archived.'
+  }, {
+    key: 'Unarchived',
+    label: 'Restored',
+    enumValue: 110,
+    icon: 'unarchive',
+    color: 'oklch(0.78 0.12 185)',
+    soft: 'oklch(0.78 0.12 185 / 0.16)',
+    scope: 'common',
+    systemOnly: true,
+    auto: 'the property was restored from the archive',
+    desc: 'The property was restored from the archive.'
+  }, {
+    key: 'AcquisitionDateCleared',
+    label: 'Acquired date cleared',
+    enumValue: 111,
+    icon: 'event_busy',
+    color: 'oklch(0.74 0.08 150)',
+    soft: 'oklch(0.74 0.08 150 / 0.16)',
+    scope: 'common',
+    systemOnly: true,
+    auto: 'the acquired date was removed',
+    desc: 'The acquired date was removed.'
+  }, {
+    key: 'DisposalReversed',
+    label: 'Disposal reversed',
+    enumValue: 112,
+    icon: 'undo',
+    color: 'oklch(0.76 0.10 60)',
+    soft: 'oklch(0.76 0.10 60 / 0.16)',
+    scope: 'common',
+    systemOnly: true,
+    auto: 'the disposed date was removed',
+    desc: 'The disposed date was removed.'
+  }, {
+    key: 'Other',
+    label: 'Other',
+    enumValue: 108,
+    icon: 'more_horiz',
+    color: 'oklch(0.74 0.02 250)',
+    soft: 'oklch(0.74 0.02 250 / 0.16)',
+    scope: 'common',
+    desc: 'Anything the named types do not cover. The title carries it.'
+  }];
+  D.propertyEventTypeByKey = Object.fromEntries(D.propertyEventTypes.map(t => [t.key, t]));
+  D.propertyEventSystemOnly = D.propertyEventTypes.filter(t => t.systemOnly).map(t => t.key);
+  const common = D.propertyEventTypes.filter(t => t.scope === 'common').map(t => t.key);
+  D.propertyEventTypeMatrix = {
+    RealEstate: D.propertyEventTypes.filter(t => t.scope === 'RealEstate').map(t => t.key).concat(common),
+    Vehicle: D.propertyEventTypes.filter(t => t.scope === 'Vehicle').map(t => t.key).concat(common)
+  };
+
+  /* Attribution labels — the shared resolver table contract events use. */
+  D.cevUsers = D.cevUsers || {};
+  if (!D.cevUsers['u-owner']) D.cevUsers['u-owner'] = 'Owner Demo';
+
+  /* §8.5 — "d MMMM yyyy", invariant culture. */
+  const longDate = iso => {
+    const d = new Date(iso.length === 10 ? iso + 'T00:00:00Z' : iso);
+    return d.getUTCDate() + ' ' + d.toLocaleDateString('en-GB', {
+      month: 'long',
+      timeZone: 'UTC'
+    }) + ' ' + d.getUTCFullYear();
+  };
+  const nowIso = () => new Date().toISOString().slice(0, 19) + 'Z';
+  const minNow = date => {
+    const t = date + 'T00:00:00Z';
+    return new Date(t) > new Date() ? nowIso() : t;
+  };
+
+  /* The catalogue — closed inputs: the transition kind and its date. Never a
+     name, address, registration, VIN, make/model or estimate figure. */
+  const CATALOGUE = {
+    Archived: d => ['Property archived', 'Archived on ' + d + '.'],
+    Unarchived: d => ['Property restored from the archive', 'Restored on ' + d + '.'],
+    Acquired: d => ['Property acquired', 'Acquired on ' + d + '.'],
+    AcquisitionDateCleared: d => ['Acquired date cleared', 'Cleared on ' + d + '.'],
+    Disposed: d => ['Property disposed of', 'Disposed of on ' + d + '.'],
+    DisposalReversed: d => ['Disposal reversed', 'Reversed on ' + d + '.']
+  };
+  let seq = 0;
+  const sysRow = (propertyId, type, occurredAt, dateForText, userId, createdAtUtc) => {
+    const [title, description] = CATALOGUE[type](longDate(dateForText));
+    return {
+      id: 'pev-sys-' + propertyId + '-' + ++seq,
+      propertyId,
+      source: 'system',
+      type,
+      title,
+      description,
+      notes: null,
+      occurredAt,
+      createdByUserId: userId,
+      createdAtUtc: createdAtUtc || nowIso()
+    };
+  };
+
+  /* ---- Seed ---- */
+  const u = (id, pid, type, title, description, occurredAt, by, createdAtUtc, notes) => ({
+    id,
+    propertyId: pid,
+    source: 'user',
+    type,
+    title,
+    description: description || null,
+    notes: notes || null,
+    occurredAt,
+    createdByUserId: by,
+    createdAtUtc: createdAtUtc || occurredAt
+  });
+  const created = '2026-01-10T09:00:00Z';
+  D.propertyEventSeed = {
+    'p-maple': [
+    /* Staged when the record was created with an acquired date — the event
+       predates the "Property added" marker, and sorts below it. */
+    sysRow('p-maple', 'Acquired', '2018-09-05T00:00:00Z', '2018-09-05', 'u-jane', created), u('pev-m1', 'p-maple', 'Renovation', 'Seismic retrofit completed', 'Foundation bolting and cripple-wall bracing. Permit signed off by the city inspector.', '2021-10-04T15:00:00Z', 'u-jane', '2026-01-10T09:20:00Z'), u('pev-m2', 'p-maple', 'TaxAssessed', 'Assessment notice for 2026–27', 'Assessed value up 2%, the statutory cap.', '2026-02-01T10:00:00Z', 'u-sam', '2026-02-10T08:31:00Z'), u('pev-m3', 'p-maple', 'Damage', 'Storm damage to the roof', 'Two sections of flashing lifted on the north side. Water stain in the back bedroom ceiling.', '2026-07-14T16:30:00Z', 'u-jane', '2026-07-14T19:02:00Z', 'Photos are in the shared album — claim ref pending.'), u('pev-m4', 'p-maple', 'Maintenance', 'Exterior repainted', 'South and west walls, trim included.', '2026-08-03T12:00:00Z', null), u('pev-m5', 'p-maple', 'Repair', 'Gutter and flashing repaired', 'Bay Roofing replaced the lifted flashing and re-hung the rear gutter.', '2026-09-12T11:00:00Z', 'u-jane', '2026-09-12T17:44:00Z', 'Ask about the 10-year workmanship guarantee in writing.')],
+    'p-storgata': [sysRow('p-storgata', 'Acquired', '2019-06-01T00:00:00Z', '2019-06-01', 'u-sam', created), u('pev-s1', 'p-storgata', 'TenancyStarted', 'Let from 1 August', 'Three-year tenancy, deposit in a blocked account.', '2024-08-01T00:00:00Z', 'u-sam', '2024-08-02T09:00:00Z'), u('pev-s2', 'p-storgata', 'Inspection', 'Annual walk-through with the tenant', 'Bathroom sealant needs redoing. Nothing else noted.', '2025-09-15T17:00:00Z', 'u-sam'), u('pev-s3', 'p-storgata', 'Valued', 'Broker valuation', 'Valuation obtained for the refinance.', '2026-01-01T10:00:00Z', 'u-mira')],
+    /* p-cabin deliberately has none — no acquired date, so nothing staged: the empty state. */
+    'p-ridge': [sysRow('p-ridge', 'Acquired', '2017-04-18T00:00:00Z', '2017-04-18', 'u-jane', created), u('pev-r1', 'p-ridge', 'Other', 'Building plans shelved', 'Architect’s fee paid to date. Drawings kept.', '2025-06-20T10:00:00Z', 'u-jane'), sysRow('p-ridge', 'Archived', '2025-10-01T09:00:00Z', '2025-10-01', 'u-jane', '2025-10-01T09:00:00Z')],
+    'p-outback': [sysRow('p-outback', 'Acquired', '2022-03-14T00:00:00Z', '2022-03-14', 'u-jane', created), u('pev-o1', 'p-outback', 'TyreChange', 'Winter tyres on', 'Studded, front left worn to 5 mm.', '2025-10-28T09:00:00Z', 'u-sam', '2025-10-28T09:12:44Z', 'Next change mid-April.'), u('pev-o2', 'p-outback', 'InsuranceChanged', 'Policy renewed with Meridian', 'Comprehensive, excess unchanged.', '2026-01-01T00:00:00Z', 'u-jane', '2026-01-05T08:10:00Z'), u('pev-o3', 'p-outback', 'Registered', 'Registration renewed', null, '2026-03-02T12:00:00Z', 'u-jane'), u('pev-o4', 'p-outback', 'PeriodicInspection', 'Smog check passed', null, '2026-03-08T10:30:00Z', 'u-jane'), u('pev-o5', 'p-outback', 'TyreChange', 'Summer tyres on', 'Winter set stored at the dealer.', '2026-04-12T08:00:00Z', 'u-sam'), u('pev-o6', 'p-outback', 'Serviced', '36,000-mile service', 'Oil, filters and brake fluid. Rear pads at 40%.', '2026-06-21T14:00:00Z', 'u-sam', '2026-06-21T16:40:00Z')],
+    'p-wren': [sysRow('p-wren', 'Acquired', '2020-05-02T00:00:00Z', '2020-05-02', 'u-mira', created), u('pev-w1', 'p-wren', 'Inspection', 'Hull survey', 'Out of the water at the boatyard. Keel bolts sound.', '2025-04-15T09:00:00Z', 'u-mira'), u('pev-w2', 'p-wren', 'Registered', 'Vessel registration renewed', null, '2025-04-18T11:00:00Z', 'u-mira'), u('pev-w3', 'p-wren', 'Maintenance', 'Antifouling and new zinc', null, '2026-04-20T10:00:00Z', 'u-mira')],
+    'p-civic': [sysRow('p-civic', 'Acquired', '2012-08-01T00:00:00Z', '2012-08-01', 'u-jane', created), u('pev-c1', 'p-civic', 'Damage', 'Rear bumper dented in a car park', 'Repaired under the other driver’s insurance.', '2019-11-04T18:00:00Z', 'u-jane'), sysRow('p-civic', 'Disposed', '2022-03-12T00:00:00Z', '2022-03-12', 'u-jane', created)]
+  };
+  Object.assign(H, {
+    pevTypeInfo(key) {
+      return D.propertyEventTypeByKey[key] || {
+        key,
+        label: key || 'Other',
+        icon: 'more_horiz',
+        color: 'var(--ink-300)',
+        soft: 'rgba(199,208,224,0.12)',
+        unknown: true
+      };
+    },
+    pevIsSystem(ev) {
+      return !!ev && ev.source === 'system';
+    },
+    pevAutoClause(key) {
+      const t = D.propertyEventTypeByKey[key];
+      return t && t.auto || 'the application made this change';
+    },
+    /* 'legal' | 'systemOnly' | 'illegal' — the 422 keyed `type`. */
+    pevLegality(propertyType, key) {
+      const cell = D.propertyEventTypeMatrix[propertyType];
+      if (cell && !cell.includes(key)) return 'illegal';
+      return D.propertyEventSystemOnly.includes(key) ? 'systemOnly' : 'legal';
+    },
+    pevFor(propertyId) {
+      return (D.propertyEventSeed[propertyId] || []).slice();
+    },
+    /* The detector (§8.5). Runs against an all-null "before" on create. A
+       re-date of a non-null value writes nothing. Returns rows to stage in the
+       same save as the property change. */
+    pevTransitions(before, after, userId) {
+      const b = before || {},
+        rows = [],
+        now = nowIso(),
+        today = now.slice(0, 10);
+      const pid = after.id;
+      if (!b.archived && after.archived) rows.push(sysRow(pid, 'Archived', after.archived.slice(0, 19) + 'Z', after.archived, userId, now));
+      if (b.archived && !after.archived) rows.push(sysRow(pid, 'Unarchived', now, today, userId, now));
+      if (!b.acquiredDate && after.acquiredDate) rows.push(sysRow(pid, 'Acquired', minNow(after.acquiredDate), after.acquiredDate, userId, now));
+      if (b.acquiredDate && !after.acquiredDate) rows.push(sysRow(pid, 'AcquisitionDateCleared', now, today, userId, now));
+      if (!b.disposedDate && after.disposedDate) rows.push(sysRow(pid, 'Disposed', minNow(after.disposedDate), after.disposedDate, userId, now));
+      if (b.disposedDate && !after.disposedDate) rows.push(sysRow(pid, 'DisposalReversed', now, today, userId, now));
+      return rows;
+    }
+  });
+})();
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/property-events-data.js", error: String((e && e.message) || e) }); }
 
 // ui_kits/web/system-settings-data.js
 try { (() => {
@@ -67601,6 +69834,20 @@ __ds_ns.PasswordRules = __ds_scope.PasswordRules;
 __ds_ns.ProblemAlert = __ds_scope.ProblemAlert;
 
 __ds_ns.ProfilePictureField = __ds_scope.ProfilePictureField;
+
+__ds_ns.PROPERTY_EVENT_TYPES = __ds_scope.PROPERTY_EVENT_TYPES;
+
+__ds_ns.PROPERTY_EVENT_SYSTEM_ONLY = __ds_scope.PROPERTY_EVENT_SYSTEM_ONLY;
+
+__ds_ns.PROPERTY_EVENT_TYPE_MATRIX = __ds_scope.PROPERTY_EVENT_TYPE_MATRIX;
+
+__ds_ns.PropertyEventTypeSelect = __ds_scope.PropertyEventTypeSelect;
+
+__ds_ns.PropertyFileTypeMultiSelect = __ds_scope.PropertyFileTypeMultiSelect;
+
+__ds_ns.PROPERTY_FILE_TYPES = __ds_scope.PROPERTY_FILE_TYPES;
+
+__ds_ns.PropertyFileTypeSelect = __ds_scope.PropertyFileTypeSelect;
 
 __ds_ns.RadioGroup = __ds_scope.RadioGroup;
 

@@ -55,6 +55,8 @@
  *     menu convention. "Preview" opens the document (FileViewerModal).
  *     Host any modals OUTSIDE the table.
  *   • `onDelete(file)` appends the danger Delete item after a divider.
+ *     `deleteLabel` / `deleteIcon` rename it on link surfaces where the
+ *     verb only detaches (e.g. "Detach" · link_off on property documents).
  *
  * Sorting defaults to Uploaded, newest first — uncontrolled unless the host
  * binds `sort` ({key,dir}) + `onSortChange` (forwarded to RecordTable), which
@@ -213,6 +215,8 @@ export function FilesTable({
   issuers,
   onCreateContact,
   onDelete,
+  deleteLabel = 'Delete',
+  deleteIcon = 'delete',
   renameable = true,
   requireType = false,
   formatDate = ftDate,
@@ -306,7 +310,7 @@ export function FilesTable({
       actions={(f, ctx) => [
         ...(onSave ? [{ icon: 'edit', label: 'Edit', onClick: () => setEditFile(f) }] : []),
         ...((actions || defaultExtra)(f)),
-        ...(onDelete ? [{ divider: true }, { icon: 'delete', label: 'Delete', danger: true, onClick: ctx.remove }] : []),
+        ...(onDelete ? [{ divider: true }, { icon: deleteIcon, label: deleteLabel, danger: true, onClick: ctx.remove }] : []),
       ]}
       onSave={onSave}
       onDelete={onDelete ? (id) => onDelete(byId[id] || id) : undefined}

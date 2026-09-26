@@ -2,9 +2,11 @@
    ----------------------------------------------------------------------------
    The frontend for *Property — Backend (Draft v8)*. A sibling of Accounts and
    Contracts: the same PageHeader + expandable RecordCard list, one card open at
-   a time. A property is standalone in v1 — no links to contacts, accounts,
-   contracts or files, no photos, and its value is NOT summed into net worth —
-   so the expanded record holds exactly three things:
+   a time. A property has no links to contacts or accounts and no photo
+   gallery, and its value is NOT summed into net worth. Since *Property as a
+   contract party (Draft v3)* it CAN be named on a contract, and since
+   *Property Documents (Draft v2)* it carries documents, so the expanded
+   record holds five things:
 
      1. DETAILS   — the common fields + the one detail sub-object its type has.
      2. ESTIMATED VALUE — the shared estimate surface (AccountEstimates) over the
@@ -12,12 +14,28 @@
                     same in-force rule. The "Current value" block is omitted: it
                     compares against a transaction balance and says "In net
                     worth", and neither is true of a property.
-     3. SMART TAGS — the shared DS AccountSmartTagsSection, subject "property",
+     3. CONTRACTS — GET /api/properties/{id}/contracts: one tile per contract
+                    naming it, the roles it holds there and the contract's
+                    status. Needs properties.read AND contracts.read; without
+                    the second the section and the collapsed count are absent
+                    (ContractCount is null), never an empty list.
+     4. DOCUMENTS  — GET /api/properties/{id}/files: the property's deed,
+                    registration, valuation, warranty … as PropertyFile links
+                    to FileMetadata in the one Files store (*Property Documents
+                    — Backend, Draft v2*). Attach = upload through Files or
+                    pick from Files; detach removes the link only.
+     5. SMART TAGS — the shared DS AccountSmartTagsSection, subject "property",
                     capped by GET /api/property-limits.
+     6. EVENTS    — GET /api/properties/{id}/events (*Property Events — Backend,
+                    Draft v2*): the chronological log on the DS EventRail
+                    (PropertyEvents.jsx). Acquired / disposed / archive changes
+                    stage a System row in the same save; the rest is written by
+                    hand from the ⋯ menu's New event.
 
    Claims (§7): properties.read / create / update / delete and
-   properties.estimates.read / write. User and Guest get the two reads only; the
-   Tweaks panel switches between the Owner/Admin and User/Guest grants. */
+   properties.estimates.read / write, plus contracts.read for the Contracts
+   section. User and Guest get the two property reads only; User also holds
+   contracts.read, Guest does not. The Tweaks panel switches the three grants. */
 
 const PR_H = window.OdysseyHelpers;
 const PR_D = window.OdysseyData;
@@ -75,8 +93,113 @@ const PropertySmartTags = ({ property, tagIds, setTagIds, onNavigate, canWrite, 
   );
 };
 
+/* ====================== Contracts section ======================
+   PropertyContractLink[] drawn exactly like the account record's Contracts
+   section: overline = contract type, value = contract name, foot = the roles
+   this property holds there (party order) · the contract's derived status.
+   Archived contracts are listed (dimmed) — the link is history. */
+const PropertyContracts = ({ rows, onNavigate }) => (
+  <div className="con-section">
+    <SectionDivider label="Contracts" meta={`${rows.length} contract${rows.length === 1 ? '' : 's'}`} />
+    {rows.length === 0 ? <EmptyLine>This property is not a party to any contract.</EmptyLine> : (
+      <InfoTileGrid>
+        {rows.map(({ contract: c, parties }) => {
+          const ct = PR_H.contractTypeInfo(c.type);
+          const st = PR_H.conStatusMeta(PR_H.conStatus(c));
+          const roles = parties.map(p => PR_H.conPartyRoleInfo(p.role).label).join(' · ');
+          return (
+            <div className="con-party-tile" key={c.id}>
+              <InfoTile icon={ct.icon} iconColor={ct.color} iconSoft={ct.soft}
+                label={(
+                  <React.Fragment>
+                    <span className="con-role"><span>{ct.label}</span></span>
+                    <span className="con-tile-menu">
+                      <ActionMenu items={[
+                        ...(onNavigate ? [{ icon: 'visibility', label: 'View', onClick: () => onNavigate('contracts') }] : []),
+                        { icon: 'content_copy', label: 'Copy name', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.name); } },
+                        { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(c.id); } },
+                      ]} />
+                    </span>
+                  </React.Fragment>
+                )}
+                value={c.name} valueVariant="text" className={`wrapvalue${c.archived ? ' tone-muted' : ''}`}
+                foot={`${roles} · ${st.label}`} />
+            </div>
+          );
+        })}
+      </InfoTileGrid>
+    )}
+  </div>
+);
+
+/* ====================== Documents section ======================
+   *Property Documents — Backend (Draft v2)*. GET /api/properties/{id}/files
+   (properties.read) — unpaged, oldest attachment first, metadata only. Drawn
+   with the DS FilesTable in its contract configuration: validity columns, no
+   rename (the name belongs to FileMetadata), and a REQUIRED type on edit (the
+   PUT is a full replacement and must not default an unsent type). The row's
+   danger item reads Detach · link_off: DELETE removes the link only and the
+   file stays in Files. Edit and Detach need properties.update; Download is a
+   read. `issuedBy` arrives as an id only (§7.3) — its name is resolved from
+   the caller's own contacts read, and reads "Contact (no access)" without it.
+   The collapsed card shows a Documents count beside Estimates and Smart
+   tags. NOTE: the backend's v1 list endpoint carries no count (Non-Goal 4) —
+   the header needs `ExistingProperty.FileCount` added to ship as drawn. */
+const PropertyDocuments = ({ property, files, perms, onAttach, onSave, onDetach }) => {
+  const DSFilesTable = (window.OdysseyDesignSystem_d5aa51 || {}).FilesTable;
+  const rows = files.map(PR_H.propFileRow);
+  const canWrite = perms.update;
+  const issuers = (PR_D.contacts || []).filter(c => !c.archived).map(c => {
+    const t = (PR_D.contactTypeByKey || {})[c.type] || {};
+    return { value: c.id, label: c.name, icon: t.icon, iconColor: t.color };
+  });
+  const emptyText = property.type === 'Vehicle'
+    ? 'No documents yet — attach the registration, an inspection, the insurance certificate or a warranty.'
+    : 'No documents yet — attach the deed, the purchase agreement, a valuation or a warranty.';
+  return (
+    <div className="con-section">
+      <SectionDivider label="Documents" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
+      {rows.length === 0 || !DSFilesTable ? (
+        <EmptyLine>{canWrite ? emptyText : 'No documents are attached to this property.'}</EmptyLine>
+      ) : (
+        <div className="con-files con-tbl-frame">
+          <InlinePager items={rows}>
+            {(pageRows) => (
+              <DSFilesTable
+                files={pageRows}
+                typeFor={(f) => PR_H.propFileTypeInfo(f.kind)}
+                kinds={PR_D.propertyFileTypes}
+                formatDate={PR_H.conDate}
+                validityColumns
+                issuers={canWrite ? issuers : undefined}
+                issuerFor={(f) => {
+                  if (!f.issuedBy) return null;
+                  if (!perms.contactsRead) return 'Contact (no access)';
+                  const c = (PR_D.contactById || {})[f.issuedBy];
+                  return c ? c.name : 'Unknown contact';
+                }}
+                renameable={false}
+                requireType
+                defaultSort={{ key: 'uploaded', dir: 'desc' }}
+                onSave={canWrite ? onSave : undefined}
+                onDelete={canWrite ? onDetach : undefined}
+                deleteLabel="Detach"
+                deleteIcon="link_off"
+                actions={(f) => [
+                  { icon: 'download', label: 'Download', onClick: () => PR_H.downloadFile && PR_H.downloadFile(f) },
+                  { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(f.fileMetadataId); } },
+                ]}
+              />
+            )}
+          </InlinePager>
+        </div>
+      )}
+    </div>
+  );
+};
+
 /* ====================== Expanded detail ====================== */
-const PropertyDetail = ({ property: p, estimates, tagIds, setTagIds, perms, cap, limitsDegraded, onNavigate, onNewEstimate, onEditEstimate, onDeleteEstimate }) => {
+const PropertyDetail = ({ property: p, estimates, tagIds, setTagIds, perms, contractRows, cap, limitsDegraded, onNavigate, onNewEstimate, onEditEstimate, onDeleteEstimate, files, onAttachFile, onSaveFile, onDetachFile, events, onEditEvent, onDeleteEvent, onAnnounceEvent }) => {
   const ti = PR_H.propTypeInfo(p.type);
   const kind = PR_H.propKindInfo(p);
   const d = PR_H.propDetails(p);
@@ -130,20 +253,33 @@ const PropertyDetail = ({ property: p, estimates, tagIds, setTagIds, perms, cap,
           onNew={onNewEstimate} onEdit={onEditEstimate} onDelete={onDeleteEstimate} />
       ) : null}
 
+      {contractRows ? <PropertyContracts rows={contractRows} onNavigate={onNavigate} /> : null}
+
+      <PropertyDocuments property={p} files={files} perms={perms} onAttach={onAttachFile} onSave={onSaveFile} onDetach={onDetachFile} />
+
       <div className="con-section">
         <SectionDivider label="Smart tags" meta={tagIds.length ? `${tagIds.length} watched` : 'none watched'} />
         <PropertySmartTags property={p} tagIds={tagIds} setTagIds={setTagIds} onNavigate={onNavigate}
           canWrite={perms.update} cap={cap} limitsDegraded={limitsDegraded} />
       </div>
+
+      {/* Last zone, as on a contract. Read under properties.read; per-row
+          actions need properties.update. Archived stays writable. */}
+      <PropertyEvents property={p} events={events || []} canUpdate={perms.update}
+        onEdit={onEditEvent} onDelete={onDeleteEvent} onAnnounce={onAnnounceEvent} />
     </React.Fragment>
   );
 };
 
 /* ====================== Delete confirmation ======================
-   Deletion is hard and cascades the detail row, every estimate and every
-   smart-tag link in one transaction. Nothing else references a property, so
-   there is no blocker — only the statement of what goes. */
-const DeletePropertyModal = ({ property, estimateCount, tagCount, canArchive, onArchive, onClose, onConfirm }) => (
+   Deletion is hard and cascades the detail row, every estimate, every
+   smart-tag link AND every contract party link naming it, in one
+   transaction. Party links reference a property but do not block it: each
+   link is detached, its contract survives with one fewer party and records a
+   "Party removed" event. `contractLinks` is { parties, contracts } for a
+   contracts.read holder and null otherwise — then the line is stated without
+   counts, never as "no contracts". */
+const DeletePropertyModal = ({ property, estimateCount, tagCount, fileCount = 0, eventCount = 0, contractLinks, canArchive, onArchive, onClose, onConfirm }) => (
   <Modal title={`Delete ${property.name}?`} icon="delete" onClose={onClose}
     subtitle="This can’t be undone."
     footer={<React.Fragment>
@@ -155,23 +291,49 @@ const DeletePropertyModal = ({ property, estimateCount, tagCount, canArchive, on
       <div><MIcon name="home_work" size={16} />The property and its {property.type === 'Vehicle' ? 'vehicle' : 'real estate'} details</div>
       <div><MIcon name="monitor" size={16} />{estimateCount === 0 ? 'No estimates' : `${estimateCount} estimate${estimateCount === 1 ? '' : 's'} — the whole value history`}</div>
       <div><MIcon name="sell" size={16} />{tagCount === 0 ? 'No smart tags' : `${tagCount} smart-tag link${tagCount === 1 ? '' : 's'}`}</div>
+      <div><MIcon name="history" size={16} />{eventCount === 0 ? 'No events' : `${eventCount} event${eventCount === 1 ? '' : 's'} — the whole log, including recorded ones`}</div>
+      <div><MIcon name="attach_file" size={16} />{fileCount === 0 ? 'No documents' : `${fileCount} document link${fileCount === 1 ? '' : 's'} — the files stay in Files`}</div>
+      <div><MIcon name="link_off" size={16} />{contractLinks == null
+        ? 'Any contract party links naming it'
+        : contractLinks.parties === 0 ? 'No contract party links'
+        : `${contractLinks.parties} party link${contractLinks.parties === 1 ? '' : 's'} on ${contractLinks.contracts} contract${contractLinks.contracts === 1 ? '' : 's'}`}</div>
     </div>
-    <p className="prop-del-foot">The transaction tags themselves and the transactions carrying them are not affected. Archiving keeps everything and hides the property from the default list.</p>
+    <p className="prop-del-foot">
+      {contractLinks == null || contractLinks.parties > 0
+        ? 'Contracts are kept — each loses this party and records a “Party removed” event. '
+        : ''}
+      The transaction tags themselves and the transactions carrying them are not affected. Archiving keeps everything and hides the property from the default list.
+    </p>
   </Modal>
 );
 
 /* ====================== One list item ====================== */
-const PropertyListItem = ({ row, perms, cap, limitsDegraded, open, onToggle, onNavigate, onUpdate, onDelete, estimates, setEstimates, tagIds, setTagIds }) => {
+const PropertyListItem = ({ row, perms, cap, limitsDegraded, open, onToggle, onNavigate, onUpdate, onDelete, estimates, setEstimates, tagIds, setTagIds, files, setFiles, events = [], setEvents }) => {
   const { useState } = React;
   const p = row;
   const [showEdit, setShowEdit] = useState(false);
+  const [showAttach, setShowAttach] = useState(false);
   const [estModal, setEstModal] = useState(null);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [eventModal, setEventModal] = useState(null);
+  /* The record's single polite announcer — the Events section raises its
+     delete sentence here. The nonce makes a repeated sentence re-read. */
+  const [announce, setAnnounce] = useState('');
+  const nonce = React.useRef(0);
+  const say = (msg) => { nonce.current += 1; setAnnounce(`${msg}${'\u200B'.repeat((nonce.current % 4) + 1)}`); };
+  const saveEvent = (dto) => {
+    setEvents(prev => (prev.some(e => e.id === dto.id) ? prev.map(e => (e.id === dto.id ? dto : e)) : [dto, ...prev]));
+    setEventModal(null);
+  };
   const ti = PR_H.propTypeInfo(p.type);
   const kind = PR_H.propKindInfo(p);
   const d = PR_H.propDetails(p);
   const status = PR_H.propStatus(p);
   const current = PR_H.propCurrentEstimate(estimates);
+  /* ExistingProperty.ContractCount — null without contracts.read. */
+  const contractRows = perms.contractsRead && PR_H.conContractsForProperty ? PR_H.conContractsForProperty(p.id) : null;
+  const contractCount = contractRows ? contractRows.length : null;
+  const contractLinks = contractRows ? { contracts: contractRows.length, parties: contractRows.reduce((n, r) => n + r.parties.length, 0) } : null;
 
   const saveEstimate = (dto, id) => {
     setEstimates(prev => id ? prev.map(e => (e.id === id ? { ...e, ...dto } : e))
@@ -184,6 +346,10 @@ const PropertyListItem = ({ row, perms, cap, limitsDegraded, open, onToggle, onN
   const menu = [
     ...(perms.update ? [{ icon: 'edit', label: 'Edit property', onClick: () => setShowEdit(true) }] : []),
     ...(perms.estimatesWrite ? [{ icon: 'monitor', label: 'New estimate', onClick: () => { onToggle(true); setEstModal({ mode: 'new' }); } }] : []),
+    /* POST …/files needs properties.update AND files.read (§7.2). */
+    ...(perms.update && perms.filesRead ? [{ icon: 'attach_file', label: 'Attach documents', onClick: () => { onToggle(true); setShowAttach(true); } }] : []),
+    /* POST …/events — properties.update. Offered on an archived property too. */
+    ...(perms.update ? [{ icon: 'history', label: 'New event', onClick: () => { onToggle(true); setEventModal({}); } }] : []),
     { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(p.id); } },
     ...((perms.update || perms.delete) ? [{ divider: true }] : []),
     ...(perms.update ? [{ icon: p.archived ? 'unarchive' : 'inventory_2', label: p.archived ? 'Restore' : 'Archive', onClick: toggleArchive }] : []),
@@ -199,7 +365,10 @@ const PropertyListItem = ({ row, perms, cap, limitsDegraded, open, onToggle, onN
         meta={[kind.label, p.description, ...(where ? [where] : [])]}
         counts={[
           ...(perms.estimatesRead ? [{ icon: 'monitor', value: estimates.length, label: 'Estimates' }] : []),
+          { icon: 'description', value: files.length, label: 'Documents' },
           { icon: 'sell', value: tagIds.length, label: 'Smart tags' },
+          { icon: 'history', value: events.length, label: 'Events' },
+          ...(contractCount ? [{ icon: 'handshake', value: contractCount, label: 'Contracts' }] : []),
         ]}
         figure={perms.estimatesRead ? {
           value: current ? PR_H.money(current.value, p.currencyCode) : '—',
@@ -209,19 +378,31 @@ const PropertyListItem = ({ row, perms, cap, limitsDegraded, open, onToggle, onN
         dimmed={!!p.archived}
         open={open} onToggle={onToggle}
         actions={<ActionMenu items={menu} />}>
-        <PropertyDetail property={p} estimates={estimates} tagIds={tagIds} setTagIds={setTagIds} perms={perms}
+        <PropertyDetail property={p} estimates={estimates} tagIds={tagIds} setTagIds={setTagIds} perms={perms} contractRows={contractRows}
           cap={cap} limitsDegraded={limitsDegraded} onNavigate={onNavigate}
           onNewEstimate={() => setEstModal({ mode: 'new' })}
           onEditEstimate={(e) => setEstModal({ mode: 'edit', estimate: e })}
-          onDeleteEstimate={(e) => setEstimates(prev => prev.filter(x => x.id !== e.id))} />
+          onDeleteEstimate={(e) => setEstimates(prev => prev.filter(x => x.id !== e.id))}
+          files={files}
+          onAttachFile={() => setShowAttach(true)}
+          onSaveFile={(id, patch) => setFiles(prev => prev.map(f => (f.id === id ? { ...f, kind: patch.kind, validFrom: patch.validFrom || null, validTo: patch.validTo || null, issuedAt: patch.issuedAt || null, issuedBy: patch.issuedBy || null } : f)))}
+          onDetachFile={(row) => setFiles(prev => prev.filter(f => f.id !== row.id))}
+          events={events} onEditEvent={(ev) => setEventModal({ event: ev })}
+          onDeleteEvent={(ev) => setEvents(prev => prev.filter(x => x.id !== ev.id))} onAnnounceEvent={say} />
       </RecordCard>
+      <div className="odc-sr-only" role="status" aria-live="polite">{announce}</div>
+      {eventModal && <AddPropertyEventModal property={p} event={eventModal.event || null}
+        onClose={() => setEventModal(null)} onSave={saveEvent} />}
+
+      {showAttach && <AddPropertyFileModal property={p} attached={files} onClose={() => setShowAttach(false)}
+        onAttach={(links) => { setFiles(prev => [...prev, ...links]); setShowAttach(false); }} />}
 
       {showEdit && <AddPropertyModal property={p} estimateCount={estimates.length} onClose={() => setShowEdit(false)}
         onSave={(dto) => { onUpdate({ ...p, ...dto, updatedAt: new Date().toISOString() }); setShowEdit(false); }} />}
       {estModal && <AddEstimateModal account={propEstOwner(p)} ownerNoun="property" showHint={false} leadIcon="monitor"
         estimate={estModal.mode === 'edit' ? estModal.estimate : null} existing={estimates}
         onClose={() => setEstModal(null)} onSave={saveEstimate} />}
-      {confirmDel && <DeletePropertyModal property={p} estimateCount={estimates.length} tagCount={tagIds.length}
+      {confirmDel && <DeletePropertyModal property={p} estimateCount={estimates.length} tagCount={tagIds.length} fileCount={files.length} eventCount={events.length} contractLinks={contractLinks}
         canArchive={perms.update} onClose={() => setConfirmDel(false)}
         onArchive={() => { toggleArchive(); setConfirmDel(false); }}
         onConfirm={() => { setConfirmDel(false); onDelete(p.id); }} />}
@@ -282,8 +463,8 @@ const Properties = ({ tweaks = {}, onNavigate }) => {
   const DS = window.OdysseyDesignSystem_d5aa51 || {};
   const role = tweaks.propRole || 'owner';
   const perms = role === 'owner'
-    ? { read: true, create: true, update: true, delete: true, estimatesRead: true, estimatesWrite: true }
-    : { read: true, create: false, update: false, delete: false, estimatesRead: true, estimatesWrite: false };
+    ? { read: true, create: true, update: true, delete: true, estimatesRead: true, estimatesWrite: true, contractsRead: true, filesRead: true, contactsRead: true }
+    : { read: true, create: false, update: false, delete: false, estimatesRead: true, estimatesWrite: false, contractsRead: role !== 'guest', filesRead: true, contactsRead: role !== 'guest' };
   /* GET /api/property-limits — a 503 leaves the cap unknown. */
   const limitsDegraded = !!tweaks.propLimitsDegraded;
   const cap = limitsDegraded ? null : (tweaks.propSmartTagCap != null ? tweaks.propSmartTagCap : PR_D.PROPERTY_MAX_SMART_TAGS_PER_PROPERTY);
@@ -292,7 +473,18 @@ const Properties = ({ tweaks = {}, onNavigate }) => {
   const [estById, setEstById] = useState(() => Object.fromEntries(PR_D.properties.map(p => [p.id, (PR_D.propertyEstimates[p.id] || []).slice()])));
   /* The tag-delete blocker (TransactionTags) reads this live seed. */
   const [tagsById, setTagsById] = useState(() => Object.fromEntries(PR_D.properties.map(p => [p.id, (PR_D.propertySmartTagSeed[p.id] || []).slice()])));
-  const [openId, setOpenId] = useState('p-storgata');
+  /* PropertyFiles per property — cascade with the property; files survive. */
+  const [filesById, setFilesById] = useState(() => Object.fromEntries(PR_D.properties.map(p => [p.id, (PR_D.propertyFileSeed[p.id] || []).slice()])));
+  const setFiles = (id) => (fn) => setFilesById(m => ({ ...m, [id]: typeof fn === 'function' ? fn(m[id] || []) : fn }));
+  /* PropertyEvents per property — cascade with the property. */
+  const [eventsById, setEventsById] = useState(() => Object.fromEntries(PR_D.properties.map(p => [p.id, PR_H.pevFor ? PR_H.pevFor(p.id) : []])));
+  const setEvents = (id) => (fn) => setEventsById(m => ({ ...m, [id]: typeof fn === 'function' ? fn(m[id] || []) : fn }));
+  /* The recorder: system rows staged in the same save as the change. */
+  const stage = (before, after) => {
+    const rows = PR_H.pevTransitions ? PR_H.pevTransitions(before, after, 'u-owner') : [];
+    if (rows.length) setEvents(after.id)(prev => [...rows, ...prev]);
+  };
+  const [openId, setOpenId] = useState('p-maple');
   const [q, setQ] = useState('');
   const [types, setTypes] = useState([]);
   const [statuses, setStatuses] = useState([]);
@@ -333,14 +525,24 @@ const Properties = ({ tweaks = {}, onNavigate }) => {
     const now = new Date().toISOString();
     setEstById(m => ({ ...m, [id]: [] }));
     setTagsById(m => ({ ...m, [id]: [] }));
-    setProperties(prev => [{ id, archived: null, createdAt: now, updatedAt: now, ...dto }, ...prev]);
+    setFilesById(m => ({ ...m, [id]: [] }));
+    const row = { id, archived: null, createdAt: now, updatedAt: now, ...dto };
+    setEventsById(m => ({ ...m, [id]: [] }));
+    stage(null, row);
+    setProperties(prev => [row, ...prev]);
     setOpenId(id);
     setShowAdd(false);
   };
-  const update = (p) => setProperties(prev => prev.map(x => (x.id === p.id ? p : x)));
+  const update = (p) => {
+    stage(properties.find(x => x.id === p.id), p);
+    setProperties(prev => prev.map(x => (x.id === p.id ? p : x)));
+  };
   const remove = (id) => {
     setProperties(prev => prev.filter(x => x.id !== id));
     setTags(id)([]);
+    setFiles(id)([]);
+    /* Tracked removal of the party links + one PartyRemoved event per row. */
+    if (PR_H.conDetachProperty) PR_H.conDetachProperty(id, 'u-owner');
   };
 
   return (
@@ -389,6 +591,8 @@ const Properties = ({ tweaks = {}, onNavigate }) => {
                 open={openId === p.id} onToggle={(o) => setOpenId(o ? p.id : null)}
                 estimates={estById[p.id] || []} setEstimates={setEst(p.id)}
                 tagIds={tagsById[p.id] || []} setTagIds={setTags(p.id)}
+                files={filesById[p.id] || []} setFiles={setFiles(p.id)}
+                events={eventsById[p.id] || []} setEvents={setEvents(p.id)}
                 onUpdate={update} onDelete={remove} />
             )}
             empty={<EmptyLine align="center" pad="lg">No properties match your filters.</EmptyLine>}
@@ -401,4 +605,4 @@ const Properties = ({ tweaks = {}, onNavigate }) => {
   );
 };
 
-Object.assign(window, { Properties, PropertyStatusChip });
+Object.assign(window, { Properties, PropertyStatusChip, PropertyContracts, DeletePropertyModal });

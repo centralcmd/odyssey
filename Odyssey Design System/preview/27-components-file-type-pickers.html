@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Components" name="File type pickers" subtitle="AccountFileType, TransactionFileType & TaxStatementFileType selects & multi-selects — typed, registry-backed pickers with per-option icon & color. Live & interactive." viewport="1100x1500" -->
+<!-- @dsCard group="Components" name="File type pickers" subtitle="AccountFileType, TransactionFileType, TaxStatementFileType & PropertyFileType selects & multi-selects — typed, registry-backed pickers with per-option icon & color. Live & interactive." viewport="1100x1800" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
@@ -54,11 +54,11 @@
 <body>
   <div class="spec-doc">
     <h2>File type pickers</h2>
-    <p class="spec-lead">Six typed, domain pickers — one pair per file-type enum. <b>AccountFileTypeSelect / …MultiSelect</b> are pre-wired to <code>ACCOUNT_FILE_TYPES</code> (files on an account); <b>TransactionFileTypeSelect / …MultiSelect</b> to <code>TRANSACTION_FILE_TYPES</code> (files on a transaction); <b>TaxStatementFileTypeSelect / …MultiSelect</b> to <code>TAX_STATEMENT_FILE_TYPES</code> (files on a tax statement). The single-selects delegate to the shared <code>TypeSelect</code>; the multis wrap <code>MultiSelect</code>. Every option shows its Material icon in its category color, with no per-call option wiring. Value is the enum key; everything the control accepts (label, help, error, disabled…) passes straight through. Pass <code>types</code> to subset.</p>
+    <p class="spec-lead">Eight typed, domain pickers — one pair per file-type enum. <b>AccountFileTypeSelect / …MultiSelect</b> are pre-wired to <code>ACCOUNT_FILE_TYPES</code> (files on an account); <b>TransactionFileTypeSelect / …MultiSelect</b> to <code>TRANSACTION_FILE_TYPES</code> (files on a transaction); <b>TaxStatementFileTypeSelect / …MultiSelect</b> to <code>TAX_STATEMENT_FILE_TYPES</code> (files on a tax statement); <b>PropertyFileTypeSelect / …MultiSelect</b> to <code>PROPERTY_FILE_TYPES</code> (documents on a property). The single-selects delegate to the shared <code>TypeSelect</code>; the multis wrap <code>MultiSelect</code>. Every option shows its Material icon in its category color, with no per-call option wiring. Value is the enum key; everything the control accepts (label, help, error, disabled…) passes straight through. Pass <code>types</code> to subset.</p>
     <div class="spec-src">
       <span class="pill">Single → <b>TypeSelect</b> · multi → <b>MultiSelect</b></span>
-      <span class="pill">Registry <b>ACCOUNT_FILE_TYPES</b> · <b>TRANSACTION_FILE_TYPES</b> · <b>TAX_STATEMENT_FILE_TYPES</b></span>
-      <span class="pill">Used by <b>Files</b> · <b>AddTransactionModal</b> · <b>TaxStatements</b></span>
+      <span class="pill">Registry <b>ACCOUNT_FILE_TYPES</b> · <b>TRANSACTION_FILE_TYPES</b> · <b>TAX_STATEMENT_FILE_TYPES</b> · <b>PROPERTY_FILE_TYPES</b></span>
+      <span class="pill">Used by <b>Files</b> · <b>AddTransactionModal</b> · <b>TaxStatements</b> · <b>Properties</b></span>
     </div>
   </div>
 
@@ -70,6 +70,9 @@
 
   <div class="stage-label"><span class="material-icons">request_quote</span>Tax-statement file types<span class="ctx">— TaxStatementFileType</span></div>
   <div id="tax-root"></div>
+
+  <div class="stage-label"><span class="material-icons">home_work</span>Property file types<span class="ctx">— PropertyFileType</span></div>
+  <div id="prop-root"></div>
 
   <div class="spec-doc" style="margin-top: 20px;">
     <ul class="spec-notes">
@@ -86,6 +89,7 @@
     const ACCT = DS.ACCOUNT_FILE_TYPES || D.accountFileTypes || [];
     const TXN = DS.TRANSACTION_FILE_TYPES || D.transactionFileTypes || [];
     const TAX = DS.TAX_STATEMENT_FILE_TYPES || D.taxStatementFileTypes || [];
+    const PROP = DS.PROPERTY_FILE_TYPES || D.propertyFileTypes || [];
     const opts = (arr) => arr.map(t => ({ value: t.key, label: t.label, icon: t.icon, iconColor: t.color }));
 
     const AccountFileTypeSelect = DS.AccountFileTypeSelect || (({ types, ...p }) => <DS.Select options={opts(ACCT)} {...p} />);
@@ -95,7 +99,10 @@
     const TaxStatementFileTypeSelect = DS.TaxStatementFileTypeSelect || (({ types, ...p }) => <DS.Select options={opts(TAX)} {...p} />);
     const TaxStatementFileTypeMultiSelect = DS.TaxStatementFileTypeMultiSelect || (({ types, ...p }) => <DS.MultiSelect options={opts(TAX)} label="Any type" icon="request_quote" {...p} />);
 
-    const byKey = Object.fromEntries([...ACCT, ...TXN, ...TAX].map(t => [t.key, t]));
+    const PropertyFileTypeSelect = DS.PropertyFileTypeSelect || (({ types, ...p }) => <DS.Select options={opts(PROP)} {...p} />);
+    const PropertyFileTypeMultiSelect = DS.PropertyFileTypeMultiSelect || (({ types, ...p }) => <DS.MultiSelect options={opts(PROP)} label="Any type" icon="home_work" {...p} />);
+
+    const byKey = Object.fromEntries([...PROP, ...ACCT, ...TXN, ...TAX].map(t => [t.key, t]));
     const TypeChip = ({ k }) => {
       const t = byKey[k];
       if (!t) return null;
@@ -141,6 +148,8 @@
     TransactionFileTypeMultiSelect.__name = 'TransactionFileTypeMultiSelect';
     TaxStatementFileTypeSelect.__name = 'TaxStatementFileTypeSelect';
     TaxStatementFileTypeMultiSelect.__name = 'TaxStatementFileTypeMultiSelect';
+    PropertyFileTypeSelect.__name = 'PropertyFileTypeSelect';
+    PropertyFileTypeMultiSelect.__name = 'PropertyFileTypeMultiSelect';
 
     ReactDOM.createRoot(document.getElementById('acct-root')).render(
       <Pair SelectC={AccountFileTypeSelect} MultiC={AccountFileTypeMultiSelect}
@@ -153,6 +162,10 @@
     ReactDOM.createRoot(document.getElementById('tax-root')).render(
       <Pair SelectC={TaxStatementFileTypeSelect} MultiC={TaxStatementFileTypeMultiSelect}
         single="TaxReturn" multi={['TaxReturn', 'TaxAssessment']} helpText="The kind of tax document." />
+    );
+    ReactDOM.createRoot(document.getElementById('prop-root')).render(
+      <Pair SelectC={PropertyFileTypeSelect} MultiC={PropertyFileTypeMultiSelect}
+        single="Deed" multi={['Deed', 'Registration']} helpText="Required when editing — the update is a full replacement." />
     );
   </script>
 </body>

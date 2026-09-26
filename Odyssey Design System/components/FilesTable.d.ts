@@ -116,6 +116,14 @@ export interface FilesTableProps {
   validityColumns?: boolean;
   /** Detach/delete a file — appends the danger Delete item after a divider. */
   onDelete?: (file: FilesTableRow) => void;
+  /**
+   * Label of the danger item `onDelete` appends. Default "Delete". Set
+   * "Detach" on link surfaces where the verb removes only the link row and
+   * the file stays in the Files store (property documents).
+   */
+  deleteLabel?: string;
+  /** Material icon of that item. Default "delete"; pair "Detach" with "link_off". */
+  deleteIcon?: string;
   /** Uploaded cell renderer. Default: "Apr 12, 2026". */
   formatDate?: (iso: string) => React.ReactNode;
   /** Size cell renderer. Default: `file.size` as-is. */

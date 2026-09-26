@@ -1,0 +1,44 @@
+<!doctype html>
+<!-- @dsCard group="Dialogs" name="Delete property — contract links" subtitle="DeletePropertyModal for a property named on contracts. The list states the party links it detaches (N links on M contracts) beside the estimates and smart tags it removes; the foot says the contracts are kept and each records a Party removed event. Without contracts.read the line reads “Any contract party links naming it”, never “none”." viewport="760x640" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Odyssey · Delete property dialog</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="../ui_kits/web/kit.css">
+<link rel="stylesheet" href="../ui_kits/web/properties.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<script src="../ui_kits/web/data.js"></script>
+<script src="../ui_kits/web/contracts-data.js"></script>
+<script src="../ui_kits/web/properties-data.js"></script>
+<style>
+html,body{height:100%}
+body{margin:0;background:var(--mud-palette-background);font-family:var(--font-sans);color:var(--mud-palette-text-primary)}
+.specimen-bg{position:fixed;inset:0;padding:40px 56px;opacity:.5;pointer-events:none;overflow:hidden}
+.specimen-bg h1{font:300 32px/1 var(--font-sans);letter-spacing:-.02em;color:var(--ink-50);margin:0 0 6px}
+.specimen-bg p{font:400 13px/1 var(--font-sans);color:var(--mud-palette-text-secondary);margin:0 0 24px}
+.specimen-bg .bar{height:46px;border-radius:8px;background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);margin-bottom:10px}
+.aam-scrim,.odc-scrim{animation:none!important}
+.aam-dialog,.odc-modal{animation:none!important;opacity:1!important;transform:none!important}
+</style>
+</head>
+<body>
+<div class="specimen-bg"><h1>Properties</h1><p>1 owned · 7 on file</p><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+<div id="root"></div>
+<script type="text/babel" src="../ui_kits/web/Components.jsx"></script>
+<script type="text/babel" src="../ui_kits/web/Properties.jsx"></script>
+<script type="text/babel" data-presets="env,react">
+const H = window.OdysseyHelpers, D = window.OdysseyData;
+const maple = D.properties.find(p => p.id === 'p-maple');
+const rows = H.conContractsForProperty('p-maple');
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <DeletePropertyModal property={maple} estimateCount={(D.propertyEstimates[maple.id] || []).length} tagCount={(D.propertySmartTagSeed[maple.id] || []).length}
+    contractLinks={{ contracts: rows.length, parties: rows.reduce((n, r) => n + r.parties.length, 0) }}
+    canArchive onArchive={() => {}} onClose={() => {}} onConfirm={() => {}} />
+);
+</script>
+</body>
+</html>

@@ -288,7 +288,9 @@ const ContractEvents = ({ contract, events = [], view = 'rail', canUpdate = true
     };
     // Where it falls among this page's rows — appended only when this page
     // actually holds the end of the log.
-    const at = track.findIndex(x => x.ev && new Date(x.ev.occurredAt) < new Date(addedAt));
+    let at = track.findIndex(x => x.ev && new Date(x.ev.occurredAt) < new Date(addedAt));
+    // Never land under an older year's tick: go above it when the years differ.
+    if (at > 0 && track[at - 1].tick && track[at - 1].tick !== CEV_H.cevYear(addedAt)) at -= 1;
     if (at !== -1) track.splice(at, 0, cap);
     else if (lastPage) track.push(cap);
   }

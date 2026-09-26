@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- @dsCard group="Dialogs" name="New contract party" subtitle="AddContractPartyModal — the accessible party picker: choose a kind (Account / Contact / Property), the ROLE the record plays in the agreement, then the record itself from a pre-loaded Combobox. The role list is FIXED PER CONTRACT TYPE by the shared matrix — suggested roles first, then the also-allowed ones, and nothing the server would refuse. There is no default role and Save stays disabled until one is picked. Records already holding the SELECTED role are filtered out — uniqueness is per role. The optional term below is the party’s own fact: empty means the contract’s own extent. Live." viewport="760x760" -->
+<!-- @dsCard group="Dialogs" name="Contract party — Property kind" subtitle="AddContractPartyModal editing a PROPERTY party (ContractPartyKind.Property, ordinal 3 — 2 stays a retired hole). The third kind card picks from the property list by name and kind only; archived and disposed properties stay linkable and the helper says so. Any role the contract type allows — the kind implies no role. The write carries propertyId as a scalar only; switching kind on edit is a full replacement (PartyRemoved + PartyAdded). Live." viewport="760x760" -->
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <title>Odyssey · New contract party dialog</title>
+  <title>Odyssey · Property contract party</title>
   <link rel="stylesheet" href="../colors_and_type.css" />
   <link rel="stylesheet" href="../ui_kits/web/kit.css" />
   <link rel="stylesheet" href="../ui_kits/web/contracts.css" />
@@ -30,8 +30,8 @@
 </head>
 <body>
   <div class="specimen-bg">
-    <h1>Maple St Residence — Lease</h1>
-    <p>Rental · parties</p>
+    <h1>Citi Auto Loan — 60 Month</h1>
+    <p>Loan · parties</p>
     <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
   </div>
   <div id="root"></div>
@@ -42,9 +42,9 @@
   <script type="text/babel" data-presets="env,react">
     const AddContractPartyModal = window.AddContractPartyModal;
     const D = window.OdysseyData;
-    const contract = (D.contracts || []).find(c => c.id === 'ct-lease') || (D.contracts || [])[0] || { parties: [] };
+    const contract = (D.contracts || []).find(c => c.id === 'ct-auto-loan') || (D.contracts || [])[0] || { parties: [] };
     ReactDOM.createRoot(document.getElementById('root')).render(
-      <AddContractPartyModal contract={contract} onClose={() => {}} onAdd={() => {}} />
+      <AddContractPartyModal contract={contract} party={(contract.parties || []).find(p => p.propertyId) || null} onClose={() => {}} onSave={() => {}} />
     );
   </script>
 </body>
