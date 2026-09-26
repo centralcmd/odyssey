@@ -5,11 +5,11 @@
 @*
     DeletePropertyDialog — the delete confirmation (issue #167; design system · Properties.jsx
     DeletePropertyModal). Deletion is hard and cascades the detail row, every estimate, every
-    smart-tag link, every document link (issue #210 — the files themselves stay in Files) AND every
-    contract party link naming it (issue #208), in one transaction. Party links do not block the
-    delete — each contract survives with one fewer party and records a "Party removed" event — so
-    there is still no blocker to report, only a statement of what goes, and Archive as the reversible
-    alternative.
+    smart-tag link, the whole event log (issue #209), every document link (issue #210 — the files
+    themselves stay in Files) AND every contract party link naming it (issue #208), in one
+    transaction. Party links do not block the delete — each contract survives with one fewer party and
+    records a "Party removed" event — so there is still no blocker to report, only a statement of what
+    goes, and Archive as the reversible alternative.
 
     The party-link line is counted only for a contracts.read holder. Without it ContractCount is null
     and the line is stated without numbers — never as "none", which would be a claim about contracts
@@ -38,6 +38,10 @@
                 <li>
                     <span class="material-icons" aria-hidden="true">sell</span>
                     @(Property.SmartTagCount == 0 ? "No smart tags" : $"{Property.SmartTagCount} smart-tag link{(Property.SmartTagCount == 1 ? "" : "s")}")
+                </li>
+                <li>
+                    <span class="material-icons" aria-hidden="true">history</span>
+                    @(Property.EventCount == 0 ? "No events" : $"{Property.EventCount} event{(Property.EventCount == 1 ? "" : "s")} — the whole log, including recorded ones")
                 </li>
                 <li>
                     <span class="material-icons" aria-hidden="true">attach_file</span>

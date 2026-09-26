@@ -18,8 +18,8 @@
     to contacts or accounts and no photos, and its value is NOT summed into net worth, but it can be
     named as a contract party (issue #208) and carries documents (issue #210 — PropertyFile links into
     the one Files store) — so the open card holds its details (the common fields plus the one detail
-    sub-object its type has), its estimated value, the contracts naming it, its documents and its
-    smart tags.
+    sub-object its type has), its estimated value, the contracts naming it, its documents, its
+    smart tags and — last — its event log (issue #209).
 *@
 
 <PageTitle>Properties</PageTitle>
@@ -283,6 +283,15 @@
                                                              OnCountChanged="@(count => OnSmartTagCountChanged(p, count))" />
                                 </div>
                             }
+
+                            @* Events — what has HAPPENED to the property (issue #209). LAST: every zone
+                               above describes what the property IS; this is its history. Read under
+                               properties.read, so it is never withheld; writable on an archived
+                               property too. *@
+                            <PropertyEventsSection Property="p" CanUpdate="_canUpdate"
+                                                   OnAnnounce="Announce"
+                                                   OnChanged="@(() => ReloadProperty(p.PropertyId))"
+                                                   NewEventRequestToken="@NewEventTokenFor(p.PropertyId)" />
                         }
                     </Sections>
                 </OdsRecordCard>
