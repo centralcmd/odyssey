@@ -36,6 +36,8 @@ public class AddContractPartyDialogTests
     private static readonly Guid LinkedAccountId = Guid.NewGuid();
     private static readonly Guid FreeAccountId = Guid.NewGuid();
     private static readonly Guid LinkedPartyId = Guid.NewGuid();
+    private static readonly Guid OwnedPropertyId = Guid.NewGuid();
+    private static readonly Guid ArchivedPropertyId = Guid.NewGuid();
 
     /// <summary>The contract's own start — the only anchor the From rule has (issue #121 §8 rule 3).</summary>
     private static readonly DateTime ContractStart = new(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -108,7 +110,7 @@ public class AddContractPartyDialogTests
         Assert.False(string.IsNullOrEmpty(labelId));
         Assert.StartsWith("Party kind", cut.Find($"#{labelId}").TextContent.Trim(), StringComparison.Ordinal);
 
-        Assert.Equal(["Account", "Contact"], cut.FindAll(".odc-cardsel-lab").Select(l => l.TextContent));
+        Assert.Equal(["Account", "Contact", "Property"], cut.FindAll(".odc-cardsel-lab").Select(l => l.TextContent));
         Assert.Equal("true", Cards(cut)[0].GetAttribute("aria-checked"));
     }
 
@@ -145,6 +147,70 @@ public class AddContractPartyDialogTests
         cut.WaitForAssertion(() => contracts.Verify(c => c.AddPartyAsync(ContractId,
             It.Is<ContractPartyRequest>(r => r.AccountId == FreeAccountId && r.ContactId == null),
             It.IsAny<CancellationToken>()), Times.Once));
+    }
+
+    // ── Property kind (issue #208) ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task Saving_a_property_party_posts_the_property_id_and_no_other_target()
+    {
+        var (cut, contracts) = Render();
+        Cards(cut)[2].Click();
+        await PickRoleAsync(cut, ContractPartyRole.Property);
+
+        Assert.Contains(cut.FindAll(".odc-field-help"), h => h.TextContent.Contains("2 properties available in this role", StringComparison.Ordinal));
+        var combobox = cut.FindComponent<OdsCombobox>();
+        await cut.InvokeAsync(() => combobox.Instance.ValueChanged.InvokeAsync(OwnedPropertyId.ToString()));
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Create party", StringComparison.Ordinal)).Click();
+
+        cut.WaitForAssertion(() => contracts.Verify(c => c.AddPartyAsync(ContractId,
+            It.Is<ContractPartyRequest>(r => r.PropertyId == OwnedPropertyId && r.AccountId == null && r.ContactId == null),
+            It.IsAny<CancellationToken>()), Times.Once));
+    }
+
+    /// <summary>An archived or disposed property stays linkable, and the helper says so once it is picked.</summary>
+    [Fact]
+    public async Task Picking_an_archived_property_says_it_can_still_be_linked()
+    {
+        var (cut, _) = Render();
+        Cards(cut)[2].Click();
+        await PickRoleAsync(cut, ContractPartyRole.Property);
+
+        var combobox = cut.FindComponent<OdsCombobox>();
+        await cut.InvokeAsync(() => combobox.Instance.ValueChanged.InvokeAsync(ArchivedPropertyId.ToString()));
+
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll(".odc-field-help"),
+            h => h.TextContent.Contains("This property is archived — it can still be linked", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task Saving_with_no_property_picked_asks_for_a_property()
+    {
+        var (cut, contracts) = Render();
+        Cards(cut)[2].Click();
+        await PickRoleAsync(cut, ContractPartyRole.Property);
+
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Create party", StringComparison.Ordinal)).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Select a property to link.", cut.Markup, StringComparison.Ordinal));
+        contracts.Verify(c => c.AddPartyAsync(It.IsAny<Guid>(), It.IsAny<ContractPartyRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public void Editing_a_property_party_opens_on_the_property_kind_with_its_property_selected()
+    {
+        var party = new ExistingContractParty
+        {
+            ContractPartyId = Guid.NewGuid(),
+            ContractId = ContractId,
+            Kind = ContractPartyKind.Property,
+            Property = new ContractPropertyReference { PropertyId = OwnedPropertyId, Name = "Maple St house", Type = PropertyType.RealEstate },
+            Role = ContractPartyRole.Property,
+        };
+        var (cut, _) = Render(party);
+
+        Assert.Equal("true", Cards(cut)[2].GetAttribute("aria-checked"));
+        Assert.Equal(OwnedPropertyId.ToString(), cut.FindComponent<OdsCombobox>().Instance.Value);
     }
 
     // ── Roles and terms (issue #122) ───────────────────────────────────────────
@@ -416,6 +482,15 @@ public class AddContractPartyDialogTests
             new OdsOption(FreeAccountId.ToString(), "Savings"),
         ];
 
+        private static readonly IReadOnlyList<OdsOption> Properties =
+        [
+            new OdsOption(OwnedPropertyId.ToString(), "Maple St house"),
+            new OdsOption(ArchivedPropertyId.ToString(), "Old cabin (archived)"),
+        ];
+
+        private static readonly IReadOnlyDictionary<string, string> PropertyStates =
+            new Dictionary<string, string> { [ArchivedPropertyId.ToString()] = "archived" };
+
         [Parameter] public ExistingContractParty? Party { get; set; }
 
         [Parameter] public ContractPartyRole LinkedRole { get; set; }
@@ -436,6 +511,8 @@ public class AddContractPartyDialogTests
             builder.AddComponentParameter(6, nameof(AddContractPartyDialog.Party), Party);
             builder.AddComponentParameter(7, nameof(AddContractPartyDialog.OnAnnounce),
                 EventCallback.Factory.Create<string>(this, m => Announcements?.Add(m)));
+            builder.AddComponentParameter(8, nameof(AddContractPartyDialog.Properties), Properties);
+            builder.AddComponentParameter(9, nameof(AddContractPartyDialog.PropertyStates), PropertyStates);
             builder.CloseComponent();
         }
     }

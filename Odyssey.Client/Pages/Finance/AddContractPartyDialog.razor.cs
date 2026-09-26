@@ -25,6 +25,15 @@ public partial class AddContractPartyDialog
     /// <summary>Pre-loaded, active contact options (the Institution party kind).</summary>
     [Parameter] public IReadOnlyList<OdsOption> Institutions { get; set; } = [];
 
+    /// <summary>
+    /// Pre-loaded property options (issue #208) — archived and disposed ones included, since a
+    /// contract's history must stay recordable.
+    /// </summary>
+    [Parameter] public IReadOnlyList<OdsOption> Properties { get; set; } = [];
+
+    /// <summary>Option value → "archived"/"disposed" for the properties that are not simply owned.</summary>
+    [Parameter] public IReadOnlyDictionary<string, string> PropertyStates { get; set; } = new Dictionary<string, string>();
+
     /// <summary>Raised after a successful write so the host re-fetches the contract.</summary>
     [Parameter] public EventCallback OnSaved { get; set; }
 
@@ -51,14 +60,22 @@ public partial class AddContractPartyDialog
 
     private bool IsEdit => Party is not null;
 
-    private sealed record KindDef(ContractPartyKind Kind, string Label, string Icon);
+    /// <param name="Article">"an account", "a contact", "a property" — for the nothing-selected error.</param>
+    /// <param name="Plural">The picker's plural noun: "accounts", "contacts", "properties".</param>
+    /// <param name="Field">The request field the server keys this kind's inline errors on.</param>
+    private sealed record KindDef(ContractPartyKind Kind, string Label, string Icon, string Article, string Plural, string Field);
 
     private static readonly IReadOnlyList<KindDef> Kinds =
     [
-        new(ContractPartyKind.Account, "Account", "account_balance_wallet"),
+        new(ContractPartyKind.Account, "Account", "account_balance_wallet", "an account", "accounts",
+            nameof(ContractPartyRequest.AccountId)),
         // The enum member keeps its name — it is a serialized wire value. Only the label and
         // glyph the reader sees were renamed.
-        new(ContractPartyKind.Institution, "Contact", "groups"),
+        new(ContractPartyKind.Institution, "Contact", "groups", "a contact", "contacts",
+            nameof(ContractPartyRequest.ContactId)),
+        // Issue #208. The kind implies no role and no role implies the kind.
+        new(ContractPartyKind.Property, "Property", "home_work", "a property", "properties",
+            nameof(ContractPartyRequest.PropertyId)),
     ];
 
     private static readonly IReadOnlyList<OdsCardSelectOption> KindOptions =
@@ -88,7 +105,7 @@ public partial class AddContractPartyDialog
         {
             _kind = party.Kind;
             _role = party.Role;
-            _value = (party.Account?.AccountId ?? party.Institution?.ContactId)?.ToString();
+            _value = (party.Account?.AccountId ?? party.Institution?.ContactId ?? party.Property?.PropertyId)?.ToString();
             _fromDate = party.FromDate?.Date;
             _toDate = party.ToDate?.Date;
         }
@@ -138,6 +155,7 @@ public partial class AddContractPartyDialog
     private IReadOnlyList<OdsOption> AllForKind => _kind switch
     {
         ContractPartyKind.Account => Accounts,
+        ContractPartyKind.Property => Properties,
         _ => _createdContacts.Count == 0
             ? Institutions
             : [.. _createdContacts.Where(c => Institutions.All(o => o.Value != c.Value)), .. Institutions],
@@ -156,9 +174,12 @@ public partial class AddContractPartyDialog
         {
             var set = Contract.Parties
                 .Where(p => p.Role == _role && p.ContractPartyId != Party?.ContractPartyId)
-                .Select(p => _kind == ContractPartyKind.Account
-                    ? p.Account?.AccountId.ToString()
-                    : p.Institution?.ContactId.ToString())
+                .Select(p => _kind switch
+                {
+                    ContractPartyKind.Account => p.Account?.AccountId.ToString(),
+                    ContractPartyKind.Property => p.Property?.PropertyId.ToString(),
+                    _ => p.Institution?.ContactId.ToString(),
+                })
                 .Where(id => id is not null)
                 .Select(id => id!)
                 .ToHashSet(StringComparer.Ordinal);
@@ -175,10 +196,18 @@ public partial class AddContractPartyDialog
     {
         get
         {
+            // A picked archived or disposed property is still linkable — said here, where the choice
+            // is made, so the reader does not take the label's qualifier for a refusal (issue #208).
+            if (_kind == ContractPartyKind.Property && _value is not null
+                && PropertyStates.TryGetValue(_value, out var state))
+            {
+                return $"This property is {state} — it can still be linked, so the contract’s history stays complete.";
+            }
+
             var noun = Current.Label.ToLowerInvariant();
             if (Available.Count > 0)
             {
-                return $"{Available.Count} {noun}{(Available.Count == 1 ? "" : "s")} available in this role.";
+                return $"{Available.Count} {(Available.Count == 1 ? noun : Current.Plural)} available in this role.";
             }
 
             return $"Every {noun} already holds {RoleNoun} on this contract"
@@ -307,7 +336,7 @@ public partial class AddContractPartyDialog
 
         if (!Guid.TryParse(IsContactKind ? ContactCreator.Resolve(_value) : _value, out var id))
         {
-            _error = $"Select {(Current.Label[0] is 'I' or 'A' or 'E' or 'O' or 'U' ? "an" : "a")} {Current.Label.ToLowerInvariant()} to link.";
+            _error = $"Select {Current.Article} to link.";
             return;
         }
 
@@ -332,6 +361,7 @@ public partial class AddContractPartyDialog
         {
             AccountId = _kind == ContractPartyKind.Account ? id : null,
             ContactId = _kind == ContractPartyKind.Institution ? id : null,
+            PropertyId = _kind == ContractPartyKind.Property ? id : null,
             Role = role,
             FromDate = _fromDate is { } fd ? DateTime.SpecifyKind(fd.Date, DateTimeKind.Utc) : null,
             ToDate = _toDate is { } td ? DateTime.SpecifyKind(td.Date, DateTimeKind.Utc) : null,
@@ -377,9 +407,7 @@ public partial class AddContractPartyDialog
     /// #121 gives <c>DomainNotFoundException</c> a field overload.
     /// </summary>
     private string? InlineErrorFor(ApiProblem? problem) =>
-        problem?.ErrorFor(_kind == ContractPartyKind.Account
-            ? nameof(ContractPartyRequest.AccountId)
-            : nameof(ContractPartyRequest.ContactId));
+        problem?.ErrorFor(Current.Field);
 
     private string SelectedLabel =>
         AllForKind.FirstOrDefault(o => o.Value == _value)?.Label ?? Current.Label;

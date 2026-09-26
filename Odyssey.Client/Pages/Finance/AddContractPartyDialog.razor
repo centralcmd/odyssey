@@ -15,7 +15,7 @@
     PUT …/parties/{partyId}). Mirrors the design system's AddContractPartyModal.
 
     The accessible picker, now three decisions deep:
-      1. the party KIND — Account / Contact (the XOR target)
+      1. the party KIND — Account / Contact / Property (the one-of-three target, issue #208)
       2. the ROLE the record plays in the agreement — a FIXED PER-TYPE LIST read off the shared
          ContractPartyRoleMatrix, suggested roles first. The picker offers no role the server would
          refuse, so the 422 is a backstop rather than a thing the user is walked into. There is NO
@@ -23,12 +23,14 @@
          stays disabled until a role is picked.
       3. the specific record. The Contact kind uses the canonical OdsContactSelect, create rows and
          all; the Account kind keeps the plain OdsCombobox over accounts. Either way the options are
-         PRE-LOADED for the chosen kind (no in-widget async fetch).
+         PRE-LOADED for the chosen kind (no in-widget async fetch). The Property kind lists name and
+         kind only, archived and disposed properties included, and the helper says so when one is
+         picked.
     …plus the optional TERM — From / To — with the insurance-party semantics: both empty is the
     DEFAULT term, the contract's own extent, not an unset value.
 
-    The save carries SCALAR IDS ONLY (accountId xor contactId) — never a nested Account or Contact
-    object (§4 write-path invariant), so a party write can never create or rename the linked record.
+    The save carries SCALAR IDS ONLY (exactly one of accountId / contactId / propertyId) — never a
+    nested Account, Contact or Property object (§4 write-path invariant), so a party write can never create or rename the linked record.
 
     Duplicate guard (§8 rule 6): uniqueness is (contract, target, ROLE), so the picker hides only
     records already linked IN THE SELECTED ROLE, and the party being edited is excluded from its own
@@ -45,11 +47,11 @@
           Icon="group_add" Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="con-dialog">
     <ChildContent>
         <div class="ods-modal-body">
-            @* The two kinds sit two-up and centred, so the pair balances the dialog rather than stretching. *@
+            @* The three kinds sit three-up and centred, so the row balances the dialog rather than stretching. *@
             <OdsFieldShell Label="Party kind" Required="true" LabelId="con-party-kind-label">
                 <OdsCardSelect AriaLabelledBy="con-party-kind-label" Required="true" Value="@_kind.ToString()" ValueChanged="PickKind"
                                Accent="var(--con-accent)" AccentLine="var(--con-accent-line)" AccentSoft="var(--con-accent-soft)"
-                               Columns="2" MaxItemWidth="180" Center="true" Options="KindOptions" />
+                               Columns="3" MaxItemWidth="180" Center="true" Options="KindOptions" />
             </OdsFieldShell>
 
             @* A plain registry select, not a card grid: fifteen members is a list, and the role is
@@ -91,7 +93,7 @@
                 <OdsFieldShell Label="@Current.Label" HtmlFor="con-party-pick" Required="true"
                                Help="@(_error is null ? PickerHelp : null)" Error="@_error">
                     <OdsCombobox InputId="con-party-pick" Value="@_value" ValueChanged="OnValueChanged"
-                                 Options="Available" Placeholder="@($"Search {Current.Label.ToLowerInvariant()}s…")"
+                                 Options="Available" Placeholder="@($"Search {Current.Plural}…")"
                                  AriaDescribedBy="con-party-pick-help" Error="@(_error is not null)" />
                 </OdsFieldShell>
             }
@@ -140,5 +142,5 @@
     private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit party" : "New party")</text>;
     private RenderFragment SubtitleFragment => IsEdit
         ? @<text>Change the role, the linked record, or the dates this party is in the role.</text>
-        : @<text>Link the account or contact this contract relates to, and say what it does in the agreement.</text>;
+        : @<text>Link the account, contact or property this contract relates to, and say what it does in the agreement.</text>;
 }

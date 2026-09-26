@@ -14,10 +14,11 @@
 
 @*
     /properties (issue #167; design system · Properties.jsx). A sibling of Accounts and Contracts: the
-    same PageHeader and expandable OdsRecordCard list, one card open at a time. A property is standalone
-    in v1 — no links to contacts, accounts, contracts or files, no photos, and its value is NOT summed
-    into net worth — so the open card holds exactly three things: its details (the common fields plus
-    the one detail sub-object its type has), its estimated value, and its smart tags.
+    same PageHeader and expandable OdsRecordCard list, one card open at a time. A property has no links
+    to contacts, accounts or files, no photos, and its value is NOT summed into net worth, but it can
+    be named as a contract party (issue #208) — so the open card holds its details (the common fields
+    plus the one detail sub-object its type has), its estimated value, the contracts naming it, and
+    its smart tags.
 *@
 
 <PageTitle>Properties</PageTitle>
@@ -241,6 +242,23 @@
                                                           OnChanged="@(() => ReloadProperty(p.PropertyId))" />
                             }
 
+                            @* GET /api/properties/{id}/contracts needs contracts.read as well as
+                               properties.read; without it the section is absent (and ContractCount
+                               is null), never an empty list, since the link is made on the contract. *@
+                            @if (_canReadContracts)
+                            {
+                                var contractCount = p.ContractCount ?? 0;
+                                <OdsRecordSection Class="con-section" Label="Contracts"
+                                                  Meta="@($"{contractCount} contract{(contractCount == 1 ? "" : "s")}")"
+                                                  Empty="@(contractCount == 0)">
+                                    <EmptyText>This property is not a party to any contract.</EmptyText>
+                                    <ChildContent>
+                                        <PropertyContractsSection @key="@($"contracts:{p.PropertyId}")"
+                                                                  PropertyId="@p.PropertyId" />
+                                    </ChildContent>
+                                </OdsRecordSection>
+                            }
+
                             @* Resolved through GET /api/transactions?tagIds=…, so a reader without
                                transactions.read would see chips and an error where the ledger belongs —
                                the section is withheld instead, as on accounts and contracts. *@
@@ -295,6 +313,7 @@
 {
     <DeletePropertyDialog @key="_deleteKey" @bind-Open="_deleteOpen" Property="_deleteProperty"
                           CanArchive="_canUpdate"
+                          CanReadContracts="_canReadContracts"
                           OnDelete="@(() => DeleteAsync(_deleteProperty))"
                           OnArchive="@(() => SetArchived(_deleteProperty, archived: true))" />
 }

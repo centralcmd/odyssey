@@ -1,18 +1,14 @@
 @using Odyssey.Dtos.Finance
 @inject IAccountsApiClient Accounts
 @inject ISnackbar Snackbar
-@inject IClipboardService Clipboard
-@inject NavigationManager Navigation
 
 @*
     AccountContractsSection — the "Contracts" section inside an expanded account record: every
-    contract naming this account as a party (GET /api/accounts/{id}/contracts). One tile per CONTRACT,
-    in the contract's own type glyph and colour, its name as the value and "roles · status" as the
-    foot. Read-only: a party link is made and changed on the contract, which the tile's View opens.
+    contract naming this account as a party (GET /api/accounts/{id}/contracts), drawn by the shared
+    ContractLinkTiles.
 
     The host's OdsRecordSection owns the divider, the count and the empty line, so this renders the
-    tile grid alone. The party-tile classes (con-party-tile, con-role, con-tile-menu) are reused on
-    purpose: the design system draws this tile with the same overline-plus-menu shape.
+    tile grid alone.
 *@
 
 @if (_isLoading)
@@ -22,31 +18,7 @@
         <span class="sr-only">Loading contracts…</span>
     </div>
 }
-else if (_contracts.Count > 0)
+else
 {
-    <OdsInfoTileGrid>
-        @foreach (var link in _contracts)
-        {
-            var l = link;
-            var type = OdsTypeRegistries.ContractTypeOf(l.Type);
-            <div class="con-party-tile" @key="l.ContractId">
-                <OdsInfoTile Icon="@type.Icon" IconColor="@type.Color" IconSoft="@type.Soft"
-                             LabelContent="@LabelFor(l, type.Label)"
-                             ValueVariant="OdsInfoTileVariant.Text" WrapValue
-                             Value="@(b => b.AddContent(0, l.Name))"
-                             Foot="@OdsInfoTile.Caption(Foot(l))" />
-            </div>
-        }
-    </OdsInfoTileGrid>
-}
-
-@code {
-    // Razor syntax (@<text>), so this inline render fragment cannot live in the code-behind.
-    private RenderFragment LabelFor(AccountContractLink link, string typeLabel) =>
-        @<text>
-            <span class="con-role"><span>@typeLabel</span></span>
-            <span class="con-tile-menu">
-                <OdsMenu Items="@MenuFor(link)" AriaLabel="@($"Actions for {typeLabel} {link.Name}")" />
-            </span>
-        </text>;
+    <ContractLinkTiles Links="_contracts" />
 }

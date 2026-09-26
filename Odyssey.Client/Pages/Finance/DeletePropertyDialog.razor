@@ -1,11 +1,18 @@
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
+@inject IPropertiesApiClient Properties
 
 @*
     DeletePropertyDialog — the delete confirmation (issue #167; design system · Properties.jsx
-    DeletePropertyModal). Deletion is hard and cascades the detail row, every estimate and every
-    smart-tag link in one transaction. Nothing else references a property, so there is no blocker to
-    report — only a statement of what goes, and Archive as the reversible alternative.
+    DeletePropertyModal). Deletion is hard and cascades the detail row, every estimate, every
+    smart-tag link AND every contract party link naming it (issue #208), in one transaction. Party
+    links do not block the delete — each contract survives with one fewer party and records a "Party
+    removed" event — so there is still no blocker to report, only a statement of what goes, and
+    Archive as the reversible alternative.
+
+    The party-link line is counted only for a contracts.read holder. Without it ContractCount is null
+    and the line is stated without numbers — never as "none", which would be a claim about contracts
+    the reader cannot see.
 *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
@@ -30,8 +37,16 @@
                     <span class="material-icons" aria-hidden="true">sell</span>
                     @(Property.SmartTagCount == 0 ? "No smart tags" : $"{Property.SmartTagCount} smart-tag link{(Property.SmartTagCount == 1 ? "" : "s")}")
                 </li>
+                <li>
+                    <span class="material-icons" aria-hidden="true">link_off</span>
+                    @ContractLinksLine
+                </li>
             </ul>
             <p class="prop-del-foot">
+                @if (MayDetachParties)
+                {
+                    @("Contracts are kept — each loses this party and records a “Party removed” event. ")
+                }
                 The transaction tags themselves and the transactions carrying them are not affected. Archiving
                 keeps everything and hides the property from the default list.
             </p>
@@ -61,7 +76,43 @@
 
     [Parameter] public EventCallback OnArchive { get; set; }
 
+    /// <summary>
+    /// Whether the caller holds <c>contracts.read</c>, which is what licenses counting the party links
+    /// (the party count needs <c>GET /api/properties/{id}/contracts</c>; the contract count is
+    /// <see cref="ExistingProperty.ContractCount"/>, already null without it).
+    /// </summary>
+    [Parameter] public bool CanReadContracts { get; set; }
+
     private bool _busy;
+
+    /// <summary>Party rows naming the property, summed from the roles on each contract row; null until read.</summary>
+    private int? _partyLinks;
+
+    private int? ContractCount => CanReadContracts ? Property.ContractCount : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Nothing to count when the count is withheld or zero. A failed read leaves the line stating
+        // the contract count alone — this is a confirmation, not a place for an error toast.
+        if (ContractCount is not > 0)
+            return;
+
+        var result = await Properties.ListContractsAsync(Property.PropertyId);
+        if (result.IsSuccess && result.Value is { } rows)
+            _partyLinks = rows.Sum(r => r.Roles.Count);
+    }
+
+    private string ContractLinksLine => ContractCount switch
+    {
+        null => "Any contract party links naming it",
+        0 => "No contract party links",
+        { } contracts when _partyLinks is { } parties =>
+            $"{parties} party link{(parties == 1 ? "" : "s")} on {contracts} contract{(contracts == 1 ? "" : "s")}",
+        { } contracts => $"Party links on {contracts} contract{(contracts == 1 ? "" : "s")}",
+    };
+
+    /// <summary>The "contracts are kept" sentence, unless the reader is known to have none to lose.</summary>
+    private bool MayDetachParties => ContractCount is not 0;
 
     private RenderFragment TitleFragment => @<text>Delete @Property.Name?</text>;
 

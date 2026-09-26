@@ -22,6 +22,8 @@ public partial class ContractsCard
 
     private IReadOnlyList<OdsOption> _accountOptions = [];
     private IReadOnlyList<OdsOption> _institutionOptions = [];
+    private IReadOnlyList<OdsOption> _propertyOptions = [];
+    private IReadOnlyDictionary<string, string> _propertyStates = new Dictionary<string, string>();
 
     private Guid? _flashId;
 
@@ -94,6 +96,7 @@ public partial class ContractsCard
     private bool _canUploadFiles;
     private bool _canViewAccounts;
     private bool _canViewContacts;
+    private bool _canViewProperties;
 
     // ── Computed ────────────────────────────────────────────────────────────────
     // Derived from the unfiltered summary (issue #277): the sub-line reflects the whole set, not the
@@ -115,7 +118,7 @@ public partial class ContractsCard
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
-        await Task.WhenAll(LoadContracts(), LoadSummary(), LoadAccounts(), LoadInstitutions(), LoadCurrencies());
+        await Task.WhenAll(LoadContracts(), LoadSummary(), LoadAccounts(), LoadInstitutions(), LoadPropertyOptions(), LoadCurrencies());
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────
@@ -193,6 +196,7 @@ public partial class ContractsCard
                        && user.HasPermission(PermissionClaims.ContractsUpdate);
         _canViewAccounts = user.HasPermission(PermissionClaims.AccountsRead);
         _canViewContacts = user.HasPermission(PermissionClaims.ContactsRead);
+        _canViewProperties = user.HasPermission(PermissionClaims.PropertiesRead);
     }
 
     // Server-side (issue #277): search + multi type/status filters + sort applied by the API.
@@ -246,6 +250,21 @@ public partial class ContractsCard
                     IconColor = AccountTypeVisuals.FgColor(a.AccountType),
                 })
         ];
+    }
+
+    /// <summary>
+    /// The Property party kind's options (issue #208). Unlike accounts, archived and disposed
+    /// properties stay in the list — a contract's history must stay recordable — labelled with their
+    /// state; only a <c>properties.read</c> holder loads them at all.
+    /// </summary>
+    private async Task LoadPropertyOptions()
+    {
+        if (!_canViewProperties)
+            return;
+
+        var properties = (await PropertiesApi.ListAllAsync()).ItemsOrToast(Snackbar, "properties");
+        _propertyOptions = PropertyVisuals.PartyOptions(properties);
+        _propertyStates = PropertyVisuals.PartyLinkStates(properties);
     }
 
     private async Task LoadInstitutions()

@@ -1,0 +1,25 @@
+@using Odyssey.Dtos.Finance
+@inject IPropertiesApiClient Properties
+@inject ISnackbar Snackbar
+
+@*
+    PropertyContractsSection — the "Contracts" section inside an expanded property record (issue #208;
+    design system · Properties.jsx PropertyContracts): every contract naming this property as a party
+    (GET /api/properties/{id}/contracts), drawn by the shared ContractLinkTiles with archived contracts
+    muted — the link is history.
+
+    The host's OdsRecordSection owns the divider, the count and the empty line, and renders this only
+    for a contracts.read holder: without it the section is absent, never an empty list.
+*@
+
+@if (_isLoading)
+{
+    <div role="status" aria-live="polite" aria-busy="true">
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+        <span class="sr-only">Loading contracts…</span>
+    </div>
+}
+else
+{
+    <ContractLinkTiles Links="_contracts" DimArchived="true" />
+}

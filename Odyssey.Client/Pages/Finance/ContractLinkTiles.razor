@@ -1,0 +1,44 @@
+@using Odyssey.Dtos.Finance
+@inject IClipboardService Clipboard
+@inject NavigationManager Navigation
+
+@*
+    ContractLinkTiles — the tile grid a record's Contracts section draws: one tile per CONTRACT naming
+    the record as a party, in the contract's own type glyph and colour, its name as the value and
+    "roles · status" as the foot. Shared by the account record (AccountContractsSection) and the
+    property record (PropertyContractsSection, issue #208), which differ only in which route they read
+    — the design system draws both with the same overline-plus-menu shape, and two copies would drift.
+
+    Read-only: a party link is made and changed on the contract, which the tile's View opens. The
+    party-tile classes (con-party-tile, con-role, con-tile-menu) are reused on purpose.
+*@
+
+@if (Links.Count > 0)
+{
+    <OdsInfoTileGrid>
+        @foreach (var link in Links)
+        {
+            var l = link;
+            var type = OdsTypeRegistries.ContractTypeOf(l.Type);
+            <div class="con-party-tile" @key="l.ContractId">
+                <OdsInfoTile Icon="@type.Icon" IconColor="@type.Color" IconSoft="@type.Soft"
+                             LabelContent="@LabelFor(l, type.Label)"
+                             ValueVariant="OdsInfoTileVariant.Text" WrapValue
+                             Tone="@ToneFor(l)"
+                             Value="@(b => b.AddContent(0, l.Name))"
+                             Foot="@OdsInfoTile.Caption(Foot(l.Roles, l.Status))" />
+            </div>
+        }
+    </OdsInfoTileGrid>
+}
+
+@code {
+    // Razor syntax (@<text>), so this inline render fragment cannot live in the code-behind.
+    private RenderFragment LabelFor(ContractLinkTile link, string typeLabel) =>
+        @<text>
+            <span class="con-role"><span>@typeLabel</span></span>
+            <span class="con-tile-menu">
+                <OdsMenu Items="@MenuFor(link)" AriaLabel="@($"Actions for {typeLabel} {link.Name}")" />
+            </span>
+        </text>;
+}

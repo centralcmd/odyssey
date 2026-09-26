@@ -64,6 +64,41 @@ public static class PropertyVisuals
         ? VehicleKinds.FirstOrDefault(k => k.Key == property.VehicleDetails?.Kind.ToString()) ?? VehicleKinds[^1]
         : RealEstateKinds.FirstOrDefault(k => k.Key == property.RealEstateDetails?.Kind.ToString()) ?? RealEstateKinds[^1];
 
+    /// <summary>
+    /// The contract party picker's options (issue #208): name and kind only — never an address,
+    /// registration or VIN — owned properties first, then the rest, each by name. An archived or
+    /// disposed property stays linkable and says which it is in its label.
+    /// </summary>
+    public static IReadOnlyList<OdsOption> PartyOptions(IEnumerable<ExistingProperty> properties) =>
+    [
+        .. properties
+            .OrderBy(p => p.Archived is not null)
+            .ThenBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(p =>
+            {
+                var state = PartyLinkState(p);
+                return new OdsOption(p.PropertyId.ToString(), state is null ? p.Name : $"{p.Name} ({state})")
+                {
+                    Icon = KindOf(p).Icon,
+                    IconColor = OdsTypeRegistries.PropertyTypeOf(p.Type).Color,
+                };
+            }),
+    ];
+
+    /// <summary>Option value → "archived"/"disposed", for the properties that are not simply owned.</summary>
+    public static IReadOnlyDictionary<string, string> PartyLinkStates(IEnumerable<ExistingProperty> properties) =>
+        properties
+            .Select(p => (Id: p.PropertyId.ToString(), State: PartyLinkState(p)))
+            .Where(x => x.State is not null)
+            .ToDictionary(x => x.Id, x => x.State!, StringComparer.Ordinal);
+
+    private static string? PartyLinkState(ExistingProperty property) => property.Status switch
+    {
+        PropertyStatus.Archived => "archived",
+        PropertyStatus.Disposed => "disposed",
+        _ => null,
+    };
+
     /// <summary>The one-line address: street, then postal code and city, then country.</summary>
     public static string? AddressText(RealEstateDetailsDto? details)
     {

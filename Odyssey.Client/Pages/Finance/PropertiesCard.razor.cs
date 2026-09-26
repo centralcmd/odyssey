@@ -68,6 +68,7 @@ public partial class PropertiesCard
     private bool _canReadEstimates;
     private bool _canWriteEstimates;
     private bool _canReadTransactions;
+    private bool _canReadContracts;
 
     // ── Dialogs ──────────────────────────────────────────────────────────────────
     private Guid _createKey = Guid.Empty;
@@ -117,6 +118,7 @@ public partial class PropertiesCard
         _canReadEstimates = user.HasPermission(PermissionClaims.PropertiesEstimatesRead);
         _canWriteEstimates = user.HasPermission(PermissionClaims.PropertiesEstimatesWrite);
         _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
+        _canReadContracts = user.HasPermission(PermissionClaims.ContractsRead);
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────
@@ -417,11 +419,17 @@ public partial class PropertiesCard
 
     private IReadOnlyList<OdsRecordCount> CountsFor(ExistingProperty p)
     {
-        var counts = new List<OdsRecordCount>(2);
+        var counts = new List<OdsRecordCount>(3);
         if (_canReadEstimates)
             counts.Add(new OdsRecordCount("monitor", (p.EstimateCount ?? 0).ToString(CultureInfo.CurrentCulture), "Estimates"));
 
         counts.Add(new OdsRecordCount("sell", p.SmartTagCount.ToString(CultureInfo.CurrentCulture), "Smart tags"));
+
+        // Null without contracts.read — the server withholds it rather than zeroing it — and, as on
+        // an account, a property party to nothing states no count (issue #208).
+        if (p.ContractCount is > 0 and var contractCount)
+            counts.Add(new OdsRecordCount("handshake", contractCount.ToString(CultureInfo.CurrentCulture), "Contracts"));
+
         return counts;
     }
 
