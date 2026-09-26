@@ -45,7 +45,10 @@ public static class ContractPartyAudit
 
         // A Guid, so it cannot carry the CR/LF a forged log line would need, and an opaque row id
         // rather than a credential. Both are why this is safe to record verbatim.
-        Guid? targetId = party.AccountId ?? party.ContactId ?? party.PropertyId;
+        // Non-nullable on purpose: CodeQL treats a Guid as a simple type that cannot carry a forged line,
+        // but not a Guid? (cs/log-forging). A party with no target is unreachable under
+        // CK_ContractParties_ExactlyOneTarget, so Guid.Empty never stands for a real row.
+        Guid targetId = party.AccountId ?? party.ContactId ?? party.PropertyId ?? Guid.Empty;
 
         logger.LogInformation(
             "Contract party {Action}: contract {ContractId}, party {ContractPartyId}, target {TargetKind} {TargetId}, " +
@@ -57,13 +60,13 @@ public static class ContractPartyAudit
             targetId,
             // No fabricated "previous role" on an add. Unspecified is gone and substituting Other
             // would assert a role the party never held, so the slot reads as genuinely absent.
-            previousRole?.ToString() ?? NoRole,
+            Safe(previousRole?.ToString() ?? NoRole),
             Safe(roleAfter ?? party.Role.ToString()),
             Safe(userId ?? "(unknown)"));
     }
 
     /// <summary>
-    /// Strips CR/LF from the three string slots. Every other value is a <see cref="Guid"/> or a closed
+    /// Strips CR/LF from the four string slots. Every other value is a <see cref="Guid"/> or a closed
     /// enum, which cannot carry a line break. <paramref name="value"/> here is a constant or a claim
     /// value in practice, but the user id is read off the principal three frames away, so the guarantee
     /// is made a property of the log site — and this is the form CodeQL recognises as a
