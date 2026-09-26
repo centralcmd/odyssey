@@ -1,0 +1,68 @@
+@using Odyssey.Dtos.Finance
+
+@*
+    OdsPropertyEventTypeSelect — a single-select pre-wired to the PropertyEventType vocabulary
+    (Odyssey Design System · components/PropertyEventTypeSelect, issue #209): what happened to a house,
+    cabin, car or boat, each member in its own glyph and category colour.
+
+    A thin, domain-typed wrapper over the shared OdsTypeSelect — every prop passes straight through, so
+    the field inherits its accessible name, listbox semantics, keyboard model and error association.
+
+    Like OdsContractPartyRoleSelect, its option list depends on ANOTHER field. `PropertyType` limits the
+    list to the members that type accepts — type-specific first under their own heading — read off the
+    SHARED PropertyEventTypeMatrix the server validates against, so the dialog cannot walk a user into
+    the 422. System-only members (Archived, Restored, Acquired date cleared, Disposal reversed) are
+    never offered; pass the one an edited row already carries as `KeepType` and it is offered alone
+    under "Recorded automatically", so the PUT can keep it.
+*@
+
+<OdsTypeSelect Value="@Value"
+               ValueChanged="ValueChanged"
+               Types="Options"
+               Groups="Groups"
+               Id="@Id"
+               Label="@Label"
+               Placeholder="@Placeholder"
+               Help="@Help"
+               Error="@Error"
+               Required="@Required"
+               Disabled="@Disabled"
+               Class="@Class"
+               @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Selected enum key. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>The owning property's type, which decides which members are legal.</summary>
+    [Parameter, EditorRequired] public PropertyType PropertyType { get; set; }
+
+    /// <summary>A system-only member the edited row already carries, offered alone so it can be kept.</summary>
+    [Parameter] public PropertyEventType? KeepType { get; set; }
+
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter] public string? Label { get; set; } = "Type";
+
+    [Parameter] public string? Placeholder { get; set; } = "Select type…";
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private IReadOnlyList<OdsTypeSelectGroup> Groups => OdsTypeRegistries.PropertyEventTypesFor(PropertyType, KeepType);
+
+    // The flattened list is still passed so the selected option resolves its own label and glyph.
+    private IReadOnlyList<OdsTypeOption> Options => [.. Groups.SelectMany(group => group.Items)];
+}

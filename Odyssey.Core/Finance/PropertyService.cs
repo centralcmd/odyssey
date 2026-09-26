@@ -173,7 +173,7 @@ public class PropertyService
     }
 
     /// <summary>
-    /// Fills the row counts and, for a caller holding <c>properties.estimates.read</c>, the estimate in
+    /// Fills the row counts (smart tags and events) and, for a caller holding <c>properties.estimates.read</c>, the estimate in
     /// force now — one batched query each over the page's ids, never one per row. "In force" is picked
     /// by <see cref="EffectiveDatedExtensions.MostEffective{T}"/>, the in-memory counterpart of
     /// <see cref="EstimateEffectiveDating"/> that the account list uses the same way.
@@ -194,8 +194,18 @@ public class PropertyService
             .Select(g => new { PropertyId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.PropertyId, x => x.Count, cancellationToken);
 
+        var eventCounts = await context.PropertyEvents
+            .AsNoTracking()
+            .Where(e => ids.Contains(e.PropertyId))
+            .GroupBy(e => e.PropertyId)
+            .Select(g => new { PropertyId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.PropertyId, x => x.Count, cancellationToken);
+
         foreach (var dto in dtos)
+        {
             dto.SmartTagCount = smartTagCounts.GetValueOrDefault(dto.PropertyId);
+            dto.EventCount = eventCounts.GetValueOrDefault(dto.PropertyId);
+        }
 
         if (includeContractCount)
         {
@@ -244,8 +254,13 @@ public class PropertyService
     /// Creates a property and exactly one detail row in a single <c>SaveChangesAsync</c>; the detail row
     /// shares the parent key, so the pair cannot half-exist.
     /// </summary>
+    /// <param name="userId">
+    /// The acting user, attributed on the system events the create records (issue #209 §8.5). Never read
+    /// from the request body.
+    /// </param>
     /// <exception cref="DomainValidationException">A shape, currency, date or year rule fails.</exception>
-    public async Task<ExistingProperty> Create(NewProperty newProperty, CancellationToken cancellationToken = default)
+    public async Task<ExistingProperty> Create(
+        NewProperty newProperty, string? userId, CancellationToken cancellationToken = default)
     {
         var type = ValidateShape(newProperty);
         var currencyCode = CurrencyValidationService.Normalize(newProperty.CurrencyCode);
@@ -267,6 +282,13 @@ public class PropertyService
         ApplyBaseAndDetails(property, newProperty, now);
 
         context.Properties.Add(property);
+
+        // Staged on this context, after every validation above, so the property and its events commit in
+        // the one save below or not at all.
+        PropertyEventRecorder.StageAll(
+            context, property, PropertyEventCatalogue.Detect(PropertyStamps.None, PropertyStamps.Of(property), now),
+            userId, now);
+
         await context.SaveChangesAsync(cancellationToken);
 
         return ToDto(property, now);
@@ -280,7 +302,9 @@ public class PropertyService
     /// <exception cref="DomainValidationException">
     /// A shape, currency, date or year rule fails, or the currency changes while estimates exist.
     /// </exception>
-    public async Task<ExistingProperty?> Update(Guid id, NewProperty putProperty, CancellationToken cancellationToken = default)
+    /// <param name="userId">The acting user, attributed on any system events the update records.</param>
+    public async Task<ExistingProperty?> Update(
+        Guid id, NewProperty putProperty, string? userId, CancellationToken cancellationToken = default)
     {
         var property = await context.Properties
             .Include(p => p.RealEstateDetails)
@@ -315,6 +339,7 @@ public class PropertyService
         }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
+        var before = PropertyStamps.Of(property);
         property.Name = putProperty.Name;
         property.Description = putProperty.Description;
         property.CurrencyCode = currencyCode;
@@ -322,13 +347,18 @@ public class PropertyService
         ApplyArchiveTransition(property, putProperty.Archived, now);
         ApplyBaseAndDetails(property, putProperty, now);
 
+        // After ApplyBaseAndDetails, whose date and year rules can still throw: a refused write stages
+        // nothing, and an accepted one commits the change and its events in the same save.
+        PropertyEventRecorder.StageAll(
+            context, property, PropertyEventCatalogue.Detect(before, PropertyStamps.Of(property), now), userId, now);
+
         await context.SaveChangesAsync(cancellationToken);
         return ToDto(property, now);
     }
 
     /// <summary>
     /// Hard-deletes a property. Returns <c>false</c> when unknown. The detail row, estimates, smart-tag
-    /// links and document links cascade — included here so the cascade also happens under the EF
+    /// links, document links and events cascade — included here so the cascade also happens under the EF
     /// InMemory provider, which enforces no foreign keys. The attached files themselves survive. There
     /// is no blocker and no <c>409</c>.
     /// </summary>
@@ -356,6 +386,7 @@ public class PropertyService
             .Include(p => p.Estimates)
             .Include(p => p.SmartTags)
             .Include(p => p.Files)
+            .Include(p => p.Events)
             .FirstOrDefaultAsync(p => p.PropertyId == id, cancellationToken);
         if (property is null)
             return false;

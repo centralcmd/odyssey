@@ -338,6 +338,47 @@ public class DemoDataSeederTests
     /// to draw differently. Without them the rail, the year markers and the "Unknown user" attribution
     /// would all be unreachable in the demo stack, so the feature would look absent rather than empty.
     /// </summary>
+    /// <summary>
+    /// Issue #209 AC 20 — the property event logs are seeded deterministically, idempotently, across
+    /// both property types and both sources, with one property left without a log for the empty state.
+    /// </summary>
+    [Fact]
+    public async Task Seeds_property_event_logs_across_both_types_and_both_sources()
+    {
+        await using var provider = BuildProvider(out var seeder);
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        var events = await context.PropertyEvents.AsNoTracking().ToListAsync();
+        Assert.Equal(20, events.Count);
+        Assert.Equal(DemoDataSet.Build().PropertyEvents.Count, events.Count);
+
+        var properties = await context.Properties.AsNoTracking().ToDictionaryAsync(p => p.PropertyId, p => p.Type);
+        Assert.Contains(events, e => properties[e.PropertyId] == Odyssey.Dtos.Finance.PropertyType.RealEstate);
+        Assert.Contains(events, e => properties[e.PropertyId] == Odyssey.Dtos.Finance.PropertyType.Vehicle);
+        Assert.Contains(events, e => e.Source == ContractEventSource.System);
+        Assert.Contains(events, e => e.Source == ContractEventSource.User);
+        Assert.True(properties.Count > events.Select(e => e.PropertyId).Distinct().Count(), "one property has no log");
+
+        // Every seeded row is one the API would accept: in the past, legal for its property's type, and
+        // a system-only type only on a System row.
+        Assert.All(events, e =>
+        {
+            Assert.True(e.OccurredAt <= DateTime.UtcNow, $"{e.Title} is in the past");
+            var dtoType = (Odyssey.Dtos.Finance.PropertyEventType)e.Type;
+            Assert.True(Odyssey.Dtos.Finance.PropertyEventTypeMatrix.IsLegal(properties[e.PropertyId], dtoType), e.Title);
+            if (Odyssey.Dtos.Finance.PropertyEventTypeMatrix.IsSystemOnly(dtoType))
+                Assert.Equal(ContractEventSource.System, e.Source);
+        });
+
+        // The shared table's other branch is untouched by the property seed.
+        Assert.Equal(DemoDataSet.Build().ContractEvents.Count, await context.ContractEvents.AsNoTracking().CountAsync());
+    }
+
     [Fact]
     public async Task Seeds_contract_event_logs_covering_the_states_the_surface_draws()
     {

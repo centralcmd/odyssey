@@ -840,7 +840,7 @@ public static class ContractGenerator
             var description = spec.Description ?? SeededSystemDescription(spec.Type, occurredAt);
             events.Add(new ContractEvent
             {
-                ContractEventId = EventIdFor(spec.ContractName, spec.Title),
+                EventId = EventIdFor(spec.ContractName, spec.Title),
                 ContractId = contractId,
                 Type = spec.Type,
                 Title = spec.Title,

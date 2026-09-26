@@ -65,7 +65,11 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
             await using (var context = NewContext())
             {
                 await MigrationSeam.MigrateToAsync(context, Baseline);
-                Assert.False(await ColumnExistsAsync(context, "Source"));
+                Assert.True(await MigrationSeam.CountAsync(context, $"""
+                    SELECT COUNT(*) FROM information_schema.TABLES
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{BaselineTable}'
+                    """) > 0);
+                Assert.False(await ColumnExistsAsync(context, BaselineTable, "Source"));
 
                 await SeedContractRowAsync(context, contractId);
                 await SeedEventRowAsync(context, eventId, contractId);
@@ -76,17 +80,17 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
                 await context.Database.MigrateAsync();
 
                 Assert.True(await MigrationSeam.HasRunAsync(context, Subject));
-                Assert.True(await ColumnExistsAsync(context, "Source"));
+                Assert.True(await ColumnExistsAsync(context, LatestTable, "Source"));
 
                 var row = await context.ContractEvents.AsNoTracking()
-                    .SingleAsync(e => e.ContractEventId == eventId);
+                    .SingleAsync(e => e.EventId == eventId);
                 Assert.Equal(ContextContractEventSource.User, row.Source);
 
                 // No index on the column: the source filter is applied inside the contract-scoped
                 // window the (ContractId, OccurredAt) index already serves, so a second one would buy
                 // nothing against a log that is always read one contract at a time. Asserted because
                 // an index added later without that reasoning is exactly what this records.
-                Assert.False(await IndexExistsOnAsync(context, "Source"));
+                Assert.False(await IndexExistsOnAsync(context, LatestTable, "Source"));
             }
         }
         finally
@@ -287,16 +291,21 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
 
     // ── Schema introspection ───────────────────────────────────────────────────
 
-    private static async Task<bool> ColumnExistsAsync(OdysseyContext context, string column) =>
+    // The table is ContractEvents at the baseline and Events once issue #209's WidenEventsForProperties
+    // has run, so the reads name it explicitly rather than assuming either.
+    private const string BaselineTable = "ContractEvents";
+    private const string LatestTable = "Events";
+
+    private static async Task<bool> ColumnExistsAsync(OdysseyContext context, string table, string column) =>
         await MigrationSeam.CountAsync(context, $"""
             SELECT COUNT(*) FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ContractEvents' AND COLUMN_NAME = '{column}'
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' AND COLUMN_NAME = '{column}'
             """) > 0;
 
-    private static async Task<bool> IndexExistsOnAsync(OdysseyContext context, string column) =>
+    private static async Task<bool> IndexExistsOnAsync(OdysseyContext context, string table, string column) =>
         await MigrationSeam.CountAsync(context, $"""
             SELECT COUNT(*) FROM information_schema.STATISTICS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ContractEvents' AND COLUMN_NAME = '{column}'
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' AND COLUMN_NAME = '{column}'
             """) > 0;
 
     private static Task SeedContractRowAsync(OdysseyContext context, Guid contractId)

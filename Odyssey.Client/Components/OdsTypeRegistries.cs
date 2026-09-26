@@ -398,6 +398,98 @@ public static class OdsTypeRegistries
         new() { Key = "Other",        Label = "Other",               Icon = "more_horiz",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 
+    /// <summary>
+    /// PropertyEventType — what happened to a house, cabin, car or boat (issue #209). Mirrors the DS
+    /// <c>PROPERTY_EVENT_TYPES</c> registry (<c>components/PropertyEventTypeSelect</c>) and the C#
+    /// <c>PropertyEventType</c> enum, whose ordinals start at 100.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>READING order, not ordinal order</b>: the eight universal members, the four real-estate ones,
+    /// the four vehicle ones, the four system-only ones, then <c>Other</c> (ordinal 108). <b><c>Other</c>
+    /// must stay LAST</b> — <see cref="PropertyEventTypeOf"/> falls back to the trailing entry for an
+    /// ordinal this build does not know, the same rule as <see cref="ContractEventTypes"/>.
+    /// </para>
+    /// <para>
+    /// Which members a picker may OFFER is not decided here: that is
+    /// <see cref="PropertyEventTypeMatrix"/>, the declaration the server validates against, read by
+    /// <see cref="PropertyEventTypesFor"/>.
+    /// </para>
+    /// </remarks>
+    public static readonly IReadOnlyList<OdsTypeOption> PropertyEventTypes =
+    [
+        new() { Key = "Acquired",               Label = "Acquired",              Icon = "key",              Color = "oklch(0.79 0.14 145)", Soft = "oklch(0.79 0.14 145 / 0.16)" },
+        new() { Key = "Disposed",               Label = "Disposed of",           Icon = "output",           Color = "oklch(0.74 0.13 25)",  Soft = "oklch(0.74 0.13 25 / 0.16)" },
+        new() { Key = "Valued",                 Label = "Valued",                Icon = "price_check",      Color = "oklch(0.78 0.13 110)", Soft = "oklch(0.78 0.13 110 / 0.16)" },
+        new() { Key = "Maintenance",            Label = "Maintenance",           Icon = "build",            Color = "oklch(0.80 0.14 95)",  Soft = "oklch(0.80 0.14 95 / 0.16)" },
+        new() { Key = "Repair",                 Label = "Repair",                Icon = "handyman",         Color = "oklch(0.79 0.14 60)",  Soft = "oklch(0.79 0.14 60 / 0.16)" },
+        new() { Key = "Damage",                 Label = "Damage",                Icon = "report",           Color = "oklch(0.72 0.15 20)",  Soft = "oklch(0.72 0.15 20 / 0.16)" },
+        new() { Key = "Inspection",             Label = "Inspection",            Icon = "troubleshoot",     Color = "oklch(0.78 0.12 180)", Soft = "oklch(0.78 0.12 180 / 0.16)" },
+        new() { Key = "InsuranceChanged",       Label = "Insurance changed",     Icon = "shield",           Color = "oklch(0.74 0.15 30)",  Soft = "oklch(0.74 0.15 30 / 0.16)" },
+        // ── Real estate only ─────────────────────────────────────────────────────
+        new() { Key = "Renovation",             Label = "Renovation",            Icon = "format_paint",     Color = "oklch(0.76 0.14 320)", Soft = "oklch(0.76 0.14 320 / 0.16)" },
+        new() { Key = "TaxAssessed",            Label = "Tax assessed",          Icon = "request_quote",    Color = "oklch(0.75 0.16 330)", Soft = "oklch(0.75 0.16 330 / 0.16)" },
+        new() { Key = "TenancyStarted",         Label = "Tenancy started",       Icon = "vpn_key",          Color = "oklch(0.79 0.13 55)",  Soft = "oklch(0.79 0.13 55 / 0.16)" },
+        new() { Key = "TenancyEnded",           Label = "Tenancy ended",         Icon = "key_off",          Color = "oklch(0.72 0.10 40)",  Soft = "oklch(0.72 0.10 40 / 0.16)" },
+        // ── Vehicle only ─────────────────────────────────────────────────────────
+        new() { Key = "Serviced",               Label = "Serviced",              Icon = "car_repair",       Color = "oklch(0.77 0.13 205)", Soft = "oklch(0.77 0.13 205 / 0.16)" },
+        new() { Key = "TyreChange",             Label = "Tyre change",           Icon = "tire_repair",      Color = "oklch(0.76 0.10 240)", Soft = "oklch(0.76 0.10 240 / 0.16)" },
+        new() { Key = "PeriodicInspection",     Label = "Periodic inspection",   Icon = "fact_check",       Color = "oklch(0.78 0.13 170)", Soft = "oklch(0.78 0.13 170 / 0.16)" },
+        new() { Key = "Registered",             Label = "Registration",          Icon = "app_registration", Color = "oklch(0.74 0.15 310)", Soft = "oklch(0.74 0.15 310 / 0.16)" },
+        // ── Recorded by the server only ──────────────────────────────────────────
+        new() { Key = "Archived",               Label = "Archived",              Icon = "inventory_2",      Color = "oklch(0.75 0.06 250)", Soft = "oklch(0.75 0.06 250 / 0.16)" },
+        new() { Key = "Unarchived",             Label = "Restored",              Icon = "unarchive",        Color = "oklch(0.78 0.12 185)", Soft = "oklch(0.78 0.12 185 / 0.16)" },
+        new() { Key = "AcquisitionDateCleared", Label = "Acquired date cleared", Icon = "event_busy",       Color = "oklch(0.74 0.08 150)", Soft = "oklch(0.74 0.08 150 / 0.16)" },
+        new() { Key = "DisposalReversed",       Label = "Disposal reversed",     Icon = "undo",             Color = "oklch(0.76 0.10 60)",  Soft = "oklch(0.76 0.10 60 / 0.16)" },
+        // LAST, and it must stay last — the unknown-ordinal fallback is positional.
+        new() { Key = "Other",                  Label = "Other",                 Icon = "more_horiz",       Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+    ];
+
+    /// <summary>The PropertyEventType descriptor for an enum value (falls back to "Other").</summary>
+    public static OdsTypeOption PropertyEventTypeOf(PropertyEventType type) =>
+        PropertyEventTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? PropertyEventTypes[^1];
+
+    /// <summary>
+    /// The picker's groups for one property type, read off the SHARED
+    /// <see cref="PropertyEventTypeMatrix"/> (issue #209) — the design system's
+    /// <c>propertyEventTypesFor</c>: the four type-specific members first ("For vehicles" /
+    /// "For real estate"), then the universal ones ("Any property"), <c>Other</c> last.
+    /// </summary>
+    /// <param name="keepType">
+    /// A system-only member the row being edited already carries. It is offered ALONE under "Recorded
+    /// automatically" so a <c>PUT</c> can keep it; every other system-only member is withheld, because
+    /// the server refuses to have one introduced. <see langword="null"/> on a create.
+    /// </param>
+    /// <remarks>
+    /// Not a client-side copy of a server rule: the matrix is one declaration in <c>Odyssey.Dtos</c>, so
+    /// the picker cannot offer a type the server would answer with a <c>422</c>.
+    /// </remarks>
+    public static IReadOnlyList<OdsTypeSelectGroup> PropertyEventTypesFor(PropertyType type, PropertyEventType? keepType = null)
+    {
+        var legal = PropertyEventTypeMatrix.LegalFor(type);
+        var specific = PropertyEventTypeMatrix.SpecificTo(type);
+
+        // Registry order within each group, so Other still reads last among the universal members.
+        List<OdsTypeOption> Pick(Func<PropertyEventType, bool> include) =>
+            [.. PropertyEventTypes.Where(option =>
+                Enum.TryParse<PropertyEventType>(option.Key, out var member)
+                && legal.Contains(member)
+                && include(member))];
+
+        var groups = new List<OdsTypeSelectGroup>
+        {
+            new(type == PropertyType.Vehicle ? "For vehicles" : "For real estate", Pick(specific.Contains)),
+            new("Any property", Pick(member => !specific.Contains(member) && !PropertyEventTypeMatrix.IsSystemOnly(member))),
+        };
+
+        if (keepType is { } keep && PropertyEventTypeMatrix.IsSystemOnly(keep) && legal.Contains(keep))
+        {
+            groups.Add(new OdsTypeSelectGroup("Recorded automatically", [PropertyEventTypeOf(keep)]));
+        }
+
+        return [.. groups.Where(group => group.Items.Count > 0)];
+    }
+
     /// <summary>ContractFileType — the kind of document attached to a contract (issue #174). Mirrors
     /// the DS contractFileTypes registry and the C# ContractFileType enum.</summary>
     public static readonly IReadOnlyList<OdsTypeOption> ContractFileTypes =

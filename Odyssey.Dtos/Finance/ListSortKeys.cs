@@ -71,6 +71,16 @@ public enum ContractEventSortBy
     CreatedAtUtc,
 }
 
+/// <summary>Sortable keys for a property's event log (issue #209 §5.1).</summary>
+public enum PropertyEventSortBy
+{
+    /// <summary>The default — newest first.</summary>
+    OccurredAt,
+    Title,
+    Type,
+    CreatedAtUtc,
+}
+
 /// <summary>Sortable keys for the currencies list.</summary>
 public enum CurrencySortBy
 {

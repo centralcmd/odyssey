@@ -42,6 +42,10 @@ public partial class PropertiesCard
     /// </summary>
     private readonly Dictionary<Guid, int> _documentCounts = new();
 
+    /// <summary>One token per property whose row menu asked for a New event; see
+    /// <see cref="PropertyEventsSection.NewEventRequestToken"/>.</summary>
+    private readonly Dictionary<Guid, Guid> _newEventTokens = new();
+
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "properties-page";
     private bool _overviewOpen = true;
@@ -320,6 +324,17 @@ public partial class PropertiesCard
             });
         }
 
+        // POST …/events is properties.update, and is offered on an archived property too.
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "history",
+                Label = "New event",
+                OnClick = EventCallback.Factory.Create(this, () => NewEvent(p.PropertyId)),
+            });
+        }
+
         items.Add(new OdsMenuItem
         {
             Icon = "fingerprint",
@@ -399,6 +414,24 @@ public partial class PropertiesCard
         _newEstimateTokens[id] = Guid.NewGuid();
     }
 
+    private Guid? NewEventTokenFor(Guid id) => _newEventTokens.TryGetValue(id, out var token) ? token : null;
+
+    private void NewEvent(Guid id)
+    {
+        _expandedId = id;
+        _newEventTokens[id] = Guid.NewGuid();
+    }
+
+    /// <summary>
+    /// Routes a section's sentence into the page's one <c>OdsLiveAnnouncer</c> — two live regions on one
+    /// page race each other, so the events section raises text rather than owning a region.
+    /// </summary>
+    private void Announce(string message)
+    {
+        _announce = message;
+        StateHasChanged();
+    }
+
     // ── Archive / delete ───────────────────────────────────────────────────────────
     private async Task SetArchived(ExistingProperty p, bool archived)
     {
@@ -431,6 +464,7 @@ public partial class PropertiesCard
         _newEstimateTokens.Remove(p.PropertyId);
         _attachTokens.Remove(p.PropertyId);
         _documentCounts.Remove(p.PropertyId);
+        _newEventTokens.Remove(p.PropertyId);
         if (_expandedId == p.PropertyId)
             _expandedId = null;
         if (_editProperty?.PropertyId == p.PropertyId)
@@ -479,11 +513,12 @@ public partial class PropertiesCard
     /// </summary>
     internal static IReadOnlyList<OdsRecordCount> CountsFor(ExistingProperty p, bool canReadEstimates)
     {
-        var counts = new List<OdsRecordCount>(3);
+        var counts = new List<OdsRecordCount>(4);
         if (canReadEstimates)
             counts.Add(new OdsRecordCount("monitor", (p.EstimateCount ?? 0).ToString(CultureInfo.CurrentCulture), "Estimates"));
 
         counts.Add(new OdsRecordCount("sell", p.SmartTagCount.ToString(CultureInfo.CurrentCulture), "Smart tags"));
+        counts.Add(new OdsRecordCount("history", p.EventCount.ToString(CultureInfo.CurrentCulture), "Events"));
 
         if (p.ContractCount is > 0 and var contractCount)
             counts.Add(new OdsRecordCount("handshake", contractCount.ToString(CultureInfo.CurrentCulture), "Contracts"));

@@ -1,0 +1,137 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject IDialogService DialogService
+@inject IPropertiesApiClient Properties
+@inject ISnackbar Snackbar
+
+@*
+    PropertyEventsSection — the "Events" section, the LAST zone of an expanded property record
+    (issue #209; design system · PropertyEvents.jsx). The contract log's section on the same DS event
+    rail — the same attribution sentence, the same Today / "added" anchors, the same rule that "New
+    event" lives in the record's ⋯ menu rather than on a button here.
+
+    What differs from contracts, and why:
+
+    • THE TYPE LIST DEPENDS ON THE PROPERTY'S TYPE. The dialog's picker reads the shared
+      PropertyEventTypeMatrix, so the 422 for an illegal type is a backstop the UI never walks into.
+
+    • SYSTEM ROWS COME FROM THREE PROPERTY FIELDS ONLY — acquired date, disposed date, archive. Never
+      from estimates (a properties.read reader must not learn what properties.estimates.read
+      withholds) and never from detail edits. The empty state names exactly those three.
+
+    • THE FOOT MARKER HAS NO AUTHOR. A property carries CreatedAt but no creator, so the marker is a
+      date only. An Acquired event is usually older than the record and correctly sorts below it.
+
+    No event changes the property: a hand-written "Disposed of" does not set DisposedDate, so nothing
+    here touches the status chip. The log is paged server-side and surfaces no filters in v1.
+*@
+
+<div class="con-section">
+    <OdsSectionDivider Label="Events" Meta="@Meta" HeadingId="@HeadingId" />
+
+    @if (_isLoading)
+    {
+        <div role="status" aria-live="polite" aria-busy="true">
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+            <span class="sr-only">Loading events…</span>
+        </div>
+    }
+    else if (_total == 0)
+    {
+        <OdsEmptyLine>
+            No events yet. Odyssey records when this property is acquired, disposed of, archived or
+            restored, and you can add anything else: @Examples.
+        </OdsEmptyLine>
+    }
+    else
+    {
+        <div class="cev-rail">
+            <OdsEventRail CapTop="IsFirstPage" CapEnd="IsLastPage">
+                @foreach (var entry in Track)
+                {
+                    @* @key is load-bearing: a delete shrinks the list in place, and without an identity
+                       Blazor would re-point the focused row's DOM node at the next event's data. *@
+                    var item = entry;
+                    if (item.Event is { } ev)
+                    {
+                        var info = OdsTypeRegistries.PropertyEventTypeOf(ev.Type);
+                        <OdsEventRailItem @key="ev.PropertyEventId"
+                                          Icon="@info.Icon" IconLabel="@info.Label"
+                                          Title="@RowTitle(ev)"
+                                          Date="@RowDate(ev)"
+                                          Desc="@RowDesc(ev)"
+                                          Actions="@RowActions(ev)">
+                            @RowAttribution(ev)
+                        </OdsEventRailItem>
+                    }
+                    else if (item.Kind == TrackKind.Now)
+                    {
+                        <OdsEventRailMarker @key="@("cap-now")" Tone="OdsEventRailTone.Open">
+                            Today · @FormatDate(Today)
+                        </OdsEventRailMarker>
+                    }
+                    else if (item.Kind == TrackKind.Origin)
+                    {
+                        <OdsEventRailMarker @key="@("cap-origin")" Tone="OdsEventRailTone.Filled">
+                            Property added @FormatDate(Property.CreatedAt)
+                        </OdsEventRailMarker>
+                    }
+                    else
+                    {
+                        <OdsEventRailMarker @key="@($"y{item.Year}")">@item.Year</OdsEventRailMarker>
+                    }
+                }
+            </OdsEventRail>
+        </div>
+
+        @if (_total > PageSize)
+        {
+            <OdsPager Page="_page" PageChanged="GoToPageAsync"
+                      PageSize="PageSize" TotalCount="_total"
+                      ShowPageSize="false"
+                      Label="Event log pagination" />
+        }
+    }
+</div>
+
+@if (_dialogKey != Guid.Empty)
+{
+    <AddPropertyEventDialog @key="_dialogKey"
+                            @bind-Open="_dialogOpen"
+                            Property="Property"
+                            Event="_editingEvent"
+                            OnSaved="OnEventChangedAsync" />
+}
+
+@code {
+    // Razor syntax (@<text>), so these inline render fragments cannot live in the code-behind.
+
+    private RenderFragment RowTitle(ExistingPropertyEvent ev) => @<text>@ev.Title</text>;
+
+    private RenderFragment RowDate(ExistingPropertyEvent ev) => @<text>@FormatDateTime(ev.OccurredAt)</text>;
+
+    /// <summary>The description and NOT the notes — the notes stay off the rail (presentation only).</summary>
+    private RenderFragment? RowDesc(ExistingPropertyEvent ev) =>
+        string.IsNullOrWhiteSpace(ev.Description) ? null : @<text>@ev.Description</text>;
+
+    /// <summary>
+    /// Who recorded it, as the display label the API resolved, and — on a recorded row — how, in the
+    /// same sentence: "(automatically generated)". Text, so nothing rides on hue or glyph.
+    /// </summary>
+    private RenderFragment RowAttribution(ExistingPropertyEvent ev) =>
+        @<div class="odc-er-meta@(IsKnownAuthor(ev) ? "" : " cev-by-unknown")">
+            Recorded by <span class="cev-by-who">@AuthorLabel(ev)</span> at @FormatDateTime(ev.CreatedAtUtc)
+            @if (ev.Source == ContractEventSource.System)
+            {
+                <span class="cev-auto-note"> (automatically generated)</span>
+            }
+        </div>;
+
+    private RenderFragment? RowActions(ExistingPropertyEvent ev) => CanUpdate
+        ? @<OdsRowActions Actions="@(new[]
+           {
+               new OdsRowAction { Icon = "edit", Label = $"Edit {ev.Title}", OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => OpenEdit(ev)) },
+               new OdsRowAction { Icon = "delete", Label = $"Delete {ev.Title}", Danger = true, OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => DeleteAsync(ev)) },
+           })" />
+        : null;
+}

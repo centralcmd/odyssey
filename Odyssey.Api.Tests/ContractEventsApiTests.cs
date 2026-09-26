@@ -609,7 +609,7 @@ public class ContractEventsApiTests
             .Order(StringComparer.Ordinal)
             .ToList();
 
-        Assert.Equal([nameof(ContractEvent.ContractEventId), nameof(ContractEvent.ContractId)], guidProperties);
+        Assert.Equal([nameof(ContractEvent.ContractId), nameof(ContractEvent.EventId)], guidProperties);
 
         // The navigation set is the same claim from the other side: one parent, nothing else. Entity
         // types only — the Type column's enum lives in the same namespace and is not a navigation.
@@ -793,7 +793,7 @@ public class ContractEventsApiTests
         using (var scope = factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var row = await context.ContractEvents.FirstAsync(e => e.ContractEventId == recorded.ContractEventId);
+            var row = await context.ContractEvents.FirstAsync(e => e.EventId == recorded.ContractEventId);
             row.CreatedByUserId = null;
             await context.SaveChangesAsync();
         }

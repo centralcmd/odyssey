@@ -1,0 +1,103 @@
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Authorization
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.PropertiesUpdate)]
+@inject IPropertiesApiClient Properties
+@inject ISnackbar Snackbar
+
+@*
+    AddPropertyEventDialog — add OR edit ONE event on a property (issue #209: POST …/events and
+    PUT …/events/{eventId}). Mirrors the design system's AddPropertyEventModal, which mirrors
+    AddContractEventModal. The differences are the property rules:
+
+    1. THE TYPE LIST IS THE MATRIX. OdsPropertyEventTypeSelect is given the property's type and offers
+       its legal members, type-specific first. Property.Type is immutable, so a legal event never
+       becomes illegal.
+    2. SYSTEM-ONLY TYPES ARE NEVER OFFERED ON CREATE. Editing a recorded Archived / Restored /
+       Acquired date cleared / Disposal reversed row passes that member as KeepType, so the PUT may keep
+       it; switching it to a user type is allowed, switching back is not.
+    3. RECORDING AN EVENT DOES NOT CHANGE THE PROPERTY. The sentence rides the Type field's help, so
+       aria-describedby carries it.
+    4. VALUED IS NOT AN ESTIMATE — it writes a log line only; the estimate history is a separate
+       section behind its own claim.
+    5. THE PUT IS A FULL REPLACEMENT, stated in an Alert when editing.
+
+    `source`, the owner id and the attribution fields are not in the body, and not on the form.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="history" Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="con-dialog">
+    <ChildContent>
+        <div class="ods-modal-body">
+            <OdsPropertyEventTypeSelect Id="pev-type" Label="Type"
+                                        Value="@_type.ToString()" ValueChanged="PickType"
+                                        PropertyType="Property.Type" KeepType="KeepType"
+                                        Error="@_errors.GetValueOrDefault("type")"
+                                        Help="@(_errors.ContainsKey("type") ? null : TypeHelp)" />
+
+            @* The helper and the error ride on the DATE PICKER — the shell of a two-control group has no
+               single control for its describedby ids to point at. *@
+            <OdsFieldShell Label="When" Required="true" LabelId="pev-when-label">
+                <div class="cev-when" role="group" aria-labelledby="pev-when-label">
+                    <OdsDatePicker Value="_date" ValueChanged="OnDateChanged"
+                                   Label="Date" Required="true" Max="Today"
+                                   Placeholder="Pick a date"
+                                   Error="@_errors.ContainsKey("occurredAt")"
+                                   ErrorText="@_errors.GetValueOrDefault("occurredAt")"
+                                   HelperText="@(_errors.ContainsKey("occurredAt") ? null : "Date and time, in the past. A log, not a plan.")" />
+                    <OdsTimeField Label="Time" Value="_time" ValueChanged="OnTimeChanged" />
+                </div>
+            </OdsFieldShell>
+
+            <OdsField Id="pev-title" Label="Title" Required="true" AutoFocus="true"
+                      Value="@_title" ValueChanged="OnTitleChanged"
+                      MaxLength="256" Error="@_errors.GetValueOrDefault("title")"
+                      Placeholder="@TitlePlaceholder"
+                      Help="@(_errors.ContainsKey("title") ? null : SystemTitleHelp ?? "A short label. This is the line the timeline shows.")" />
+
+            <OdsNoteField Id="pev-description" Label="Description" MaxLength="1024"
+                          Value="@_description" ValueChanged="@(v => _description = v)"
+                          Placeholder="What was done, by whom, what it found…"
+                          Help="Shown on the timeline under the title." />
+
+            @* The audience is stated, never implied to be narrower. *@
+            <OdsNoteField Id="pev-notes" Label="Notes" MaxLength="1024"
+                          Value="@_notes" ValueChanged="@(v => _notes = v)"
+                          Placeholder="Reminders to yourself — when it is due next, what to check…"
+                          Help="Your working notes. Kept off the timeline, but anyone who can see this property can read them." />
+
+            @if (IsEdit)
+            {
+                <OdsAlert Severity="Severity.Info">
+                    Saving replaces the whole event — type, title, description, notes and date. Text you
+                    clear is cleared, and a type you leave unset resets to <strong>Other</strong>. Who
+                    recorded this event, and when, is never rewritten.
+                    @if (IsSystemEvent)
+                    {
+                        <text> Nothing regenerates a description you clear on a recorded event.</text>
+                    }
+                </OdsAlert>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")"
+                   Loading="_isSaving" OnClick="SubmitAsync">
+            @(IsEdit ? "Save changes" : "Create event")
+        </OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit event" : "New event")</text>;
+
+    @* Repeated from the Title field's help for sighted users; the help is what carries it
+       programmatically. *@
+    private RenderFragment SubtitleFragment => IsEdit
+        ? IsSystemEvent
+            ? @<text>Recorded automatically. Changing it changes this log line, not the property.</text>
+            : @<text>Change what this entry records. Who recorded it, and when, does not change.</text>
+        : @<text>Record something that has happened to @Property.Name.</text>;
+}

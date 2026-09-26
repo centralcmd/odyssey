@@ -174,7 +174,7 @@ public class PropertyContractPartyClientTests
         {
             Assert.Equal("handshake", contracts!.Icon);
             Assert.Equal("2", contracts.Value);
-            Assert.Equal(["Estimates", "Smart tags", "Contracts"], counts.Select(c => c.Label));
+            Assert.Equal(["Estimates", "Smart tags", "Events", "Contracts"], counts.Select(c => c.Label));
         }
     }
 
@@ -183,7 +183,7 @@ public class PropertyContractPartyClientTests
     {
         var counts = PropertiesCard.CountsFor(Property(1), canReadEstimates: false);
 
-        Assert.Equal(["Smart tags", "Contracts"], counts.Select(c => c.Label));
+        Assert.Equal(["Smart tags", "Events", "Contracts"], counts.Select(c => c.Label));
     }
 
     /// <summary>The dialog beside MudBlazor's providers, which host its modal.</summary>

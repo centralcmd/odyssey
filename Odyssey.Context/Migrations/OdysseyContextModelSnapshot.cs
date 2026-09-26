@@ -766,56 +766,6 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("Contracts");
                 });
 
-            modelBuilder.Entity("Odyssey.Context.ContractEvent", b =>
-                {
-                    b.Property<Guid>("ContractEventId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<Guid>("ContractId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("CreatedByUserId")
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1024)
-                        .HasColumnType("varchar(1024)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1024)
-                        .HasColumnType("varchar(1024)");
-
-                    b.Property<DateTime>("OccurredAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Source")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
-
-                    b.Property<int>("Type")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(8);
-
-                    b.HasKey("ContractEventId");
-
-                    b.HasIndex("CreatedByUserId");
-
-                    b.HasIndex("ContractId", "OccurredAt");
-
-                    b.ToTable("ContractEvents");
-                });
-
             modelBuilder.Entity("Odyssey.Context.ContractFile", b =>
                 {
                     b.Property<Guid>("ContractFileId")
@@ -2784,6 +2734,58 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("OrganizationDetails");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.OwnedEvent", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("OwnerKind")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Source")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.HasKey("EventId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.ToTable("Events", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Events_ExactlyOneOwner", "(`OwnerKind` = 0 AND `ContractId` IS NOT NULL AND `PropertyId` IS NULL) OR (`OwnerKind` = 1 AND `PropertyId` IS NOT NULL AND `ContractId` IS NULL)");
+
+                            t.HasCheckConstraint("CK_Events_TypeMatchesOwner", "`Type` IS NOT NULL AND ((`OwnerKind` = 0 AND `Type` BETWEEN 0 AND 99) OR (`OwnerKind` = 1 AND `Type` BETWEEN 100 AND 199))");
+                        });
+
+                    b.HasDiscriminator<int>("OwnerKind");
+
+                    b.UseTphMappingStrategy();
+                });
+
             modelBuilder.Entity("Odyssey.Context.PersonDetails", b =>
                 {
                     b.Property<Guid>("ContactId")
@@ -4396,6 +4398,56 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("VehicleDetails");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.ContractEvent", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.OwnedEvent");
+
+                    b.Property<Guid>("ContractId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Type")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(8)
+                        .HasColumnName("Type");
+
+                    b.HasIndex("ContractId", "OccurredAt");
+
+                    b.ToTable(t =>
+                        {
+                            t.HasCheckConstraint("CK_Events_ExactlyOneOwner", "(`OwnerKind` = 0 AND `ContractId` IS NOT NULL AND `PropertyId` IS NULL) OR (`OwnerKind` = 1 AND `PropertyId` IS NOT NULL AND `ContractId` IS NULL)");
+
+                            t.HasCheckConstraint("CK_Events_TypeMatchesOwner", "`Type` IS NOT NULL AND ((`OwnerKind` = 0 AND `Type` BETWEEN 0 AND 99) OR (`OwnerKind` = 1 AND `Type` BETWEEN 100 AND 199))");
+                        });
+
+                    b.HasDiscriminator().HasValue(0);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PropertyEvent", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.OwnedEvent");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Type")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(8)
+                        .HasColumnName("Type");
+
+                    b.HasIndex("PropertyId", "OccurredAt");
+
+                    b.ToTable(t =>
+                        {
+                            t.HasCheckConstraint("CK_Events_ExactlyOneOwner", "(`OwnerKind` = 0 AND `ContractId` IS NOT NULL AND `PropertyId` IS NULL) OR (`OwnerKind` = 1 AND `PropertyId` IS NOT NULL AND `ContractId` IS NULL)");
+
+                            t.HasCheckConstraint("CK_Events_TypeMatchesOwner", "`Type` IS NOT NULL AND ((`OwnerKind` = 0 AND `Type` BETWEEN 0 AND 99) OR (`OwnerKind` = 1 AND `Type` BETWEEN 100 AND 199))");
+                        });
+
+                    b.HasDiscriminator().HasValue(1);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -4602,22 +4654,6 @@ namespace Odyssey.Context.Migrations
                         .IsRequired();
 
                     b.Navigation("Contact");
-                });
-
-            modelBuilder.Entity("Odyssey.Context.ContractEvent", b =>
-                {
-                    b.HasOne("Odyssey.Context.Contract", "Contract")
-                        .WithMany("Events")
-                        .HasForeignKey("ContractId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Odyssey.Context.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Contract");
                 });
 
             modelBuilder.Entity("Odyssey.Context.ContractFile", b =>
@@ -4937,6 +4973,14 @@ namespace Odyssey.Context.Migrations
                         .IsRequired();
 
                     b.Navigation("Contact");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.OwnedEvent", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Odyssey.Context.PersonDetails", b =>
@@ -5325,6 +5369,28 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("Property");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.ContractEvent", b =>
+                {
+                    b.HasOne("Odyssey.Context.Contract", "Contract")
+                        .WithMany("Events")
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Contract");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PropertyEvent", b =>
+                {
+                    b.HasOne("Odyssey.Context.Property", "Property")
+                        .WithMany("Events")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+                });
+
             modelBuilder.Entity("Odyssey.Context.Account", b =>
                 {
                     b.Navigation("AccountEstimates");
@@ -5441,6 +5507,8 @@ namespace Odyssey.Context.Migrations
             modelBuilder.Entity("Odyssey.Context.Property", b =>
                 {
                     b.Navigation("Estimates");
+
+                    b.Navigation("Events");
 
                     b.Navigation("Files");
 

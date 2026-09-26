@@ -15,7 +15,7 @@ public class PropertyEstimateServiceTests
     private static readonly DateTime Jan1 = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     private static async Task<Guid> SeedProperty(Odyssey.Context.OdysseyContext context, string name = "Storgata 14", string currency = "SEK") =>
-        (await new PropertyService(context).Create(PropertyTestData.House(name, currency))).PropertyId;
+        (await new PropertyService(context).Create(PropertyTestData.House(name, currency), userId: null)).PropertyId;
 
     private static NewPropertyEstimate Estimate(decimal value, DateTime effectiveFrom, string? currency = null) =>
         new() { Value = value, EffectiveFrom = effectiveFrom, CurrencyCode = currency };

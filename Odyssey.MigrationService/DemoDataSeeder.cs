@@ -431,16 +431,44 @@ public sealed class DemoDataSeeder(
         if (await context.Properties.AnyAsync(property => property.PropertyId == sentinelId, cancellationToken))
         {
             logger.LogInformation("Demo properties already present; skipping property seed.");
+        }
+        else
+        {
+            // The detail rows travel on the Property navigations.
+            await context.Properties.AddRangeAsync(data.Properties, cancellationToken);
+            await context.PropertyEstimates.AddRangeAsync(data.PropertyEstimates, cancellationToken);
+            await context.PropertySmartTags.AddRangeAsync(data.PropertySmartTags, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+
+            logger.LogInformation("Seeded {Properties} properties.", data.Properties.Count);
+        }
+
+        await SeedPropertyEventsAsync(context, data, cancellationToken);
+    }
+
+    /// <summary>
+    /// The property event logs (issue #209), sentinel-gated on their own so a dev database seeded with
+    /// properties before events existed still gains them on the next run — and a second run inserts
+    /// nothing.
+    /// </summary>
+    private async Task SeedPropertyEventsAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)
+    {
+        if (data.PropertyEvents.Count == 0)
+        {
             return;
         }
 
-        // The detail rows travel on the Property navigations.
-        await context.Properties.AddRangeAsync(data.Properties, cancellationToken);
-        await context.PropertyEstimates.AddRangeAsync(data.PropertyEstimates, cancellationToken);
-        await context.PropertySmartTags.AddRangeAsync(data.PropertySmartTags, cancellationToken);
+        var sentinelId = data.PropertyEvents[0].EventId;
+        if (await context.PropertyEvents.AnyAsync(e => e.EventId == sentinelId, cancellationToken))
+        {
+            logger.LogInformation("Demo property events already present; skipping property event seed.");
+            return;
+        }
+
+        await context.PropertyEvents.AddRangeAsync(data.PropertyEvents, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation("Seeded {Properties} properties.", data.Properties.Count);
+        logger.LogInformation("Seeded {Events} property events.", data.PropertyEvents.Count);
     }
 
     private async Task SeedContactsAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)

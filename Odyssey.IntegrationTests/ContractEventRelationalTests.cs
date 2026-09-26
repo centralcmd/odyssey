@@ -14,7 +14,7 @@ namespace Odyssey.IntegrationTests;
 
 /// <summary>
 /// The relational half of issue #138 (AC 12, 13, 14, 15): the two foreign keys on
-/// <c>ContractEvents</c> and the index the read path is served by.
+/// the shared <c>Events</c> table (issue #209) and the index the read path is served by.
 /// </summary>
 /// <remarks>
 /// None of this is observable on the fast tiers — the EF InMemory provider enforces no foreign keys at
@@ -49,7 +49,7 @@ public class ContractEventRelationalTests(MariaDbFixture fixture)
 
         Assert.Equal(
             ["ContractId", "OccurredAt"],
-            await ReadIndexColumnsAsync(context, "IX_ContractEvents_ContractId_OccurredAt"));
+            await ReadIndexColumnsAsync(context, "IX_Events_ContractId_OccurredAt"));
 
         Assert.Empty(await ReadUniqueIndexNamesAsync(context));
     }
@@ -98,7 +98,7 @@ public class ContractEventRelationalTests(MariaDbFixture fixture)
         await using (var verify = NewContext())
         {
             var remaining = await verify.ContractEvents.AsNoTracking()
-                .Select(e => e.ContractEventId).ToListAsync();
+                .Select(e => e.EventId).ToListAsync();
 
             Assert.DoesNotContain(doomedEvent, remaining);
             Assert.Contains(survivingEvent, remaining);
@@ -134,7 +134,7 @@ public class ContractEventRelationalTests(MariaDbFixture fixture)
         await using (var verify = NewContext())
         {
             var stored = await verify.ContractEvents.AsNoTracking()
-                .SingleAsync(e => e.ContractEventId == eventId);
+                .SingleAsync(e => e.EventId == eventId);
 
             Assert.Equal("Rent renegotiated", stored.Title);
             Assert.Null(stored.CreatedByUserId);
@@ -184,7 +184,7 @@ public class ContractEventRelationalTests(MariaDbFixture fixture)
 
         await using (var verify = NewContext())
         {
-            Assert.True(await verify.ContractEvents.AsNoTracking().AnyAsync(e => e.ContractEventId == eventId));
+            Assert.True(await verify.ContractEvents.AsNoTracking().AnyAsync(e => e.EventId == eventId));
         }
     }
 
@@ -210,7 +210,7 @@ public class ContractEventRelationalTests(MariaDbFixture fixture)
     {
         var entity = new ContractEvent
         {
-            ContractEventId = Guid.NewGuid(),
+            EventId = Guid.NewGuid(),
             ContractId = contractId,
             Type = ContractEventType.Signed,
             Title = title,
@@ -222,7 +222,7 @@ public class ContractEventRelationalTests(MariaDbFixture fixture)
         };
         context.ContractEvents.Add(entity);
         await context.SaveChangesAsync();
-        return entity.ContractEventId;
+        return entity.EventId;
     }
 
     private static async Task<List<string>> ReadIndexColumnsAsync(OdysseyContext context, string indexName)
@@ -232,7 +232,7 @@ public class ContractEventRelationalTests(MariaDbFixture fixture)
                 SELECT COLUMN_NAME AS ColumnName
                 FROM information_schema.STATISTICS
                 WHERE TABLE_SCHEMA = DATABASE()
-                  AND TABLE_NAME = 'ContractEvents'
+                  AND TABLE_NAME = 'Events'
                   AND INDEX_NAME = {indexName}
                 ORDER BY SEQ_IN_INDEX
                 """)
@@ -252,7 +252,7 @@ public class ContractEventRelationalTests(MariaDbFixture fixture)
                 SELECT DISTINCT INDEX_NAME AS Name
                 FROM information_schema.STATISTICS
                 WHERE TABLE_SCHEMA = DATABASE()
-                  AND TABLE_NAME = 'ContractEvents'
+                  AND TABLE_NAME = 'Events'
                   AND NON_UNIQUE = 0
                   AND INDEX_NAME <> 'PRIMARY'
                 """)
@@ -271,7 +271,7 @@ public class ContractEventRelationalTests(MariaDbFixture fixture)
                   ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA
                  AND r.CONSTRAINT_NAME = k.CONSTRAINT_NAME
                 WHERE k.CONSTRAINT_SCHEMA = DATABASE()
-                  AND k.TABLE_NAME = 'ContractEvents'
+                  AND k.TABLE_NAME = 'Events'
                 """)
             .ToListAsync();
 

@@ -29,7 +29,7 @@ public class PropertySummaryServiceTests
     {
         body.DisposedDate = disposed;
         body.Archived = archived;
-        var id = (await new PropertyService(context, new FixedTimeProvider(Now)).Create(body)).PropertyId;
+        var id = (await new PropertyService(context, new FixedTimeProvider(Now)).Create(body, userId: null)).PropertyId;
         if (estimate is { } value)
         {
             context.PropertyEstimates.Add(new PropertyEstimate

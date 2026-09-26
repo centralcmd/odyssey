@@ -1,8 +1,8 @@
 using Odyssey.Dtos;
+using System.Security.Claims;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Authorization;
 using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -146,7 +146,8 @@ public class PropertyController : ControllerBase
     public async Task<IActionResult> Post(
         [FromBody] NewProperty newProperty, CancellationToken cancellationToken = default)
     {
-        var property = await propertyService.Create(newProperty, cancellationToken);
+        var property = await propertyService.Create(
+            newProperty, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
         return CreatedAtRoute("GetProperty", new { id = property.PropertyId }, property);
     }
 
@@ -165,7 +166,8 @@ public class PropertyController : ControllerBase
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewProperty putProperty, CancellationToken cancellationToken = default)
     {
-        var property = await propertyService.Update(id, putProperty, cancellationToken);
+        var property = await propertyService.Update(
+            id, putProperty, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
         if (property is null)
             return this.NotFoundProblem($"Property ID {id} not found.");
 

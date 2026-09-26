@@ -25,7 +25,7 @@ public class PropertyListEnrichmentTests
     private static async Task<(PropertyService Service, Guid PropertyId)> SeedAsync(OdysseyContext context)
     {
         var service = new PropertyService(context, new FixedTimeProvider(Now));
-        var propertyId = (await service.Create(PropertyTestData.House())).PropertyId;
+        var propertyId = (await service.Create(PropertyTestData.House(), userId: null)).PropertyId;
 
         context.PropertyEstimates.AddRange(
             new PropertyEstimate { PropertyId = propertyId, Value = 3_000_000m, CurrencyCode = "SEK", EffectiveFrom = Utc(2025, 1, 1), CreatedAtUtc = Utc(2025, 1, 1) },
@@ -92,7 +92,7 @@ public class PropertyListEnrichmentTests
     {
         await using var context = TestContextFactory.Create();
         var service = new PropertyService(context, new FixedTimeProvider(Now));
-        var propertyId = (await service.Create(PropertyTestData.Car())).PropertyId;
+        var propertyId = (await service.Create(PropertyTestData.Car(), userId: null)).PropertyId;
         context.PropertyEstimates.Add(new PropertyEstimate
         {
             PropertyId = propertyId, Value = 250_000m, CurrencyCode = "SEK", EffectiveFrom = Utc(2026, 12, 1), CreatedAtUtc = Utc(2026, 5, 1),

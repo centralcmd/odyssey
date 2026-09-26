@@ -65,7 +65,9 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
         {
             before = await SnapshotAsync(context);
             Assert.DoesNotContain("PropertyFiles", before.Tables);
-            await context.Database.MigrateAsync();
+            // To this migration, not the latest: a later one (issue #209's WidenEventsForProperties)
+            // renames ContractEvents, which would read as this migration touching another table.
+            await MigrationSeam.MigrateToAsync(context, ThisMigration);
             Assert.True(await MigrationSeam.HasRunAsync(context, ThisMigration));
         }
 
@@ -416,7 +418,7 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
             Type = PropertyType.RealEstate,
             CurrencyCode = "USD",
             RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.House, City = "Oslo", CountryCode = "NO" },
-        })).PropertyId;
+        }, userId: null)).PropertyId;
 
     private static async Task<Guid> SeedFileAsync(OdysseyContext context, string uploaderId = Attacher)
     {

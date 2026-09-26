@@ -610,7 +610,7 @@ public class DataExportApiTests
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             context.ContractEvents.Add(new ContractEvent
             {
-                ContractEventId = Guid.NewGuid(),
+                EventId = Guid.NewGuid(),
                 ContractId = contractId,
                 Type = Odyssey.Context.ContractEventType.Paused,
                 Source = Odyssey.Context.ContractEventSource.System,
@@ -641,6 +641,62 @@ public class DataExportApiTests
             rows[Odyssey.Dtos.Finance.ContractEventType.Paused]);
     }
 
+    /// <summary>
+    /// Issue #209 AC 19 — the shared <c>Events</c> table exports as two sections, each holding its own
+    /// owner's rows only: a property event never appears under <c>contractEvents</c> nor a contract
+    /// event under <c>propertyEvents</c>.
+    /// </summary>
+    [Fact]
+    public async Task Export_SplitsTheSharedEventsTable_IntoContractAndPropertySections()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await AddContractEventAsync(factory);
+
+        Guid propertyId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var property = new Property
+            {
+                Name = "Cabin",
+                Description = "Cabin",
+                Type = Odyssey.Dtos.Finance.PropertyType.RealEstate,
+                CurrencyCode = "USD",
+                RealEstateDetails = new RealEstateDetails { Kind = Odyssey.Dtos.Finance.RealEstateKind.Cabin },
+            };
+            context.Properties.Add(property);
+            context.PropertyEvents.Add(new PropertyEvent
+            {
+                Property = property,
+                PropertyId = property.PropertyId,
+                Type = Odyssey.Context.PropertyEventType.Repair,
+                Source = Odyssey.Context.ContractEventSource.User,
+                Title = "Roof repaired",
+                Notes = "Keep the invoice.",
+                OccurredAt = new DateTime(2026, 2, 3, 9, 0, 0, DateTimeKind.Utc),
+                CreatedByUserId = "exporting-author",
+                CreatedAtUtc = new DateTime(2026, 2, 3, 12, 0, 0, DateTimeKind.Utc),
+            });
+            await context.SaveChangesAsync();
+            propertyId = property.PropertyId;
+        }
+
+        using var client = factory.CreateClient();
+        using var document = await GetExportDocumentAsync(client);
+        var finance = document.RootElement.GetProperty("databases").GetProperty("finance");
+
+        var contractRow = Assert.Single(finance.GetProperty("contractEvents").EnumerateArray());
+        Assert.Equal("Emailed the landlord", contractRow.GetProperty("title").GetString());
+
+        var propertyRow = Assert.Single(finance.GetProperty("propertyEvents").EnumerateArray());
+        Assert.Equal(propertyId, propertyRow.GetProperty("propertyId").GetGuid());
+        Assert.Equal((int)Odyssey.Dtos.Finance.PropertyEventType.Repair, propertyRow.GetProperty("type").GetInt32());
+        Assert.Equal("Roof repaired", propertyRow.GetProperty("title").GetString());
+        Assert.Equal("Keep the invoice.", propertyRow.GetProperty("notes").GetString());
+        Assert.Equal("exporting-author", propertyRow.GetProperty("createdByUserId").GetString());
+        Assert.False(propertyRow.TryGetProperty("contractId", out _));
+    }
+
     private static async Task<Guid> AddContractEventAsync(WebApplicationFactory<Program> factory)
     {
         using var scope = factory.Services.CreateScope();
@@ -658,7 +714,7 @@ public class DataExportApiTests
 
         context.ContractEvents.Add(new ContractEvent
         {
-            ContractEventId = Guid.NewGuid(),
+            EventId = Guid.NewGuid(),
             ContractId = contract.ContractId,
             Type = Odyssey.Context.ContractEventType.EmailSent,
             Title = "Emailed the landlord",

@@ -95,6 +95,49 @@ public interface IPropertiesApiClient
 
     /// <summary>Removes the link only; the file stays in the Files store.</summary>
     Task<ApiResult> DetachFileAsync(Guid propertyId, Guid fileId, CancellationToken ct = default);
+
+    // ── Events (issue #209) ──────────────────────────────────────────────────
+    //
+    // Property-scoped like the estimate routes: an event is addressed as {propertyId}/events/{eventId},
+    // never by event id alone, so the owner is always named by the route.
+
+    /// <summary>
+    /// One page of the property's event log. Newest first by default; the search term spans the title,
+    /// the description <b>and</b> the notes. <paramref name="source"/> restricts to hand-written or
+    /// server-recorded rows; omitted returns both.
+    /// </summary>
+    /// <param name="page">1-based page number, paired with <paramref name="pageSize"/>.</param>
+    /// <param name="pageSize">Rows per page; <see cref="PagedQuery.SizeAll"/> requests the whole log.</param>
+    Task<ApiResult<PagedResult<ExistingPropertyEvent>>> ListEventsAsync(
+        Guid propertyId,
+        string? search = null,
+        IReadOnlyCollection<string>? types = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = PagedQuery.SizeAll,
+        ContractEventSource? source = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Records one event. <c>occurredAt</c> more than a minute ahead of the server clock, or a type illegal
+    /// for the property's type or recorded only by the server, answers <c>422</c>.
+    /// </summary>
+    Task<ApiResult<ExistingPropertyEvent>> CreateEventAsync(
+        Guid propertyId, NewPropertyEvent request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Replaces one event — a <b>full replacement</b>: <c>null</c> clears <c>description</c>/<c>notes</c>
+    /// and an omitted <c>type</c> resets to <see cref="PropertyEventType.Other"/>. A system-only type may
+    /// be kept on a row that already carries it, never introduced.
+    /// </summary>
+    Task<ApiResult<ExistingPropertyEvent>> UpdateEventAsync(
+        Guid propertyId, Guid eventId, UpdatePropertyEvent request, CancellationToken ct = default);
+
+    /// <summary>Removes one event from the property's log. The property itself is untouched.</summary>
+    Task<ApiResult> DeleteEventAsync(Guid propertyId, Guid eventId, CancellationToken ct = default);
 }
 
 /// <inheritdoc cref="IPropertiesApiClient" />
@@ -208,6 +251,47 @@ public sealed class PropertiesApiClient(IOdysseyApi api) : IPropertiesApiClient
         api.SendAsync(HttpMethod.Delete, $"{Files(propertyId)}/{fileId}", null, ct);
 
     private static string Files(Guid propertyId) => $"{Base}/{propertyId}/files";
+
+    // ── Events ───────────────────────────────────────────────────────────────
+
+    public Task<ApiResult<PagedResult<ExistingPropertyEvent>>> ListEventsAsync(
+        Guid propertyId,
+        string? search = null,
+        IReadOnlyCollection<string>? types = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        int page = 1,
+        int pageSize = PagedQuery.SizeAll,
+        ContractEventSource? source = null,
+        CancellationToken ct = default) =>
+        api.GetPagedAsync<ExistingPropertyEvent>(
+            PagedQuery.For(Events(propertyId))
+                .Window(page, pageSize)
+                .Add("search", search)
+                .AddMany("types", types)
+                .Add("from", from)
+                .Add("to", to)
+                .Add("sortBy", sortBy)
+                .Add("sortDir", sortDir)
+                .Add("source", source?.ToString())
+                .Build(),
+            ct);
+
+    public Task<ApiResult<ExistingPropertyEvent>> CreateEventAsync(
+        Guid propertyId, NewPropertyEvent request, CancellationToken ct = default) =>
+        api.SendAsync<ExistingPropertyEvent>(HttpMethod.Post, Events(propertyId), request, ct);
+
+    public Task<ApiResult<ExistingPropertyEvent>> UpdateEventAsync(
+        Guid propertyId, Guid eventId, UpdatePropertyEvent request, CancellationToken ct = default) =>
+        api.SendAsync<ExistingPropertyEvent>(HttpMethod.Put, $"{Events(propertyId)}/{eventId}", request, ct);
+
+    public Task<ApiResult> DeleteEventAsync(Guid propertyId, Guid eventId, CancellationToken ct = default) =>
+        api.SendAsync(HttpMethod.Delete, $"{Events(propertyId)}/{eventId}", null, ct);
+
+    private static string Events(Guid propertyId) => $"{Base}/{propertyId}/events";
+
     private static string SmartTags(Guid propertyId) => $"{Base}/{propertyId}/smart-tags";
     private static string Estimates(Guid propertyId) => $"{Base}/{propertyId}/estimates";
 }
