@@ -85,6 +85,19 @@ public class AccountContractsSectionTests
         Assert.EndsWith("/contracts", cut.Services.GetRequiredService<NavigationManager>().Uri, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The account record keeps an archived contract's tile at full tone — the muting is the property
+    /// record's choice (<c>ContractLinkTiles.DimArchived</c>), and the shared tiles must not impose it.
+    /// </summary>
+    [Fact]
+    public void An_archived_contract_is_not_muted_on_the_account_record()
+    {
+        var cut = Render(Mortgage() with { Status = ContractStatus.Archived });
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".con-party-tile")));
+        Assert.DoesNotContain("tone-muted", cut.Find(".con-party-tile").InnerHtml, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void No_rows_render_no_grid_so_the_hosts_empty_line_stands_alone()
     {

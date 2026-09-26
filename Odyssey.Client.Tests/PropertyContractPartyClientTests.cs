@@ -153,6 +153,39 @@ public class PropertyContractPartyClientTests
         Assert.False(states.ContainsKey(owned.PropertyId.ToString()));
     }
 
+    // ── Card header counts ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The collapsed card's Contracts count: absent when the server withheld it (no contracts.read),
+    /// absent at zero — a property party to nothing states no count, as on an account — and shown
+    /// otherwise, after Estimates and Smart tags.
+    /// </summary>
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData(0, false)]
+    [InlineData(2, true)]
+    public void The_card_counts_carry_contracts_only_when_there_are_some_to_count(int? contractCount, bool shown)
+    {
+        var counts = PropertiesCard.CountsFor(Property(contractCount), canReadEstimates: true);
+
+        var contracts = counts.SingleOrDefault(c => c.Label == "Contracts");
+        Assert.Equal(shown, contracts is not null);
+        if (shown)
+        {
+            Assert.Equal("handshake", contracts!.Icon);
+            Assert.Equal("2", contracts.Value);
+            Assert.Equal(["Estimates", "Smart tags", "Contracts"], counts.Select(c => c.Label));
+        }
+    }
+
+    [Fact]
+    public void The_card_counts_drop_estimates_without_the_estimates_claim()
+    {
+        var counts = PropertiesCard.CountsFor(Property(1), canReadEstimates: false);
+
+        Assert.Equal(["Smart tags", "Contracts"], counts.Select(c => c.Label));
+    }
+
     /// <summary>The dialog beside MudBlazor's providers, which host its modal.</summary>
     public sealed class DeleteHost : ComponentBase
     {

@@ -417,16 +417,21 @@ public partial class PropertiesCard
         return [OdsRecordMeta.Text(kind.Label), OdsRecordMeta.Text(p.Description), OdsRecordMeta.Text(where)];
     }
 
-    private IReadOnlyList<OdsRecordCount> CountsFor(ExistingProperty p)
+    private IReadOnlyList<OdsRecordCount> CountsFor(ExistingProperty p) => CountsFor(p, _canReadEstimates);
+
+    /// <summary>
+    /// The collapsed card's counts. Estimates follow <c>properties.estimates.read</c>; the contract
+    /// count needs no claim of its own, because the server already withholds it (null) without
+    /// <c>contracts.read</c> — and, as on an account, a property party to nothing states no count.
+    /// </summary>
+    internal static IReadOnlyList<OdsRecordCount> CountsFor(ExistingProperty p, bool canReadEstimates)
     {
         var counts = new List<OdsRecordCount>(3);
-        if (_canReadEstimates)
+        if (canReadEstimates)
             counts.Add(new OdsRecordCount("monitor", (p.EstimateCount ?? 0).ToString(CultureInfo.CurrentCulture), "Estimates"));
 
         counts.Add(new OdsRecordCount("sell", p.SmartTagCount.ToString(CultureInfo.CurrentCulture), "Smart tags"));
 
-        // Null without contracts.read — the server withholds it rather than zeroing it — and, as on
-        // an account, a property party to nothing states no count (issue #208).
         if (p.ContractCount is > 0 and var contractCount)
             counts.Add(new OdsRecordCount("handshake", contractCount.ToString(CultureInfo.CurrentCulture), "Contracts"));
 

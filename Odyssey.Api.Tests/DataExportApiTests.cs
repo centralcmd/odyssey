@@ -462,7 +462,7 @@ public class DataExportApiTests
         Assert.Equal("Lease", contract.GetProperty("name").GetString());
 
         var parties = finance.GetProperty("contractParties").EnumerateArray().ToList();
-        Assert.Equal(2, parties.Count);
+        Assert.Equal(3, parties.Count);
         Assert.All(parties, party =>
         {
             Assert.Equal(contract.GetProperty("contractId").GetGuid(), party.GetProperty("contractId").GetGuid());
@@ -474,8 +474,8 @@ public class DataExportApiTests
                 party.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
         });
 
-        // Both branches, each with the other column null. Covering only one would let a dropped
-        // relationship column pass: the surviving branch would still look correct.
+        // Every branch, each with the other columns null. Covering only some would let a dropped
+        // relationship column pass: the surviving branches would still look correct.
         var institution = Assert.Single(parties, party => party.GetProperty("contactId").ValueKind != JsonValueKind.Null);
         Assert.NotEqual(Guid.Empty, institution.GetProperty("contactId").GetGuid());
         Assert.Equal(JsonValueKind.Null, institution.GetProperty("accountId").ValueKind);
@@ -485,6 +485,13 @@ public class DataExportApiTests
         Assert.NotEqual(Guid.Empty, accountParty.GetProperty("accountId").GetGuid());
         Assert.Equal(JsonValueKind.Null, accountParty.GetProperty("contactId").ValueKind);
         Assert.Equal(JsonValueKind.Null, accountParty.GetProperty("propertyId").ValueKind);
+
+        var propertyParty = Assert.Single(parties, party => party.GetProperty("propertyId").ValueKind != JsonValueKind.Null);
+        var houseId = finance.GetProperty("properties").EnumerateArray()
+            .Single(p => p.GetProperty("name").GetString() == "Export house").GetProperty("propertyId").GetGuid();
+        Assert.Equal(houseId, propertyParty.GetProperty("propertyId").GetGuid());
+        Assert.Equal(JsonValueKind.Null, propertyParty.GetProperty("accountId").ValueKind);
+        Assert.Equal(JsonValueKind.Null, propertyParty.GetProperty("contactId").ValueKind);
 
         Assert.Single(finance.GetProperty("contractFiles").EnumerateArray());
     }
@@ -1330,6 +1337,13 @@ public class DataExportApiTests
         context.PropertySmartTags.Add(new PropertySmartTag
         {
             PropertyId = houseId, TransactionTagId = tagId, AddedAt = DateTime.UtcNow,
+        });
+        // The third branch of the one-of-three (issue #208): without a populated property party, a
+        // dropped PropertyId export column would pass, since the other two rows carry it as null.
+        context.ContractParties.Add(new ContractParty
+        {
+            ContractPartyId = Guid.NewGuid(), ContractId = contractId, PropertyId = houseId,
+            Role = ContractPartyRole.Property,
         });
         context.ContractFiles.Add(new ContractFile
         {
