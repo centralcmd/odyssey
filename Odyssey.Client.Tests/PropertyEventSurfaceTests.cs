@@ -359,6 +359,9 @@ public class PropertyEventSurfaceTests
     public void The_delete_dialog_says_the_event_log_goes_too(int count, string expected)
     {
         var ctx = NewContext();
+        // The dialog also reads the property's contracts (issue #208), but only for a contracts.read
+        // holder, which this host is not; the client is registered because the dialog injects it.
+        ctx.Services.AddSingleton(new Mock<IPropertiesApiClient>().Object);
         var cut = ctx.Render<DeleteHost>(p => p.Add(h => h.Property, Car() with { EventCount = count }));
 
         Assert.Contains(expected, cut.Markup, StringComparison.Ordinal);
