@@ -310,6 +310,22 @@ public class PropertyAttachDialogTests
         Assert.Contains("Attach document", h.SubmitButton.TextContent, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The row button's name is the file, its meta and any reason — every icon glyph inside it is
+    /// aria-hidden itself (OdsMIcon), so no ligature ("check_box_outline_blank") is read as a word.
+    /// </summary>
+    [Fact]
+    public void Every_glyph_inside_a_library_row_button_is_hidden_from_assistive_tech()
+    {
+        var h = Render();
+
+        var button = h.Row(Deed).QuerySelector("button.prop-lib-main")!;
+        var glyphs = button.QuerySelectorAll(".material-icons, .material-symbols-rounded");
+
+        Assert.NotEmpty(glyphs);
+        Assert.All(glyphs, g => Assert.Equal("true", g.GetAttribute("aria-hidden")));
+    }
+
     /// <summary>Picking a row reveals its type picker, seeded from the name — Other when nothing matches.</summary>
     [Fact]
     public void Picking_a_row_shows_its_type_picker_seeded_from_the_name()

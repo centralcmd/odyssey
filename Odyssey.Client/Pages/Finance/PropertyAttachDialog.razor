@@ -71,12 +71,8 @@
                                     <button type="button" class="prop-lib-main" disabled="@disabled"
                                             aria-pressed="@(picked is not null ? "true" : "false")"
                                             @onclick="@(() => TogglePick(file))">
-                                        <span class="prop-lib-check" aria-hidden="true">
-                                            <span class="material-icons" style="font-size:20px;">@CheckIcon(state, picked is not null)</span>
-                                        </span>
-                                        <span class="prop-lib-ic" aria-hidden="true">
-                                            <span class="material-icons" style="font-size:16px;">@ContentTypeIcon(file.ContentType)</span>
-                                        </span>
+                                        <span class="prop-lib-check"><OdsMIcon Name="@CheckIcon(state, picked is not null)" Size="20" /></span>
+                                        <span class="prop-lib-ic"><OdsMIcon Name="@ContentTypeIcon(file.ContentType)" Size="16" /></span>
                                         <span class="prop-lib-text">
                                             <span class="prop-lib-name">@file.FileName</span>
                                             <span class="prop-lib-meta">@ContentTypeShort(file.ContentType) · @OdsFileUploadDefaults.FmtSize(file.SizeBytes) · uploaded @LongDate(file.UploadedAtUtc)</span>
@@ -105,7 +101,7 @@
                         }
                     }
                     <div class="prop-lib-foot">
-                        <span class="material-icons" aria-hidden="true" style="font-size:14px;">info</span>
+                        <OdsMIcon Name="info" Size="14" />
                         Only @DocumentContentTypes.Label files can be attached — the same rule as contract documents.
                     </div>
                 </div>
