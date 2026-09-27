@@ -3,6 +3,7 @@
 // services, so the ENGINE resolves the foreign keys rather than application code.
 #pragma warning disable EF1002
 
+using Odyssey.Core.Journal;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
@@ -98,7 +99,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         Snapshot first;
         await using (var context = NewContext())
         {
-            await new PropertyService(context).Create(House("Storgata 14"), userId: null);
+            await new PropertyService(context, new ContactLookup(context)).Create(House("Storgata 14"), userId: null);
             first = await SnapshotAsync(context);
 
             await MigrationSeam.MigrateToAsync(context, PreviousMigration);
@@ -153,6 +154,8 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
             new ForeignKeyRule("PropertyEstimates", "PropertyId", "Properties", "CASCADE"),
             new ForeignKeyRule("PropertySmartTags", "PropertyId", "Properties", "CASCADE"),
             new ForeignKeyRule("PropertySmartTags", "TransactionTagId", "TransactionTags", "RESTRICT"),
+            // Issue #217: optional link to shared data, so it nulls out with the contact.
+            new ForeignKeyRule("RealEstateDetails", "HomeownerAssociationId", "Contacts", "SET NULL"),
             new ForeignKeyRule("RealEstateDetails", "PropertyId", "Properties", "CASCADE"),
             new ForeignKeyRule("VehicleDetails", "PropertyId", "Properties", "CASCADE"),
         ], rules);
@@ -200,7 +203,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         var tagId = await SeedTagAsync(context, "Maintenance");
         var propertyId = await SeedWatchedPropertyAsync(context, "Doomed", tagId);
 
-        Assert.True(await new PropertyService(context).Delete(propertyId, userId: null));
+        Assert.True(await new PropertyService(context, new ContactLookup(context)).Delete(propertyId, userId: null));
 
         await using var verify = NewContext();
         Assert.False(await verify.Properties.AnyAsync());
@@ -242,7 +245,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         Guid propertyId, tagId;
         await using (var seed = NewContext())
         {
-            propertyId = (await new PropertyService(seed).Create(House("Storgata 14"), userId: null)).PropertyId;
+            propertyId = (await new PropertyService(seed, new ContactLookup(seed)).Create(House("Storgata 14"), userId: null)).PropertyId;
             tagId = await SeedTagAsync(seed, "Maintenance");
         }
 
@@ -289,7 +292,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         await MigrateAsync();
 
         await using var context = NewContext();
-        var properties = new PropertyService(context);
+        var properties = new PropertyService(context, new ContactLookup(context));
         var estimates = new PropertyEstimateService(context);
         var cheap = (await properties.Create(House("Cheap"), userId: null)).PropertyId;
         var dear = (await properties.Create(House("Dear"), userId: null)).PropertyId;
@@ -314,7 +317,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         await MigrateAsync();
 
         await using var context = NewContext();
-        var properties = new PropertyService(context);
+        var properties = new PropertyService(context, new ContactLookup(context));
         await properties.Create(House("Alpha"), userId: null);
         var sold = Car("Old car");
         sold.DisposedDate = Anchor;
@@ -363,7 +366,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         Assert.Equal(2m, (await accountEstimates.GetCurrent(account.AccountId, Anchor.AddMonths(2)))!.Value);
         Assert.Equal([2m, 1m], (await accountEstimates.GetHistory(account.AccountId))!.Select(e => e.Value));
 
-        var propertyId = (await new PropertyService(context).Create(House("Storgata 14"), userId: null)).PropertyId;
+        var propertyId = (await new PropertyService(context, new ContactLookup(context)).Create(House("Storgata 14"), userId: null)).PropertyId;
         var propertyEstimates = new PropertyEstimateService(context);
         await propertyEstimates.Create(propertyId, Estimate(1m, Anchor));
         await propertyEstimates.Create(propertyId, Estimate(2m, Anchor.AddMonths(1)));
@@ -406,7 +409,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
 
     private static async Task<Guid> SeedWatchedPropertyAsync(OdysseyContext context, string name, Guid tagId)
     {
-        var propertyId = (await new PropertyService(context).Create(House(name), userId: null)).PropertyId;
+        var propertyId = (await new PropertyService(context, new ContactLookup(context)).Create(House(name), userId: null)).PropertyId;
         await new PropertyEstimateService(context).Create(propertyId, Estimate(1m, Anchor));
         context.PropertySmartTags.Add(new PropertySmartTag { PropertyId = propertyId, TransactionTagId = tagId, AddedAt = Anchor });
         await context.SaveChangesAsync();

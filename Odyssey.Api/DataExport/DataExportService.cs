@@ -548,6 +548,7 @@ public sealed class DataExportService
                 LivingAreaSqm = details.LivingAreaSqm,
                 PlotAreaSqm = details.PlotAreaSqm,
                 BuildYear = details.BuildYear,
+                HomeownerAssociationId = details.HomeownerAssociationId,
             });
 
     private IQueryable<VehicleDetailsExport> VehicleDetailsQuery() =>

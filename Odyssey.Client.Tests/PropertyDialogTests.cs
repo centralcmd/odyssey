@@ -26,7 +26,9 @@ public class PropertyDialogTests
 {
     private static readonly Guid PropertyId = Guid.NewGuid();
 
-    private static ExistingProperty Existing(bool archived = false, int? estimates = 0) => new()
+    private static readonly Guid AssociationId = Guid.NewGuid();
+
+    private static ExistingProperty Existing(bool archived = false, int? estimates = 0, bool withAssociation = false) => new()
     {
         PropertyId = PropertyId,
         Name = "Storgata 14",
@@ -35,10 +37,18 @@ public class PropertyDialogTests
         CurrencyCode = "NOK",
         Archived = archived ? new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) : null,
         EstimateCount = estimates,
-        RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.Apartment, City = "Oslo", CountryCode = "NO" },
+        RealEstateDetails = new RealEstateDetailsDto
+        {
+            Kind = RealEstateKind.Apartment, City = "Oslo", CountryCode = "NO",
+            HomeownerAssociationId = withAssociation ? AssociationId : null,
+        },
+        HomeownerAssociation = withAssociation
+            ? new PropertyHomeownerAssociation { ContactId = AssociationId, Name = "Storgata Borettslag" }
+            : null,
     };
 
-    private static (IRenderedComponent<DialogHost> Cut, Mock<IPropertiesApiClient> Properties) Render(ExistingProperty? property = null)
+    private static (IRenderedComponent<DialogHost> Cut, Mock<IPropertiesApiClient> Properties) Render(
+        ExistingProperty? property = null, ApiResult? updateResult = null)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -51,7 +61,7 @@ public class PropertyDialogTests
                 PropertyId = Guid.NewGuid(), Name = body.Name, Description = body.Description, CurrencyCode = body.CurrencyCode,
             }, HttpStatusCode.Created));
         properties.Setup(p => p.UpdateAsync(It.IsAny<Guid>(), It.IsAny<NewProperty>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+            .ReturnsAsync(updateResult ?? ApiResult.Success(HttpStatusCode.NoContent));
         ctx.Services.AddSingleton(properties.Object);
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         var preferences = new Mock<IUserPreferenceService>();
@@ -192,6 +202,114 @@ public class PropertyDialogTests
 
         cut.WaitForAssertion(() => Assert.Contains("Disposed can’t be before Acquired.", cut.Markup, StringComparison.Ordinal));
         properties.Verify(p => p.UpdateAsync(It.IsAny<Guid>(), It.IsAny<NewProperty>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ── Homeowner association (issue #217) ──────────────────────────────────
+
+    /// <summary>PUT is a full replace, so an unrelated edit must carry the stored association id.</summary>
+    [Fact]
+    public async Task An_edit_round_trips_the_stored_homeowner_association()
+    {
+        var (cut, properties) = Render(Existing(withAssociation: true));
+        await SetField(cut, "Name", "Storgata 14B");
+
+        Submit(cut, "Save changes");
+
+        cut.WaitForAssertion(() => properties.Verify(p => p.UpdateAsync(PropertyId,
+            It.Is<NewProperty>(b => b.RealEstateDetails!.HomeownerAssociationId == AssociationId),
+            It.IsAny<CancellationToken>()), Times.Once));
+    }
+
+    [Fact]
+    public async Task Clearing_the_association_sends_null()
+    {
+        var (cut, properties) = Render(Existing(withAssociation: true));
+        var picker = cut.FindComponent<OdsHomeownerAssociationSelect>();
+        await cut.InvokeAsync(() => picker.Instance.ValueChanged.InvokeAsync(null));
+
+        Submit(cut, "Save changes");
+
+        cut.WaitForAssertion(() => properties.Verify(p => p.UpdateAsync(PropertyId,
+            It.Is<NewProperty>(b => b.RealEstateDetails!.HomeownerAssociationId == null),
+            It.IsAny<CancellationToken>()), Times.Once));
+    }
+
+    /// <summary>
+    /// The server's refusal lands on the picker in the design system's copy — never the raw message,
+    /// which names the contact by id.
+    /// </summary>
+    [Theory]
+    [InlineData(HttpStatusCode.UnprocessableEntity, "is not an organization and cannot be a homeowner association.", "isn’t an organization")]
+    [InlineData(HttpStatusCode.BadRequest, "is archived and cannot be set as a homeowner association.", "That organization is archived.")]
+    [InlineData(HttpStatusCode.BadRequest, "was not found.", "That contact no longer exists")]
+    public async Task A_refused_association_lands_on_the_picker(HttpStatusCode status, string serverTail, string shown)
+    {
+        var refused = ApiResult.Failure(status, new ApiProblem
+        {
+            Detail = $"Contact with ID {Guid.Empty} {serverTail}",
+            Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["RealEstateDetails.HomeownerAssociationId"] = [$"Contact with ID {Guid.Empty} {serverTail}"],
+            },
+        });
+        var (cut, _) = Render(Existing(), refused);
+        var picker = cut.FindComponent<OdsHomeownerAssociationSelect>();
+        await cut.InvokeAsync(() => picker.Instance.ValueChanged.InvokeAsync(Guid.NewGuid().ToString()));
+
+        Submit(cut, "Save changes");
+
+        cut.WaitForAssertion(() => Assert.Contains(shown, picker.Instance.Error ?? string.Empty, StringComparison.Ordinal));
+        Assert.DoesNotContain(Guid.Empty.ToString(), picker.Instance.Error!, StringComparison.Ordinal);
+    }
+
+    private static Odyssey.Dtos.Journal.ExistingContact Contact(
+        Guid id, Odyssey.Dtos.ContactType type, bool archived = false) => new()
+    {
+        ContactId = id,
+        ResolvedDisplayName = "Contact",
+        NormalizedName = "CONTACT",
+        ExternalUid = string.Empty,
+        Type = type,
+        Archived = archived ? new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc) : null,
+    };
+
+    /// <summary>
+    /// The client pre-check mirrors the server's R3/R4 on a CHANGED id only, and defers an id the
+    /// loaded list does not carry to the server rather than guessing.
+    /// </summary>
+    [Fact]
+    public void The_association_pre_check_refuses_a_changed_archived_or_non_organization_id_only()
+    {
+        var active = Guid.NewGuid();
+        var archived = Guid.NewGuid();
+        var person = Guid.NewGuid();
+        IReadOnlyList<Odyssey.Dtos.Journal.ExistingContact> contacts =
+        [
+            Contact(active, Odyssey.Dtos.ContactType.Organization),
+            Contact(archived, Odyssey.Dtos.ContactType.Organization, archived: true),
+            Contact(person, Odyssey.Dtos.ContactType.Person),
+        ];
+
+        Assert.Null(PropertyDialog.AssociationPreCheck(null, null, contacts));
+        Assert.Null(PropertyDialog.AssociationPreCheck(active.ToString(), null, contacts));
+        Assert.Equal(PropertyDialog.AssociationArchived,
+            PropertyDialog.AssociationPreCheck(archived.ToString(), null, contacts));
+        Assert.Equal(PropertyDialog.AssociationNotOrganization,
+            PropertyDialog.AssociationPreCheck(person.ToString(), active.ToString(), contacts));
+
+        // Kept links are never re-checked (§8.3), and an unknown id is the server's to answer.
+        Assert.Null(PropertyDialog.AssociationPreCheck(archived.ToString(), archived.ToString(), contacts));
+        Assert.Null(PropertyDialog.AssociationPreCheck(person.ToString(), person.ToString(), contacts));
+        Assert.Null(PropertyDialog.AssociationPreCheck(Guid.NewGuid().ToString(), null, contacts));
+    }
+
+    [Fact]
+    public void A_vehicle_has_no_association_picker()
+    {
+        var (cut, _) = Render();
+        cut.FindAll(".odc-cardsel-opt")[1].Click();
+
+        Assert.Empty(cut.FindComponents<OdsHomeownerAssociationSelect>());
     }
 
     public sealed class DialogHost : ComponentBase

@@ -40,4 +40,13 @@ public sealed record RealEstateDetailsDto
 
     [Range(1000, 2200)]
     public int? BuildYear { get; set; }
+
+    /// <summary>
+    /// The homeowner association's contact id (issue #217) — scalar only, so a request can never create
+    /// or mutate a contact. <c>null</c> or omitted means none; because <c>PUT</c> is a full replace, an
+    /// omitted value clears a stored link. The target must exist, be an <c>Organization</c> and not be
+    /// archived — rules that depend on persisted rows, so the service checks them, and only when the id
+    /// changes. The resolved name is on <see cref="ExistingProperty.HomeownerAssociation"/>.
+    /// </summary>
+    public Guid? HomeownerAssociationId { get; set; }
 }

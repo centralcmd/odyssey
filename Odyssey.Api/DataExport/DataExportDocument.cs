@@ -371,6 +371,7 @@ public sealed class RealEstateDetailsExport
     public decimal? LivingAreaSqm { get; init; }
     public decimal? PlotAreaSqm { get; init; }
     public int? BuildYear { get; init; }
+    public Guid? HomeownerAssociationId { get; init; }
 }
 
 /// <summary>The vehicle sub-record of a <see cref="PropertyExport"/>, sharing its key.</summary>

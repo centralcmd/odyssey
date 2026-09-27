@@ -23,7 +23,7 @@ public class PropertyEventAutomationTests
         public override DateTimeOffset GetUtcNow() => new(now);
     }
 
-    private static PropertyService Service(OdysseyContext context) => new(context, new FixedTimeProvider(Now));
+    private static PropertyService Service(OdysseyContext context) => new(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now));
 
     private static List<PropertyEvent> Events(OdysseyContext context, Guid propertyId) =>
         [.. context.PropertyEvents.AsNoTracking().Where(e => e.PropertyId == propertyId).OrderBy(e => e.Type)];

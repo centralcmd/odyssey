@@ -54,7 +54,7 @@ public class PropertyContractPartyServiceTests
             new StubCaps(), logger ?? new RecordingLogger<ContractService>());
 
     private static PropertyService Properties(OdysseyContext context, ILogger<PropertyService>? logger = null) =>
-        new(context, new FixedTimeProvider(FixedToday), logger);
+        new(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(FixedToday), logger);
 
     private static NewContract Contract(string name = "Agreement", DtoContractType type = DtoContractType.Other) => new()
     {

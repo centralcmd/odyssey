@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Components;
 using Odyssey.ApiClient;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages.Finance;
 
@@ -59,6 +61,12 @@ public partial class PropertyDialog
     private decimal? _plotArea;
     private decimal? _buildYear;
 
+    // Issue #217. PUT is a full replace, so the stored id is loaded here and round-tripped; clearing
+    // the picker sends null and removes the link.
+    private string? _homeownerAssociationId;
+    private IReadOnlyList<ExistingContact> _contacts = [];
+    private bool _contactsLoading;
+
     private VehicleKind _vehicleKind = VehicleKind.Car;
     private string? _registration;
     private string? _vin;
@@ -86,6 +94,14 @@ public partial class PropertyDialog
     private bool CurrencyChangeBlocked =>
         Property is { EstimateCount: > 0 } p
         && !string.Equals(p.CurrencyCode, _currencyCode, StringComparison.OrdinalIgnoreCase);
+
+    private string? StoredAssociationId => Property?.RealEstateDetails?.HomeownerAssociationId?.ToString();
+
+    // The design system's copy for the three server refusals on a changed id (400 not found, 400
+    // archived, 422 not an organization). None echoes more than the user picked.
+    internal const string AssociationNotFound = "That contact no longer exists — it may have been deleted. Pick another association.";
+    internal const string AssociationArchived = "That organization is archived. Restore it in Contacts or pick another.";
+    internal const string AssociationNotOrganization = "That contact isn’t an organization, so it can’t be a homeowner association.";
 
     private string? Err(string key) => _errors.TryGetValue(key, out var message) ? message : null;
 
@@ -116,6 +132,7 @@ public partial class PropertyDialog
             _livingArea = re.LivingAreaSqm;
             _plotArea = re.PlotAreaSqm;
             _buildYear = re.BuildYear;
+            _homeownerAssociationId = re.HomeownerAssociationId?.ToString();
         }
 
         if (p.VehicleDetails is { } ve)
@@ -138,6 +155,22 @@ public partial class PropertyDialog
         _currencyOptions = await ReferenceData.CurrencyOptionsAsync();
         if (string.IsNullOrEmpty(_currencyCode) && _currencyOptions.Count > 0)
             _currencyCode = _currencyOptions[0].Value;
+
+        _contactsLoading = true;
+        try
+        {
+            _contacts = await ReferenceData.ContactsAsync();
+        }
+        finally
+        {
+            _contactsLoading = false;
+        }
+    }
+
+    private void OnAssociationChanged(string? value)
+    {
+        _homeownerAssociationId = string.IsNullOrWhiteSpace(value) ? null : value;
+        _errors.Remove("homeownerAssociationId");
     }
 
     private void OnTypeChanged(string value)
@@ -218,7 +251,30 @@ public partial class PropertyDialog
                 _errors["livingAreaSqm"] = "Between 0 and 1,000,000 m².";
             if (_plotArea is { } pa && (pa < 0 || pa > 1_000_000))
                 _errors["plotAreaSqm"] = "Between 0 and 1,000,000 m².";
+            if (AssociationPreCheck(_homeownerAssociationId, StoredAssociationId, _contacts) is { } associationError)
+                _errors["homeownerAssociationId"] = associationError;
         }
+    }
+
+    /// <summary>
+    /// The server's R2–R4 against the loaded contact list, run only when the id changed — a kept link is
+    /// never re-checked, matching the server's change-only rule (§8.3). An id the list does not carry
+    /// is left to the server rather than guessed at, since the list may simply have failed to load.
+    /// </summary>
+    internal static string? AssociationPreCheck(
+        string? associationId, string? storedAssociationId, IReadOnlyList<ExistingContact> contacts)
+    {
+        if (string.IsNullOrEmpty(associationId) || associationId == storedAssociationId)
+            return null;
+
+        var contact = contacts.FirstOrDefault(c => c.ContactId.ToString() == associationId);
+        return contact switch
+        {
+            null => null,
+            { Archived: not null } => AssociationArchived,
+            { Type: not ContactType.Organization } => AssociationNotOrganization,
+            _ => null,
+        };
     }
 
     private NewProperty BuildRequest() => new()
@@ -244,6 +300,7 @@ public partial class PropertyDialog
             LivingAreaSqm = _livingArea,
             PlotAreaSqm = _plotArea,
             BuildYear = _buildYear is { } by ? (int)by : null,
+            HomeownerAssociationId = Guid.TryParse(_homeownerAssociationId, out var association) ? association : null,
         },
         VehicleDetails = !IsVehicle ? null : new VehicleDetailsDto
         {
@@ -301,6 +358,17 @@ public partial class PropertyDialog
             "name", "description", "currencyCode", "disposedDate", "countryCode", "buildYear",
             "livingAreaSqm", "plotAreaSqm", "modelYear", "registrationNumber", "vin",
         ];
+
+        // The server's messages name the contact by id only; the field shows the design system's copy,
+        // chosen by which of the three refusals it was.
+        if (string.Equals(leaf, "homeownerAssociationId", StringComparison.OrdinalIgnoreCase))
+        {
+            _errors["homeownerAssociationId"] =
+                message.Contains("archived", StringComparison.OrdinalIgnoreCase) ? AssociationArchived
+                : message.Contains("not an organization", StringComparison.OrdinalIgnoreCase) ? AssociationNotOrganization
+                : AssociationNotFound;
+            return true;
+        }
 
         var key = known.FirstOrDefault(k => string.Equals(k, leaf, StringComparison.OrdinalIgnoreCase));
         if (key is null)

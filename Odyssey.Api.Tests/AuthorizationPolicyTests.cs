@@ -235,6 +235,51 @@ public class AuthorizationPolicyTests
             + "that do: " + string.Join(", ", gaps));
     }
 
+    /// <summary>
+    /// Issue #217 §7.2 lets <c>properties.create</c>/<c>.update</c> set a homeowner association without
+    /// also requiring <c>contacts.read</c>, and the 400/422 split answers whether a GUID names an
+    /// Organization contact. That is harmless only while no role holds a property write claim without
+    /// <c>contacts.read</c>.
+    /// </summary>
+    [Fact]
+    public void No_role_holds_a_property_write_claim_without_ContactsRead()
+    {
+        var gaps = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.PropertiesCreate, StringComparer.Ordinal)
+                           || role.Claims.Contains(PermissionClaims.PropertiesUpdate, StringComparer.Ordinal))
+            .Where(role => !role.Claims.Contains(PermissionClaims.ContactsRead, StringComparer.Ordinal))
+            .Select(role => role.Role)
+            .ToList();
+
+        Assert.True(gaps.Count == 0,
+            "Issue #217 §7.2 gates the homeowner-association write on properties.create/.update alone "
+            + "because no shipped role holds either without contacts.read. Re-make that argument, or "
+            + "gate the link on contacts.read, before granting them apart. Roles that do: "
+            + string.Join(", ", gaps));
+    }
+
+    /// <summary>
+    /// Issue #217 §7.3 — the read-side twin of the test above, raised as a non-blocking observation in
+    /// the spec's security review. <c>ExistingProperty.HomeownerAssociation</c> shows a contact's name
+    /// under <c>properties.read</c>; it is no disclosure while every <c>properties.read</c> holder also
+    /// holds <c>contacts.read</c>.
+    /// </summary>
+    [Fact]
+    public void No_role_holds_PropertiesRead_without_ContactsRead()
+    {
+        var gaps = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.PropertiesRead, StringComparer.Ordinal))
+            .Where(role => !role.Claims.Contains(PermissionClaims.ContactsRead, StringComparer.Ordinal))
+            .Select(role => role.Role)
+            .ToList();
+
+        Assert.True(gaps.Count == 0,
+            "Issue #217 §7.3 returns a homeowner association's contact name under properties.read "
+            + "because no shipped role holds it without contacts.read. Re-make that argument, or "
+            + "withhold the name from such callers, before granting them apart. Roles that do: "
+            + string.Join(", ", gaps));
+    }
+
     [Fact]
     public void PermissionClaimsConfigurePolicies()
     {

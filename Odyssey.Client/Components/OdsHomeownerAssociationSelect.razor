@@ -1,0 +1,184 @@
+@using Odyssey.Dtos
+@using Odyssey.Dtos.Journal
+@inject IJSRuntime JS
+
+@*
+    OdsHomeownerAssociationSelect — the optional picker that links a real-estate property to the
+    homeowner association administering it (borettslag / sameie / HOA). Odyssey Design System ·
+    components/HomeownerAssociationSelect (issue #217).
+
+    The OdsCustodianSelect shape — OdsCombobox in the standard field chrome, clearable, optional — with
+    two differences the server rules dictate:
+      • Organization only. Options are the ACTIVE Organization contacts (the server answers 400 for an
+        archived one and 422 for a Person).
+      • Change-only rule (§8.3). StoredValue is the id the property holds today. When Value equals it
+        and that contact has since been archived or re-typed, the link is a legacy row: it stays
+        selectable, saving keeps it, and the help line says so and how to change it — a stated notice
+        in the polite region, never an error.
+
+    Accessibility is OdsCustodianSelect's contract: a real <label for>, two always-mounted live
+    regions (polite status, assertive alert) wired to the input by aria-describedby, and Error flipping
+    aria-invalid.
+*@
+
+<div class="@FieldClass">
+    <label class="odc-field-label" for="@_inputId">
+        @Label
+    </label>
+
+    <OdsCombobox Value="@Value"
+                 ValueChanged="OnValueChanged"
+                 Options="_options"
+                 Placeholder="@Placeholder"
+                 Disabled="@PickerDisabled"
+                 Loading="@Loading"
+                 EmptyText="No organizations match"
+                 InputId="@_inputId"
+                 Error="@HasError"
+                 aria-describedby="@_describedBy" />
+
+    <div class="odc-field-msgs">
+        <div class="@StatusClass" id="@_statusId" role="status" aria-live="polite">
+            @if (LegacyMessage is not null)
+            {
+                <span class="material-icons odc-hoa-warn-ic" aria-hidden="true">info</span>
+            }
+            @StatusMessage
+        </div>
+        <div class="odc-field-help error" id="@_alertId" role="alert">@AlertMessage</div>
+    </div>
+</div>
+
+@code {
+    /// <summary>Selected contact id, or empty/null for no association. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>Contacts to choose from; only active Organizations are offered.</summary>
+    [Parameter] public IReadOnlyList<ExistingContact> Contacts { get; set; } = [];
+
+    /// <summary>
+    /// The id the property stores today. A kept link whose contact is now archived or no longer an
+    /// Organization is shown with a notice rather than refused, because the server keeps it (§8.3).
+    /// </summary>
+    [Parameter] public string? StoredValue { get; set; }
+
+    /// <summary>
+    /// The stored link's resolved name, from <c>ExistingProperty.HomeownerAssociation</c> — keeps the
+    /// trigger readable when the contact list does not carry the row (not yet loaded, or failed).
+    /// </summary>
+    [Parameter] public string? StoredName { get; set; }
+
+    [Parameter] public string Label { get; set; } = "Homeowner association";
+
+    [Parameter] public string Placeholder { get; set; } = "Search organizations…";
+
+    [Parameter] public string Help { get; set; } = "The borettslag, sameie or HOA that administers it.";
+
+    /// <summary>The server's (or a pre-check's) message keyed <c>RealEstateDetails.HomeownerAssociationId</c>.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Loading { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private readonly string _inputId = $"hoa-input-{Guid.NewGuid():N}";
+    private readonly string _statusId = $"hoa-status-{Guid.NewGuid():N}";
+    private readonly string _alertId = $"hoa-alert-{Guid.NewGuid():N}";
+
+    private const string EmptyHint = "No organizations in Contacts yet — add the association there first.";
+
+    private IReadOnlyList<OdsOption> _options = [];
+    private bool _noEligible;
+
+    private bool HasError => !string.IsNullOrWhiteSpace(Error);
+
+    private string FieldClass =>
+        $"odc-field odc-hoa-field{(HasError ? " error" : string.Empty)}{(string.IsNullOrWhiteSpace(Class) ? string.Empty : $" {Class}")}";
+
+    private string _describedBy => $"{_statusId} {_alertId}";
+
+    private bool PickerDisabled => Disabled || Loading || (_noEligible && string.IsNullOrEmpty(Value));
+
+    private ExistingContact? Current =>
+        string.IsNullOrEmpty(Value) ? null : Contacts.FirstOrDefault(c => c.ContactId.ToString() == Value);
+
+    /// <summary>The kept-legacy-link notice (§8.3), or <c>null</c> when the link is not a legacy row.</summary>
+    private string? LegacyMessage
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Value) || Value != StoredValue || Current is not { } contact)
+                return null;
+
+            var name = contact.ResolvedDisplayName;
+            if (contact.Archived is not null)
+                return $"{name} is archived. Saving keeps this link; pick another association or clear it to change it.";
+            if (contact.Type != ContactType.Organization)
+                return $"{name} is no longer an organization. Saving keeps this link; pick another association or clear it to change it.";
+            return null;
+        }
+    }
+
+    private string StatusClass => LegacyMessage is not null ? "odc-field-help warn" : "odc-field-help";
+
+    private string StatusMessage =>
+        HasError ? string.Empty
+        : Loading ? "Loading contacts…"
+        : LegacyMessage is { } legacy ? legacy
+        : _noEligible ? EmptyHint
+        : Help;
+
+    private string AlertMessage => HasError ? Error! : string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        var organizationMeta = OdsTypeRegistries.ContactTypeOf(nameof(ContactType.Organization));
+        var eligible = Contacts
+            .Where(c => c.Type == ContactType.Organization && c.Archived is null)
+            .OrderBy(c => c.ResolvedDisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .Select(OdsContactOptions.From)
+            .ToList();
+        _noEligible = eligible.Count == 0;
+
+        // The selected link stays resolvable even when it would no longer be eligible, so its name
+        // still reads on the trigger — in its own contact type's mark, suffixed when archived.
+        if (!string.IsNullOrEmpty(Value) && eligible.All(o => o.Value != Value))
+        {
+            if (Current is { } linked)
+            {
+                var meta = OdsTypeRegistries.ContactTypeOf(linked.Type.ToString());
+                var label = linked.ResolvedDisplayName + (linked.Archived is not null ? " (archived)" : string.Empty);
+                eligible.Insert(0, new OdsOption(Value, label) { Icon = meta.Icon, IconColor = meta.Color });
+            }
+            else if (Value == StoredValue && !string.IsNullOrWhiteSpace(StoredName))
+            {
+                eligible.Insert(0, new OdsOption(Value, StoredName) { Icon = organizationMeta.Icon, IconColor = organizationMeta.Color });
+            }
+        }
+
+        _options = eligible;
+    }
+
+    private Task OnValueChanged(string? value) => ValueChanged.InvokeAsync(value);
+
+    // MudBlazor renders its own aria-describedby after splatted attributes, so set it on the inner
+    // input by id (the OdsCustodianSelect wiring).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!OperatingSystem.IsBrowser())
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("odsSetAttr", _inputId, "aria-describedby", _describedBy);
+        }
+        catch (Exception)
+        {
+            // Best-effort a11y wiring; never break the field if interop is unavailable.
+        }
+    }
+}

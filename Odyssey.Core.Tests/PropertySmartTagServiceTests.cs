@@ -19,7 +19,7 @@ public class PropertySmartTagServiceTests
     }
 
     private static async Task<Guid> SeedProperty(OdysseyContext context) =>
-        (await new PropertyService(context).Create(PropertyTestData.House(), userId: null)).PropertyId;
+        (await new PropertyService(context, TestContextFactory.ContactLookup(context)).Create(PropertyTestData.House(), userId: null)).PropertyId;
 
     private static async Task<Guid> SeedTag(OdysseyContext context, string name, bool archived = false)
     {

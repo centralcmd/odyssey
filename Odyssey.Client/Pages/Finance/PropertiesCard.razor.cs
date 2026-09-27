@@ -545,9 +545,20 @@ public partial class PropertiesCard
         || !string.IsNullOrWhiteSpace(v.Make) || !string.IsNullOrWhiteSpace(v.Model)
         || v.ModelYear is not null || v.FirstRegisteredDate is not null;
 
-    private static bool HasRealEstateTiles(RealEstateDetailsDto re) =>
+    internal static bool HasRealEstateTiles(ExistingProperty property, RealEstateDetailsDto re) =>
         PropertyVisuals.AddressText(re) is not null || !string.IsNullOrWhiteSpace(re.CadastralNumber)
+        || property.HomeownerAssociation is not null
         || re.LivingAreaSqm is not null || re.PlotAreaSqm is not null || re.BuildYear is not null;
+
+    /// <summary>
+    /// The homeowner-association tile's foot (issue #217): the contact type, or — for an archived
+    /// contact — that state and since when, so it is stated in text and never by tone alone.
+    /// </summary>
+    internal static string AssociationFoot(PropertyHomeownerAssociation association) =>
+        association.Archived is { } archived ? $"Archived contact · since {LongDate(archived)}" : "Organization";
+
+    private static readonly OdsTypeOption OrganizationMeta =
+        OdsTypeRegistries.ContactTypeOf(nameof(Odyssey.Dtos.ContactType.Organization));
 
     private static string Area(decimal sqm) => $"{sqm.ToString("#,##0.#", CultureInfo.InvariantCulture)} m²";
 

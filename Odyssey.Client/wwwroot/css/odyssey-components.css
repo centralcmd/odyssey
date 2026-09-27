@@ -82,6 +82,13 @@
 .odc-custodian.archived .odc-custodian-name { font-weight: var(--fw-regular); }
 .odc-custodian-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
+/* ---------- Homeowner association picker ----------
+   OdsCustodianSelect's chrome; the kept-legacy-link notice (issue #217 §8.3) reads
+   in the primary text colour with an info glyph, so it is neither an error nor lost
+   in the muted help tone (Odyssey Design System · components/HomeownerAssociationSelect). */
+.odc-hoa-field .odc-field-help.warn { display: flex; gap: 6px; align-items: flex-start; color: var(--mud-palette-text-primary); }
+.odc-hoa-warn-ic { font-size: 15px !important; line-height: 1.3 !important; color: var(--mud-palette-warning); flex: none; }
+
 /* ---------- Account-type / account-status chip ----------
    The siblings of the custodian chip — same pill shell. AccountTypeChip puts the
    type glyph in its categorical color; AccountStatusChip leads with a tone-colored

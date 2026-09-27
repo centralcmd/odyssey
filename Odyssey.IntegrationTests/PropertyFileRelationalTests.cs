@@ -177,7 +177,7 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
             fileId = await SeedFileAsync(context);
             await Service(context).AttachFile(propertyId, new AttachPropertyFileRequest { FileMetadataId = fileId }, Attacher);
 
-            Assert.True(await new PropertyService(context).Delete(propertyId, userId: null));
+            Assert.True(await new PropertyService(context, new ContactLookup(context)).Delete(propertyId, userId: null));
         }
 
         await using var verify = NewContext();
@@ -411,7 +411,7 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
         new(context, new ContactLookup(context));
 
     private static async Task<Guid> SeedPropertyAsync(OdysseyContext context, string name) =>
-        (await new PropertyService(context).Create(new NewProperty
+        (await new PropertyService(context, new ContactLookup(context)).Create(new NewProperty
         {
             Name = name,
             Description = "Residence",
