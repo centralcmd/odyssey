@@ -207,6 +207,28 @@ public class OdsLineChartTests
         Assert.Contains(states, s => s.Contains("estimate took effect", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Issue #215 AC10: with no description passed, the table reads exactly as it did before the two
+    /// optional parameters existed — which is what keeps every other caller (TaxStatementsCard) unchanged.
+    /// </summary>
+    [Fact]
+    public void With_no_descriptions_passed_the_table_keeps_its_original_wording()
+    {
+        using var ctx = NewContext();
+        var cut = Render(ctx,
+        [
+            new OdsLinePoint("a", 100m, OdsLinePointKind.Partial),
+            new OdsLinePoint("b", 200m, OdsLinePointKind.Revalued),
+        ], p => p.Add(c => c.TextEquivalent, true));
+
+        var states = cut.FindAll("table.odc-sr-only tbody td:last-child").Select(e => e.TextContent.Trim()).ToList();
+
+        Assert.Equal(
+            ["Understated — an account had no exchange rate for this period",
+             "Revalued — an estimate took effect in this period"],
+            states);
+    }
+
     // ── AC17 / V15 — the delta ─────────────────────────────────────────────────────────────────
 
     /// <summary>

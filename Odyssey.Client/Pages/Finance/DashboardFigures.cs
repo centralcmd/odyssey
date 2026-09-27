@@ -337,12 +337,15 @@ internal static class DashboardFigures
             ? $"{understatedLabels[0]} is understated"
             : $"{understatedLabels.Count} periods are understated";
 
-        // Exactly one member across both lists is named; several are described by kind.
+        // Exactly one member across both lists is named; several are described by kind. Neither list
+        // populated keeps today's account wording.
         var because = (unconvertedAccounts.Count, unconvertedProperties.Count) switch
         {
             (1, 0) => $" — {unconvertedAccounts[0].Name} ({unconvertedAccounts[0].CurrencyCode}) had no exchange rate",
             (0, 1) => $" — {unconvertedProperties[0].Name} ({unconvertedProperties[0].CurrencyCode}) had no exchange rate",
-            var (accounts, properties) => $" — {MemberKind(accounts > 0 || properties == 0, properties > 0)} had no exchange rate",
+            (0, > 0) => $" — {MemberKind(anyAccount: false, anyProperty: true)} had no exchange rate",
+            ( > 0, > 0) => $" — {MemberKind(anyAccount: true, anyProperty: true)} had no exchange rate",
+            _ => $" — {MemberKind(anyAccount: true, anyProperty: false)} had no exchange rate",
         };
 
         var withheld = deltaWithheld
