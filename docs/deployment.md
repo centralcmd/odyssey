@@ -841,13 +841,17 @@ migrations are forward-only** — if the newer release added a migration, rollin
 back does not roll the database back. Take a DB backup before deploying a release that
 includes migrations.
 
-The migration history has been squashed to a single `InitialCreate` more than once — most recently
-when the identity context was merged into `OdysseyContext` — so there is no upgrade path from a
-database built by an earlier build. What licenses a squash is that **no deployed database holds data
-anyone needs to keep**, not the absence of releases: tagged releases and published images have existed
-since `v0.8.0`. Every such database has been a development or test one; recreate rather than migrate
-them. The first real deployment retires that licence permanently, after which a schema change is an
-additive migration even when a squash would be tidier.
+The migration history was squashed to a single `InitialCreate` more than once during development,
+most recently when the identity context was merged into `OdysseyContext`; a database built before
+`20260829095318_InitialCreate` has no upgrade path and must be recreated. **That is over.** A
+production database with real data has run since `v0.35.0`, so from then on every schema change is an
+additive migration and the history is never squashed again.
+
+**A data migration is restored from backup, not rolled back.** `Down()` reverses schema at most; a
+migration that moves or rewrites rows (for example `RetirePropertyAndVehicleAccountTypes`, which moves
+Property- and Vehicle-type accounts onto property records and whose `Down()` drops only a constraint)
+cannot be reversed by any EF command. Take the backup above before upgrading across one, and keep it
+until the upgraded instance has been checked.
 
 ## Who can read contact personal data
 

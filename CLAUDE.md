@@ -785,13 +785,14 @@ moves out of configuration has its environment plumbing **deleted**, not carried
 seeds the shipped default and the administrator sets the real value at `/settings`.
 
 `SystemSettingsConfigAdoption` used to do that carrying, for the keys migrated by issues #421, #434 and
-#439. It was removed once it was established that no deployment had ever run a release it could upgrade
-*from* — every `odyssey` database in existence is a local dev or test database, the same precondition
-that licenses a migration squash. **If that stops being true, this decision is retired with it**: from
-the first real deployment onwards, moving a configured setting into the store needs a carry-over step
-again, because a compile-time `InsertData` cannot see an operator's env var and would silently replace
-their value with the shipped default. What that step must get right, recorded here so it does not have
-to be rediscovered: ownership is decided by `UpdatedBy IS NULL`, never by comparing values (comparing
+#439. It was removed when no deployment had ever run a release it could upgrade *from*. **That
+precondition no longer holds: a production database with real data has existed since `v0.35.0`
+(September 2026)**, so the removal decision is retired with it. The next setting that moves out of
+configuration needs a carry-over step again, because a compile-time `InsertData` cannot see an
+operator's env var and would silently replace their value with the shipped default. (Nothing moved
+between the production deployment and this note — every settings key added since is new, not moved —
+so no configured value has been lost yet.) What that step must get right, recorded here so it does
+not have to be rediscovered: ownership is decided by `UpdatedBy IS NULL`, never by comparing values (comparing
 cannot tell "never touched" from "an administrator deliberately set it back to the default", and would
 overwrite the second on every restart); it runs in Production, unlike the `DemoDataSeeder` next to it;
 it validates against the same `[Range]` the `PUT` path uses, since a configured value would otherwise
@@ -991,14 +992,18 @@ ids no longer applies — but note the consequence for diagnosis: an id in that 
 does not ship is now unambiguous evidence of a superseded set, where before it was the normal sight of
 the other context's rows.
 
-What licenses a squash is that **no deployed database holds data anyone needs to keep** — every
-`odyssey` database in existence is a local dev or test database rebuilt from `DemoDataSeeder`. It is
-*not* "before the first release": tagged releases and published images have existed since `v0.8.0`, and
-reading the rule that way is a false premise that invites the objection "you have shipped releases, so
-you cannot squash." The releases are not the test; deployed *data* is. **Re-check that precondition
-before the next squash rather than inheriting it** — the first real deployment retires this licence
-permanently, and from then on a schema change is an additive migration even when a squash would be
-tidier.
+**Squashing is over: a production database with real data has existed since `v0.35.0` (September
+2026).** Every schema change from here on is an additive migration, even when a squash would be
+tidier, and `20260829095318_InitialCreate` stays the permanent root of the history. What had licensed
+the earlier squashes was that no deployed database held data anyone needed to keep — never the
+absence of releases, which have existed since `v0.8.0`. The first real deployment retired that
+licence, as intended.
+
+Real data also changes what a **data** migration costs. `Down()` restores schema, not rows, so a
+migration that moves or rewrites data (`RetirePropertyAndVehicleAccountTypes` is the first since
+production went live, and its `Down()` drops only the constraint) is undone by restoring a backup,
+nothing else. Say so in the commit body and the release notes, and exercise such a migration against
+shapes the demo seed does not produce — the seed is a dev fixture, not a sample of production.
 
 **A migration is not atomic on MariaDB, and the job guards against the consequence.** MariaDB commits
 DDL implicitly, so an interrupted migration leaves its already-created tables behind with no history
