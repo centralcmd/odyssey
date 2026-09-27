@@ -130,8 +130,10 @@
 
 /* Problem-signal toggle — count badge punched out of the MudButton's tint.
    The badge fills with the button's own text color (currentColor: the severity
-   tint when outlined, dark ink when filled) and the number is knocked out in the
-   page surface color — the design system's signal-count treatment. */
+   text token when outlined, the surface colour when filled) and the number is
+   knocked out in the page surface colour when outlined — the design system's
+   signal-count treatment. Filled, the badge IS the surface colour, so its digit
+   takes the button fill instead (see the severity rules below). */
 .ph-root ::deep .signal-count {
     display: inline-grid;
     place-items: center;
@@ -149,6 +151,37 @@
 .ph-root ::deep .signal-count > span {
     color: var(--mud-palette-surface);
 }
+
+/* Severity colours on the toggle, scoped to it (issue #216). MudBlazor paints an Info/Warning
+   button with the raw palette fill — ~2.8:1 / ~3.7:1 as text on white, and white-on-fill when
+   filled (~2.1:1 in dark). Point it at the text-safe tokens instead: outlined, the label, icon and
+   badge follow the token; filled, the token is the background and the surface colour the label.
+   MudBlazor re-sets background-color on hover/focus/active, so those states are covered too. The
+   global palette is deliberately left alone — that is a design-system decision with far wider churn. */
+.ph-root ::deep .ph-signal-btn.mud-button-outlined-info    { color: var(--info-text); }
+.ph-root ::deep .ph-signal-btn.mud-button-outlined-warning { color: var(--warning-text); }
+
+.ph-root ::deep .ph-signal-btn.mud-button-filled-info,
+.ph-root ::deep .ph-signal-btn.mud-button-filled-info:hover,
+.ph-root ::deep .ph-signal-btn.mud-button-filled-info:focus-visible,
+.ph-root ::deep .ph-signal-btn.mud-button-filled-info:active {
+    background-color: var(--info-text);
+    color: var(--mud-palette-surface);
+}
+
+.ph-root ::deep .ph-signal-btn.mud-button-filled-warning,
+.ph-root ::deep .ph-signal-btn.mud-button-filled-warning:hover,
+.ph-root ::deep .ph-signal-btn.mud-button-filled-warning:focus-visible,
+.ph-root ::deep .ph-signal-btn.mud-button-filled-warning:active {
+    background-color: var(--warning-text);
+    color: var(--mud-palette-surface);
+}
+
+/* Filled, the badge is the surface colour, so its digit takes the button fill (it was white on a
+   white badge in light — invisible). */
+.ph-root ::deep .ph-signal-btn.mud-button-filled-info    .signal-count > span { color: var(--info-text); }
+.ph-root ::deep .ph-signal-btn.mud-button-filled-warning .signal-count > span { color: var(--warning-text); }
+.ph-root ::deep .ph-signal-btn.mud-button-filled-error   .signal-count > span { color: var(--mud-palette-error); }
 
 /* Problem rollup region — one alert row per problem (alert block is global). */
 /* Where the affected row lives. A rollup whose rows are scattered across a page by subject has to
