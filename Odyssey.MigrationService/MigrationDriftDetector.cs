@@ -13,6 +13,12 @@ public enum SchemaObjectKind
     Column,
     Index,
     ForeignKey,
+
+    /// <summary>
+    /// A named <c>CHECK</c> constraint. Recognised since issue #218, whose only DDL is one — a
+    /// constraint-only migration drifts exactly like a table-creating one.
+    /// </summary>
+    CheckConstraint,
 }
 
 /// <summary>
@@ -28,6 +34,7 @@ public sealed record SchemaObject(SchemaObjectKind Kind, string Table, string Na
         SchemaObjectKind.Column => $"column '{Table}.{Name}'",
         SchemaObjectKind.Index => $"index '{Name}' on table '{Table}'",
         SchemaObjectKind.ForeignKey => $"foreign key '{Name}' on table '{Table}'",
+        SchemaObjectKind.CheckConstraint => $"check constraint '{Name}' on table '{Table}'",
         _ => $"object '{Name}' on table '{Table}'",
     };
 }
@@ -53,25 +60,26 @@ public sealed class SchemaObjects
     public static SchemaObjects Empty { get; } = new([]);
 
     public bool Contains(SchemaObject candidate) => objects.Contains(candidate);
+}
 
-    private sealed class SchemaObjectComparer : IEqualityComparer<SchemaObject>
-    {
-        public static readonly SchemaObjectComparer Instance = new();
+/// <summary>Kind + table + name, the latter two case-insensitively — see <see cref="SchemaObjects"/>.</summary>
+internal sealed class SchemaObjectComparer : IEqualityComparer<SchemaObject>
+{
+    public static readonly SchemaObjectComparer Instance = new();
 
-        public bool Equals(SchemaObject? left, SchemaObject? right) =>
-            ReferenceEquals(left, right)
-            || (left is not null
-                && right is not null
-                && left.Kind == right.Kind
-                && StringComparer.OrdinalIgnoreCase.Equals(left.Table, right.Table)
-                && StringComparer.OrdinalIgnoreCase.Equals(left.Name, right.Name));
+    public bool Equals(SchemaObject? left, SchemaObject? right) =>
+        ReferenceEquals(left, right)
+        || (left is not null
+            && right is not null
+            && left.Kind == right.Kind
+            && StringComparer.OrdinalIgnoreCase.Equals(left.Table, right.Table)
+            && StringComparer.OrdinalIgnoreCase.Equals(left.Name, right.Name));
 
-        public int GetHashCode(SchemaObject value) =>
-            HashCode.Combine(
-                value.Kind,
-                StringComparer.OrdinalIgnoreCase.GetHashCode(value.Table),
-                StringComparer.OrdinalIgnoreCase.GetHashCode(value.Name));
-    }
+    public int GetHashCode(SchemaObject value) =>
+        HashCode.Combine(
+            value.Kind,
+            StringComparer.OrdinalIgnoreCase.GetHashCode(value.Table),
+            StringComparer.OrdinalIgnoreCase.GetHashCode(value.Name));
 }
 
 /// <summary>

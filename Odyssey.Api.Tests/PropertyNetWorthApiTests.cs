@@ -70,7 +70,6 @@ public class PropertyNetWorthApiTests
         Assert.Equal(1, totals.ContributingPropertyCount);
         Assert.Equal(1, totals.UnvaluedPropertyCount);
         Assert.Equal("Boat", Assert.Single(totals.UnconvertedProperties).Name);
-        Assert.Equal(1, totals.AssetTypedAccountCount);
 
         Assert.True(history.PropertiesIncluded);
         var last = history.Points[^1];
@@ -103,7 +102,6 @@ public class PropertyNetWorthApiTests
         Assert.NotNull(totals);
         Assert.False(totals.PropertiesIncluded);
         Assert.Null(totals.PropertyValue);
-        Assert.Null(totals.AssetTypedAccountCount);
         Assert.Equal(1000m, totals.TotalAssets);
     }
 
@@ -162,7 +160,7 @@ public class PropertyNetWorthApiTests
             new Account
             {
                 AccountId = HouseAccountId, Name = "House (account)", Description = "House", Opened = opened,
-                AccountType = AccountType.Property, CurrencyCode = "USD",
+                AccountType = AccountType.OtherAsset, CurrencyCode = "USD",
             });
         context.Transactions.Add(new Transaction
         {

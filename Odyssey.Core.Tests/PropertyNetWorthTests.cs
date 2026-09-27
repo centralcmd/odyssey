@@ -118,9 +118,6 @@ public class PropertyNetWorthTests
     {
         await using var context = TestContextFactory.Create();
         SeedChecking(context);
-        context.Accounts.Add(NewAccount("House (account)", AccountType.Property, "USD", Utc(2024, 1, 1)));
-        context.Accounts.Add(NewAccount("Car (account)", AccountType.Vehicle, "USD", Utc(2024, 1, 1)));
-        context.Accounts.Add(NewAccount("Old car (closed)", AccountType.Vehicle, "USD", Utc(2020, 1, 1), closed: Utc(2025, 1, 1)));
 
         var apartment = NewProperty("City apartment", "EUR", acquired: Utc(2020, 1, 1));
         var cabin = NewProperty("Cabin", archived: Utc(2025, 1, 1));   // archived but held → counts (D3)
@@ -149,8 +146,6 @@ public class PropertyNetWorthTests
         Assert.Equal(1, totals.UnvaluedPropertyCount);
         var named = Assert.Single(totals.UnconvertedProperties);
         Assert.Equal((boat.PropertyId, "Boat", "GBP"), (named.PropertyId, named.Name, named.CurrencyCode));
-        // AC19 — in-term Property/Vehicle accounts only; the closed one is outside its term.
-        Assert.Equal(2, totals.AssetTypedAccountCount);
     }
 
     [Fact]
@@ -176,12 +171,12 @@ public class PropertyNetWorthTests
     {
         await using var accountsOnly = TestContextFactory.Create();
         SeedChecking(accountsOnly);
-        accountsOnly.Accounts.Add(NewAccount("House (account)", AccountType.Property, "USD", Utc(2024, 1, 1)));
+        accountsOnly.Accounts.Add(NewAccount("House (account)", AccountType.OtherAsset, "USD", Utc(2024, 1, 1)));
         await accountsOnly.SaveChangesAsync();
 
         await using var withProperties = TestContextFactory.Create();
         SeedChecking(withProperties);
-        withProperties.Accounts.Add(NewAccount("House (account)", AccountType.Property, "USD", Utc(2024, 1, 1)));
+        withProperties.Accounts.Add(NewAccount("House (account)", AccountType.OtherAsset, "USD", Utc(2024, 1, 1)));
         var house = NewProperty("House");
         var boat = NewProperty("Boat", "GBP");
         withProperties.Properties.AddRange(house, boat, NewProperty("Plot"));
@@ -197,7 +192,6 @@ public class PropertyNetWorthTests
         Assert.Equal(baseline.NetWorth, totals.NetWorth);
         Assert.False(totals.PropertiesIncluded);
         Assert.Null(totals.PropertyValue);
-        Assert.Null(totals.AssetTypedAccountCount);
         Assert.Equal(0, totals.ContributingPropertyCount);
         Assert.Equal(0, totals.UnvaluedPropertyCount);
         Assert.Empty(totals.UnconvertedProperties);
@@ -671,7 +665,6 @@ public class PropertyNetWorthTests
 
         Assert.False(totals.PropertiesIncluded);
         Assert.Null(totals.PropertyValue);
-        Assert.Null(totals.AssetTypedAccountCount);
         Assert.False(history.PropertiesIncluded);
         Assert.Null(history.Points[0].PropertyValue);
     }

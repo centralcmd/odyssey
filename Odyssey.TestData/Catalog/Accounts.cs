@@ -22,8 +22,6 @@ public static class Accounts
 
     // Keys referenced by the estimate/term streams (issues #182, #172).
     public const string CollectiblesAndArt = "Collectibles & Art";
-    public const string PrimaryResidence = "Primary Residence";
-    public const string FamilyCar = "Family Car (Volvo XC60)";
     public const string HighYieldSavings = "High-Yield Savings";
     public const string RenovationPersonalLoan = "Renovation Personal Loan";
 
@@ -52,8 +50,6 @@ public static class Accounts
         new(StocksPortfolio, "SE35 5000 0000 0549 0000 4407", AccountType.InvestmentAccount, Currencies.Sek, D(2019, 11, 5), null, "Swedish equities portfolio", Contacts.Vanguard),
         new(CollectiblesAndArt, null, AccountType.OtherAsset, Currencies.Usd, D(2020, 11, 1), null, "Art and collectibles valuation"),
         new("Cash Wallet", null, AccountType.Cash, Currencies.Usd, D(2016, 4, 1), null, "Physical cash on hand"),
-        new(PrimaryResidence, null, AccountType.Property, Currencies.Usd, D(2017, 9, 1), null, "Family home"),
-        new(FamilyCar, null, AccountType.Vehicle, Currencies.Usd, D(2023, 2, 15), null, "Household vehicle"),
         new(CarLoanVolvo, "CL-2023-10567", AccountType.CarLoan, Currencies.Usd, D(2023, 2, 15), null, "Financing for the family car", Contacts.FirstNationalBank),
         new("Everyday Credit Card", "5412 7534 8890 9912", AccountType.CreditCard, Currencies.Eur, D(2023, 7, 12), null, "Eurozone everyday credit card", Contacts.FirstNationalBank),
         new(RenovationPersonalLoan, "PL-2024-77120", AccountType.PersonalLoan, Currencies.Eur, D(2024, 9, 1), null, "Home renovation loan", Contacts.FirstNationalBank),

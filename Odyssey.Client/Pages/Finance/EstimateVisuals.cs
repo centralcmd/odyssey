@@ -14,11 +14,10 @@ public static class EstimateVisuals
 {
     /// <summary>The recommended practical subset for estimates — asset accounts whose worth is not
     /// fully transaction-derived. A UI hint only; every account type is eligible (the API never
-    /// blocks estimates on any type).</summary>
+    /// blocks estimates on any type). A house or a car is a property record, not an account
+    /// (issue #218), so neither retired type appears here.</summary>
     private static readonly HashSet<AccountType> RecommendedTypes =
     [
-        AccountType.Property,
-        AccountType.Vehicle,
         AccountType.OtherAsset,
         AccountType.InvestmentAccount,
         AccountType.PensionAccount,

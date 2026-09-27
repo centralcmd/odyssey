@@ -184,7 +184,7 @@ public class SummaryEndpointsApiTests
     public async Task AccountSummary_InForceEstimateReplacesTheTransactionBalance()
     {
         await using var factory = new ApiFactory([PermissionClaims.AccountsRead]);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.Property);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         await SeedAsync(factory, context =>
         {
             context.Transactions.Add(Transaction(accountId, 1_000m));

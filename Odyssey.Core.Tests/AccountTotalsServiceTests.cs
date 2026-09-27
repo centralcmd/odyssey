@@ -286,7 +286,7 @@ public class AccountTotalsServiceTests
         await using var context = TestContextFactory.Create();
 
         var property = Guid.NewGuid();
-        context.Accounts.Add(NewAccount(property, "House", AccountType.Property, "USD"));
+        context.Accounts.Add(NewAccount(property, "House", AccountType.OtherAsset, "USD"));
         context.AccountEstimates.Add(NewEstimate(property, 350000m, "USD", new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
@@ -304,7 +304,7 @@ public class AccountTotalsServiceTests
         await using var context = TestContextFactory.Create();
 
         var property = Guid.NewGuid();
-        context.Accounts.Add(NewAccount(property, "House", AccountType.Property, "USD"));
+        context.Accounts.Add(NewAccount(property, "House", AccountType.OtherAsset, "USD"));
         // A stray transaction; the estimate should replace it (not add to it) per the §9 replace policy.
         context.Transactions.Add(NewTransaction(property, 5000m));
         context.AccountEstimates.Add(NewEstimate(property, 350000m, "USD", new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
@@ -322,7 +322,7 @@ public class AccountTotalsServiceTests
         await using var context = TestContextFactory.Create();
 
         var property = Guid.NewGuid();
-        context.Accounts.Add(NewAccount(property, "House", AccountType.Property, "EUR"));
+        context.Accounts.Add(NewAccount(property, "House", AccountType.OtherAsset, "EUR"));
         context.AccountEstimates.AddRange(
             NewEstimate(property, 300000m, "EUR", new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
             NewEstimate(property, 320000m, "EUR", new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc)));
@@ -344,7 +344,7 @@ public class AccountTotalsServiceTests
         await using var context = TestContextFactory.Create();
 
         var property = Guid.NewGuid();
-        context.Accounts.Add(NewAccount(property, "House", AccountType.Property, "USD"));
+        context.Accounts.Add(NewAccount(property, "House", AccountType.OtherAsset, "USD"));
         context.Transactions.Add(NewTransaction(property, 5000m));
         // Effective far in the future → not in force now → balance is used instead.
         context.AccountEstimates.Add(NewEstimate(property, 350000m, "USD", DateTime.UtcNow.AddYears(5)));
@@ -450,7 +450,7 @@ public class AccountTotalsServiceTests
         await using var context = TestContextFactory.Create();
 
         var property = Guid.NewGuid();
-        context.Accounts.Add(NewAccount(property, "House", AccountType.Property, "USD"));
+        context.Accounts.Add(NewAccount(property, "House", AccountType.OtherAsset, "USD"));
         context.Transactions.Add(NewTransaction(property, 5000m));
         context.AccountEstimates.Add(NewEstimate(property, 350000m, "USD", FixedNow));
         await context.SaveChangesAsync();

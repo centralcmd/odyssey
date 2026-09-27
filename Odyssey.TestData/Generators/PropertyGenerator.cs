@@ -12,9 +12,10 @@ namespace Odyssey.TestData.Generators;
 /// <see cref="DeterministicGuid"/> ids throughout, so every run yields the same rows.
 ///
 /// <para>
-/// Deliberately <b>not</b> derived from the demo accounts of type <c>Property</c>/<c>Vehicle</c>: the
-/// two live side by side in v1 and no data moves between them, so a demo property mirroring an account
-/// would suggest a link that does not exist.
+/// <see cref="Residence"/> and <see cref="FamilyCar"/> were demo accounts of type <c>Property</c>/<c>Vehicle</c>
+/// until those types were retired (issue #218). They keep their names and estimate histories here, and
+/// <c>ContractGenerator</c> names them as property parties, so the seed shows what the migration leaves
+/// behind: a detail row of kind <c>Other</c> and nothing inferred from free text.
 /// </para>
 ///
 /// <para>
@@ -30,6 +31,8 @@ public static class PropertyGenerator
     public const string Car = "Electric estate car";
     public const string Boat = "Day cruiser";
     public const string OldCar = "Old hatchback";
+    public const string Residence = "Primary Residence";
+    public const string FamilyCar = "Family Car (Volvo XC60)";
 
     private static readonly DateTime SeededAt = D(2026, 1, 1);
 
@@ -99,6 +102,13 @@ public static class PropertyGenerator
                 }),
         };
 
+        // Formerly accounts of type Property/Vehicle (issue #218), shaped as the migration shapes one:
+        // kind Other and no detail field, since none can be inferred from an account.
+        properties.Add(RealEstate(Residence, "Family home", DemoDataDefaults.Currencies.Usd, D(2017, 9, 1),
+            new RealEstateDetails { Kind = RealEstateKind.Other }));
+        properties.Add(Vehicle(FamilyCar, "Household vehicle", DemoDataDefaults.Currencies.Usd, D(2023, 2, 15),
+            new VehicleDetails { Kind = VehicleKind.Other }));
+
         // Sold: a disposed date in the past makes the derived status Disposed.
         var oldCar = Vehicle(OldCar, "Sold when the new car arrived", DemoDataDefaults.Currencies.Nok, D(2012, 8, 1),
             new VehicleDetails
@@ -129,6 +139,15 @@ public static class PropertyGenerator
             (D(2025, 6, 1), 590_000m, "Dealer trade-in estimate."));
         AddEstimates(estimates, Boat, DemoDataDefaults.Currencies.Nok,
             (D(2018, 5, 1), 420_000m, "Purchase price."));
+        // Appreciating house, depreciating car — the histories their accounts carried.
+        AddEstimates(estimates, Residence, DemoDataDefaults.Currencies.Usd,
+            (D(2017, 9, 1), 540_000m, "Purchase price."),
+            (D(2021, 1, 1), 610_000m, "Revaluation after local market growth."),
+            (D(2024, 1, 1), 685_000m, "Latest independent valuation."));
+        AddEstimates(estimates, FamilyCar, DemoDataDefaults.Currencies.Usd,
+            (D(2023, 2, 15), 48_000m, "Purchase price (new)."),
+            (D(2024, 6, 1), 39_000m, "Trade-in estimate after first year."),
+            (D(2025, 12, 1), 31_500m, "Current market estimate."));
         AddEstimates(estimates, OldCar, DemoDataDefaults.Currencies.Nok,
             (D(2012, 8, 1), 210_000m, "Purchase price."),
             (D(2023, 4, 15), 45_000m, "Sale price."));

@@ -197,6 +197,46 @@ public class AccountCustodianApiTests
         Assert.Equal("original", only.Notes);
     }
 
+    /// <summary>
+    /// Issue #218 AC 10 — the retired Property (6) and Vehicle (7) ordinals are refused on both writes
+    /// by model validation, keyed on the field, and nothing is written.
+    /// </summary>
+    [Theory]
+    [InlineData(6)]
+    [InlineData(7)]
+    public async Task PostAndPut_WithARetiredAccountType_Is400_KeyedOnAccountType(int retired)
+    {
+        await using var factory = new ApiFactory(WriteAndRead);
+        await SeedContactAsync(factory, "Unrelated");
+        using var client = factory.CreateClient();
+
+        var body = new
+        {
+            name = "House",
+            description = "",
+            accountType = retired,
+            currencyCode = "USD",
+            archived = false,
+        };
+
+        foreach (var response in new[]
+                 {
+                     await client.PostAsJsonAsync("/api/accounts", body),
+                     await client.PutAsJsonAsync($"/api/accounts/{Guid.NewGuid()}", body),
+                 })
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.True(
+                problem.GetProperty("errors").EnumerateObject()
+                    .Any(error => error.Name.Equals("AccountType", StringComparison.OrdinalIgnoreCase)),
+                problem.ToString());
+        }
+
+        var list = await client.GetPagedItemsAsync<ExistingAccount>("/api/accounts");
+        Assert.Empty(list!);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static async Task<Guid> SeedContactAsync(

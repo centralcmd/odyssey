@@ -354,7 +354,7 @@ public class DemoDataSeederTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
         var events = await context.PropertyEvents.AsNoTracking().ToListAsync();
-        Assert.Equal(20, events.Count);
+        Assert.Equal(22, events.Count);
         Assert.Equal(DemoDataSet.Build().PropertyEvents.Count, events.Count);
 
         var properties = await context.Properties.AsNoTracking().ToDictionaryAsync(p => p.PropertyId, p => p.Type);
@@ -684,6 +684,39 @@ public class DemoDataSeederTests
             Assert.False(string.IsNullOrWhiteSpace(profile.LastName));
             Assert.NotNull(profile.BirthDate);
             Assert.NotNull(profile.Sex);
+        }
+    }
+
+    /// <summary>
+    /// Issue #218 AC 14 — the demo seed holds no account of a retired type; the house and the car it
+    /// used to hold as accounts are property records, with their estimate histories and the contract
+    /// parties that named them.
+    /// </summary>
+    [Fact]
+    public async Task Seeds_the_house_and_the_car_as_properties_not_as_accounts()
+    {
+        await using var provider = BuildProvider(out var seeder);
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        Assert.DoesNotContain(
+            await context.Accounts.AsNoTracking().Select(a => (int)a.AccountType).ToListAsync(),
+            type => type is 6 or 7);
+
+        foreach (var (name, type) in new[]
+                 {
+                     (Odyssey.TestData.Generators.PropertyGenerator.Residence, Odyssey.Dtos.Finance.PropertyType.RealEstate),
+                     (Odyssey.TestData.Generators.PropertyGenerator.FamilyCar, Odyssey.Dtos.Finance.PropertyType.Vehicle),
+                 })
+        {
+            var id = Odyssey.TestData.Generators.PropertyGenerator.IdFor(name);
+            var property = await context.Properties.AsNoTracking().SingleAsync(p => p.PropertyId == id);
+            Assert.Equal(type, property.Type);
+            Assert.Equal(3, await context.PropertyEstimates.CountAsync(e => e.PropertyId == id));
+            Assert.True(await context.ContractParties.AnyAsync(p => p.PropertyId == id), $"{name} names no contract party");
+            Assert.False(await context.Accounts.AnyAsync(a => a.Name == name), $"{name} is still an account");
         }
     }
 

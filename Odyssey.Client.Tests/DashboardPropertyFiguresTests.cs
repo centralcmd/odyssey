@@ -66,7 +66,6 @@ public class DashboardPropertyFiguresTests
         bool included,
         int contributing = 0,
         int unvalued = 0,
-        int? assetTyped = null,
         params UnconvertedProperty[] unconverted) => new()
     {
         MainCurrencyCode = "NOK",
@@ -77,7 +76,6 @@ public class DashboardPropertyFiguresTests
         PropertyValue = included ? 1m : null,
         ContributingPropertyCount = contributing,
         UnvaluedPropertyCount = unvalued,
-        AssetTypedAccountCount = assetTyped,
         UnconvertedProperties = [.. unconverted],
     };
 
@@ -92,7 +90,7 @@ public class DashboardPropertyFiguresTests
     [Fact]
     public void HeldPropertyCount_IsContributingPlusUnvaluedPlusUnconverted()
     {
-        var totals = Totals(true, contributing: 3, unvalued: 1, assetTyped: 0, Property("City apartment"));
+        var totals = Totals(true, contributing: 3, unvalued: 1, unconverted: Property("City apartment"));
 
         Assert.Equal(5, DashboardFigures.HeldPropertyCount(totals));
         Assert.True(DashboardFigures.PropertiesContribute(totals));
@@ -185,7 +183,7 @@ public class DashboardPropertyFiguresTests
         {
             MainCurrencyCode = "NOK", TotalAssets = 1m, TotalLiabilities = 0m, NetWorth = 1m,
             PropertiesIncluded = false, PropertyValue = 5m, ContributingPropertyCount = 2,
-            UnvaluedPropertyCount = 1, AssetTypedAccountCount = 2, UnconvertedProperties = [Property("Boat")],
+            UnvaluedPropertyCount = 1, UnconvertedProperties = [Property("Boat")],
         };
 
         Assert.Equal(OdsLinePointKind.Normal, DashboardFigures.KindOf(leakingPoint, history.PropertiesIncluded));
@@ -198,9 +196,7 @@ public class DashboardPropertyFiguresTests
         Assert.Equal(0, DashboardFigures.HeldPropertyCount(totals));
         Assert.False(DashboardFigures.PropertiesContribute(totals));
         Assert.Empty(DashboardFigures.IncludedUnconvertedProperties(totals));
-        Assert.Null(DashboardFigures.IncludedAssetTypedAccountCount(totals));
         Assert.Null(DashboardFigures.UnvaluedMessage(totals));
-        Assert.Null(DashboardFigures.DoubleCountAdvisory(totals));
 
         // A point with no ACCOUNT contribution does not borrow the property one to show a delta.
         var propertyOnly = Point(accountContributing: 0, propertyValue: 5m, propertyContributing: 1);
@@ -367,21 +363,6 @@ public class DashboardPropertyFiguresTests
         Assert.Null(DashboardFigures.UnvaluedMessage(Totals(true, unvalued: 0)));
     }
 
-    [Fact]
-    public void DoubleCountAdvisory_FiresOnlyWithAssetTypedAccountsAndHeldProperties()
-    {
-        Assert.Equal(
-            "1 account is of type Property or Vehicle. If it describes the same asset as a property, that asset is counted twice.",
-            DashboardFigures.DoubleCountAdvisory(Totals(true, contributing: 1, assetTyped: 1)));
-        Assert.Equal(
-            "2 accounts are of type Property or Vehicle. If one describes the same asset as a property, that asset is counted twice.",
-            DashboardFigures.DoubleCountAdvisory(Totals(true, unvalued: 1, assetTyped: 2)));
-        Assert.Null(DashboardFigures.DoubleCountAdvisory(Totals(true, contributing: 1, assetTyped: null)));
-        Assert.Null(DashboardFigures.DoubleCountAdvisory(Totals(true, contributing: 1, assetTyped: 0)));
-        // No held property: the overlap cannot exist.
-        Assert.Null(DashboardFigures.DoubleCountAdvisory(Totals(true, assetTyped: 2)));
-    }
-
     // ── AC14 — grouping and the toggle label ──────────────────────────────────────────────────
 
     private static PageHeaderProblem Row(PageHeaderSeverity severity, string message) =>
@@ -501,7 +482,6 @@ public class DashboardPropertyFiguresTests
     [InlineData("RevaluedPropertyCount")]
     [InlineData("PropertyValue")]
     [InlineData("UnconvertedProperties")]
-    [InlineData("AssetTypedAccountCount")]
     public void Home_NamesNoPropertyMember_EveryReadIsInsideAGate(string member)
     {
         foreach (var (file, source) in new[] { ("Home.razor.cs", CodeBehind()), ("Home.razor", Markup()) })
@@ -561,9 +541,8 @@ public class DashboardPropertyFiguresTests
         // The only `return problems;` comes after the last row producer.
         Assert.Single(Regex.Matches(rows, @"return problems;"));
         Assert.True(rows.IndexOf("return problems;", StringComparison.Ordinal)
-                    > rows.IndexOf("DashboardFigures.DoubleCountAdvisory(_totals)", StringComparison.Ordinal));
+                    > rows.IndexOf("DashboardFigures.UnvaluedMessage(_totals)", StringComparison.Ordinal));
         Assert.Contains("DashboardFigures.IncludedUnconvertedProperties(_totals)", rows, StringComparison.Ordinal);
         Assert.Contains("DashboardFigures.UnvaluedMessage(_totals)", rows, StringComparison.Ordinal);
-        Assert.Contains("DashboardFigures.DoubleCountAdvisory(_totals)", rows, StringComparison.Ordinal);
     }
 }

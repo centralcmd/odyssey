@@ -52,8 +52,6 @@ public static class AccountTypeVisuals
         AccountType.SavingsAccount    => "Savings",
         AccountType.InvestmentAccount => "Investment",
         AccountType.PensionAccount    => "Pension",
-        AccountType.Property          => "Property",
-        AccountType.Vehicle           => "Vehicle",
         AccountType.OtherAsset        => "Other asset",
         // Liabilities
         AccountType.CreditCard        => "Credit card",
@@ -75,8 +73,6 @@ public static class AccountTypeVisuals
         AccountType.SavingsAccount    => "savings",
         AccountType.InvestmentAccount => "trending_up",
         AccountType.PensionAccount    => "elderly",
-        AccountType.Property          => "home",
-        AccountType.Vehicle           => "directions_car",
         AccountType.OtherAsset        => "category",
         // Liabilities
         AccountType.CreditCard        => "credit_card",
@@ -98,8 +94,6 @@ public static class AccountTypeVisuals
         AccountType.SavingsAccount    => "var(--acct-savings)",
         AccountType.InvestmentAccount => "var(--acct-investment)",
         AccountType.PensionAccount    => "var(--acct-pension)",
-        AccountType.Property          => "var(--acct-property)",
-        AccountType.Vehicle           => "var(--acct-vehicle)",
         AccountType.OtherAsset        => "var(--acct-other-asset)",
         // Liabilities
         AccountType.CreditCard        => "var(--acct-credit)",
@@ -121,8 +115,6 @@ public static class AccountTypeVisuals
         AccountType.SavingsAccount    => "var(--acct-savings-soft)",
         AccountType.InvestmentAccount => "var(--acct-investment-soft)",
         AccountType.PensionAccount    => "var(--acct-pension-soft)",
-        AccountType.Property          => "var(--acct-property-soft)",
-        AccountType.Vehicle           => "var(--acct-vehicle-soft)",
         AccountType.OtherAsset        => "var(--acct-other-asset-soft)",
         // Liabilities
         AccountType.CreditCard        => "var(--acct-credit-soft)",

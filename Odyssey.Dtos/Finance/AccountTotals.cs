@@ -56,13 +56,6 @@ public sealed record AccountTotals
 
     /// <summary>Properties held now and valued, but with no rate to the main currency. Empty when not included.</summary>
     public List<UnconvertedProperty> UnconvertedProperties { get; set; } = [];
-
-    /// <summary>
-    /// In-term accounts of type <c>Property</c> or <c>Vehicle</c>, which may describe the same asset as
-    /// a property record (issue #214 D9). <c>null</c> when not included: it is <c>accounts.read</c> data,
-    /// but it exists only to power the double-count advisory, which means nothing without properties.
-    /// </summary>
-    public int? AssetTypedAccountCount { get; set; }
 }
 
 /// <summary>An account that contributed 0 to the totals because no rate to the main currency exists.</summary>

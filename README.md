@@ -440,7 +440,7 @@ reachable stack is absent, so they're safe in any `dotnet test` run. The E2E pro
 In the Development and Testing environments the stack seeds a **deterministic synthetic dataset** so the app is
 immediately usable and the E2E tests have data to assert on.
 
-- **What's seeded:** four role-based login users, plus tags, contacts, a 21-account
+- **What's seeded:** four role-based login users, plus tags, contacts, a 19-account
   portfolio (~10 years of history), per-year budgets, recurring transactions, and exchange
   rates covering every currency pair in use (so multi-currency accounts convert without
   warnings). Currencies, roles, and permission claims are reference data (already created by

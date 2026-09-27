@@ -14,7 +14,7 @@ Odyssey is a web app: an **NGINX-served Blazor WebAssembly SPA on `http://localh
 to an **ASP.NET Core API on `http://localhost:5188`**, cookie-authenticated, backed by **MariaDB**.
 The whole thing runs via **Docker Compose** (4 services: `mariadb` → one-shot `migrations` → `api`
 → `client`). The migration container also runs the deterministic **demo seed**, so a fresh stack
-comes up pre-populated (4 demo users, 21 accounts, ~2.7k transactions).
+comes up pre-populated (4 demo users, 19 accounts, ~2.7k transactions).
 
 You drive the running app with **`driver.mjs`** — a Playwright script that logs in as a seeded demo
 user and screenshots/asserts authed pages. That is the agent path; a human just opens `:5199`.

@@ -4,13 +4,14 @@ using Odyssey.TestData.Catalog;
 namespace Odyssey.TestData.Generators;
 
 /// <summary>
-/// Deterministic time-versioned value estimates (issue #182) for the accounts whose worth is not
-/// derived from transactions — the property, the vehicle and the collectibles asset. Each account
-/// gets a short history so the "current estimate" resolution (greatest <c>EffectiveFrom</c> on or
+/// Deterministic time-versioned value estimates (issue #182) for the account whose worth is not
+/// derived from transactions — the collectibles asset. The house and the car that used to sit here are
+/// property records since issue #218, and their histories moved to <see cref="PropertyGenerator"/>.
+/// The account gets a short history so the "current estimate" resolution (greatest <c>EffectiveFrom</c> on or
 /// before today) and the history listing both have something to show, and so the net-worth
 /// REPLACE policy (estimate over derived balance) is exercised against real seeded data.
 ///
-/// Estimates are always recorded in the account currency (all three demo asset accounts are USD),
+/// Estimates are always recorded in the account currency (the demo asset account is USD),
 /// matching the API rule. Accounts are referenced by their stable deterministic ids; none is created
 /// here.
 /// </summary>
@@ -27,22 +28,6 @@ public static class AccountEstimateGenerator
     {
         var portfolios = new List<AccountEstimates>
         {
-            // Appreciating property: steady upward revaluations over the years.
-            new(Catalog.Accounts.PrimaryResidence, DemoDataDefaults.Currencies.Usd,
-            [
-                new(D(2017, 9, 1), 540000m, "Purchase price."),
-                new(D(2021, 1, 1), 610000m, "Revaluation after local market growth."),
-                new(D(2024, 1, 1), 685000m, "Latest independent valuation."),
-            ]),
-
-            // Depreciating vehicle: value falls year over year.
-            new(Catalog.Accounts.FamilyCar, DemoDataDefaults.Currencies.Usd,
-            [
-                new(D(2023, 2, 15), 48000m, "Purchase price (new)."),
-                new(D(2024, 6, 1), 39000m, "Trade-in estimate after first year."),
-                new(D(2025, 12, 1), 31500m, "Current market estimate."),
-            ]),
-
             // Collectibles & art: irregular, generally rising appraisals.
             new(Catalog.Accounts.CollectiblesAndArt, DemoDataDefaults.Currencies.Usd,
             [

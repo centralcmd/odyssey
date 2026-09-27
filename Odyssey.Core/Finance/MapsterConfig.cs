@@ -163,8 +163,6 @@ public static class MapsterConfig
             ContextAccountType.SavingsAccount => DtoAccountType.SavingsAccount,
             ContextAccountType.InvestmentAccount => DtoAccountType.InvestmentAccount,
             ContextAccountType.PensionAccount => DtoAccountType.PensionAccount,
-            ContextAccountType.Property => DtoAccountType.Property,
-            ContextAccountType.Vehicle => DtoAccountType.Vehicle,
             ContextAccountType.OtherAsset => DtoAccountType.OtherAsset,
             // Liabilities
             ContextAccountType.CreditCard => DtoAccountType.CreditCard,
@@ -188,8 +186,6 @@ public static class MapsterConfig
             DtoAccountType.SavingsAccount => ContextAccountType.SavingsAccount,
             DtoAccountType.InvestmentAccount => ContextAccountType.InvestmentAccount,
             DtoAccountType.PensionAccount => ContextAccountType.PensionAccount,
-            DtoAccountType.Property => ContextAccountType.Property,
-            DtoAccountType.Vehicle => ContextAccountType.Vehicle,
             DtoAccountType.OtherAsset => ContextAccountType.OtherAsset,
             // Liabilities
             DtoAccountType.CreditCard => ContextAccountType.CreditCard,

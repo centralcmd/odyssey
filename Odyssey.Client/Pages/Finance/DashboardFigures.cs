@@ -105,10 +105,6 @@ internal static class DashboardFigures
     internal static int IncludedUnvaluedPropertyCount(AccountTotals? totals) =>
         totals is { PropertiesIncluded: true } ? totals.UnvaluedPropertyCount : 0;
 
-    /// <summary>In-term accounts of type Property or Vehicle, or null when not included.</summary>
-    internal static int? IncludedAssetTypedAccountCount(AccountTotals? totals) =>
-        totals is { PropertiesIncluded: true } ? totals.AssetTypedAccountCount : null;
-
     /// <summary>The totals' unconvertible properties, or none when not included.</summary>
     internal static IReadOnlyList<UnconvertedProperty> IncludedUnconvertedProperties(AccountTotals? totals) =>
         totals is { PropertiesIncluded: true } ? totals.UnconvertedProperties : [];
@@ -160,20 +156,6 @@ internal static class DashboardFigures
             1 => "1 property has no estimate yet, so it counts as 0 towards net worth.",
             _ => $"{count} properties have no estimate yet, so they count as 0 towards net worth.",
         };
-    }
-
-    /// <summary>
-    /// The double-count advisory (state 8): an account typed Property/Vehicle may describe the same
-    /// asset as a property record. Only while properties are held — otherwise the overlap cannot exist.
-    /// </summary>
-    internal static string? DoubleCountAdvisory(AccountTotals? totals)
-    {
-        if (IncludedAssetTypedAccountCount(totals) is not { } count || count <= 0 || HeldPropertyCount(totals) <= 0)
-            return null;
-
-        return count == 1
-            ? "1 account is of type Property or Vehicle. If it describes the same asset as a property, that asset is counted twice."
-            : $"{count} accounts are of type Property or Vehicle. If one describes the same asset as a property, that asset is counted twice.";
     }
 
     /// <summary>"an account" / "a property" / "an account or property" — the member kind a note or table names.</summary>

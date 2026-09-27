@@ -348,10 +348,10 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         await using var context = NewContext();
         var account = new Account
         {
-            Name = "House account",
+            Name = "Art account",
             Description = string.Empty,
             Opened = Anchor,
-            AccountType = ContextAccountType.Property,
+            AccountType = ContextAccountType.OtherAsset,
             CurrencyCode = "USD",
         };
         context.Accounts.Add(account);

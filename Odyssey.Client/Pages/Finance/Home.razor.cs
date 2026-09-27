@@ -318,7 +318,7 @@ public partial class Home
     // The server reports accounts and properties it could not convert into the main currency; each
     // one contributed 0, so the headline figure is understated and the reader has to be told.
     // Surfaced through the canonical PageHeader rollup rather than a bespoke banner. Information rows
-    // (unvalued properties, the double-count advisory) ride in the same panel, grouped apart from the
+    // (unvalued properties) ride in the same panel, grouped apart from the
     // warnings only when both kinds are present.
     private IReadOnlyCollection<PageHeaderProblem> HeaderProblems => DashboardFigures.GroupProblems(HeaderProblemRows);
 
@@ -390,18 +390,6 @@ public partial class Home
                     Where = "Properties",
                     ViewLabel = "Properties",
                     OnView = NavigateTo("properties"),
-                });
-            }
-
-            if (DashboardFigures.DoubleCountAdvisory(_totals) is { } advisory)
-            {
-                problems.Add(new PageHeaderProblem
-                {
-                    Severity = PageHeaderSeverity.Information,
-                    Message = advisory,
-                    Where = "Accounts",
-                    ViewLabel = "Accounts",
-                    OnView = NavigateTo("accounts"),
                 });
             }
 

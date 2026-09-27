@@ -280,6 +280,34 @@ public class AuthorizationPolicyTests
             + string.Join(", ", gaps));
     }
 
+    /// <summary>
+    /// Issue #218 AC 15. Retiring the <c>Property</c>/<c>Vehicle</c> account types moved every such
+    /// account onto a property record, so what was <c>accounts.read</c> (and <c>accounts.estimates.read</c>)
+    /// data became <c>properties.read</c> (and <c>properties.estimates.read</c>) data. §7.2 accepts that
+    /// on one observation: every role that could see it before still can. This pins that observation —
+    /// a role granted the account claim without its property twin would silently lose sight of what
+    /// the migration moved.
+    /// </summary>
+    [Fact]
+    public void Every_role_with_an_account_read_claim_holds_its_property_twin()
+    {
+        (string Account, string Property)[] twins =
+        [
+            (PermissionClaims.AccountsRead, PermissionClaims.PropertiesRead),
+            (PermissionClaims.AccountsEstimatesRead, PermissionClaims.PropertiesEstimatesRead),
+        ];
+
+        var gaps = (from role in MappedRoles()
+                    from twin in twins
+                    where role.Claims.Contains(twin.Account, StringComparer.Ordinal)
+                    where !role.Claims.Contains(twin.Property, StringComparer.Ordinal)
+                    select $"{role.Role} holds '{twin.Account}' without '{twin.Property}'").ToList();
+
+        Assert.True(gaps.Count == 0,
+            "Issue #218 §7.2 moved Property/Vehicle account data under the property claims on the "
+            + "premise that no role loses sight of it. Roles that would: " + string.Join(", ", gaps));
+    }
+
     [Fact]
     public void PermissionClaimsConfigurePolicies()
     {

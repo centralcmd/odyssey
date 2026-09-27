@@ -13,7 +13,7 @@ description: >
 Regenerates the database from scratch: it **drops and recreates** the database, then runs
 `Odyssey.MigrationService`, which re-applies every migration and re-runs the gated, idempotent,
 **deterministic** demo seeder. You end up with the exact same known dataset every time
-(4 demo users, 21 accounts, per-year budgets, ~2.7k transactions, exchange rates).
+(4 demo users, 19 accounts, per-year budgets, ~2.7k transactions, exchange rates).
 
 A plain stack restart does **not** reseed — the seeder skips when its data is already present —
 so the reset has to wipe first. That's what the driver does.

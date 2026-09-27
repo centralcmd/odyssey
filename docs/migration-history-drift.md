@@ -72,15 +72,23 @@ migration applied while leaving a database without the constraints it exists to 
 
 ## What the guard looks at
 
-Four kinds of object, because MariaDB commits each of their `CREATE`/`ALTER` statements independently
-and an interruption can therefore land between any two of them: **tables**, **columns**, **indexes**
-and **foreign keys**. A pending migration that would create one which already exists is drift.
+Five kinds of object, because MariaDB commits each of their `CREATE`/`ALTER` statements independently
+and an interruption can therefore land between any two of them: **tables**, **columns**, **indexes**,
+**foreign keys** and **check constraints**. A pending migration that would create one which already
+exists is drift.
 
 Most migrations in the repository bundle their indexes and foreign keys into `CreateTable`, so in
-practice a drifted database is usually caught on a table. The other two kinds are covered because an
-index-only or constraint-only migration drifts in exactly the same way. Adding a fifth kind means
-one case in `MigrationRunner.CreatedBy`, one arm in the snapshot query, and one member on
-`SchemaObjectKind`.
+practice a drifted database is usually caught on a table. The other kinds are covered because an
+index-only or constraint-only migration drifts in exactly the same way — issue #218's
+`RetirePropertyAndVehicleAccountTypes`, whose only DDL is `CK_Accounts_AccountTypeNotRetired`, is why
+check constraints joined. Adding another kind means one case in `MigrationRunner.CreatedBy` (and
+`DroppedBy`), one arm in the snapshot query, and one member on `SchemaObjectKind`.
+
+A create is **discounted** when an earlier operation of the same pending run dropped that name first:
+the replayed drop removes whatever an interruption left, so the create cannot collide. EF scaffolds
+every change to a check's expression that way — `DropCheckConstraint` then `AddCheckConstraint` of the
+same name — and several shipped migrations do it, so without the discount an ordinary upgrade across
+them would be refused.
 
 ### The renamed-table half-state
 

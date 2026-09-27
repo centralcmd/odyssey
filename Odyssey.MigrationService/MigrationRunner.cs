@@ -86,6 +86,7 @@ public static class MigrationRunner
             ?? throw new InvalidOperationException("The context has no active provider.");
 
         var pending = new List<PendingMigrationObjects>();
+        var droppedEarlier = new HashSet<SchemaObject>(SchemaObjectComparer.Instance);
 
         foreach (var migrationId in pendingIds)
         {
@@ -98,18 +99,72 @@ public static class MigrationRunner
 
             var operations = migrationsAssembly.CreateMigration(migrationType, activeProvider).UpOperations;
 
-            pending.Add(new PendingMigrationObjects(
-                migrationId,
-                [.. operations.SelectMany(CreatedBy)]));
+            pending.Add(new PendingMigrationObjects(migrationId, CreatedAfterDrops(operations, droppedEarlier)));
         }
 
         return pending;
     }
 
     /// <summary>
+    /// The objects <paramref name="operations"/> create, less any that an earlier operation of the
+    /// pending run drops first — recorded into <paramref name="droppedEarlier"/> as it goes, so the set
+    /// carries across the migrations of one run in order.
+    /// </summary>
+    /// <remarks>
+    /// A drop-then-recreate of one name cannot collide on replay: whatever an interruption left behind
+    /// under that name, the replayed drop removes it before the create runs. EF scaffolds every change to
+    /// a <c>CHECK</c>'s expression exactly that way (<c>DropCheckConstraint</c> + <c>AddCheckConstraint</c>
+    /// of the same name), so without this a guard that recognises check constraints would refuse every
+    /// ordinary upgrade across such a migration — the false positive the narrow test exists to avoid.
+    /// </remarks>
+    internal static IReadOnlyList<SchemaObject> CreatedAfterDrops(
+        IEnumerable<MigrationOperation> operations, ISet<SchemaObject> droppedEarlier)
+    {
+        var created = new List<SchemaObject>();
+
+        foreach (var operation in operations)
+        {
+            foreach (var dropped in DroppedBy(operation))
+            {
+                droppedEarlier.Add(dropped);
+            }
+
+            created.AddRange(CreatedBy(operation).Where(candidate => !droppedEarlier.Contains(candidate)));
+        }
+
+        return created;
+    }
+
+    /// <summary>
+    /// Maps one EF migration operation onto the schema objects it removes — a drop, or the OLD name of a
+    /// rename. Used only to discount a later re-creation of the same name; see <see cref="CreatedAfterDrops"/>.
+    /// </summary>
+    internal static IEnumerable<SchemaObject> DroppedBy(MigrationOperation operation) => operation switch
+    {
+        DropTableOperation table =>
+            [new SchemaObject(SchemaObjectKind.Table, table.Name, table.Name)],
+        DropColumnOperation column =>
+            [new SchemaObject(SchemaObjectKind.Column, column.Table, column.Name)],
+        DropIndexOperation index when index.Table is { } indexTable =>
+            [new SchemaObject(SchemaObjectKind.Index, indexTable, index.Name)],
+        DropForeignKeyOperation foreignKey =>
+            [new SchemaObject(SchemaObjectKind.ForeignKey, foreignKey.Table, foreignKey.Name)],
+        DropCheckConstraintOperation check =>
+            [new SchemaObject(SchemaObjectKind.CheckConstraint, check.Table, check.Name)],
+        RenameTableOperation table =>
+            [new SchemaObject(SchemaObjectKind.Table, table.Name, table.Name)],
+        RenameColumnOperation column =>
+            [new SchemaObject(SchemaObjectKind.Column, column.Table, column.Name)],
+        RenameIndexOperation index when index.Table is { } indexTable =>
+            [new SchemaObject(SchemaObjectKind.Index, indexTable, index.Name)],
+        _ => [],
+    };
+
+    /// <summary>
     /// Maps one EF migration operation onto the schema objects it creates. Operations that only
-    /// modify or drop are ignored: replaying those cannot collide with something already present,
-    /// which is the only failure this guard is about.
+    /// modify or drop are ignored here: replaying those cannot collide with something already present,
+    /// which is the only failure this guard is about. (A drop does matter to a later create of the same
+    /// name — <see cref="CreatedAfterDrops"/> handles that.)
     /// </summary>
     /// <remarks>
     /// The kinds here are the ones EF emits as independent DDL statements, so each is a point an
@@ -135,6 +190,8 @@ public static class MigrationRunner
             [new SchemaObject(SchemaObjectKind.Index, index.Table, index.Name)],
         AddForeignKeyOperation foreignKey =>
             [new SchemaObject(SchemaObjectKind.ForeignKey, foreignKey.Table, foreignKey.Name)],
+        AddCheckConstraintOperation check =>
+            [new SchemaObject(SchemaObjectKind.CheckConstraint, check.Table, check.Name)],
         RenameTableOperation table when table.NewName is { } newTableName =>
             [new SchemaObject(SchemaObjectKind.Table, newTableName, newTableName)],
         RenameColumnOperation column =>
@@ -145,8 +202,12 @@ public static class MigrationRunner
     };
 
     /// <summary>
-    /// The tables, columns, indexes and foreign keys the database already holds.
+    /// The tables, columns, indexes, foreign keys and check constraints the database already holds.
     /// </summary>
+    /// <remarks>
+    /// Check constraints are read from <c>TABLE_CONSTRAINTS</c>, not <c>CHECK_CONSTRAINTS</c>: only the
+    /// former carries <c>TABLE_NAME</c>, and a <see cref="SchemaObject"/> is matched on its table too.
+    /// </remarks>
     internal static async Task<SchemaObjects> ReadSchemaObjectsAsync(
         DbContext dbContext, CancellationToken cancellationToken)
     {
@@ -162,9 +223,9 @@ public static class MigrationRunner
             FROM information_schema.STATISTICS
             WHERE TABLE_SCHEMA = DATABASE()
             UNION ALL
-            SELECT 'ForeignKey', TABLE_NAME, CONSTRAINT_NAME
+            SELECT IF(CONSTRAINT_TYPE = 'CHECK', 'CheckConstraint', 'ForeignKey'), TABLE_NAME, CONSTRAINT_NAME
             FROM information_schema.TABLE_CONSTRAINTS
-            WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+            WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_TYPE IN ('FOREIGN KEY', 'CHECK')
             """;
 
         var objects = new List<SchemaObject>();
@@ -193,6 +254,9 @@ public static class MigrationRunner
                         break;
                     case "ForeignKey":
                         objects.Add(new SchemaObject(SchemaObjectKind.ForeignKey, table, name));
+                        break;
+                    case "CheckConstraint":
+                        objects.Add(new SchemaObject(SchemaObjectKind.CheckConstraint, table, name));
                         break;
                 }
             }
