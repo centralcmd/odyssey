@@ -149,8 +149,8 @@ public class DashboardNetWorthSourceTests
     {
         Assert.Empty(DashboardFigures.BuildSeries(null));
 
-        var loadFailed = DashboardFigures.ChartEmptyLabel(null, "NOK");
-        var emptyResult = DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NoAccounts, "NOK");
+        var loadFailed = DashboardFigures.ChartEmptyLabel(null, false, "NOK");
+        var emptyResult = DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NoAccounts, false, "NOK");
         Assert.NotEqual(loadFailed, emptyResult);
     }
 
@@ -219,7 +219,7 @@ public class DashboardNetWorthSourceTests
     {
         Assert.Equal(
             OdsLinePointKind.Partial,
-            DashboardFigures.KindOf(Point(new DateOnly(2025, 1, 1), 1m, unconverted: 1, revalued: 1)));
+            DashboardFigures.KindOf(Point(new DateOnly(2025, 1, 1), 1m, unconverted: 1, revalued: 1), included: false));
     }
 
     // ── AC30 — a totals failure must not change how the chart's figures are denominated ────────

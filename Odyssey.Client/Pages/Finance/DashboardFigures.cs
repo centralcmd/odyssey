@@ -67,6 +67,158 @@ internal static class DashboardFigures
         $"No exchange rate from {accountCurrencyCode} to {mainCurrencyCode}, "
         + "so this account counts as 0 towards net worth.";
 
+    /// <summary>The same advisory for a property (issue #215 state 5). FROM the property's currency, TO the main one.</summary>
+    internal static string UnconvertedPropertyMessage(string propertyCurrencyCode, string mainCurrencyCode) =>
+        $"No exchange rate from {propertyCurrencyCode} to {mainCurrencyCode}, "
+        + "so this property counts as 0 towards net worth.";
+
+    // ── The property gate (issue #215 §3.3) ─────────────────────────────────────────────────────
+    //
+    // Every property-derived read goes through one of these, keyed on the RESPONSE's own
+    // PropertiesIncluded, and each returns zero / empty / null when that flag is false. So a response
+    // whose flag is false but whose property members are non-zero — a server regression — still
+    // renders exactly the accounts-only page. Home names none of the property members itself (a
+    // source-lint pins that), and it never decides inclusion from a claim: a second authority would
+    // drift from the server's decision, e.g. after a role change while the cookie carries old claims.
+
+    /// <summary>A point's property counts, or all zero when its response did not include properties.</summary>
+    internal static (int Unconverted, int Revalued, int Contributing) IncludedPropertyCounts(
+        NetWorthHistoryPoint point, bool included) =>
+        included
+            ? (point.UnconvertedPropertyCount, point.RevaluedPropertyCount, point.ContributingPropertyCount)
+            : (0, 0, 0);
+
+    /// <summary>The history's unconvertible properties, or none when it did not include properties.</summary>
+    internal static IReadOnlyList<UnconvertedProperty> IncludedUnconvertedProperties(NetWorthHistory? history) =>
+        history is { PropertiesIncluded: true } ? history.UnconvertedProperties : [];
+
+    /// <summary>Whether properties contribute to the LATEST point — the one the composition sentence describes.</summary>
+    internal static bool PropertiesContribute(NetWorthHistory? history) =>
+        history is { PropertiesIncluded: true, Points.Count: > 0 }
+        && history.Points[^1].ContributingPropertyCount > 0;
+
+    /// <summary>Held, valued and converted properties now, or 0 when not included.</summary>
+    internal static int IncludedContributingPropertyCount(AccountTotals? totals) =>
+        totals is { PropertiesIncluded: true } ? totals.ContributingPropertyCount : 0;
+
+    /// <summary>Held properties with no estimate yet, or 0 when not included.</summary>
+    internal static int IncludedUnvaluedPropertyCount(AccountTotals? totals) =>
+        totals is { PropertiesIncluded: true } ? totals.UnvaluedPropertyCount : 0;
+
+    /// <summary>In-term accounts of type Property or Vehicle, or null when not included.</summary>
+    internal static int? IncludedAssetTypedAccountCount(AccountTotals? totals) =>
+        totals is { PropertiesIncluded: true } ? totals.AssetTypedAccountCount : null;
+
+    /// <summary>The totals' unconvertible properties, or none when not included.</summary>
+    internal static IReadOnlyList<UnconvertedProperty> IncludedUnconvertedProperties(AccountTotals? totals) =>
+        totals is { PropertiesIncluded: true } ? totals.UnconvertedProperties : [];
+
+    /// <summary>
+    /// Every property held now, whether or not it could be valued or converted — contributing +
+    /// unvalued + unconverted — or 0 when not included. The header's M and the advisory's precondition.
+    /// </summary>
+    internal static int HeldPropertyCount(AccountTotals? totals) =>
+        IncludedContributingPropertyCount(totals)
+        + IncludedUnvaluedPropertyCount(totals)
+        + IncludedUnconvertedProperties(totals).Count;
+
+    /// <summary>Whether properties contribute to the headline figure now (issue #215 state 2 vs 3).</summary>
+    internal static bool PropertiesContribute(AccountTotals? totals) => IncludedContributingPropertyCount(totals) > 0;
+
+    /// <summary>
+    /// The composition sentence for the chart's sub-line (state 2): the property share of the LATEST
+    /// point, and the accounts-alone figure beside it. <c>null</c> when properties are not included,
+    /// when none contributes to that point, or when its property value is absent — absence is
+    /// fail-closed and never read as zero.
+    /// </summary>
+    /// <remarks>
+    /// The one subtraction the page performs, of two server figures in one currency at one instant.
+    /// The last point equals <c>/totals</c> (issue #214 AC5), so this describes the headline figure.
+    /// </remarks>
+    internal static string? CompositionNote(NetWorthHistory? history, Func<decimal, string> formatMoney)
+    {
+        if (!PropertiesContribute(history))
+            return null;
+
+        var last = history!.Points[^1];
+        if (last.PropertyValue is not { } propertyValue)
+            return null;
+
+        var count = last.ContributingPropertyCount;
+        var accountsAlone = last.NetWorth - last.PropertyValue.Value;
+        return $"Includes {formatMoney(propertyValue)} in property estimates from {count} valued "
+            + $"propert{(count == 1 ? "y" : "ies")}; accounts alone: {formatMoney(accountsAlone)}.";
+    }
+
+    /// <summary>The Information entry for held properties with no estimate yet (state 6), or null.</summary>
+    internal static string? UnvaluedMessage(AccountTotals? totals)
+    {
+        var count = IncludedUnvaluedPropertyCount(totals);
+        return count switch
+        {
+            <= 0 => null,
+            1 => "1 property has no estimate yet, so it counts as 0 towards net worth.",
+            _ => $"{count} properties have no estimate yet, so they count as 0 towards net worth.",
+        };
+    }
+
+    /// <summary>
+    /// The double-count advisory (state 8): an account typed Property/Vehicle may describe the same
+    /// asset as a property record. Only while properties are held — otherwise the overlap cannot exist.
+    /// </summary>
+    internal static string? DoubleCountAdvisory(AccountTotals? totals)
+    {
+        if (IncludedAssetTypedAccountCount(totals) is not { } count || count <= 0 || HeldPropertyCount(totals) <= 0)
+            return null;
+
+        return count == 1
+            ? "1 account is of type Property or Vehicle. If it describes the same asset as a property, that asset is counted twice."
+            : $"{count} accounts are of type Property or Vehicle. If one describes the same asset as a property, that asset is counted twice.";
+    }
+
+    /// <summary>"an account" / "a property" / "an account or property" — the member kind a note or table names.</summary>
+    private static string MemberKind(bool anyAccount, bool anyProperty) => (anyAccount, anyProperty) switch
+    {
+        (false, true) => "a property",
+        (true, true) => "an account or property",
+        _ => "an account",
+    };
+
+    /// <summary>The chart table's State text for a Partial point, naming the member kind as the note does.</summary>
+    internal static string PartialDescription(bool anyAccount, bool anyProperty) =>
+        $"Understated — {MemberKind(anyAccount, anyProperty)} had no exchange rate for this period";
+
+    /// <summary>The chart table's State text for a Revalued point, naming the kind of estimate.</summary>
+    internal static string RevaluedDescription(bool anyAccount, bool anyProperty) =>
+        $"Revalued — {MemberKind(anyAccount, anyProperty)} estimate took effect in this period";
+
+    // ── The rollup (issue #215 §4) ──────────────────────────────────────────────────────────────
+
+    internal const string NeedsAttentionGroup = "Needs attention";
+    internal const string ForYourInformationGroup = "For your information";
+
+    /// <summary>
+    /// Warnings first, then Information. A heading is set ONLY when the panel mixes the two, so a
+    /// warnings-only panel renders exactly as it always has and an information-only one carries none.
+    /// </summary>
+    internal static IReadOnlyList<PageHeaderProblem> GroupProblems(IReadOnlyList<PageHeaderProblem> rows)
+    {
+        var attention = rows.Where(row => row.Severity != PageHeaderSeverity.Information).ToList();
+        var information = rows.Where(row => row.Severity == PageHeaderSeverity.Information).ToList();
+        var mixed = attention.Count > 0 && information.Count > 0;
+
+        foreach (var row in attention)
+            row.Group = mixed ? NeedsAttentionGroup : null;
+        foreach (var row in information)
+            row.Group = mixed ? ForYourInformationGroup : null;
+
+        return [.. attention, .. information];
+    }
+
+    /// <summary>The rollup toggle's label: a standing advisory must not read as a standing fault.</summary>
+    internal static string ProblemsLabel(IReadOnlyCollection<PageHeaderProblem> rows) =>
+        rows.Any(row => row.Severity != PageHeaderSeverity.Information) ? "Net worth issues" : "Net worth notes";
+
     /// <summary>
     /// The chart's empty copy. The cause is <b>known</b>, so the copy says which one — never "no data
     /// yet", which tells a reader with a full portfolio that their accounts are empty.
@@ -75,15 +227,26 @@ internal static class DashboardFigures
     /// The server's own discrimination. It is carried on the response precisely because it cannot be
     /// inferred: several of the causes produce otherwise byte-identical payloads.
     /// </param>
+    /// <param name="included">
+    /// The response's <c>PropertiesIncluded</c>: with properties the members are "accounts or valued
+    /// properties" (issue #214 §5.4), so three of the causes say so.
+    /// </param>
     /// <param name="mainCurrencyCode">Interpolated into the conversion case, which names the currency it failed to reach.</param>
-    internal static string ChartEmptyLabel(NetWorthEmptyReason? reason, string? mainCurrencyCode) => reason switch
+    internal static string ChartEmptyLabel(NetWorthEmptyReason? reason, bool included, string? mainCurrencyCode) => reason switch
     {
-        NetWorthEmptyReason.NoAccounts => "No accounts to chart yet.",
+        NetWorthEmptyReason.NoAccounts => included
+            ? "No accounts or valued properties to chart yet."
+            : "No accounts to chart yet.",
         NetWorthEmptyReason.NothingConvertible => string.IsNullOrWhiteSpace(mainCurrencyCode)
             ? "Net worth could not be converted for any period."
             : $"Net worth could not be converted to {mainCurrencyCode} for any period.",
-        NetWorthEmptyReason.WindowBeforeFirstAccount => "No accounts existed in this period.",
-        NetWorthEmptyReason.WindowAfterAllAccountsClosed => "Every account had closed before this period.",
+        NetWorthEmptyReason.WindowBeforeFirstAccount => included
+            ? "No accounts or valued properties existed in this period."
+            : "No accounts existed in this period.",
+        // Not "every property had been disposed of": a held but never-estimated property is also this.
+        NetWorthEmptyReason.WindowAfterAllAccountsClosed => included
+            ? "No account was open and no valued property was held during this period."
+            : "Every account had closed before this period.",
         NetWorthEmptyReason.NotBuilt => "Net-worth history is not available yet.",
         // No reason at all means the call did not land. Distinct copy, because "not available yet" is
         // a statement about the data and this is a statement about the request.
@@ -134,8 +297,13 @@ internal static class DashboardFigures
     /// not when it started, which was what the removed "Since {year}" said about a curve that had no
     /// real span at all.
     /// </summary>
+    /// <param name="accountsOnly">
+    /// True only when a history was received with <c>PropertiesIncluded</c> false (issue #215 state 4)
+    /// — not when properties are included, and not when there is no history at all.
+    /// </param>
     internal static string ChartCaption(
-        int pointCount, string? firstLabel, string? lastLabel, NetWorthInterval interval, string? currencyCode)
+        int pointCount, string? firstLabel, string? lastLabel, NetWorthInterval interval, string? currencyCode,
+        bool accountsOnly)
     {
         var word = IntervalWord(interval);
         var head = $"{pointCount} {word} point{(pointCount == 1 ? "" : "s")}";
@@ -143,7 +311,8 @@ internal static class DashboardFigures
             ? null
             : $"{firstLabel} – {lastLabel}";
 
-        return string.Join(" · ", new[] { head, span, currencyCode }.Where(part => !string.IsNullOrWhiteSpace(part)));
+        return string.Join(" · ", new[] { head, span, currencyCode, accountsOnly ? "accounts only" : null }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
     }
 
     /// <summary>
@@ -154,9 +323,11 @@ internal static class DashboardFigures
     /// and stroke and a reader who cannot see the plot at all gets neither. The withheld-delta clause
     /// is added only when an <b>endpoint</b> is understated, which is the only case that withholds it.
     /// </remarks>
+    /// <param name="unconvertedProperties">Already gated: empty whenever the history did not include properties.</param>
     internal static string? UnderstatedNote(
         IReadOnlyList<string> understatedLabels,
         IReadOnlyList<UnconvertedAccount> unconvertedAccounts,
+        IReadOnlyList<UnconvertedProperty> unconvertedProperties,
         bool deltaWithheld)
     {
         if (understatedLabels.Count == 0)
@@ -166,9 +337,13 @@ internal static class DashboardFigures
             ? $"{understatedLabels[0]} is understated"
             : $"{understatedLabels.Count} periods are understated";
 
-        var because = unconvertedAccounts.Count == 1
-            ? $" — {unconvertedAccounts[0].Name} ({unconvertedAccounts[0].CurrencyCode}) had no exchange rate"
-            : " — an account had no exchange rate";
+        // Exactly one member across both lists is named; several are described by kind.
+        var because = (unconvertedAccounts.Count, unconvertedProperties.Count) switch
+        {
+            (1, 0) => $" — {unconvertedAccounts[0].Name} ({unconvertedAccounts[0].CurrencyCode}) had no exchange rate",
+            (0, 1) => $" — {unconvertedProperties[0].Name} ({unconvertedProperties[0].CurrencyCode}) had no exchange rate",
+            var (accounts, properties) => $" — {MemberKind(accounts > 0 || properties == 0, properties > 0)} had no exchange rate",
+        };
 
         var withheld = deltaWithheld
             ? " The change since the first period is withheld while an endpoint is understated."
@@ -182,7 +357,11 @@ internal static class DashboardFigures
     /// own sentence: a revaluation is a real movement and an understatement is a missing one, so one
     /// sentence serving both would make opposites read alike.
     /// </summary>
-    internal static string? RevaluedNote(IReadOnlyList<string> revaluedLabels)
+    /// <remarks>
+    /// A property revaluation is only ever an estimate change — never an acquisition or a disposal
+    /// (issue #214 V10) — so the sentence names the kind of estimate and nothing else.
+    /// </remarks>
+    internal static string? RevaluedNote(IReadOnlyList<string> revaluedLabels, bool anyAccount, bool anyProperty)
     {
         if (revaluedLabels.Count == 0)
             return null;
@@ -191,7 +370,7 @@ internal static class DashboardFigures
             ? $"{revaluedLabels[0]} steps"
             : $"{revaluedLabels.Count} periods step";
 
-        return $"{subject} because an account estimate took effect — a real movement, not a correction.";
+        return $"{subject} because {MemberKind(anyAccount, anyProperty)} estimate took effect — a real movement, not a correction.";
     }
 
     /// <summary>
@@ -219,7 +398,7 @@ internal static class DashboardFigures
             series.Add(new OdsLinePoint(
                 PointLabel(point.Date, history.Interval),
                 point.NetWorth,
-                KindOf(point)));
+                KindOf(point, history.PropertiesIncluded)));
         }
 
         return series;
@@ -230,20 +409,45 @@ internal static class DashboardFigures
     /// the stronger caveat, and it is the one that withholds the delta. Reporting the weaker of the two
     /// would let an understated endpoint keep a delta it cannot support.
     /// </summary>
-    internal static OdsLinePointKind KindOf(NetWorthHistoryPoint point) =>
-        point.UnconvertedAccountCount > 0 ? OdsLinePointKind.Partial
-        : point.RevaluedAccountCount > 0 ? OdsLinePointKind.Revalued
+    /// <remarks>
+    /// A property counts exactly as an account does, through the gate (issue #215 §3.3). An UNVALUED
+    /// property never marks a point: that would be true of every point for a never-estimated plot and
+    /// would withhold the delta forever (issue #214 D1).
+    /// </remarks>
+    internal static OdsLinePointKind KindOf(NetWorthHistoryPoint point, bool included) =>
+        IsUnderstated(point, included) ? OdsLinePointKind.Partial
+        : IsRevaluedByAccount(point) || IsRevaluedByProperty(point, included) ? OdsLinePointKind.Revalued
         : OdsLinePointKind.Normal;
 
+    /// <summary>A member had no rate at this point, so its figure is understated.</summary>
+    internal static bool IsUnderstated(NetWorthHistoryPoint point, bool included) =>
+        point.UnconvertedAccountCount + IncludedPropertyCounts(point, included).Unconverted > 0;
+
+    internal static bool IsRevaluedByAccount(NetWorthHistoryPoint point) => point.RevaluedAccountCount > 0;
+
+    internal static bool IsRevaluedByProperty(NetWorthHistoryPoint point, bool included) =>
+        IncludedPropertyCounts(point, included).Revalued > 0;
+
+    /// <summary>Some member contributed a converted figure to this point — the delta's endpoint test.</summary>
+    internal static bool Contributes(NetWorthHistoryPoint point, bool included) =>
+        point.ContributingAccountCount + IncludedPropertyCounts(point, included).Contributing > 0;
+
     /// <summary>The chart's accessible name: what it plots, at what resolution, over what span.</summary>
+    /// <param name="accountsOnly">As for <see cref="ChartCaption"/>: a history received with the flag false.</param>
+    /// <param name="propertiesContribute">Properties contribute to the latest point.</param>
     internal static string ChartAriaLabel(
-        int pointCount, string? firstLabel, string? lastLabel, NetWorthInterval interval)
+        int pointCount, string? firstLabel, string? lastLabel, NetWorthInterval interval,
+        bool accountsOnly, bool propertiesContribute)
     {
         if (pointCount == 0 || string.IsNullOrEmpty(firstLabel) || string.IsNullOrEmpty(lastLabel))
-            return "Net worth over time";
+            return accountsOnly ? "Net worth over time, accounts only" : "Net worth over time";
+
+        var suffix = accountsOnly ? ", accounts only"
+            : propertiesContribute ? ", including property estimates"
+            : string.Empty;
 
         return $"Net worth over time, {pointCount} {IntervalWord(interval)} "
-            + $"point{(pointCount == 1 ? "" : "s")} from {firstLabel} to {lastLabel}";
+            + $"point{(pointCount == 1 ? "" : "s")} from {firstLabel} to {lastLabel}{suffix}";
     }
 
 }

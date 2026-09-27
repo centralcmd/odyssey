@@ -86,6 +86,16 @@ public partial class OdsLineChart
     /// <summary>Header for the text equivalent's first column.</summary>
     [Parameter] public string TextEquivalentLabel { get; set; } = "Period";
 
+    /// <summary>
+    /// The text-equivalent table's State text for a <c>Partial</c> point. <c>null</c> keeps the default
+    /// wording; a caller whose understatement has a different cause (e.g. a property rather than an
+    /// account, issue #215) passes its own so the table agrees with the note beside the chart.
+    /// </summary>
+    [Parameter] public string? PartialDescription { get; set; }
+
+    /// <summary>The text-equivalent table's State text for a <c>Revalued</c> point; <c>null</c> keeps the default.</summary>
+    [Parameter] public string? RevaluedDescription { get; set; }
+
     [Parameter] public string? AriaLabel { get; set; }
 
     [Parameter] public string? Class { get; set; }
@@ -107,12 +117,15 @@ public partial class OdsLineChart
     /// cannot see the markers has to be able to tell an understated figure from a revaluation step,
     /// and those are opposites — one withholds the delta, the other does not.
     /// </summary>
-    private static string KindDescription(OdsLinePointKind kind) => kind switch
+    private string KindDescription(OdsLinePointKind kind) => kind switch
     {
-        OdsLinePointKind.Partial => "Understated — an account had no exchange rate for this period",
-        OdsLinePointKind.Revalued => "Revalued — an estimate took effect in this period",
+        OdsLinePointKind.Partial => PartialDescription ?? DefaultPartialDescription,
+        OdsLinePointKind.Revalued => RevaluedDescription ?? DefaultRevaluedDescription,
         _ => "Measured",
     };
+
+    internal const string DefaultPartialDescription = "Understated — an account had no exchange rate for this period";
+    internal const string DefaultRevaluedDescription = "Revalued — an estimate took effect in this period";
 
     // The plot box inside the 1000 × 252 viewBox. The x-tick baseline sits at YBot + 26 = 238.
     private const double X0 = 64, X1 = 968, YTop = 28, YBot = 212;

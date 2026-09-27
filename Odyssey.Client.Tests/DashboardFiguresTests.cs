@@ -228,8 +228,8 @@ public class DashboardFiguresTests
     public void ChartEmptyLabel_GivesEachCauseItsOwnSentence()
     {
         var copy = Enum.GetValues<NetWorthEmptyReason>()
-            .Select(reason => DashboardFigures.ChartEmptyLabel(reason, "NOK"))
-            .Append(DashboardFigures.ChartEmptyLabel(null, "NOK"))
+            .Select(reason => DashboardFigures.ChartEmptyLabel(reason, false, "NOK"))
+            .Append(DashboardFigures.ChartEmptyLabel(null, false, "NOK"))
             .ToList();
 
         Assert.Equal(copy.Count, copy.Distinct(StringComparer.Ordinal).Count());
@@ -244,11 +244,11 @@ public class DashboardFiguresTests
     public void ChartEmptyLabel_NamesTheCurrencyItCouldNotConvertTo()
     {
         Assert.Contains("NOK",
-            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NothingConvertible, "NOK"),
+            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NothingConvertible, false, "NOK"),
             StringComparison.Ordinal);
 
         // …and stays a sentence rather than a gap when the currency is unknown.
-        var unknown = DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NothingConvertible, null);
+        var unknown = DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NothingConvertible, false, null);
         Assert.DoesNotContain("  ", unknown, StringComparison.Ordinal);
         Assert.EndsWith("for any period.", unknown, StringComparison.Ordinal);
     }
@@ -262,11 +262,11 @@ public class DashboardFiguresTests
     public void ChartEmptyLabel_SeparatesAFailedCallFromAnEmptyResult()
     {
         Assert.NotEqual(
-            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NotBuilt, "NOK"),
-            DashboardFigures.ChartEmptyLabel(null, "NOK"));
+            DashboardFigures.ChartEmptyLabel(NetWorthEmptyReason.NotBuilt, false, "NOK"),
+            DashboardFigures.ChartEmptyLabel(null, false, "NOK"));
 
         Assert.Contains("could not be loaded",
-            DashboardFigures.ChartEmptyLabel(null, "NOK"), StringComparison.Ordinal);
+            DashboardFigures.ChartEmptyLabel(null, false, "NOK"), StringComparison.Ordinal);
     }
 
     // ── Chart labels, caption and notes ──
@@ -307,7 +307,7 @@ public class DashboardFiguresTests
     [Fact]
     public void ChartCaption_SaysWhatTheChartIs()
     {
-        var caption = DashboardFigures.ChartCaption(24, "Jul ’24", "Jun ’26", NetWorthInterval.Monthly, "NOK");
+        var caption = DashboardFigures.ChartCaption(24, "Jul ’24", "Jun ’26", NetWorthInterval.Monthly, "NOK", accountsOnly: false);
 
         Assert.Contains("24 monthly points", caption, StringComparison.Ordinal);
         Assert.Contains("NOK", caption, StringComparison.Ordinal);
@@ -319,7 +319,7 @@ public class DashboardFiguresTests
     [Fact]
     public void ChartCaption_DropsTheSpanRatherThanPrintingAnEmptyOne()
     {
-        var caption = DashboardFigures.ChartCaption(0, null, null, NetWorthInterval.Monthly, "NOK");
+        var caption = DashboardFigures.ChartCaption(0, null, null, NetWorthInterval.Monthly, "NOK", accountsOnly: false);
 
         Assert.DoesNotContain("–", caption, StringComparison.Ordinal);
         Assert.DoesNotContain(" ·  ·", caption, StringComparison.Ordinal);
@@ -328,7 +328,7 @@ public class DashboardFiguresTests
     [Fact]
     public void ChartAriaLabel_NamesTheResolutionAndTheSpan()
     {
-        var label = DashboardFigures.ChartAriaLabel(24, "Jul ’24", "Jun ’26", NetWorthInterval.Monthly);
+        var label = DashboardFigures.ChartAriaLabel(24, "Jul ’24", "Jun ’26", NetWorthInterval.Monthly, accountsOnly: false, propertiesContribute: false);
 
         Assert.StartsWith("Net worth over time,", label, StringComparison.Ordinal);
         Assert.Contains("24 monthly points", label, StringComparison.Ordinal);
@@ -339,7 +339,7 @@ public class DashboardFiguresTests
     public void ChartAriaLabel_FallsBackToThePlainNameWithNoPoints()
     {
         Assert.Equal("Net worth over time",
-            DashboardFigures.ChartAriaLabel(0, null, null, NetWorthInterval.Monthly));
+            DashboardFigures.ChartAriaLabel(0, null, null, NetWorthInterval.Monthly, accountsOnly: false, propertiesContribute: false));
     }
 
     /// <summary>
@@ -352,6 +352,7 @@ public class DashboardFiguresTests
         var note = DashboardFigures.UnderstatedNote(
             ["Jul ’25"],
             [new UnconvertedAccount { AccountId = Guid.NewGuid(), Name = "Zurich brokerage", CurrencyCode = "CHF" }],
+            [],
             deltaWithheld: false);
 
         Assert.NotNull(note);
@@ -369,7 +370,7 @@ public class DashboardFiguresTests
             new() { AccountId = Guid.NewGuid(), Name = "B", CurrencyCode = "SEK" },
         };
 
-        var withheld = DashboardFigures.UnderstatedNote(["Jul", "Aug"], accounts, deltaWithheld: true);
+        var withheld = DashboardFigures.UnderstatedNote(["Jul", "Aug"], accounts, [], deltaWithheld: true);
         Assert.NotNull(withheld);
         Assert.Contains("2 periods are understated", withheld, StringComparison.Ordinal);
         Assert.Contains("withheld", withheld, StringComparison.Ordinal);
@@ -383,8 +384,9 @@ public class DashboardFiguresTests
         var understated = DashboardFigures.UnderstatedNote(
             ["Jul"],
             [new UnconvertedAccount { AccountId = Guid.NewGuid(), Name = "A", CurrencyCode = "CHF" }],
+            [],
             deltaWithheld: false);
-        var revalued = DashboardFigures.RevaluedNote(["Jun"]);
+        var revalued = DashboardFigures.RevaluedNote(["Jun"], anyAccount: true, anyProperty: false);
 
         Assert.NotNull(understated);
         Assert.NotNull(revalued);
@@ -400,7 +402,7 @@ public class DashboardFiguresTests
     [Fact]
     public void TheNotes_AreAbsentWhenThereIsNothingToDisclose()
     {
-        Assert.Null(DashboardFigures.UnderstatedNote([], [], deltaWithheld: false));
-        Assert.Null(DashboardFigures.RevaluedNote([]));
+        Assert.Null(DashboardFigures.UnderstatedNote([], [], [], deltaWithheld: false));
+        Assert.Null(DashboardFigures.RevaluedNote([], anyAccount: true, anyProperty: true));
     }
 }
