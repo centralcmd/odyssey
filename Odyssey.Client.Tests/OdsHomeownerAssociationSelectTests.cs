@@ -36,6 +36,7 @@ public class OdsHomeownerAssociationSelectTests
         [Parameter] public string? Value { get; set; }
         [Parameter] public string? StoredValue { get; set; }
         [Parameter] public string? Error { get; set; }
+        [Parameter] public string? StoredName { get; set; }
 
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
         {
@@ -47,11 +48,13 @@ public class OdsHomeownerAssociationSelectTests
             builder.AddComponentParameter(3, nameof(OdsHomeownerAssociationSelect.Value), Value);
             builder.AddComponentParameter(4, nameof(OdsHomeownerAssociationSelect.StoredValue), StoredValue);
             builder.AddComponentParameter(5, nameof(OdsHomeownerAssociationSelect.Error), Error);
+            builder.AddComponentParameter(6, nameof(OdsHomeownerAssociationSelect.StoredName), StoredName);
             builder.CloseComponent();
         }
     }
 
-    private static IRenderedComponent<Host> Render(string? value = null, string? stored = null, string? error = null)
+    private static IRenderedComponent<Host> Render(
+        string? value = null, string? stored = null, string? error = null, string? storedName = null)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -59,7 +62,8 @@ public class OdsHomeownerAssociationSelectTests
         return ctx.Render<Host>(p => p
             .Add(h => h.Value, value)
             .Add(h => h.StoredValue, stored)
-            .Add(h => h.Error, error));
+            .Add(h => h.Error, error)
+            .Add(h => h.StoredName, storedName));
     }
 
     private static IReadOnlyList<string> OptionValues(IRenderedComponent<Host> cut) =>
@@ -113,5 +117,28 @@ public class OdsHomeownerAssociationSelectTests
         Assert.Contains("That organization is archived.", cut.Find(".odc-field-help[role=alert]").TextContent, StringComparison.Ordinal);
         Assert.Empty(cut.Find(".odc-field-help[role=status]").TextContent.Trim());
         Assert.Contains("error", cut.Find(".odc-hoa-field").ClassList);
+    }
+
+    /// <summary>
+    /// A stored link the loaded list does not carry (not loaded yet, or the load failed) still reads by
+    /// the name the property response resolved — but only for the stored id, never a changed one.
+    /// </summary>
+    [Fact]
+    public void A_stored_link_missing_from_the_list_falls_back_to_the_stored_name()
+    {
+        var missing = Guid.NewGuid().ToString();
+        var cut = Render(value: missing, stored: missing, storedName: "Fjordgata Sameie");
+
+        var option = Assert.Single(cut.FindComponent<OdsCombobox>().Instance.Options, o => o.Value == missing);
+        Assert.Equal("Fjordgata Sameie", option.Label);
+        Assert.DoesNotContain("Saving keeps this link", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_changed_id_missing_from_the_list_does_not_borrow_the_stored_name()
+    {
+        var cut = Render(value: Guid.NewGuid().ToString(), stored: Guid.NewGuid().ToString(), storedName: "Fjordgata Sameie");
+
+        Assert.Equal([Active.ContactId.ToString()], OptionValues(cut));
     }
 }

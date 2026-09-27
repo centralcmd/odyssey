@@ -138,6 +138,8 @@ public class PropertyHomeownerAssociationServiceTests
 
         Assert.Equal("Renamed", updated!.Name);
         Assert.Equal(association, updated.RealEstateDetails!.HomeownerAssociationId);
+        Assert.Equal(association, updated.HomeownerAssociation!.ContactId);
+        Assert.NotNull(updated.HomeownerAssociation.Archived);
     }
 
     private static NewProperty Flat(string name, Guid? association) => PropertyTestData.House(name) with

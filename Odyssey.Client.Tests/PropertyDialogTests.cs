@@ -262,6 +262,47 @@ public class PropertyDialogTests
         Assert.DoesNotContain(Guid.Empty.ToString(), picker.Instance.Error!, StringComparison.Ordinal);
     }
 
+    private static Odyssey.Dtos.Journal.ExistingContact Contact(
+        Guid id, Odyssey.Dtos.ContactType type, bool archived = false) => new()
+    {
+        ContactId = id,
+        ResolvedDisplayName = "Contact",
+        NormalizedName = "CONTACT",
+        ExternalUid = string.Empty,
+        Type = type,
+        Archived = archived ? new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc) : null,
+    };
+
+    /// <summary>
+    /// The client pre-check mirrors the server's R3/R4 on a CHANGED id only, and defers an id the
+    /// loaded list does not carry to the server rather than guessing.
+    /// </summary>
+    [Fact]
+    public void The_association_pre_check_refuses_a_changed_archived_or_non_organization_id_only()
+    {
+        var active = Guid.NewGuid();
+        var archived = Guid.NewGuid();
+        var person = Guid.NewGuid();
+        IReadOnlyList<Odyssey.Dtos.Journal.ExistingContact> contacts =
+        [
+            Contact(active, Odyssey.Dtos.ContactType.Organization),
+            Contact(archived, Odyssey.Dtos.ContactType.Organization, archived: true),
+            Contact(person, Odyssey.Dtos.ContactType.Person),
+        ];
+
+        Assert.Null(PropertyDialog.AssociationPreCheck(null, null, contacts));
+        Assert.Null(PropertyDialog.AssociationPreCheck(active.ToString(), null, contacts));
+        Assert.Equal(PropertyDialog.AssociationArchived,
+            PropertyDialog.AssociationPreCheck(archived.ToString(), null, contacts));
+        Assert.Equal(PropertyDialog.AssociationNotOrganization,
+            PropertyDialog.AssociationPreCheck(person.ToString(), active.ToString(), contacts));
+
+        // Kept links are never re-checked (§8.3), and an unknown id is the server's to answer.
+        Assert.Null(PropertyDialog.AssociationPreCheck(archived.ToString(), archived.ToString(), contacts));
+        Assert.Null(PropertyDialog.AssociationPreCheck(person.ToString(), person.ToString(), contacts));
+        Assert.Null(PropertyDialog.AssociationPreCheck(Guid.NewGuid().ToString(), null, contacts));
+    }
+
     [Fact]
     public void A_vehicle_has_no_association_picker()
     {

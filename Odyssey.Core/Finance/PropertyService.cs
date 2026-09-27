@@ -450,7 +450,10 @@ public class PropertyService
             context, property, PropertyEventCatalogue.Detect(before, PropertyStamps.Of(property), now), userId, now);
 
         await context.SaveChangesAsync(cancellationToken);
-        return ToDto(property, now);
+
+        var dto = ToDto(property, now);
+        await ResolveHomeownerAssociationsAsync([dto], cancellationToken);
+        return dto;
     }
 
     /// <summary>

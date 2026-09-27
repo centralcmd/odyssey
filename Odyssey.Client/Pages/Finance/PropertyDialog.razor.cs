@@ -99,9 +99,9 @@ public partial class PropertyDialog
 
     // The design system's copy for the three server refusals on a changed id (400 not found, 400
     // archived, 422 not an organization). None echoes more than the user picked.
-    private const string AssociationNotFound = "That contact no longer exists — it may have been deleted. Pick another association.";
-    private const string AssociationArchived = "That organization is archived. Restore it in Contacts or pick another.";
-    private const string AssociationNotOrganization = "That contact isn’t an organization, so it can’t be a homeowner association.";
+    internal const string AssociationNotFound = "That contact no longer exists — it may have been deleted. Pick another association.";
+    internal const string AssociationArchived = "That organization is archived. Restore it in Contacts or pick another.";
+    internal const string AssociationNotOrganization = "That contact isn’t an organization, so it can’t be a homeowner association.";
 
     private string? Err(string key) => _errors.TryGetValue(key, out var message) ? message : null;
 
@@ -251,7 +251,7 @@ public partial class PropertyDialog
                 _errors["livingAreaSqm"] = "Between 0 and 1,000,000 m².";
             if (_plotArea is { } pa && (pa < 0 || pa > 1_000_000))
                 _errors["plotAreaSqm"] = "Between 0 and 1,000,000 m².";
-            if (AssociationPreCheck() is { } associationError)
+            if (AssociationPreCheck(_homeownerAssociationId, StoredAssociationId, _contacts) is { } associationError)
                 _errors["homeownerAssociationId"] = associationError;
         }
     }
@@ -261,12 +261,13 @@ public partial class PropertyDialog
     /// never re-checked, matching the server's change-only rule (§8.3). An id the list does not carry
     /// is left to the server rather than guessed at, since the list may simply have failed to load.
     /// </summary>
-    private string? AssociationPreCheck()
+    internal static string? AssociationPreCheck(
+        string? associationId, string? storedAssociationId, IReadOnlyList<ExistingContact> contacts)
     {
-        if (string.IsNullOrEmpty(_homeownerAssociationId) || _homeownerAssociationId == StoredAssociationId)
+        if (string.IsNullOrEmpty(associationId) || associationId == storedAssociationId)
             return null;
 
-        var contact = _contacts.FirstOrDefault(c => c.ContactId.ToString() == _homeownerAssociationId);
+        var contact = contacts.FirstOrDefault(c => c.ContactId.ToString() == associationId);
         return contact switch
         {
             null => null,
