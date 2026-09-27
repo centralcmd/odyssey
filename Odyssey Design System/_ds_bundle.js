@@ -58294,8 +58294,8 @@ try { (() => {
     icon: 'price_change',
     color: 'oklch(0.76 0.14 320)',
     soft: 'oklch(0.76 0.14 320 / 0.16)',
-    auto: 'the agreement was re-priced',
-    desc: 'What the agreement costs was renegotiated or re-set.'
+    auto: 'a term of the agreement was changed',
+    desc: 'A term of the agreement (a price, rate, date or clause) was set or changed.'
   }, {
     key: 'EmailSent',
     label: 'Email sent',

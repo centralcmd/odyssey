@@ -202,8 +202,6 @@ All dates are deterministic anchors reproduced exactly by the fixed seed.
 | Stocks Portfolio | `SE35 5000 0000 0549 0000 4407` | InvestmentAccount | SEK | 2019-11-05 | — |
 | Collectibles & Art | — | OtherAsset | USD | 2020-11-01 | — |
 | Cash Wallet | — | Cash | USD | 2016-04-01 | — |
-| Primary Residence | — | Property | USD | 2017-09-01 | — |
-| Family Car (Volvo XC60) | — | Vehicle | USD | 2023-02-15 | — |
 | Car Loan (Volvo XC60) | `CL-2023-10567` | CarLoan | USD | 2023-02-15 | — |
 | Everyday Credit Card | `5412 7534 8890 9912` | CreditCard | EUR | 2023-07-12 | — |
 | Renovation Personal Loan | `PL-2024-77120` | PersonalLoan | EUR | 2024-09-01 | — |
@@ -215,9 +213,12 @@ All dates are deterministic anchors reproduced exactly by the fixed seed.
 | Student Loan (paid off) | `SL-2016-44210` | StudentLoan | USD | 2016-02-01 | 2022-06-30 |
 | Old Car Loan (paid off) | `CL-2018-22107` | CarLoan | USD | 2018-03-01 | 2022-01-15 |
 
-These 21 accounts cover all 15 non-sentinel `AccountType` values: Cash, Checking,
-Savings, Investment, Pension, Property, Vehicle, OtherAsset, CreditCard, Mortgage,
-StudentLoan, PersonalLoan, CarLoan, TaxDebt, OtherLiability.
+These 19 accounts cover all 13 non-sentinel `AccountType` values: Cash, Checking,
+Savings, Investment, Pension, OtherAsset, CreditCard, Mortgage, StudentLoan,
+PersonalLoan, CarLoan, TaxDebt, OtherLiability. `Property` (6) and `Vehicle` (7) were
+retired by issue #218: the house and the car are seeded as property records
+(`PropertyGenerator.Residence` / `FamilyCar`), with the estimate histories and contract
+parties they carried as accounts.
 
 ### 3.8 Demo tags (categories)
 

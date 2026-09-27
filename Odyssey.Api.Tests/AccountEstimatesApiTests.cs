@@ -96,7 +96,7 @@ public class AccountEstimatesApiTests
     public async Task Post_ValidEstimate_ReturnsCreatedAndIsRetrievable()
     {
         await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.Property, "USD");
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset, "USD");
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(EstimatesPath(accountId), Estimate(350000m, new DateTime(2026, 1, 1)));
@@ -112,7 +112,7 @@ public class AccountEstimatesApiTests
     public async Task Post_WithoutCurrency_DefaultsToAccountCurrency()
     {
         await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.Property, "EUR");
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset, "EUR");
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(EstimatesPath(accountId), Estimate(1000m, new DateTime(2026, 1, 1)));
@@ -126,7 +126,7 @@ public class AccountEstimatesApiTests
     public async Task Post_CurrencyDifferentFromAccount_ReturnsBadRequest()
     {
         await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.Property, "USD");
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset, "USD");
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(EstimatesPath(accountId), Estimate(1000m, new DateTime(2026, 1, 1), currencyCode: "EUR"));
@@ -149,7 +149,7 @@ public class AccountEstimatesApiTests
     public async Task Post_Duplicate_ReturnsConflict()
     {
         await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.Property);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         using var client = factory.CreateClient();
 
         var date = new DateTime(2026, 1, 1);
@@ -163,7 +163,7 @@ public class AccountEstimatesApiTests
     public async Task Current_RespectsAsOfAndSupersession()
     {
         await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.Property);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         using var client = factory.CreateClient();
 
         await client.PostAsJsonAsync(EstimatesPath(accountId), Estimate(300000m, new DateTime(2026, 1, 1)));
@@ -177,7 +177,7 @@ public class AccountEstimatesApiTests
     public async Task Put_EstimateNotOnAccount_ReturnsNotFound()
     {
         await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.Property);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         using var client = factory.CreateClient();
 
         var put = await client.PutAsJsonAsync($"{EstimatesPath(accountId)}/{Guid.NewGuid()}", Estimate(1000m, new DateTime(2026, 1, 1)));
@@ -189,7 +189,7 @@ public class AccountEstimatesApiTests
     public async Task Delete_ExistingEstimate_ReturnsNoContent()
     {
         await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.Property);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         using var client = factory.CreateClient();
 
         await client.PostAsJsonAsync(EstimatesPath(accountId), Estimate(1000m, new DateTime(2026, 1, 1)));
@@ -203,7 +203,7 @@ public class AccountEstimatesApiTests
     public async Task Delete_EstimateNotOnAccount_ReturnsNotFound()
     {
         await using var factory = new ApiFactory(WriteAndRead);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.Property);
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset);
         using var client = factory.CreateClient();
 
         var delete = await client.DeleteAsync($"{EstimatesPath(accountId)}/{Guid.NewGuid()}");
@@ -215,7 +215,7 @@ public class AccountEstimatesApiTests
     public async Task GetAccount_ExposesCurrentEstimatedValue()
     {
         await using var factory = new ApiFactory([.. WriteAndRead, PermissionClaims.AccountsRead]);
-        var accountId = await SeedAccountAsync(factory, DtoAccountType.Property, "USD");
+        var accountId = await SeedAccountAsync(factory, DtoAccountType.OtherAsset, "USD");
         using var client = factory.CreateClient();
 
         await client.PostAsJsonAsync(EstimatesPath(accountId), Estimate(350000m, new DateTime(2026, 1, 1)));
@@ -232,7 +232,7 @@ public class AccountEstimatesApiTests
 
     private static async Task<Guid> SeedAccountAsync(
         WebApplicationFactory<Program> factory,
-        DtoAccountType accountType = DtoAccountType.Property,
+        DtoAccountType accountType = DtoAccountType.OtherAsset,
         string currencyCode = "USD")
     {
         using var scope = factory.Services.CreateScope();

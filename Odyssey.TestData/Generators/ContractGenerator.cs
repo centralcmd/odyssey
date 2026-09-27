@@ -84,7 +84,7 @@ public static class ContractGenerator
         ["Car Loan (Volvo XC60) — 60 Month"] = "CAL 7730 1142 09",
     };
 
-    private enum PartyKind { Account, Contact }
+    private enum PartyKind { Account, Contact, Property }
 
     /// <summary>
     /// Where a seeded contract sits in the signature lifecycle (issue #145). Every pre-#145 spec is
@@ -264,7 +264,7 @@ public static class ContractGenerator
                     // the policy, what is covered and who receives, as four distinct facts.
                     new(PartyKind.Contact, Catalog.Contacts.StateFarm, ContractPartyRole.Insurer),
                     new(PartyKind.Contact, Catalog.Contacts.PolicyHolder, ContractPartyRole.Policyholder),
-                    new(PartyKind.Account, Catalog.Accounts.PrimaryResidence, ContractPartyRole.Insured),
+                    new(PartyKind.Property, PropertyGenerator.Residence, ContractPartyRole.Insured),
                     // The one role that BLOCKS deletion of its contact (issue #157 §7.4). Seeded so
                     // the blocked delete and its detach valve have a real case in the demo data.
                     new(PartyKind.Contact, Catalog.Contacts.Spouse, ContractPartyRole.Beneficiary),
@@ -292,7 +292,7 @@ public static class ContractGenerator
                     new(PartyKind.Contact, Catalog.Contacts.FirstNationalBank, ContractPartyRole.Seller),
                     // The thing bought, in the role that says so (issue #169). Before Property existed
                     // this link had nowhere to go but the catch-all Other, which lost what it meant.
-                    new(PartyKind.Account, Catalog.Accounts.PrimaryResidence, ContractPartyRole.Property),
+                    new(PartyKind.Property, PropertyGenerator.Residence, ContractPartyRole.Property),
                 ]),
 
             // Membership — annual, and priced in a non-base currency so the run rate's conversion (and
@@ -362,9 +362,9 @@ public static class ContractGenerator
                     new(PartyKind.Account, Catalog.Accounts.CarLoanVolvo, ContractPartyRole.Borrower),
                     new(PartyKind.Contact, Catalog.Contacts.PolicyHolder, ContractPartyRole.Guarantor),
                     // The security pledged against the loan — Norwegian pant (issue #169). The car is
-                    // the asset; CarLoanVolvo above is the liability that finances it, which is why
-                    // the two are different accounts in different roles on one contract.
-                    new(PartyKind.Account, Catalog.Accounts.FamilyCar, ContractPartyRole.Collateral),
+                    // the asset — a property record since issue #218 — and CarLoanVolvo above is the
+                    // liability that finances it, in a different role on one contract.
+                    new(PartyKind.Property, PropertyGenerator.FamilyCar, ContractPartyRole.Collateral),
                 ]),
 
             // DEPOSIT (issue #187) — the mirror of the loan above: money the household PLACES with a
@@ -430,6 +430,8 @@ public static class ContractGenerator
                         ? Catalog.Accounts.IdFor(party.TargetName) : null,
                     ContactId = party.Kind == PartyKind.Contact
                         ? Catalog.Contacts.IdFor(party.TargetName) : null,
+                    PropertyId = party.Kind == PartyKind.Property
+                        ? PropertyGenerator.IdFor(party.TargetName) : null,
                     Role = party.Role,
                     // Offsets are taken from the contract's own start, so no seeded term can begin
                     // before the contract did — the one tie the server validates (issue #121 §8 rule 3).

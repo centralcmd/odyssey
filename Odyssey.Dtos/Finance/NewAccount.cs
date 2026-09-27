@@ -10,6 +10,9 @@ public sealed record NewAccount
     public required string Name { get; set; }
     [StringLength(64)]
     public string? AccountNumber { get; set; }
+
+    /// <summary>The retired ordinals 6 and 7 (issue #218) are not members, so they are a <c>400</c>.</summary>
+    [EnumDataType(typeof(AccountType))]
     public AccountType AccountType { get; set; }
     public DateTime? Opened { get; set; }
     public DateTime? Closed { get; set; }

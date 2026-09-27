@@ -60,8 +60,7 @@ public class AccountTypeVisualsTests
         Assert.Equal(
             [
                 AccountType.Cash, AccountType.CheckingAccount, AccountType.SavingsAccount,
-                AccountType.InvestmentAccount, AccountType.PensionAccount, AccountType.Property,
-                AccountType.Vehicle, AccountType.OtherAsset,
+                AccountType.InvestmentAccount, AccountType.PensionAccount, AccountType.OtherAsset,
             ],
             AccountTypeVisuals.Assets);
     }

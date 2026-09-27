@@ -97,7 +97,7 @@ public class NetWorthHistoryApiTests
             context.Accounts.AddRange(
                 Account(checking, "Checking", AccountType.CheckingAccount, "USD", FixedNow.AddYears(-2)),
                 Account(savings, "EUR Savings", AccountType.SavingsAccount, "EUR", FixedNow.AddYears(-2)),
-                Account(house, "House", AccountType.Property, "USD", FixedNow.AddYears(-2)),
+                Account(house, "House", AccountType.OtherAsset, "USD", FixedNow.AddYears(-2)),
                 Account(card, "Card", AccountType.CreditCard, "USD", FixedNow.AddYears(-2)),
                 Account(future, "Opens tomorrow", AccountType.CheckingAccount, "USD", FixedNow.AddDays(1)));
 

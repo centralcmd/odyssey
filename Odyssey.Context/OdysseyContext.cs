@@ -306,6 +306,13 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<Transaction>().HasIndex(transaction => transaction.TimeStamp);
         modelBuilder.Entity<Account>().HasIndex(account => account.Name);
 
+        // The retired Property (6) and Vehicle (7) ordinals are permanent holes (issue #218): every such
+        // account moved onto a Property record, and this CHECK keeps a hand edit or a restore from
+        // reintroducing one. [EnumDataType] is the wire-side twin.
+        modelBuilder.Entity<Account>().ToTable(tb => tb.HasCheckConstraint(
+            "CK_Accounts_AccountTypeNotRetired",
+            "`AccountType` NOT IN (6, 7)"));
+
         modelBuilder.Entity<TaxStatementTag>(entity =>
         {
             entity.Property(t => t.Role)

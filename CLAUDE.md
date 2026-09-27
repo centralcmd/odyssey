@@ -498,6 +498,13 @@ and #191 undid it for terms. Four rules are easy to get backwards:
   the properties by worth. The shape is `ExistingAccount.ContractCount` following `contracts.read`.
   The smart-tag count is `properties.read` data and is always filled.
 
+**`AccountType.Property` (6) and `AccountType.Vehicle` (7) are retired, and the ordinals are permanent
+holes** (issue #218). `RetirePropertyAndVehicleAccountTypes` moved every such account onto a property
+**under the same GUID**; an account holding transactions was kept as an archived `OtherAsset` (a property
+holds none), so one GUID can legitimately name an account *and* a property — nothing may resolve a bare id
+across both tables. `CK_Accounts_AccountTypeNotRetired` forbids 6/7 in the database and `[EnumDataType]`
+on `NewAccount` returns `400`. Never reuse either ordinal.
+
 **A property also carries an event log, and it shares ONE table with the contract log** (issue #209).
 `ContractEvent` and `PropertyEvent` are TPH branches of the abstract `OwnedEvent`, stored in `Events`
 (formerly `ContractEvents`) with an `OwnerKind` discriminator. **This is a recorded, deliberate exception
@@ -940,7 +947,7 @@ cleanup to do afterwards.
 **Synthetic demo data** (`Odyssey.TestData`): deterministic Bogus generators (fixed seed) are the
 single source of truth for demo data — reused by the seeder *and* the tests. They build four
 role-based login users (Admin/Owner/User/Guest; shared password `Odyssey!Demo1`), tags,
-contacts, a 21-account portfolio, per-year budgets, recurring transactions, and exchange
+contacts, a 19-account portfolio, per-year budgets, recurring transactions, and exchange
 rates for every currency pair in use (so multi-currency accounts convert — the conversion service
 does no inversion/triangulation, so each directed pair needs a direct rate). Currencies and roles are
 reference data (seeded by the initial migration) and permission claims are reconciled by
@@ -1005,6 +1012,10 @@ cheaper "pending migrations exist and so do some tables", which is what every or
 like — and it **reports, never repairs**, because an interruption leaves an arbitrary prefix applied
 and writing the missing history row would record a half-built schema as complete. `MigrationRunner`
 also withholds the host's cancellation token from `MigrateAsync` on purpose; don't "fix" that.
+The guard recognises `CHECK` constraints (read from `TABLE_CONSTRAINTS`, which carries the table name) and
+discounts a create whose name an earlier pending operation dropped — EF scaffolds every change to a check's
+expression as drop + re-add of one name, which a replay cannot collide on; counting it would refuse every
+ordinary upgrade across such a migration.
 Repair procedure: [`docs/migration-history-drift.md`](docs/migration-history-drift.md).
 
 ## Coding Conventions

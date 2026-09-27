@@ -195,11 +195,6 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
             ContributingPropertyCount = contributingProperties,
             UnvaluedPropertyCount = unvaluedProperties,
             UnconvertedProperties = unconvertedProperties,
-            // accounts.read data, emitted only alongside properties because it serves only the
-            // double-count advisory (issue #214 D9) — which means nothing when properties are excluded.
-            AssetTypedAccountCount = includeProperties
-                ? accounts.Count(account => account.AccountType is AccountType.Property or AccountType.Vehicle)
-                : null,
         };
     }
 

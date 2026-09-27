@@ -420,7 +420,7 @@ public class AccountServiceTests
         {
             Name = "Insured",
             Description = "",
-            AccountType = DtoAccountType.Property,
+            AccountType = DtoAccountType.OtherAsset,
             Archived = false,
         });
 
@@ -454,7 +454,7 @@ public class AccountServiceTests
         {
             Name = "Bad Issuer",
             Description = "",
-            AccountType = DtoAccountType.Property,
+            AccountType = DtoAccountType.OtherAsset,
             Archived = false,
         });
 
@@ -474,7 +474,7 @@ public class AccountServiceTests
         {
             Name = "Update Validity",
             Description = "",
-            AccountType = DtoAccountType.Vehicle,
+            AccountType = DtoAccountType.OtherAsset,
             Archived = false,
         });
 

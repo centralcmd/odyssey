@@ -211,7 +211,7 @@ public class NetWorthHistoryServiceTests
     {
         await using var context = TestContextFactory.Create();
         var house = Guid.NewGuid();
-        context.Accounts.Add(NewAccount(house, "House", AccountType.Property, "USD",
+        context.Accounts.Add(NewAccount(house, "House", AccountType.OtherAsset, "USD",
             new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
         context.Transactions.Add(NewTransaction(house, 5000m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
         context.AccountEstimates.Add(NewEstimate(house, 350_000m, new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc)));
@@ -228,7 +228,7 @@ public class NetWorthHistoryServiceTests
     {
         await using var context = TestContextFactory.Create();
         var house = Guid.NewGuid();
-        context.Accounts.Add(NewAccount(house, "House", AccountType.Property, "USD",
+        context.Accounts.Add(NewAccount(house, "House", AccountType.OtherAsset, "USD",
             new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
         context.AccountEstimates.AddRange(
             NewEstimate(house, 300_000m, new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc)),
@@ -254,7 +254,7 @@ public class NetWorthHistoryServiceTests
     {
         await using var context = TestContextFactory.Create();
         var house = Guid.NewGuid();
-        context.Accounts.Add(NewAccount(house, "House", AccountType.Property, "USD",
+        context.Accounts.Add(NewAccount(house, "House", AccountType.OtherAsset, "USD",
             new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
         context.Transactions.Add(NewTransaction(house, 5000m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
         // Entered in April, effective from March: it applies from March forward, not from the start.
@@ -274,7 +274,7 @@ public class NetWorthHistoryServiceTests
         await using var context = TestContextFactory.Create();
         var house = Guid.NewGuid();
         var effective = new DateTime(2026, 2, 3, 0, 0, 0, DateTimeKind.Utc);
-        context.Accounts.Add(NewAccount(house, "House", AccountType.Property, "USD",
+        context.Accounts.Add(NewAccount(house, "House", AccountType.OtherAsset, "USD",
             new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
         context.AccountEstimates.AddRange(
             NewEstimate(house, 100_000m, effective, created: new DateTime(2026, 2, 3, 9, 0, 0, DateTimeKind.Utc)),

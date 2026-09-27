@@ -12,7 +12,7 @@ public class AccountEstimateServiceTests
 {
     private static async Task<Guid> SeedAccountAsync(
         OdysseyContext context,
-        DtoAccountType accountType = DtoAccountType.Property,
+        DtoAccountType accountType = DtoAccountType.OtherAsset,
         string currencyCode = "USD")
     {
         var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
@@ -38,7 +38,7 @@ public class AccountEstimateServiceTests
     public async Task Create_OnProperty_DefaultsCurrencyToAccountCurrency_AndPersists()
     {
         await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, DtoAccountType.Property, "EUR");
+        var accountId = await SeedAccountAsync(context, DtoAccountType.OtherAsset, "EUR");
         var service = new AccountEstimateService(context);
 
         var created = await service.Create(accountId, Estimate(350000m, new DateTime(2026, 1, 1)));
@@ -53,8 +53,8 @@ public class AccountEstimateServiceTests
     }
 
     [Theory]
-    [InlineData(DtoAccountType.Property)]
-    [InlineData(DtoAccountType.Vehicle)]
+    [InlineData(DtoAccountType.OtherAsset)]
+    [InlineData(DtoAccountType.PensionAccount)]
     [InlineData(DtoAccountType.Cash)]
     [InlineData(DtoAccountType.CheckingAccount)]
     [InlineData(DtoAccountType.Mortgage)]
@@ -84,7 +84,7 @@ public class AccountEstimateServiceTests
     public async Task Create_CurrencyDifferentFromAccount_Throws()
     {
         await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, DtoAccountType.Property, "USD");
+        var accountId = await SeedAccountAsync(context, DtoAccountType.OtherAsset, "USD");
         var service = new AccountEstimateService(context);
 
         await Assert.ThrowsAsync<DomainValidationException>(
@@ -95,7 +95,7 @@ public class AccountEstimateServiceTests
     public async Task Create_MatchingAccountCurrency_Succeeds()
     {
         await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, DtoAccountType.Property, "USD");
+        var accountId = await SeedAccountAsync(context, DtoAccountType.OtherAsset, "USD");
         var service = new AccountEstimateService(context);
 
         var created = await service.Create(accountId, Estimate(1000m, new DateTime(2026, 1, 1), currencyCode: "usd"));
@@ -107,7 +107,7 @@ public class AccountEstimateServiceTests
     public async Task Create_UnsupportedCurrency_Throws()
     {
         await using var context = TestContextFactory.Create();
-        var accountId = await SeedAccountAsync(context, DtoAccountType.Property, "USD");
+        var accountId = await SeedAccountAsync(context, DtoAccountType.OtherAsset, "USD");
         var service = new AccountEstimateService(context);
 
         await Assert.ThrowsAsync<DomainValidationException>(

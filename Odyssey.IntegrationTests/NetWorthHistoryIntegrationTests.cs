@@ -512,7 +512,7 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         context.Accounts.AddRange(
             NewAccount(checking, "Checking", AccountType.CheckingAccount, "USD", opened),
             NewAccount(savings, "EUR Savings", AccountType.SavingsAccount, "EUR", opened),
-            NewAccount(house, "House", AccountType.Property, "USD", opened),
+            NewAccount(house, "House", AccountType.OtherAsset, "USD", opened),
             NewAccount(card, "Card", AccountType.CreditCard, "USD", opened));
 
         context.Transactions.AddRange(

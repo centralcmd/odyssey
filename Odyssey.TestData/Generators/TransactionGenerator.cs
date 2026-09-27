@@ -87,8 +87,6 @@ public static class TransactionGenerator
         AccountType.InvestmentAccount => 10_000m,
         AccountType.PensionAccount => 15_000m,
         AccountType.Cash => 300m,
-        AccountType.Property => 450_000m,
-        AccountType.Vehicle => 35_000m,
         AccountType.OtherAsset => 12_000m,
         AccountType.CreditCard => 0m,
         AccountType.Mortgage => -350_000m,
