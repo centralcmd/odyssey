@@ -405,7 +405,10 @@ public sealed class DemoDataSeeder(
         await context.Transactions.AddRangeAsync(data.Transactions, cancellationToken);
         await context.TransactionTagLinks.AddRangeAsync(data.TransactionTagLinks, cancellationToken);
         await context.Contracts.AddRangeAsync(data.Contracts, cancellationToken);
-        await context.ContractParties.AddRangeAsync(data.ContractParties, cancellationToken);
+        // Parties naming a property wait for SeedPropertiesAsync: the property is their FK principal,
+        // and it cannot be seeded before this step because its smart tags name the tags seeded here.
+        await context.ContractParties.AddRangeAsync(
+            data.ContractParties.Where(party => party.PropertyId is null), cancellationToken);
         await context.ContractEvents.AddRangeAsync(data.ContractEvents, cancellationToken);
         await context.TaxStatements.AddRangeAsync(data.TaxStatements, cancellationToken);
         await context.TaxStatementTags.AddRangeAsync(data.TaxStatementTags, cancellationToken);
@@ -438,6 +441,9 @@ public sealed class DemoDataSeeder(
             await context.Properties.AddRangeAsync(data.Properties, cancellationToken);
             await context.PropertyEstimates.AddRangeAsync(data.PropertyEstimates, cancellationToken);
             await context.PropertySmartTags.AddRangeAsync(data.PropertySmartTags, cancellationToken);
+            // Their contracts were seeded by SeedFinanceAsync, which leaves these out (issue #218).
+            await context.ContractParties.AddRangeAsync(
+                data.ContractParties.Where(party => party.PropertyId is not null), cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation("Seeded {Properties} properties.", data.Properties.Count);
