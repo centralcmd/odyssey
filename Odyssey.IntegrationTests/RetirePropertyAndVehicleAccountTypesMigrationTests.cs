@@ -296,7 +296,7 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
             await using (var context = NewContext())
             {
                 var account = await new AccountService(context, new ContactLookup(context)).Get(seed.Car);
-                var property = await new PropertyService(context).Get(seed.Car);
+                var property = await new PropertyService(context, new ContactLookup(context)).Get(seed.Car);
 
                 Assert.NotNull(account);
                 Assert.NotNull(property);
@@ -308,7 +308,7 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
 
                 // The deleted house's id resolves as a property only.
                 Assert.Null(await new AccountService(context, new ContactLookup(context)).Get(seed.House));
-                Assert.NotNull(await new PropertyService(context).Get(seed.House));
+                Assert.NotNull(await new PropertyService(context, new ContactLookup(context)).Get(seed.House));
             }
         }
         finally
