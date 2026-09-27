@@ -84,7 +84,7 @@ public class AccountTotalsServiceTests
         await rateService.Create(new NewExchangeRate { FromCurrencyCode = "SEK", ToCurrencyCode = "USD", Rate = 0.1m });
 
         var service = new AccountTotalsService(context, new CurrencyConversionService(context));
-        var totals = await service.ComputeAsync("USD");
+        var totals = await service.ComputeAsync("USD", includeProperties: false);
 
         Assert.Equal("USD", totals.MainCurrencyCode);
         // 1000 (USD 1:1) + 200*1.1 (EUR) + 500 (archived, USD 1:1) = 1720. The closed account's 9999
@@ -119,12 +119,12 @@ public class AccountTotalsServiceTests
             NewTransaction(filed, 200_000m));
         await context.SaveChangesAsync();
 
-        var before = await AsOfFixedNow(context).ComputeAsync("USD");
+        var before = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         context.Accounts.Single(account => account.AccountId == filed).Archived = FixedNow.AddDays(-1);
         await context.SaveChangesAsync();
 
-        var after = await AsOfFixedNow(context).ComputeAsync("USD");
+        var after = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         Assert.Equal(200_100m, before.NetWorth);
         Assert.Equal(before.NetWorth, after.NetWorth);
@@ -150,12 +150,12 @@ public class AccountTotalsServiceTests
             NewTransaction(closing, 900m));
         await context.SaveChangesAsync();
 
-        var before = await AsOfFixedNow(context).ComputeAsync("USD");
+        var before = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         context.Accounts.Single(account => account.AccountId == closing).Closed = FixedNow.AddDays(-1);
         await context.SaveChangesAsync();
 
-        var after = await AsOfFixedNow(context).ComputeAsync("USD");
+        var after = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         Assert.Equal(1000m, before.NetWorth);
         Assert.Equal(100m, after.NetWorth);
@@ -174,7 +174,7 @@ public class AccountTotalsServiceTests
         context.Transactions.Add(NewTransaction(id, 750m));
         await context.SaveChangesAsync();
 
-        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         Assert.Equal(750m, totals.NetWorth);
     }
@@ -207,7 +207,7 @@ public class AccountTotalsServiceTests
             NewTransaction(openedAtNow, 100m));
         await context.SaveChangesAsync();
 
-        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         // Only the account still closing after now is inside its term.
         Assert.Equal(10m, totals.NetWorth);
@@ -229,7 +229,7 @@ public class AccountTotalsServiceTests
             new DateTime(2025, 4, 1, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         Assert.Equal(0m, totals.NetWorth);
         Assert.Empty(totals.UnconvertedAccounts);
@@ -249,7 +249,7 @@ public class AccountTotalsServiceTests
         context.Transactions.Add(NewTransaction(closedGbp, 50m));
         await context.SaveChangesAsync();
 
-        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         Assert.Empty(totals.UnconvertedAccounts);
     }
@@ -271,7 +271,7 @@ public class AccountTotalsServiceTests
         await context.SaveChangesAsync();
 
         var service = new AccountTotalsService(context, new CurrencyConversionService(context));
-        var totals = await service.ComputeAsync("USD");
+        var totals = await service.ComputeAsync("USD", includeProperties: false);
 
         Assert.Equal(500m, totals.TotalAssets); // only the USD account converts (1:1)
         Assert.Equal(0m, totals.TotalLiabilities);
@@ -291,7 +291,7 @@ public class AccountTotalsServiceTests
         await context.SaveChangesAsync();
 
         var service = new AccountTotalsService(context, new CurrencyConversionService(context));
-        var totals = await service.ComputeAsync("USD");
+        var totals = await service.ComputeAsync("USD", includeProperties: false);
 
         // No transactions (balance 0) but the estimate replaces it as the contribution.
         Assert.Equal(350000m, totals.TotalAssets);
@@ -311,7 +311,7 @@ public class AccountTotalsServiceTests
         await context.SaveChangesAsync();
 
         var service = new AccountTotalsService(context, new CurrencyConversionService(context));
-        var totals = await service.ComputeAsync("USD");
+        var totals = await service.ComputeAsync("USD", includeProperties: false);
 
         Assert.Equal(350000m, totals.TotalAssets);
     }
@@ -332,7 +332,7 @@ public class AccountTotalsServiceTests
         await rateService.Create(new NewExchangeRate { FromCurrencyCode = "EUR", ToCurrencyCode = "USD", Rate = 1.1m });
 
         var service = new AccountTotalsService(context, new CurrencyConversionService(context));
-        var totals = await service.ComputeAsync("USD");
+        var totals = await service.ComputeAsync("USD", includeProperties: false);
 
         // Latest estimate (320000 EUR) * 1.1 = 352000 USD.
         Assert.Equal(352000m, totals.TotalAssets);
@@ -351,7 +351,7 @@ public class AccountTotalsServiceTests
         await context.SaveChangesAsync();
 
         var service = new AccountTotalsService(context, new CurrencyConversionService(context));
-        var totals = await service.ComputeAsync("USD");
+        var totals = await service.ComputeAsync("USD", includeProperties: false);
 
         Assert.Equal(5000m, totals.TotalAssets);
     }
@@ -387,7 +387,7 @@ public class AccountTotalsServiceTests
             new Transaction { TransactionId = Guid.NewGuid(), Description = "future", Amount = 500m, TimeStamp = FixedNow.AddDays(1), AccountId = checking });
         await context.SaveChangesAsync();
 
-        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         // Only the past row counts: the bound is exclusive, so the row stamped exactly at now is out.
         Assert.Equal(1000m, totals.TotalAssets);
@@ -418,7 +418,7 @@ public class AccountTotalsServiceTests
             NewTransaction(future, 9999m));
         await context.SaveChangesAsync();
 
-        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         Assert.Equal(200m, totals.TotalAssets);
         Assert.Empty(totals.UnconvertedAccounts);
@@ -438,7 +438,7 @@ public class AccountTotalsServiceTests
             new ExchangeRate { FromCurrencyCode = "EUR", ToCurrencyCode = "USD", Rate = 5m, AsOf = FixedNow.AddDays(1), CreatedAt = FixedNow });
         await context.SaveChangesAsync();
 
-        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         // 100 * 1.1 — neither the rate stamped exactly at now nor the future one is in force.
         Assert.Equal(110m, totals.TotalAssets);
@@ -455,7 +455,7 @@ public class AccountTotalsServiceTests
         context.AccountEstimates.Add(NewEstimate(property, 350000m, "USD", FixedNow));
         await context.SaveChangesAsync();
 
-        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
 
         Assert.Equal(5000m, totals.TotalAssets);
     }
@@ -470,7 +470,7 @@ public class AccountTotalsServiceTests
         // Unvalidated, this answered 200 with every account listed as unconvertible — a roster of the
         // whole portfolio's names and currencies for any caller who guessed a code (issue #90 §10.4).
         await Assert.ThrowsAsync<DomainValidationException>(
-            () => AsOfFixedNow(context).ComputeAsync("ZZZ"));
+            () => AsOfFixedNow(context).ComputeAsync("ZZZ", includeProperties: false));
     }
 
     [Fact]
@@ -488,7 +488,7 @@ public class AccountTotalsServiceTests
         await context.SaveChangesAsync();
 
         await Assert.ThrowsAsync<DomainValidationException>(
-            () => AsOfFixedNow(context).ComputeAsync("ZWL"));
+            () => AsOfFixedNow(context).ComputeAsync("ZWL", includeProperties: false));
     }
 
     // ── The asset/liability split has ONE definition (issue #90 review, architect nit #2) ──────
@@ -572,10 +572,10 @@ public class AccountTotalsServiceTests
 
         await context.SaveChangesAsync();
 
-        var totals = await AsOfFixedNow(context).ComputeAsync("USD");
+        var totals = await AsOfFixedNow(context).ComputeAsync("USD", includeProperties: false);
         var history = await new NetWorthHistoryService(
             context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow))
-            .ComputeAsync(new NetWorthHistoryQuery { MainCurrency = "USD" });
+            .ComputeAsync(new NetWorthHistoryQuery { MainCurrency = "USD" }, includeProperties: false);
 
         var last = history.Points[^1];
         Assert.Equal(totals.TotalAssets, last.TotalAssets);

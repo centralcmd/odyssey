@@ -16,28 +16,43 @@ namespace Odyssey.Dtos.Finance;
 /// property whose name equals its type's name is legal but makes the bare name resolve to the property
 /// inside the declaring type, which is a trap for exactly the comparison this enum exists for.
 /// Ordinals cross the wire; append, do not renumber.
+/// <para>
+/// <b>"Account" in a member name now means "member"</b> (issue #214 D8): an account, plus a property
+/// when the response's <c>PropertiesIncluded</c> is true. The names stay because renaming a member is
+/// source-breaking for every consumer switch; with properties not included every reason is computed
+/// exactly as before.
+/// </para>
 /// </remarks>
 public enum NetWorthEmptyReason
 {
     /// <summary>No series could be built. The catch-all, and the only one that is not a statement about the data.</summary>
     NotBuilt = 0,
 
-    /// <summary>There are no accounts to chart — none had been opened by now.</summary>
+    /// <summary>
+    /// There are no members to chart — no account had been opened by now, and no included property
+    /// contributes a value before now while held.
+    /// </summary>
     NoAccounts = 1,
 
-    /// <summary>Accounts exist, but none could be converted into the main currency for any period.</summary>
+    /// <summary>
+    /// Some member was live at some point in the window — an account inside its term, or a property
+    /// held with an estimate in force — but none could be converted into the main currency for any
+    /// period.
+    /// </summary>
     NothingConvertible = 2,
 
     /// <summary>
-    /// The requested window ends before the earliest account was opened. The caller's input was
-    /// valid, so this is a <c>200</c> with no points — never a <c>400</c>.
+    /// The requested window ends before the earliest member's first contribution — an account's
+    /// opening, or an included property's first valued, held instant. The caller's input was valid, so
+    /// this is a <c>200</c> with no points — never a <c>400</c>.
     /// </summary>
     WindowBeforeFirstAccount = 3,
 
     /// <summary>
-    /// Accounts exist and the window is not before the first of them, but every account had closed
-    /// before the window's first measuring instant — so no account was inside its term at any point
-    /// (issue #99).
+    /// Members exist and the window is not before the first of them, but no member was live at any
+    /// point in the window: every account had closed before it (issue #99), and no included property
+    /// was held with an estimate in force. A held but never-estimated property is not live, so it
+    /// yields this rather than <see cref="NothingConvertible"/>.
     /// </summary>
     /// <remarks>
     /// The mirror of <see cref="WindowBeforeFirstAccount"/>, and unreachable before issue #99, when a

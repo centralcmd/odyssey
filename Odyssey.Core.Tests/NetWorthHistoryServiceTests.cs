@@ -95,7 +95,7 @@ public class NetWorthHistoryServiceTests
         await context.SaveChangesAsync();
 
         var history = await Service(context).ComputeAsync(
-            Query(from: D(2024, 10, 1), to: D(2024, 12, 15)));
+            Query(from: D(2024, 10, 1), to: D(2024, 12, 15)), includeProperties: false);
 
         // Net worth is a stock: the point covering October is true AT the end of October, so it is
         // dated 2024-11-01. Labelling it 2024-10-01 would carry the figure a whole period early.
@@ -113,7 +113,7 @@ public class NetWorthHistoryServiceTests
         await context.SaveChangesAsync();
 
         var history = await Service(context).ComputeAsync(
-            Query(from: D(2024, 10, 17), to: D(2024, 11, 20)));
+            Query(from: D(2024, 10, 17), to: D(2024, 11, 20)), includeProperties: false);
 
         Assert.Equal(D(2024, 10, 1), history.From);
         Assert.Equal(D(2024, 11, 20), history.To);
@@ -135,7 +135,7 @@ public class NetWorthHistoryServiceTests
         await context.SaveChangesAsync();
 
         var history = await Service(context).ComputeAsync(
-            Query(from: D(2025, 12, 1), to: D(2026, 2, 28)));
+            Query(from: D(2025, 12, 1), to: D(2026, 2, 28)), includeProperties: false);
 
         Assert.Equal([1000m, 600m, 300m], history.Points.Select(point => point.NetWorth));
     }
@@ -150,7 +150,7 @@ public class NetWorthHistoryServiceTests
         context.Transactions.Add(NewTransaction(mortgage, -827_700m, new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)), includeProperties: false);
 
         Assert.Equal(827_700m, history.Points[0].TotalLiabilities);
         Assert.Equal(-827_700m, history.Points[0].NetWorth);
@@ -166,16 +166,16 @@ public class NetWorthHistoryServiceTests
         context.Transactions.Add(NewTransaction(checking, 100m, new DateTime(2026, 1, 5, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var before = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)));
+        var before = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)), includeProperties: false);
 
         // Identical requests over unchanged data are identical: no clock, no randomness, no drift.
-        var again = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)));
+        var again = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)), includeProperties: false);
         Assert.Equal(before.Points, again.Points);
 
         context.Transactions.Add(NewTransaction(checking, 50m, new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var after = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)));
+        var after = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)), includeProperties: false);
 
         // Points before March are untouched; March's own point (dated 2026-04-01) and later move.
         Assert.Equal(before.Points[0], after.Points[0]);
@@ -198,7 +198,7 @@ public class NetWorthHistoryServiceTests
         context.Transactions.Add(NewTransaction(checking, 500m, new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)), includeProperties: false);
 
         Assert.Equal(0m, history.Points[0].NetWorth);
         Assert.Equal(500m, history.Points[1].NetWorth);
@@ -217,7 +217,7 @@ public class NetWorthHistoryServiceTests
         context.AccountEstimates.Add(NewEstimate(house, 350_000m, new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)), includeProperties: false);
 
         // Jan and Feb keep the transaction balance; March onwards takes the estimate.
         Assert.Equal([5000m, 5000m, 350_000m, 350_000m], history.Points.Select(point => point.NetWorth));
@@ -235,7 +235,7 @@ public class NetWorthHistoryServiceTests
             NewEstimate(house, 350_000m, new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)), includeProperties: false);
 
         // March's point steps, and says why. The step is a real movement, so it must never be reported
         // as an understatement — those are opposites: one withholds the delta and the other does not.
@@ -263,7 +263,7 @@ public class NetWorthHistoryServiceTests
             created: new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 3, 31)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 3, 31)), includeProperties: false);
 
         Assert.Equal([5000m, 5000m, 350_000m], history.Points.Select(point => point.NetWorth));
     }
@@ -281,7 +281,7 @@ public class NetWorthHistoryServiceTests
             NewEstimate(house, 250_000m, effective, created: new DateTime(2026, 2, 3, 17, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 2, 1), to: D(2026, 2, 28)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 2, 1), to: D(2026, 2, 28)), includeProperties: false);
 
         Assert.Equal(250_000m, history.Points[0].NetWorth);
     }
@@ -306,7 +306,7 @@ public class NetWorthHistoryServiceTests
             NewTransaction(late, 900m, new DateTime(2026, 3, 2, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)), includeProperties: false);
 
         Assert.All(history.Points, point =>
         {
@@ -332,7 +332,7 @@ public class NetWorthHistoryServiceTests
             NewRate("EUR", "USD", 2.0m, new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2025, 12, 1), to: D(2026, 3, 31)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2025, 12, 1), to: D(2026, 3, 31)), includeProperties: false);
 
         // Dec (bound 2026-01-01) and Jan (bound 2026-02-01) predate the second rate; Feb and Mar use it.
         // Converting a December balance at February's rate would be exactly the kind of fabrication
@@ -357,7 +357,7 @@ public class NetWorthHistoryServiceTests
         context.ExchangeRates.Add(NewRate("CHF", "USD", 1.1m, new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)), includeProperties: false);
 
         // Jan and Feb are understated: the Zurich account contributed 0, and neither counts towards
         // ContributingAccountCount, so a wholly-understated point cannot look healthy.
@@ -389,7 +389,7 @@ public class NetWorthHistoryServiceTests
             NewRate("SEK", "USD", 0.1m, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)), includeProperties: false);
 
         Assert.All(history.Points, point => Assert.Equal(1, point.UnconvertedAccountCount));
         Assert.Single(history.UnconvertedAccounts);
@@ -407,7 +407,7 @@ public class NetWorthHistoryServiceTests
         context.ExchangeRates.Add(NewRate("EUR", "USD", 1.5m, new DateTime(2020, 6, 1, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)), includeProperties: false);
 
         Assert.All(history.Points, point =>
         {
@@ -436,7 +436,7 @@ public class NetWorthHistoryServiceTests
             NewTransaction(unknown, 9999m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 1, 31)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 1, 31)), includeProperties: false);
         var point = Assert.Single(history.Points);
 
         Assert.Equal(1000m, point.TotalAssets);
@@ -462,7 +462,7 @@ public class NetWorthHistoryServiceTests
             NewTransaction(filed, 900m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 2, 28)), includeProperties: false);
 
         // Archiving is a filing action, not a valuation event. Before issue #99 the whole line —
         // including months the account was demonstrably open and funded — dropped to 100 the moment
@@ -492,7 +492,7 @@ public class NetWorthHistoryServiceTests
             NewTransaction(closing, 900m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)), includeProperties: false);
 
         // Points are dated at their period END: 2026-02-01, 03-01, 04-01, 05-01. The close falls on
         // the 03-01 bound, which is exclusive, so that point is the first without the account.
@@ -528,7 +528,7 @@ public class NetWorthHistoryServiceTests
             NewTransaction(justAfter, 30m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 1, 31)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 1, 31)), includeProperties: false);
 
         var point = Assert.Single(history.Points);
         Assert.Equal(D(2026, 2, 1), point.Date);
@@ -559,7 +559,7 @@ public class NetWorthHistoryServiceTests
             new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 4, 30)), includeProperties: false);
 
         Assert.Equal([1000m, 100m, 100m, 100m], history.Points.Select(point => point.NetWorth));
         Assert.All(history.Points, point => Assert.Equal(0, point.RevaluedAccountCount));
@@ -582,7 +582,7 @@ public class NetWorthHistoryServiceTests
         context.Transactions.Add(NewTransaction(id, 500m, new DateTime(2024, 2, 1, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 3, 31)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 3, 31)), includeProperties: false);
 
         Assert.Empty(history.Points);
         Assert.Equal(NetWorthEmptyReason.WindowAfterAllAccountsClosed, history.EmptyReason);
@@ -596,7 +596,7 @@ public class NetWorthHistoryServiceTests
     {
         await using var context = TestContextFactory.Create();
 
-        var history = await Service(context).ComputeAsync(Query());
+        var history = await Service(context).ComputeAsync(Query(), includeProperties: false);
 
         Assert.Empty(history.Points);
         Assert.Equal(NetWorthEmptyReason.NoAccounts, history.EmptyReason);
@@ -611,7 +611,7 @@ public class NetWorthHistoryServiceTests
         await context.SaveChangesAsync();
 
         var history = await Service(context).ComputeAsync(
-            Query(from: D(2020, 1, 1), to: D(2020, 6, 30)));
+            Query(from: D(2020, 1, 1), to: D(2020, 6, 30)), includeProperties: false);
 
         Assert.Empty(history.Points);
         Assert.Equal(NetWorthEmptyReason.WindowBeforeFirstAccount, history.EmptyReason);
@@ -627,7 +627,7 @@ public class NetWorthHistoryServiceTests
         context.Transactions.Add(NewTransaction(zurich, 900m, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 3, 31)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2026, 1, 1), to: D(2026, 3, 31)), includeProperties: false);
 
         // A line of zeroes would read as "you were worth nothing", which is the opposite of
         // "we could not tell".
@@ -644,7 +644,7 @@ public class NetWorthHistoryServiceTests
             new DateTime(2026, 3, 9, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query(from: D(2025, 1, 1), to: D(2026, 4, 30)));
+        var history = await Service(context).ComputeAsync(Query(from: D(2025, 1, 1), to: D(2026, 4, 30)), includeProperties: false);
 
         // A flat run at 0 before any account existed is a claim about net worth, and a false one.
         Assert.Equal(D(2026, 3, 1), history.From);
@@ -701,7 +701,7 @@ public class NetWorthHistoryServiceTests
         await context.SaveChangesAsync();
 
         var history = await Service(context).ComputeAsync(
-            Query(NetWorthInterval.Yearly, from: D(2023, 1, 1), to: D(2025, 12, 31)));
+            Query(NetWorthInterval.Yearly, from: D(2023, 1, 1), to: D(2025, 12, 31)), includeProperties: false);
 
         Assert.Equal([D(2024, 1, 1), D(2025, 1, 1), D(2026, 1, 1)], history.Points.Select(point => point.Date));
         Assert.Equal([100m, 200m, 300m], history.Points.Select(point => point.NetWorth));
@@ -731,7 +731,7 @@ public class NetWorthHistoryServiceTests
         await using var context = TestContextFactory.Create();
 
         await Assert.ThrowsAsync<DomainValidationException>(
-            () => Service(context).ComputeAsync(Query(mainCurrency: "ZZZ")));
+            () => Service(context).ComputeAsync(Query(mainCurrency: "ZZZ"), includeProperties: false));
     }
 
     // ── AC2's premise — the final point is measured at `now` ───────────────────────────────────
@@ -748,7 +748,7 @@ public class NetWorthHistoryServiceTests
             NewTransaction(checking, 500m, FixedNow.AddHours(1)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query());
+        var history = await Service(context).ComputeAsync(Query(), includeProperties: false);
         var last = history.Points[^1];
 
         Assert.Equal(DateOnly.FromDateTime(FixedNow), last.Date);
@@ -765,7 +765,7 @@ public class NetWorthHistoryServiceTests
             new DateTime(2015, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
         await context.SaveChangesAsync();
 
-        var history = await Service(context).ComputeAsync(Query());
+        var history = await Service(context).ComputeAsync(Query(), includeProperties: false);
 
         Assert.Equal(NetWorthHistoryQuery.DefaultPoints, history.Points.Count);
         Assert.Equal(NetWorthInterval.Monthly, history.Interval);

@@ -102,6 +102,29 @@ public partial class PageHeader
     private bool _showSearch;
     private bool _showInfo;
 
+    // Per-instance region ids for aria-controls (issue #216), generated once so two headers on one
+    // page never collide. A region exists only while open, so aria-controls is emitted only then — a
+    // reference to an id absent from the DOM is invalid (the OdsRecordCard precedent); aria-expanded
+    // carries the state either way.
+    private readonly string _problemsRegionId = NewRegionId("problems");
+    private readonly string _overviewRegionId = NewRegionId("overview");
+    private readonly string _searchRegionId = NewRegionId("search");
+    private readonly string _infoRegionId = NewRegionId("info");
+
+    private static string NewRegionId(string region) => $"ph-{region}-{Guid.NewGuid():N}";
+
+    /// <summary>The disclosure attributes a region toggle carries (WCAG 4.1.2).</summary>
+    private static Dictionary<string, object> Disclosure(bool open, string regionId)
+    {
+        var attributes = new Dictionary<string, object> { ["aria-expanded"] = open ? "true" : "false" };
+        if (open)
+        {
+            attributes["aria-controls"] = regionId;
+        }
+
+        return attributes;
+    }
+
     protected override void OnInitialized()
     {
         _showProblems = ProblemsOpenByDefault;
@@ -165,6 +188,17 @@ public partial class PageHeader
         PageHeaderSeverity.Error => "error_outline",
         PageHeaderSeverity.Warning => "warning_amber",
         _ => "info",
+    };
+
+    /// <summary>
+    /// The row's severity as text (issue #216): tint and a glyph are not a severity a screen reader can
+    /// announce, so each row is prefixed with this in an sr-only span.
+    /// </summary>
+    internal static string SeverityText(PageHeaderSeverity severity) => severity switch
+    {
+        PageHeaderSeverity.Error => "Error",
+        PageHeaderSeverity.Warning => "Warning",
+        _ => "Information",
     };
 
     private Task InvokeView(PageHeaderProblem problem) =>

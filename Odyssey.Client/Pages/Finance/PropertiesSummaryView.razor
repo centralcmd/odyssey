@@ -6,7 +6,9 @@
     Properties.jsx PropertiesSummary). Counts by type and by derived status, and — for a reader holding
     properties.estimates.read — the in-force estimates of the OWNED properties summed per currency,
     with a total converted to the reader's currency at the latest rate. A currency with no rate is
-    named beside the total, never counted 1:1. Nothing here feeds net worth.
+    named beside the total, never counted 1:1. This is the /properties header's own figure over OWNED
+    properties; net worth (issue #214) values every HELD property, archived ones included, in the main
+    currency, so the two can differ for an archived-but-held property — by decision, not drift.
 *@
 
 <div class="con-stats prop-stats">

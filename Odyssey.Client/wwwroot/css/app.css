@@ -351,13 +351,17 @@ html:not([data-theme='dark']) .mud-elevation-16{ box-shadow: 0 24px 60px rgba(14
 
 .alert.info {
   background: color-mix(in srgb, var(--mud-palette-info) 14%, transparent);
-  color: var(--mud-palette-info);
+  /* The FOREGROUND is the text-safe token, not the fill (issue #216): the glyph and the "View →"
+     action inherit it, and the raw info fill is ~2.4:1 on its own tint in light. The tint and the
+     border stay on the fill colour. */
+  color: var(--info-text);
   border-color: color-mix(in srgb, var(--mud-palette-info) 32%, transparent);
 }
 
 .alert.warning {
   background: var(--finance-pending-soft);
-  color: var(--finance-pending);
+  /* Text-safe token, as for .alert.info: the raw pending fill is ~1.96:1 on this tint in light. */
+  color: var(--warning-text);
   border-color: color-mix(in srgb, var(--finance-pending) 32%, transparent);
 }
 
@@ -403,6 +407,13 @@ html:not([data-theme='dark']) .mud-elevation-16{ box-shadow: 0 24px 60px rgba(14
 }
 
 .alert .alert-fix:hover { background: var(--mud-palette-action-default-hover); }
+
+/* The tokenised ring every custom control uses — the UA default does not account for the light
+   primary being only ~2.5:1 on white (issue #216). */
+.alert .alert-fix:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+  outline-offset: var(--focus-ring-offset);
+}
 
 /* ════════════════════════════════════════════════════════════════════
    Modal shell remnants (.aam-*) and Add-file extensions (.afm-*, .efm-*)

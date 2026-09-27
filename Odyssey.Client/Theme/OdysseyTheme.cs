@@ -93,10 +93,12 @@ public static class OdysseyTheme
 
             Info                     = "#0EA5E9",
             Success                  = "#15803D", // mint-700
-            // DS light --mud-palette-warning is amber-600 (#D97706, the ≥3:1 graphics
-            // floor), but MudBlazor also uses Warning as *text* — where amber-600
-            // (~3.4:1) fails AA. This darker amber clears both the DS graphics floor
-            // and 4.5:1 text, so it stays a superset-safe divergence.
+            // DS light --mud-palette-warning is amber-600 (#D97706, ~3.2:1 on white — the
+            // ≥3:1 graphics floor). This darker amber is ~3.7:1 on white: it clears the 3:1
+            // graphics floor but NOT 4.5:1 text. Anything that renders the warning colour as
+            // small text must use --warning-text instead (see app.css and PageHeader's
+            // signal button, issue #216). The value is left alone deliberately: changing it
+            // is a design-system decision with churn across every Color.Warning surface.
             Warning                  = "#B57820",
             Error                    = "#B23B3B", // coral-700
 

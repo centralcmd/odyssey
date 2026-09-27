@@ -119,6 +119,17 @@ public class EstimateEffectiveDatingTests
     private static readonly Regex SupersessionOrdering =
         new(@"OrderByDescending\(\s*(\w+)\s*=>\s*\1\.EffectiveFrom\b", RegexOptions.Compiled);
 
+    /// <summary>
+    /// The same supersession order restated ascending (issue #214 D10). The net-worth history used to
+    /// write <c>OrderBy(row =&gt; row.EffectiveFrom).ThenBy(row =&gt; row.CreatedAtUtc)</c> over its
+    /// materialized rows, which the descending pattern alone never caught; its sanctioned home is now
+    /// <c>EffectiveDatedExtensions.OrderByEffectiveAscending</c>.
+    /// </summary>
+    private static readonly Regex AscendingSupersessionOrdering =
+        new(@"OrderBy\(\s*(\w+)\s*=>\s*\1\.EffectiveFrom\b", RegexOptions.Compiled);
+
+    private const string InMemoryHelperFile = "EffectiveDatedExtensions.cs";
+
     private static readonly Regex DuplicateDateCheck =
         new(@"\.EffectiveFrom\s*==", RegexOptions.Compiled);
 
@@ -147,12 +158,23 @@ public class EstimateEffectiveDatingTests
         Assert.Contains("AccountEstimateService.cs", names);
         Assert.Contains("PropertyEstimateService.cs", names);
         Assert.Contains("PropertyService.cs", names);
+        // The two net-worth valuation services read both estimate tables (issue #214).
+        Assert.Contains("NetWorthHistoryService.cs", names);
+        Assert.Contains("AccountTotalsService.cs", names);
+        // The in-memory helper names no estimate table, so it is outside the scan by the rule — assert
+        // it, so a future mention cannot silently make the sanctioned home an offender.
+        Assert.DoesNotContain(InMemoryHelperFile, names);
 
         // And the patterns are live: the one sanctioned home matches both.
         var helper = StripComments(File.ReadAllText(
             Path.Combine(SolutionRoot(), "Odyssey.Core", "Finance", HelperFile)));
         Assert.Matches(SupersessionOrdering, helper);
         Assert.Matches(DuplicateDateCheck, helper);
+
+        // The ascending pattern is proven live against ITS sanctioned home, not left to pass forever.
+        var inMemoryHelper = StripComments(File.ReadAllText(
+            Path.Combine(SolutionRoot(), "Odyssey.Core", "Finance", InMemoryHelperFile)));
+        Assert.Matches(AscendingSupersessionOrdering, inMemoryHelper);
     }
 
     [Fact]
@@ -160,7 +182,9 @@ public class EstimateEffectiveDatingTests
     {
         var offenders = ScannedFiles()
             .Select(path => (Path: path, Code: StripComments(File.ReadAllText(path))))
-            .Where(file => SupersessionOrdering.IsMatch(file.Code) || DuplicateDateCheck.IsMatch(file.Code))
+            .Where(file => SupersessionOrdering.IsMatch(file.Code)
+                           || AscendingSupersessionOrdering.IsMatch(file.Code)
+                           || DuplicateDateCheck.IsMatch(file.Code))
             .Select(file => Path.GetFileName(file.Path))
             .ToList();
 

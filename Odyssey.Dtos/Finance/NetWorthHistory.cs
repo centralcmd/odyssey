@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations;
 namespace Odyssey.Dtos.Finance;
 
 /// <summary>
-/// A net-worth-over-time series, reconstructed on read from stored transactions, account estimates and
-/// exchange rates (issue #90). Every point is derived from the data as of that point's own instant —
+/// A net-worth-over-time series, reconstructed on read from stored transactions, account estimates,
+/// property estimates (when <see cref="PropertiesIncluded"/>, issue #214) and exchange rates (issue #90). Every point is derived from the data as of that point's own instant —
 /// nothing is interpolated, and no past point is scaled by the present figure.
 /// </summary>
 /// <remarks>
@@ -31,10 +31,23 @@ public sealed record NetWorthHistory
 
     /// <summary>
     /// The accounts that contributed 0 to at least one point because no rate to the main currency was
-    /// in force then. The same record type <c>/accounts/totals</c> already returns under the same
-    /// claim; an account appears at most once however many points it understated.
+    /// in force then. The same record type <c>/accounts/totals</c> returns; an account appears at most
+    /// once however many points it understated.
     /// </summary>
     public List<UnconvertedAccount> UnconvertedAccounts { get; set; } = [];
+
+    /// <summary>
+    /// Whether property value is part of every figure in this series (issue #214). Claim-decided, never
+    /// data-decided, and set on every response — empty ones included, because the client picks its
+    /// empty copy by <c>(EmptyReason, PropertiesIncluded)</c>.
+    /// </summary>
+    public bool PropertiesIncluded { get; set; }
+
+    /// <summary>
+    /// The held, valued properties that contributed 0 to at least one point because no rate to the
+    /// main currency was in force then. Each appears at most once. Empty when not included.
+    /// </summary>
+    public List<UnconvertedProperty> UnconvertedProperties { get; set; } = [];
 }
 
 /// <summary>
@@ -50,8 +63,8 @@ public sealed record NetWorthHistory
 /// exists to fix, in a smaller shape.
 /// </para>
 /// <para>
-/// All three flags are <b>counts</b>, never lists — the accounts themselves would be a per-period
-/// disclosure the figures do not need.
+/// All the flags are <b>counts</b>, never lists — the accounts or properties themselves would be a
+/// per-period disclosure the figures do not need.
 /// </para>
 /// </remarks>
 public sealed record NetWorthHistoryPoint
@@ -59,6 +72,7 @@ public sealed record NetWorthHistoryPoint
     /// <summary>The instant this point describes: the exclusive upper bound of the period it covers.</summary>
     public required DateOnly Date { get; set; }
 
+    /// <summary>Account assets, plus <see cref="PropertyValue"/> when properties are included.</summary>
     public required decimal TotalAssets { get; set; }
 
     public required decimal TotalLiabilities { get; set; }
@@ -84,4 +98,32 @@ public sealed record NetWorthHistoryPoint
     /// make "nothing convertible" unreachable and would report a wholly-understated point as healthy.
     /// </summary>
     public required int ContributingAccountCount { get; set; }
+
+    /// <summary>
+    /// The converted value of the properties held at this point, each at the estimate in force then.
+    /// <c>null</c> when properties are not included; <c>0</c> when included but nothing was valued.
+    /// </summary>
+    public decimal? PropertyValue { get; set; }
+
+    /// <summary>Properties held at this point, valued and converted.</summary>
+    public int ContributingPropertyCount { get; set; }
+
+    /// <summary>
+    /// Properties held and valued at this point but with no rate to the main currency, so this figure
+    /// is <b>understated</b>. Non-zero makes the point <c>Partial</c>, exactly like
+    /// <see cref="UnconvertedAccountCount"/>.
+    /// </summary>
+    public int UnconvertedPropertyCount { get; set; }
+
+    /// <summary>
+    /// Properties whose in-force estimate changed during this period while held. Never counts an
+    /// acquisition or a disposal, and never a property's first held point.
+    /// </summary>
+    public int RevaluedPropertyCount { get; set; }
+
+    /// <summary>
+    /// Properties held at this point with no estimate in force, so they count as 0. Disclosure only:
+    /// this does <b>not</b> make the point <c>Partial</c> (issue #214 D1).
+    /// </summary>
+    public int UnvaluedPropertyCount { get; set; }
 }

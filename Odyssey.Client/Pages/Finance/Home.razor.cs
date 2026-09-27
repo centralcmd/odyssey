@@ -121,8 +121,9 @@ public partial class Home
     }
 
     // Net worth is server-computed (issue #372's AccountTotalsService): it converts every
-    // non-archived account into the user's main currency at the latest rate, applies the
-    // in-force estimate replace policy (issue #182 §9), and splits assets from liabilities.
+    // in-term account — and, when the response says PropertiesIncluded, every held property's
+    // in-force estimate (issue #214) — into the user's main currency at the latest rate, applies
+    // the in-force estimate replace policy (issue #182 §9), and splits assets from liabilities.
     // The dashboard used to sum ExistingAccount.Balance client-side instead, which added
     // unlike currencies as bare numbers and ignored estimates entirely.
     private async Task LoadTotalsAsync()
@@ -192,6 +193,14 @@ public partial class Home
             var count = ActiveAccounts.Count;
             var accounts = $"{count} account{(count == 1 ? "" : "s")}";
 
+            // M counts every property HELD now, valued or not — N likewise counts what is held, not
+            // what contributed. Named only when properties contribute to the figure (issue #215).
+            if (DashboardFigures.PropertiesContribute(_totals))
+            {
+                var held = DashboardFigures.HeldPropertyCount(_totals);
+                accounts += $" and {held} propert{(held == 1 ? "y" : "ies")}";
+            }
+
             // No totals → no figure. A silently-wrong number is worse than an absent one,
             // and the problem rollup below says why it is missing.
             return NetWorth is { } netWorth
@@ -221,6 +230,15 @@ public partial class Home
 
     private IReadOnlyList<NetWorthHistoryPoint> HistoryPoints => _history?.Points ?? [];
 
+    // The chart surfaces read the HISTORY's flag, never the totals' (issue #215 §3.2): each surface
+    // is described by the response it draws. Every property term below goes through a
+    // DashboardFigures gate keyed on it.
+    private bool HistoryIncludesProperties => _history?.PropertiesIncluded ?? false;
+
+    // Tri-state, not a bool `included`: true only when a history ARRIVED with the flag false. With the
+    // flag true, or with no history at all (a failed call), nothing claims "accounts only".
+    private bool ChartIsAccountsOnly => _history is { PropertiesIncluded: false };
+
     private NetWorthInterval ChartInterval => _history?.Interval ?? NetWorthHistoryQuery.DefaultInterval;
 
     private string? FirstPointLabel => _chartSeries.Count > 0 ? _chartSeries[0].Label : null;
@@ -230,21 +248,27 @@ public partial class Home
     // The cause is carried on the response, so the copy names it. Inferring it from the payload is
     // impossible for several of the causes, which is why the field exists at all.
     private string ChartEmptyLabel =>
-        DashboardFigures.ChartEmptyLabel(_history?.EmptyReason, _mainCurrencyCode);
+        DashboardFigures.ChartEmptyLabel(_history?.EmptyReason, HistoryIncludesProperties, _mainCurrencyCode);
 
     private string ChartCaption => DashboardFigures.ChartCaption(
-        _chartSeries.Count, FirstPointLabel, LastPointLabel, ChartInterval, _mainCurrencyCode);
+        _chartSeries.Count, FirstPointLabel, LastPointLabel, ChartInterval, _mainCurrencyCode, ChartIsAccountsOnly);
 
-    private string ChartAriaLabel =>
-        DashboardFigures.ChartAriaLabel(_chartSeries.Count, FirstPointLabel, LastPointLabel, ChartInterval);
+    private string ChartAriaLabel => DashboardFigures.ChartAriaLabel(
+        _chartSeries.Count, FirstPointLabel, LastPointLabel, ChartInterval,
+        ChartIsAccountsOnly, DashboardFigures.PropertiesContribute(_history));
+
+    // The property share of the latest figure, in text (issue #215 state 2). Null unless properties
+    // contribute to the last point.
+    private string? CompositionNote => DashboardFigures.CompositionNote(_history, FormatMoney);
 
     // V15: the delta is an absolute money difference, and it renders only when both endpoints are
     // fully measured AND actually contributed. A revalued endpoint is a real movement and does not
     // withhold it — the component applies the partial half itself, so this is the contributing half.
+    // A property-only series contributes through its properties (issue #215 AC8).
     private bool ChartShowsDelta =>
         _chartSeries.Count > 1
-        && HistoryPoints[0].ContributingAccountCount > 0
-        && HistoryPoints[^1].ContributingAccountCount > 0;
+        && DashboardFigures.Contributes(HistoryPoints[0], HistoryIncludesProperties)
+        && DashboardFigures.Contributes(HistoryPoints[^1], HistoryIncludesProperties);
 
     private string? ChartDeltaSuffix => FirstPointLabel is { } first ? $"since {first}" : null;
 
@@ -262,18 +286,45 @@ public partial class Home
     // Every condition the markers show is also stated in text: the markers rest on shape and stroke,
     // and a reader who cannot see the plot gets neither.
     private string? UnderstatedNote => DashboardFigures.UnderstatedNote(
-        LabelsWhere(point => point.UnconvertedAccountCount > 0),
+        LabelsWhere(point => DashboardFigures.IsUnderstated(point, HistoryIncludesProperties)),
         _history?.UnconvertedAccounts ?? [],
+        DashboardFigures.IncludedUnconvertedProperties(_history),
         DeltaWithheldByAnUnderstatedEndpoint);
 
-    private string? RevaluedNote =>
-        DashboardFigures.RevaluedNote(LabelsWhere(point => point.RevaluedAccountCount > 0));
+    private bool AnyRevaluedByAccount => HistoryPoints.Any(DashboardFigures.IsRevaluedByAccount);
+
+    private bool AnyRevaluedByProperty =>
+        HistoryPoints.Any(point => DashboardFigures.IsRevaluedByProperty(point, HistoryIncludesProperties));
+
+    private string? RevaluedNote => DashboardFigures.RevaluedNote(
+        LabelsWhere(point => DashboardFigures.IsRevaluedByAccount(point)
+                             || DashboardFigures.IsRevaluedByProperty(point, HistoryIncludesProperties)),
+        AnyRevaluedByAccount,
+        AnyRevaluedByProperty);
+
+    // The chart table's State text names the same member kind as the notes, so the two never
+    // disagree. Null (the component's own wording) when the history did not include properties.
+    private string? ChartPartialDescription => HistoryIncludesProperties
+        ? DashboardFigures.PartialDescription(
+            (_history?.UnconvertedAccounts.Count ?? 0) > 0,
+            DashboardFigures.IncludedUnconvertedProperties(_history).Count > 0)
+        : null;
+
+    private string? ChartRevaluedDescription => HistoryIncludesProperties
+        ? DashboardFigures.RevaluedDescription(AnyRevaluedByAccount, AnyRevaluedByProperty)
+        : null;
 
     // ── Problem rollup ──
-    // The server reports accounts it could not convert into the main currency; each one
-    // contributed 0, so the headline figure is understated and the reader has to be told.
-    // Surfaced through the canonical PageHeader rollup rather than a bespoke banner.
-    private IReadOnlyCollection<PageHeaderProblem> HeaderProblems
+    // The server reports accounts and properties it could not convert into the main currency; each
+    // one contributed 0, so the headline figure is understated and the reader has to be told.
+    // Surfaced through the canonical PageHeader rollup rather than a bespoke banner. Information rows
+    // (unvalued properties, the double-count advisory) ride in the same panel, grouped apart from the
+    // warnings only when both kinds are present.
+    private IReadOnlyCollection<PageHeaderProblem> HeaderProblems => DashboardFigures.GroupProblems(HeaderProblemRows);
+
+    private string ProblemsLabel => DashboardFigures.ProblemsLabel(HeaderProblems);
+
+    private IReadOnlyList<PageHeaderProblem> HeaderProblemRows
     {
         get
         {
@@ -306,25 +357,60 @@ public partial class Home
                 });
             }
 
-            var unconverted = _totals.UnconvertedAccounts;
-            if (unconverted.Count == 0)
-                return problems;
-
+            // Every producer runs: there is no early return once one of them has nothing to say.
             var main = _totals.MainCurrencyCode;
             problems.AddRange(
-                unconverted.Select(account => new PageHeaderProblem
+                _totals.UnconvertedAccounts.Select(account => new PageHeaderProblem
                 {
                     Severity = PageHeaderSeverity.Warning,
                     Lead = account.Name,
                     Message = DashboardFigures.UnconvertedMessage(account.CurrencyCode, main),
                     Where = "Accounts",
                     ViewLabel = "Accounts",
-                    OnView = EventCallback.Factory.Create(this, () => NavigationManager.NavigateTo("accounts")),
+                    OnView = NavigateTo("accounts"),
                 }));
+
+            problems.AddRange(
+                DashboardFigures.IncludedUnconvertedProperties(_totals).Select(property => new PageHeaderProblem
+                {
+                    Severity = PageHeaderSeverity.Warning,
+                    Lead = property.Name,
+                    Message = DashboardFigures.UnconvertedPropertyMessage(property.CurrencyCode, main),
+                    Where = "Properties",
+                    ViewLabel = "Properties",
+                    OnView = NavigateTo("properties"),
+                }));
+
+            if (DashboardFigures.UnvaluedMessage(_totals) is { } unvalued)
+            {
+                problems.Add(new PageHeaderProblem
+                {
+                    Severity = PageHeaderSeverity.Information,
+                    Message = unvalued,
+                    Where = "Properties",
+                    ViewLabel = "Properties",
+                    OnView = NavigateTo("properties"),
+                });
+            }
+
+            if (DashboardFigures.DoubleCountAdvisory(_totals) is { } advisory)
+            {
+                problems.Add(new PageHeaderProblem
+                {
+                    Severity = PageHeaderSeverity.Information,
+                    Message = advisory,
+                    Where = "Accounts",
+                    ViewLabel = "Accounts",
+                    OnView = NavigateTo("accounts"),
+                });
+            }
 
             return problems;
         }
     }
+
+    private EventCallback NavigateTo(string route) =>
+        EventCallback.Factory.Create(this, () => NavigationManager.NavigateTo(route));
 
     // ── Recent transactions (eight newest) ──
     private IReadOnlyList<ExistingTransaction> RecentTransactions =>

@@ -67,8 +67,11 @@
                                    Color="@SignalColor"
                                    StartIcon="@SignalIcon"
                                    OnClick="ToggleProblems"
+                                   UserAttributes="@Disclosure(_showProblems, _problemsRegionId)"
                                    Class="ph-signal-btn">
-                            @ProblemsLabel<span class="signal-count"><span>@Problems!.Count</span></span>
+                            @* The sr-only comma separates the label from the count in the accessible
+                               name ("Net worth issues, 2" rather than "Net worth issues2"). *@
+                            @ProblemsLabel<span class="sr-only">, </span><span class="signal-count"><span>@Problems!.Count</span></span>
                         </MudButton>
                     }
                     @if (OverviewContent is not null)
@@ -76,6 +79,7 @@
                         <MudButton Variant="@(_showOverview ? Variant.Filled : Variant.Outlined)"
                                    Color="@(_showOverview ? Color.Primary : Color.Default)"
                                    StartIcon="@Icons.Material.Filled.DonutLarge"
+                                   UserAttributes="@Disclosure(_showOverview, _overviewRegionId)"
                                    OnClick="ToggleOverview">Overview</MudButton>
                     }
                     @if (SearchContent is not null)
@@ -83,6 +87,7 @@
                         <MudButton Variant="@(_showSearch ? Variant.Filled : Variant.Outlined)"
                                    Color="@(_showSearch ? Color.Primary : Color.Default)"
                                    StartIcon="@Icons.Material.Filled.Search"
+                                   UserAttributes="@Disclosure(_showSearch, _searchRegionId)"
                                    OnClick="ToggleSearch">Search</MudButton>
                     }
                     @* Info — a passive reference/lookup region (e.g. the Roles page's
@@ -92,6 +97,7 @@
                         <MudButton Variant="@(_showInfo ? Variant.Filled : Variant.Outlined)"
                                    Color="@(_showInfo ? Color.Primary : Color.Default)"
                                    StartIcon="@InfoIcon"
+                                   UserAttributes="@Disclosure(_showInfo, _infoRegionId)"
                                    OnClick="ToggleInfo">@InfoLabel</MudButton>
                     }
                     @if (PrimaryAction is not null)
@@ -124,7 +130,7 @@
             @* Open regions stack in the fixed order, each below a 1px divider + 16px. *@
             @if (HasProblems && _showProblems)
             {
-                <div class="ph-region">
+                <div class="ph-region" id="@_problemsRegionId">
                     <div class="signal-panel">
                         @{ string? renderedGroup = null; }
                         @foreach (var problem in Problems!)
@@ -155,8 +161,11 @@
                                    read normally, and its action is the real <button> below. *@
                                 <div class="alert @SeverityClass(problem.Severity) @(problem.HasView ? "signal-row" : null)"
                                      @onclick="@(() => InvokeView(problem))">
-                                    <span class="material-icons alert-icon">@SeverityGlyph(problem.Severity)</span>
+                                    @* The ligature is decoration; the severity is given as text below, so
+                                       a screen reader says "Warning:" rather than "warning amber". *@
+                                    <span class="material-icons alert-icon" aria-hidden="true">@SeverityGlyph(problem.Severity)</span>
                                     <div class="alert-body">
+                                        <span class="sr-only">@SeverityText(problem.Severity): </span>
                                         @if (!string.IsNullOrEmpty(problem.Lead))
                                         {
                                             <strong>@problem.Lead.</strong>@(" ")
@@ -181,15 +190,15 @@
             }
             @if (OverviewContent is not null && _showOverview)
             {
-                <div class="ph-region">@OverviewContent</div>
+                <div class="ph-region" id="@_overviewRegionId">@OverviewContent</div>
             }
             @if (SearchContent is not null && _showSearch)
             {
-                <div class="ph-region">@SearchContent</div>
+                <div class="ph-region" id="@_searchRegionId">@SearchContent</div>
             }
             @if (InfoContent is not null && _showInfo)
             {
-                <div class="ph-region">@InfoContent</div>
+                <div class="ph-region" id="@_infoRegionId">@InfoContent</div>
             }
             @ChildContent
         </div>
