@@ -5,6 +5,51 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0](https://github.com/centralcmd/odyssey/compare/v0.35.0...v0.36.0) (2026-09-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* AccountType members Property (6) and Vehicle (7) are removed; POST/PUT /api/accounts with either is a 400. AccountTotals no longer carries AssetTypedAccountCount. The data migration is not reversible: Down() drops the constraint only.
+
+### Features
+
+* **client:** properties page with estimates and smart tags ([cf4bc45](https://github.com/centralcmd/odyssey/commit/cf4bc45aba15f5aa837bae254d5c0b2ce718a31d))
+* **client:** sync contracts and budgets to the design update ([#201](https://github.com/centralcmd/odyssey/issues/201)) ([72f76a7](https://github.com/centralcmd/odyssey/commit/72f76a7b8f019731294cc1b9dc540553aaedd0df))
+* **core:** properties with estimates and smart tags ([a40db53](https://github.com/centralcmd/odyssey/commit/a40db5398023cf03092758337adf5606e6304c45)), closes [#167](https://github.com/centralcmd/odyssey/issues/167)
+* properties in net worth (backend + frontend) ([#219](https://github.com/centralcmd/odyssey/issues/219)) ([3d64087](https://github.com/centralcmd/odyssey/commit/3d640874f244250f737bd124554f1e445fea01bc))
+* property as a contract party ([#211](https://github.com/centralcmd/odyssey/issues/211)) ([d8d3eb2](https://github.com/centralcmd/odyssey/commit/d8d3eb26b289347a411ef493dece62919d5bb008))
+* property documents (backend + frontend) ([#212](https://github.com/centralcmd/odyssey/issues/212)) ([4c52b0b](https://github.com/centralcmd/odyssey/commit/4c52b0b10a388f53a95827b1a20e0625df3aef58))
+* property events (backend + frontend) ([#213](https://github.com/centralcmd/odyssey/issues/213)) ([e82e36d](https://github.com/centralcmd/odyssey/commit/e82e36d4d8f74c1478ef5c3316436e620ecdda5f))
+* property homeowner association (backend + frontend) ([#220](https://github.com/centralcmd/odyssey/issues/220)) ([85b7483](https://github.com/centralcmd/odyssey/commit/85b74832c6d6e3b9f4166f01bb665fb58702794f))
+* retire the property and vehicle account types ([#221](https://github.com/centralcmd/odyssey/issues/221)) ([8b07878](https://github.com/centralcmd/odyssey/commit/8b0787805b9afa03f961b8f513b832425c060e72))
+
+
+### Bug Fixes
+
+* **client:** announce the account contracts loading state ([ed3fc70](https://github.com/centralcmd/odyssey/commit/ed3fc702798bf6cda6ed0bb8c94d82e5052703a4))
+* **client:** restore the TermChanged key in the design system export ([c42bc47](https://github.com/centralcmd/odyssey/commit/c42bc47dececa1c229bc3c0ae5ee155f184d1cc3))
+* **data:** seed exchange-rate history across the net-worth window ([#197](https://github.com/centralcmd/odyssey/issues/197)) ([5d42b14](https://github.com/centralcmd/odyssey/commit/5d42b1426d3109b5fc6f2efbba1aaa605af144cc)), closes [#179](https://github.com/centralcmd/odyssey/issues/179)
+* **infra:** skip integration tier when docker is unreachable ([e95cf9c](https://github.com/centralcmd/odyssey/commit/e95cf9c66816f68d5407cc5d95eee12b1c71b81c)), closes [#177](https://github.com/centralcmd/odyssey/issues/177)
+
+
+### Documentation
+
+* require verifying a cited precedent in the live tree ([81295a0](https://github.com/centralcmd/odyssey/commit/81295a0eefb0f90e3b536ea18e1e61cc3567a4de))
+* retire the no-deployed-data premise ([#222](https://github.com/centralcmd/odyssey/issues/222)) ([260d5bc](https://github.com/centralcmd/odyssey/commit/260d5bc59e4dc1094596e58c8a8bc3db86545051))
+* update design system ([069e071](https://github.com/centralcmd/odyssey/commit/069e07193aee5250159b67941633abe5cd075266))
+* update design system ([bba84af](https://github.com/centralcmd/odyssey/commit/bba84aff59c66a5782d7fcf99ff6e77fb7cd3c32))
+* update design system ([12535dd](https://github.com/centralcmd/odyssey/commit/12535ddaa6be71183f8a939a13fe5bc5d3f08fde))
+* update design system ([81084c7](https://github.com/centralcmd/odyssey/commit/81084c7b95b54529a6626920362645181efd087e))
+* update design system ([1381fb5](https://github.com/centralcmd/odyssey/commit/1381fb5ec807080c935521f745d0abc410ba93c3))
+* update design system ([9ee3a95](https://github.com/centralcmd/odyssey/commit/9ee3a954709fb5bb76a89a9753a305d1d02c2c33))
+
+
+### CI/CD
+
+* Bump anthropics/claude-code-action in the actions group ([c2b35cb](https://github.com/centralcmd/odyssey/commit/c2b35cb3ac4a7b3cd2345a7fd0c69785005554cb))
+* Bump nginxinc/nginx-unprivileged ([2c34c84](https://github.com/centralcmd/odyssey/commit/2c34c846e75b9131a61cdff907a4f3f87a0fca99))
+
 ## [0.35.0](https://github.com/centralcmd/odyssey/compare/v0.34.0...v0.35.0) (2026-09-24)
 
 
