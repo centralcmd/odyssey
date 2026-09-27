@@ -48,6 +48,13 @@ public sealed record ExistingProperty
 
     public VehicleDetailsDto? VehicleDetails { get; set; }
 
+    /// <summary>
+    /// The resolved homeowner association (issue #217), or <c>null</c> for a vehicle, for no link, or when
+    /// the stored id no longer resolves. Response-only: it lives here and never on
+    /// <see cref="RealEstateDetailsDto"/>, which is also a request body.
+    /// </summary>
+    public PropertyHomeownerAssociation? HomeownerAssociation { get; set; }
+
     /// <summary>How many transaction tags the property watches.</summary>
     public int SmartTagCount { get; set; }
 

@@ -24,7 +24,7 @@ public class PropertyListEnrichmentTests
 
     private static async Task<(PropertyService Service, Guid PropertyId)> SeedAsync(OdysseyContext context)
     {
-        var service = new PropertyService(context, new FixedTimeProvider(Now));
+        var service = new PropertyService(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now));
         var propertyId = (await service.Create(PropertyTestData.House(), userId: null)).PropertyId;
 
         context.PropertyEstimates.AddRange(
@@ -91,7 +91,7 @@ public class PropertyListEnrichmentTests
     public async Task A_PropertyWithOnlyAScheduledEstimate_HasACountButNoValue()
     {
         await using var context = TestContextFactory.Create();
-        var service = new PropertyService(context, new FixedTimeProvider(Now));
+        var service = new PropertyService(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now));
         var propertyId = (await service.Create(PropertyTestData.Car(), userId: null)).PropertyId;
         context.PropertyEstimates.Add(new PropertyEstimate
         {

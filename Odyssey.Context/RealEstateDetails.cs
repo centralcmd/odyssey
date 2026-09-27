@@ -48,4 +48,13 @@ public class RealEstateDetails
     public decimal? PlotAreaSqm { get; set; }
 
     public int? BuildYear { get; set; }
+
+    /// <summary>
+    /// The homeowner association (<i>borettslag</i>/<i>sameie</i>/HOA) administering the property
+    /// (issue #217) — an <c>Organization</c> contact. A real FK with <c>ON DELETE SET NULL</c> and no
+    /// navigation on either side, the <c>Account.CustodianId</c> shape: finance read paths resolve it
+    /// through <c>IContactLookup</c>. The Organization-only rule is enforced by <c>PropertyService</c>,
+    /// since a <c>CHECK</c> cannot reference another table.
+    /// </summary>
+    public Guid? HomeownerAssociationId { get; set; }
 }

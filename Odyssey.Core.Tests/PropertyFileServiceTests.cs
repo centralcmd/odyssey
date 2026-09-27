@@ -33,7 +33,7 @@ public class PropertyFileServiceTests
         new(context, TestContextFactory.ContactLookup(context), clock ?? new MovableTimeProvider(Start));
 
     private static async Task<Guid> SeedProperty(OdysseyContext context, string name = "Storgata 14") =>
-        (await new PropertyService(context).Create(PropertyTestData.House(name), userId: null)).PropertyId;
+        (await new PropertyService(context, TestContextFactory.ContactLookup(context)).Create(PropertyTestData.House(name), userId: null)).PropertyId;
 
     private static async Task<Guid> SeedFile(OdysseyContext context, string fileName = "deed.pdf")
     {
@@ -465,7 +465,7 @@ public class PropertyFileServiceTests
         await service.AttachFile(propertyId, new AttachPropertyFileRequest { FileMetadataId = second }, TestUserId);
         await service.AttachFile(otherId, new AttachPropertyFileRequest { FileMetadataId = first }, TestUserId);
 
-        Assert.True(await new PropertyService(context).Delete(propertyId, userId: null));
+        Assert.True(await new PropertyService(context, TestContextFactory.ContactLookup(context)).Delete(propertyId, userId: null));
 
         var remaining = Assert.Single(context.PropertyFiles);
         Assert.Equal(otherId, remaining.PropertyId);

@@ -21,7 +21,7 @@ public class PropertyServiceTests
     }
 
     private static PropertyService Service(Odyssey.Context.OdysseyContext context) =>
-        new(context, new FixedTimeProvider(Now));
+        new(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now));
 
     [Fact]
     public async Task Create_RealEstate_RoundTripsEveryDetailField_AndNormalizesTheCountryCode()

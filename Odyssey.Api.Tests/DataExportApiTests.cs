@@ -802,6 +802,10 @@ public class DataExportApiTests
         var realEstate = Assert.Single(finance.GetProperty("realEstateDetails").EnumerateArray());
         Assert.Equal(houseId, realEstate.GetProperty("propertyId").GetGuid());
         Assert.Equal("Oslo", realEstate.GetProperty("city").GetString());
+        var associationId = realEstate.GetProperty("homeownerAssociationId").GetGuid();
+        Assert.Contains(
+            finance.GetProperty("contacts").EnumerateArray(),
+            contact => contact.GetProperty("contactId").GetGuid() == associationId);
         var vehicle = Assert.Single(finance.GetProperty("vehicleDetails").EnumerateArray());
         Assert.Equal(carId, vehicle.GetProperty("propertyId").GetGuid());
         Assert.Equal("EL12345", vehicle.GetProperty("registrationNumber").GetString());
@@ -1388,6 +1392,8 @@ public class DataExportApiTests
                 RealEstateDetails = new RealEstateDetails
                 {
                     Kind = Odyssey.Dtos.Finance.RealEstateKind.House, City = "Oslo",
+                    // Issue #217: a populated link, so a dropped export column cannot pass as null.
+                    HomeownerAssociationId = contactId,
                 },
             },
             new Property

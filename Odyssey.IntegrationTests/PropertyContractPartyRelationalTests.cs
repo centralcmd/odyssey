@@ -124,7 +124,7 @@ public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
 
         await using (var context = NewContext())
         {
-            Assert.True(await new PropertyService(context).Delete(propertyId, userId: null));
+            Assert.True(await new PropertyService(context, new ContactLookup(context)).Delete(propertyId, userId: null));
         }
 
         await using (var context = NewContext())
@@ -180,7 +180,7 @@ public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
 
         await using (var context = NewContext())
         {
-            var properties = new PropertyService(context);
+            var properties = new PropertyService(context, new ContactLookup(context));
             var page = await properties.ListAsync(new PropertiesQueryParams(), includeContractCount: true);
             Assert.Equal(2, page.Items.Single(p => p.PropertyId == propertyId).ContractCount);
             Assert.Equal(0, page.Items.Single(p => p.PropertyId == loneId).ContractCount);

@@ -811,6 +811,14 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(account => account.CustodianId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Issue #217. Explicit SetNull: EF's default for an optional relationship is ClientSetNull, which
+        // emits RESTRICT and would make an association contact undeletable.
+        modelBuilder.Entity<RealEstateDetails>()
+            .HasOne<Contact>()
+            .WithMany()
+            .HasForeignKey(details => details.HomeownerAssociationId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         modelBuilder.Entity<AccountFile>()
             .HasOne<Contact>()
             .WithMany()

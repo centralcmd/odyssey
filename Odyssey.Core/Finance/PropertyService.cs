@@ -29,14 +29,20 @@ namespace Odyssey.Core.Finance;
 /// </summary>
 public class PropertyService
 {
+    private const string HomeownerAssociationField =
+        $"{nameof(NewProperty.RealEstateDetails)}.{nameof(RealEstateDetailsDto.HomeownerAssociationId)}";
+
     private readonly OdysseyContext context;
+    private readonly IContactLookup contactLookup;
     private readonly TimeProvider timeProvider;
     private readonly ILogger<PropertyService> logger;
 
     public PropertyService(
-        OdysseyContext context, TimeProvider? timeProvider = null, ILogger<PropertyService>? logger = null)
+        OdysseyContext context, IContactLookup contactLookup, TimeProvider? timeProvider = null,
+        ILogger<PropertyService>? logger = null)
     {
         this.context = context;
+        this.contactLookup = contactLookup;
         this.timeProvider = timeProvider ?? TimeProvider.System;
         this.logger = logger ?? NullLogger<PropertyService>.Instance;
     }
@@ -207,6 +213,8 @@ public class PropertyService
             dto.EventCount = eventCounts.GetValueOrDefault(dto.PropertyId);
         }
 
+        await ResolveHomeownerAssociationsAsync(dtos, cancellationToken);
+
         if (includeContractCount)
         {
             var contractCounts = await CountContractsAsync(ids, cancellationToken);
@@ -233,6 +241,80 @@ public class PropertyService
                 dto.CurrentEstimatedValue = current.Value;
                 dto.CurrentEstimatedValueEffectiveFrom = current.EffectiveFrom;
             }
+        }
+    }
+
+    /// <summary>
+    /// Fills <see cref="ExistingProperty.HomeownerAssociation"/> (issue #217) with one batched
+    /// <see cref="IContactLookup.ResolveRefsAsync"/> over the distinct ids on the page — never one call
+    /// per row, and no call at all when no row carries a link. An id that no longer resolves yields
+    /// <c>null</c>. Only the three <see cref="PropertyHomeownerAssociation"/> members are copied off the
+    /// <see cref="ContactRef"/>, so the type and organization number it also carries never reach a
+    /// <c>properties.read</c> response.
+    /// </summary>
+    private async Task ResolveHomeownerAssociationsAsync(
+        IReadOnlyList<ExistingProperty> dtos, CancellationToken cancellationToken)
+    {
+        var ids = dtos
+            .Select(d => d.RealEstateDetails?.HomeownerAssociationId)
+            .OfType<Guid>()
+            .Distinct()
+            .ToList();
+        if (ids.Count == 0)
+            return;
+
+        var refs = await contactLookup.ResolveRefsAsync(ids, cancellationToken);
+        foreach (var dto in dtos)
+        {
+            if (dto.RealEstateDetails?.HomeownerAssociationId is { } id && refs.TryGetValue(id, out var contact))
+            {
+                dto.HomeownerAssociation = new PropertyHomeownerAssociation
+                {
+                    ContactId = contact.ContactId,
+                    Name = contact.Name,
+                    Archived = contact.Archived,
+                };
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates a newly-set homeowner association (issue #217 §8.2, R1–R4, first failure wins). The
+    /// caller runs it only when the id differs from the stored one (§8.3), so a <c>PUT</c> keeping a link
+    /// whose contact has since been archived or re-typed is never refused. Messages echo the submitted
+    /// id only — never the contact's name or type.
+    /// </summary>
+    /// <exception cref="DomainValidationException">The id is empty, unknown or names an archived contact.</exception>
+    /// <exception cref="DomainUnprocessableException">The contact is not an <c>Organization</c>.</exception>
+    private async Task ValidateHomeownerAssociation(Guid id, CancellationToken cancellationToken)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new DomainValidationException(
+                "A homeowner association ID must not be empty.", null, HomeownerAssociationField);
+        }
+
+        var refs = await contactLookup.ResolveRefsAsync([id], cancellationToken);
+        if (!refs.TryGetValue(id, out var contact))
+        {
+            throw new DomainValidationException(
+                $"Contact with ID {id} was not found.", null, HomeownerAssociationField);
+        }
+
+        if (contact.Archived is not null)
+        {
+            throw new DomainValidationException(
+                $"Contact with ID {id} is archived and cannot be set as a homeowner association.",
+                null, HomeownerAssociationField);
+        }
+
+        // A real, live contact in an illegal combination: the derived-bound case, so 422 rather than 400
+        // — the same reasoning as a contract party role the contract's type rejects.
+        if (contact.Type != ContactType.Organization)
+        {
+            throw new DomainUnprocessableException(
+                $"Contact with ID {id} is not an organization and cannot be a homeowner association.",
+                HomeownerAssociationField);
         }
     }
 
@@ -267,6 +349,10 @@ public class PropertyService
         await CurrencyValidationService.EnsureSupportedAndActive(
             context, currencyCode, nameof(NewProperty.CurrencyCode), cancellationToken);
 
+        // Nothing is stored yet, so any submitted association is a new one and always validated.
+        if (type == PropertyType.RealEstate && newProperty.RealEstateDetails!.HomeownerAssociationId is { } associationId)
+            await ValidateHomeownerAssociation(associationId, cancellationToken);
+
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var property = new Property
         {
@@ -291,7 +377,9 @@ public class PropertyService
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return ToDto(property, now);
+        var dto = ToDto(property, now);
+        await ResolveHomeownerAssociationsAsync([dto], cancellationToken);
+        return dto;
     }
 
     /// <summary>
@@ -336,6 +424,15 @@ public class PropertyService
         {
             throw new DomainValidationException(
                 "Property currency cannot be changed when the property has value estimates.");
+        }
+
+        // Change-only (§8.3): a kept link is never re-validated, so a legacy row whose contact was later
+        // archived or re-typed does not freeze every other field on the property.
+        if (type == PropertyType.RealEstate
+            && putProperty.RealEstateDetails!.HomeownerAssociationId is { } associationId
+            && associationId != property.RealEstateDetails?.HomeownerAssociationId)
+        {
+            await ValidateHomeownerAssociation(associationId, cancellationToken);
         }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -506,6 +603,7 @@ public class PropertyService
             property.RealEstateDetails.LivingAreaSqm = details.LivingAreaSqm;
             property.RealEstateDetails.PlotAreaSqm = details.PlotAreaSqm;
             property.RealEstateDetails.BuildYear = details.BuildYear;
+            property.RealEstateDetails.HomeownerAssociationId = details.HomeownerAssociationId;
         }
         else
         {
