@@ -186,7 +186,7 @@
                                         }
                                     </OdsInfoTileGrid>
                                 }
-                                else if (p.Type == PropertyType.RealEstate && p.RealEstateDetails is { } re && HasRealEstateTiles(re))
+                                else if (p.Type == PropertyType.RealEstate && p.RealEstateDetails is { } re && HasRealEstateTiles(p, re))
                                 {
                                     <OdsInfoTileGrid>
                                         @if (PropertyVisuals.AddressText(re) is { } address)
@@ -201,6 +201,19 @@
                                         {
                                             <OdsInfoTile Icon="map" Label="Cadastral number" Foot="@OdsInfoTile.Caption("land registry")">
                                                 <Value>@re.CadastralNumber</Value>
+                                            </OdsInfoTile>
+                                        }
+                                        @if (p.HomeownerAssociation is { } association)
+                                        {
+                                            @* A reference to an Organization contact, so it wears the contact type's mark rather
+                                               than the record accent; an archived contact is muted AND says so in the foot. *@
+                                            <OdsInfoTile Icon="@OrganizationMeta.Icon"
+                                                         IconColor="@(association.Archived is null ? OrganizationMeta.Color : null)"
+                                                         IconSoft="@(association.Archived is null ? OrganizationMeta.Soft : null)"
+                                                         Label="Homeowner association" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true"
+                                                         Tone="@(association.Archived is null ? OdsInfoTileTone.Default : OdsInfoTileTone.Muted)"
+                                                         Foot="@OdsInfoTile.Caption(AssociationFoot(association))">
+                                                <Value>@association.Name</Value>
                                             </OdsInfoTile>
                                         }
                                         @if (re.LivingAreaSqm is { } living)

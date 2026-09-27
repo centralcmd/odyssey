@@ -103,6 +103,10 @@
         </OdsFormRow>
         <OdsField Label="Cadastral number" MaxLength="64" @bind-Value="_cadastralNumber"
                   Placeholder="e.g. 208/451 or APN 3612-044" Help="The land-registry identifier, as written. Not checked." />
+        <OdsHomeownerAssociationSelect Value="@_homeownerAssociationId" ValueChanged="OnAssociationChanged"
+                                       Contacts="_contacts" Loading="_contactsLoading"
+                                       StoredValue="@StoredAssociationId" StoredName="@Property?.HomeownerAssociation?.Name"
+                                       Error="@Err("homeownerAssociationId")" />
         <OdsFormRow Cols="3">
             <OdsNumberField Label="Living area" Unit="m²" Min="0" Step="0.5" Value="_livingArea"
                             ValueChanged="@(v => { _livingArea = v; _errors.Remove("livingAreaSqm"); })" Error="@Err("livingAreaSqm")" />
