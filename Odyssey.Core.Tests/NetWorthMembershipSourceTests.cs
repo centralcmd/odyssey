@@ -22,9 +22,10 @@ namespace Odyssey.Core.Tests;
 /// </para>
 ///
 /// <para>
-/// Scoped to the two files that value a portfolio rather than to all of <c>Odyssey.Core</c>: every
-/// other finance surface legitimately filters archived rows out of a <i>list</i>, which is exactly what
-/// the column is for. A third valuation path would need adding here.
+/// Scoped to the two files that value a portfolio, plus the property membership rule they share (issue
+/// #214), rather than to all of <c>Odyssey.Core</c>: every other finance surface legitimately filters
+/// archived rows out of a <i>list</i>, which is exactly what the column is for. A further valuation path
+/// would need adding here.
 /// </para>
 /// </summary>
 public class NetWorthMembershipSourceTests
@@ -35,12 +36,23 @@ public class NetWorthMembershipSourceTests
         Path.Combine("Odyssey.Core", "Finance", "NetWorthHistoryService.cs"),
     ];
 
+    /// <summary>
+    /// The property membership rule (issue #214 §7.12). It sits outside <see cref="ValuationServices"/>
+    /// on purpose: it has no <c>Closed</c> to read, so it joins only the <c>Archived</c> ban, with its
+    /// own <c>AcquiredDate</c>/<c>DisposedDate</c> companion below. Without this entry an
+    /// <c>Archived == null</c> added to its translatable predicate would pass the lint and silently
+    /// drop every archived-but-held property from net worth.
+    /// </summary>
+    private static readonly string PropertyMembershipFile =
+        Path.Combine("Odyssey.Core", "Finance", "PropertyMembership.cs");
+
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
+    [InlineData(-1)] // PropertyMembership.cs
     public void NoValuationPathReadsArchived(int service)
     {
-        var relative = ValuationServices[service];
+        var relative = service < 0 ? PropertyMembershipFile : ValuationServices[service];
         var code = StripComments(File.ReadAllText(Path.Combine(SolutionRoot(), relative)));
         var match = Regex.Match(code, @"\bArchived\b");
 
@@ -61,6 +73,15 @@ public class NetWorthMembershipSourceTests
         var code = StripComments(File.ReadAllText(Path.Combine(SolutionRoot(), relative)));
 
         Assert.Matches(@"\bClosed\b", code);
+    }
+
+    [Fact]
+    public void PropertyMembershipReadsAcquisitionAndDisposal()
+    {
+        var code = StripComments(File.ReadAllText(Path.Combine(SolutionRoot(), PropertyMembershipFile)));
+
+        Assert.Matches(@"\bAcquiredDate\b", code);
+        Assert.Matches(@"\bDisposedDate\b", code);
     }
 
     /// <summary>

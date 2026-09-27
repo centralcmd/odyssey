@@ -17,7 +17,11 @@ namespace Odyssey.Core.Finance;
 /// </para>
 ///
 /// <para>
-/// <b>Nothing here feeds net worth</b> (issue #167 Non-Goal 6): a property is standalone in v1.
+/// <b>This is not the net-worth figure.</b> Net worth includes property value since issue #214 (which
+/// reversed #167 Non-Goal 6), but computes it in <c>AccountTotalsService</c> and
+/// <c>NetWorthHistoryService</c> over every property <i>held</i>, archived ones included, with an
+/// exclusive as-of cutoff. This summary covers <i>owned</i> properties and excludes archived ones, so
+/// the two can differ for an archived-but-held property — stated, not reconciled.
 /// </para>
 /// </summary>
 public class PropertySummaryService

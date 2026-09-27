@@ -11,7 +11,8 @@ using AccountType = Odyssey.Context.AccountType;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// Real-engine coverage for the net-worth history (issue #90 AC15, AC16, AC21, AC26, AC36 and §12).
+/// Real-engine coverage for the net-worth history (issue #90 AC15, AC16, AC21, AC26, AC36 and §12), and
+/// for property value in it (issue #214 AC3, AC16, AC22).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -95,7 +96,7 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         Assert.Equal(["AccountId", "TimeStamp", "Amount"], columns);
     }
 
-    // ── AC15 — five round trips, whatever the point count ─────────────────────────────────────
+    // ── AC15, #214 AC16 — seven round trips with properties, five without, whatever the point count
 
     [SkippableTheory]
     [InlineData(NetWorthInterval.Monthly, 2)]
@@ -104,7 +105,7 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
     [InlineData(NetWorthInterval.Weekly, NetWorthHistoryQuery.MaxWeeklyPoints)]
     [InlineData(NetWorthInterval.Quarterly, NetWorthHistoryQuery.MaxPoints)]
     [InlineData(NetWorthInterval.Yearly, NetWorthHistoryQuery.MaxPoints)]
-    public async Task TheComputation_CostsFiveRoundTrips_RegardlessOfPointCount(
+    public async Task TheComputation_CostsSevenRoundTripsWithProperties_AndFiveWithout_RegardlessOfPointCount(
         NetWorthInterval interval, int points)
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
@@ -113,23 +114,127 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
 
         await using var context = new OdysseyContext(options);
         await SeedPortfolioAsync(context);
+        await SeedPropertyAsync(context, "GBP");
 
-        var from = NetWorthPeriods.AddSaturating(DateOnly.FromDateTime(FixedNow), interval, -(points - 1));
-
-        counter.Reset();
-        var history = await ServiceFor(context).ComputeAsync(new NetWorthHistoryQuery
+        var query = new NetWorthHistoryQuery
         {
             MainCurrency = "USD",
             Interval = interval,
-            From = from,
+            From = NetWorthPeriods.AddSaturating(DateOnly.FromDateTime(FixedNow), interval, -(points - 1)),
             To = DateOnly.FromDateTime(FixedNow),
-        });
+        };
 
-        Assert.NotEmpty(history.Points);
+        counter.Reset();
+        var accountsOnly = await ServiceFor(context).ComputeAsync(query, includeProperties: false);
+
+        Assert.NotEmpty(accountsOnly.Points);
 
         // The currency check, the accounts, the bucketed aggregate, the estimates and the rate
         // timeline. A per-point query would make a 120-point request 120 times this.
         Assert.Equal(5, counter.Count);
+
+        counter.Reset();
+        var withProperties = await ServiceFor(context).ComputeAsync(query, includeProperties: true);
+
+        Assert.NotEmpty(withProperties.Points);
+
+        // Plus the properties and their estimates. The rate timeline stays ONE query over the union of
+        // account and property currencies — GBP is a property-only currency here, so a second rate
+        // query for it would make this eight.
+        Assert.Equal(7, counter.Count);
+    }
+
+    // ── #214 AC3 — no property table is queried for an unentitled caller (command text) ───────
+
+    [SkippableFact]
+    public async Task NotIncluded_NoCommandReferencesAPropertyTable_AndIncludedDoes()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var counter = new CommandCounter();
+        var options = await MigratedSchemaAsync(counter);
+
+        await using var context = new OdysseyContext(options);
+        await SeedPortfolioAsync(context);
+        await SeedPropertyAsync(context, "USD");
+
+        var totalsService = new AccountTotalsService(
+            context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow));
+        var query = new NetWorthHistoryQuery { MainCurrency = "USD", Interval = NetWorthInterval.Monthly };
+
+        counter.Reset();
+        await totalsService.ComputeAsync("USD", includeProperties: false);
+        await ServiceFor(context).ComputeAsync(query, includeProperties: false);
+
+        Assert.NotEmpty(counter.Texts);
+        Assert.DoesNotContain(counter.Texts, text => text.Contains("`Properties`", StringComparison.Ordinal));
+        Assert.DoesNotContain(counter.Texts, text => text.Contains("`PropertyEstimates`", StringComparison.Ordinal));
+
+        // The positive control, on the same fixture: the interceptor sees these tables when they ARE read.
+        foreach (var run in new Func<Task>[]
+                 {
+                     () => totalsService.ComputeAsync("USD", includeProperties: true),
+                     () => ServiceFor(context).ComputeAsync(query, includeProperties: true),
+                 })
+        {
+            counter.Reset();
+            await run();
+            Assert.Contains(counter.Texts, text => text.Contains("`Properties`", StringComparison.Ordinal));
+            Assert.Contains(counter.Texts, text => text.Contains("`PropertyEstimates`", StringComparison.Ordinal));
+        }
+    }
+
+    // ── #214 AC22 — property boundaries on datetime(6) ────────────────────────────────────────
+
+    /// <summary>
+    /// An estimate stamped exactly at a period bound is not yet in force at it, one a microsecond
+    /// earlier is, and a property disposed of exactly on a bound is already gone by it — through real
+    /// SQL, where <c>datetime(6)</c> truncates and the nullable <c>OR</c>s are translated rather than
+    /// evaluated in LINQ-to-objects. The final point also equals <c>/totals</c> with properties in it.
+    /// </summary>
+    [SkippableFact]
+    public async Task PropertyBoundaries_HoldOnTheRealEngine()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var options = await MigratedSchemaAsync();
+
+        var march = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+        var april = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        await using (var seed = new OdysseyContext(options))
+        {
+            var house = Property("House", "USD", acquired: null, disposed: null);
+            var car = Property("Car", "USD", acquired: new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc), disposed: march);
+            seed.Properties.AddRange(house, car);
+            seed.PropertyEstimates.AddRange(
+                Estimate(house, 100m, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
+                Estimate(house, 200m, march),                          // exactly on the Mar 1 bound
+                Estimate(house, 300m, april.AddTicks(-10)),            // one microsecond before Apr 1
+                Estimate(car, 10_000m, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
+            await seed.SaveChangesAsync();
+        }
+
+        await using var context = new OdysseyContext(options);
+        var history = await ServiceFor(context).ComputeAsync(new NetWorthHistoryQuery
+        {
+            MainCurrency = "USD",
+            Interval = NetWorthInterval.Monthly,
+            From = new DateOnly(2026, 1, 1),
+            To = new DateOnly(2026, 4, 30),
+        }, includeProperties: true);
+
+        // Feb 1: house 100 + car. Mar 1: the 200 row is AT the bound, so still 100; the car was disposed
+        // AT the bound, so gone. Apr 1: the 300 row a microsecond before the bound is in force.
+        Assert.Equal([10_100m, 100m, 300m, 300m], history.Points.Select(point => point.PropertyValue!.Value));
+        Assert.Equal([2, 1, 1, 1], history.Points.Select(point => point.ContributingPropertyCount));
+
+        var totals = await new AccountTotalsService(
+            context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow))
+            .ComputeAsync("USD", includeProperties: true);
+        var full = await ServiceFor(context).ComputeAsync(
+            new NetWorthHistoryQuery { MainCurrency = "USD", Interval = NetWorthInterval.Monthly }, includeProperties: true);
+
+        Assert.Equal(totals.PropertyValue, full.Points[^1].PropertyValue);
+        Assert.Equal(totals.NetWorth, full.Points[^1].NetWorth);
     }
 
     // ── AC16 — decimal fidelity of the bucketed aggregate ─────────────────────────────────────
@@ -165,7 +270,7 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
             Interval = NetWorthInterval.Monthly,
             From = DateOnly.FromDateTime(FixedNow.AddYears(-3)),
             To = DateOnly.FromDateTime(FixedNow),
-        });
+        }, includeProperties: false);
 
         // Exact equality, not a tolerance: the whole point of decimal here is that the bucketed
         // aggregate plus its prefix sum is the same number as the row-by-row total.
@@ -201,7 +306,7 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
             Interval = NetWorthInterval.Monthly,
             From = new DateOnly(2026, 1, 1),
             To = new DateOnly(2026, 3, 31),
-        });
+        }, includeProperties: false);
 
         Assert.Equal(0m, history.Points[0].NetWorth);   // January
         Assert.Equal(7m, history.Points[1].NetWorth);   // February
@@ -290,12 +395,12 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         };
 
         // One warm run so the measurement is not dominated by first-query plan building.
-        await service.ComputeAsync(query);
+        await service.ComputeAsync(query, includeProperties: false);
 
         var before = GC.GetTotalAllocatedBytes(precise: true);
         counter.Reset();
         var stopwatch = Stopwatch.StartNew();
-        var history = await service.ComputeAsync(query);
+        var history = await service.ComputeAsync(query, includeProperties: false);
         stopwatch.Stop();
         var allocated = GC.GetTotalAllocatedBytes(precise: true) - before;
 
@@ -372,7 +477,7 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
 
         var totals = await new AccountTotalsService(
             context, new CurrencyConversionService(context), new FixedTimeProvider(FixedNow))
-            .ComputeAsync("USD");
+            .ComputeAsync("USD", includeProperties: false);
 
         // Live + archived only. Archiving is a list filter; closing ends the term, and `Closed == now`
         // is outside it because the bound is exclusive at both ends.
@@ -380,7 +485,7 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         Assert.Empty(totals.UnconvertedAccounts);
 
         var history = await ServiceFor(context).ComputeAsync(
-            new NetWorthHistoryQuery { MainCurrency = "USD", Interval = NetWorthInterval.Monthly });
+            new NetWorthHistoryQuery { MainCurrency = "USD", Interval = NetWorthInterval.Monthly }, includeProperties: false);
 
         // The per-point half: each account leaves the line at its own close date and keeps its past, so
         // the series steps down 12 300 → 8 300 → 300 rather than being flat at the final figure. The
@@ -430,6 +535,39 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
 
         await context.SaveChangesAsync();
     }
+
+    /// <summary>A held property with one estimate in force, in <paramref name="currency"/>.</summary>
+    private static async Task SeedPropertyAsync(OdysseyContext context, string currency)
+    {
+        var property = Property("Cabin", currency, acquired: FixedNow.AddYears(-5), disposed: null);
+        context.Properties.Add(property);
+        context.PropertyEstimates.Add(Estimate(property, 750_000m, FixedNow.AddYears(-5)));
+        await context.SaveChangesAsync();
+    }
+
+    private static Property Property(string name, string currency, DateTime? acquired, DateTime? disposed) => new()
+    {
+        PropertyId = Guid.NewGuid(),
+        Name = name,
+        Description = name,
+        Type = PropertyType.RealEstate,
+        CurrencyCode = currency,
+        AcquiredDate = acquired,
+        DisposedDate = disposed,
+        CreatedAt = FixedNow,
+        UpdatedAt = FixedNow,
+        RealEstateDetails = new RealEstateDetails { Kind = RealEstateKind.House },
+    };
+
+    private static PropertyEstimate Estimate(Property property, decimal value, DateTime effectiveFrom) => new()
+    {
+        PropertyEstimateId = Guid.NewGuid(),
+        PropertyId = property.PropertyId,
+        Value = value,
+        CurrencyCode = property.CurrencyCode,
+        EffectiveFrom = effectiveFrom,
+        CreatedAtUtc = effectiveFrom,
+    };
 
     /// <summary>
     /// 100 000 rows, inserted in batches with change tracking cleared between them — tracking them all
@@ -521,26 +659,31 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
         return names;
     }
 
-    /// <summary>Counts executed commands, so the round-trip budget is asserted rather than assumed.</summary>
+    /// <summary>
+    /// Counts executed commands and keeps their text, so the round-trip budget is asserted rather than
+    /// assumed and "no property table is queried" is observed on the wire (issue #214 AC3).
+    /// </summary>
     private sealed class CommandCounter : IDbCommandInterceptor
     {
-        private int count;
+        private readonly System.Collections.Concurrent.ConcurrentQueue<string> texts = new();
 
-        public int Count => count;
+        public int Count => texts.Count;
 
-        public void Reset() => Interlocked.Exchange(ref count, 0);
+        public IReadOnlyCollection<string> Texts => texts.ToArray();
+
+        public void Reset() => texts.Clear();
 
         public ValueTask<DbDataReader> ReaderExecutedAsync(
             DbCommand command, CommandExecutedEventData eventData, DbDataReader result,
             CancellationToken cancellationToken = default)
         {
-            Interlocked.Increment(ref count);
+            texts.Enqueue(command.CommandText);
             return ValueTask.FromResult(result);
         }
 
         public DbDataReader ReaderExecuted(DbCommand command, CommandExecutedEventData eventData, DbDataReader result)
         {
-            Interlocked.Increment(ref count);
+            texts.Enqueue(command.CommandText);
             return result;
         }
 
@@ -548,13 +691,13 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
             DbCommand command, CommandExecutedEventData eventData, object? result,
             CancellationToken cancellationToken = default)
         {
-            Interlocked.Increment(ref count);
+            texts.Enqueue(command.CommandText);
             return ValueTask.FromResult(result);
         }
 
         public object? ScalarExecuted(DbCommand command, CommandExecutedEventData eventData, object? result)
         {
-            Interlocked.Increment(ref count);
+            texts.Enqueue(command.CommandText);
             return result;
         }
     }

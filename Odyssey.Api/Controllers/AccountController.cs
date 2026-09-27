@@ -57,6 +57,18 @@ public class AccountController : ControllerBase
     /// only for a <c>contracts.read</c> holder — the service has no <c>ClaimsPrincipal</c> to decide.
     /// </summary>
     private bool CanReadContracts() => User.HasClaim(PermissionClaims.Type, PermissionClaims.ContractsRead);
+
+    /// <summary>
+    /// Whether property value is part of the caller's net worth (issue #214 §5.1): only with
+    /// <c>properties.read</c> (a name in <c>UnconvertedProperties</c> is property data) <b>and</b>
+    /// <c>properties.estimates.read</c> (the value is estimate data). Anything less gets the
+    /// accounts-only figure — folding the value in and redacting the breakdown would let the caller
+    /// recover it by subtraction from account data. Both net-worth actions read this one helper so
+    /// they cannot drift apart.
+    /// </summary>
+    private bool CanIncludeProperties() =>
+        User.HasClaim(PermissionClaims.Type, PermissionClaims.PropertiesRead)
+        && User.HasClaim(PermissionClaims.Type, PermissionClaims.PropertiesEstimatesRead);
     
     [HttpGet(Name = "GetAccounts")]
     [Authorize(Policy = PermissionClaims.AccountsRead)]
@@ -114,9 +126,13 @@ public class AccountController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Get total assets, liabilities and net worth in the main currency.",
-        Description = @"Converts each in-term account's balance into the main currency using the rate in
-                        force now and returns total assets, total liabilities, net worth, and the
-                        accounts that could not be converted (no rate to the main currency).
+        Description = @"Converts each in-term account's balance — and, for a caller holding both
+                        properties.read and properties.estimates.read, the in-force estimate of each
+                        property held now — into the main currency using the rate in force now, and
+                        returns total assets (property value included), total liabilities, net worth,
+                        the property value on its own line, and the accounts and properties that could
+                        not be converted (no rate to the main currency). propertiesIncluded says which
+                        of the two figures this is; it depends on the caller's claims alone.
                         Everything is measured as of now, exclusively: a transaction, rate, estimate or
                         account dated in the future does not count. An unsupported or archived
                         mainCurrency is rejected with 400.
@@ -130,7 +146,7 @@ public class AccountController : ControllerBase
             Description = @"The currency to convert into. Defaults to NOK.")] string? mainCurrency = null, CancellationToken cancellationToken = default)
     {
         var main = string.IsNullOrWhiteSpace(mainCurrency) ? DefaultMainCurrency : mainCurrency;
-        var totals = await accountTotalsService.ComputeAsync(main, cancellationToken);
+        var totals = await accountTotalsService.ComputeAsync(main, CanIncludeProperties(), cancellationToken);
         return Ok(totals);
     }
 
@@ -143,8 +159,11 @@ public class AccountController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Net worth over time, reconstructed from stored data.",
-        Description = @"Rebuilds the series on read from transactions, account estimates and exchange
-                        rates, with every point measured as of that point's own instant. Nothing is
+        Description = @"Rebuilds the series on read from transactions, account estimates, property
+                        estimates and exchange rates, with every point measured as of that point's own
+                        instant. Property value is included only for a caller holding both
+                        properties.read and properties.estimates.read (propertiesIncluded), and a
+                        property counts only while held — from acquisition until disposal. Nothing is
                         interpolated and no past point is scaled by the present figure, so the line can
                         fall and can go negative.
 
@@ -185,7 +204,7 @@ public class AccountController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var history = await netWorthHistoryService.ComputeAsync(query, cancellationToken);
+        var history = await netWorthHistoryService.ComputeAsync(query, CanIncludeProperties(), cancellationToken);
         return Ok(history);
     }
 

@@ -36,7 +36,9 @@ public sealed record PropertyCurrencyValue
 /// What the owned properties are estimated to be worth: one row per currency, plus a total converted
 /// to <see cref="BaseCurrency"/> at the latest rate. A currency with no rate to base is named in
 /// <see cref="UnconvertedCurrencies"/> and left out of <see cref="Total"/> — never folded in at 1:1.
-/// Nothing here feeds net worth.
+/// This is the <c>/properties</c> header's own figure. Net worth (issue #214) values property
+/// separately — every <i>held</i> property, archived ones included, in the main currency — so the two
+/// can differ for an archived-but-held property; that difference is a decision, not drift.
 /// </summary>
 public sealed record PropertyValueSummary
 {

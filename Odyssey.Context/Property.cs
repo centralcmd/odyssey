@@ -12,8 +12,11 @@ namespace Odyssey.Context;
 /// shape.
 ///
 /// <para>
-/// Standalone in v1: no account type is retired and no data moves, so a property and an account of type
-/// <c>Property</c>/<c>Vehicle</c> live side by side. Contract parties may name a property (issue #208),
+/// No account type is retired and no data moves, so a property and an account of type
+/// <c>Property</c>/<c>Vehicle</c> live side by side. Since issue #214 a held property's in-force estimate
+/// is part of net worth (for a caller holding <c>properties.read</c> and
+/// <c>properties.estimates.read</c>), so an asset recorded both ways is counted twice; the dashboard
+/// advises when such accounts exist alongside held properties rather than guessing at a link. Contract parties may name a property (issue #208),
 /// and those links cascade with it — each removal evented on its contract — so a delete still has no
 /// blocker; its detail row, estimates, smart-tag links, document links (issue #210) and events cascade too.
 /// </para>
