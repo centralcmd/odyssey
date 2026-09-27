@@ -77,14 +77,23 @@ public class PageHeaderAccessibilityTests
 
         toggle.Click();
 
-        Assert.Equal("false", header.Find("button.ph-signal-btn").GetAttribute("aria-expanded"));
+        var closed = header.Find("button.ph-signal-btn");
+        Assert.Equal("false", closed.GetAttribute("aria-expanded"));
         Assert.Empty(header.FindAll(".ph-region"));
+        // The region is gone, so nothing may point at it.
+        Assert.False(closed.HasAttribute("aria-controls"));
+
+        closed.Click();
+
+        var reopened = header.Find("button.ph-signal-btn");
+        Assert.Equal(reopened.GetAttribute("aria-controls"), header.Find(".ph-region").Id);
     }
 
     [Fact]
     public void TwoHeaders_NeverShareARegionId()
     {
         using var ctx = NewContext();
+        // Both open by default, so both carry aria-controls.
         var first = Render(ctx, Problem(PageHeaderSeverity.Warning, "One."));
         var second = Render(ctx, Problem(PageHeaderSeverity.Warning, "Two."));
 
@@ -109,7 +118,21 @@ public class PageHeaderAccessibilityTests
         Assert.All(toggles, toggle =>
         {
             Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
-            Assert.False(string.IsNullOrEmpty(toggle.GetAttribute("aria-controls")));
+            // Closed: no region in the DOM, so no aria-controls.
+            Assert.False(toggle.HasAttribute("aria-controls"));
+        });
+
+        foreach (var index in Enumerable.Range(0, 3))
+        {
+            header.FindAll("button[aria-expanded]")[index].Click();
+        }
+
+        var regionIds = header.FindAll(".ph-region").Select(region => region.Id).ToList();
+        Assert.Equal(3, regionIds.Count);
+        Assert.All(header.FindAll("button[aria-expanded]"), toggle =>
+        {
+            Assert.Equal("true", toggle.GetAttribute("aria-expanded"));
+            Assert.Contains(toggle.GetAttribute("aria-controls"), regionIds);
         });
     }
 

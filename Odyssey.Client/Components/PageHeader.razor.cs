@@ -103,7 +103,9 @@ public partial class PageHeader
     private bool _showInfo;
 
     // Per-instance region ids for aria-controls (issue #216), generated once so two headers on one
-    // page never collide. A region exists only while open; the toggle's aria-expanded carries the state.
+    // page never collide. A region exists only while open, so aria-controls is emitted only then — a
+    // reference to an id absent from the DOM is invalid (the OdsRecordCard precedent); aria-expanded
+    // carries the state either way.
     private readonly string _problemsRegionId = NewRegionId("problems");
     private readonly string _overviewRegionId = NewRegionId("overview");
     private readonly string _searchRegionId = NewRegionId("search");
@@ -112,11 +114,16 @@ public partial class PageHeader
     private static string NewRegionId(string region) => $"ph-{region}-{Guid.NewGuid():N}";
 
     /// <summary>The disclosure attributes a region toggle carries (WCAG 4.1.2).</summary>
-    private static Dictionary<string, object> Disclosure(bool open, string regionId) => new()
+    private static Dictionary<string, object> Disclosure(bool open, string regionId)
     {
-        ["aria-expanded"] = open ? "true" : "false",
-        ["aria-controls"] = regionId,
-    };
+        var attributes = new Dictionary<string, object> { ["aria-expanded"] = open ? "true" : "false" };
+        if (open)
+        {
+            attributes["aria-controls"] = regionId;
+        }
+
+        return attributes;
+    }
 
     protected override void OnInitialized()
     {
