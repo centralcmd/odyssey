@@ -4,14 +4,16 @@ path: Odyssey.Client
 
 ## Last sync
 
-date: 2026-08-25T08:15:20Z
+date: 2026-09-27T12:00:00Z
 
 ### Updated in this project
 
-- Read `OdsSettingRow`, `Settings.razor`/`.razor.css` and `FileAnalysisConsentPanel` to ground the runtime-settings design work in the shipped markup.
-- System settings kit page extended to the full 42-row / 12-section catalogue with the text, decimal, warning and ceiling row patterns.
-- New DS specimens for the consent gate's three disclosure states and the effective upload-cap messaging.
-- `FileUpload` no longer hardcodes "up to 25 MB" in its default hint — the size clause is composed from `maxMegabytes`.
+- New DS `HomeownerAssociationSelect` (Organization-only, change-only legacy notice) and specimen `components/homeowner-association.html`.
+- Property dialog + record carry the homeowner association; contact delete clears the link.
+
+## Sync history
+
+date: 2026-08-25T08:15:20Z — settings rows, consent gate, upload-cap copy.
 
 ## Screen map
 
@@ -29,6 +31,7 @@ date: 2026-08-25T08:15:20Z
 | `preview/58d-data-deposit-contract-type.html` · `contracts-data.js` / `ContractTypeSelect.jsx` / `ContractPartyRoleSelect.jsx` registry rows | **No shipped counterpart yet** — the three `OdsTypeRegistries` rows (`ContractTypes` Deposit after Loan; `ContractPartyRoles` Depositor, Custodian) from the *Deposit contract type — Backend (Draft v1)* spec. |
 | `ui_kits/web/Properties.jsx` · `AddPropertyModal.jsx` · `properties-data.js` · `properties.css` | **No shipped counterpart.** Designed from the *Property — Backend (Draft v8)* spec. Reuses `AccountEstimates`/`AddEstimateModal` (new `canWrite` / `ownerNoun` / `showHint` props) and the DS `AccountSmartTagsSection`; adds the fifth tag-delete blocker clause in `TransactionTags.jsx` and the `propertyMaxSmartTagsPerProperty` settings row. |
 | `ui_kits/web/Properties.jsx` (Contracts section, delete cascade) · `AddContractPartyModal.jsx` (Property kind) · `contracts-data.js` (`conResolveParty`, `conContractsForProperty`, `conPropertyOptions`, `conDetachProperty`) · `preview/58e` · `preview/60` · `templates/properties` | **No shipped counterpart.** Designed from the *Property as a contract party — Backend (Draft v3)* spec. |
+| `components/HomeownerAssociationSelect.jsx` · `homeowner-association.html` · `AddPropertyModal.jsx` / `Properties.jsx` (Real estate tile) / `properties-data.js` (`propAssociationFor`, `propClearAssociation`, contacts c44–c47) / `Contacts.jsx` (delete clears link) | **No shipped counterpart.** Designed from the *Property Homeowner Association — Backend (Draft v1)* spec. |
 | `ui_kits/web/admin.css` | `Odyssey.Client/Pages/Settings.razor.css` |
 | `preview/31e-contract-term-text-datetime.html` · `AddContractTermModal.jsx` / `ContractTerms.jsx` / `AccountTerms.jsx` / `data.js` term helpers | **No shipped counterpart.** Designed from the *Text and Date-Time Contract Terms — Backend (Draft v2)* spec. Compat sites: `AddTermDialog.razor.cs`, `TermVisuals.cs`, `TermChartSeries.cs`. |
 

@@ -375,6 +375,10 @@
         "message": "<FormRow> align must be one of 'start' | 'center' | 'end' | 'stretch'."
       },
       {
+        "selector": "JSXOpeningElement[name.name='HomeownerAssociationContact'] > JSXAttribute > JSXIdentifier[name!=/^(?:id|contactId|name|type|archived|key|ref|className|style|children)$/]",
+        "message": "<HomeownerAssociationContact> doesn't accept that prop. Declared props: id, contactId, name, type, archived."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='IconButton'] > JSXAttribute > JSXIdentifier[name!=/^(?:icon|ariaLabel|size|danger|href|type|disabled|onClick|key|ref|className|style|children)$/]",
         "message": "<IconButton> doesn't accept that prop. Declared props: icon, ariaLabel, size, danger, href, type, disabled, onClick."
       },
@@ -983,6 +987,9 @@
         "replaces": []
       },
       "FormRow": {
+        "replaces": []
+      },
+      "HomeownerAssociationContact": {
         "replaces": []
       },
       "IconButton": {

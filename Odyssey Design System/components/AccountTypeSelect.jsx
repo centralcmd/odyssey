@@ -18,6 +18,9 @@
  * carries TypeSelect.
  */
 
+/* Property (6) and Vehicle (7) are retired — a house or a car is a Property record
+   (/properties), not an account. Their ordinals are permanent holes: never reuse
+   them, never re-add these keys. See README → Reference data — Account types. */
 export const ACCOUNT_TYPES = [
   // ---- Assets ----
   { key: 'Cash',              label: 'Cash',            group: 'asset',     icon: 'payments',               color: 'oklch(0.80 0.15 150)', soft: 'oklch(0.80 0.15 150 / 0.16)' },
@@ -25,8 +28,6 @@ export const ACCOUNT_TYPES = [
   { key: 'SavingsAccount',    label: 'Savings',         group: 'asset',     icon: 'savings',                color: 'oklch(0.76 0.13 225)', soft: 'oklch(0.76 0.13 225 / 0.16)' },
   { key: 'InvestmentAccount', label: 'Investment',      group: 'asset',     icon: 'trending_up',            color: 'oklch(0.72 0.16 295)', soft: 'oklch(0.72 0.16 295 / 0.16)' },
   { key: 'PensionAccount',    label: 'Pension',         group: 'asset',     icon: 'elderly',                color: 'oklch(0.75 0.16 330)', soft: 'oklch(0.75 0.16 330 / 0.16)' },
-  { key: 'Property',          label: 'Property',        group: 'asset',     icon: 'home',                   color: 'oklch(0.72 0.14 255)', soft: 'oklch(0.72 0.14 255 / 0.16)' },
-  { key: 'Vehicle',           label: 'Vehicle',         group: 'asset',     icon: 'directions_car',         color: 'oklch(0.78 0.14 170)', soft: 'oklch(0.78 0.14 170 / 0.16)' },
   { key: 'OtherAsset',        label: 'Other asset',     group: 'asset',     icon: 'category',               color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)' },
   // ---- Liabilities ----
   { key: 'CreditCard',        label: 'Credit card',     group: 'liability', icon: 'credit_card',            color: 'oklch(0.72 0.16 22)',  soft: 'oklch(0.72 0.16 22 / 0.16)' },

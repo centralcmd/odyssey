@@ -2,8 +2,10 @@
    ----------------------------------------------------------------------------
    The frontend for *Property — Backend (Draft v8)*. A sibling of Accounts and
    Contracts: the same PageHeader + expandable RecordCard list, one card open at
-   a time. A property has no links to contacts or accounts and no photo
-   gallery, and its value is NOT summed into net worth. Since *Property as a
+   a time. A property has no links to accounts and no photo gallery — its
+   one contact link is the real-estate homeowner association (*Property
+   Homeowner Association — Backend, Draft v1*), a tile in the Real estate
+   section — and its value is NOT summed into net worth. Since *Property as a
    contract party (Draft v3)* it CAN be named on a contract, and since
    *Property Documents (Draft v2)* it carries documents, so the expanded
    record holds five things:
@@ -46,8 +48,9 @@ const PropertyStatusChip = ({ status }) => {
 };
 
 /* The estimate surface expects an account-shaped owner; this is the adapter.
-   `type` picks the glyph + hue from the Property / Vehicle account types. */
-const propEstOwner = (p) => ({ id: p.id, name: p.name, currency: p.currencyCode, type: PR_H.propTypeInfo(p.type).estimateType });
+   No account type: the Property / Vehicle account types are retired, and the
+   dialog runs with showHint={false} and its own leadIcon, so none is read. */
+const propEstOwner = (p) => ({ id: p.id, name: p.name, currency: p.currencyCode, type: null });
 
 /* ====================== Smart tags ====================== */
 const PropertySmartTags = ({ property, tagIds, setTagIds, onNavigate, canWrite, cap, limitsDegraded }) => {
@@ -207,6 +210,8 @@ const PropertyDetail = ({ property: p, estimates, tagIds, setTagIds, perms, cont
   const today = PR_H.propToday();
   const disposeFuture = p.disposedDate && p.disposedDate > today;
   const cur = PR_D.currencies.find(c => c.code === p.currencyCode);
+  const hoa = PR_H.propAssociationFor ? PR_H.propAssociationFor(p) : null;
+  const orgMeta = (PR_D.contactTypeByKey || {}).Organization || {};
 
   const subtypeTiles = p.type === 'Vehicle' ? [
     d.registrationNumber && <InfoTile key="reg" icon="pin" label="Registration" value={d.registrationNumber} />,
@@ -221,6 +226,12 @@ const PropertyDetail = ({ property: p, estimates, tagIds, setTagIds, perms, cont
       label="Address" value={<span style={{ color: 'oklch(0.77 0.14 55)' }}>{PR_H.propAddressText(d)}</span>} className="prop-addr-tile" wide
       foot={kind.label} />,
     d.cadastralNumber && <InfoTile key="cad" icon="map" label="Cadastral number" value={d.cadastralNumber} foot="land registry" />,
+    /* ExistingProperty.homeownerAssociation — a reference to an Organization
+       contact, so it wears the contact type's mark, not the record accent.
+       Archived is stated in the foot, never by tone alone. */
+    hoa && <InfoTile key="hoa" icon={orgMeta.icon || 'corporate_fare'} iconColor={hoa.archived ? undefined : orgMeta.color} iconSoft={hoa.archived ? undefined : orgMeta.soft}
+      label="Homeowner association" value={hoa.name} valueVariant="text" className={`wrapvalue${hoa.archived ? ' tone-muted' : ''}`}
+      foot={hoa.archived ? `Archived contact · since ${PR_H.dateLong(hoa.archived.slice(0, 10))}` : 'Organization'} />,
     d.livingAreaSqm != null && <InfoTile key="la" icon="square_foot" label="Living area" value={PR_H.propArea(d.livingAreaSqm)} />,
     d.plotAreaSqm != null && <InfoTile key="pa" icon="crop_free" label="Plot area" value={PR_H.propArea(d.plotAreaSqm)} />,
     d.buildYear && <InfoTile key="by" icon="construction" label="Built" value={String(d.buildYear)} />,
@@ -308,7 +319,7 @@ const DeletePropertyModal = ({ property, estimateCount, tagCount, fileCount = 0,
 );
 
 /* ====================== One list item ====================== */
-const PropertyListItem = ({ row, perms, cap, limitsDegraded, open, onToggle, onNavigate, onUpdate, onDelete, estimates, setEstimates, tagIds, setTagIds, files, setFiles, events = [], setEvents }) => {
+const PropertyListItem = ({ row, perms, hoaReject, cap, limitsDegraded, open, onToggle, onNavigate, onUpdate, onDelete, estimates, setEstimates, tagIds, setTagIds, files, setFiles, events = [], setEvents }) => {
   const { useState } = React;
   const p = row;
   const [showEdit, setShowEdit] = useState(false);
@@ -397,7 +408,7 @@ const PropertyListItem = ({ row, perms, cap, limitsDegraded, open, onToggle, onN
       {showAttach && <AddPropertyFileModal property={p} attached={files} onClose={() => setShowAttach(false)}
         onAttach={(links) => { setFiles(prev => [...prev, ...links]); setShowAttach(false); }} />}
 
-      {showEdit && <AddPropertyModal property={p} estimateCount={estimates.length} onClose={() => setShowEdit(false)}
+      {showEdit && <AddPropertyModal property={p} estimateCount={estimates.length} hoaReject={hoaReject} onClose={() => setShowEdit(false)}
         onSave={(dto) => { onUpdate({ ...p, ...dto, updatedAt: new Date().toISOString() }); setShowEdit(false); }} />}
       {estModal && <AddEstimateModal account={propEstOwner(p)} ownerNoun="property" showHint={false} leadIcon="monitor"
         estimate={estModal.mode === 'edit' ? estModal.estimate : null} existing={estimates}
@@ -587,7 +598,7 @@ const Properties = ({ tweaks = {}, onNavigate }) => {
         <div className="acct-list">
           <InfiniteList items={sorted} batchSize={batch} itemKey={(p) => p.id} noun="properties"
             renderItem={(p) => (
-              <PropertyListItem row={p} perms={perms} cap={cap} limitsDegraded={limitsDegraded} onNavigate={onNavigate}
+              <PropertyListItem row={p} perms={perms} hoaReject={tweaks.propHoaReject || 'none'} cap={cap} limitsDegraded={limitsDegraded} onNavigate={onNavigate}
                 open={openId === p.id} onToggle={(o) => setOpenId(o ? p.id : null)}
                 estimates={estById[p.id] || []} setEstimates={setEst(p.id)}
                 tagIds={tagsById[p.id] || []} setTagIds={setTags(p.id)}
@@ -600,7 +611,7 @@ const Properties = ({ tweaks = {}, onNavigate }) => {
         </div>
       )}
 
-      {showAdd && <AddPropertyModal onClose={() => setShowAdd(false)} onSave={create} />}
+      {showAdd && <AddPropertyModal hoaReject={tweaks.propHoaReject || 'none'} onClose={() => setShowAdd(false)} onSave={create} />}
     </div>
   );
 };

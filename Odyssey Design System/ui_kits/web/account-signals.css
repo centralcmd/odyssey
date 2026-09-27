@@ -142,10 +142,6 @@
   white-space: nowrap;
 }
 .alert .alert-fix:hover { background: rgba(255,255,255,0.06); }
-.alert .alert-fix:focus-visible {
-  outline: var(--focus-ring-width, 2px) solid var(--focus-ring, var(--mud-palette-primary));
-  outline-offset: var(--focus-ring-offset, 2px);
-}
 
 /* The header rollup panel: stack of alerts, each row clickable to jump
    to the affected account. */

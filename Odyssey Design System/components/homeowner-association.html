@@ -1,0 +1,96 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Homeowner association" subtitle="HomeownerAssociationSelect — the optional real-estate ↔ Organization contact link (borettslag / sameie / HOA). Organization-only Combobox, clearable; a kept archived or re-typed link reads as a legacy notice, not an error (§8.3); server 400 / 422 land on the field. Plus the read tile on the property record." viewport="1180x720" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · Homeowner association</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<style>
+html,body{margin:0;background:var(--mud-palette-background)}
+body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:26px 28px}
+a{color:var(--brand-text)}a:hover{color:var(--tide-300)}
+.cap{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:0 0 16px}
+.cap code{font-family:var(--font-mono);text-transform:none;letter-spacing:0;color:var(--brand-text)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;align-items:start}
+.panel{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+.panel h3{margin:0;font:var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans)}
+.panel p.sub{margin:-8px 0 4px;font:var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);color:var(--mud-palette-text-secondary)}
+.switchrow{display:flex;flex-wrap:wrap;gap:8px}
+.switchrow button{font:var(--fw-medium) var(--fs-caption)/1 var(--font-sans);color:var(--mud-palette-text-secondary);background:transparent;border:1px solid var(--mud-palette-divider);border-radius:var(--radius-pill);padding:6px 12px;cursor:pointer}
+.switchrow button.on{color:var(--ink-950);background:var(--tide-400);border-color:var(--tide-400)}
+.json{font-family:var(--font-mono);font-size:12px;color:var(--brand-text);background:var(--mud-palette-background);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-sm);padding:8px 10px;white-space:pre-wrap}
+.note{margin:18px 2px 0;font:var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans);color:var(--mud-palette-text-secondary);max-width:100ch}
+.note b{color:var(--mud-palette-text-primary);font-weight:var(--fw-medium)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+</style>
+</head>
+<body>
+<div class="cap">Homeowner association <code>&lt;HomeownerAssociationSelect value onChange contacts storedValue error /&gt;</code></div>
+<div id="root"></div>
+<script type="text/babel" data-presets="env,react">
+const NS = window.OdysseyDesignSystem_d5aa51 || {};
+const CONTACTS = [
+  { id: 'c44', name: 'Storgata Borettslag', type: 'Organization', archived: null },
+  { id: 'c45', name: 'Maple Heights HOA', type: 'Organization', archived: null },
+  { id: 'c47', name: 'Solberg Sameie', type: 'Organization', archived: null },
+  { id: 'c46', name: 'North Shore Cabin Owners', type: 'Organization', archived: '2025-05-01T09:00:00Z' },
+  { id: 'c48', name: 'Ingrid Solberg', type: 'Person', archived: null },
+];
+const SCENARIOS = {
+  set: { label: 'Linked', value: 'c44', stored: 'c44' },
+  none: { label: 'None', value: '', stored: null },
+  archived: { label: 'Kept · archived', value: 'c46', stored: 'c46' },
+  retyped: { label: 'Kept · now Person', value: 'c48', stored: 'c48' },
+  e400: { label: '400 not found', value: 'c45', stored: null, error: 'That contact no longer exists — it may have been deleted. Pick another association.' },
+  e422: { label: '422 not org', value: 'c45', stored: null, error: 'That contact isn’t an organization, so it can’t be a homeowner association.' },
+};
+function Demo() {
+  const { HomeownerAssociationSelect, InfoTile } = window.OdysseyDesignSystem_d5aa51 || {};
+  const [key, setKey] = React.useState('set');
+  const sc = SCENARIOS[key];
+  const [value, setValue] = React.useState(sc.value);
+  React.useEffect(() => setValue(sc.value), [key]);
+  const c = CONTACTS.find(x => x.id === value);
+  const proj = c ? { contactId: c.id, name: c.name, archived: c.archived } : null;
+  const reg = (NS.CONTACT_TYPES || []).find(t => t.key === 'Organization') || {};
+  return (
+    <div className="grid">
+      <div className="panel">
+        <h3>Picker — New / Edit property dialog</h3>
+        <p className="sub">Real estate only. Active Organizations are offered; clearing sends null.</p>
+        <div className="switchrow">{Object.entries(SCENARIOS).map(([k, s]) => <button key={k} className={k === key ? 'on' : ''} onClick={() => setKey(k)}>{s.label}</button>)}</div>
+        <HomeownerAssociationSelect value={value} onChange={setValue} contacts={CONTACTS} storedValue={sc.stored} error={value === sc.value ? sc.error : undefined} />
+        <div className="json">{`realEstateDetails.homeownerAssociationId: ${value ? `"${value}"` : 'null'}`}</div>
+      </div>
+      <div className="panel">
+        <h3>Read — Real estate section tile</h3>
+        <p className="sub">From ExistingProperty.homeownerAssociation. Absent when null.</p>
+        <div className="tiles">
+          {InfoTile ? <InfoTile icon="corporate_fare" iconColor={reg.color} iconSoft={reg.soft} label="Homeowner association" value="Storgata Borettslag" valueVariant="text" foot="Organization" /> : null}
+          {InfoTile ? <InfoTile icon="corporate_fare" label="Homeowner association" value="North Shore Cabin Owners" valueVariant="text" className="tone-muted" foot="Archived contact · since May 1, 2025" /> : null}
+        </div>
+        <div className="json">{`homeownerAssociation: ${proj ? JSON.stringify(proj, null, 2) : 'null'}`}</div>
+      </div>
+    </div>
+  );
+}
+function Root() {
+  const [ready, setReady] = React.useState(!!NS.HomeownerAssociationSelect);
+  React.useEffect(() => {
+    if (ready) return;
+    let n = 0;
+    const t = setInterval(() => { if ((window.OdysseyDesignSystem_d5aa51 || {}).HomeownerAssociationSelect || ++n > 30) { clearInterval(t); setReady(true); } }, 100);
+    return () => clearInterval(t);
+  }, [ready]);
+  if (!(window.OdysseyDesignSystem_d5aa51 || {}).HomeownerAssociationSelect) return <div className="note">Building components…</div>;
+  return <Demo />;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+</script>
+<p class="note"><b>Homeowner association</b> is a real-estate property's optional link to the <b>Organization contact</b> that administers it. The picker offers active Organizations only, so the server's 400 (not found / archived) and 422 (not an organization) are rare; when they arrive they sit on the field. A link that was valid when set and has since been <b>archived or re-typed</b> is kept: the server only re-checks a <b>changed</b> id, so the dialog states the contact's state and how to change it, and Save is not blocked. Deleting the contact clears the link; the property record then shows no tile.</p>
+</body>
+</html>

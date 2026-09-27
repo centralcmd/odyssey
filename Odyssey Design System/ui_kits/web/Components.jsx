@@ -1344,6 +1344,22 @@ const CustodianSelect = DS.CustodianSelect || (({ value, onChange, contacts = []
   );
 });
 
+// HomeownerAssociationSelect — the property ↔ Organization contact link. Typed DS
+// component; the fallback keeps the dialog working across a bundle rebuild.
+const HomeownerAssociationSelect = DS.HomeownerAssociationSelect || (({ value, onChange, contacts = [], label = 'Homeowner association', help = 'The borettslag, sameie or HOA that administers it.', error }) => {
+  const orgs = contacts.filter((c) => c.type === 'Organization' && (!c.archived || c.id === value));
+  const options = orgs.map((c) => ({ value: c.id || c.contactId, label: c.name + (c.archived ? ' (archived)' : ''), icon: 'corporate_fare' }));
+  return (
+    <div className={`odc-field${error ? ' error' : ''}`}>
+      <label className="odc-field-label">{label}</label>
+      {DS.Combobox
+        ? <DS.Combobox value={value || ''} onChange={(v) => onChange && onChange(v || '')} options={options} placeholder="Search organizations…" clearable />
+        : <DS.Select value={value || ''} onChange={(v) => onChange && onChange(v || '')} options={options} placeholder="Search organizations…" />}
+      <div className="odc-field-help">{error || help}</div>
+    </div>
+  );
+});
+
 // AccountTypeChip — the account type as a chip (sibling of CustodianChip) for
 // the detail metadata grid. Typed DS component with a registry-fed fallback.
 const AccountTypeChip = DS.AccountTypeChip || (({ type, accountType, size, showGroup = true }) => {
@@ -1415,7 +1431,7 @@ Object.assign(window, {
   TodoStatusChip, JournalPhotoGallery, TaskBoard, TODO_STATUSES,
   CalendarGrid, TimeField, CoordinateField, StepperField, ColorSwatchSelect, CALENDAR_SWATCHES, swatchFor, RevealPanel,
   PasswordRules, PASSWORD_POLICY, PasswordChangeForm,
-  CustodianChip, CustodianSelect, AccountTypeChip, AccountStatusChip,
+  CustodianChip, CustodianSelect, HomeownerAssociationSelect, AccountTypeChip, AccountStatusChip,
   usePopover,
 });
 

@@ -12,7 +12,6 @@ window.OdysseyData = {
     { id: '3', name: 'Amex Platinum', number: '·5512', accountNumber: '3782 822463 55121', custodianId: 'c16', description: 'Travel & dining rewards card', type: 'CreditCard', currency: 'USD', opened: '2022-11-20', closed: null, archived: null, balance: -1128.40, deltaLabel: 'Statement due Nov 28', deltaDir: 'down', icon: 'credit_card', tone: 'violet' },
     { id: '4', name: 'Vanguard Brokerage', number: '·VBR9', accountNumber: 'VBR9 0042 1188', custodianId: 'c17', description: 'Long-term index fund portfolio', type: 'InvestmentAccount', currency: 'USD', opened: '2019-01-09', closed: null, archived: null, balance: 62412.88, deltaLabel: '+1.2% MTD', deltaDir: 'up',   icon: 'trending_up', tone: 'mint' },
     { id: '5', name: 'Citi Auto Loan', number: '·LN03', accountNumber: 'LN03 7788 2210', custodianId: 'c13', description: 'Fixed-rate 60-month auto loan', type: 'CarLoan', currency: 'USD', opened: '2023-06-01', closed: null, archived: null, balance: -14820.00, deltaLabel: '$285 due Dec 1', deltaDir: 'down', icon: 'directions_car', tone: 'coral' },
-    { id: '7', name: 'Maple St Residence', number: '·PROP', accountNumber: 'PROP 0451 2290', description: 'Primary home — appraised value', type: 'Property', currency: 'USD', opened: '2018-09-05', closed: null, archived: null, balance: 685000.00, deltaLabel: '+2.1% YoY est.', deltaDir: 'up', icon: 'home', tone: 'sea' },
     { id: '6', name: 'Old Wells Checking', number: '·0098', accountNumber: '0098 4421 7700', custodianId: 'c19', description: 'Closed — migrated to Chase Checking', type: 'CheckingAccount', currency: 'USD', opened: '2016-04-22', closed: '2021-03-10', archived: null, balance: 0.00, deltaLabel: 'No activity', deltaDir: 'flat', icon: 'account_balance', tone: 'tide' },
   ],
 
@@ -26,8 +25,7 @@ window.OdysseyData = {
     { key: 'SavingsAccount',    label: 'Savings',            group: 'asset',     icon: 'savings',                 color: 'oklch(0.76 0.13 225)', soft: 'oklch(0.76 0.13 225 / 0.16)' },
     { key: 'InvestmentAccount', label: 'Investment',         group: 'asset',     icon: 'trending_up',             color: 'oklch(0.72 0.16 295)', soft: 'oklch(0.72 0.16 295 / 0.16)' },
     { key: 'PensionAccount',    label: 'Pension',            group: 'asset',     icon: 'elderly',                 color: 'oklch(0.75 0.16 330)', soft: 'oklch(0.75 0.16 330 / 0.16)' },
-    { key: 'Property',          label: 'Property',           group: 'asset',     icon: 'home',                    color: 'oklch(0.72 0.14 255)', soft: 'oklch(0.72 0.14 255 / 0.16)' },
-    { key: 'Vehicle',           label: 'Vehicle',            group: 'asset',     icon: 'directions_car',          color: 'oklch(0.78 0.14 170)', soft: 'oklch(0.78 0.14 170 / 0.16)' },
+    // Property (6) and Vehicle (7) retired — ordinals are permanent holes; houses and cars are Property records.
     { key: 'OtherAsset',        label: 'Other asset',        group: 'asset',     icon: 'category',                color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)' },
     // ---- Liabilities ----
     { key: 'CreditCard',        label: 'Credit card',        group: 'liability', icon: 'credit_card',             color: 'oklch(0.72 0.16 22)',  soft: 'oklch(0.72 0.16 22 / 0.16)' },
@@ -132,14 +130,6 @@ window.OdysseyData = {
     '5': [
       { id: 'f9',  name: 'auto_loan_agreement.pdf',   kind: 'LoanAgreement',     size: '264 KB', uploaded: '2023-06-02', validFrom: '2023-06-01', validTo: '2028-06-01', issuedAt: '2023-06-01', issuedBy: 'c13' },
       { id: 'f10', name: 'repayment_schedule.pdf',    kind: 'RepaymentSchedule', size: '142 KB', uploaded: '2023-06-02', validFrom: '2023-06-01', validTo: '2028-06-01', issuedAt: '2023-06-01', issuedBy: 'c13' },
-    ],
-    // Maple St Residence (Property) — the document set a home needs: insurance, the
-    // purchase contract, a recent valuation, and the title/deed registration.
-    '7': [
-      { id: 'f11', name: 'home_insurance_policy_2026.pdf', kind: 'InsurancePolicy',   size: '410 KB', uploaded: '2025-12-18', validFrom: '2026-01-01', validTo: '2026-12-31', issuedAt: '2025-12-15', issuedBy: 'c12' },
-      { id: 'f12', name: 'purchase_agreement.pdf',          kind: 'PurchaseAgreement', size: '1.1 MB', uploaded: '2018-09-06', issuedAt: '2018-09-05', issuedBy: null },
-      { id: 'f13', name: 'appraisal_report_2025.pdf',       kind: 'Valuation',         size: '780 KB', uploaded: '2025-11-22', issuedAt: '2025-11-20', issuedBy: null },
-      { id: 'f14', name: 'property_deed.pdf',               kind: 'Registration',      size: '320 KB', uploaded: '2018-09-06', issuedAt: '2018-09-05', issuedBy: null },
     ],
   },
 
@@ -1460,19 +1450,13 @@ Object.assign(window.OdysseyHelpers, {
    types may carry estimates; a recommended practical subset (asset accounts whose
    worth isn't transaction-derived) is highlighted in the UI but never enforced. */
 
-window.OdysseyData.estimateRecommendedTypes = ['Property', 'Vehicle', 'OtherAsset', 'InvestmentAccount', 'PensionAccount'];
+window.OdysseyData.estimateRecommendedTypes = ['OtherAsset', 'InvestmentAccount', 'PensionAccount'];
 
 /* Seed AccountEstimate history, keyed by accountId. EffectiveFrom ascending here
    for readability; the helpers sort as needed. Currency always = account currency. */
 window.OdysseyData.accountEstimates = {
-  // Maple St Residence (Property '7') — successive appraisals, purchase → today.
-  '7': [
-    { id: 'es-7-1', accountId: '7', value: 540000, currencyCode: 'USD', effectiveFrom: '2018-09-05', note: 'Purchase price at closing',          createdAtUtc: '2018-09-05T09:00:00Z' },
-    { id: 'es-7-2', accountId: '7', value: 588000, currencyCode: 'USD', effectiveFrom: '2020-06-01', note: 'County reassessment',                 createdAtUtc: '2020-06-01T09:00:00Z' },
-    { id: 'es-7-3', accountId: '7', value: 642000, currencyCode: 'USD', effectiveFrom: '2022-04-01', note: 'Refinance appraisal',                 createdAtUtc: '2022-04-01T09:00:00Z' },
-    { id: 'es-7-4', accountId: '7', value: 668000, currencyCode: 'USD', effectiveFrom: '2024-03-15', note: 'Online valuation estimate',           createdAtUtc: '2024-03-15T09:00:00Z' },
-    { id: 'es-7-5', accountId: '7', value: 685000, currencyCode: 'USD', effectiveFrom: '2026-04-10', note: 'Annual estimate · comparable sales',  createdAtUtc: '2026-04-10T09:00:00Z' },
-  ],
+  // The house (formerly account '7', type Property) now lives on property 'p-maple'
+  // with its own estimate history — see properties-data.js.
   // Chase Checking ('1') intentionally has no estimates — drives the empty state.
 };
 

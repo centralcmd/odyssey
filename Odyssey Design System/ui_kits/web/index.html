@@ -257,6 +257,10 @@
               <TweakRadio label="Role" value={tweaks.propRole || 'owner'}
                           options={[{ value: 'owner', label: 'Owner' }, { value: 'user', label: 'User' }, { value: 'guest', label: 'Guest' }]}
                           onChange={(v) => setTweak('propRole', v)} />
+              <TweakSection label="Homeowner association" />
+              <TweakRadio label="Save response on a changed id" value={tweaks.propHoaReject || 'none'}
+                          options={[{ value: 'none', label: 'OK' }, { value: '400', label: '400' }, { value: '422', label: '422' }]}
+                          onChange={(v) => setTweak('propHoaReject', v)} />
               <TweakSection label="Property smart tags" />
               <TweakSlider label="PropertyMaxSmartTagsPerProperty" min={1} max={50} step={1}
                            value={tweaks.propSmartTagCap != null ? tweaks.propSmartTagCap : 20}

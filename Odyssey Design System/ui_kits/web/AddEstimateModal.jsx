@@ -121,7 +121,7 @@ const AddEstimateModal = ({ account, estimate, existing = [], onClose, onSave, l
           <MIcon name={recommended ? 'recommend' : 'info'} size={16} />
           {recommended
             ? <span>Estimates suit <b>{typeLabel}</b> accounts — their worth isn’t captured by transactions. The current estimate stands in for this account’s value in your net worth.</span>
-            : <span>Estimates are typically used on asset accounts like property or vehicles. You can still record one on a <b>{typeLabel}</b> account.</span>}
+            : <span>Estimates are typically used on investment, pension and other asset accounts. A house or a car belongs under Properties. You can still record one on a <b>{typeLabel}</b> account.</span>}
         </div>
       )}
     </Modal>

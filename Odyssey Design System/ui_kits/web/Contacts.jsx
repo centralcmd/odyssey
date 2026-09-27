@@ -1087,7 +1087,13 @@ const Contacts = ({ tweaks = {} }) => {
   // ordinary route: the delete is refused and the dialog carries the supported
   // detach path (see ContactLinksBlockedModal).
   const [blocked, setBlocked] = useState(null);
-  const removeRow = (id) => setRows(prev => prev.filter(c => c.id !== id));
+  /* The delete also clears every property's homeowner-association link to
+     this contact (ContactReferenceGuard, same transaction) — never a blocker. */
+  const removeRow = (id) => {
+    const H = window.OdysseyHelpers;
+    if (H.propClearAssociation) H.propClearAssociation(id);
+    setRows(prev => prev.filter(c => c.id !== id));
+  };
   const onDelete = (id) => {
     const conBen = (window.OdysseyHelpers.conContractsWithBeneficiary || (() => []))(id);
     if (conBen.length) {

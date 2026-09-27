@@ -10,11 +10,22 @@
    • Registration number / VIN preview the service's uppercase + strip.
    • BuildYear rejects the future; ModelYear allows at most next year.
    • Archived is not here — it is the row menu's Archive / Restore, which lands
-     on the same PUT. */
+     on the same PUT.
+   • Homeowner association (*Property Homeowner Association — Backend, Draft
+     v1*): real estate only, a scalar id. PUT is a full replace, so the stored
+     id is round-tripped; clearing sends null. The server checks R1–R4 only
+     when the id changed (§8.3) — a kept archived / re-typed link saves as is.
+     `hoaReject` (kit tweak) simulates the 400 / 422 on a changed id. */
 
 const APM_CURRENCIES = (window.OdysseyData.currencies || []).filter(c => !c.archived).map(c => ({ value: c.code, label: c.name }));
 
-const AddPropertyModal = ({ property = null, onClose, onSave, estimateCount = 0 }) => {
+const APM_HOA_MSG = {
+  notFound: 'That contact no longer exists — it may have been deleted. Pick another association.',
+  archived: 'That organization is archived. Restore it in Contacts or pick another.',
+  notOrganization: 'That contact isn’t an organization, so it can’t be a homeowner association.',
+};
+
+const AddPropertyModal = ({ property = null, onClose, onSave, estimateCount = 0, hoaReject = 'none' }) => {
   const { useState } = React;
   const H = window.OdysseyHelpers, D = window.OdysseyData;
   const editing = !!property;
@@ -27,7 +38,7 @@ const AddPropertyModal = ({ property = null, onClose, onSave, estimateCount = 0 
     acquiredDate: property?.acquiredDate || '', disposedDate: property?.disposedDate || '',
     notes: property?.notes || '',
   }));
-  const [re, setRe] = useState(() => ({ kind: 'House', addressLine: '', postalCode: '', city: '', countryCode: '', cadastralNumber: '', livingAreaSqm: null, plotAreaSqm: null, buildYear: null, ...(property?.realEstateDetails || {}) }));
+  const [re, setRe] = useState(() => ({ kind: 'House', addressLine: '', postalCode: '', city: '', countryCode: '', cadastralNumber: '', livingAreaSqm: null, plotAreaSqm: null, buildYear: null, homeownerAssociationId: null, ...(property?.realEstateDetails || {}) }));
   const [ve, setVe] = useState(() => ({ kind: 'Car', registrationNumber: '', vin: '', make: '', model: '', modelYear: null, firstRegisteredDate: '', ...(property?.vehicleDetails || {}) }));
   const [errors, setErrors] = useState({});
   const clr = (k) => { if (errors[k]) setErrors(e => ({ ...e, [k]: undefined })); };
@@ -48,6 +59,14 @@ const AddPropertyModal = ({ property = null, onClose, onSave, estimateCount = 0 
     if (type === 'RealEstate') {
       if (re.countryCode && !/^[A-Za-z]{2}$/.test(re.countryCode)) n['re.countryCode'] = 'Two letters, e.g. NO or US.';
       if (re.buildYear != null && (re.buildYear < 1000 || re.buildYear > thisYear)) n['re.buildYear'] = re.buildYear > thisYear ? 'Build year can’t be in the future.' : 'Enter a year after 1000.';
+      const hoaId = re.homeownerAssociationId || null;
+      const storedHoa = property?.realEstateDetails?.homeownerAssociationId || null;
+      if (hoaId && hoaId !== storedHoa) {
+        const c = (D.contactById || {})[hoaId];
+        if (hoaReject === '400' || !c) n['re.homeownerAssociationId'] = APM_HOA_MSG.notFound;
+        else if (c.archived) n['re.homeownerAssociationId'] = APM_HOA_MSG.archived;
+        else if (hoaReject === '422' || c.type !== 'Organization') n['re.homeownerAssociationId'] = APM_HOA_MSG.notOrganization;
+      }
       ['livingAreaSqm', 'plotAreaSqm'].forEach(k => { if (re[k] != null && (re[k] < 0 || re[k] > 1000000)) n['re.' + k] = 'Between 0 and 1,000,000 m².'; });
     } else {
       if (ve.modelYear != null && (ve.modelYear < 1900 || ve.modelYear > thisYear + 1)) n['ve.modelYear'] = ve.modelYear > thisYear + 1 ? `No later than ${thisYear + 1}.` : 'Enter a year after 1900.';
@@ -63,6 +82,7 @@ const AddPropertyModal = ({ property = null, onClose, onSave, estimateCount = 0 
         kind: re.kind, addressLine: blank(re.addressLine), postalCode: blank(re.postalCode), city: blank(re.city),
         countryCode: re.countryCode ? re.countryCode.toUpperCase() : null, cadastralNumber: blank(re.cadastralNumber),
         livingAreaSqm: re.livingAreaSqm ?? null, plotAreaSqm: re.plotAreaSqm ?? null, buildYear: re.buildYear ?? null,
+        homeownerAssociationId: re.homeownerAssociationId || null,
       } : null,
       vehicleDetails: type === 'Vehicle' ? {
         kind: ve.kind, registrationNumber: blank(H.propNormPlate(ve.registrationNumber)), vin: blank(H.propNormPlate(ve.vin)),
@@ -145,6 +165,9 @@ const AddPropertyModal = ({ property = null, onClose, onSave, estimateCount = 0 
           </FormRow>
           <Field label="Cadastral number" value={re.cadastralNumber || ''} onChange={setR('cadastralNumber')}
             placeholder="e.g. 208/451 or APN 3612-044" helper="The land-registry identifier, as written. Not checked." />
+          <HomeownerAssociationSelect value={re.homeownerAssociationId || ''} onChange={(v) => setR('homeownerAssociationId')(v || null)}
+            contacts={D.contacts || []} storedValue={property?.realEstateDetails?.homeownerAssociationId || null}
+            error={errors['re.homeownerAssociationId']} />
           <FormRow cols={3}>
             <NumberField label="Living area" unit="m²" min={0} step={0.5} value={re.livingAreaSqm} onChange={setR('livingAreaSqm')} error={errors['re.livingAreaSqm']} optional />
             <NumberField label="Plot area" unit="m²" min={0} step={1} value={re.plotAreaSqm} onChange={setR('plotAreaSqm')} error={errors['re.plotAreaSqm']} optional />

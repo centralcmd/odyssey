@@ -353,7 +353,7 @@
       startDate: '2023-06-01', endDate: '2025-10-31', ready: '2023-05-28T09:00:00Z', signed: '2023-05-30T09:00:00Z', paused: null, archived: '2025-11-05T12:00:00Z', createdAtUtc: '2023-05-28T09:00:00Z', createdByUserId: 'u-jane',
       parties: [
         // The roof the panels sit on — `Object` on an Other-type contract.
-        { id: 'cp-solar-1', accountId: '7', role: 'Object', fromDate: null, toDate: null },
+        { id: 'cp-solar-1', propertyId: 'p-maple', role: 'Object', fromDate: null, toDate: null },
       ],
       files: [
         { id: 'cf-solar-1', fileMetadataId: 'fm-solar-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2023-05-28T09:04:00Z', validFrom: '2023-06-01', validTo: '2033-05-31', issuedAt: '2023-05-24', issuedBy: 'c8' },

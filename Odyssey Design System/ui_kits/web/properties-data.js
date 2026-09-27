@@ -8,11 +8,11 @@
   const D = window.OdysseyData;
   const H = window.OdysseyHelpers;
 
-  /* PropertyType. Colours reuse the Property / Vehicle account-type hues so a
-     house reads the same whichever record it is on during the side-by-side v1. */
+  /* PropertyType. The two hues were inherited from the retired Property / Vehicle
+     account types (ordinals 6/7, removed); they now belong to properties alone. */
   D.propertyTypes = [
-    { key: 'RealEstate', enumValue: 0, label: 'Real estate', icon: 'home_work',      color: 'oklch(0.72 0.14 255)', soft: 'oklch(0.72 0.14 255 / 0.16)', estimateType: 'Property', detailsKey: 'realEstateDetails' },
-    { key: 'Vehicle',    enumValue: 1, label: 'Vehicle',     icon: 'directions_car', color: 'oklch(0.78 0.14 170)', soft: 'oklch(0.78 0.14 170 / 0.16)', estimateType: 'Vehicle',  detailsKey: 'vehicleDetails' },
+    { key: 'RealEstate', enumValue: 0, label: 'Real estate', icon: 'home_work',      color: 'oklch(0.72 0.14 255)', soft: 'oklch(0.72 0.14 255 / 0.16)', detailsKey: 'realEstateDetails' },
+    { key: 'Vehicle',    enumValue: 1, label: 'Vehicle',     icon: 'directions_car', color: 'oklch(0.78 0.14 170)', soft: 'oklch(0.78 0.14 170 / 0.16)',  detailsKey: 'vehicleDetails' },
   ];
   D.realEstateKinds = [
     { key: 'House', enumValue: 0, label: 'House', icon: 'house' },
@@ -62,19 +62,19 @@
     tx('xp8', '2026-08-01', 'Sausalito Marina · Berth Aug', ['t24'], -310.00, 'anchor'),
   ].forEach(t => { if (!D.transactions.some(x => x.id === t.id)) D.transactions.push(t); });
 
-  const re = (o) => ({ kind: 'House', addressLine: null, postalCode: null, city: null, countryCode: null, cadastralNumber: null, livingAreaSqm: null, plotAreaSqm: null, buildYear: null, ...o });
+  const re = (o) => ({ kind: 'House', addressLine: null, postalCode: null, city: null, countryCode: null, cadastralNumber: null, livingAreaSqm: null, plotAreaSqm: null, buildYear: null, homeownerAssociationId: null, ...o });
   const ve = (o) => ({ kind: 'Car', registrationNumber: null, vin: null, make: null, model: null, modelYear: null, firstRegisteredDate: null, ...o });
   const base = { acquiredDate: null, disposedDate: null, notes: null, archived: null, realEstateDetails: null, vehicleDetails: null, createdAt: '2026-01-10T09:00:00Z', updatedAt: '2026-01-10T09:00:00Z' };
 
   D.properties = [
     { ...base, id: 'p-maple', name: 'Maple St Residence', description: 'Primary residence', type: 'RealEstate', currencyCode: 'USD', acquiredDate: '2018-09-05',
       notes: 'Seismic retrofit done 2021. Roof last replaced 2016.',
-      realEstateDetails: re({ kind: 'House', addressLine: '1482 Maple St', postalCode: '94110', city: 'San Francisco', countryCode: 'US', cadastralNumber: 'APN 3612-044', livingAreaSqm: 186, plotAreaSqm: 412, buildYear: 1928 }) },
+      realEstateDetails: re({ kind: 'House', addressLine: '1482 Maple St', postalCode: '94110', city: 'San Francisco', countryCode: 'US', cadastralNumber: 'APN 3612-044', homeownerAssociationId: 'c45', livingAreaSqm: 186, plotAreaSqm: 412, buildYear: 1928 }) },
     { ...base, id: 'p-storgata', name: 'Storgata 14', description: 'Inherited apartment, let to a tenant', type: 'RealEstate', currencyCode: 'NOK', acquiredDate: '2019-06-01',
-      realEstateDetails: re({ kind: 'Apartment', addressLine: 'Storgata 14', postalCode: '0155', city: 'Oslo', countryCode: 'NO', cadastralNumber: '208/451', livingAreaSqm: 72.5, buildYear: 1968 }) },
+      realEstateDetails: re({ kind: 'Apartment', addressLine: 'Storgata 14', postalCode: '0155', city: 'Oslo', countryCode: 'NO', cadastralNumber: '208/451', livingAreaSqm: 72.5, buildYear: 1968, homeownerAssociationId: 'c44' }) },
     { ...base, id: 'p-cabin', name: 'Lakeview cabin', description: 'Weekend cabin, shared with siblings', type: 'RealEstate', currencyCode: 'USD',
       notes: 'Acquisition date unknown — passed down in the family.',
-      realEstateDetails: re({ kind: 'Cabin', addressLine: 'Lot 7, North Shore Rd', postalCode: '96143', city: 'Kings Beach', countryCode: 'US', livingAreaSqm: 58, plotAreaSqm: 2100, buildYear: 1974 }) },
+      realEstateDetails: re({ kind: 'Cabin', addressLine: 'Lot 7, North Shore Rd', postalCode: '96143', city: 'Kings Beach', countryCode: 'US', livingAreaSqm: 58, plotAreaSqm: 2100, buildYear: 1974, homeownerAssociationId: 'c46' }) },
     { ...base, id: 'p-ridge', name: 'Ridge lot', description: 'Undeveloped plot — plans shelved', type: 'RealEstate', currencyCode: 'USD', acquiredDate: '2017-04-18', archived: '2025-10-01T09:00:00Z',
       realEstateDetails: re({ kind: 'Plot', city: 'Sonoma', countryCode: 'US', cadastralNumber: 'APN 128-220-017', plotAreaSqm: 8100 }) },
     { ...base, id: 'p-outback', name: 'Subaru Outback', description: 'Family car', type: 'Vehicle', currencyCode: 'USD', acquiredDate: '2022-03-14',
@@ -116,6 +116,12 @@
     { id: 'c41', name: 'Kartverket', normalizedName: 'KARTVERKET', type: 'Organization', description: 'Norwegian land registry — issues deeds and registry extracts.', archived: null },
     { id: 'c42', name: 'Bay Roofing', normalizedName: 'BAY ROOFING', type: 'Organization', description: 'Roofing contractor — installed the 2016 roof.', archived: null },
     { id: 'c43', name: 'California DMV', normalizedName: 'CALIFORNIA DMV', type: 'Organization', description: 'Vehicle and vessel registration.', archived: null },
+    /* Homeowner associations (*Property Homeowner Association — Backend, Draft v1*).
+       c46 is archived, so the cabin carries a kept legacy link (§8.3). */
+    { id: 'c44', name: 'Storgata Borettslag', normalizedName: 'STORGATA BORETTSLAG', type: 'Organization', orgNumber: '948 211 506', description: 'Housing cooperative for Storgata 10–16.', archived: null },
+    { id: 'c45', name: 'Maple Heights HOA', normalizedName: 'MAPLE HEIGHTS HOA', type: 'Organization', description: 'Homeowners association, 1400–1500 block of Maple St.', archived: null },
+    { id: 'c46', name: 'North Shore Cabin Owners', normalizedName: 'NORTH SHORE CABIN OWNERS', type: 'Organization', description: 'Road and dock association — dissolved into the county district.', archived: '2025-05-01T09:00:00Z' },
+    { id: 'c47', name: 'Solberg Sameie', normalizedName: 'SOLBERG SAMEIE', type: 'Organization', orgNumber: '912 604 338', description: 'Owner section association.', archived: null },
   ].forEach(c => { if (!(D.contactById || {})[c.id]) { D.contacts.push(c); if (D.contactById) D.contactById[c.id] = c; } });
 
   /* Stored files (FileMetadata) the property documents reference, plus a few
@@ -177,7 +183,7 @@
 
   Object.assign(H, {
     propToday: today,
-    propTypeInfo: (k) => TY[k] || { key: k, label: 'Unrecognised type', icon: 'help', color: 'var(--ink-300)', soft: 'rgba(199,208,224,0.12)', estimateType: 'OtherAsset' },
+    propTypeInfo: (k) => TY[k] || { key: k, label: 'Unrecognised type', icon: 'help', color: 'var(--ink-300)', soft: 'rgba(199,208,224,0.12)' },
     propKindInfo: (p) => {
       const d = p.type === 'Vehicle' ? p.vehicleDetails : p.realEstateDetails;
       const reg = p.type === 'Vehicle' ? VK : RK;
@@ -208,6 +214,24 @@
       const d = H.propDetails(p);
       return [p.name, p.description, p.notes, d.addressLine, d.city, d.cadastralNumber, d.registrationNumber, d.vin, d.make, d.model]
         .filter(Boolean).join(' ').toLowerCase();
+    },
+    /* ExistingProperty.homeownerAssociation — the slim projection, exactly
+       { contactId, name, archived }. Null for a Vehicle, no link, or an id that
+       no longer resolves (the contact was deleted: FK + guard SET NULL). */
+    propAssociationFor: (p) => {
+      if (!p || p.type !== 'RealEstate') return null;
+      const id = p.realEstateDetails && p.realEstateDetails.homeownerAssociationId;
+      const c = id ? (D.contactById || {})[id] : null;
+      return c ? { contactId: c.id, name: c.name, archived: c.archived || null } : null;
+    },
+    /* ContactReferenceGuard.ClearAndCascadeReferencesAsync — the contact
+       delete nulls every link in the same transaction. Returns the count. */
+    propClearAssociation: (contactId) => {
+      let n = 0;
+      (D.properties || []).forEach(p => {
+        if (p.realEstateDetails && p.realEstateDetails.homeownerAssociationId === contactId) { p.realEstateDetails.homeownerAssociationId = null; n += 1; }
+      });
+      return n;
     },
     /* Service normalisation, previewed live in the dialog. */
     propNormPlate: (v) => (v || '').replace(/\s+/g, '').toUpperCase(),

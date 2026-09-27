@@ -44,9 +44,9 @@
     window.ACCOUNT_TYPE_LABEL = Object.fromEntries(D.accountTypes.map(t => [t.key, t.label]));
 
     const AddEstimateModal = window.AddEstimateModal;
-    // Maple St Residence (Property) — a recommended type, so the dialog shows the
+    // Vanguard Brokerage (Investment) — a recommended type, so the dialog shows the
     // recommendation hint; currency is locked to the account currency (USD).
-    const account = D.accountById['7'];
+    const account = D.accountById['4'];
     ReactDOM.createRoot(document.getElementById('root')).render(
       <AddEstimateModal account={account} leadIcon="monitor" onClose={() => {}} onSave={() => {}} />
     );

@@ -15,7 +15,7 @@
        • 'partial'  — Vanguard Brokerage (EUR) has no EUR → USD rate for that
                       month, so it contributed 0 and the figure is understated.
                       Same condition the Accounts page flags for account 4.
-       • 'revalued' — a Maple St Residence estimate took effect that month, so
+       • 'revalued' — an account estimate took effect that month, so
                       the step is a real revaluation, disclosed not smoothed. */
   const NWH_PERIODS = [
     { date: '2024-12-01', label: 'Nov ’24', move:  18420 },
@@ -81,7 +81,7 @@
         totalLiabilities: liabilities,
         unconvertedAccountCount: p.kind === 'partial' ? 1 : 0,
         revaluedAccountCount: p.kind === 'revalued' ? 1 : 0,
-        contributingAccountCount: p.kind === 'partial' ? 5 : 6,
+        contributingAccountCount: p.kind === 'partial' ? 4 : 5,
         kind: p.kind || 'normal',
       };
     });

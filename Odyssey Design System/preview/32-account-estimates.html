@@ -75,7 +75,7 @@
       <li><span class="material-icons">show_chart</span><b>Discrete appraisals, held flat.</b> An estimate holds until the next one supersedes it, so the chart steps — but it can also read as a smooth value trend (tweak below); both extend the current value to a dashed <b>Today</b> marker.</li>
       <li><span class="material-icons">account_balance</span><b>Estimate replaces balance in net worth.</b> When an estimate exists it is the account's contributed value; the transaction balance stays visible but quiet. A Property with no transactions still contributes its estimated worth.</li>
       <li><span class="material-icons">tune</span><b>Tweak the surface.</b> Toggle the value chart (step / smooth), the history view (table / timeline) and the empty-state treatment (standard / guided) in the bar below.</li>
-      <li><span class="material-icons">recommend</span><b>Every account type is eligible.</b> A recommended subset (Property · Vehicle · Other asset · Investment · Pension) is highlighted in the dialog, but estimates are never blocked on any type.</li>
+      <li><span class="material-icons">recommend</span><b>Every account type is eligible.</b> A recommended subset (Other asset · Investment · Pension) is highlighted in the dialog, but estimates are never blocked on any type.</li>
     </ul>
   </div>
 
@@ -146,8 +146,16 @@
       const [theme, setTheme] = useState('dark');
       React.useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
 
-      const property = D.accountById['7'];   // Maple St Residence — appraisals over time
-      // Same property, but with a few capital transactions logged (down payment +
+      // An Other-asset account with appraisals over time. (Houses and cars are
+      // Property records now — the Property / Vehicle account types are retired.)
+      const property = { id: 'demo-art', name: 'Art collection', number: '·ART1', accountNumber: 'ART 0451 2290', description: 'Framed prints and two oils — insured value', type: 'OtherAsset', currency: 'USD', opened: '2018-09-05', closed: null, archived: null, balance: 0, icon: 'category', tone: 'sea' };
+      D.accountEstimates[property.id] = D.accountEstimates[property.id] || [
+        { id: 'es-a-1', accountId: property.id, value: 42000, currencyCode: 'USD', effectiveFrom: '2018-09-05', note: 'Purchase prices, summed', createdAtUtc: '2018-09-05T09:00:00Z' },
+        { id: 'es-a-2', accountId: property.id, value: 47500, currencyCode: 'USD', effectiveFrom: '2021-06-01', note: 'Insurance valuation', createdAtUtc: '2021-06-01T09:00:00Z' },
+        { id: 'es-a-3', accountId: property.id, value: 51200, currencyCode: 'USD', effectiveFrom: '2024-03-15', note: 'Dealer appraisal', createdAtUtc: '2024-03-15T09:00:00Z' },
+        { id: 'es-a-4', accountId: property.id, value: 53800, currencyCode: 'USD', effectiveFrom: '2026-04-10', note: 'Annual insurance review', createdAtUtc: '2026-04-10T09:00:00Z' },
+      ];
+      // Same account, but with a few capital transactions logged (down payment +
       // improvements) — to show the estimate leading over a non-zero balance.
       const withTxns = [
         { id: 'pt1', amount: 25000.00 },
@@ -155,7 +163,7 @@
         { id: 'pt3', amount: -2400.00 },
       ];
       // A fresh asset account with no estimates yet — drives the empty state.
-      const emptyAcct = { ...property, id: 'demo-empty', name: 'Lakeshore Cabin', number: '·CBN2', accountNumber: 'PROP 7782 0031' };
+      const emptyAcct = { ...property, id: 'demo-empty', name: 'Watch collection', number: '·WCH2', accountNumber: 'WCH 7782 0031' };
 
       return (
         <React.Fragment>
@@ -192,10 +200,10 @@
           </div>
 
           <div className="detail-stage">
-            <div className="stage-label"><span className="material-icons">home</span>Property · appraised value over time, no transactions</div>
+            <div className="stage-label"><span className="material-icons">category</span>Other asset · appraised value over time, no transactions</div>
             <DetailCard account={property} txns={[]} historyStyle={historyStyle} chartMode={chartMode} emptyStyle={emptyStyle} />
 
-            <div className="stage-label"><span className="material-icons">home_work</span>Property · with capital transactions logged — the estimate still leads</div>
+            <div className="stage-label"><span className="material-icons">category</span>Other asset · with purchases logged — the estimate still leads</div>
             <DetailCard account={property} txns={withTxns} historyStyle={historyStyle} chartMode={chartMode} emptyStyle={emptyStyle} />
 
             <div className="stage-label"><span className="material-icons">inbox</span>Empty state · an asset account with no estimate yet</div>
