@@ -10,7 +10,7 @@ namespace Odyssey.MigrationService.Tests;
 /// </summary>
 /// <remarks>
 /// Recognising check constraints also means recognising that EF scaffolds every change to a check's
-/// expression as a drop and a re-add of the same name — which a replay can never collide on. Several
+/// expression as a drop and a re-add of the same name — which a replay can never collide on. Two
 /// shipped migrations do exactly that, so the discount is what keeps an ordinary upgrade across them
 /// from being refused.
 /// </remarks>

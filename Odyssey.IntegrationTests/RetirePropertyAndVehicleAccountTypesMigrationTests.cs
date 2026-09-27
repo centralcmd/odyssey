@@ -3,6 +3,7 @@
 #pragma warning disable EF1002
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using Odyssey.Context;
@@ -316,6 +317,78 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
         }
     }
 
+    /// <summary>
+    /// AC 12 through the real <see cref="OdysseyMigrationService"/>: the report is read BEFORE the
+    /// migration (afterwards the accounts it counts are gone) and logged once AFTER it; an empty
+    /// database — where every migration is pending and there is no <c>Accounts</c> table to count —
+    /// migrates without one; and a database already past the migration never logs one again.
+    /// </summary>
+    [SkippableFact]
+    public async Task The_migrations_job_logs_the_counts_once_and_only_when_the_retirement_runs()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+
+        // An empty database: the whole history is pending.
+        await RecreateAsync();
+        try
+        {
+            var fresh = await RunMigrationServiceAsync();
+            Assert.DoesNotContain(fresh, line => line.Contains("Retired the Property and Vehicle", StringComparison.Ordinal));
+            await using (var context = NewContext())
+            {
+                Assert.True(await MigrationSeam.HasRunAsync(context, Subject));
+                Assert.Null(await AccountTypeRetirementReport.ReadIfPendingAsync(context, CancellationToken.None));
+            }
+        }
+        finally
+        {
+            await DropAsync();
+        }
+
+        // A populated database at the baseline: counted before, logged after, exactly once.
+        await RecreateAsync();
+        try
+        {
+            await using (var context = NewContext())
+            {
+                await MigrationSeam.MigrateToAsync(context, Baseline);
+                await SeedAsync(context);
+            }
+
+            var line = Assert.Single(await RunMigrationServiceAsync(),
+                l => l.Contains("Retired the Property and Vehicle", StringComparison.Ordinal));
+            Assert.Contains("created 1 real-estate and 1 vehicle properties", line, StringComparison.Ordinal);
+            Assert.Contains("kept 1 accounts", line, StringComparison.Ordinal);
+            Assert.Contains("moved 3 estimates, 2 smart tags, 3 file links and 2 contract parties", line, StringComparison.Ordinal);
+
+            await using (var context = NewContext())
+            {
+                Assert.Equal(0, await MigrationSeam.CountAsync(context,
+                    "SELECT COUNT(*) FROM `Accounts` WHERE `AccountType` IN (6, 7)"));
+            }
+
+            // Already applied: the next run of the job reports nothing.
+            Assert.DoesNotContain(await RunMigrationServiceAsync(),
+                l => l.Contains("Retired the Property and Vehicle", StringComparison.Ordinal));
+        }
+        finally
+        {
+            await DropAsync();
+        }
+    }
+
+    private async Task<List<string>> RunMigrationServiceAsync()
+    {
+        var services = new ServiceCollection();
+        services.AddDbContext<OdysseyContext>(options => options.UseMySql(
+            fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString)));
+        await using var provider = services.BuildServiceProvider();
+
+        var logger = new CapturingLogger<OdysseyMigrationService>();
+        await new OdysseyMigrationService(provider, logger).ExecuteAsync(CancellationToken.None);
+        return logger.Lines;
+    }
+
     // ── Seed ──────────────────────────────────────────────────────────────────
 
     private static async Task<Seeded> SeedAsync(OdysseyContext context)
@@ -454,7 +527,9 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
 
     // ── Infrastructure ────────────────────────────────────────────────────────
 
-    private sealed class CapturingLogger : ILogger
+    private sealed class CapturingLogger<T> : CapturingLogger, ILogger<T>;
+
+    private class CapturingLogger : ILogger
     {
         public List<string> Lines { get; } = [];
 

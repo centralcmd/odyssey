@@ -87,7 +87,7 @@ check constraints joined. Adding another kind means one case in `MigrationRunner
 A create is **discounted** when an earlier operation of the same pending run dropped that name first:
 the replayed drop removes whatever an interruption left, so the create cannot collide. EF scaffolds
 every change to a check's expression that way — `DropCheckConstraint` then `AddCheckConstraint` of the
-same name — and several shipped migrations do it, so without the discount an ordinary upgrade across
+same name — and two shipped migrations do it in `Up()` (both for `CK_ContractParties_ExactlyOneTarget`), so without the discount an ordinary upgrade across
 them would be refused.
 
 ### The renamed-table half-state
