@@ -127,29 +127,12 @@ public partial class AccountEstimatesSection
 
     // The value-history card's one series — the property section's shape, so the two read as one.
     private IReadOnlyList<OdsTermHistorySeries> BuildHistorySeries(List<ExistingAccountEstimate> ascending) =>
-        ascending.Count == 0 ? [] :
-        [
-            new OdsTermHistorySeries
-            {
-                Key = "value",
-                Label = "Estimated value",
-                Value = _current is { } c ? FormatMoney(c.Value, Account.CurrencyCode) : "—",
-                // A chart token rather than the account type's hue: a type hue is a glyph-on-soft
-                // colour that reads about 2:1 on the light theme, too faint for a line.
-                Color = "var(--chart-1)",
-                Group = $"amt:{Account.CurrencyCode}",
-                Points =
-                [
-                    .. ascending.Select(e => new OdsStepPoint(DateOnly.FromDateTime(e.EffectiveFrom), e.Value)
-                    {
-                        Id = e.AccountEstimateId.ToString(),
-                        Note = e.Note,
-                    }),
-                ],
-                Format = v => FormatMoney(v, Account.CurrencyCode),
-                AxisFormat = EstimateVisuals.CompactTick,
-            },
-        ];
+        EstimateVisuals.HistorySeries(
+            ascending.Select(e => new EstimateVisuals.HistoryEntry(e.AccountEstimateId, e.EffectiveFrom, e.CreatedAtUtc, e.Value, e.Note)),
+            _current is { } c ? FormatMoney(c.Value, Account.CurrencyCode) : "—",
+            "var(--chart-1)",
+            Account.CurrencyCode,
+            v => FormatMoney(v, Account.CurrencyCode));
 
     private void OpenNew()
     {

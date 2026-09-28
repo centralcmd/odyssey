@@ -470,10 +470,13 @@
    points. Shape + stroke, never colour, is what distinguishes them. */
 .odc-lc-marks { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
 /* Hover readout — same inverted bubble as .odc-tip, pinned above the point. */
-.odc-lc-plot { position: relative; }
+.odc-lc-plot { position: relative; border-radius: var(--radius-sm); }
+.odc-lc-plot:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .odc-lc-hit { fill: transparent; cursor: crosshair; }
 .odc-lc-hring { fill: none; stroke-width: 2; pointer-events: none; }
-.odc-lc-tip { position: absolute; transform: translate(-50%, calc(-100% - 14px)); pointer-events: none; z-index: var(--z-raised);
+/* Unlike the design's .odc-lc-tip, the bubble takes the pointer: WCAG 1.4.13 needs content shown on
+   hover to stay while the pointer moves onto it, and inside .odc-lc-plot that is no mouseleave. */
+.odc-lc-tip { position: absolute; transform: translate(-50%, calc(-100% - 14px)); z-index: var(--z-raised);
   background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); border: 1px solid var(--mud-palette-lines-default);
   padding: 7px 10px; border-radius: var(--radius-sm); box-shadow: var(--mud-elevation-8);
   display: flex; flex-direction: column; gap: 4px; white-space: nowrap; }

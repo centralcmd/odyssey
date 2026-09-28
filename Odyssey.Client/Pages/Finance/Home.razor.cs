@@ -128,8 +128,12 @@ public partial class Home
     // anywhere east of UTC, which the server rejects outright with a 400.
     private async Task LoadHistoryAsync()
     {
+        // A range change can overtake an earlier, slower request; only the latest one may land.
+        var version = ++_historyRequest;
         var (from, to, interval) = _range.ResolveRequest(TodayUtc, EarliestOpened);
         var result = await Accounts.GetNetWorthHistoryAsync(_mainCurrencyCode, interval, from, to);
+        if (version != _historyRequest)
+            return;
 
         // A failed call leaves _history null. There is no fallback series: when the data is not
         // there, the chart is not there.
@@ -138,16 +142,13 @@ public partial class Home
         _isLoadingHistory = false;
     }
 
-    private bool RangeNeedsEarliest =>
-        _range.Preset == NetWorthRangePreset.All
-        || (_range.Preset == NetWorthRangePreset.Custom && _range.From is null);
+    private int _historyRequest;
+
+    private bool RangeNeedsEarliest => _range.NeedsEarliest;
 
     private static DateOnly TodayUtc => DateOnly.FromDateTime(DateTime.UtcNow);
 
-    // The earliest opening across every account, archived included: archiving is not a valuation
-    // event (issue #99), so an archived account's history is still part of "all time".
-    private DateOnly? EarliestOpened =>
-        _accounts.Count == 0 ? null : DateOnly.FromDateTime(_accounts.Min(a => a.Opened));
+    private DateOnly? EarliestOpened => NetWorthRange.EarliestOpening(_accounts);
 
     private async Task ApplyRangeAsync(NetWorthRange range)
     {

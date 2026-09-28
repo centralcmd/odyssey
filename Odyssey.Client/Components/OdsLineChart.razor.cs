@@ -160,8 +160,68 @@ public partial class OdsLineChart
         }
     }
 
-    // The index of the hovered point; null when the pointer is off the plot.
+    // The index of the hovered point; null when the pointer is off the plot and it is not focused.
     private int? _hover;
+
+    // Whether the readout was opened from the keyboard, which is the only time the live region speaks.
+    private bool _hoverByKey;
+
+    private void ShowHover(int index, bool byKey)
+    {
+        _hover = index;
+        _hoverByKey = byKey;
+    }
+
+    private void ClearHover()
+    {
+        _hover = null;
+        _hoverByKey = false;
+    }
+
+    private void OnPlotFocus()
+    {
+        if (_pts.Count > 0)
+            ShowHover(_hover ?? _pts.Count - 1, byKey: true);
+    }
+
+    /// <summary>
+    /// Left / Right step the keyboard readout; Escape closes it. Home / End and Up / Down are left to
+    /// the page, since preventing their default cannot be made conditional on the key (the handler
+    /// runs after the default is decided).
+    /// </summary>
+    private void OnPlotKey(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            ClearHover();
+            return;
+        }
+        if (_pts.Count == 0 || e.Key is not ("ArrowLeft" or "ArrowRight"))
+            return;
+        var from = _hover ?? _pts.Count - 1;
+        ShowHover(Math.Clamp(from + (e.Key == "ArrowRight" ? 1 : -1), 0, _pts.Count - 1), byKey: true);
+    }
+
+    /// <summary>The plot's name as a keyboard target: what it is, and how to read it.</summary>
+    private string PlotKeyLabel => $"{EffectiveAriaLabel}. Use Left and Right arrow keys to read each point.";
+
+    /// <summary>The change from the previous point, as the readout and the table state it; "—" for the first.</summary>
+    internal string ChangeText(int i)
+    {
+        if (i == 0) return "—";
+        var d = _pts[i].Value - _pts[i - 1].Value;
+        return d == 0 ? "No change" : $"{(d > 0 ? "+" : "−")}{Format((decimal)Math.Abs(d))}";
+    }
+
+    /// <summary>The change as a spoken clause: nothing for the first point, "no change", or "change +50".</summary>
+    internal static string SpokenChange(string changeText, int index) =>
+        index == 0 ? "" : changeText == "No change" ? ", no change" : $", change {changeText}";
+
+    /// <summary>The live region's sentence for the point the keyboard is on.</summary>
+    private string? TipText => _hover is { } h && h < _pts.Count
+        ? $"{_pts[h].Label}{(_pts[h].Kind == OdsLinePointKind.Normal ? "" : $", {KindLabel(_pts[h].Kind)}")}: "
+          + $"{Format((decimal)_pts[h].Value)}{SpokenChange(ChangeText(h), h)}"
+        : null;
 
     // Half the width of a point's hover column — the whole plot for a single point.
     private double HitHalfWidth => _single ? (X1 - X0) / 2 : (X1 - X0) / (_pts.Count - 1) / 2;
@@ -253,7 +313,7 @@ public partial class OdsLineChart
                    && _pts[0].Kind != OdsLinePointKind.Partial
                    && _pts[^1].Kind != OdsLinePointKind.Partial;
 
-        if (_hover >= _pts.Count) _hover = null;
+        if (_hover >= _pts.Count) ClearHover();
         _x0 = DefaultX0;
         if (_pts.Count == 0) return;
 

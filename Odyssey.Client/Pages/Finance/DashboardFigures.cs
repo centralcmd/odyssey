@@ -442,6 +442,12 @@ internal static class DashboardFigures
     /// in the main currency and signed by its contribution to net worth, so a positive row is an
     /// asset slice and a negative one a liability slice. The row rides along in <c>Tag</c>.
     /// </summary>
+    /// <remarks>
+    /// By sign, not account type (see <see cref="AccountTotals.Allocations"/>): an overdrawn checking
+    /// account is owed money and draws in the liability well. Each well's total row is the sum of
+    /// its own slices, so the wells always agree with themselves and with net worth, and differ from
+    /// the header's type-classified totals only when an account sits on the "wrong" side of zero.
+    /// </remarks>
     internal static (List<OdsDonutSlice> Assets, List<OdsDonutSlice> Liabilities) AllocationSlices(AccountTotals? totals)
     {
         var rows = totals?.Allocations ?? [];

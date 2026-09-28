@@ -112,8 +112,77 @@ public partial class OdsStepChart
 
     private readonly List<Plot> _plots = [];
 
-    // The hovered entry: which plot, and which of its points. Null when the pointer is off the plot.
+    // The hovered entry: which plot, and which of its points. Null when the pointer is off the plot
+    // and it is not focused.
     private (string PlotId, int Index)? _hover;
+
+    // Whether the readout was opened from the keyboard, which is the only time the live region speaks.
+    private bool _hoverByKey;
+
+    private void ShowHover((string PlotId, int Index) entry, bool byKey)
+    {
+        _hover = entry;
+        _hoverByKey = byKey;
+    }
+
+    private void ClearHover()
+    {
+        _hover = null;
+        _hoverByKey = false;
+    }
+
+    /// <summary>Every entry in keyboard order: by date, then by series, so Left / Right walk the time axis.</summary>
+    private List<(string PlotId, int Index)> KeyOrder =>
+        [.. _plots
+            .SelectMany((p, pi) => p.Pts.Select((pt, i) => (p.Id, i, pt.Date, pi)))
+            .OrderBy(e => e.Date).ThenBy(e => e.pi)
+            .Select(e => (e.Id, e.i))];
+
+    private void OnPlotFocus()
+    {
+        if (_hover is not null || Primary is not { } p) return;
+        ShowHover((p.Id, p.InForce), byKey: true);
+    }
+
+    /// <summary>Left / Right step the keyboard readout; Escape closes it (see OdsLineChart.OnPlotKey).</summary>
+    private void OnPlotKey(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            ClearHover();
+            return;
+        }
+        if (e.Key is not ("ArrowLeft" or "ArrowRight")) return;
+        var order = KeyOrder;
+        if (order.Count == 0) return;
+        var at = _hover is { } h ? order.IndexOf(h) : -1;
+        if (at < 0) at = order.Count - 1;
+        ShowHover(order[Math.Clamp(at + (e.Key == "ArrowRight" ? 1 : -1), 0, order.Count - 1)], byKey: true);
+    }
+
+    private string PlotKeyLabel => $"{EffectiveAriaLabel}. Use Left and Right arrow keys to read each entry.";
+
+    /// <summary>The change from the entry before, as the readout and the table state it; "—" for the first.</summary>
+    private string ChangeText(Plot p, int i)
+    {
+        if (i == 0) return "—";
+        var d = p.Pts[i].Value - p.Pts[i - 1].Value;
+        return d == 0 ? "No change" : $"{(d > 0 ? "+" : "−")}{Format((decimal)Math.Abs(d))}";
+    }
+
+    /// <summary>The live region's sentence for the entry the keyboard is on.</summary>
+    private string? TipText
+    {
+        get
+        {
+            if (_hover is not { } h || _plots.FirstOrDefault(q => q.Id == h.PlotId) is not { } p || h.Index >= p.Pts.Count)
+                return null;
+            var pt = p.Pts[h.Index];
+            var change = OdsLineChart.SpokenChange(ChangeText(p, h.Index), h.Index);
+            var note = string.IsNullOrEmpty(pt.Note) ? "" : $". {pt.Note}";
+            return $"{TipKey(p, pt.Date)}: {Format((decimal)pt.Value)}{change}{note}";
+        }
+    }
 
     /// <summary>The hover readout's key line: the series (when several share the axis), the date, and whether it is scheduled.</summary>
     private string TipKey(Plot p, DateOnly date) =>
@@ -160,7 +229,7 @@ public partial class OdsStepChart
             .ToList();
 
         _plots.Clear();
-        _hover = null;
+        ClearHover();
         _multi = sets.Count > 1;
         if (sets.Count == 0) return;
 

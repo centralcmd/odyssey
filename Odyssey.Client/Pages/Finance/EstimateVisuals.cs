@@ -59,4 +59,43 @@ public static class EstimateVisuals
                 ? Math.Round(a / 1_000m).ToString("0", CultureInfo.InvariantCulture) + "K"
                 : a.ToString("#,##0", CultureInfo.InvariantCulture));
     }
+
+    /// <summary>One entry of a value history, whichever owner (account or property) it belongs to.</summary>
+    public readonly record struct HistoryEntry(Guid Id, DateTime EffectiveFrom, DateTime CreatedAtUtc, decimal Value, string? Note);
+
+    /// <summary>
+    /// The value-history card's one series (an <c>OdsTermHistoryChart</c>), shared by the account and
+    /// the property estimate sections so the two histories cannot drift: oldest first with ties to the
+    /// earliest-created, each entry's note carried to the hover readout, and no series at all for an
+    /// empty history.
+    /// </summary>
+    /// <param name="currentValue">The in-force value, already formatted — "—" when none is in force.</param>
+    /// <param name="color">A chart token, never a type hue: those are glyph-on-soft colours that read
+    /// about 2:1 on the light theme, too faint for a line.</param>
+    public static IReadOnlyList<OdsTermHistorySeries> HistorySeries(
+        IEnumerable<HistoryEntry> entries, string currentValue, string color, string currencyCode, Func<decimal, string> format)
+    {
+        var ordered = entries.OrderBy(e => e.EffectiveFrom).ThenBy(e => e.CreatedAtUtc).ToList();
+        return ordered.Count == 0 ? [] :
+        [
+            new OdsTermHistorySeries
+            {
+                Key = "value",
+                Label = "Estimated value",
+                Value = currentValue,
+                Color = color,
+                Group = $"amt:{currencyCode}",
+                Points =
+                [
+                    .. ordered.Select(e => new OdsStepPoint(DateOnly.FromDateTime(e.EffectiveFrom), e.Value)
+                    {
+                        Id = e.Id.ToString(),
+                        Note = e.Note,
+                    }),
+                ],
+                Format = format,
+                AxisFormat = CompactTick,
+            },
+        ];
+    }
 }

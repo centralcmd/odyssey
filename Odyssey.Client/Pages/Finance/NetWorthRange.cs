@@ -88,6 +88,22 @@ public sealed record NetWorthRange(NetWorthRangePreset Preset, DateOnly? From = 
         return (from, to, IntervalFor(from, to ?? today));
     }
 
+    /// <summary>
+    /// Whether the request starts at the earliest account opening, which only the account list can
+    /// supply — so the dashboard must load the list before it asks for the history.
+    /// </summary>
+    [JsonIgnore]
+    public bool NeedsEarliest =>
+        Preset == NetWorthRangePreset.All || (Preset == NetWorthRangePreset.Custom && From is null);
+
+    /// <summary>
+    /// The earliest opening across every account, archived included: archiving is not a valuation
+    /// event (issue #99), so an archived account's history is still part of "all time". Null with no
+    /// accounts, which leaves the server's default window.
+    /// </summary>
+    public static DateOnly? EarliestOpening(IEnumerable<ExistingAccount> accounts) =>
+        accounts.Select(a => (DateTime?)a.Opened).Min() is { } opened ? DateOnly.FromDateTime(opened) : null;
+
     /// <summary>The finest interval whose point count fits the server's cap for the window.</summary>
     internal static NetWorthInterval IntervalFor(DateOnly? from, DateOnly to)
     {

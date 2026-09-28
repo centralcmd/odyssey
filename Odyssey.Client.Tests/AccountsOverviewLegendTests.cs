@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using System.Text.RegularExpressions;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Dtos.Finance;
@@ -79,13 +80,18 @@ public class AccountsOverviewLegendTests
     /// populated wells both render them, so there is no second heading left to drift.
     /// </summary>
     [Theory]
-    [InlineData("AssetsAriaLabel", "Asset allocation")]
-    [InlineData("LiabilitiesAriaLabel", "Liability allocation")]
-    public void EachRingsAccessibleNameContainsItsVisibleTitle(string parameter, string title)
+    [InlineData("AssetsAriaLabel", true)]
+    [InlineData("LiabilitiesAriaLabel", false)]
+    public void EachRingsAccessibleNameContainsItsVisibleTitle(string parameter, bool assets)
     {
         var source = OverviewSource();
         Assert.DoesNotContain("AssetsTitle=", source);
         Assert.DoesNotContain("LiabilitiesTitle=", source);
+
+        // The visible title is whatever the component renders by default — read from it, not
+        // restated here, so a retitle in OdsAllocationDonuts fails this rather than slipping past.
+        var defaults = new OdsAllocationDonuts();
+        var title = assets ? defaults.AssetsTitle : defaults.LiabilitiesTitle;
 
         var aria = Regex.Match(source, parameter + @"=""(?<v>[^""]*)""").Groups["v"].Value;
         Assert.Contains(title, aria, StringComparison.Ordinal);

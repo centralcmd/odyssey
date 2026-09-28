@@ -22,8 +22,9 @@
     ControlsEnd sits where the figure does (a toggle that changes how the chart reads).
 
     Hovering an entry pins OdsLineChart's readout above it: series (when several), date, a
-    "Scheduled" mark past today, value, change from the entry before, and the entry's note.
-    Pointer-only — TextEquivalent is the non-pointer route to the same figures.
+    "Scheduled" mark past today, value, change from the entry before, and the entry's note. The
+    plot is one tab stop with the same keyboard contract as OdsLineChart (Left / Right through the
+    entries by date, Escape closes), and TextEquivalent's table carries the change too.
 
     Parameters and geometry live in OdsStepChart.razor.cs. Styled by the shared .odc-lc rules plus
     .odc-sc-* in the global sheet.
@@ -74,7 +75,11 @@
     }
     else
     {
-        <div class="odc-lc-plot" @onmouseleave="@(() => _hover = null)">
+        @* One tab stop per chart, as OdsLineChart: focus opens the readout on the value in force,
+           Left / Right step through every entry by date, Escape or leaving closes it; the live region
+           speaks keyboard steps only. *@
+        <div class="odc-lc-plot" tabindex="0" role="group" aria-label="@PlotKeyLabel"
+             @onmouseleave="ClearHover" @onfocus="OnPlotFocus" @onblur="ClearHover" @onkeydown="OnPlotKey">
         <svg class="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
              role="img" aria-label="@EffectiveAriaLabel">
             <g stroke="var(--chart-grid)" stroke-width="1">
@@ -135,7 +140,7 @@
                             <circle class="odc-lc-hring" cx="@cx" cy="@cy" r="7.5" stroke="@p.Color" />
                         }
                         <circle class="odc-lc-hit" cx="@cx" cy="@cy" r="14"
-                                @onmouseenter="@(() => _hover = (plotId, index))" />
+                                @onmouseenter="@(() => ShowHover((plotId, index), byKey: false))" />
                     }
                 </g>
             }
@@ -146,7 +151,7 @@
             var left = Sx(Days(pt.Date)) / 10;
             var top = (Sy(Plotted(hp.Pts, pt.Value)) + hp.Dodge) / 252 * 100;
             var d = h.Index > 0 ? pt.Value - hp.Pts[h.Index - 1].Value : 0;
-            <div class="@($"odc-lc-tip{OdsLineChart.TipEdge(left)}")" style="@OdsLineChart.TipStyle(left, top)" role="status">
+            <div class="@($"odc-lc-tip{OdsLineChart.TipEdge(left)}")" style="@OdsLineChart.TipStyle(left, top)" aria-hidden="true">
                 <div class="odc-lc-tip-k">@TipKey(hp, pt.Date)</div>
                 <div class="odc-lc-tip-v" style="@($"color:{hp.Color}")">
                     @Format((decimal)pt.Value)
@@ -165,6 +170,7 @@
                 }
             </div>
         }
+        <div class="odc-sr-only" aria-live="polite">@(_hoverByKey ? TipText : null)</div>
         </div>
 
         @* The legend IS the readout when several lines share the axis, and it still earns its place
@@ -197,6 +203,7 @@
                         }
                         <th scope="col">@TextEquivalentLabel</th>
                         <th scope="col">Value</th>
+                        <th scope="col">Change</th>
                         <th scope="col">State</th>
                     </tr>
                 </thead>
@@ -214,6 +221,7 @@
                                 }
                                 <th scope="row">@pt.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)</th>
                                 <td>@Format((decimal)pt.Value)</td>
+                                <td>@ChangeText(p, i)</td>
                                 <td>@state</td>
                             </tr>
                         }

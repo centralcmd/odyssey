@@ -118,58 +118,57 @@ public class NetWorthRangeTests
         Assert.Equal(state.NetWorthRange, back!.NetWorthRange);
     }
 
-    // ── Allocation donuts ────────────────────────────────────────────────────────────────────
+    // ── The dashboard's wiring, extracted so it is testable (Home cannot render in a test) ────
 
-    private static NetWorthAllocation Row(NetWorthAllocationKind kind, string name, decimal value) =>
-        new() { Kind = kind, Id = Guid.NewGuid(), Name = name, Value = value };
+    [Theory]
+    [InlineData(NetWorthRangePreset.All, false, true)]
+    [InlineData(NetWorthRangePreset.Custom, false, true)]
+    [InlineData(NetWorthRangePreset.Custom, true, false)]
+    [InlineData(NetWorthRangePreset.SixMonths, false, false)]
+    [InlineData(NetWorthRangePreset.TwelveMonths, false, false)]
+    public void Only_a_window_starting_at_the_earliest_opening_waits_for_the_account_list(
+        NetWorthRangePreset preset, bool hasFrom, bool needs) =>
+        Assert.Equal(needs, new NetWorthRange(preset, hasFrom ? new DateOnly(2024, 1, 1) : null).NeedsEarliest);
 
-    private static AccountTotals Totals(bool includeProperties, params NetWorthAllocation[] rows) => new()
+    private static ExistingAccount Account(DateTime opened, DateTime? archived = null) => new()
     {
-        MainCurrencyCode = "USD",
-        TotalAssets = 0,
-        TotalLiabilities = 0,
-        NetWorth = 0,
-        PropertiesIncluded = includeProperties,
-        Allocations = [.. rows],
+        AccountId = Guid.NewGuid(),
+        Name = "a",
+        Description = "a",
+        Opened = opened,
+        Archived = archived,
+        CurrencyCode = "USD",
     };
 
     [Fact]
-    public void Positive_rows_are_asset_slices_and_negative_rows_liability_slices()
+    public void The_earliest_opening_counts_archived_accounts_and_is_null_with_none()
     {
-        var totals = Totals(true,
-            Row(NetWorthAllocationKind.Account, "Checking", 1000),
-            Row(NetWorthAllocationKind.Account, "Card", -300),
-            Row(NetWorthAllocationKind.Property, "House", 500_000));
+        var accounts = new[]
+        {
+            Account(new DateTime(2020, 5, 1)),
+            Account(new DateTime(2012, 3, 9), archived: new DateTime(2024, 1, 1)),
+        };
 
-        var (assets, liabilities) = DashboardFigures.AllocationSlices(totals);
-
-        Assert.Equal(["Checking", "House"], assets.Select(s => s.Label));
-        Assert.Equal(["Card"], liabilities.Select(s => s.Label));
-        Assert.Equal(-300m, liabilities[0].Value);
+        Assert.Equal(new DateOnly(2012, 3, 9), NetWorthRange.EarliestOpening(accounts));
+        Assert.Null(NetWorthRange.EarliestOpening([]));
     }
 
-    [Fact]
-    public void The_asset_sub_line_counts_accounts_and_properties_and_names_a_property_with_no_rate()
-    {
-        var totals = Totals(true,
-            Row(NetWorthAllocationKind.Account, "Checking", 1000),
-            Row(NetWorthAllocationKind.Property, "House", 500_000));
-        totals.UnconvertedProperties = [new() { PropertyId = Guid.NewGuid(), Name = "Boat", CurrencyCode = "GBP" }];
-        var (assets, liabilities) = DashboardFigures.AllocationSlices(totals);
+    // ── Calendar edges ───────────────────────────────────────────────────────────────────────
 
-        Assert.Equal("Accounts and property · 1 account, 1 property · Boat excl. (no rate)",
-            DashboardFigures.AllocationAssetsSub(totals, assets));
-        Assert.Equal("What you owe · 0 accounts", DashboardFigures.AllocationLiabilitiesSub(liabilities));
-    }
+    [Theory]
+    [InlineData(2026, 8, 31, NetWorthRangePreset.SixMonths, 2026, 2, 28)]
+    [InlineData(2024, 8, 31, NetWorthRangePreset.SixMonths, 2024, 2, 29)]
+    [InlineData(2025, 2, 28, NetWorthRangePreset.TwelveMonths, 2024, 2, 28)]
+    [InlineData(2024, 2, 29, NetWorthRangePreset.TwelveMonths, 2023, 2, 28)]
+    public void A_preset_from_a_month_end_or_leap_day_clamps_to_a_real_day(
+        int y, int m, int d, NetWorthRangePreset preset, int fy, int fm, int fd) =>
+        Assert.Equal(new DateOnly(fy, fm, fd), new NetWorthRange(preset).ResolveRequest(new DateOnly(y, m, d), null).From);
 
     [Fact]
-    public void An_accounts_only_figure_says_where_the_money_sits()
+    public void The_interval_turns_quarterly_exactly_past_the_monthly_cap()
     {
-        var totals = Totals(false,
-            Row(NetWorthAllocationKind.Account, "Checking", 1000),
-            Row(NetWorthAllocationKind.Account, "Savings", 50));
-        var (assets, _) = DashboardFigures.AllocationSlices(totals);
-
-        Assert.Equal("Where your money sits · 2 accounts", DashboardFigures.AllocationAssetsSub(totals, assets));
+        // 120 monthly points: Oct 2016 … Sep 2026 inclusive. One month earlier is 121.
+        Assert.Equal(NetWorthInterval.Monthly, NetWorthRange.Default.ResolveRequest(Today, new DateOnly(2016, 10, 1)).Interval);
+        Assert.Equal(NetWorthInterval.Quarterly, NetWorthRange.Default.ResolveRequest(Today, new DateOnly(2016, 9, 30)).Interval);
     }
 }

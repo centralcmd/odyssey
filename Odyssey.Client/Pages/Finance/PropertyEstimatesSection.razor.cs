@@ -146,31 +146,12 @@ public partial class PropertyEstimatesSection
         _first = past.LastOrDefault() is { } f && f.PropertyEstimateId != _current?.PropertyEstimateId ? f : null;
         _scheduled = _estimates.Where(e => e.EffectiveFrom.Date > Today).MinBy(e => e.EffectiveFrom);
 
-        _chartSeries = _estimates.Count == 0 ? [] :
-        [
-            new OdsTermHistorySeries
-            {
-                Key = "value",
-                Label = "Estimated value",
-                Value = _current is { } c ? Money(c.Value) : "—",
-                // A chart token rather than the type's oklch hue: the type hue is a glyph-on-soft
-                // colour that reads about 2:1 on the light theme, too faint for a line.
-                Color = Property.Type == PropertyType.Vehicle ? "var(--chart-1)" : "var(--chart-2)",
-                Group = $"amt:{Property.CurrencyCode}",
-                Points =
-                [
-                    .. _estimates
-                        .OrderBy(e => e.EffectiveFrom).ThenBy(e => e.CreatedAtUtc)
-                        .Select(e => new OdsStepPoint(DateOnly.FromDateTime(e.EffectiveFrom), e.Value)
-                        {
-                            Id = e.PropertyEstimateId.ToString(),
-                            Note = e.Note,
-                        }),
-                ],
-                Format = v => Money(v),
-                AxisFormat = EstimateVisuals.CompactTick,
-            },
-        ];
+        _chartSeries = EstimateVisuals.HistorySeries(
+            _estimates.Select(e => new EstimateVisuals.HistoryEntry(e.PropertyEstimateId, e.EffectiveFrom, e.CreatedAtUtc, e.Value, e.Note)),
+            _current is { } c ? Money(c.Value) : "—",
+            Property.Type == PropertyType.Vehicle ? "var(--chart-1)" : "var(--chart-2)",
+            Property.CurrencyCode,
+            v => Money(v));
     }
 
     private string Money(decimal value) => FormatMoney(value, Property.CurrencyCode);

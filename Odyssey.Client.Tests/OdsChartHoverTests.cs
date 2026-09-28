@@ -210,4 +210,116 @@ public class OdsChartHoverTests
         var labelX = double.Parse(labels[0].GetAttribute("x")!, CultureInfo.InvariantCulture);
         Assert.True(labelX - widest * OdsLineChart.AxisCharWidth >= OdsLineChart.AxisLabelMargin);
     }
+
+    // ── Keyboard access and the live region (WCAG 2.1.1, 1.4.13, 4.1.3) ─────────────────────
+
+    private static string LiveText(IRenderedComponent<OdsLineChart> cut) =>
+        cut.Find(".odc-lc-plot [aria-live=polite]").TextContent;
+
+    [Fact]
+    public void The_plot_is_one_tab_stop_that_says_how_to_read_it()
+    {
+        using var ctx = NewContext();
+        var cut = Line(ctx, [new("Jan", 100), new("Feb", 150)]);
+
+        var plot = cut.Find(".odc-lc-plot");
+        Assert.Equal("0", plot.GetAttribute("tabindex"));
+        Assert.Contains("arrow keys", plot.GetAttribute("aria-label"));
+        Assert.Single(cut.FindAll("[tabindex]"));
+    }
+
+    [Fact]
+    public void Focus_opens_the_latest_point_and_the_arrows_step_through_the_points()
+    {
+        using var ctx = NewContext();
+        var cut = Line(ctx, [new("Jan", 100), new("Feb", 80), new("Mar", 150)]);
+        var plot = cut.Find(".odc-lc-plot");
+
+        plot.Focus();
+        Assert.Equal("Mar: 150, change +70", LiveText(cut));
+
+        cut.Find(".odc-lc-plot").KeyDown("ArrowLeft");
+        Assert.Equal("Feb: 80, change −20", LiveText(cut));
+        Assert.StartsWith("Feb", cut.Find(".odc-lc-tip .odc-lc-tip-k").TextContent);
+
+        cut.Find(".odc-lc-plot").KeyDown("ArrowLeft");
+        cut.Find(".odc-lc-plot").KeyDown("ArrowLeft");   // clamps at the first point
+        Assert.Equal("Jan: 100", LiveText(cut));
+    }
+
+    [Theory]
+    [InlineData("Escape")]
+    [InlineData("blur")]
+    public void Escape_or_leaving_the_plot_closes_the_readout(string how)
+    {
+        using var ctx = NewContext();
+        var cut = Line(ctx, [new("Jan", 100), new("Feb", 150)]);
+        cut.Find(".odc-lc-plot").Focus();
+        Assert.NotEmpty(cut.FindAll(".odc-lc-tip"));
+
+        if (how == "Escape") cut.Find(".odc-lc-plot").KeyDown("Escape");
+        else cut.Find(".odc-lc-plot").Blur();
+
+        Assert.Empty(cut.FindAll(".odc-lc-tip"));
+        Assert.Equal("", LiveText(cut));
+    }
+
+    [Fact]
+    public void A_pointer_opens_the_readout_silently_and_the_bubble_is_not_a_status_message()
+    {
+        using var ctx = NewContext();
+        var cut = Line(ctx, [new("Jan", 100), new("Feb", 150)]);
+
+        cut.FindAll("rect.odc-lc-hit")[1].MouseEnter();
+
+        var tip = cut.Find(".odc-lc-tip");
+        Assert.Null(tip.GetAttribute("role"));
+        Assert.Equal("true", tip.GetAttribute("aria-hidden"));
+        Assert.Equal("", LiveText(cut));
+    }
+
+    [Fact]
+    public void The_text_equivalent_states_each_points_change()
+    {
+        using var ctx = NewContext();
+        var cut = Line(ctx, [new("Jan", 100), new("Feb", 100), new("Mar", 150)], p => p.Add(c => c.TextEquivalent, true));
+        cut.Find(".odc-lc-plot").Focus();
+        cut.Find(".odc-lc-plot").KeyDown("ArrowLeft");
+        Assert.Equal("Feb: 100, no change", cut.Find(".odc-lc-plot [aria-live=polite]").TextContent);
+
+        Assert.Contains("Change", cut.FindAll("table.odc-sr-only thead th").Select(th => th.TextContent));
+        var changes = cut.FindAll("table.odc-sr-only tbody tr").Select(r => r.QuerySelectorAll("td")[1].TextContent);
+        Assert.Equal(["—", "No change", "+50"], changes);
+    }
+
+    [Fact]
+    public void The_step_chart_takes_the_same_keyboard_contract_and_speaks_the_note()
+    {
+        using var ctx = NewContext();
+        var cut = ctx.Render<OdsStepChart>(p => p
+            .Add(c => c.Series,
+            [
+                new OdsStepPoint(new DateOnly(2025, 9, 1), 2150),
+                new OdsStepPoint(new DateOnly(2026, 3, 1), 2250) { Note = "Indexed" },
+                new OdsStepPoint(new DateOnly(2026, 10, 1), 2350),
+            ])
+            .Add(c => c.Format, Whole)
+            .Add(c => c.TextEquivalent, true)
+            .Add(c => c.Now, Now));
+        string Live() => cut.Find(".odc-lc-plot [aria-live=polite]").TextContent;
+
+        // Focus opens the value in force, not the scheduled entry.
+        cut.Find(".odc-lc-plot").Focus();
+        Assert.Equal("Mar 1, 2026: 2,250, change +100. Indexed", Live());
+
+        cut.Find(".odc-lc-plot").KeyDown("ArrowRight");
+        Assert.Equal("Oct 1, 2026 · Scheduled: 2,350, change +100", Live());
+        Assert.Equal("true", cut.Find(".odc-lc-tip").GetAttribute("aria-hidden"));
+
+        cut.Find(".odc-lc-plot").KeyDown("Escape");
+        Assert.Empty(cut.FindAll(".odc-lc-tip"));
+
+        var changes = cut.FindAll("table.odc-sr-only tbody tr").Select(r => r.QuerySelectorAll("td")[1].TextContent);
+        Assert.Equal(["—", "+100", "+100"], changes);
+    }
 }

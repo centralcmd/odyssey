@@ -64,6 +64,13 @@ public sealed record AccountTotals
     /// negative rows the liability slices. Unclassified accounts and anything unconverted or unvalued
     /// contribute nothing and are absent. Property rows appear only when
     /// <see cref="PropertiesIncluded"/> is true.
+    /// <para>
+    /// The split is by <b>sign, not by account type</b> — deliberately, as the Accounts page's donuts
+    /// and the design system's <c>AllocationDonuts</c> both split. An overdrawn asset account is a
+    /// negative row and an overpaid credit card a positive one, so the sum of the positive rows equals
+    /// <see cref="TotalAssets"/> (and the negative rows <see cref="TotalLiabilities"/>) only while no
+    /// account is on the "wrong" side of zero. <see cref="NetWorth"/> is equal either way.
+    /// </para>
     /// </summary>
     public List<NetWorthAllocation> Allocations { get; set; } = [];
 }
