@@ -148,6 +148,42 @@ public class PropertyNetWorthTests
         Assert.Equal((boat.PropertyId, "Boat", "GBP"), (named.PropertyId, named.Name, named.CurrencyCode));
     }
 
+    /// <summary>
+    /// The dashboard's allocation donuts draw <c>Allocations</c>: every contributing property is a
+    /// converted row of its own, and nothing that contributed 0 — unvalued, unconverted, not held —
+    /// is a row. The rows sum to the net worth exactly.
+    /// </summary>
+    [Fact]
+    public async Task Totals_Allocations_NameEveryContributor_Converted_AndSumToNetWorth()
+    {
+        await using var context = TestContextFactory.Create();
+        var checking = SeedChecking(context);
+        var card = NewAccount("Card", AccountType.CreditCard, "USD", Utc(2024, 1, 1));
+        context.Accounts.Add(card);
+        context.Transactions.Add(NewTransaction(card, -300m, Utc(2024, 3, 1)));
+
+        var apartment = NewProperty("City apartment", "EUR");
+        var plot = NewProperty("Lakeside plot");     // unvalued
+        var boat = NewProperty("Boat", "GBP");       // no rate
+        context.Properties.AddRange(apartment, plot, boat);
+        context.PropertyEstimates.AddRange(
+            NewEstimate(apartment, 100_000m, Utc(2025, 1, 1)),
+            NewEstimate(boat, 20_000m, Utc(2025, 1, 1)));
+        context.ExchangeRates.Add(NewRate("EUR", "USD", 1.1m, Utc(2025, 1, 1)));
+        await context.SaveChangesAsync();
+
+        var totals = await Totals(context).ComputeAsync("USD", includeProperties: true);
+
+        var rows = totals.Allocations.OrderBy(row => row.Name).Select(row => (row.Kind, row.Id, row.Name, row.Value));
+        Assert.Equal(
+        [
+            (NetWorthAllocationKind.Account, card.AccountId, "Card", -300m),
+            (NetWorthAllocationKind.Account, checking.AccountId, "Checking", 1000m),
+            (NetWorthAllocationKind.Property, apartment.PropertyId, "City apartment", 110_000m),
+        ], rows);
+        Assert.Equal(totals.NetWorth, totals.Allocations.Sum(row => row.Value));
+    }
+
     [Fact]
     public async Task Totals_WithAPropertyThatHasALegalZeroEstimate_ContributesZero_AndIsCounted()
     {
@@ -195,6 +231,7 @@ public class PropertyNetWorthTests
         Assert.Equal(0, totals.ContributingPropertyCount);
         Assert.Equal(0, totals.UnvaluedPropertyCount);
         Assert.Empty(totals.UnconvertedProperties);
+        Assert.DoesNotContain(totals.Allocations, row => row.Kind == NetWorthAllocationKind.Property);
 
         var baselineHistory = await History(accountsOnly).ComputeAsync(JanToApr(), includeProperties: false);
         var history = await History(withProperties).ComputeAsync(JanToApr(), includeProperties: false);

@@ -97,6 +97,37 @@ public class AccountTotalsServiceTests
         var unconverted = Assert.Single(totals.UnconvertedAccounts);
         Assert.Equal(gbpAccount, unconverted.AccountId);
         Assert.Equal("GBP", unconverted.CurrencyCode);
+
+        // One converted, signed row per contributor; the unconverted and the closed are not rows.
+        Assert.Equal(
+            new Dictionary<Guid, decimal>
+            {
+                [usdChecking] = 1000m,
+                [eurSavings] = 220m,
+                [sekCard] = -100m,
+                [archivedUsd] = 500m,
+            },
+            totals.Allocations.ToDictionary(row => row.Id, row => row.Value));
+        Assert.All(totals.Allocations, row => Assert.Equal(NetWorthAllocationKind.Account, row.Kind));
+        Assert.Equal(totals.NetWorth, totals.Allocations.Sum(row => row.Value));
+    }
+
+    [Fact]
+    public async Task Compute_LeavesUnclassifiedAndZeroAccountsOutOfTheAllocations()
+    {
+        await using var context = TestContextFactory.Create();
+        var unknown = Guid.NewGuid();
+        var empty = Guid.NewGuid();
+        context.Accounts.AddRange(
+            NewAccount(unknown, "Unclassified", AccountType.Unknown, "USD"),
+            NewAccount(empty, "Empty", AccountType.CheckingAccount, "USD"));
+        context.Transactions.Add(NewTransaction(unknown, 400m));
+        await context.SaveChangesAsync();
+
+        var service = new AccountTotalsService(context, new CurrencyConversionService(context));
+        var totals = await service.ComputeAsync("USD", includeProperties: false);
+
+        Assert.Empty(totals.Allocations);
     }
 
     // ── Issue #99 — membership is the open/closed term, never Archived ─────────────────────────

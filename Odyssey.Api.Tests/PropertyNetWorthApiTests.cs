@@ -70,6 +70,9 @@ public class PropertyNetWorthApiTests
         Assert.Equal(1, totals.ContributingPropertyCount);
         Assert.Equal(1, totals.UnvaluedPropertyCount);
         Assert.Equal("Boat", Assert.Single(totals.UnconvertedProperties).Name);
+        var propertyRow = Assert.Single(totals.Allocations, row => row.Kind == NetWorthAllocationKind.Property);
+        Assert.Equal(("House", 500_000m), (propertyRow.Name, propertyRow.Value));
+        Assert.Equal(totals.NetWorth, totals.Allocations.Sum(row => row.Value));
 
         Assert.True(history.PropertiesIncluded);
         var last = history.Points[^1];

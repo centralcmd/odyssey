@@ -10,7 +10,9 @@ namespace Odyssey.Core.Finance;
 /// Each in-term account's current balance is converted at the latest rate; accounts with no rate to
 /// the main currency contribute 0 and are reported in <see cref="AccountTotals.UnconvertedAccounts"/>.
 /// When the caller may see property estimates, the in-force estimate of every property held now is
-/// converted the same way and added to assets as its own line (issue #214).
+/// converted the same way and added to assets as its own line (issue #214). Every contributor is also
+/// returned as a converted, signed <see cref="NetWorthAllocation"/> row, which the dashboard's
+/// allocation donuts draw.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -111,6 +113,7 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
         var totalAssets = 0m;
         var totalLiabilities = 0m;
         var unconverted = new List<UnconvertedAccount>();
+        var allocations = new List<NetWorthAllocation>();
 
         foreach (var account in accounts)
         {
@@ -135,6 +138,7 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
             if (AccountClassification.IsAsset(account.AccountType))
             {
                 totalAssets += converted.Value;
+                AddAllocation(allocations, NetWorthAllocationKind.Account, account.AccountId, account.Name, converted.Value);
             }
             else if (AccountClassification.IsLiability(account.AccountType))
             {
@@ -143,6 +147,8 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
                 // balance (e.g. an overpaid credit card) reduce total liabilities instead of inflating
                 // them — so it correctly raises net worth rather than lowering it.
                 totalLiabilities += -converted.Value;
+                // Its contribution to net worth is the converted value itself: a debt is negative.
+                AddAllocation(allocations, NetWorthAllocationKind.Account, account.AccountId, account.Name, converted.Value);
             }
             // AccountType.Unknown (0) is Unclassified, so it is excluded from both totals.
         }
@@ -179,6 +185,7 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
 
             propertyValue += converted.Value;
             contributingProperties++;
+            AddAllocation(allocations, NetWorthAllocationKind.Property, property.PropertyId, property.Name, converted.Value);
         }
 
         totalAssets += propertyValue;
@@ -195,7 +202,18 @@ public class AccountTotalsService(OdysseyContext context, CurrencyConversionServ
             ContributingPropertyCount = contributingProperties,
             UnvaluedPropertyCount = unvaluedProperties,
             UnconvertedProperties = unconvertedProperties,
+            Allocations = allocations,
         };
+    }
+
+    // A zero contributes nothing and would be a slice with no ring, so it is not a row.
+    private static void AddAllocation(
+        List<NetWorthAllocation> allocations, NetWorthAllocationKind kind, Guid id, string name, decimal value)
+    {
+        if (value != 0)
+        {
+            allocations.Add(new NetWorthAllocation { Kind = kind, Id = id, Name = name, Value = value });
+        }
     }
 
     /// <summary>

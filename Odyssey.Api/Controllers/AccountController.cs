@@ -131,8 +131,10 @@ public class AccountController : ControllerBase
                         property held now — into the main currency using the rate in force now, and
                         returns total assets (property value included), total liabilities, net worth,
                         the property value on its own line, and the accounts and properties that could
-                        not be converted (no rate to the main currency). propertiesIncluded says which
-                        of the two figures this is; it depends on the caller's claims alone.
+                        not be converted (no rate to the main currency). allocations lists every
+                        contributing account and property with its converted, signed contribution, so
+                        the rows sum to net worth. propertiesIncluded says which of the two figures
+                        this is; it depends on the caller's claims alone.
                         Everything is measured as of now, exclusively: a transaction, rate, estimate or
                         account dated in the future does not count. An unsupported or archived
                         mainCurrency is rejected with 400.
