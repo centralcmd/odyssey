@@ -50,6 +50,36 @@ public partial class OdsLineChart
     /// <summary>Override the headline figure (else the latest point, via <see cref="Format"/>).</summary>
     [Parameter] public string? Figure { get; set; }
 
+    /// <summary>
+    /// Show the headline figure (and delta) in the head. Default true. Turn it off when
+    /// <see cref="Legend"/> carries the figure.
+    /// </summary>
+    [Parameter] public bool ShowFigure { get; set; } = true;
+
+    /// <summary>
+    /// A ledger row under the plot, as <c>OdsStepChart</c>'s: swatch · name · value in force · change
+    /// since the first point (plus <see cref="DeltaSuffix"/>). The change is withheld when an endpoint
+    /// is <see cref="OdsLinePointKind.Partial"/>. The marker key joins this row instead of its own.
+    /// Default false.
+    /// </summary>
+    [Parameter] public bool Legend { get; set; }
+
+    /// <summary>
+    /// Whether the legend row states the change since the first point. Default true, as in the
+    /// design. A Blazor-side addition for a caller that withholds the change for a reason of its own
+    /// beyond an understated endpoint (the dashboard's: an endpoint that did not contribute).
+    /// </summary>
+    [Parameter] public bool LegendShowsChange { get; set; } = true;
+
+    /// <summary>Name in the legend row. Defaults to <see cref="Title"/>.</summary>
+    [Parameter] public string? LegendLabel { get; set; }
+
+    /// <summary>
+    /// Controls rendered above the headline figure, right of the head — e.g. a settings button or an
+    /// interval segmented control. Also shown on an empty series.
+    /// </summary>
+    [Parameter] public RenderFragment? ControlsEnd { get; set; }
+
     /// <summary>Render every Nth category label (the last is always shown). Default 1.</summary>
     [Parameter] public int XTickEvery { get; set; } = 1;
 
@@ -110,6 +140,98 @@ public partial class OdsLineChart
         : "Line chart";
 
     private const string PartialLabel = "Understated";
+
+    private static string KindLabel(OdsLinePointKind kind) =>
+        kind == OdsLinePointKind.Partial ? PartialLabel : RevaluedLabel;
+
+    /// <summary>
+    /// The legend's change figure: signed, since the first point, withheld when either endpoint is
+    /// understated — the same rule the head's delta follows.
+    /// </summary>
+    private string LegendChange
+    {
+        get
+        {
+            if (_pts[0].Kind == OdsLinePointKind.Partial || _pts[^1].Kind == OdsLinePointKind.Partial)
+                return "change withheld";
+            var d = _pts[^1].Value - _pts[0].Value;
+            var sign = d > 0 ? "+" : d < 0 ? "−" : "";
+            return $"{sign}{Format((decimal)Math.Abs(d))}{(string.IsNullOrEmpty(DeltaSuffix) ? "" : " " + DeltaSuffix)}";
+        }
+    }
+
+    // The index of the hovered point; null when the pointer is off the plot and it is not focused.
+    private int? _hover;
+
+    // Whether the readout was opened from the keyboard, which is the only time the live region speaks.
+    private bool _hoverByKey;
+
+    private void ShowHover(int index, bool byKey)
+    {
+        _hover = index;
+        _hoverByKey = byKey;
+    }
+
+    private void ClearHover()
+    {
+        _hover = null;
+        _hoverByKey = false;
+    }
+
+    private void OnPlotFocus()
+    {
+        if (_pts.Count > 0)
+            ShowHover(_hover ?? _pts.Count - 1, byKey: true);
+    }
+
+    /// <summary>
+    /// Left / Right step the keyboard readout; Escape closes it. Home / End and Up / Down are left to
+    /// the page, since preventing their default cannot be made conditional on the key (the handler
+    /// runs after the default is decided).
+    /// </summary>
+    private void OnPlotKey(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            ClearHover();
+            return;
+        }
+        if (_pts.Count == 0 || e.Key is not ("ArrowLeft" or "ArrowRight"))
+            return;
+        var from = _hover ?? _pts.Count - 1;
+        ShowHover(Math.Clamp(from + (e.Key == "ArrowRight" ? 1 : -1), 0, _pts.Count - 1), byKey: true);
+    }
+
+    /// <summary>The plot's name as a keyboard target: what it is, and how to read it.</summary>
+    private string PlotKeyLabel => $"{EffectiveAriaLabel}. Use Left and Right arrow keys to read each point.";
+
+    /// <summary>The change from the previous point, as the readout and the table state it; "—" for the first.</summary>
+    internal string ChangeText(int i)
+    {
+        if (i == 0) return "—";
+        var d = _pts[i].Value - _pts[i - 1].Value;
+        return d == 0 ? "No change" : $"{(d > 0 ? "+" : "−")}{Format((decimal)Math.Abs(d))}";
+    }
+
+    /// <summary>The change as a spoken clause: nothing for the first point, "no change", or "change +50".</summary>
+    internal static string SpokenChange(string changeText, int index) =>
+        index == 0 ? "" : changeText == "No change" ? ", no change" : $", change {changeText}";
+
+    /// <summary>The live region's sentence for the point the keyboard is on.</summary>
+    private string? TipText => _hover is { } h && h < _pts.Count
+        ? $"{_pts[h].Label}{(_pts[h].Kind == OdsLinePointKind.Normal ? "" : $", {KindLabel(_pts[h].Kind)}")}: "
+          + $"{Format((decimal)_pts[h].Value)}{SpokenChange(ChangeText(h), h)}"
+        : null;
+
+    // Half the width of a point's hover column — the whole plot for a single point.
+    private double HitHalfWidth => _single ? (X1 - X0) / 2 : (X1 - X0) / (_pts.Count - 1) / 2;
+
+    /// <summary>Pins the readout to the near edge within 14% of either side, so it never clips.</summary>
+    internal static string TipEdge(double leftPercent) =>
+        leftPercent < 14 ? " start" : leftPercent > 86 ? " end" : "";
+
+    internal static string TipStyle(double leftPercent, double topPercent) =>
+        $"left:{leftPercent.ToString("0.##", CultureInfo.InvariantCulture)}%;top:{topPercent.ToString("0.##", CultureInfo.InvariantCulture)}%";
     private const string RevaluedLabel = "Revalued";
 
     /// <summary>
@@ -127,8 +249,38 @@ public partial class OdsLineChart
     internal const string DefaultPartialDescription = "Understated — an account had no exchange rate for this period";
     internal const string DefaultRevaluedDescription = "Revalued — an estimate took effect in this period";
 
-    // The plot box inside the 1000 × 252 viewBox. The x-tick baseline sits at YBot + 26 = 238.
-    private const double X0 = 64, X1 = 968, YTop = 28, YBot = 212;
+    // The plot box inside the 1000 × 252 viewBox. The x-tick baseline sits at YBot + 26 = 238. The
+    // left edge is not fixed: it widens past DefaultX0 when a y label would not fit (AxisGutter).
+    private const double X1 = 968, YTop = 28, YBot = 212;
+    private double X0 => _x0;
+    private double _x0 = DefaultX0;
+
+    /// <summary>The plot's left edge when every y label fits the default gutter.</summary>
+    internal const double DefaultX0 = 64;
+
+    /// <summary>The gap between a y label's right end and the plot.</summary>
+    internal const double AxisLabelGap = 12;
+
+    /// <summary>
+    /// The advance of one axis character, in viewBox units: <c>.odc-lc-axis</c> is 10-unit monospace,
+    /// whose glyphs advance about 0.6em. Rounded up so an estimate errs toward a wider gutter.
+    /// </summary>
+    internal const double AxisCharWidth = 6.2;
+
+    /// <summary>Clear space kept left of the widest label, inside the viewBox.</summary>
+    internal const double AxisLabelMargin = 4;
+
+    /// <summary>
+    /// The plot's left edge for these y labels: <see cref="DefaultX0"/>, or wider when the longest
+    /// label would otherwise start left of the viewBox and be clipped. A compact money tick carries its
+    /// currency code (<c>17.23M NOK</c>, ten characters), which the fixed 52-unit gutter cut to
+    /// <c>7.23M NOK</c>. Shared with <see cref="OdsStepChart"/>, which draws the same card.
+    /// </summary>
+    internal static double AxisGutter(IEnumerable<string> labels)
+    {
+        var longest = labels.Select(l => l.Length).DefaultIfEmpty(0).Max();
+        return Math.Max(DefaultX0, Math.Ceiling(AxisLabelMargin + longest * AxisCharWidth + AxisLabelGap));
+    }
 
     private readonly List<(string Label, double Value, OdsLinePointKind Kind)> _pts = [];
     private bool _single;
@@ -161,6 +313,8 @@ public partial class OdsLineChart
                    && _pts[0].Kind != OdsLinePointKind.Partial
                    && _pts[^1].Kind != OdsLinePointKind.Partial;
 
+        if (_hover >= _pts.Count) ClearHover();
+        _x0 = DefaultX0;
         if (_pts.Count == 0) return;
 
         _single = _pts.Count == 1;
@@ -184,6 +338,7 @@ public partial class OdsLineChart
             ? [_yMax, _yMax / 2, 0, _yMin / 2, _yMin]
             : [_yMax, _yMin + (_yMax - _yMin) * 2 / 3, _yMin + (_yMax - _yMin) / 3, _yMin];
 
+        _x0 = AxisGutter(_gridVals.Select(YLabel));
         _every = XTickEveryAuto ? TickEvery(_pts.Count) : (XTickEvery > 0 ? XTickEvery : 1);
         _fillId = $"odc-lc-fill-{Guid.NewGuid():N}";
     }
@@ -229,8 +384,10 @@ public partial class OdsLineChart
 
     // Razor reserves <text> as a control keyword, so the axis labels are emitted as raw SVG markup.
     private string YAxisMarkup => string.Concat(_gridVals.Select(v =>
-        $"<text x=\"{Fmt(X0 - 12)}\" y=\"{Fmt(Sy(v) + 4)}\" text-anchor=\"end\""
-        + $"{(v == 0 ? " class=\"odc-lc-axis-zero\"" : "")}>{Enc(FmtAxis((decimal)AxisRound(v)))}</text>"));
+        $"<text x=\"{Fmt(X0 - AxisLabelGap)}\" y=\"{Fmt(Sy(v) + 4)}\" text-anchor=\"end\""
+        + $"{(v == 0 ? " class=\"odc-lc-axis-zero\"" : "")}>{Enc(YLabel(v))}</text>"));
+
+    private string YLabel(double v) => FmtAxis((decimal)AxisRound(v));
 
     // A domain under 10 keeps its fractions: rounding a 0–4 axis to whole numbers prints "1, 1, 3, 4"
     // for four distinct gridlines.

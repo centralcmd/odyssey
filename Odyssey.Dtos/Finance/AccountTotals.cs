@@ -56,6 +56,49 @@ public sealed record AccountTotals
 
     /// <summary>Properties held now and valued, but with no rate to the main currency. Empty when not included.</summary>
     public List<UnconvertedProperty> UnconvertedProperties { get; set; } = [];
+
+    /// <summary>
+    /// The figure's composition — one row per account and property that contributed a non-zero,
+    /// converted value — for the dashboard's allocation donuts. A row's sign is its contribution to
+    /// <see cref="NetWorth"/>, so the rows sum to it exactly: positive rows are the asset slices,
+    /// negative rows the liability slices. Unclassified accounts and anything unconverted or unvalued
+    /// contribute nothing and are absent. Property rows appear only when
+    /// <see cref="PropertiesIncluded"/> is true.
+    /// <para>
+    /// The split is by <b>sign, not by account type</b> — deliberately, as the Accounts page's donuts
+    /// and the design system's <c>AllocationDonuts</c> both split. An overdrawn asset account is a
+    /// negative row and an overpaid credit card a positive one, so the sum of the positive rows equals
+    /// <see cref="TotalAssets"/> (and the negative rows <see cref="TotalLiabilities"/>) only while no
+    /// account is on the "wrong" side of zero. <see cref="NetWorth"/> is equal either way.
+    /// </para>
+    /// </summary>
+    public List<NetWorthAllocation> Allocations { get; set; } = [];
+}
+
+/// <summary>What a <see cref="NetWorthAllocation"/> row is.</summary>
+public enum NetWorthAllocationKind
+{
+    Account = 1,
+    Property = 2,
+}
+
+/// <summary>
+/// One contributor to <see cref="AccountTotals.NetWorth"/>, converted into the main currency. A
+/// purpose-built minimal projection: the id, the name and the converted value, never an address,
+/// registration number, VIN, note or the value in its own currency.
+/// </summary>
+public sealed record NetWorthAllocation
+{
+    [EnumDataType(typeof(NetWorthAllocationKind))]
+    public required NetWorthAllocationKind Kind { get; set; }
+
+    public required Guid Id { get; set; }
+
+    [StringLength(256)]
+    public required string Name { get; set; }
+
+    /// <summary>Signed contribution to net worth, in <see cref="AccountTotals.MainCurrencyCode"/>.</summary>
+    public required decimal Value { get; set; }
 }
 
 /// <summary>An account that contributed 0 to the totals because no rate to the main currency exists.</summary>

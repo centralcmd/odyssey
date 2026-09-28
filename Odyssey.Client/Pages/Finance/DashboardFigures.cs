@@ -435,4 +435,50 @@ internal static class DashboardFigures
             + $"point{(pointCount == 1 ? "" : "s")} from {firstLabel} to {lastLabel}{suffix}";
     }
 
+    // ── Allocation donuts (Odyssey Design System · components/AllocationDonuts) ──────────────────
+
+    /// <summary>
+    /// The dashboard's allocation slices, from the totals' own composition rows: each row is already
+    /// in the main currency and signed by its contribution to net worth, so a positive row is an
+    /// asset slice and a negative one a liability slice. The row rides along in <c>Tag</c>.
+    /// </summary>
+    /// <remarks>
+    /// By sign, not account type (see <see cref="AccountTotals.Allocations"/>): an overdrawn checking
+    /// account is owed money and draws in the liability well. Each well's total row is the sum of
+    /// its own slices, so the wells always agree with themselves and with net worth, and differ from
+    /// the header's type-classified totals only when an account sits on the "wrong" side of zero.
+    /// </remarks>
+    internal static (List<OdsDonutSlice> Assets, List<OdsDonutSlice> Liabilities) AllocationSlices(AccountTotals? totals)
+    {
+        var rows = totals?.Allocations ?? [];
+        return (
+            [.. rows.Where(r => r.Value > 0).Select(Slice)],
+            [.. rows.Where(r => r.Value < 0).Select(Slice)]);
+
+        static OdsDonutSlice Slice(NetWorthAllocation row) => new() { Label = row.Name, Value = row.Value, Tag = row };
+    }
+
+    /// <summary>
+    /// The asset well's sub-line: what is counted, and any property left out for want of a rate, by
+    /// name — never folded in at 1:1.
+    /// </summary>
+    internal static string AllocationAssetsSub(AccountTotals totals, IReadOnlyList<OdsDonutSlice> assets)
+    {
+        var accounts = assets.Count(s => s.Tag is NetWorthAllocation { Kind: NetWorthAllocationKind.Account });
+        var properties = assets.Count(s => s.Tag is NetWorthAllocation { Kind: NetWorthAllocationKind.Property });
+        var sub = totals.PropertiesIncluded
+            ? $"Accounts and property · {Count(accounts, "account", "accounts")}, {Count(properties, "property", "properties")}"
+            : $"Where your money sits · {Count(accounts, "account", "accounts")}";
+
+        // Only a property is named here: it is always an asset. An unconverted account carries no type,
+        // so it could be a liability, and the header's problem rollup already names it.
+        var excluded = IncludedUnconvertedProperties(totals).Select(p => p.Name).ToList();
+        return excluded.Count == 0 ? sub : $"{sub} · {string.Join(", ", excluded)} excl. (no rate)";
+    }
+
+    /// <summary>The liability well's sub-line. A property contributes no liability (issue #214 D2).</summary>
+    internal static string AllocationLiabilitiesSub(IReadOnlyList<OdsDonutSlice> liabilities) =>
+        $"What you owe · {Count(liabilities.Count, "account", "accounts")}";
+
+    private static string Count(int n, string one, string many) => $"{n} {(n == 1 ? one : many)}";
 }

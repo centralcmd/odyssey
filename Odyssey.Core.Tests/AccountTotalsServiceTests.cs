@@ -97,6 +97,73 @@ public class AccountTotalsServiceTests
         var unconverted = Assert.Single(totals.UnconvertedAccounts);
         Assert.Equal(gbpAccount, unconverted.AccountId);
         Assert.Equal("GBP", unconverted.CurrencyCode);
+
+        // One converted, signed row per contributor; the unconverted and the closed are not rows.
+        Assert.Equal(
+            new Dictionary<Guid, decimal>
+            {
+                [usdChecking] = 1000m,
+                [eurSavings] = 220m,
+                [sekCard] = -100m,
+                [archivedUsd] = 500m,
+            },
+            totals.Allocations.ToDictionary(row => row.Id, row => row.Value));
+        Assert.All(totals.Allocations, row => Assert.Equal(NetWorthAllocationKind.Account, row.Kind));
+        Assert.Equal(totals.NetWorth, totals.Allocations.Sum(row => row.Value));
+    }
+
+    /// <summary>
+    /// A row is signed by its contribution to net worth, not by its account's class: an overdrawn
+    /// asset account contributes a negative row and an overpaid liability a positive one. The totals
+    /// stay type-classified, and the rows still sum to net worth.
+    /// </summary>
+    [Fact]
+    public async Task Compute_SignsEachAllocationByItsContribution_NotByItsAccountClass()
+    {
+        await using var context = TestContextFactory.Create();
+        var overdrawn = Guid.NewGuid();   // asset class, negative balance
+        var overpaid = Guid.NewGuid();    // liability class, credit balance
+        var savings = Guid.NewGuid();
+        context.Accounts.AddRange(
+            NewAccount(overdrawn, "Overdrawn checking", AccountType.CheckingAccount, "USD"),
+            NewAccount(overpaid, "Overpaid card", AccountType.CreditCard, "USD"),
+            NewAccount(savings, "Savings", AccountType.SavingsAccount, "USD"));
+        context.Transactions.AddRange(
+            NewTransaction(overdrawn, -50m),
+            NewTransaction(overpaid, 20m),
+            NewTransaction(savings, 1000m));
+        await context.SaveChangesAsync();
+
+        var service = new AccountTotalsService(context, new CurrencyConversionService(context));
+        var totals = await service.ComputeAsync("USD", includeProperties: false);
+
+        var rows = totals.Allocations.ToDictionary(row => row.Id, row => row.Value);
+        Assert.Equal(-50m, rows[overdrawn]);
+        Assert.Equal(20m, rows[overpaid]);
+        Assert.Equal(1000m, rows[savings]);
+
+        // The totals classify by type: the overdraft reduces assets, the credit reduces liabilities.
+        Assert.Equal(950m, totals.TotalAssets);
+        Assert.Equal(-20m, totals.TotalLiabilities);
+        Assert.Equal(totals.NetWorth, totals.Allocations.Sum(row => row.Value));
+    }
+
+    [Fact]
+    public async Task Compute_LeavesUnclassifiedAndZeroAccountsOutOfTheAllocations()
+    {
+        await using var context = TestContextFactory.Create();
+        var unknown = Guid.NewGuid();
+        var empty = Guid.NewGuid();
+        context.Accounts.AddRange(
+            NewAccount(unknown, "Unclassified", AccountType.Unknown, "USD"),
+            NewAccount(empty, "Empty", AccountType.CheckingAccount, "USD"));
+        context.Transactions.Add(NewTransaction(unknown, 400m));
+        await context.SaveChangesAsync();
+
+        var service = new AccountTotalsService(context, new CurrencyConversionService(context));
+        var totals = await service.ComputeAsync("USD", includeProperties: false);
+
+        Assert.Empty(totals.Allocations);
     }
 
     // ── Issue #99 — membership is the open/closed term, never Archived ─────────────────────────

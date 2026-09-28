@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using System.Text.RegularExpressions;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Dtos.Finance;
@@ -72,49 +73,28 @@ public class AccountsOverviewLegendTests
     }
 
     /// <summary>
-    /// Label in Name (WCAG 2.5.3): each donut's accessible name has to contain its visible title, so a
+    /// Label in Name (WCAG 2.5.3): each ring's accessible name has to contain its visible title, so a
     /// voice-control user asking for what they can see matches. The liability panel's AriaLabel was
     /// left saying "Liabilities by account" when its title was renamed, which is what this catches.
+    /// The titles are OdsAllocationDonuts' defaults, which the page does not override; the empty and
+    /// populated wells both render them, so there is no second heading left to drift.
     /// </summary>
-    [Fact]
-    public void EachDonutsAccessibleNameContainsItsVisibleTitle()
-    {
-        var donuts = Regex.Matches(
-            OverviewSource(),
-            @"<OdsDonut\b(?<attrs>[^>]*)>(?<body>.*?)</OdsDonut>",
-            RegexOptions.Singleline);
-
-        Assert.Equal(2, donuts.Count);
-
-        foreach (Match donut in donuts)
-        {
-            var aria = Regex.Match(donut.Groups["attrs"].Value, @"AriaLabel=""(?<v>[^""]*)""").Groups["v"].Value;
-            var title = Regex.Match(donut.Groups["body"].Value, @"<Title>(?<v>[^<]*)</Title>").Groups["v"].Value;
-
-            Assert.False(string.IsNullOrWhiteSpace(title), "A donut panel has no <Title>.");
-            Assert.True(
-                aria.Contains(title, StringComparison.Ordinal),
-                $"""The donut titled "{title}" has the accessible name "{aria}", which does not contain it.""");
-        }
-    }
-
-    /// <summary>
-    /// A panel with no accounts renders its own markup rather than an OdsDonut, so its heading can
-    /// drift from the populated one. Pinning them as a pair means a retitle has to reach both.
-    /// </summary>
-    [Fact]
-    public void EmptyAndPopulatedPanelsCarryTheSameTitles()
+    [Theory]
+    [InlineData("AssetsAriaLabel", true)]
+    [InlineData("LiabilitiesAriaLabel", false)]
+    public void EachRingsAccessibleNameContainsItsVisibleTitle(string parameter, bool assets)
     {
         var source = OverviewSource();
-        var emptyTitles = Regex.Matches(source, @"<div class=""chart-ttl"">(?<v>[^<]*)</div>")
-            .Select(m => m.Groups["v"].Value)
-            .ToArray();
-        var populatedTitles = Regex.Matches(source, @"<Title>(?<v>[^<]*)</Title>")
-            .Select(m => m.Groups["v"].Value)
-            .ToArray();
+        Assert.DoesNotContain("AssetsTitle=", source);
+        Assert.DoesNotContain("LiabilitiesTitle=", source);
 
-        Assert.Equal(new[] { "Asset allocation", "Liability allocation" }, populatedTitles);
-        Assert.Equal(populatedTitles, emptyTitles);
+        // The visible title is whatever the component renders by default — read from it, not
+        // restated here, so a retitle in OdsAllocationDonuts fails this rather than slipping past.
+        var defaults = new OdsAllocationDonuts();
+        var title = assets ? defaults.AssetsTitle : defaults.LiabilitiesTitle;
+
+        var aria = Regex.Match(source, parameter + @"=""(?<v>[^""]*)""").Groups["v"].Value;
+        Assert.Contains(title, aria, StringComparison.Ordinal);
     }
 
     private static string OverviewSource() =>

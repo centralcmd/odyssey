@@ -146,31 +146,12 @@ public partial class PropertyEstimatesSection
         _first = past.LastOrDefault() is { } f && f.PropertyEstimateId != _current?.PropertyEstimateId ? f : null;
         _scheduled = _estimates.Where(e => e.EffectiveFrom.Date > Today).MinBy(e => e.EffectiveFrom);
 
-        _chartSeries = _estimates.Count == 0 ? [] :
-        [
-            new OdsTermHistorySeries
-            {
-                Key = "value",
-                Label = "Estimated value",
-                Value = _current is { } c ? Money(c.Value) : "—",
-                // A chart token rather than the type's oklch hue: the type hue is a glyph-on-soft
-                // colour that reads about 2:1 on the light theme, too faint for a line.
-                Color = Property.Type == PropertyType.Vehicle ? "var(--chart-1)" : "var(--chart-2)",
-                Group = $"amt:{Property.CurrencyCode}",
-                Points =
-                [
-                    .. _estimates
-                        .OrderBy(e => e.EffectiveFrom).ThenBy(e => e.CreatedAtUtc)
-                        .Select(e => new OdsStepPoint(DateOnly.FromDateTime(e.EffectiveFrom), e.Value)
-                        {
-                            Id = e.PropertyEstimateId.ToString(),
-                            Note = e.Note,
-                        }),
-                ],
-                Format = v => Money(v),
-                AxisFormat = CompactTick,
-            },
-        ];
+        _chartSeries = EstimateVisuals.HistorySeries(
+            _estimates.Select(e => new EstimateVisuals.HistoryEntry(e.PropertyEstimateId, e.EffectiveFrom, e.CreatedAtUtc, e.Value, e.Note)),
+            _current is { } c ? Money(c.Value) : "—",
+            Property.Type == PropertyType.Vehicle ? "var(--chart-1)" : "var(--chart-2)",
+            Property.CurrencyCode,
+            v => Money(v));
     }
 
     private string Money(decimal value) => FormatMoney(value, Property.CurrencyCode);
@@ -195,16 +176,4 @@ public partial class PropertyEstimatesSection
 
     private static string MonthYear(DateTime date) =>
         date.ToString("MMM", CultureInfo.InvariantCulture) + " ’" + (date.Year % 100).ToString("00", CultureInfo.InvariantCulture);
-
-    // No currency code on the tick (it is stated once, on the series): compact so 5.14M fits.
-    private static string CompactTick(decimal v)
-    {
-        var a = Math.Abs(v);
-        var sign = v < 0 ? "−" : "";
-        return sign + (a >= 1_000_000m
-            ? (a / 1_000_000m).ToString("0.00", CultureInfo.InvariantCulture) + "M"
-            : a >= 10_000m
-                ? Math.Round(a / 1_000m).ToString("0", CultureInfo.InvariantCulture) + "K"
-                : a.ToString("#,##0", CultureInfo.InvariantCulture));
-    }
 }

@@ -46,12 +46,23 @@ public partial class Home
 
     private string _firstName = string.Empty;
 
+    // ── Net-worth chart period ──
+    private const string PageStateKey = "home-page";
+    private NetWorthRange _range = NetWorthRange.Default;
+    private bool _rangeDialogOpen;
+
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
             return;
 
         await LoadPermissionsAsync();
+
+        if (_canReadAccounts && await PageState.LoadAsync<HomePageState>(PageStateKey) is { NetWorthRange: { } range }
+            && range.Error is null)
+        {
+            _range = range.Normalized;
+        }
 
         var work = new List<Task>();
         if (_canReadAccounts)
@@ -91,27 +102,38 @@ public partial class Home
         // them first costs a round trip only on the very first load.
         _mainCurrencyMinorUnits = await ResolveMainCurrencyMinorUnitsAsync();
 
-        // The accounts list supplies the count, the totals endpoint the headline figure, and the
-        // history endpoint the series. None depends on the others, so they go out together —
-        // serialising them would add round trips to the critical load path for nothing.
-        // Failures degrade silently into the header's problem rollup: no toast.
+        // The accounts list supplies the count and the earliest opening, the totals endpoint the
+        // headline figure, and the history endpoint the series. The list and the totals go out
+        // together; the history joins them unless its window starts at the earliest opening, which
+        // only the list can supply. Failures degrade silently into the header's problem rollup.
         var listTask = Accounts.ListAllAsync();
         var totalsTask = LoadTotalsAsync();
-        var historyTask = LoadHistoryAsync();
-        await Task.WhenAll(listTask, totalsTask, historyTask);
-
-        var result = await listTask;
-        _accounts = result.ValueOr([]);
+        if (RangeNeedsEarliest)
+        {
+            _accounts = (await listTask).ValueOr([]);
+            await Task.WhenAll(totalsTask, LoadHistoryAsync());
+        }
+        else
+        {
+            var historyTask = LoadHistoryAsync();
+            await Task.WhenAll(listTask, totalsTask, historyTask);
+            _accounts = (await listTask).ValueOr([]);
+        }
 
         _isLoadingAccounts = false;
     }
 
-    // The reconstructed series. The client sends NO from/to: the server's defaults already are the
-    // v1 window, and a `to` built from DateTime.Now (local) is tomorrow-in-UTC anywhere east of UTC,
-    // which the server rejects outright with a 400.
+    // The reconstructed series over the reader's period. `to` is sent only for a custom end the
+    // date field bounded at today-in-UTC: one built from DateTime.Now (local) is tomorrow-in-UTC
+    // anywhere east of UTC, which the server rejects outright with a 400.
     private async Task LoadHistoryAsync()
     {
-        var result = await Accounts.GetNetWorthHistoryAsync(_mainCurrencyCode);
+        // A range change can overtake an earlier, slower request; only the latest one may land.
+        var version = ++_historyRequest;
+        var (from, to, interval) = _range.ResolveRequest(TodayUtc, EarliestOpened);
+        var result = await Accounts.GetNetWorthHistoryAsync(_mainCurrencyCode, interval, from, to);
+        if (version != _historyRequest)
+            return;
 
         // A failed call leaves _history null. There is no fallback series: when the data is not
         // there, the chart is not there.
@@ -119,6 +141,26 @@ public partial class Home
         _chartSeries = DashboardFigures.BuildSeries(_history);
         _isLoadingHistory = false;
     }
+
+    private int _historyRequest;
+
+    private bool RangeNeedsEarliest => _range.NeedsEarliest;
+
+    private static DateOnly TodayUtc => DateOnly.FromDateTime(DateTime.UtcNow);
+
+    private DateOnly? EarliestOpened => NetWorthRange.EarliestOpening(_accounts);
+
+    private async Task ApplyRangeAsync(NetWorthRange range)
+    {
+        _range = range;
+        PageState.QueueSave(PageStateKey, new HomePageState { NetWorthRange = range });
+        _isLoadingHistory = true;
+        await LoadHistoryAsync();
+    }
+
+    // The donuts' slices are magnitudes already in the main currency; each well's tint says which
+    // side a figure is on, so no sign is needed.
+    private string AllocationFormat(decimal value, OdsDonutSlice? slice) => FormatMoney(value);
 
     // Net worth is server-computed (issue #372's AccountTotalsService): it converts every
     // in-term account — and, when the response says PropertiesIncluded, every held property's

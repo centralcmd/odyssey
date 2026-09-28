@@ -33,11 +33,13 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
 | `@*…*@` **inside a component's attribute list** | Attributes after it are silently dropped | Put the comment on the line *above* the tag (`RazorAttributeCommentTests` fails the build on this) |
 | `continue` / `break` **inside an `@foreach` body** | Razor parse error, or control flow that does not compile | Restructure as `@if`/`else` — a code block in a markup region cannot jump out of the loop |
 | **Two `@(…)` expressions side by side in one attribute value**, inside a `@<text>` **RenderFragment lambda** | `error CS1026: ) expected` at the second `@(`, with no hint that the lambda is what makes the difference — one conditional plus a literal suffix compiles fine in the same place | Build the string in the code-behind and interpolate once: `class="@RoleClass(role)"` |
+| A `[Parameter]` named **`Assets`** | `CS0108 … hides inherited member 'ComponentBase.Assets'` — .NET 10 added `ComponentBase.Assets` (static-asset mapping), so a design prop called `assets` cannot keep its name | Rename it (`OdsAllocationDonuts` uses `AssetSlices` / `LiabilitySlices`) and say why on the parameter |
+| A page-state **record with a derived member of its own type** (`public MyState Normalized => …`) | `QueueSave` silently writes nothing — System.Text.Json serializes every public getter, recurses into the derived member and throws `JsonException` (object cycle), which the service swallows | `[JsonIgnore]` every derived member, and pin the round trip in a test (`NetWorthRangeTests`) |
 | A clickable row drawn as `<div role="button" tabindex="0">` | Space scrolls the page before the handler runs — `@onkeydown:preventDefault` is resolved *before* the handler, so it can only reflect the previous keystroke | Use a real `<button type="button">` and reset its styles in CSS; Enter, Space, focus and the role all come free |
 
 ## Project conventions
 
-- **Component library:** `Odyssey.Client/Components/` — 136 `Ods*.razor` atoms today. Shared model
+- **Component library:** `Odyssey.Client/Components/` — 143 `Ods*.razor` atoms today. Shared model
   types live in `OdsModels.cs`; enum icon/colour/label metadata belongs in `OdsTypeRegistries.cs`
   (and the `*Visuals` types beside it), never hardcoded at a call site.
 - **Foundation tokens:** `Odyssey.Client/wwwroot/css/app.css`. Global component CSS:

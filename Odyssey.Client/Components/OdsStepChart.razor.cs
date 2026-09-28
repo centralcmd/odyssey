@@ -93,14 +93,17 @@ public partial class OdsStepChart
     /// <summary>The present, for the today marker and the in-force split. Defaults to now (UTC); tests pin it.</summary>
     [Parameter] public DateTime? Now { get; set; }
 
-    // The plot box inside the 1000 × 252 viewBox — LineChart's, so the two cards read as one.
-    private const double X0 = 64, X1 = 968, YTop = 28, YBot = 212;
+    // The plot box inside the 1000 × 252 viewBox — LineChart's, so the two cards read as one. The left
+    // edge widens with the y labels exactly as LineChart's does (OdsLineChart.AxisGutter).
+    private const double X1 = 968, YTop = 28, YBot = 212;
+    private double X0 => _x0;
+    private double _x0 = OdsLineChart.DefaultX0;
 
     internal sealed record Plot(
         string Id,
         string Label,
         string Color,
-        IReadOnlyList<(DateOnly Date, double Value, string? PointId)> Pts,
+        IReadOnlyList<(DateOnly Date, double Value, string? PointId, string? Note)> Pts,
         int InForce,
         string Solid,
         string Dashed,
@@ -108,6 +111,84 @@ public partial class OdsStepChart
         double Dodge);
 
     private readonly List<Plot> _plots = [];
+
+    // The hovered entry: which plot, and which of its points. Null when the pointer is off the plot
+    // and it is not focused.
+    private (string PlotId, int Index)? _hover;
+
+    // Whether the readout was opened from the keyboard, which is the only time the live region speaks.
+    private bool _hoverByKey;
+
+    private void ShowHover((string PlotId, int Index) entry, bool byKey)
+    {
+        _hover = entry;
+        _hoverByKey = byKey;
+    }
+
+    private void ClearHover()
+    {
+        _hover = null;
+        _hoverByKey = false;
+    }
+
+    /// <summary>Every entry in keyboard order: by date, then by series, so Left / Right walk the time axis.</summary>
+    private List<(string PlotId, int Index)> KeyOrder =>
+        [.. _plots
+            .SelectMany((p, pi) => p.Pts.Select((pt, i) => (p.Id, i, pt.Date, pi)))
+            .OrderBy(e => e.Date).ThenBy(e => e.pi)
+            .Select(e => (e.Id, e.i))];
+
+    private void OnPlotFocus()
+    {
+        if (_hover is not null || Primary is not { } p) return;
+        ShowHover((p.Id, p.InForce), byKey: true);
+    }
+
+    /// <summary>Left / Right step the keyboard readout; Escape closes it (see OdsLineChart.OnPlotKey).</summary>
+    private void OnPlotKey(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            ClearHover();
+            return;
+        }
+        if (e.Key is not ("ArrowLeft" or "ArrowRight")) return;
+        var order = KeyOrder;
+        if (order.Count == 0) return;
+        var at = _hover is { } h ? order.IndexOf(h) : -1;
+        if (at < 0) at = order.Count - 1;
+        ShowHover(order[Math.Clamp(at + (e.Key == "ArrowRight" ? 1 : -1), 0, order.Count - 1)], byKey: true);
+    }
+
+    private string PlotKeyLabel => $"{EffectiveAriaLabel}. Use Left and Right arrow keys to read each entry.";
+
+    /// <summary>The change from the entry before, as the readout and the table state it; "—" for the first.</summary>
+    private string ChangeText(Plot p, int i)
+    {
+        if (i == 0) return "—";
+        var d = p.Pts[i].Value - p.Pts[i - 1].Value;
+        return d == 0 ? "No change" : $"{(d > 0 ? "+" : "−")}{Format((decimal)Math.Abs(d))}";
+    }
+
+    /// <summary>The live region's sentence for the entry the keyboard is on.</summary>
+    private string? TipText
+    {
+        get
+        {
+            if (_hover is not { } h || _plots.FirstOrDefault(q => q.Id == h.PlotId) is not { } p || h.Index >= p.Pts.Count)
+                return null;
+            var pt = p.Pts[h.Index];
+            var change = OdsLineChart.SpokenChange(ChangeText(p, h.Index), h.Index);
+            var note = string.IsNullOrEmpty(pt.Note) ? "" : $". {pt.Note}";
+            return $"{TipKey(p, pt.Date)}: {Format((decimal)pt.Value)}{change}{note}";
+        }
+    }
+
+    /// <summary>The hover readout's key line: the series (when several share the axis), the date, and whether it is scheduled.</summary>
+    private string TipKey(Plot p, DateOnly date) =>
+        $"{(_multi && !string.IsNullOrEmpty(p.Label) ? $"{p.Label} · " : "")}"
+        + date.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)
+        + (IsScheduled(date) ? " · Scheduled" : "");
     private bool _multi;
     private bool _indexed;
     private double _t0, _tMax, _now, _yMin, _yMax;
@@ -148,6 +229,7 @@ public partial class OdsStepChart
             .ToList();
 
         _plots.Clear();
+        ClearHover();
         _multi = sets.Count > 1;
         if (sets.Count == 0) return;
 
@@ -176,6 +258,8 @@ public partial class OdsStepChart
         _yMin = lo >= 0 ? Math.Max(0, lo - pad) : lo - pad;
         _yMax = hi + pad;
         _gridVals = [_yMax, _yMin + (_yMax - _yMin) * 2 / 3, _yMin + (_yMax - _yMin) / 3, _yMin];
+        // Before any Sx call: the paths below are laid out against this edge.
+        _x0 = OdsLineChart.AxisGutter(_gridVals.Select(Tick));
 
         var nowX = Sx(_now);
         for (var i = 0; i < sets.Count; i++)
@@ -212,18 +296,18 @@ public partial class OdsStepChart
         _fillId = $"odc-sc-fill-{Guid.NewGuid():N}";
     }
 
-    private static List<(DateOnly Date, double Value, string? PointId)> Sort(IReadOnlyList<OdsStepPoint>? points) =>
+    private static List<(DateOnly Date, double Value, string? PointId, string? Note)> Sort(IReadOnlyList<OdsStepPoint>? points) =>
         (points ?? [])
             .Where(p => p?.Value is not null)
             .OrderBy(p => p.Date)
-            .Select(p => (p.Date, (double)p.Value!.Value, p.Id))
+            .Select(p => (p.Date, (double)p.Value!.Value, p.Id, p.Note))
             .ToList();
 
     /// <summary>
     /// The one answer to "what does this cost": the latest entry that has already taken effect. An
     /// entirely-future series is represented by its soonest entry.
     /// </summary>
-    private int InForceIndex(IReadOnlyList<(DateOnly Date, double Value, string? PointId)> pts)
+    private int InForceIndex(IReadOnlyList<(DateOnly Date, double Value, string? PointId, string? Note)> pts)
     {
         var i = pts.Count(p => Days(p.Date) <= _now) - 1;
         return i < 0 ? 0 : i;
@@ -232,14 +316,14 @@ public partial class OdsStepChart
     private bool IsScheduled(DateOnly d) => Days(d) > _now;
 
     /// <summary>A series' move from its own first entry — what indexed mode plots and every legend row states.</summary>
-    private static double MoveOf(IReadOnlyList<(DateOnly Date, double Value, string? PointId)> pts, double v)
+    private static double MoveOf(IReadOnlyList<(DateOnly Date, double Value, string? PointId, string? Note)> pts, double v)
     {
         var baseValue = pts[0].Value;
         return baseValue != 0 ? (v - baseValue) / Math.Abs(baseValue) : 0;
     }
 
     // A zero first entry has no percentage change, so it is plotted absolutely — better than dividing by zero.
-    private double Plotted(IReadOnlyList<(DateOnly Date, double Value, string? PointId)> pts, double v) =>
+    private double Plotted(IReadOnlyList<(DateOnly Date, double Value, string? PointId, string? Note)> pts, double v) =>
         !_indexed ? v : pts[0].Value != 0 ? MoveOf(pts, v) : v;
 
     /// <summary>
@@ -395,7 +479,7 @@ public partial class OdsStepChart
 
     // Razor reserves <text> as a control keyword, so the axis labels are emitted as raw SVG markup.
     private string YAxisMarkup => string.Concat(_gridVals.Select(v =>
-        $"<text x=\"{F(X0 - 12)}\" y=\"{F(Sy(v) + 4)}\" text-anchor=\"end\">{Enc(Tick(v))}</text>"));
+        $"<text x=\"{F(X0 - OdsLineChart.AxisLabelGap)}\" y=\"{F(Sy(v) + 4)}\" text-anchor=\"end\">{Enc(Tick(v))}</text>"));
 
     /// <summary>One label per change, dropped where two would collide, never within reach of the now label.</summary>
     private string XAxisMarkup

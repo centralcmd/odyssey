@@ -13,62 +13,17 @@
 }
 
 <MudStack Spacing="4">
-<OdsDonutPair>
-    <First>
-        @* Asset allocation donut — empty case keeps the panel title with a short line. *@
-        @if (assetSlices.Count == 0)
-        {
-            <div class="donut-panel">
-                <div class="chart-head">
-                    <div>
-                        <div class="chart-ttl">Asset allocation</div>
-                        <div class="chart-sub">Where your money sits</div>
-                    </div>
-                </div>
-                <div class="donut-legend-empty">No positive balances yet</div>
-            </div>
-        }
-        else
-        {
-            <OdsDonut Layout="OdsDonutLayout.Stack"
-                      CenterIcon="account_balance_wallet"
-                      Data="assetSlices"
-                      TotalLabel="Total assets"
-                      Format="AssetLegendFormat"
-                      AriaLabel="Asset allocation by account">
-                <Title>Asset allocation</Title>
-                <Sub>Where your money sits · @assetSlices.Count account@(assetSlices.Count == 1 ? "" : "s")</Sub>
-            </OdsDonut>
-        }
-    </First>
-    <Second>
-        @* Liability allocation donut *@
-        @if (liabilitySlices.Count == 0)
-        {
-            <div class="donut-panel">
-                <div class="chart-head">
-                    <div>
-                        <div class="chart-ttl">Liability allocation</div>
-                        <div class="chart-sub">What you owe</div>
-                    </div>
-                </div>
-                <div class="donut-legend-empty">No negative balances yet</div>
-            </div>
-        }
-        else
-        {
-            <OdsDonut Layout="OdsDonutLayout.Stack"
-                      CenterIcon="credit_card"
-                      Data="liabilitySlices"
-                      TotalLabel="Total owed"
-                      Format="LiabilityLegendFormat"
-                      AriaLabel="Liability allocation by account">
-                <Title>Liability allocation</Title>
-                <Sub>What you owe · @liabilitySlices.Count account@(liabilitySlices.Count == 1 ? "" : "s")</Sub>
-            </OdsDonut>
-        }
-    </Second>
-</OdsDonutPair>
+<OdsAllocationDonuts AssetSlices="assetSlices"
+                     LiabilitySlices="liabilitySlices"
+                     AssetsFormat="AssetLegendFormat"
+                     LiabilitiesFormat="LiabilityLegendFormat"
+                     AssetsEmpty="No positive balances yet"
+                     LiabilitiesEmpty="No negative balances yet"
+                     AssetsAriaLabel="Asset allocation by account"
+                     LiabilitiesAriaLabel="Liability allocation by account">
+    <AssetsSub>Where your money sits@(assetSlices.Count == 0 ? "" : $" · {AccountCount(assetSlices.Count)}")</AssetsSub>
+    <LiabilitiesSub>What you owe@(liabilitySlices.Count == 0 ? "" : $" · {AccountCount(liabilitySlices.Count)}")</LiabilitiesSub>
+</OdsAllocationDonuts>
 
 <div class="odc-summary-grid">
     @* No total on By type: the rows cover AccountTypeVisuals.Selectable, which excludes
@@ -106,13 +61,13 @@
         new OdsBreakdownDef<string>("Closed", "Closed", "expense", "lock"),
         new OdsBreakdownDef<string>("Archived", "Archived", "outline", "inventory_2"));
 
-    // The API sends only non-archived accounts with a non-zero effective value, largest asset first,
-    // so the split is a sign partition — the liabilities ring wants the most negative first.
+    // The API sends only non-archived accounts with a non-zero effective value, so the split is a
+    // sign partition. OdsAllocationDonuts orders each well largest-magnitude first.
     private IReadOnlyList<AccountAllocation> Allocations => Summary?.Allocations ?? [];
     private decimal TotalAssets      => Summary?.TotalAssets ?? 0m;
     private decimal TotalLiabilities => Summary?.TotalLiabilities ?? 0m;
     private List<AccountAllocation> AssetAccounts     => [.. Allocations.Where(a => a.Value > 0)];
-    private List<AccountAllocation> LiabilityAccounts => [.. Allocations.Where(a => a.Value < 0).OrderBy(a => a.Value)];
+    private List<AccountAllocation> LiabilityAccounts => [.. Allocations.Where(a => a.Value < 0)];
 
     // One slice per account, sized by |effective value| — OdsDonut owns the ring geometry and
     // coloring. The allocation rides along in Tag so the legend can format in its own currency.
@@ -136,4 +91,6 @@
         slice?.Tag is AccountAllocation a
             ? AllocationLegend.LiabilityRow(a, FormatMoney)
             : AllocationLegend.LiabilityTotal(TotalLiabilities, FormatMoney);
+
+    private static string AccountCount(int n) => $"{n} account{(n == 1 ? "" : "s")}";
 }
