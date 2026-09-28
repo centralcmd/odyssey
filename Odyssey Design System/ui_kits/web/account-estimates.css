@@ -275,14 +275,6 @@
 .est-value-block { display: flex; flex-direction: column; gap: 10px; }
 
 /* Locked-currency display (currency is always the account currency) */
-.est-currency-lock {
-  display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px;
-  border: 1px solid var(--mud-palette-divider); border-radius: 8px;
-  background: var(--mud-palette-background); opacity: 0.75;
-}
-.est-currency-lock .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); }
-.est-currency-lock .code { font: 500 13px/1 var(--font-mono); color: var(--mud-palette-text-primary); }
-.est-currency-lock .note { font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* Recommended / non-recommended account-type hint */
 .est-rec-hint {

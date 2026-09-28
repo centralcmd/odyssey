@@ -27,36 +27,13 @@
    and the danger zone.
    ============================================================= */
 
-/* ---- In-page section tabs (under the page header) ---- */
-.acc-tabs {
-  display: flex; gap: 2px; flex-wrap: wrap;
-  border-bottom: 1px solid var(--mud-palette-divider);
-}
-.acc-tab {
-  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
-  padding: 11px 14px; margin-bottom: -1px;
-  background: transparent; border: none; cursor: pointer;
-  border-bottom: 2px solid transparent;
-  font: 500 13px/1 var(--font-sans); letter-spacing: 0.01em;
-  color: var(--mud-palette-text-secondary);
-  transition: color 150ms ease, border-color 150ms ease;
-}
-.acc-tab .material-icons { font-size: 18px; }
-.acc-tab:hover { color: var(--mud-palette-text-primary); }
-.acc-tab.active { color: var(--mud-palette-primary); border-bottom-color: var(--mud-palette-primary); }
-.acc-tab-badge {
-  font: 500 10px/1 var(--font-mono);
-  padding: 3px 6px; border-radius: 999px;
-  background: var(--status-closed-soft); color: var(--status-closed);
-}
-
 /* ---- Merged settings list (former tabs, now one scrolling card list) ---- */
 .acc-list { display: flex; flex-direction: column; gap: 18px; }
 .acc-list-group + .acc-list-group { padding-top: 0; }
 
 /* ---- Section card scaffold (icon badge + title + body) ---- */
 .acc-section { display: flex; flex-direction: column; gap: 18px; }
-.acc-sec-head { display: flex; align-items: flex-start; gap: 14px; }
+
 .acc-ic {
   flex: 0 0 42px; height: 42px; display: grid; place-items: center;
   border-radius: var(--radius-md);
@@ -81,22 +58,6 @@
 
 /* ---- Overview ---- */
 .acc-overview { display: flex; flex-direction: column; gap: 18px; }
-.acc-hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-.acc-hero-id { flex: 1; min-width: 0; }
-.acc-hero-name { font: 400 22px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
-.acc-hero-mail { font: 400 14px/1.4 var(--font-mono); color: var(--mud-palette-text-secondary); margin-top: 4px; }
-.acc-hero-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.acc-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-
-.acc-avatar-xl {
-  flex: 0 0 64px; width: 64px; height: 64px; border-radius: var(--radius-pill);
-  display: grid; place-items: center;
-  font: 400 24px/1 var(--font-sans);
-  background: rgba(79, 215, 203, 0.14); color: var(--tide-400);
-  letter-spacing: 0.02em;
-  overflow: hidden;
-}
-.acc-avatar-xl img { width: 100%; height: 100%; object-fit: cover; }
 
 .acc-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
 .acc-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
@@ -116,41 +77,6 @@
 .acc-kv-label { font: 400 13px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .acc-kv-val { font: 500 13px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); text-align: right; white-space: nowrap; }
 .acc-kv-val.mono { font-family: var(--font-mono); font-weight: 400; }
-
-.acc-quick { display: flex; gap: 10px; flex-wrap: wrap; }
-.acc-quick-btn {
-  display: flex; align-items: center; gap: 12px;
-  flex: 1 1 220px;
-  padding: 14px 16px; cursor: pointer; text-align: left;
-  border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md);
-  background: var(--mud-palette-background); color: var(--mud-palette-text-primary);
-  transition: border-color 150ms ease, background-color 150ms ease;
-}
-.acc-quick-btn:hover { border-color: var(--mud-palette-primary); background: rgba(79, 215, 203, 0.05); }
-.acc-quick-ic { flex: 0 0 36px; height: 36px; display: grid; place-items: center; border-radius: var(--radius-sm); background: rgba(79, 215, 203, 0.12); color: var(--tide-400); }
-.acc-quick-ic .material-icons { font-size: 20px; }
-.acc-quick-txt { flex: 1; min-width: 0; }
-.acc-quick-ttl { font: 500 14px/1.2 var(--font-sans); }
-.acc-quick-sub { font: 400 12px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 3px; }
-.acc-quick-btn .acc-quick-go { color: var(--mud-palette-text-secondary); }
-
-/* ---- Read-only identity (locked) grid — reuses admin look ---- */
-.acc-locked-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.acc-locked {
-  border: 1px dashed var(--mud-palette-lines-default); border-radius: var(--radius-md);
-  padding: 10px 12px; display: flex; flex-direction: column; gap: 4px;
-}
-.acc-locked-label { display: flex; align-items: center; gap: 5px; font: 500 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
-.acc-locked-label .material-icons { font-size: 13px; }
-.acc-locked-val { font: 400 14px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.acc-locked-val.mono { font-family: var(--font-mono); }
-
-/* ---- Password requirement checklist ---- */
-.acc-reqs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; max-width: 460px; }
-.acc-req { display: flex; align-items: center; gap: 8px; font: 400 12.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.acc-req .material-icons { font-size: 16px; color: var(--mud-palette-text-disabled); }
-.acc-req.met { color: var(--finance-income); }
-.acc-req.met .material-icons { color: var(--finance-income); }
 
 /* ---- Two-factor: status hero ---- */
 .acc-status {
@@ -242,12 +168,6 @@
 .acc-danger-sub { font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
 
 /* ---- Permissions ---- */
-.acc-perm-summary { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.acc-perm-figure { display: flex; align-items: baseline; gap: 8px; }
-.acc-perm-num { font: 500 28px/1 var(--font-mono); color: var(--mud-palette-text-primary); }
-.acc-perm-num-label { font: 400 13px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.acc-role-desc { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.acc-role-desc b { color: var(--mud-palette-text-primary); font-weight: 500; }
 
 /* small inline success/saved nudge */
 .acc-saved { display: inline-flex; align-items: center; gap: 6px; font: 500 12.5px/1 var(--font-sans); color: var(--finance-income); }
@@ -283,7 +203,3 @@
 .pf-note-body p + p { margin-top: 5px; }
 .pf-note-body b { color: var(--mud-palette-text-primary); font-weight: 500; }
 
-@media (max-width: 720px) {
-  .acc-locked-grid { grid-template-columns: 1fr; }
-  .acc-reqs { grid-template-columns: 1fr; }
-}

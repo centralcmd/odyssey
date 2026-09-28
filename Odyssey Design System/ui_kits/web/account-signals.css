@@ -25,7 +25,6 @@
 /* A chip carrying a leading severity glyph sizes the icon to match. */
 .chip .material-icons { font-size: 13px; margin-left: -1px; }
 
-
 /* ---------- 1 · Header signal button (rolls up into the cluster) ----------
    A PageHeader action-cluster toggle, shaped exactly like Overview /
    Search, but tinted by severity and carrying a count. Its filled
@@ -70,62 +69,13 @@
 .btn.signal.active.info    { background: var(--sea-400);         color: var(--ink-900); border-color: transparent; }
 .btn.signal.active .signal-count { background: rgba(0,0,0,0.22); color: inherit; }
 
-
-/* ---------- 2 · Quiet title badge (option: inline by the H1) ----------
-   A compact square pill that sits beside the page title. Calmest
-   option — reads as part of the heading, matches the "quiet
-   instrument" brand. */
-.signal-pill {
-  display: inline-flex; align-items: center; gap: 5px;
-  height: 26px; padding: 0 9px; border-radius: var(--radius-sm);
-  border: 1px solid transparent; cursor: pointer;
-  font: 600 12px/1 var(--font-mono);
-  white-space: nowrap;
-  transition: background-color 150ms ease;
-}
-.signal-pill .material-icons { font-size: 16px; }
-.signal-pill.warning { background: var(--finance-pending-soft); color: var(--finance-pending); border-color: color-mix(in srgb, var(--finance-pending) 32%, transparent); }
-.signal-pill.error   { background: var(--finance-expense-soft); color: var(--finance-expense); border-color: color-mix(in srgb, var(--finance-expense) 32%, transparent); }
-.signal-pill.info    { background: rgba(56,189,248,0.10);       color: var(--sea-400);         border-color: rgba(56,189,248,0.30); }
-.signal-pill:hover   { filter: brightness(1.12); }
-
-
-/* ---------- 3 · Notification-style icon trigger (option: bell+badge) ----------
-   A bare icon button (app-shell idiom) with a severity count badge —
-   most compact, least descriptive. */
-.signal-icon { position: relative; }
-.signal-icon .signal-dot {
-  position: absolute; top: 1px; right: 1px;
-  min-width: 16px; height: 16px; padding: 0 4px;
-  border-radius: 999px; border: 2px solid var(--mud-palette-surface);
-  display: grid; place-items: center;
-  font: 600 10px/1 var(--font-mono); color: #fff;
-}
-.signal-icon .signal-dot.warning { background: var(--finance-pending); color: var(--ink-900); }
-.signal-icon .signal-dot.error   { background: var(--finance-expense); }
-.signal-icon .signal-dot.info    { background: var(--sea-400); color: var(--ink-900); }
-
-
 /* ---------- 4 · Account card · left-edge accent (option: ambient) ----------
    Color-codes the whole row without crowding the name. Mirrors the
    inset-shadow rule the budget item rows already use for income /
    expense. */
-.acct-item.has-warning { box-shadow: var(--mud-elevation-1), inset 3px 0 0 var(--finance-pending); }
+
 .acct-item.has-error   { box-shadow: var(--mud-elevation-1), inset 3px 0 0 var(--finance-expense); }
-.acct-item.has-warning.open,
 .acct-item.has-error.open { box-shadow: var(--mud-elevation-2), inset 3px 0 0 currentColor; }
-
-/* A round severity glyph that can sit in the figures / controls area. */
-.acct-signal {
-  width: 28px; height: 28px; border-radius: 999px; flex: none;
-  display: grid; place-items: center; border: none; cursor: pointer;
-  background: transparent;
-}
-.acct-signal .material-icons { font-size: 19px; }
-.acct-signal.warning { color: var(--finance-pending); background: var(--finance-pending-soft); }
-.acct-signal.error   { color: var(--finance-expense); background: var(--finance-expense-soft); }
-.acct-signal.info    { color: var(--sea-400);         background: rgba(56,189,248,0.12); }
-
 
 /* ---------- 5 · Account card · inline mini-alert (option: loud) ----------
    A compact .alert variant that spans the bottom of the card head —
@@ -173,7 +123,6 @@
   .acct-item.flash { animation: none; }
 }
 
-
 /* ---------- 6 · Problem panel inside the expanded record ----------
    The fuller explanation + the contextual fix action. Lives at the top of the
    account detail so the "what's wrong / how to fix it" reads before metadata.
@@ -197,6 +146,3 @@
 .alert.info    .alert-cta { background: var(--sea-400);         color: var(--ink-900); }
 .alert-cta:hover { filter: brightness(1.08); }
 
-
-/* ---------- 7 · (removed) Fix-a-problem modal — reconnect/set-rate dropped from MVP;
-   missing-rate problems now route to the Currencies page instead of an inline dialog. */

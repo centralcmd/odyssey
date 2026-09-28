@@ -9,23 +9,6 @@
    ============================================================= */
 
 /* ---- Section shell (lives in the collapsible body) ---- */
-.trm-section {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  padding: 18px 16px 20px;
-}
-.trm-sub {
-  display: flex; align-items: center; gap: 8px;
-  margin-bottom: 12px;
-}
-.trm-sub-label {
-  font: 600 11px/1 var(--font-sans);
-  letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--mud-palette-text-secondary);
-}
-.trm-sub-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light); }
-.trm-sub-meta { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
 
 /* Kind glyph tile — soft tint + colored icon (account/file-type vocabulary). */
 .trm-kind-ic {
@@ -110,7 +93,7 @@
   background: var(--mud-palette-surface);
 }
 .trm-tile-top { display: flex; align-items: center; gap: 9px; }
-.trm-tile-kind { font: 500 12px/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
 /* A labelled term is NAMED by its label; the kind wording drops to a caption
    beneath it. Both are text — no meaning rides on the glyph or its hue. */
 .trm-name { display: inline-flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -182,7 +165,7 @@
    meaning (a rate kind, or an account-owned term). */
 .trm-dir-field { display: flex; flex-direction: column; gap: 6px; }
 .trm-dir-seg { align-self: flex-start; }
-.trm-dir-replace { color: var(--mud-palette-text-secondary); }
+
 .trm-dir-refused {
   display: flex; align-items: flex-start; gap: 8px;
   padding: 9px 11px; border-radius: var(--radius-sm);
@@ -246,16 +229,6 @@
   border-radius: var(--radius-md);
   box-shadow: var(--mud-elevation-1);
   padding: 12px 8px 8px;
-}
-.trm-group-label {
-  display: flex; align-items: center; gap: 8px;
-  font: 500 12px/1 var(--font-sans); color: var(--mud-palette-text-primary);
-  margin-bottom: 9px;
-}
-.trm-group-count {
-  font: 500 10.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary);
-  background: var(--mud-palette-action-default-hover);
-  padding: 3px 7px; border-radius: 999px;
 }
 
 /* ---- Table ---- */
@@ -348,59 +321,23 @@
 .trm-iconbtn.danger:hover { color: var(--mud-palette-error); background: oklch(0.72 0.16 22 / 0.12); }
 .trm-iconbtn .material-icons { font-size: 18px; }
 
-/* Section toolbar (right of the collapsible title) */
-.trm-toolbar { display: inline-flex; align-items: center; gap: 6px; }
-
-/* Per-kind empty hint within a group */
-.trm-group-empty {
-  font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
-  padding: 10px 12px; border: 1px dashed var(--mud-palette-divider);
-  border-radius: 8px;
-}
-
 /* =============================================================
    NEW / EDIT TERM dialog
    ============================================================= */
 .trm-dialog { max-width: 560px; }
 
 /* Kind picker uses the DS CardSelect (components.css), tinted per kind. */
-.trm-kind-opt {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 11px; text-align: left;
-  border: 1px solid var(--mud-palette-divider); border-radius: 9px;
-  background: var(--mud-palette-background); cursor: pointer;
-  transition: border-color .12s ease, background .12s ease;
-}
-.trm-kind-opt:hover { border-color: var(--mud-palette-text-secondary); }
-.trm-kind-opt.on { border-color: transparent; box-shadow: inset 0 0 0 2px var(--mud-palette-primary); background: var(--mud-palette-surface); }
-.trm-kind-opt-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.trm-kind-opt-name { font: 500 13px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
-.trm-kind-opt-grp { font: 400 10.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
-.trm-kind-check { margin-left: auto; color: var(--mud-palette-primary); }
-.trm-kind-ineligible {
-  font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary);
-  margin-top: 8px;
-}
-.trm-kind-ineligible b { color: var(--mud-palette-text-primary); font-weight: 500; }
 
 /* Value block — wraps the hero AmountField + its unit toggle head. */
 .trm-value-block { display: flex; flex-direction: column; gap: 10px; }
 
 /* Label field in the dialog — the helper text changes with the kind's rule. */
-.trm-label-hint { font: 400 11.5px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.trm-label-hint b { color: var(--mud-palette-text-primary); font-weight: 500; }
 
-.trm-foot-note { font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .trm-field-head { display: flex; align-items: center; }
 
 /* Non-numeric term values (Text / DateTime). No direction hue, no cadence: the
    kind's icon carries the hue; the value itself stays in body ink for reading. */
-.trm-cell-value.trm-v-text { font-family: var(--font-sans); white-space: normal; text-wrap: pretty; max-width: 34ch; margin-left: auto; color: var(--mud-palette-text-primary); }
-td.trm-cell-value.trm-v-text { max-width: none; width: 34ch; }
-.trm-cell-value.trm-v-datetime { color: var(--mud-palette-text-primary); }
-.trm-cell-value.trm-v-unknown { color: var(--mud-palette-text-secondary); }
-.trm-tl-value.trm-v-text { font-family: var(--font-sans); white-space: normal; text-align: right; max-width: 30ch; color: var(--mud-palette-text-primary); }
-.trm-tl-value.trm-v-datetime { color: var(--mud-palette-text-primary); }
+
 .trm-iconbtn:disabled { opacity: 0.45; cursor: not-allowed; }
 .trm-iconbtn:disabled:hover { background: transparent; color: inherit; }
 /* Dialog — the kind picker and the non-numeric value controls. */
@@ -420,5 +357,4 @@ td.trm-cell-value.trm-v-text { max-width: none; width: 34ch; }
 .trm-dt-tile .odc-infotile-v { white-space: normal; overflow: visible; text-overflow: clip; }
 .trm-text-count { margin-left: auto; }
 /* Non-numeric values take the neutral orange (the Amount hue) — no direction, so no finance hue. */
-.trm-cell-value.trm-v-text, .trm-cell-value.trm-v-datetime, .trm-tl-value.trm-v-text, .trm-tl-value.trm-v-datetime,
 .trm-text-tile .odc-infotile-v, .trm-dt-tile .odc-infotile-v { color: oklch(0.77 0.14 55); }

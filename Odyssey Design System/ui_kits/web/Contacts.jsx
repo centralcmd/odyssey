@@ -32,7 +32,6 @@ const CP_STATUS_OPTIONS = [
   { value: 'active',   label: 'Active' },
   { value: 'archived', label: 'Archived' },
 ];
-const cpTone = (type) => { const m = CP_TYPE_BY_KEY[type] || CP_TYPE_BY_KEY.Person; return { bg: m.soft, fg: m.color }; };
 
 /* ---- Sub-vocabularies (new OdsTypeRegistries entries) ---- */
 const SEX_OPTIONS = [
@@ -351,15 +350,6 @@ const LabelChip = ({ kind, value }) => {
   const m = labelMeta(kind, value);
   return <Chip tone="outline" icon={m.icon}>{m.label}</Chip>;
 };
-
-/* A themed vertical section header used inside the detail panel. */
-const cpSectionHead = (icon, title, count) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-    <MIcon name={icon} size={18} />
-    <span style={{ font: '600 13px/1.2 var(--font-sans)', letterSpacing: '.01em' }}>{title}</span>
-    <span style={{ font: '500 12px/1 var(--font-sans)', color: 'var(--mud-palette-text-secondary)' }}>{count > 0 ? count : ''}</span>
-  </div>
-);
 
 /* ================= contact collection ================= */
 /* One config-driven manager for Addresses / Emails / Phones: list rows with a

@@ -32,7 +32,6 @@
    pageSize, onEdit, onDelete, onAnnounce (the record's single live region). */
 
 const PEV_H = window.OdysseyHelpers;
-const PEV_D = window.OdysseyData;
 
 const PropertyEvents = ({ property, events = [], canUpdate = true, pageSize = 25, onEdit, onDelete, onAnnounce }) => {
   const { useState, useMemo, useEffect } = React;

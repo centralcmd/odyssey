@@ -27,16 +27,6 @@ const TS_D = window.OdysseyData;
 // Tax statements carry the magenta "Tax" hue (matches the Tax file-type avatar).
 const TAX_TONE = { bg: 'oklch(0.75 0.16 330 / 0.16)', fg: 'oklch(0.75 0.16 330)' };
 
-const TS_CURRENCY_OPTIONS = TS_D.currencies
-  .filter(c => !c.archived)
-  .map(c => ({ value: c.code, label: `${c.code} · ${c.name}` }));
-
-const TS_STATUS_META = {
-  New:      { icon: 'fiber_new',     label: 'New' },
-  Approved: { icon: 'check_circle',  label: 'Approved' },
-  Flagged:  { icon: 'flag',          label: 'Flagged' },
-};
-
 /* ---- Statement problems (the design system's warning/error/info system) ----
    Mirrors the Accounts page's exchange-rate "problems": a data condition that
    needs the user's attention, surfaced in three places — the page-header signal
@@ -254,7 +244,7 @@ const ReconTable = ({ s, recon }) => {
         <span className="ta-r">Variance</span>
       </div>
 
-      <div className="tx-recon-group"><MIcon name="account_balance_wallet" size={15} />Net worth</div>
+      <div className="tx-recon-group">Net worth</div>
       <div className="tx-recon-row">
         <div className="tx-figure">Total assets</div>
         {cell(d.totalAssets)}{dcell(v.totalAssets)}
@@ -271,7 +261,7 @@ const ReconTable = ({ s, recon }) => {
         <span className="ta-r"><VarValue value={recon.netWorthVariance} cur={cur} /></span>
       </div>
 
-      <div className="tx-recon-group"><MIcon name="payments" size={15} />Income</div>
+      <div className="tx-recon-group">Income</div>
       <div className="tx-recon-row total">
         <div className="tx-figure">Total income</div>
         {cell(d.totalIncome)}
@@ -279,7 +269,7 @@ const ReconTable = ({ s, recon }) => {
         <span className="ta-r"><VarValue value={recon.incomeVariance} cur={cur} /></span>
       </div>
 
-      <div className="tx-recon-group"><MIcon name="gavel" size={15} />Tax</div>
+      <div className="tx-recon-group">Tax</div>
       <div className="tx-recon-row">
         <div className="tx-figure">Assessed tax</div>
         {cell(d.assessedTax)}
@@ -480,7 +470,7 @@ const TaxDetail = ({ s, layout, focusDocs, onNavigate, setStatement }) => {
 
       {/* DOCUMENTS — last section. */}
       <div className="tax-section">
-        <SectionDivider label="Statement documents" meta={`${s.files.length} file${s.files.length === 1 ? '' : 's'}`} />
+        <SectionDivider label="Documents" meta={`${s.files.length} file${s.files.length === 1 ? '' : 's'}`} />
         <div className="tax-tbl-frame">
           {s.files.length === 0 ? (
             <EmptyLine>No documents attached yet — upload the tax return / assessment PDFs.</EmptyLine>

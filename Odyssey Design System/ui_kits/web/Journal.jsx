@@ -157,56 +157,6 @@ const JournalFileRow = ({ f, onPreview, onRemove }) => {
   );
 };
 
-/* ---------- Photo lightbox ----------
-   Clicking a gallery tile opens a large view. The kit has no real bytes, so a
-   photo renders as a big striped placeholder + filename; a real deployment would
-   drop the image in `src`. Arrow keys / the chevrons page through the set. */
-const PhotoLightbox = ({ photos, index, onClose, onIndex }) => {
-  const { useEffect } = React;
-  const p = photos[index];
-  useEffect(() => {
-    const onKey = (ev) => {
-      if (ev.key === 'Escape') onClose();
-      else if (ev.key === 'ArrowRight') onIndex((index + 1) % photos.length);
-      else if (ev.key === 'ArrowLeft') onIndex((index - 1 + photos.length) % photos.length);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [index, photos.length]);
-  if (!p) return null;
-  const many = photos.length > 1;
-  return (
-    <div className="je-lightbox" role="dialog" aria-modal="true" aria-label={`Photo ${p.name || p.id}`} onClick={onClose}>
-      <button type="button" className="je-lightbox-close" aria-label="Close" onClick={onClose}>
-        <MIcon name="close" size={22} />
-      </button>
-      {many && (
-        <button type="button" className="je-lightbox-nav prev" aria-label="Previous photo"
-          onClick={(ev) => { ev.stopPropagation(); onIndex((index - 1 + photos.length) % photos.length); }}>
-          <MIcon name="chevron_left" size={28} />
-        </button>
-      )}
-      <figure className="je-lightbox-stage" onClick={(ev) => ev.stopPropagation()}>
-        {p.src ? (
-          <img className="je-lightbox-img" src={p.src} alt={p.name || ''} />
-        ) : (
-          <span className="je-lightbox-ph" aria-hidden="true"><span className="mono">photo</span></span>
-        )}
-        <figcaption className="je-lightbox-cap">
-          <span className="mono je-lightbox-name">{p.name || p.id}</span>
-          {many && <span className="je-lightbox-count mono">{index + 1} / {photos.length}</span>}
-        </figcaption>
-      </figure>
-      {many && (
-        <button type="button" className="je-lightbox-nav next" aria-label="Next photo"
-          onClick={(ev) => { ev.stopPropagation(); onIndex((index + 1) % photos.length); }}>
-          <MIcon name="chevron_right" size={28} />
-        </button>
-      )}
-    </div>
-  );
-};
-
 /* ---------- The card's body ----------
    Was the expanded detail panel; A has no expand step, so this renders the
    card's content directly. Tag/contact unlink moved to the edit dialog with

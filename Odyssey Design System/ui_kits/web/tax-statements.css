@@ -8,19 +8,6 @@
 /* ---- Header Overview: year-over-year trend charts ---- */
 .tx-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
 
-/* ---- Section heading inside the expanded detail ---- */
-.tx-section-h {
-  display: flex; align-items: center; gap: 8px;
-  font: 500 13px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
-  margin: 4px 0 0;
-}
-.tx-section-h .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
-.tx-section-cap {
-  margin-left: auto; font: 400 11.5px/1.3 var(--font-sans);
-  color: var(--mud-palette-text-secondary); letter-spacing: 0;
-}
-.tx-section-cap .mono { font-family: var(--font-mono); }
-
 /* ============================================================
    Reconciliation — TABLE layout (Figure | Declared | Derived | Variance)
    ============================================================ */
@@ -130,7 +117,6 @@
 .tx-role-empty { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* The settlement figure in the collapsed header reads with a balance word. */
-.acct-figures .tx-balance-word { font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* Record-card body sections: divider + content, flush with the divider label;
    tables read as cards like the other pages. */

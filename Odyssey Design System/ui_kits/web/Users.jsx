@@ -248,9 +248,6 @@ const EnabledBadge = ({ on }) => on
 const EmailBadge = ({ on }) => on
   ? <span className="ua-badge confirmed"><MIcon name="mark_email_read" size={14} />Confirmed</span>
   : <span className="ua-badge unconfirmed"><MIcon name="mark_email_unread" size={14} />Unconfirmed</span>;
-const TwoFactorBadge = ({ on }) => on
-  ? <span className="ua-badge confirmed"><MIcon name="verified_user" size={14} />2FA on</span>
-  : <span className="ua-badge unconfirmed"><MIcon name="gpp_maybe" size={14} />2FA off</span>;
 
 /* ---------- 6. Role → permission claim chips ---------- */
 const ClaimChips = ({ role }) => {

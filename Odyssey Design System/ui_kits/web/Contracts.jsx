@@ -38,7 +38,6 @@
 
 const CON_H = window.OdysseyHelpers;
 const CON_D = window.OdysseyData;
-const CON_SEV_RANK = { info: 0, warning: 1, error: 2 };
 
 /* ====================== Derived-status chip ======================
    The DS ContractStatusChip owns the vocabulary (and the neutral fallback an
@@ -354,9 +353,9 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         )}
       </div>
 
-      {/* TERMS — what the agreement COSTS, as a dated history: the same Term
+      {/* TERMS — what the agreement FIXES (prices, rates, notice periods, deadlines), as a dated history: the same Term
           rows an account carries, owned by this contract instead. Sits between
-          the parties and the documents: who is in it, what it costs, what
+          the parties and the documents: who is in it, what it fixes, what
           evidences it. */}
       <ContractTerms
         contract={contract}
@@ -396,7 +395,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
 
       {/* EVENTS — what has HAPPENED to the agreement, as a log. Last, and
           deliberately so: the sections above describe what the contract IS
-          (details, who is in it, what it costs, what evidences it), and this
+          (details, who is in it, what it fixes, what evidences it), and this
           one is its history. Like every other section it stays writable when
           the contract is archived — archival hides a contract, it does not
           lock it. */}

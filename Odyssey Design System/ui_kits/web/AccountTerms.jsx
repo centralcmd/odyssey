@@ -196,52 +196,6 @@ const TermStepChart = ({ series, color, fmtAxis, ariaLabel, padLeft = 48 }) => {
 };
 
 /* =============================================================
-   Hero card — current rate + delta + the step chart
-   ============================================================= */
-const TermHero = ({ terms, account }) => {
-  const key = trmHeadlineKey(terms);
-  if (key == null) return null;
-  const series = trmSeriesFromList(terms, key);
-  const head = terms.find(t => trmKey(t) === key);
-  const info = trmKindInfo(head);
-  const color = info.color;
-  const label = H.termDisplayName(head);
-  const fmt = (v) => (v < 0 ? '−' : '') + H.pctStr(Math.abs(v));
-  const current = series[series.length - 1];
-  const prev = series.length > 1 ? series[series.length - 2] : null;
-  const diff = prev ? (current.value - prev.value) : 0;
-  const dir = !prev ? 'flat' : diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
-
-  return (
-    <div className="trm-hero">
-      <div className="trm-hero-head">
-        <span className="trm-kind-ic lg" style={{ background: info.soft, color: info.color }}>
-          <MIcon name={info.icon} size={22} />
-        </span>
-        <div className="trm-hero-titles">
-          <div className="trm-hero-kind">{label} <span style={{ color: 'var(--mud-palette-text-secondary)', fontWeight: 400 }}>· history</span></div>
-          <div className="trm-hero-sub">
-            {series.length} change{series.length === 1 ? '' : 's'} since {trmMonY(series[0].date)} · in force since {H.dateLong(current.date)}
-          </div>
-        </div>
-        <div className="trm-hero-figs">
-          <div className="trm-hero-value" style={{ color }}>{fmt(current.value)}</div>
-          {prev && (
-            <span className="trm-delta flat">
-              <MIcon name={dir === 'up' ? 'arrow_upward' : dir === 'down' ? 'arrow_downward' : 'remove'} size={14} />
-              {H.pctStr(Math.abs(diff))} {dir === 'up' ? 'higher' : dir === 'down' ? 'lower' : 'same'} vs {trmMonY(prev.date)}
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="trm-chart-wrap">
-        <TermStepChart series={series} color={color} />
-      </div>
-    </div>
-  );
-};
-
-/* =============================================================
    Current terms summary — three styles
    ============================================================= */
 /* The cadence tag — interval AND count, in words, from the shared helper. A
@@ -494,6 +448,6 @@ const TermHistory = ({ terms, currentIds, historyStyle, onEdit, onDelete, accoun
 };
 
 Object.assign(window, {
-  TermStepChart, TermHero, CurrentTermsSummary, TermHistory, TermValueCell, TermName, CadenceTag, TermDirectionTag,
+  TermStepChart, CurrentTermsSummary, TermHistory, TermValueCell, TermName, CadenceTag, TermDirectionTag,
   trmCurrentFromList, trmSeriesFromList, trmKindInfo, trmHeadlineKey, trmToday, trmKey, trmMonY,
 });

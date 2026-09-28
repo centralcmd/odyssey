@@ -111,7 +111,7 @@
     'AddAccountModal.jsx', 'AddFileModal.jsx', 'FileViewerModal.jsx', 'AnalyzeFileModal.jsx',
     'AddTransactionModal.jsx', 'AccountTerms.jsx',
     'AddEstimateModal.jsx', 'AccountEstimates.jsx', 'Accounts.jsx', 'AddPropertyModal.jsx', 'PropertyEstimates.jsx', 'AddPropertyEventModal.jsx', 'PropertyEvents.jsx', 'Properties.jsx',
-    'Files.jsx', 'Transactions.jsx', 'TransactionTags.jsx', 'ContactAvatarDialog.jsx', 'ContactImportModal.jsx', 'Contacts.jsx',
+    'Files.jsx', 'Transactions.jsx', 'TransactionTags.jsx', 'ContactAvatarDialog.jsx', 'ContactImportModal.jsx', 'ContactLinksBlockedModal.jsx', 'Contacts.jsx',
     'Currencies.jsx', 'ExchangeRates.jsx', 'AddBudgetModal.jsx', 'AddBudgetItemModal.jsx',
     'Budgets.jsx', 'AddTaxStatementModal.jsx', 'TaxStatements.jsx',
     'AddContractModal.jsx', 'AddContractPartyModal.jsx', 'AddContractFileModal.jsx', 'AddPropertyFileModal.jsx', 'AddContractTermModal.jsx', 'ContractTerms.jsx', 'AddContractEventModal.jsx', 'ContractEvents.jsx', 'Contracts.jsx',

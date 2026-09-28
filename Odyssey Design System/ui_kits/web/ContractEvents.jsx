@@ -79,7 +79,6 @@
                   delete. The section mounts no announcer of its own. */
 
 const CEV_H = window.OdysseyHelpers;
-const CEV_D = window.OdysseyData;
 
 /* The focus destination for a delete. It is an id rather than a ref because
    the heading belongs to the DS divider, and the divider only becomes

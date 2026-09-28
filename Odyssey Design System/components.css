@@ -91,10 +91,6 @@
 .odc-chip .odc-chip-sub { margin-left: 2px; opacity: 0.72; font-weight: var(--fw-regular); }
 .odc-chip.archived { opacity: 0.7; border-style: dashed; }
 .odc-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.odc-coverage-detail {
-  margin-left: 2px; padding-left: 7px; opacity: 0.72;
-  border-left: 1px solid currentColor; font-variant-numeric: tabular-nums;
-}
 
 /* ---------- Stat tile ---------- */
 .odc-stat {
@@ -223,7 +219,7 @@
   color: var(--mud-palette-text-secondary);
 }
 .odc-empty.line.center { text-align: center; }
-.odc-empty.line.pad-sm { padding: var(--space-3) var(--space-4); }
+
 .odc-empty.line.pad-lg { padding: var(--space-12) var(--space-6); }
 
 /* ---------- Record section (divider + notice + view) ---------- */
@@ -531,7 +527,6 @@
 @media (max-width: 640px) {
   .odc-form-grid { grid-template-columns: 1fr; }
 }
-
 
 /* ---------- Select (themed popover — not a native <select>) ---------- */
 .odc-select { position: relative; }
@@ -946,7 +941,7 @@
 .odc-menu-item:disabled, .odc-menu-item:disabled .material-icons { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
 .odc-menu-item[aria-disabled="true"], .odc-menu-item[aria-disabled="true"] .material-icons { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
 .odc-menu-item[aria-disabled="true"]:hover { background: none; }
-.odc-menu-note { margin: 0; padding: 0 10px 8px 38px; max-width: 268px; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
 .odc-menu-divider { height: 1px; background: var(--mud-palette-divider); margin: var(--space-1) 0; border: none; }
 .odc-menu-label {
   padding: 6px 10px 2px;
@@ -1172,19 +1167,6 @@
 }
 .odc-setting-warn .material-icons { font-size: 17px; flex: none; color: var(--amber-500); }
 .odc-setting-warn > div { max-width: 76ch; }
-/* A shared note above a group of rows — e.g. the four disclosure rows, whose
-   legal weight is a property of the set rather than of any one row. */
-.odc-setting-groupnote {
-  display: flex; gap: 10px; align-items: flex-start;
-  padding: 13px 15px; border-radius: var(--radius-md);
-  border: 1px solid var(--mud-palette-divider);
-  background: var(--mud-palette-surface);
-  font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans);
-  color: var(--mud-palette-text-secondary);
-}
-.odc-setting-groupnote .material-icons { font-size: 18px; flex: none; color: var(--mud-palette-text-secondary); }
-.odc-setting-groupnote > div { max-width: 82ch; }
-.odc-setting-groupnote b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
 
 /* ---------- SecretSettingField (write-only credential) ---------- */
 /* The SettingField shape carrying a value that can never be read back. Three
@@ -1201,7 +1183,7 @@
   display: flex; align-items: center; gap: 16px; justify-content: space-between;
   margin-top: 3px; min-height: 30px;
 }
-.odc-secret-val { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
+
 /* Mono + tracking: the mask reads as a stored token rather than as text the
    admin failed to type. Fixed count, so it discloses nothing about the value. */
 .odc-secret-mask {
@@ -1893,7 +1875,6 @@
 .odc-problem.info    .odc-problem-cta { background: var(--sea-400);         color: var(--ink-900); }
 .odc-problem-cta:hover { filter: brightness(1.08); }
 
-
 /* LineChart — the axis'd trend card (vs. the axis-less sparkline). Head =
    title/sub + figure/delta; body = an auto-width SVG line+area plot. */
 .odc-lc {
@@ -2520,7 +2501,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-smarttags-refused-txt { flex: 1 1 auto; }
 
 /* States */
-.odc-smarttags-table { /* the injected TxnTable sits flush in the body */ }
+.odc-smarttags-table {}
 .odc-smarttags .odc-empty { padding: var(--space-8) var(--space-6); }
 .odc-smarttags-loading { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) var(--space-4); }
 .odc-smarttags-loading-txt { font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
@@ -2550,7 +2531,6 @@ tr:focus-within > .odc-rowactions.reveal,
   .odc-progress.indeterminate .odc-progress-fill { animation: none; left: 0; width: 100%; }
   .odc-skeleton::after { display: none; }
 }
-
 
 /* ---------- Target-size helpers (WCAG 2.5.8) ----------
    The smart-tag remove (16px) and toast close (20px) stay visually small but
@@ -2919,7 +2899,6 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-cal-daypop-t { flex: 1; min-width: 0; font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
 .odc-cal-daypop-foot { border-top: 1px solid var(--mud-palette-divider); padding: 6px; }
 .odc-cal-daypop-foot .odc-btn { width: 100%; justify-content: center; }
-
 
 /* ---------- RevealPanel (segmented toggle + connected body) ---------- */
 .odc-reveal.open {

@@ -39,11 +39,6 @@ const ATM_STATUSES = [
   { key: 'Flagged',  label: 'Flagged',  icon: 'flag',          color: 'oklch(0.72 0.16 22)',  soft: 'oklch(0.72 0.16 22 / 0.16)' },
 ];
 
-/* Contact-type → short label for the picker rows. */
-const ATM_CP_TYPE_LABEL = Object.fromEntries(
-  (window.OdysseyData.contactTypes || []).map(t => [t.key, t.label])
-);
-
 /* Contact-type → icon + color, from the canonical registry. */
 const ATM_CP_FALLBACK = { key: 'Other', label: 'Other', icon: 'category', color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)' };
 const atmCpType = (key) => (window.OdysseyData.contactTypeByKey || {})[key] || ATM_CP_FALLBACK;

@@ -68,8 +68,6 @@
 // and never blocks Save.
 const SS_DEFAULT_BASE_URL = 'https://api.anthropic.com';
 const SS_DEFAULT_MODEL = 'claude-sonnet-5';
-// Kept for back-compat with anything still reading the old constant name.
-const SS_PROCESSOR_HOST = 'api.anthropic.com';
 
 const SS_GROUPS = [
   {
@@ -585,4 +583,4 @@ const SS_SAVED = {
   propertyMaxSmartTagsPerProperty: 20,
 };
 
-Object.assign(window, { SS_GROUPS, SS_SAVED, SS_PROCESSOR_HOST, SS_DEFAULT_BASE_URL, SS_DEFAULT_MODEL });
+Object.assign(window, { SS_GROUPS, SS_SAVED, SS_DEFAULT_BASE_URL, SS_DEFAULT_MODEL });

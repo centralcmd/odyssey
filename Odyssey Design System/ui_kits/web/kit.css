@@ -44,11 +44,6 @@ html, body, #root {
   gap: 10px;
   padding: 20px 8px 24px;
 }
-.drawer-wordmark {
-  font: 500 14px/1 var(--font-sans);
-  letter-spacing: 0.32em;
-  color: #00F5D4;
-}
 
 .drawer-nav { display: flex; flex-direction: column; }
 
@@ -182,9 +177,7 @@ html, body, #root {
 .field.error .helper { color: var(--mud-palette-error); }
 
 /* clearable field (search) */
-.field-control { position: relative; display: flex; }
-.field-control.has-clear input { padding-right: 38px; }
-.field-control.has-clear input:focus { padding-right: 37px; }
+
 .field-clear {
   position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
   display: flex; align-items: center; justify-content: center;
@@ -268,14 +261,8 @@ html, body, #root {
   background: var(--mud-palette-lines-default);
   border-radius: 999px; transition: background-color 150ms ease;
 }
-.switch .knob {
-  position: absolute; top: 2px; left: 2px;
-  width: 16px; height: 16px; border-radius: 999px;
-  background: white;
-  transition: transform 150ms ease;
-}
+
 .switch input:checked + .track { background: var(--mud-palette-primary); }
-.switch input:checked + .track .knob { transform: translateX(16px); }
 
 /* ---------- Table ---------- */
 .tbl { width: 100%; border-collapse: separate; border-spacing: 0; }
@@ -375,23 +362,9 @@ html, body, #root {
 .pref-select { width: 220px; }
 .pref-select .multiselect-summary { flex: 1 1 auto; min-width: 0; }
 
-/* ---------- Dashboard greeting ----------
-   The home view is the ONE exception to the page-header scaffold: instead of a
-   "title · count · total" row it opens with a personalised greeting hero —
-   a date overline, a display-size salutation, and the same action cluster. */
-.dash-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
-.dash-head .greet-over {
-  font: 500 12px/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--mud-palette-text-secondary); margin-bottom: 14px;
-}
-.dash-head .greet { margin: 0; font: 300 52px/1 var(--font-sans); letter-spacing: -0.02em; color: var(--mud-palette-text-primary); }
-.dash-head .greet b { font-weight: 400; }
-.dash-head .greet-sub { font: 400 14px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 12px; }
-.dash-head .dash-actions { display: flex; gap: 8px; flex: none; padding-bottom: 6px; }
-
 /* ---------- Utility ---------- */
 .row { display: flex; align-items: center; gap: 8px; }
-.row-sb { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+
 .col { display: flex; flex-direction: column; gap: 8px; }
 .gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .gap-4 { gap: 16px; } .gap-6 { gap: 24px; }
 .muted { color: var(--mud-palette-text-secondary); }
@@ -399,10 +372,7 @@ html, body, #root {
 .income  { color: var(--finance-income); }
 .expense { color: var(--finance-expense); }
 
-.grid-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.grid-12 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
 
 /* ---------- Login surface ---------- */
 .auth-shell {
@@ -428,34 +398,9 @@ html, body, #root {
   border-top-color: var(--mud-palette-primary);
   animation: fan-spin 0.8s linear infinite;
 }
-.auth-confirm-icon {
-  width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
-  font-size: 30px;
-}
-.auth-confirm-icon.ok { background: rgba(74,222,128,0.14); color: var(--mint-500); }
-.auth-confirm-icon.bad { background: rgba(248,113,113,0.14); color: var(--mud-palette-error); }
-
-/* ---------- Receipt grid ---------- */
-.receipt-grid { display: grid; grid-template-columns: 240px 1fr; gap: 20px; }
-.receipt-thumb {
-  background: var(--ink-700); border-radius: 8px; padding: 12px;
-  display: flex; flex-direction: column; gap: 6px;
-  border: 1px solid var(--mud-palette-divider);
-}
-.receipt-thumb .paper {
-  background: #FDFAF1; color: #333;
-  font: 400 10px/1.4 var(--font-mono);
-  padding: 14px; border-radius: 4px;
-  min-height: 240px;
-  display: flex; flex-direction: column; gap: 4px;
-}
-.receipt-thumb .paper .head { font-weight: 700; font-size: 12px; text-align: center; margin-bottom: 6px; }
-.receipt-thumb .paper .line { display: flex; justify-content: space-between; }
-.receipt-thumb .paper .total { border-top: 1px dashed #999; padding-top: 4px; margin-top: 4px; font-weight: 700; }
 
 /* ---------- Budget bar ---------- */
-.budget-row { display: grid; grid-template-columns: 1fr 200px 100px 80px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--mud-palette-table-lines); }
-.budget-row:last-child { border-bottom: none; }
+
 .bar {
   height: 8px; background: var(--mud-palette-action-disabled-background);
   border-radius: 999px; overflow: hidden;
@@ -466,7 +411,7 @@ html, body, #root {
 .bar .fill.income { background: var(--finance-income); }
 
 /* ---------- Budget detail (items + breakdown) ---------- */
-.bgt-breakdown { display: flex; flex-direction: column; gap: 14px; margin-top: 2px; }
+
 /* Per-budget allocation donuts, recessed like the meta wells above them. */
 .bgt-donuts {
   border: 1px solid var(--mud-palette-divider);
@@ -477,10 +422,8 @@ html, body, #root {
 .bgt-donuts.out .odc-legend-amt, .bgt-donuts.out .odc-legend-amt *, .bgt-donuts.out .odc-donut-total-amt, .bgt-donuts.out .odc-donut-total-amt * { color: var(--finance-expense); }
 .bgt-donuts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
 @media (max-width: 760px) { .bgt-donuts-row { grid-template-columns: 1fr; } }
-.bgt-balance { gap: 14px; }
+
 /* Match the recessed well background of the donut cards above them. */
-.bgt-balance .odc-stat { background: var(--mud-palette-background); }
-@media (max-width: 720px) { .bgt-balance { grid-template-columns: 1fr 1fr; } }
 
 .bgt-items { display: flex; flex-direction: column; }
 .bgt-group { display: flex; flex-direction: column; }
@@ -590,17 +533,6 @@ html, body, #root {
   font: 400 12px/1 var(--font-sans);
 }
 
-/* inline add-item form */
-.bgt-additem {
-  margin: 8px 14px 12px; padding: 14px;
-  border: 1px solid var(--mud-palette-divider); border-radius: 10px;
-  background: var(--mud-palette-surface);
-}
-.bgt-additem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.bgt-additem .field input, .bgt-additem .multiselect-trigger { background-color: var(--mud-palette-background); }
-.bgt-additem-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
-
-
 /* ---------- Accounts list ---------- */
 .acct-list { display: flex; flex-direction: column; gap: 12px; }
 
@@ -621,22 +553,8 @@ html, body, #root {
 .acct-name-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .acct-name-row .chip { flex-shrink: 0; }
 .acct-name { font: 500 16px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.acct-desc { font: 400 13px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.acct-tags {
-  display: flex; align-items: center; gap: 7px; flex-wrap: nowrap; white-space: nowrap;
-  font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
-  margin-top: 2px;
-}
-.acct-type { color: var(--mud-palette-text-secondary); }
-.acct-dot { opacity: 0.4; }
 
 .acct-figures { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; white-space: nowrap; }
-.acct-balance { font: 500 22px/1 var(--font-mono); }
-.acct-delta { font: 400 12px/1 var(--font-mono); }
-.acct-counts { display: inline-flex; gap: 12px; font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.acct-counts span { display: inline-flex; align-items: center; gap: 4px; }
-.acct-counts .material-icons { opacity: 0.65; }
-.acct-counts .acct-count-glyph { font-size: 15px; line-height: 1; font-weight: 600; opacity: 0.65; }
 
 .acct-controls { display: flex; align-items: center; gap: 2px; }
 .acct-expand {
@@ -684,7 +602,7 @@ html, body, #root {
    reason is reachable by keyboard instead of skipped. */
 .acct-menu-item[aria-disabled="true"], .acct-menu-item[aria-disabled="true"] .material-icons { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
 .acct-menu-item[aria-disabled="true"]:hover { background: transparent; }
-.acct-menu-note { margin: 0; padding: 0 10px 8px 39px; max-width: 268px; font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
 /* Trailing affordance icon — pushed to the right edge, revealed on row hover/focus. */
 .acct-menu-item-trail { margin-left: auto; opacity: 0; transition: opacity 120ms ease; }
 .acct-menu-item:hover .acct-menu-item-trail,
@@ -723,8 +641,7 @@ html, body, #root {
 .multiselect-item.ms-clear { color: var(--mud-palette-text-secondary); }
 
 /* single-select (custom Select): leading tick slot + selected tint */
-.ms-tick { width: 16px; height: 16px; flex: none; display: flex; align-items: center; justify-content: center; }
-.ms-tick .material-icons { color: var(--mud-palette-primary); }
+
 .multiselect-item.selected { color: var(--mud-palette-primary); }
 
 /* date trigger: calendar glyph + placeholder tone */
@@ -770,21 +687,9 @@ html, body, #root {
 .dp-foot-btn.clear { color: var(--mud-palette-text-secondary); }
 
 /* account overview charts (donuts folded into the header card) */
-.acct-overview { display: grid; grid-template-columns: 1fr 1px 1fr; gap: 28px; align-items: start; }
+
 /* Asset/liability donuts as two separate recessed wells (mirrors .bgt-donuts). */
-.acct-donuts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
-.acct-donut-card {
-  border: 1px solid var(--mud-palette-divider);
-  background: var(--mud-palette-background);
-  border-radius: 8px; padding: 18px 20px;
-}
-@media (max-width: 760px) { .acct-donuts-row { grid-template-columns: 1fr; } }
-.acct-overview-div { background: var(--mud-palette-divider); width: 1px; align-self: stretch; }
-@media (max-width: 760px) {
-  .acct-overview { grid-template-columns: 1fr; gap: 0; }
-  .acct-overview-div { display: none; }
-  .acct-overview .odc-donut-panel + .odc-donut-panel { border-top: 1px solid var(--mud-palette-divider); padding-top: 18px; margin-top: 18px; }
-}
+
 /* Padding sits on the card itself (no CardBody), so it must out-specify the
    bridge's .odc-card.flush (which zeroes padding on every kit Card). */
 .odc-card.chart-card { padding: 20px; }
@@ -832,7 +737,7 @@ html, body, #root {
   padding: 11px 14px; cursor: pointer;
 }
 .collapsible-head:hover { background: var(--mud-palette-action-default-hover); }
-.collapsible-ic { color: var(--mud-palette-text-secondary); }
+
 .collapsible-title { font: 500 14px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
 .collapsible-count {
   font: 500 11px/1 var(--font-mono); color: var(--mud-palette-text-secondary);
@@ -840,7 +745,6 @@ html, body, #root {
   padding: 3px 7px; border-radius: 999px;
 }
 .collapsible-body { border-top: 1px solid var(--mud-palette-divider-light); }
-/* .empty-line retired — use the DS EmptyLine (.odc-empty.line). */
 
 /* ---------- Empty state (centered surface) ---------- */
 .empty-state {
@@ -851,16 +755,6 @@ html, body, #root {
   text-align: center;
   display: flex; flex-direction: column; align-items: center; gap: 12px;
 }
-.empty-state .es-ic {
-  width: 64px; height: 64px; border-radius: 999px;
-  display: grid; place-items: center;
-  background: rgba(79,215,203,0.10); color: var(--tide-400);
-  margin-bottom: 2px;
-}
-.empty-state.muted-ic .es-ic { background: rgba(255,255,255,0.04); color: var(--mud-palette-text-secondary); }
-.empty-state .es-ttl  { font: 500 17px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
-.empty-state .es-desc { font: 400 13px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 360px; }
-.empty-state .es-actions { margin-top: 8px; }
 
 /* ===========================================================================
    DS-atom compatibility. The shared atoms (Field, Select, Card, EmptyState…)
@@ -872,15 +766,7 @@ html, body, #root {
 
 /* Recess inputs + selects to the form-well color inside edit forms, the
    accounts filter bar, and modals (mirrors the .field input rules above). */
-.acct-edit .odc-input, .acct-edit .odc-select-trigger, .acct-edit .odc-tagms-control,
-.acct-edit .odc-dp-trigger, .acct-edit .odc-ms-trigger,
-.acct-filter-bar .odc-input, .acct-filter-bar .odc-select-trigger,
-.acct-filter-bar .odc-sortsel-trigger, .acct-filter-bar .odc-sortsel-dir,
-.aam-body .odc-input, .aam-body .odc-select-trigger, .aam-body .odc-tagms-control,
-.aam-body .odc-dp-trigger, .aam-body .odc-ms-trigger,
-.odc-modal-body .odc-input, .odc-modal-body .odc-select-trigger,
-.bgt-edit-row .odc-select-trigger,
-.bgt-additem .odc-input, .bgt-additem .odc-select-trigger { background-color: var(--mud-palette-background); }
+.acct-edit .odc-input, .acct-edit .odc-select-trigger, .acct-edit .odc-tagms-control, .acct-edit .odc-dp-trigger, .acct-edit .odc-ms-trigger, .acct-filter-bar .odc-input, .acct-filter-bar .odc-select-trigger, .acct-filter-bar .odc-sortsel-trigger, .acct-filter-bar .odc-sortsel-dir, .aam-body .odc-input, .aam-body .odc-select-trigger, .aam-body .odc-tagms-control, .aam-body .odc-dp-trigger, .aam-body .odc-ms-trigger, .odc-modal-body .odc-input, .odc-modal-body .odc-select-trigger, .bgt-edit-row .odc-select-trigger { background-color: var(--mud-palette-background); }
 
 /* Compact selects inside the analyze-file candidate grid. */
 .fan-cell .odc-select-trigger { box-sizing: border-box; height: 34px; padding: 0 9px; font-size: 13px; background-color: var(--mud-palette-surface); }
@@ -896,21 +782,11 @@ html, body, #root {
 }
 
 /* file rows */
-.file-list { display: flex; flex-direction: column; }
-.file-row {
-  display: grid; grid-template-columns: 32px minmax(0,1fr) auto 72px 112px auto;
-  gap: 12px; align-items: center;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--mud-palette-divider-light);
-}
-.file-row:last-child { border-bottom: none; }
+
 .file-ic { width: 32px; height: 32px; border-radius: 6px; display: grid; place-items: center; background: var(--mud-palette-action-disabled-background); color: var(--mud-palette-text-secondary); }
 .file-name { font: 400 13px/1.3 var(--font-mono); color: var(--mud-palette-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.file-meta { font: 400 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); text-align: right; }
+
 /* Action menu trigger reveals on row hover (matches the budget item rows) */
-.file-row .acct-menu { opacity: 0; transition: opacity .12s ease; }
-.file-row:hover .acct-menu,
-.file-row .acct-menu:focus-within { opacity: 1; }
 
 /* inline edit form */
 /* The read-only detail panel uses the deep-recess background so its surface-tiles
@@ -1020,7 +896,7 @@ html, body, #root {
 
 /* Title column fills the width up to the close button, so the sub wraps only as
    it nears the × — a generous measure cap keeps the wide dialogs readable. */
-.aam-titles { flex: 1; min-width: 0; }
+
 .aam-title { font: 500 18px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
 .aam-sub   { font: 400 12.5px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 4px; max-width: 58ch; }
 .aam-x {
@@ -1067,21 +943,13 @@ html, body, #root {
 .aam-group-pill.liability { background: oklch(0.72 0.16 22 / 0.16); color: var(--coral-500); }
 
 /* ---- account-type picker ---- */
-.aam-type-trigger.has-error { border-color: var(--mud-palette-error); }
-.aam-type-current { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 auto; }
-.aam-type-current > span:not(.aam-type-ic) { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .aam-type-ic {
   flex: none; display: grid; place-items: center;
   width: 30px; height: 30px; border-radius: 7px;
 }
 .aam-type-ic.sm { width: 22px; height: 22px; border-radius: 6px; }
 
-.aam-type-pop { max-height: 340px; overflow-y: auto; padding: 6px; }
-.aam-type-group {
-  font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase;
-  color: var(--mud-palette-text-secondary);
-  padding: 8px 10px 6px;
-}
 .aam-type-item {
   display: flex; align-items: center; gap: 11px; width: 100%;
   padding: 7px 10px; border: none; border-radius: 7px;
@@ -1090,7 +958,7 @@ html, body, #root {
 }
 .aam-type-item:hover { background: var(--mud-palette-action-default-hover); }
 .aam-type-item.selected { background: var(--mud-palette-action-default-hover); }
-.aam-type-lab { flex: 1; min-width: 0; }
+
 .aam-type-check { color: var(--mud-palette-primary); }
 
 /* ============================================================
@@ -1116,36 +984,6 @@ html, body, #root {
 .afm-meta { margin-top: 10px; }
 .afm-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-/* ---- Edit-file modal: read-only context strip + full-width type picker ---- */
-.efm-context {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px; border-radius: 10px;
-  background: var(--mud-palette-background);
-  border: 1px solid var(--mud-palette-lines-default);
-}
-.efm-context-ic {
-  flex: none; display: grid; place-items: center;
-  width: 40px; height: 40px; border-radius: 9px;
-}
-.efm-context-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.efm-context-acct {
-  font: 600 13.5px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
-}
-.efm-context-facts { font-size: 12px; color: var(--mud-palette-text-secondary); }
-
-.efm-type { position: relative; }
-.efm-type-trigger {
-  gap: 10px;
-  border-radius: 8px;
-}
-.efm-type-ic {
-  flex: none; display: grid; place-items: center;
-  width: 22px; height: 22px; border-radius: 6px;
-}
-.efm-type-lab { flex: 1 1 auto; min-width: 0; text-align: left; font: var(--fw-medium) 14px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.efm-type-trigger .chev { margin-left: auto; }
-.efm-type-pop { padding: 6px; }
-
 /* ============================================================
    Add transaction modal (.atm-*) — built on the shared .aam-* shell
    ============================================================ */
@@ -1153,8 +991,6 @@ html, body, #root {
    (.odc-form-grid) to take advantage of the width; the modal grows to 880px and
    collapses to one column (and shrinks to fit) on smaller viewports. */
 .atm-dialog { max-width: 880px; }
-/* The system marks REQUIRED only (.odc-field-req) — nothing is labelled
-   "Optional", so the old .atm-opt marker is gone. */
 
 /* ---- Amount block: the hero of the form ---- */
 .atm-amount-block { display: flex; flex-direction: column; gap: 10px; }
@@ -1187,15 +1023,7 @@ html, body, #root {
 }
 .atm-amount:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); }
 .atm-amount.has-error { border-color: var(--mud-palette-error); }
-.atm-amount-sign {
-  font: 600 30px/1 var(--font-sans);
-  color: var(--mud-palette-text-secondary); width: 18px; text-align: center;
-}
-.atm-amount.expense .atm-amount-sign { color: oklch(0.74 0.16 22); }
-.atm-amount.income  .atm-amount-sign { color: oklch(0.80 0.15 150); }
-.atm-amount-cur {
-  font: 500 22px/1 var(--font-sans); color: var(--mud-palette-text-secondary);
-}
+
 .atm-amount input {
   flex: 1; min-width: 0; border: none; outline: none; background: transparent;
   font: 600 30px/1 var(--font-mono, var(--font-sans));
@@ -1205,7 +1033,7 @@ html, body, #root {
 .atm-amount input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
 
 /* ---- Account picker: current value tile + locked summary ---- */
-.atm-acct-current, .atm-cp-current {
+.atm-acct-current {
   display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;
 }
 .atm-acct-name {
@@ -1233,75 +1061,8 @@ html, body, #root {
 }
 .atm-locked-pill .material-icons { font-size: 13px; }
 
-/* ---- Contact combobox ---- */
-.atm-cp-avatar {
-  flex: none; display: grid; place-items: center;
-  width: 26px; height: 26px; border-radius: 7px;
-  background: oklch(0.72 0.16 295 / 0.16); color: oklch(0.72 0.16 295);
-}
-.atm-cp-avatar .material-icons { font-size: 15px; }
-/* Selected-state chip inside the trigger fits within the control line-box so the
-   trigger matches the standard control height (≈42px) when a value is chosen. */
-.multiselect-trigger .atm-cp-avatar { width: 22px; height: 22px; border-radius: 6px; }
-.atm-cp-avatar.add { background: var(--mud-palette-primary-hover, oklch(0.79 0.115 188 / 0.16)); color: var(--mud-palette-primary); }
-.atm-cp-name {
-  font: 500 13.5px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.atm-cp-type {
-  flex: none; margin-left: auto;
-  font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase;
-  color: var(--mud-palette-text-secondary);
-  padding: 4px 8px; border-radius: 999px;
-  background: var(--mud-palette-action-default-hover);
-}
-.atm-cp-clear {
-  flex: none; display: grid; place-items: center;
-  width: 26px; height: 26px; border-radius: 999px; cursor: pointer;
-  color: var(--mud-palette-text-secondary);
-  transition: background .12s ease, color .12s ease;
-}
-.atm-cp-clear:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
-.atm-cp-pop { padding: 0; max-height: 320px; display: flex; flex-direction: column; }
-.atm-cp-search {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px; border-bottom: 1px solid var(--mud-palette-divider-light);
-  color: var(--mud-palette-text-secondary);
-}
-.atm-cp-search input {
-  flex: 1; border: none; outline: none; background: transparent;
-  font: 400 13.5px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
-}
-.atm-cp-list { overflow-y: auto; padding: 6px; }
-.atm-cp-list .aam-type-item { gap: 10px; }
-.atm-cp-create .aam-type-lab { color: var(--mud-palette-primary); font-weight: 500; }
-.atm-cp-empty {
-  padding: 16px 12px; text-align: center;
-  font: 400 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);}
-
 /* ---- Advanced (status + ids) ---- */
-.atm-adv {
-  border: 1px solid var(--mud-palette-divider);
-  border-radius: 10px; background: var(--mud-palette-background);
-  overflow: hidden;
-}
-.atm-adv-toggle {
-  display: flex; align-items: center; gap: 8px; width: 100%; white-space: nowrap;
-  padding: 12px 14px; border: none; background: transparent; cursor: pointer;
-  font: 500 13.5px/1 var(--font-sans); color: var(--mud-palette-text-primary);
-  text-align: left;
-}
-.atm-adv-toggle .chev { color: var(--mud-palette-text-secondary); transition: transform .16s ease; }
-.atm-adv-toggle .chev.open { transform: rotate(180deg); }
-.atm-adv-hint {
-  margin-left: auto; font: 400 11.5px/1 var(--font-sans);
-  color: var(--mud-palette-text-secondary);
-}
-.atm-adv-body {
-  display: flex; flex-direction: column; gap: 14px;
-  padding: 4px 14px 16px;
-  border-top: 1px solid var(--mud-palette-divider-light);
-}
+
 .atm-status-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .atm-status-chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -1323,8 +1084,7 @@ html, body, #root {
   max-width: 940px;
   height: min(88vh, 920px);
   display: flex; flex-direction: column;
-  overflow: hidden;            /* stage scrolls internally; nothing escapes here */
-}
+  overflow: hidden;}
 
 /* ---- Header ---- */
 .fvm-head {
@@ -1594,7 +1354,7 @@ html, body, #root {
   background: rgba(79,215,203,0.07); border: 1px solid rgba(79,215,203,0.35);
 }
 .fan-consent-check:hover { background: rgba(79,215,203,0.10); }
-.fan-consent-check .fan-check { margin-top: 1px; flex: none; position: relative; }
+
 .fan-consent-check .odc-check { align-items: flex-start; }
 .fan-consent-check .odc-check-box { margin-top: 1px; }
 .fan-consent-text { font: 400 13px/1.55 var(--font-sans); color: var(--mud-palette-text-primary); }
@@ -1678,9 +1438,6 @@ html, body, #root {
 /* cells */
 .fan-cell { min-width: 0; }
 .fan-cell.ro { font: 400 13px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.fan-ro-text { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fan-ro-empty { color: var(--mud-palette-text-disabled); }
-.fan-ref { font-size: 11.5px; color: var(--mud-palette-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 
 /* editable inputs — match the budget batch-edit input */
 .fan-input {
@@ -1745,32 +1502,13 @@ html, body, #root {
 .fan-cell .odc-tagms-chip { font-size: 11.5px; }
 
 /* checkbox (custom, tide) */
-.fan-check { display: inline-grid; place-items: center; cursor: pointer; }
-.fan-check input { position: absolute; opacity: 0; width: 0; height: 0; }
-.fan-check-box {
-  width: 18px; height: 18px; border-radius: 4px;
-  border: 1.5px solid var(--mud-palette-lines-inputs);
-  display: grid; place-items: center; color: transparent;
-  transition: background .12s ease, border-color .12s ease, color .12s ease;
-}
-.fan-check input:checked + .fan-check-box {
-  background: var(--mud-palette-primary); border-color: var(--mud-palette-primary); color: var(--ink-950);
-}
-.fan-check input:indeterminate + .fan-check-box {
-  background: var(--mud-palette-primary); border-color: var(--mud-palette-primary); color: var(--ink-950);
-}
-.fan-check input:indeterminate + .fan-check-box::after {
-  content: ''; width: 9px; height: 2px; background: var(--ink-950); border-radius: 1px; position: absolute;
-}
-.fan-check input:indeterminate + .fan-check-box .material-icons { display: none; }
-.fan-check input:focus-visible + .fan-check-box { outline: 2px solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
 
 /* confidence meter (read-only) */
 .fan-conf-cell { display: flex; }
 /* Row cells align to the top (align-items:start) so multi-line match cells stack
    cleanly; the checkbox and confidence meter must center on the 34px first-line
    control height so they line up with the input text, not the cell top. */
-.fan-row .fan-check { height: 34px; align-self: start; }
+
 .fan-row .odc-check { height: 34px; align-self: start; justify-content: center; }
 .fan-row-head .odc-check { justify-content: center; }
 .fan-row .fan-conf-cell { min-height: 34px; align-items: center; }
@@ -2052,7 +1790,7 @@ html, body, #root {
 .acct-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 /* Section content sits flush with its divider label — these wrappers carried
    the old Collapsible body's inner padding. */
-.odc-record-body .trm-section, .odc-record-body .est-section { padding: 0; }
+.odc-record-body .est-section { padding: 0; }
 .odc-smarttags.bare { padding: 0; }
 /* Smart tags reads as a card like the other section contents. */
 .odc-record-body .odc-smarttags.bare {

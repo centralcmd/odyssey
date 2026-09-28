@@ -53,12 +53,6 @@ const AccCardHead = ({ icon, tone, title, sub }) => (
     </div>
   </div>
 );
-const AccLocked = ({ label, value, mono }) => (
-  <div className="acc-locked">
-    <span className="acc-locked-label"><MIcon name="lock" size={13} />{label}</span>
-    <span className={`acc-locked-val ${mono ? 'mono' : ''}`}>{value}</span>
-  </div>
-);
 
 /* =============================================================
    OVERVIEW

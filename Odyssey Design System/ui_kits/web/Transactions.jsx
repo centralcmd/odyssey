@@ -9,10 +9,6 @@ const TXN_STATUS_OPTIONS = [
   { value: 'Approved', label: 'Approved' },
   { value: 'Flagged', label: 'Flagged' },
 ];
-const TXN_DIR_OPTIONS = [
-  { value: 'expense', label: 'Money out · expense' },
-  { value: 'income', label: 'Money in · income' },
-];
 
 /* Contact is the leading segment of the description (e.g. "Spotify · Monthly"). */
 const txnContact = (t) => (t.desc.split(' · ')[0] || '').trim();

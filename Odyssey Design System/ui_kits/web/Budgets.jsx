@@ -14,10 +14,6 @@
 const H = window.OdysseyHelpers;
 const D = window.OdysseyData;
 
-const BUDGET_TONE = window.TONE_MAP;
-
-const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'NOK', 'SEK', 'JPY', 'CAD'].map(c => ({ value: c, label: c }));
-
 /* Donut palettes — share chroma/lightness with the Accounts allocation rings.
    Used by the per-budget planned-income / planned-expense allocation donuts
    inside each expanded budget's detail view. */
