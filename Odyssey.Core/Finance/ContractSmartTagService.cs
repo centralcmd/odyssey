@@ -15,9 +15,10 @@ namespace Odyssey.Core.Finance;
 /// pairing.
 ///
 /// <para>
-/// <strong>Nothing here joins contracts to transactions.</strong> The filter resolves client-side by
-/// composing this endpoint with <c>GET /api/transactions?tagIds=…</c>, which keeps transaction data
-/// behind <c>transactions.read</c> structurally rather than by a check (§3.3, §7.3).
+/// This service manages the watchlist only. The transactions it selects are resolved server-side by
+/// ContractSmartTagTransactionService (issue #226), which scopes the tag match to the
+/// contract's term and to merchants that are contract parties — rules that would otherwise have to be
+/// copied into the client.
 /// </para>
 /// </summary>
 public class ContractSmartTagService

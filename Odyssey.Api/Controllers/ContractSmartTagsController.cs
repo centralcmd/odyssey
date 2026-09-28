@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
+using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
 
 namespace Odyssey.Api.Controllers;
@@ -26,10 +27,17 @@ namespace Odyssey.Api.Controllers;
 public class ContractSmartTagsController : ControllerBase
 {
     private readonly ContractSmartTagService contractSmartTagService;
+    private readonly ContractSmartTagTransactionService smartTagTransactions;
+    private readonly IUserDisplayNameResolver displayNames;
 
-    public ContractSmartTagsController(ContractSmartTagService contractSmartTagService)
+    public ContractSmartTagsController(
+        ContractSmartTagService contractSmartTagService,
+        ContractSmartTagTransactionService smartTagTransactions,
+        IUserDisplayNameResolver displayNames)
     {
         this.contractSmartTagService = contractSmartTagService;
+        this.smartTagTransactions = smartTagTransactions;
+        this.displayNames = displayNames;
     }
 
     [HttpGet("{contractId}/smart-tags", Name = "GetContractSmartTags")]
@@ -49,6 +57,38 @@ public class ContractSmartTagsController : ControllerBase
             return this.NotFoundProblem($"Contract ID {contractId} not found.");
 
         return Ok(tags);
+    }
+
+    /// <summary>
+    /// The contract-scoped smart-tag match (issue #226). Both claims are required: the scope is contract
+    /// data and the payload is transactions, so transaction data is never reachable under
+    /// <c>contracts.read</c> alone — two stacked policies AND-combine.
+    /// </summary>
+    [HttpGet("{contractId}/smart-tag-transactions", Name = "GetContractSmartTagTransactions")]
+    [Authorize(Policy = PermissionClaims.ContractsRead)]
+    [Authorize(Policy = PermissionClaims.TransactionsRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ContractSmartTagTransactionsResult))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "List the transactions a contract's smart tags match.",
+        Description = @"A transaction matches when it carries one of the contract's smart tags, is dated
+                        inside the contract's term, and its merchant is a contact party on the contract.
+                        Paged, searchable and sortable with the transaction list's keys. The summary
+                        totals the whole matched set per currency, independent of search and paging.
+                        A structurally empty result is a 200 with scope.emptyReason set.")]
+    public async Task<IActionResult> GetContractSmartTagTransactions(
+        [FromRoute(Name = "contractId")] Guid contractId,
+        [FromQuery] ContractSmartTagTransactionsQueryParams query,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await smartTagTransactions.ListAsync(contractId, query, cancellationToken);
+        if (result is null)
+            return this.NotFoundProblem($"Contract ID {contractId} not found.");
+
+        await displayNames.EnrichFileAttributionAsync(User, result.Page.Items, cancellationToken);
+        return Ok(result);
     }
 
     [HttpPost("{contractId}/smart-tags/{tagId}", Name = "AddContractSmartTag")]

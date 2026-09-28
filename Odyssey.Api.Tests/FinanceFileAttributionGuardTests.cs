@@ -106,6 +106,8 @@ public sealed class FinanceFileAttributionGuardTests
                 "AccountController",
                 "BudgetController",
                 "ContractController",
+                // Issue #226: the contract-scoped smart-tag match returns ExistingTransactions.
+                "ContractSmartTagsController",
                 "PropertyFilesController",
                 "TaxStatementController",
                 "TransactionController",

@@ -168,3 +168,11 @@ public sealed class TransactionTagsQueryParams : QueryParams<TransactionTagSortB
 {
     public ArchivalStatus? Status { get; set; }
 }
+
+/// <summary>
+/// Contract smart-tag transactions query (issue #226): search, sort and paging only. There is
+/// deliberately no tag, merchant or date filter — the scope comes from the contract, never the caller.
+/// </summary>
+public sealed class ContractSmartTagTransactionsQueryParams : QueryParams<TransactionSortBy>
+{
+}

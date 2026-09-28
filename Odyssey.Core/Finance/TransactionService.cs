@@ -27,26 +27,7 @@ public class TransactionService
         TransactionsQueryParams query,
         CancellationToken cancellationToken = default)
     {
-        var q = context.Transactions
-            .AsNoTracking()
-            .Include(transaction => transaction.Account)
-            .Include(transaction => transaction.TransactionTags)
-            .Include(transaction => transaction.TransactionFiles)
-            .ThenInclude(tf => tf.FileMetadata)
-            .AsSplitQuery()
-            .AsQueryable();
-
-        var term = ListQuery.NormalizeSearch(query.Search);
-        if (term is not null)
-        {
-            var pattern = ListQuery.ContainsPattern(term);
-            var contactMatchIds = (await contactLookup.SearchIdsByNameAsync(term, cancellationToken)).ToHashSet();
-            q = q.Where(t =>
-                EF.Functions.Like(t.Description, pattern) ||
-                (t.Account != null && EF.Functions.Like(t.Account.Name, pattern)) ||
-                (t.ContactId != null && contactMatchIds.Contains(t.ContactId.Value)) ||
-                t.TransactionTags.Any(tag => EF.Functions.Like(tag.Name, pattern)));
-        }
+        var q = context.Transactions.AsQueryable();
 
         if (query.AccountIds is { Length: > 0 } accountIds)
         {
@@ -86,8 +67,48 @@ public class TransactionService
             q = q.Where(t => t.TimeStamp <= to);
         }
 
-        var ascending = ListQuery.Ascending(query.SortDir, naturalDefaultAscending: query.SortBy is TransactionSortBy.Desc or TransactionSortBy.Contact or TransactionSortBy.Account or TransactionSortBy.Status);
-        IOrderedQueryable<Transaction> sorted = query.SortBy switch
+        return await ListFilteredAsync(
+            q, query.Search, query.SortBy, query.SortDir, query.Offset, query.Limit, cancellationToken);
+    }
+
+    /// <summary>
+    /// The transaction list pipeline shared by every paged transaction read (issue #226 §3.1): search,
+    /// allowlisted sort, paging, the <c>Include</c> shape, the projection and the contact enrichment,
+    /// over a query the caller has already scoped. There is ONE projection, so a second endpoint built
+    /// on this cannot drift from <c>GET /api/transactions</c> in shape, search semantics or ordering.
+    /// </summary>
+    internal async Task<PagedResult<ExistingTransaction>> ListFilteredAsync(
+        IQueryable<Transaction> filtered,
+        string? search,
+        TransactionSortBy? sortBy,
+        SortDirection? sortDir,
+        int offset,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var q = filtered
+            .AsNoTracking()
+            .Include(transaction => transaction.Account)
+            .Include(transaction => transaction.TransactionTags)
+            .Include(transaction => transaction.TransactionFiles)
+            .ThenInclude(tf => tf.FileMetadata)
+            .AsSplitQuery()
+            .AsQueryable();
+
+        var term = ListQuery.NormalizeSearch(search);
+        if (term is not null)
+        {
+            var pattern = ListQuery.ContainsPattern(term);
+            var contactMatchIds = (await contactLookup.SearchIdsByNameAsync(term, cancellationToken)).ToHashSet();
+            q = q.Where(t =>
+                EF.Functions.Like(t.Description, pattern) ||
+                (t.Account != null && EF.Functions.Like(t.Account.Name, pattern)) ||
+                (t.ContactId != null && contactMatchIds.Contains(t.ContactId.Value)) ||
+                t.TransactionTags.Any(tag => EF.Functions.Like(tag.Name, pattern)));
+        }
+
+        var ascending = ListQuery.Ascending(sortDir, naturalDefaultAscending: sortBy is TransactionSortBy.Desc or TransactionSortBy.Contact or TransactionSortBy.Account or TransactionSortBy.Status);
+        IOrderedQueryable<Transaction> sorted = sortBy switch
         {
             TransactionSortBy.Amount => ascending ? q.OrderBy(t => t.Amount) : q.OrderByDescending(t => t.Amount),
             TransactionSortBy.Desc => ascending ? q.OrderBy(t => t.Description) : q.OrderByDescending(t => t.Description),
@@ -105,7 +126,7 @@ public class TransactionService
         };
         q = sorted.ThenBy(t => t.TransactionId);
 
-        var result = await q.ToPagedResultAsync(query.Offset, query.Limit, t => t.Adapt<ExistingTransaction>(), cancellationToken);
+        var result = await q.ToPagedResultAsync(offset, limit, t => t.Adapt<ExistingTransaction>(), cancellationToken);
         await EnrichContactsAsync(result.Items, cancellationToken);
         return result;
     }
