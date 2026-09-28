@@ -33,7 +33,10 @@
 .odc-chip-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
 .odc-chip.income  { color: var(--finance-income);  background: var(--finance-income-soft); }
 .odc-chip.expense { color: var(--finance-expense); background: var(--finance-expense-soft); }
-.odc-chip.pending { color: var(--pending-text);    background: var(--finance-pending-soft); }
+/* Text on the pending tint takes --warning-text, not the design system's --pending-text: since the light
+   --finance-pending moved to amber-600 its tint darkened, and amber-700 on it measures ~4.4:1 on white
+   (under WCAG 1.4.3's 4.5:1). amber-800 clears ~6.2:1; dark resolves both to amber-500 either way. */
+.odc-chip.pending { color: var(--warning-text);    background: var(--finance-pending-soft); }
 .odc-chip.info    { color: var(--info-text);       background: var(--info-soft); }
 .odc-chip.tag     { color: var(--tag-text);        background: var(--tag-soft); }
 /* The one chip a LINKED RECORD wears — contacts, accounts, albums — as against .tag's coloured
@@ -41,7 +44,7 @@
    supplies no ChipTemplate renders through this. */
 .odc-chip.entity  { color: var(--mud-palette-text-primary); background: transparent; border: 1px solid var(--mud-palette-divider); }
 .odc-chip.entity .material-icons { font-size: var(--icon-xs); }
-.odc-chip.warning { color: var(--pending-text);    background: var(--finance-pending-soft); }
+.odc-chip.warning { color: var(--warning-text);    background: var(--finance-pending-soft); }
 .odc-chip.error   { color: var(--finance-expense); background: var(--finance-expense-soft); }
 .odc-chip.outline { color: var(--mud-palette-text-secondary); background: transparent; border: 1px solid var(--mud-palette-divider); }
 /* Compact chip + the CoverageStatusChip's muted trailing detail segment
@@ -1000,7 +1003,7 @@
   background: var(--finance-pending-soft);
   border: 1px solid color-mix(in srgb, var(--finance-pending) 32%, transparent);
   /* AA body text on the amber-soft fill — text-secondary is too light here (verified in PR #268). */
-  color: var(--pending-text);
+  color: var(--warning-text);
 }
 /* Two-row, container-less form: a status row ("Suggested by AI · 42%") over an
    action row ("+ Use <name>" + dismiss), so a narrow cell shows the full name
@@ -2543,7 +2546,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .ins-status { display: inline-flex; align-items: center; gap: 4px; font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
 .ins-status .material-icons { font-size: 12px; }
 .ins-status.current  { color: var(--finance-income);  background: var(--finance-income-soft); }
-.ins-status.upcoming { color: var(--pending-text);     background: var(--finance-pending-soft); }
+.ins-status.upcoming { color: var(--warning-text);     background: var(--finance-pending-soft); }
 .ins-status.past     { color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-default-hover); }
 
 /* Inline row actions — reveal on hover */
@@ -3683,7 +3686,7 @@ tr:focus-within > .odc-rowactions.reveal,
     font-size: 0.6875rem; font-weight: 500; line-height: 1.2; white-space: nowrap;
 }
 .acct-flag .material-icons { font-size: 13px; }
-.acct-flag.warning { background: var(--finance-pending-soft); color: var(--pending-text); }
+.acct-flag.warning { background: var(--finance-pending-soft); color: var(--warning-text); }
 .acct-flag.error   { background: var(--finance-expense-soft); color: var(--finance-expense); }
 .acct-flag.info    { background: color-mix(in srgb, var(--mud-palette-info) 16%, transparent); color: var(--mud-palette-info); }
 

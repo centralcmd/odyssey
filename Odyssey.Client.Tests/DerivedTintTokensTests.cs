@@ -80,6 +80,36 @@ public sealed class DerivedTintTokensTests
         Assert.All(derived, token => Assert.Null(Declaration(outside, token)));
     }
 
+    /// <summary>
+    /// Amber-700 (<c>--pending-text</c>) on the derived pending tint measures ~4.4:1 on white — under
+    /// WCAG 1.4.3's 4.5:1 — once the light <c>--finance-pending</c> is amber-600. Text on that tint takes
+    /// <c>--warning-text</c> (amber-800, ~6.2:1). Glyphs and dots may keep <c>--finance-pending</c>.
+    /// </summary>
+    [Fact]
+    public void Text_on_the_pending_tint_never_uses_pending_text()
+    {
+        var files = Directory.EnumerateFiles(ClientSource.Root, "*.css", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .ToList();
+        Assert.NotEmpty(files);
+
+        var offenders = new List<string>();
+        foreach (var file in files)
+        {
+            var css = Regex.Replace(File.ReadAllText(file), @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
+            foreach (Match rule in Regex.Matches(css, @"(?<selector>[^{}]+)\{(?<body>[^}]*)\}"))
+            {
+                var body = rule.Groups["body"].Value;
+                if (Regex.IsMatch(body, @"background(?:-color)?\s*:\s*var\(--finance-pending-soft\)")
+                    && Regex.IsMatch(body, @"(?<![-\w])color\s*:\s*var\(--pending-text\)"))
+                    offenders.Add($"{ClientSource.Relative(file)}: {rule.Groups["selector"].Value.Trim()}");
+            }
+        }
+
+        Assert.Empty(offenders);
+    }
+
     private static List<(string Token, string Value)> DerivedBlock()
     {
         var block = Regex.Match(AppCss(), @":root,\s*\[data-theme\]\s*\{(?<body>[^}]*)\}");

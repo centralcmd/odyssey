@@ -65,6 +65,12 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
 - **Every `*-soft` / `*-border` tint is derived**, not written: `color-mix` of its base colour at the
   theme's `--tint-soft` / `--tint-border` strength (`app.css`, "Derived tints"). Change the base or the
   strength, never the tint, and don't reintroduce an `rgba()` literal for one.
+- **Text on the pending tint is `--warning-text`, never `--pending-text`.** With the light
+  `--finance-pending` at amber-600, amber-700 (`--pending-text`) on `--finance-pending-soft` measures
+  ~4.4:1 on white — under WCAG 1.4.3's 4.5:1 — while amber-800 (`--warning-text`) clears ~6.2:1. This
+  deliberately diverges from the design system's chip rules. `--pending-text` stays right for text on a
+  plain surface, and `--finance-pending` for fills, dots and glyphs. `DerivedTintTokensTests` fails on the
+  pairing anywhere in the client CSS.
 - **`--rec` / `--rec-soft` are component API, not tokens.** `OdsRecordCard` / `OdsRecordBody` publish
   them from the record's type colour and nothing declares a default, so every use site writes the
   brand fallback: `var(--rec, var(--brand-text))`,
