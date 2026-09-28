@@ -28,6 +28,12 @@
     Sub is a RenderFragment, so a consumer can hand it note sentences rather than one
     caption string (the DS contract already types sub as a node).
 
+    ShowFigure / Legend / LegendLabel move the figure out of the head into a StepChart-style
+    ledger row under the plot; ControlsEnd puts controls (a settings button) above the figure.
+    Hovering the plot pins a readout above the nearest point: its label, kind, value and the
+    change from the previous point. The readout is pointer-only — TextEquivalent is the
+    non-pointer route to the same figures.
+
     The parameters and the plot geometry live in OdsLineChart.razor.cs.
 
     Pure SVG + tokens (default stroke --chart-1) so it re-themes light/dark. Styled by
@@ -46,11 +52,18 @@
                 <div class="odc-lc-sub">@Sub</div>
             }
         </div>
-        @if (Figure is not null || _pts.Count > 0)
+        @if (ControlsEnd is not null || (ShowFigure && (Figure is not null || _pts.Count > 0)))
         {
             <div class="odc-lc-figure">
-                <div class="odc-lc-num">@(Figure ?? Format((decimal)_pts[^1].Value))</div>
-                @if (_deltaOk)
+                @if (ControlsEnd is not null)
+                {
+                    <div class="odc-lc-controls end">@ControlsEnd</div>
+                }
+                @if (ShowFigure && (Figure is not null || _pts.Count > 0))
+                {
+                    <div class="odc-lc-num">@(Figure ?? Format((decimal)_pts[^1].Value))</div>
+                }
+                @if (ShowFigure && _deltaOk)
                 {
                     var delta = _pts[^1].Value - _pts[0].Value;
                     <div class="odc-lc-delta @(delta >= 0 ? "income" : "expense")">
@@ -69,6 +82,7 @@
     }
     else
     {
+        <div class="odc-lc-plot" @onmouseleave="@(() => _hover = null)">
         <svg class="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
              role="img" aria-label="@EffectiveAriaLabel">
             <g stroke="var(--chart-grid)" stroke-width="1">
@@ -151,33 +165,60 @@
                         break;
                 }
             }
+            @if (_hover is { } ring && ring < _pts.Count)
+            {
+                <circle class="odc-lc-hring" cx="@Fmt(Sx(ring))" cy="@Fmt(Sy(_pts[ring].Value))" r="7.5" stroke="@Color" />
+            }
+            @* Hover targets — full-height columns, so a point is found by x alone. *@
+            @for (var i = 0; i < _pts.Count; i++)
+            {
+                var index = i;
+                <rect class="odc-lc-hit" x="@Fmt(Sx(i) - HitHalfWidth)" y="@Fmt(YTop - 14)"
+                      width="@Fmt(HitHalfWidth * 2)" height="@Fmt(YBot - YTop + 14)"
+                      @onmouseenter="@(() => _hover = index)" />
+            }
         </svg>
-
-        @if (MarkLegend && _anyMarked)
+        @if (_hover is { } h && h < _pts.Count)
         {
-            <div class="odc-lc-marks">
-                @if (_pts.Any(p => p.Kind == OdsLinePointKind.Partial))
+            var p = _pts[h];
+            var left = Sx(h) / 10;
+            var d = h > 0 ? p.Value - _pts[h - 1].Value : 0;
+            <div class="@($"odc-lc-tip{TipEdge(left)}")" style="@TipStyle(left, Sy(p.Value) / 252 * 100)" role="status">
+                <div class="odc-lc-tip-k">@p.Label@(p.Kind == OdsLinePointKind.Normal ? "" : $" · {KindLabel(p.Kind)}")</div>
+                <div class="odc-lc-tip-v" style="@($"color:{Color}")">
+                    @Format((decimal)p.Value)
+                    @if (h > 0 && d != 0)
+                    {
+                        <span class="odc-lc-tip-d">@(d > 0 ? "+" : "−")@Format((decimal)Math.Abs(d))</span>
+                    }
+                </div>
+            </div>
+        }
+        </div>
+
+        @* Legend — the StepChart ledger row: swatch · name · value · change. Carries the figure when
+           ShowFigure is off. The marker key joins this row instead of its own. *@
+        @if (Legend)
+        {
+            <div class="odc-sc-legend">
+                <span class="odc-sc-leg">
+                    <span class="odc-sc-swatch" style="@($"background:{Color}")"></span>
+                    <span class="odc-sc-leg-name">@(LegendLabel ?? Title)</span>
+                    <span class="odc-sc-leg-val" style="@($"color:{Color}")">@Format((decimal)_pts[^1].Value)</span>
+                    @if (_pts.Count > 1)
+                    {
+                        <span class="odc-sc-leg-idx">@LegendChange</span>
+                    }
+                </span>
+                @if (MarkLegend && _anyMarked)
                 {
-                    <span class="odc-lc-mark">
-                        <svg width="26" height="10" viewBox="0 0 26 10" aria-hidden="true">
-                            <line x1="0" y1="5" x2="26" y2="5" stroke="@Color" stroke-width="2" stroke-dasharray="2 5" />
-                            <circle cx="13" cy="5" r="3.6" fill="var(--mud-palette-surface)" stroke="@Color" stroke-width="1.6" />
-                        </svg>
-                        @PartialLabel
-                    </span>
-                }
-                @if (_pts.Any(p => p.Kind == OdsLinePointKind.Revalued))
-                {
-                    <span class="odc-lc-mark">
-                        <svg width="26" height="10" viewBox="0 0 26 10" aria-hidden="true">
-                            <line x1="0" y1="5" x2="26" y2="5" stroke="@Color" stroke-width="2" />
-                            <line x1="13" y1="0" x2="13" y2="10" stroke="@Color" stroke-width="1.6" />
-                            <circle cx="13" cy="5" r="2.6" fill="@Color" />
-                        </svg>
-                        @RevaluedLabel
-                    </span>
+                    @MarkItems
                 }
             </div>
+        }
+        else if (MarkLegend && _anyMarked)
+        {
+            <div class="odc-lc-marks">@MarkItems</div>
         }
 
         @if (TextEquivalent)
@@ -208,3 +249,30 @@
         }
     }
 </div>
+
+@code {
+    private RenderFragment MarkItems => __builder =>
+    {
+        @if (_pts.Any(p => p.Kind == OdsLinePointKind.Partial))
+        {
+            <span class="odc-lc-mark">
+                <svg width="26" height="10" viewBox="0 0 26 10" aria-hidden="true">
+                    <line x1="0" y1="5" x2="26" y2="5" stroke="@Color" stroke-width="2" stroke-dasharray="2 5" />
+                    <circle cx="13" cy="5" r="3.6" fill="var(--mud-palette-surface)" stroke="@Color" stroke-width="1.6" />
+                </svg>
+                @PartialLabel
+            </span>
+        }
+        @if (_pts.Any(p => p.Kind == OdsLinePointKind.Revalued))
+        {
+            <span class="odc-lc-mark">
+                <svg width="26" height="10" viewBox="0 0 26 10" aria-hidden="true">
+                    <line x1="0" y1="5" x2="26" y2="5" stroke="@Color" stroke-width="2" />
+                    <line x1="13" y1="0" x2="13" y2="10" stroke="@Color" stroke-width="1.6" />
+                    <circle cx="13" cy="5" r="2.6" fill="@Color" />
+                </svg>
+                @RevaluedLabel
+            </span>
+        }
+    };
+}

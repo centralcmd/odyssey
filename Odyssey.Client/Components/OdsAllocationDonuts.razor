@@ -1,0 +1,146 @@
+@*
+    OdsAllocationDonuts — the asset / liability pair (Odyssey Design System ·
+    components/AllocationDonuts). Two recessed wells, each a stacked OdsDonut
+    (ring above ledger + total). Used on Accounts (accounts only) and the
+    Dashboard (accounts + owned property at its in-force estimate).
+
+    Plain data in — the caller resolves its records into slices and states
+    anything left out in the sub-line. Slices sort largest-first here and
+    zero values drop; a liability's value may arrive negative (its magnitude is
+    plotted). Either side may be omitted with ShowAssets / ShowLiabilities.
+
+    Amounts carry the money encoding: assets in --finance-income, liabilities in
+    --finance-expense (ledger rows and total).
+
+    Two Blazor-side additions to the design:
+      • AssetsEmpty / LiabilitiesEmpty — when a side has no slices and its text
+        is set, the well keeps its title and sub-line and shows that line
+        instead of an empty ring and a zero total.
+      • AssetsFormat / LiabilitiesFormat — per-side overrides of Format, for a
+        caller whose total row is not the same kind of figure on both sides
+        (the total row receives a null slice, so one shared formatter cannot
+        tell the two wells apart).
+*@
+
+<div class="@RootClass">
+    @if (ShowAssets)
+    {
+        <div class="odc-alloc-card income">
+            @Well(AssetsTitle, AssetsSub, _assets, AssetsTotalLabel, AssetsIcon, AssetColors, AssetsEmpty, AssetsAriaLabel, AssetsFormat ?? Format)
+        </div>
+    }
+    @if (ShowLiabilities)
+    {
+        <div class="odc-alloc-card expense">
+            @Well(LiabilitiesTitle, LiabilitiesSub, _liabilities, LiabilitiesTotalLabel, LiabilitiesIcon, LiabilityColors, LiabilitiesEmpty, LiabilitiesAriaLabel, LiabilitiesFormat ?? Format)
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Asset slices (the design's <c>assets</c>; renamed because <c>ComponentBase.Assets</c> exists).
+    /// Sorted largest-first here; zero values drop.
+    /// </summary>
+    [Parameter] public IReadOnlyList<OdsDonutSlice> AssetSlices { get; set; } = [];
+
+    /// <summary>Liability slices; a value may be negative (its magnitude is plotted).</summary>
+    [Parameter] public IReadOnlyList<OdsDonutSlice> LiabilitySlices { get; set; } = [];
+
+    [Parameter] public string AssetsTitle { get; set; } = "Asset allocation";
+    [Parameter] public string LiabilitiesTitle { get; set; } = "Liability allocation";
+
+    /// <summary>Sub-line — say what is counted and anything excluded (e.g. no FX rate).</summary>
+    [Parameter] public RenderFragment? AssetsSub { get; set; }
+
+    /// <summary>Sub-line for the liability well.</summary>
+    [Parameter] public RenderFragment? LiabilitiesSub { get; set; }
+
+    [Parameter] public string AssetsTotalLabel { get; set; } = "Total assets";
+    [Parameter] public string LiabilitiesTotalLabel { get; set; } = "Total owed";
+
+    /// <summary>Ring watermark icons (Material Icons ligatures).</summary>
+    [Parameter] public string AssetsIcon { get; set; } = "account_balance_wallet";
+    [Parameter] public string LiabilitiesIcon { get; set; } = "credit_card";
+
+    /// <summary>Fallback palettes for slices without their own color.</summary>
+    [Parameter] public IReadOnlyList<string>? AssetColors { get; set; }
+    [Parameter] public IReadOnlyList<string>? LiabilityColors { get; set; }
+
+    /// <summary>
+    /// Money formatter for slice and total amounts. Receives the plotted magnitude and, for slice
+    /// rows, the slice (null on the total row).
+    /// </summary>
+    [Parameter] public Func<decimal, OdsDonutSlice?, string> Format { get; set; } =
+        (v, _) => v.ToString(System.Globalization.CultureInfo.CurrentCulture);
+
+    /// <summary>Asset-well override of <see cref="Format"/>.</summary>
+    [Parameter] public Func<decimal, OdsDonutSlice?, string>? AssetsFormat { get; set; }
+
+    /// <summary>Liability-well override of <see cref="Format"/>.</summary>
+    [Parameter] public Func<decimal, OdsDonutSlice?, string>? LiabilitiesFormat { get; set; }
+
+    [Parameter] public bool ShowAssets { get; set; } = true;
+    [Parameter] public bool ShowLiabilities { get; set; } = true;
+
+    /// <summary>Line shown in place of the ring when the asset side has nothing to plot.</summary>
+    [Parameter] public string? AssetsEmpty { get; set; }
+
+    /// <summary>Line shown in place of the ring when the liability side has nothing to plot.</summary>
+    [Parameter] public string? LiabilitiesEmpty { get; set; }
+
+    /// <summary>Accessible summaries of each ring.</summary>
+    [Parameter] public string? AssetsAriaLabel { get; set; }
+    [Parameter] public string? LiabilitiesAriaLabel { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private IReadOnlyList<OdsDonutSlice> _assets = [];
+    private IReadOnlyList<OdsDonutSlice> _liabilities = [];
+
+    private string RootClass => string.IsNullOrEmpty(Class) ? "odc-alloc-row" : $"odc-alloc-row {Class}";
+
+    protected override void OnParametersSet()
+    {
+        _assets = Sort(AssetSlices);
+        _liabilities = Sort(LiabilitySlices);
+    }
+
+    /// <summary>Magnitudes, zero values dropped, largest first — the one ordering both wells use.</summary>
+    internal static IReadOnlyList<OdsDonutSlice> Sort(IReadOnlyList<OdsDonutSlice> slices) =>
+        slices
+            .Where(s => s.Value != 0)
+            .Select(s => s.Value < 0 ? s with { Value = Math.Abs(s.Value) } : s)
+            .OrderByDescending(s => s.Value)
+            .ToList();
+
+    private RenderFragment Well(
+        string title, RenderFragment? sub, IReadOnlyList<OdsDonutSlice> data, string totalLabel,
+        string icon, IReadOnlyList<string>? colors, string? empty, string? ariaLabel,
+        Func<decimal, OdsDonutSlice?, string> format) => __builder =>
+    {
+        if (data.Count == 0 && empty is not null)
+        {
+            <div class="odc-donut-panel">
+                <div class="odc-chart-head">
+                    <div>
+                        <div class="odc-chart-ttl">@title</div>
+                        @if (sub is not null)
+                        {
+                            <div class="odc-chart-sub">@sub</div>
+                        }
+                    </div>
+                </div>
+                <OdsEmptyLine Text="@empty" />
+            </div>
+        }
+        else
+        {
+            <OdsDonut Layout="OdsDonutLayout.Stack" Data="data" CenterIcon="@icon" TotalLabel="@totalLabel"
+                      Colors="colors" Format="format" AriaLabel="@(ariaLabel ?? $"{title} — donut chart")"
+                      Sub="sub">
+                <Title>@title</Title>
+            </OdsDonut>
+        }
+    };
+}

@@ -50,6 +50,29 @@ public partial class OdsLineChart
     /// <summary>Override the headline figure (else the latest point, via <see cref="Format"/>).</summary>
     [Parameter] public string? Figure { get; set; }
 
+    /// <summary>
+    /// Show the headline figure (and delta) in the head. Default true. Turn it off when
+    /// <see cref="Legend"/> carries the figure.
+    /// </summary>
+    [Parameter] public bool ShowFigure { get; set; } = true;
+
+    /// <summary>
+    /// A ledger row under the plot, as <c>OdsStepChart</c>'s: swatch · name · value in force · change
+    /// since the first point (plus <see cref="DeltaSuffix"/>). The change is withheld when an endpoint
+    /// is <see cref="OdsLinePointKind.Partial"/>. The marker key joins this row instead of its own.
+    /// Default false.
+    /// </summary>
+    [Parameter] public bool Legend { get; set; }
+
+    /// <summary>Name in the legend row. Defaults to <see cref="Title"/>.</summary>
+    [Parameter] public string? LegendLabel { get; set; }
+
+    /// <summary>
+    /// Controls rendered above the headline figure, right of the head — e.g. a settings button or an
+    /// interval segmented control. Also shown on an empty series.
+    /// </summary>
+    [Parameter] public RenderFragment? ControlsEnd { get; set; }
+
     /// <summary>Render every Nth category label (the last is always shown). Default 1.</summary>
     [Parameter] public int XTickEvery { get; set; } = 1;
 
@@ -110,6 +133,38 @@ public partial class OdsLineChart
         : "Line chart";
 
     private const string PartialLabel = "Understated";
+
+    private static string KindLabel(OdsLinePointKind kind) =>
+        kind == OdsLinePointKind.Partial ? PartialLabel : RevaluedLabel;
+
+    /// <summary>
+    /// The legend's change figure: signed, since the first point, withheld when either endpoint is
+    /// understated — the same rule the head's delta follows.
+    /// </summary>
+    private string LegendChange
+    {
+        get
+        {
+            if (_pts[0].Kind == OdsLinePointKind.Partial || _pts[^1].Kind == OdsLinePointKind.Partial)
+                return "change withheld";
+            var d = _pts[^1].Value - _pts[0].Value;
+            var sign = d > 0 ? "+" : d < 0 ? "−" : "";
+            return $"{sign}{Format((decimal)Math.Abs(d))}{(string.IsNullOrEmpty(DeltaSuffix) ? "" : " " + DeltaSuffix)}";
+        }
+    }
+
+    // The index of the hovered point; null when the pointer is off the plot.
+    private int? _hover;
+
+    // Half the width of a point's hover column — the whole plot for a single point.
+    private double HitHalfWidth => _single ? (X1 - X0) / 2 : (X1 - X0) / (_pts.Count - 1) / 2;
+
+    /// <summary>Pins the readout to the near edge within 14% of either side, so it never clips.</summary>
+    internal static string TipEdge(double leftPercent) =>
+        leftPercent < 14 ? " start" : leftPercent > 86 ? " end" : "";
+
+    internal static string TipStyle(double leftPercent, double topPercent) =>
+        $"left:{leftPercent.ToString("0.##", CultureInfo.InvariantCulture)}%;top:{topPercent.ToString("0.##", CultureInfo.InvariantCulture)}%";
     private const string RevaluedLabel = "Revalued";
 
     /// <summary>
@@ -161,6 +216,7 @@ public partial class OdsLineChart
                    && _pts[0].Kind != OdsLinePointKind.Partial
                    && _pts[^1].Kind != OdsLinePointKind.Partial;
 
+        if (_hover >= _pts.Count) _hover = null;
         if (_pts.Count == 0) return;
 
         _single = _pts.Count == 1;

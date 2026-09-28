@@ -21,6 +21,10 @@
     Controls takes the title's place (a picker that names what is plotted IS the title) and
     ControlsEnd sits where the figure does (a toggle that changes how the chart reads).
 
+    Hovering an entry pins OdsLineChart's readout above it: series (when several), date, a
+    "Scheduled" mark past today, value, change from the entry before, and the entry's note.
+    Pointer-only — TextEquivalent is the non-pointer route to the same figures.
+
     Parameters and geometry live in OdsStepChart.razor.cs. Styled by the shared .odc-lc rules plus
     .odc-sc-* in the global sheet.
 *@
@@ -70,6 +74,7 @@
     }
     else
     {
+        <div class="odc-lc-plot" @onmouseleave="@(() => _hover = null)">
         <svg class="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
              role="img" aria-label="@EffectiveAriaLabel">
             <g stroke="var(--chart-grid)" stroke-width="1">
@@ -114,7 +119,53 @@
             {
                 <g transform="@DodgeTransform(p)">@((MarkupString)DotsMarkup(p))</g>
             }
+
+            @* Hover targets — generous invisible discs over each entry. *@
+            @foreach (var p in _plots)
+            {
+                <g @key="@($"hit-{p.Id}")" transform="@DodgeTransform(p)">
+                    @for (var i = 0; i < p.Pts.Count; i++)
+                    {
+                        var index = i;
+                        var plotId = p.Id;
+                        var cx = F(Sx(Days(p.Pts[i].Date)));
+                        var cy = F(Sy(Plotted(p.Pts, p.Pts[i].Value)));
+                        @if (_hover == (plotId, index))
+                        {
+                            <circle class="odc-lc-hring" cx="@cx" cy="@cy" r="7.5" stroke="@p.Color" />
+                        }
+                        <circle class="odc-lc-hit" cx="@cx" cy="@cy" r="14"
+                                @onmouseenter="@(() => _hover = (plotId, index))" />
+                    }
+                </g>
+            }
         </svg>
+        @if (_hover is { } h && _plots.FirstOrDefault(q => q.Id == h.PlotId) is { } hp && h.Index < hp.Pts.Count)
+        {
+            var pt = hp.Pts[h.Index];
+            var left = Sx(Days(pt.Date)) / 10;
+            var top = (Sy(Plotted(hp.Pts, pt.Value)) + hp.Dodge) / 252 * 100;
+            var d = h.Index > 0 ? pt.Value - hp.Pts[h.Index - 1].Value : 0;
+            <div class="@($"odc-lc-tip{OdsLineChart.TipEdge(left)}")" style="@OdsLineChart.TipStyle(left, top)" role="status">
+                <div class="odc-lc-tip-k">@TipKey(hp, pt.Date)</div>
+                <div class="odc-lc-tip-v" style="@($"color:{hp.Color}")">
+                    @Format((decimal)pt.Value)
+                    @if (h.Index > 0 && d != 0)
+                    {
+                        <span class="odc-lc-tip-d">@(d > 0 ? "+" : "−")@Format((decimal)Math.Abs(d))</span>
+                    }
+                    @if (_indexed && _multi && h.Index > 0)
+                    {
+                        <span class="odc-lc-tip-d">@FormatIndexed(MoveOf(hp.Pts, pt.Value))</span>
+                    }
+                </div>
+                @if (!string.IsNullOrEmpty(pt.Note))
+                {
+                    <div class="odc-lc-tip-k">@pt.Note</div>
+                }
+            </div>
+        }
+        </div>
 
         @* The legend IS the readout when several lines share the axis, and it still earns its place
            with one: the swatch ties the line to its name, and the move since the first entry is a

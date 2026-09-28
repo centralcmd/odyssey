@@ -100,7 +100,7 @@ public partial class OdsStepChart
         string Id,
         string Label,
         string Color,
-        IReadOnlyList<(DateOnly Date, double Value, string? PointId)> Pts,
+        IReadOnlyList<(DateOnly Date, double Value, string? PointId, string? Note)> Pts,
         int InForce,
         string Solid,
         string Dashed,
@@ -108,6 +108,15 @@ public partial class OdsStepChart
         double Dodge);
 
     private readonly List<Plot> _plots = [];
+
+    // The hovered entry: which plot, and which of its points. Null when the pointer is off the plot.
+    private (string PlotId, int Index)? _hover;
+
+    /// <summary>The hover readout's key line: the series (when several share the axis), the date, and whether it is scheduled.</summary>
+    private string TipKey(Plot p, DateOnly date) =>
+        $"{(_multi && !string.IsNullOrEmpty(p.Label) ? $"{p.Label} · " : "")}"
+        + date.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)
+        + (IsScheduled(date) ? " · Scheduled" : "");
     private bool _multi;
     private bool _indexed;
     private double _t0, _tMax, _now, _yMin, _yMax;
@@ -148,6 +157,7 @@ public partial class OdsStepChart
             .ToList();
 
         _plots.Clear();
+        _hover = null;
         _multi = sets.Count > 1;
         if (sets.Count == 0) return;
 
@@ -212,18 +222,18 @@ public partial class OdsStepChart
         _fillId = $"odc-sc-fill-{Guid.NewGuid():N}";
     }
 
-    private static List<(DateOnly Date, double Value, string? PointId)> Sort(IReadOnlyList<OdsStepPoint>? points) =>
+    private static List<(DateOnly Date, double Value, string? PointId, string? Note)> Sort(IReadOnlyList<OdsStepPoint>? points) =>
         (points ?? [])
             .Where(p => p?.Value is not null)
             .OrderBy(p => p.Date)
-            .Select(p => (p.Date, (double)p.Value!.Value, p.Id))
+            .Select(p => (p.Date, (double)p.Value!.Value, p.Id, p.Note))
             .ToList();
 
     /// <summary>
     /// The one answer to "what does this cost": the latest entry that has already taken effect. An
     /// entirely-future series is represented by its soonest entry.
     /// </summary>
-    private int InForceIndex(IReadOnlyList<(DateOnly Date, double Value, string? PointId)> pts)
+    private int InForceIndex(IReadOnlyList<(DateOnly Date, double Value, string? PointId, string? Note)> pts)
     {
         var i = pts.Count(p => Days(p.Date) <= _now) - 1;
         return i < 0 ? 0 : i;
@@ -232,14 +242,14 @@ public partial class OdsStepChart
     private bool IsScheduled(DateOnly d) => Days(d) > _now;
 
     /// <summary>A series' move from its own first entry — what indexed mode plots and every legend row states.</summary>
-    private static double MoveOf(IReadOnlyList<(DateOnly Date, double Value, string? PointId)> pts, double v)
+    private static double MoveOf(IReadOnlyList<(DateOnly Date, double Value, string? PointId, string? Note)> pts, double v)
     {
         var baseValue = pts[0].Value;
         return baseValue != 0 ? (v - baseValue) / Math.Abs(baseValue) : 0;
     }
 
     // A zero first entry has no percentage change, so it is plotted absolutely — better than dividing by zero.
-    private double Plotted(IReadOnlyList<(DateOnly Date, double Value, string? PointId)> pts, double v) =>
+    private double Plotted(IReadOnlyList<(DateOnly Date, double Value, string? PointId, string? Note)> pts, double v) =>
         !_indexed ? v : pts[0].Value != 0 ? MoveOf(pts, v) : v;
 
     /// <summary>
