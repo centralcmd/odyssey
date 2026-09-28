@@ -85,10 +85,10 @@ public partial class ContractsCard
     private bool _canUpdate;
 
     /// <summary>
-    /// Gates the Smart tags section (issue #166). It resolves its watchlist through
-    /// <c>GET /api/transactions?tagIds=…</c>, so a caller without <c>transactions.read</c> would see
-    /// the chips and an error where the ledger should be — the section is withheld instead. Same
-    /// gate, same reason, as the Accounts card's copy.
+    /// Whether the Smart tags section may read its match. The scoped endpoint
+    /// (<c>GET /api/contracts/{id}/smart-tag-transactions</c>, issue #226) needs
+    /// <c>transactions.read</c> as well as <c>contracts.read</c>; without it the section keeps its
+    /// chips and names the missing claim instead of issuing a read that would be refused.
     /// </summary>
     private bool _canReadTransactions;
     private bool _canDelete;

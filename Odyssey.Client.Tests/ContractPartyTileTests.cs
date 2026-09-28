@@ -77,6 +77,7 @@ public class ContractPartyTileTests
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<Odyssey.ApiClient.Resources.IContractsApiClient>());
+        ctx.Services.AddInertSmartTagSection();
         ctx.Services.AddSingleton<TimeProvider>(new FixedTime(Today));
         // The Documents section renders in the same detail view, and its files table resolves the
         // issuer options and the contacts.create claim for its Edit dialog (issue #146).
@@ -100,6 +101,7 @@ public class ContractPartyTileTests
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<Odyssey.ApiClient.Resources.IContractsApiClient>());
+        ctx.Services.AddInertSmartTagSection();
         ctx.Services.AddSingleton<TimeProvider>(new FixedTime(Today));
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         ctx.Services.AddSingleton(Mock.Of<IContactQuickCreate>());

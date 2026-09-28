@@ -32,11 +32,20 @@ public partial class ContractDetailView : IAsyncDisposable
     [Parameter] public bool CanViewProperties { get; set; }
 
     /// <summary>
-    /// Gates the Smart tags section (issue #166), which resolves its watchlist through the
-    /// transactions endpoint. Without <c>transactions.read</c> the section could only show chips and
-    /// an error, so it is withheld rather than rendered broken.
+    /// Whether the Smart tags section may read its match (issue #226): the scoped endpoint needs
+    /// <c>transactions.read</c> as well as <c>contracts.read</c>. Without it the section still shows
+    /// the watched chips and says which claim is missing, rather than disappearing.
     /// </summary>
     [Parameter] public bool CanReadTransactions { get; set; }
+
+    /// <summary>
+    /// The "Add a party" action on the Smart tags section's no-contact-party state — the one thing
+    /// that makes a match possible there. Opens the host's party dialog.
+    /// </summary>
+    [Parameter] public EventCallback OnAddParty { get; set; }
+
+    /// <summary>The "Edit dates" action on the Smart tags section's invalid-term state.</summary>
+    [Parameter] public EventCallback OnEditContract { get; set; }
 
     /// <summary>
     /// The contract's watched-tag count, for the section divider's meta. It comes from the LIST row
@@ -92,13 +101,27 @@ public partial class ContractDetailView : IAsyncDisposable
     [Parameter] public Guid? NewEventRequestToken { get; set; }
 
     /// <summary>
-    /// The contract host's empty-state sentence. It deliberately does NOT say "on this contract":
-    /// the match is by tag and spans every record watching that tag, so a scope claim here would be
-    /// false. It says what the watchlist is FOR instead.
+    /// The contract host's empty-state sentence. It states the three rules the server applies
+    /// (issue #226) — watched tag, inside the term, paid to a contact party — so a reader knows what
+    /// will and will not read here before adding a first tag.
     /// </summary>
     private string ContractSmartTagsEmptyDesc => CanWrite
-        ? "Pin the tags this agreement settles against, and what it actually costs reads here — no filter to rebuild on the Transactions page."
+        ? "Pin the tags this agreement settles against. Transactions carrying them, dated inside the term and paid to a contact party, read here."
         : "No tags are being watched on this contract.";
+
+    /// <summary>
+    /// Every contract input the smart-tag match depends on besides its tags: the contact parties and
+    /// the term dates. When a party is added or a date corrected, the host re-fetches the contract,
+    /// this key changes, and the section re-reads its match.
+    /// </summary>
+    private string SmartTagScopeKey => string.Join('|',
+        string.Join(',', Contract.Parties
+            .Select(p => p.Institution?.ContactId)
+            .OfType<Guid>()
+            .Order()),
+        Contract.StartDate?.ToString("O"),
+        Contract.EndDate?.ToString("O"),
+        Contract.CompletionDate?.ToString("O"));
 
     private IReadOnlyList<ContractFileItem> ContractFiles => [.. Contract.Files.Select(ContractFileItem.From)];
 

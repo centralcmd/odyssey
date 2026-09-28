@@ -167,6 +167,16 @@ public interface IContractsApiClient
     /// Removes one smart-tag association. The tag itself and the contract are untouched.
     /// </summary>
     Task<ApiResult> RemoveSmartTagAsync(Guid contractId, Guid tagId, CancellationToken ct = default);
+
+    /// <summary>
+    /// One page of the transactions the contract's smart tags match (issue #226), scoped server-side
+    /// to the contract's term and to merchants that are contact parties, plus the scope applied and a
+    /// per-currency summary of the whole match. Needs <c>contracts.read</c> AND
+    /// <c>transactions.read</c>; a missing contract is a <c>404</c>.
+    /// </summary>
+    Task<ApiResult<ContractSmartTagTransactionsResult>> ListSmartTagTransactionsAsync(
+        Guid contractId, int page, int pageSize, string? search = null,
+        string? sortBy = null, string? sortDir = null, CancellationToken ct = default);
 }
 
 /// <inheritdoc cref="IContractsApiClient" />
@@ -307,6 +317,18 @@ public sealed class ContractsApiClient(IOdysseyApi api) : IContractsApiClient
 
     public Task<ApiResult> RemoveSmartTagAsync(Guid contractId, Guid tagId, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{SmartTags(contractId)}/{tagId}", null, ct);
+
+    public Task<ApiResult<ContractSmartTagTransactionsResult>> ListSmartTagTransactionsAsync(
+        Guid contractId, int page, int pageSize, string? search = null,
+        string? sortBy = null, string? sortDir = null, CancellationToken ct = default) =>
+        api.GetAsync<ContractSmartTagTransactionsResult>(
+            PagedQuery.For($"{Base}/{contractId}/smart-tag-transactions")
+                .Window(page, pageSize)
+                .Add("search", search)
+                .Add("sortBy", sortBy)
+                .Add("sortDir", sortDir)
+                .Build(),
+            ct);
 
     private static string SmartTags(Guid contractId) => $"{Base}/{contractId}/smart-tags";
 }

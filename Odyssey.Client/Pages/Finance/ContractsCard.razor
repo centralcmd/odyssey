@@ -328,6 +328,8 @@
                                                 CanViewContacts="_canViewContacts"
                                                 CanViewProperties="_canViewProperties"
                                                 OnEditParty="@(p => EditParty(c.ContractId, p))"
+                                                OnAddParty="@(() => AddParty(c.ContractId))"
+                                                OnEditContract="@(() => EditClicked(c))"
                                                 OnAnnounce="@(m => Announce(m))"
                                                 OnChanged="@(() => ReloadContract(c.ContractId))"
                                                 OnFilesRefreshed="@(files => ApplyContractFiles(c.ContractId, files))" />

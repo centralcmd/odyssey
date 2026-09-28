@@ -19,10 +19,12 @@
     curated set of existing TransactionTags to the record as a saved filter, then surfaces every
     transaction carrying any of those tags.
 
-    The match is BY TAG, never by record — a watched tag's transactions appear under every record
-    watching it. On the contract host that is not a limitation to hide but the stated semantics: no
-    Transaction carries a ContractId, so resolution is two existing endpoints composed, and the
-    section claims no contract scope in its copy.
+    On the account and property hosts the match is BY TAG, never by record — a watched tag's
+    transactions appear under every record watching it. The CONTRACT host is scoped by the server
+    (issue #226): one read, GET /api/contracts/{id}/smart-tag-transactions, returns only the
+    transactions that carry a watched tag, are dated inside the term and name a contact party as
+    their merchant — paged, searched and sorted server-side. The section restates the response's
+    scope and maps its emptyReason to a state; it never composes the rule itself.
 
     Mirrors the design system's states: an OdsCollapsible whose header counts the matching
     transactions, a tag-management bar (removable chips + an Add-tag checklist), the cap advisory and
@@ -75,11 +77,24 @@
                 </div>
                 @if (ShowTotal)
                 {
-                    <div class="odc-smarttags-total @(_total < 0 ? "expense" : "income")">
-                        <span class="odc-smarttags-total-lab">@_transactions.Count @(_transactions.Count == 1 ? "transaction" : "transactions")</span>
-                        @* Naive cross-currency sum (the app has no FX) shown with no currency code —
-                           the watchlist can span accounts in different currencies. *@
-                        <span class="odc-smarttags-total-val">@FormatMoney(_total, null)</span>
+                    <div class="odc-smarttags-total @TotalClass">
+                        <span class="odc-smarttags-total-lab">@MatchCount @(MatchCount == 1 ? "transaction" : "transactions")</span>
+                        @if (IsScoped)
+                        {
+                            @* The server's net over EVERY match, never a page sum — and only when the
+                               match is in one currency: USD and EUR have no single sum, so a mixed
+                               match shows the count alone. *@
+                            @if (_singleCurrency is { } net)
+                            {
+                                <span class="odc-smarttags-total-val">@FormatMoney(net.Net, net.CurrencyCode)</span>
+                            }
+                        }
+                        else
+                        {
+                            @* Naive cross-currency sum (the app has no FX) shown with no currency code —
+                               the watchlist can span accounts in different currencies. *@
+                            <span class="odc-smarttags-total-val">@FormatMoney(_total, null)</span>
+                        }
                     </div>
                 }
             </div>
@@ -106,6 +121,23 @@
                notification (WCAG 4.1.3). Polite rather than alert: the refusal band above is the
                one that interrupts. *@
             <div class="odc-smarttags-advisory" role="status">@CapNote</div>
+        }
+
+        @* The scope the server applied, read off its response — the date window and the party-contact
+           count — so the reader can see WHY a transaction is or is not here. *@
+        @if (_hasTags && ScopeItems is { Count: > 0 } scopeItems)
+        {
+            <div class="odc-smarttags-scope">
+                <span class="odc-smarttags-bar-label">Scope</span>
+                @foreach (var item in scopeItems)
+                {
+                    <span class="odc-smarttags-scope-it">
+                        <span class="material-icons" aria-hidden="true">@item.Icon</span>
+                        <span class="odc-smarttags-scope-lab">@item.Label</span>
+                        <span class="odc-smarttags-scope-val">@item.Value</span>
+                    </span>
+                }
+            </div>
         }
 
         @if (_error is not null)
@@ -138,32 +170,76 @@
                 }
             </div>
         }
-        else if (_isLoadingTxns)
+        else if (Blocked is { } blocked)
+        {
+            @* A STRUCTURAL empty result the server named (or a read that was never issued): the tags
+               exist, but nothing can match yet. One sentence, and the one action that fixes it. *@
+            <OdsEmptyState Icon="@blocked.Icon" MutedIcon="true" Class="odc-smarttags-empty odc-smarttags-blocked"
+                           Title="@Text(blocked.Title)"
+                           Description="@Text(blocked.Description)"
+                           Action="@BlockedAction(blocked)" />
+        }
+        else if (_isLoadingTxns && !IsScoped)
         {
             <div class="odc-smarttags-loading" role="status" aria-live="polite">
                 <div class="odc-progress indeterminate"><div class="odc-progress-fill"></div></div>
                 <div class="odc-smarttags-loading-txt">Loading transactions…</div>
             </div>
         }
-        else if (_transactions.Count == 0)
-        {
-            @* MutedIcon: the design system dims this state's glyph (odc-empty-ic muted) and leaves
-               the "No smart tags yet" one bright — the first is informational, the second is the
-               feature's only entry point, and the weight is what tells them apart. *@
-            <OdsEmptyState Icon="search_off" MutedIcon="true">
-                <Title>No matching transactions</Title>
-                <Description>@NoMatchDescription</Description>
-            </OdsEmptyState>
-        }
         else
         {
-            <div class="odc-smarttags-table">
-                @* Account column kept (the watchlist spans every account, not just this record's). A
-                   row carries the SAME action menu it does on the Transactions page. *@
-                @* No host notification: this section's count is the number of WATCHED TAGS, which a
-                   transaction write cannot change. *@
-                <TransactionListView Rows="_transactions" OnChanged="LoadTransactionsAsync" />
-            </div>
+            @if (ShowToolbar)
+            {
+                <div class="odc-smarttags-toolbar">
+                    <OdsSearchField Value="@_search"
+                                    ValueChanged="OnSearchChanged"
+                                    DebounceInterval="300"
+                                    Placeholder="Search description, account, merchant, tag…"
+                                    AriaLabel="Search matching transactions" />
+                </div>
+            }
+
+            @if (_isLoadingTxns && _transactions.Count == 0)
+            {
+                <div class="odc-smarttags-loading" role="status" aria-live="polite">
+                    <div class="odc-progress indeterminate"><div class="odc-progress-fill"></div></div>
+                    <div class="odc-smarttags-loading-txt">Loading transactions…</div>
+                </div>
+            }
+            else if (_transactions.Count == 0)
+            {
+                @* MutedIcon: the design system dims this state's glyph (odc-empty-ic muted) and leaves
+                   the "No smart tags yet" one bright — the first is informational, the second is the
+                   feature's only entry point, and the weight is what tells them apart. *@
+                <OdsEmptyState Icon="search_off" MutedIcon="true">
+                    <Title>No matching transactions</Title>
+                    <Description>@NoMatchDescription</Description>
+                </OdsEmptyState>
+            }
+            else if (IsScoped)
+            {
+                <div class="odc-smarttags-table">
+                    @* ONE page of the server's match: sort and paging go back to the server. *@
+                    <TransactionListView Rows="_transactions"
+                                         OnChanged="LoadTransactionsAsync"
+                                         ServerPaged="true"
+                                         Sort="_sort" SortChanged="OnSortChanged"
+                                         Page="_page" PageChanged="OnPageChanged"
+                                         PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
+                                         TotalCount="_totalCount"
+                                         Loading="_isLoadingTxns" />
+                </div>
+            }
+            else
+            {
+                <div class="odc-smarttags-table">
+                    @* Account column kept (the watchlist spans every account, not just this record's). A
+                       row carries the SAME action menu it does on the Transactions page. *@
+                    @* No host notification: this section's count is the number of WATCHED TAGS, which a
+                       transaction write cannot change. *@
+                    <TransactionListView Rows="_transactions" OnChanged="LoadTransactionsAsync" />
+                </div>
+            }
         }
     </ChildContent>
 </OdsCollapsible>
