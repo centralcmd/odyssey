@@ -191,7 +191,6 @@
 .lg-reg-nopub { display: inline-flex; align-items: center; gap: 6px; font: 400 12px/1.4 var(--font-sans); font-style: italic; color: var(--mud-palette-text-secondary); }
 .lg-reg-nopub .material-icons { font-size: 15px; opacity: 0.8; }
 .lg-reg { display: flex; flex-direction: column; gap: 10px; }
-
 .lg-reg-check { padding: 9px 12px; border-top: 1px solid var(--mud-palette-divider); }
 
 @media (max-width: 620px) {
