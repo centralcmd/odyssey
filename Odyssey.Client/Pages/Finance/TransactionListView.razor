@@ -22,16 +22,40 @@
     because the host owns the query the rows came from.
 *@
 
-<OdsInlinePager Items="Rows" Context="pageRows">
-    <OdsTxnTable Rows="pageRows"
+@if (ServerPaged)
+{
+    @* Server-paged (the contract smart-tag host, issue #226): Rows is ONE page, so the sort goes to the
+       server and the footer pager counts the host's total — a client-side pager over a page would
+       report the page as the whole set. *@
+    <OdsTxnTable Rows="Rows"
                  HideAccount="HideAccount"
+                 ServerSort="true"
+                 Sort="Sort"
+                 SortChanged="SortChanged"
+                 Refetching="Loading"
                  Actions="BuildActions"
                  OnDelete="HandleDeleteAsync">
         <RenderDetail Context="t">
             <TransactionDetailPanel Transaction="t" CanDownloadFiles="_canDownloadFiles" />
         </RenderDetail>
     </OdsTxnTable>
-</OdsInlinePager>
+    <OdsPager Page="Page" PageChanged="PageChanged"
+              PageSize="PageSize" PageSizeChanged="PageSizeChanged"
+              TotalCount="TotalCount" Loading="Loading" />
+}
+else
+{
+    <OdsInlinePager Items="Rows" Context="pageRows">
+        <OdsTxnTable Rows="pageRows"
+                     HideAccount="HideAccount"
+                     Actions="BuildActions"
+                     OnDelete="HandleDeleteAsync">
+            <RenderDetail Context="t">
+                <TransactionDetailPanel Transaction="t" CanDownloadFiles="_canDownloadFiles" />
+            </RenderDetail>
+        </OdsTxnTable>
+    </OdsInlinePager>
+}
 
 @if (_editTransaction is not null)
 {

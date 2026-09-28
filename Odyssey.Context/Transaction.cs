@@ -5,7 +5,10 @@ using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Context;
 
-[Index(nameof(ContactId))]
+// The contract smart-tag match (issue #226) filters on the merchant and the contract's term together.
+// ContactId leads, so this also serves the FK and REPLACES the standalone IX_Transactions_ContactId —
+// the one-column index is a strict prefix of this one.
+[Index(nameof(ContactId), nameof(TimeStamp))]
 [Index(nameof(CurrencyCode))]
 // The list's dominant shape: filter by account, order by date (TransactionService.ListAsync).
 // Leading with AccountId also satisfies EF's foreign-key index convention, so this replaces the

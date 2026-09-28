@@ -48,8 +48,11 @@ public class OdysseyContextModelTests
 
         var transactionIndexes = context.Model.FindEntityType(typeof(Transaction))!.GetIndexes();
 
+        // (ContactId, TimeStamp) replaced the one-column ContactId index (issue #226): it leads with
+        // ContactId, so it still serves the foreign key and every merchant lookup.
         Assert.Contains(transactionIndexes, index =>
-            index.Properties.Select(property => property.Name).SequenceEqual([nameof(Transaction.ContactId)]));
+            index.Properties.Select(property => property.Name)
+                .SequenceEqual([nameof(Transaction.ContactId), nameof(Transaction.TimeStamp)]));
         Assert.Contains(transactionIndexes, index =>
             index.Properties.Select(property => property.Name).SequenceEqual([nameof(Transaction.CurrencyCode)]));
     }

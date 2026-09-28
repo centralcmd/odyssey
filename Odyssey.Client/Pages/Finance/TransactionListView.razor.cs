@@ -22,6 +22,34 @@ public partial class TransactionListView
     /// </summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
+    /// <summary>
+    /// <see cref="Rows"/> is one server page rather than the whole set: the table sorts through
+    /// <see cref="SortChanged"/> and the footer pager counts <see cref="TotalCount"/>. Off, the view
+    /// pages its rows client-side, as every other host does.
+    /// </summary>
+    [Parameter] public bool ServerPaged { get; set; }
+
+    /// <summary>Server-paged only: the current sort, echoed by the table header.</summary>
+    [Parameter] public OdsTableSort? Sort { get; set; }
+
+    [Parameter] public EventCallback<OdsTableSort> SortChanged { get; set; }
+
+    /// <summary>Server-paged only: 1-based page.</summary>
+    [Parameter] public int Page { get; set; } = 1;
+
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+
+    /// <summary>Server-paged only: rows per page (<see cref="OdsPageSizes.All"/> = every row).</summary>
+    [Parameter] public int PageSize { get; set; } = OdsPageSizes.Default[0];
+
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
+
+    /// <summary>Server-paged only: every matching row, not just this page.</summary>
+    [Parameter] public int TotalCount { get; set; }
+
+    /// <summary>Server-paged only: a page is being fetched; the rows stay and dim.</summary>
+    [Parameter] public bool Loading { get; set; }
+
     private bool _canUpdate;
     private bool _canDelete;
     private bool _canDownloadFiles;
