@@ -279,6 +279,7 @@ public class TermDirectionSurfaceTests
             .Add(r => r.Money, (decimal v, string? c) => $"{v:0.00} {c}"));
 
         Assert.Empty(outgoing.FindAll(".con-charge-amt.in"));
+        Assert.NotNull(outgoing.Find(".con-charge-amt.out"));
         Assert.Contains("due", outgoing.Find("button").GetAttribute("aria-label")!, StringComparison.Ordinal);
     }
 

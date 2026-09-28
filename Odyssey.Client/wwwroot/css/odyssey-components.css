@@ -2670,8 +2670,9 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-charge-term { font: var(--fw-regular) var(--fs-caption) / 1 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .con-charge-amt { font: var(--fw-medium) var(--fs-body2) / 1 var(--font-mono); color: var(--mud-palette-text-primary); }
 /* Next receipts sit in the same panel, in rows of the same shape: the GROUP HEADING names the
-   direction, and the amount is the only thing that changes colour — mint for money in. */
+   direction, and the amount is the only thing that changes colour — mint for money in, coral for money out. */
 .con-charge-amt.in { color: var(--finance-income); }
+.con-charge-amt.out { color: var(--finance-expense); }
 .con-charge-row.incoming .con-charge-md { color: var(--mud-palette-text-primary); }
 .con-charge-go { font: var(--fw-medium) var(--fs-caption) / 1 var(--font-sans); color: var(--brand-text); white-space: nowrap; }
 
@@ -2786,19 +2787,6 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record.con-unsigned {
     border-style: dashed;
     border-color: color-mix(in srgb, var(--mud-palette-text-secondary) 40%, transparent);
-}
-
-/* Header mark follows the derived status tone (the same one the figure takes). Only the mark: --rec
-   stays the type accent for everything inside the card. The design keys this on data-tone; the
-   record card takes classes, so it is con-tone-* here, like con-unsigned above. */
-.odc-record.con-card { --con-tone: var(--mud-palette-text-secondary); }
-.odc-record.con-card.con-tone-income  { --con-tone: var(--finance-income); }
-.odc-record.con-card.con-tone-expense { --con-tone: var(--finance-expense); }
-.odc-record.con-card.con-tone-pending { --con-tone: var(--finance-pending); }
-.odc-record.con-card.con-tone-info    { --con-tone: var(--sea-400); }
-.odc-record.con-card > .odc-record-head .odc-record-mark:not(.img) {
-    color: var(--con-tone);
-    background: color-mix(in srgb, var(--con-tone) 14%, transparent);
 }
 
 /* Detail-tile icons (contracts + budgets): grey like the field name, unless the value carries a hue.

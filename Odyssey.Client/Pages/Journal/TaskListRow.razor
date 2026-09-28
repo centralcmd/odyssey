@@ -11,30 +11,30 @@
     phrase states the deadline in words, the status control names its state and its next state.
 *@
 
-<article class="tkc-card @(_status == JournalTaskStatus.Archived ? "archived" : "")" data-status="@_status">
-    <div class="tkc-rail" data-tone="@_rail.Tone">
+<article class="tk-list @(_status == JournalTaskStatus.Archived ? "archived" : "")" data-status="@_status">
+    <div class="tk-list-rail" data-tone="@_rail.Tone">
         <span class="sr-only">@_rail.AccessibleText</span>
         @if (_rail.Dash)
         {
-            <span class="tkc-dash" aria-hidden="true">—</span>
+            <span class="tk-list-dash" aria-hidden="true">—</span>
         }
         @if (_rail.Tick)
         {
-            <span class="tkc-tick material-icons" aria-hidden="true">check</span>
+            <span class="tk-list-tick material-icons" aria-hidden="true">check</span>
         }
         @if (_rail.Word is { } word)
         {
-            <span class="tkc-word" aria-hidden="true">@word</span>
+            <span class="tk-list-word" aria-hidden="true">@word</span>
         }
         @if (_rail.Count is { } count)
         {
-            <span class="tkc-count" aria-hidden="true"><span class="tkc-sign">@_rail.Sign</span>@count</span>
+            <span class="tk-list-count" aria-hidden="true"><span class="tk-list-sign">@_rail.Sign</span>@count</span>
         }
         @if (_rail.Unit is { } unit)
         {
-            <span class="tkc-unit" aria-hidden="true">@unit</span>
+            <span class="tk-list-unit" aria-hidden="true">@unit</span>
         }
-        <span class="tkc-st">
+        <span class="tk-list-st">
             <button type="button" class="tk-status-btn" data-s="@_status" disabled="@(_status == JournalTaskStatus.Archived)"
                     aria-label="@StatusButtonLabel"
                     @onclick="@(() => { if (_status != JournalTaskStatus.Archived) OnStatus.InvokeAsync(NextStatus); })">
@@ -43,9 +43,9 @@
         </span>
     </div>
 
-    <div class="tkc-body">
-        <div class="tkc-top">
-            <h3 class="tkc-title">@Task.Title</h3>
+    <div class="tk-list-body">
+        <div class="tk-list-top">
+            <h3 class="tk-list-title">@Task.Title</h3>
             <div class="je-cardmenu">
                 <OdsMenu Items="BuildActions()" AriaLabel="@($"Actions for {Task.Title}")" />
             </div>
@@ -53,21 +53,21 @@
 
         @* The deadline is the meta line's one primary-ink fact. Once completed its slot carries the
            completion instead — a finished task's own date is what happened, not what was planned. *@
-        <div class="tkc-meta">
+        <div class="tk-list-meta">
             @if (_status == JournalTaskStatus.Archived)
             {
                 <OdsChip Tone="OdsChipTone.Outline" Class="archived sm">Archived</OdsChip>
             }
             @if (_status == JournalTaskStatus.Done && Task.CompletedAt is { } completed)
             {
-                <span class="tkc-due">
+                <span class="tk-list-due">
                     <span class="material-icons" aria-hidden="true">check</span>Completed
                     <span class="mono">@completed.ToLocalTime().ToString("MMM d, yyyy, HH:mm")</span>
                 </span>
             }
             else if (Task.Deadline is { } deadline)
             {
-                <span class="tkc-due">
+                <span class="tk-list-due">
                     <span class="material-icons" aria-hidden="true">event</span>Due
                     <span class="mono">@deadline.ToString("MMM d, yyyy")</span>
                 </span>
@@ -89,16 +89,16 @@
         @* Uncapped by decision: the card is the detail, so the note is never clamped. *@
         @if (!string.IsNullOrWhiteSpace(Task.Content))
         {
-            <p class="tkc-note">@Task.Content</p>
+            <p class="tk-list-note">@Task.Content</p>
         }
 
         @if (_tagNames.Count > 0 || Task.AttachmentCount > 0)
         {
-            <div class="tkc-foot">
-                <div class="tkc-chips"><JournalTagChips Names="_tagNames" Icon="label" /></div>
+            <div class="tk-list-foot">
+                <div class="tk-list-chips"><JournalTagChips Names="_tagNames" Icon="label" /></div>
                 @if (Task.AttachmentCount > 0)
                 {
-                    <span class="tkc-att">
+                    <span class="tk-list-att">
                         <span class="material-icons" aria-hidden="true">attach_file</span>
                         <span class="mono">@Task.AttachmentCount</span>
                         <span class="sr-only">@(Task.AttachmentCount == 1 ? "attachment" : "attachments")</span>

@@ -4,8 +4,8 @@ using Odyssey.Dtos.Finance;
 namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
-/// The colour a contract's record card takes. The headline figure and the header mark read ONE derived
-/// tone; the type accent still colours everything inside the card.
+/// The colour a contract's record card takes. The headline figure reads one derived tone; the header mark
+/// and everything inside the card take the contract TYPE's accent.
 /// </summary>
 public static class ContractCardTone
 {
@@ -29,11 +29,12 @@ public static class ContractCardTone
     };
 
     /// <summary>
-    /// The card root's classes: <c>con-tone-*</c> tints the header mark with the figure's tone, and
-    /// <c>con-unsigned</c> dashes the edge of a Draft or Ready row.
+    /// The card root's classes: <c>con-unsigned</c> dashes the edge of a Draft or Ready row. The header
+    /// mark no longer follows the figure's tone — the design system retired that tint, so the mark reads
+    /// the type accent like the rest of the card.
     /// </summary>
-    public static string CardClass(OdsRecordFigureTone tone, bool unsigned) =>
-        $"con-card con-tone-{tone.ToString().ToLowerInvariant()}{(unsigned ? " con-unsigned" : "")}";
+    public static string CardClass(bool unsigned) =>
+        unsigned ? "con-card con-unsigned" : "con-card";
 
     /// <summary>
     /// The Signed tile's tint. A signature on an agreement that has ended is history, not good news,
