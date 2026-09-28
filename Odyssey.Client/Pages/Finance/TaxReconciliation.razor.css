@@ -34,7 +34,6 @@
     letter-spacing: 0.07em; text-transform: uppercase;
     color: var(--mud-palette-text-secondary);
 }
-.tx-recon-group .material-icons { font-size: 15px; opacity: 0.8; }
 
 .tx-recon-row { border-top: 1px dashed var(--mud-palette-divider-light); }
 .tx-recon-group + .tx-recon-row { border-top: none; }

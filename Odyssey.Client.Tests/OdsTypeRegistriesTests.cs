@@ -89,7 +89,9 @@ public class OdsTypeRegistriesTests
         foreach (var option in Registry(registryName))
         {
             Assert.False(string.IsNullOrWhiteSpace(option.Label), $"{registryName}.{option.Key} has no label");
-            Assert.Matches("^[a-z0-9_]+$", option.Icon);   // Material Icons ligature
+            // A Material Icons ligature, or one typographic glyph (the design system's § for a term
+            // change) that --font-icons' text fallback renders.
+            Assert.Matches(@"^(?:[a-z0-9_]+|[^\x00-\x7F])$", option.Icon);
             Assert.StartsWith("oklch(", option.Color);
             Assert.StartsWith("oklch(", option.Soft);
         }
@@ -215,7 +217,7 @@ public class OdsTypeRegistriesTests
         var declared = Regex.Matches(
                 File.ReadAllText(path),
                 @"\{\s*key:\s*'(?<key>\w+)',\s*label:\s*'(?<label>[^']*)',\s*enumValue:\s*(?<ordinal>\d+),"
-                + @"\s*icon:\s*'(?<icon>\w+)',\s*color:\s*'(?<color>[^']*)',\s*soft:\s*'(?<soft>[^']*)'")
+                + @"\s*icon:\s*'(?<icon>[^']+)',\s*color:\s*'(?<color>[^']*)',\s*soft:\s*'(?<soft>[^']*)'")
             .Select(m => (
                 Key: m.Groups["key"].Value,
                 Label: m.Groups["label"].Value,
@@ -300,7 +302,7 @@ public class OdsTypeRegistriesTests
         var declared = Regex.Matches(
                 File.ReadAllText(path),
                 @"\{\s*key:\s*'(?<key>\w+)',\s*label:\s*'(?<label>[^']*)',\s*enumValue:\s*(?<ordinal>\d+),"
-                + @"\s*icon:\s*'(?<icon>\w+)',\s*color:\s*'(?<color>[^']*)',\s*soft:\s*'(?<soft>[^']*)'")
+                + @"\s*icon:\s*'(?<icon>[^']+)',\s*color:\s*'(?<color>[^']*)',\s*soft:\s*'(?<soft>[^']*)'")
             .Select(m => (
                 Key: m.Groups["key"].Value,
                 Label: m.Groups["label"].Value.Replace("\u2019", "'", StringComparison.Ordinal),

@@ -42,6 +42,10 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
 - **Component library:** `Odyssey.Client/Components/` — 143 `Ods*.razor` atoms today. Shared model
   types live in `OdsModels.cs`; enum icon/colour/label metadata belongs in `OdsTypeRegistries.cs`
   (and the `*Visuals` types beside it), never hardcoded at a call site.
+- **A registry `Icon` may be one typographic glyph, not a ligature** — `ContractEventTypes`'
+  `TermChanged` is `§`. It renders because `.material-icons` (`wwwroot/css/fonts.css`) takes
+  `var(--font-icons)`, whose text-font fallback draws any character Material Icons lacks. So it works
+  only in a `material-icons` span (`OdsMIcon`, the Ods pickers and rails) — never in `MudIcon.Icon`.
 - **Foundation tokens:** `Odyssey.Client/wwwroot/css/app.css`. Global component CSS:
   `wwwroot/css/odyssey-components.css`. Palette wiring: `Odyssey.Client/Theme/OdysseyTheme.cs`.
 - **Scoped CSS travels with its component.** Moving markup into a child means moving the matching

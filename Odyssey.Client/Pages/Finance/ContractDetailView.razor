@@ -64,9 +64,9 @@
     }
 </div>
 
-@* Terms — what the agreement COSTS, as a dated history (issue #135). Between Parties and
+@* Terms — what the agreement FIXES (prices, rates, notice periods, deadlines), as a dated history (issue #135). Between Parties and
    Documents, matching the header counts' order. The section renders two dividers of its own
-   (what it costs today, and how it got there), so it is placed here rather than wrapped. *@
+   (what it fixes today, and how it got there), so it is placed here rather than wrapped. *@
 <ContractTermsSection Contract="Contract"
                       CanWrite="CanWrite"
                       FormatMoney="FormatMoney"
@@ -124,7 +124,7 @@
 </div>
 
 @* Events — what has HAPPENED to the agreement, as a log (issue #138). LAST, and deliberately so:
-   every section above describes what the contract IS — who is in it, what it costs, what evidences
+   every section above describes what the contract IS — who is in it, what it fixes, what evidences
    it — and this one is its history. Like every section above it, it stays writable when the
    contract is archived: archival hides a contract, it does not lock it. *@
 <ContractEventsSection Contract="Contract"
