@@ -451,47 +451,29 @@ const ContactTypeSelect = ({ helper, ...props }) => {
   return <DS.Select help={helper} options={options} {...props} />;
 };
 
-// FileType pickers — typed, registry-backed (icon + color per option). Two
-// vocabularies: AccountFileType (files on an account) and TransactionFileType
-// (files on a transaction). Same fallback pattern: until the bundle carries the
-// typed components, feed the registry into the base DS.Select / DS.MultiSelect.
+// FileType pickers — one typed, registry-backed pair in the bundle
+// (DS.FileTypeSelect / DS.FileTypeMultiSelect, `kind` picks the vocabulary).
+// The kit keeps its per-entity names as thin presets so page code is unchanged.
 const optsFrom = (arr) => (arr || []).map((t) => ({ value: t.key, label: t.label, icon: t.icon, iconColor: t.color }));
-const acctFileOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.accountFileTypes);
-const txnFileOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.transactionFileTypes);
-const taxFileOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.taxStatementFileTypes);
-const AccountFileTypeSelect = ({ helper, types, ...props }) => {
-  if (DS.AccountFileTypeSelect) return <DS.AccountFileTypeSelect help={helper} types={types} {...props} />;
-  return <DS.Select help={helper} options={types ? optsFrom(types) : acctFileOpts()} {...props} />;
+const FILE_KIND_DATA = { account: 'accountFileTypes', transaction: 'transactionFileTypes', taxStatement: 'taxStatementFileTypes', property: 'propertyFileTypes' };
+const FILE_KIND_ICON = { account: 'folder', transaction: 'receipt_long', taxStatement: 'request_quote', property: 'home_work' };
+const kindOpts = (kind) => optsFrom(window.OdysseyData && window.OdysseyData[FILE_KIND_DATA[kind]]);
+const fileTypeSelectFor = (kind) => ({ helper, types, ...props }) => {
+  if (DS.FileTypeSelect) return <DS.FileTypeSelect kind={kind} help={helper} types={types} {...props} />;
+  return <DS.Select help={helper} options={types ? optsFrom(types) : kindOpts(kind)} {...props} />;
 };
-const AccountFileTypeMultiSelect = ({ types, ...props }) => {
-  if (DS.AccountFileTypeMultiSelect) return <DS.AccountFileTypeMultiSelect types={types} {...props} />;
-  return <DS.MultiSelect label="Any type" icon="folder" options={types ? optsFrom(types) : acctFileOpts()} {...props} />;
+const fileTypeMultiSelectFor = (kind) => ({ types, ...props }) => {
+  if (DS.FileTypeMultiSelect) return <DS.FileTypeMultiSelect kind={kind} types={types} {...props} />;
+  return <DS.MultiSelect label="Any type" icon={FILE_KIND_ICON[kind]} options={types ? optsFrom(types) : kindOpts(kind)} {...props} />;
 };
-const TransactionFileTypeSelect = ({ helper, types, ...props }) => {
-  if (DS.TransactionFileTypeSelect) return <DS.TransactionFileTypeSelect help={helper} types={types} {...props} />;
-  return <DS.Select help={helper} options={types ? optsFrom(types) : txnFileOpts()} {...props} />;
-};
-const TransactionFileTypeMultiSelect = ({ types, ...props }) => {
-  if (DS.TransactionFileTypeMultiSelect) return <DS.TransactionFileTypeMultiSelect types={types} {...props} />;
-  return <DS.MultiSelect label="Any type" icon="receipt_long" options={types ? optsFrom(types) : txnFileOpts()} {...props} />;
-};
-const TaxStatementFileTypeSelect = ({ helper, types, ...props }) => {
-  if (DS.TaxStatementFileTypeSelect) return <DS.TaxStatementFileTypeSelect help={helper} types={types} {...props} />;
-  return <DS.Select help={helper} options={types ? optsFrom(types) : taxFileOpts()} {...props} />;
-};
-const TaxStatementFileTypeMultiSelect = ({ types, ...props }) => {
-  if (DS.TaxStatementFileTypeMultiSelect) return <DS.TaxStatementFileTypeMultiSelect types={types} {...props} />;
-  return <DS.MultiSelect label="Any type" icon="request_quote" options={types ? optsFrom(types) : taxFileOpts()} {...props} />;
-};
-const propFileOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.propertyFileTypes);
-const PropertyFileTypeSelect = ({ helper, types, ...props }) => {
-  if (DS.PropertyFileTypeSelect) return <DS.PropertyFileTypeSelect help={helper} types={types} {...props} />;
-  return <DS.Select help={helper} options={types ? optsFrom(types) : propFileOpts()} {...props} />;
-};
-const PropertyFileTypeMultiSelect = ({ types, ...props }) => {
-  if (DS.PropertyFileTypeMultiSelect) return <DS.PropertyFileTypeMultiSelect types={types} {...props} />;
-  return <DS.MultiSelect label="Any type" icon="home_work" options={types ? optsFrom(types) : propFileOpts()} {...props} />;
-};
+const AccountFileTypeSelect = fileTypeSelectFor('account');
+const AccountFileTypeMultiSelect = fileTypeMultiSelectFor('account');
+const TransactionFileTypeSelect = fileTypeSelectFor('transaction');
+const TransactionFileTypeMultiSelect = fileTypeMultiSelectFor('transaction');
+const TaxStatementFileTypeSelect = fileTypeSelectFor('taxStatement');
+const TaxStatementFileTypeMultiSelect = fileTypeMultiSelectFor('taxStatement');
+const PropertyFileTypeSelect = fileTypeSelectFor('property');
+const PropertyFileTypeMultiSelect = fileTypeMultiSelectFor('property');
 
 const contractTypeOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.contractTypes);
 const ContractTypeSelect = ({ helper, types, ...props }) => {

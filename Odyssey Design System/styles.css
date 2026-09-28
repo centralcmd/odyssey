@@ -7,13 +7,14 @@
    var(--mud-palette-*) / var(--space-*) references in the kit
    files below resolve.
 
-   Note: the embedded Material-icon font in colors_and_type.css
-   renders most reliably when that file is ALSO linked directly
-   in the host <head>. This @import wires the cascade for tooling
-   and consumers who only pull in styles.css.
+   Note: the Material-icon font lives in icons.css and renders most
+   reliably in captures when that file is ALSO linked directly in the
+   host <head>. Token-only consumers can link colors_and_type.css alone
+   and skip the ~170 KB icon font.
    ============================================================= */
 
 @import url('./colors_and_type.css');
+@import url('./icons.css');
 
 @import url('./ui_kits/web/kit.css');
 @import url('./ui_kits/web/account.css');

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="App shell (blank)" description="Starting point for a new screen — nav rail and drawer, PageHeader, and an empty content area ready to fill. Theme and density switchable." -->
+<helmet>
+  <script src="../kit-app.js"></script>
+</helmet>
+<div data-theme="{{ theme }}" data-density="{{ density }}" style="min-height: 100vh; background: var(--mud-palette-background, #0E1525); color: var(--mud-palette-text-primary, #F5F7FB); box-sizing: border-box;">
+  <div id="kit-mount"></div>
+  <div id="kit-loading" style="display: block; padding: 72px 0; text-align: center; font: 400 14px/1.5 var(--font-sans, system-ui); color: var(--mud-palette-text-secondary, #98A4BC);">Loading…</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;title&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;New page&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;sub&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Describe what this page tracks.&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;'dark' | 'light'&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;comfortable&quot;,&quot;compact&quot;],&quot;default&quot;:&quot;comfortable&quot;,&quot;tsType&quot;:&quot;'comfortable' | 'compact'&quot;},&quot;current&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  _mountWhenReady() {
+    if (this._mounted) return;
+    if (!this._el) this._el = document.getElementById('kit-mount');
+    const NS = window.OdysseyDesignSystem_d5aa51;
+    const ready = this._el && window.React && window.ReactDOM && window.ReactDOM.createRoot &&
+                  window.__kitReady && window.AppShell && NS && NS.PageHeader && NS.EmptyState;
+    if (!ready) { this._t = setTimeout(() => this._mountWhenReady(), 80); return; }
+    this._root = window.ReactDOM.createRoot(this._el);
+    this._mounted = true;
+    const loader = document.getElementById('kit-loading');
+    if (loader) loader.style.display = 'none';
+    this._paint();
+  }
+  _paint() {
+    if (!this._root) return;
+    const h = window.React.createElement;
+    const NS = window.OdysseyDesignSystem_d5aa51;
+    const title = this.props.title ?? 'New page';
+    const shell = h(window.AppShell, Object.assign({}, window.__KIT_PROPS, { current: this.props.current ?? 'dashboard', darkMode: (this.props.theme ?? 'dark') === 'dark' }),
+      h('div', { style: { display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' } },
+        h(NS.PageHeader, { title, sub: this.props.sub ?? 'Describe what this page tracks.', primary: { label: 'New item', icon: 'add', onClick: () => {} } }),
+        h(NS.EmptyState, { icon: 'inbox', title: 'Nothing here yet', desc: 'Replace this empty state with the page content.' })
+      )
+    );
+    this._root.render(shell);
+  }
+  componentDidMount() { this._mountWhenReady(); }
+  componentDidUpdate() { this._paint(); }
+  componentWillUnmount() {
+    if (this._t) clearTimeout(this._t);
+    if (this._root) { try { this._root.unmount(); } catch (e) {} }
+  }
+  renderVals() {
+    return { theme: this.props.theme ?? 'dark', density: this.props.density ?? 'comfortable' };
+  }
+}
+</script>
+</body>
+</html>

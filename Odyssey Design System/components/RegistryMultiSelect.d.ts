@@ -14,7 +14,7 @@ export interface RegistryMultiSelectProps {
 
 /**
  * Shared engine behind every registry-backed checkbox-list filter — maps a
- * registry to `MultiSelect` options. Domain wrappers (AccountFileTypeMultiSelect,
+ * registry to `MultiSelect` options. Domain wrappers (FileTypeMultiSelect,
  * ContactTypeMultiSelect, …) delegate to it.
  */
 export declare function RegistryMultiSelect(props: RegistryMultiSelectProps): JSX.Element;

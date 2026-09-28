@@ -49,6 +49,7 @@
 
   // ---- Stylesheets (mirror ui_kits/web/index.html) ----
   ['colors_and_type.css',
+   'icons.css',
    'ui_kits/web/kit.css',
    'ui_kits/web/account-signals.css',
    'ui_kits/web/admin.css',

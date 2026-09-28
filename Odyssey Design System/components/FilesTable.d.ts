@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { ActionMenuItem } from './ActionMenu';
-import { AccountFileType } from './AccountFileTypeSelect';
+import { FileType } from './FileTypeSelect';
 
 /** One file row — plain data, no store lookups. */
 export interface FilesTableRow {
@@ -74,7 +74,7 @@ export interface FilesTableProps {
    */
   onSave?: (id: string, patch: { name?: string; kind: string; validFrom?: string | null; validTo?: string | null; issuedAt?: string | null; issuedBy?: string | null }) => void;
   /** File-kind vocabulary for the dialog's Document type picker. Default: the canonical ACCOUNT_FILE_TYPES registry. */
-  kinds?: AccountFileType[];
+  kinds?: FileType[];
   /**
    * Whether the Edit dialog offers the File name field. Default `true`.
    * Set `false` on surfaces whose update verb doesn't accept a name — a

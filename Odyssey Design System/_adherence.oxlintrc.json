@@ -39,18 +39,6 @@
         "message": "Font not provided by the design system. Available: Material Icons, Roboto, Roboto Mono."
       },
       {
-        "selector": "JSXOpeningElement[name.name='AccountFileTypeMultiSelect'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|onChange|label|icon|align|types|key|ref|className|style|children)$/]",
-        "message": "<AccountFileTypeMultiSelect> doesn't accept that prop. Declared props: value, onChange, label, icon, align, types."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='AccountFileTypeMultiSelect'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:start|end)$/]",
-        "message": "<AccountFileTypeMultiSelect> align must be one of 'start' | 'end'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='AccountFileType'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|key|ref|className|style|children)$/]",
-        "message": "<AccountFileType> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft."
-      },
-      {
         "selector": "JSXOpeningElement[name.name='SmartTag'] > JSXAttribute > JSXIdentifier[name!=/^(?:id|label|name|key|ref|className|style|children)$/]",
         "message": "<SmartTag> doesn't accept that prop. Declared props: id, label, name."
       },
@@ -367,6 +355,18 @@
         "message": "<FilesTableRow> doesn't accept that prop. Declared props: id, name, kind, size, uploaded, validFrom, validTo, issuedAt, issuedBy, statusBadge."
       },
       {
+        "selector": "JSXOpeningElement[name.name='FileTypeMultiSelect'] > JSXAttribute > JSXIdentifier[name!=/^(?:kind|value|onChange|label|icon|align|types|key|ref|className|style|children)$/]",
+        "message": "<FileTypeMultiSelect> doesn't accept that prop. Declared props: kind, value, onChange, label, icon, align, types."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='FileTypeMultiSelect'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:left|right)$/]",
+        "message": "<FileTypeMultiSelect> align must be one of 'left' | 'right'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='FileType'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|key|ref|className|style|children)$/]",
+        "message": "<FileType> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='UploadFile'] > JSXAttribute > JSXIdentifier[name!=/^(?:uid|name|kind|sizeBytes|key|ref|className|style|children)$/]",
         "message": "<UploadFile> doesn't accept that prop. Declared props: uid, name, kind, sizeBytes."
       },
@@ -513,18 +513,6 @@
       {
         "selector": "JSXOpeningElement[name.name='PropertyEventType'] > JSXAttribute[name.name='scope'] > Literal[value!=/^(?:common|RealEstate|Vehicle)$/]",
         "message": "<PropertyEventType> scope must be one of 'common' | 'RealEstate' | 'Vehicle'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='PropertyFileTypeMultiSelect'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|onChange|label|icon|align|types|className|key|ref|className|style|children)$/]",
-        "message": "<PropertyFileTypeMultiSelect> doesn't accept that prop. Declared props: value, onChange, label, icon, align, types, className."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='PropertyFileTypeMultiSelect'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:left|right)$/]",
-        "message": "<PropertyFileTypeMultiSelect> align must be one of 'left' | 'right'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='PropertyFileType'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|key|ref|className|style|children)$/]",
-        "message": "<PropertyFileType> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft."
       },
       {
         "selector": "JSXOpeningElement[name.name='RadioOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|disabled|key|ref|className|style|children)$/]",
@@ -739,18 +727,6 @@
         "message": "<TaskBoardTask> doesn't accept that prop. Declared props: id, status, position, title."
       },
       {
-        "selector": "JSXOpeningElement[name.name='TaxStatementFileTypeMultiSelect'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|onChange|label|icon|align|types|className|key|ref|className|style|children)$/]",
-        "message": "<TaxStatementFileTypeMultiSelect> doesn't accept that prop. Declared props: value, onChange, label, icon, align, types, className."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='TaxStatementFileTypeMultiSelect'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:left|right)$/]",
-        "message": "<TaxStatementFileTypeMultiSelect> align must be one of 'left' | 'right'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='TaxStatementFileType'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|key|ref|className|style|children)$/]",
-        "message": "<TaxStatementFileType> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft."
-      },
-      {
         "selector": "JSXOpeningElement[name.name='TermHistorySeries'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|value|tone|color|group|points|format|axisFormat|key|ref|className|style|children)$/]",
         "message": "<TermHistorySeries> doesn't accept that prop. Declared props: key, label, value, tone, color, group, points, format, axisFormat."
       },
@@ -787,18 +763,6 @@
         "message": "<Tooltip> doesn't accept that prop. Declared props: label, children."
       },
       {
-        "selector": "JSXOpeningElement[name.name='TransactionFileTypeMultiSelect'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|onChange|label|icon|align|types|key|ref|className|style|children)$/]",
-        "message": "<TransactionFileTypeMultiSelect> doesn't accept that prop. Declared props: value, onChange, label, icon, align, types."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='TransactionFileTypeMultiSelect'] > JSXAttribute[name.name='align'] > Literal[value!=/^(?:start|end)$/]",
-        "message": "<TransactionFileTypeMultiSelect> align must be one of 'start' | 'end'."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='TransactionFileType'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|enumValue|icon|color|soft|key|ref|className|style|children)$/]",
-        "message": "<TransactionFileType> doesn't accept that prop. Declared props: key, label, enumValue, icon, color, soft."
-      },
-      {
         "selector": "JSXOpeningElement[name.name='TransactionTagOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:id|transactionTagId|name|description|archived|key|ref|className|style|children)$/]",
         "message": "<TransactionTagOption> doesn't accept that prop. Declared props: id, transactionTagId, name, description, archived."
       },
@@ -828,12 +792,6 @@
   ],
   "x-omelette": {
     "components": {
-      "AccountFileTypeMultiSelect": {
-        "replaces": []
-      },
-      "AccountFileType": {
-        "replaces": []
-      },
       "SmartTag": {
         "replaces": []
       },
@@ -990,6 +948,12 @@
       "FilesTableRow": {
         "replaces": []
       },
+      "FileTypeMultiSelect": {
+        "replaces": []
+      },
+      "FileType": {
+        "replaces": []
+      },
       "UploadFile": {
         "replaces": []
       },
@@ -1066,12 +1030,6 @@
         "replaces": []
       },
       "PropertyEventType": {
-        "replaces": []
-      },
-      "PropertyFileTypeMultiSelect": {
-        "replaces": []
-      },
-      "PropertyFileType": {
         "replaces": []
       },
       "RadioOption": {
@@ -1179,12 +1137,6 @@
       "TaskBoardTask": {
         "replaces": []
       },
-      "TaxStatementFileTypeMultiSelect": {
-        "replaces": []
-      },
-      "TaxStatementFileType": {
-        "replaces": []
-      },
       "TermHistorySeries": {
         "replaces": []
       },
@@ -1206,12 +1158,6 @@
       "Tooltip": {
         "replaces": []
       },
-      "TransactionFileTypeMultiSelect": {
-        "replaces": []
-      },
-      "TransactionFileType": {
-        "replaces": []
-      },
       "TransactionTagOption": {
         "replaces": []
       },
@@ -1230,8 +1176,11 @@
       "--border-strong",
       "--border-thin",
       "--brand-border",
+      "--brand-mark-dark",
+      "--brand-mark-gray",
       "--brand-soft",
       "--brand-text",
+      "--cell-pad-y",
       "--chart-1",
       "--chart-2",
       "--chart-3",
@@ -1265,9 +1214,9 @@
       "--con-accent",
       "--con-accent-line",
       "--con-accent-soft",
-      "--con-tone",
       "--control-h",
       "--control-h-dense",
+      "--control-pad-y",
       "--coral-300",
       "--coral-500",
       "--coral-700",
@@ -1291,21 +1240,32 @@
       "--font-icons",
       "--font-mono",
       "--font-sans",
+      "--fs-amount",
       "--fs-body1",
       "--fs-body2",
       "--fs-caption",
       "--fs-display",
+      "--fs-figure",
       "--fs-h1",
       "--fs-h2",
       "--fs-h3",
       "--fs-h4",
       "--fs-h5",
       "--fs-h6",
+      "--fs-label",
+      "--fs-micro",
       "--fs-overline",
       "--fw-bold",
       "--fw-light",
       "--fw-medium",
       "--fw-regular",
+      "--icon-2xl",
+      "--icon-lg",
+      "--icon-md",
+      "--icon-sm",
+      "--icon-xl",
+      "--icon-xs",
+      "--iconbtn-size",
       "--info-border",
       "--info-soft",
       "--info-text",
@@ -1364,15 +1324,11 @@
       "--mud-palette-text-primary",
       "--mud-palette-text-secondary",
       "--mud-palette-warning",
-      "--odc-infotile-accent",
-      "--odc-infotile-accent-soft",
       "--pending-text",
       "--radius-lg",
       "--radius-md",
       "--radius-pill",
       "--radius-sm",
-      "--rec",
-      "--rec-soft",
       "--row-h",
       "--row-h-dense",
       "--sea-300",
@@ -1406,7 +1362,8 @@
       "--tide-deep",
       "--tide-glow",
       "--tide-ink",
-      "--tkc-state",
+      "--tint-border",
+      "--tint-soft",
       "--tracking-caps",
       "--tracking-normal",
       "--tracking-tight",
@@ -1428,10 +1385,6 @@
       "--z-tooltip"
     ],
     "tokenKinds": {
-      "--rec": "color",
-      "--rec-soft": "color",
-      "--odc-infotile-accent": "color",
-      "--odc-infotile-accent-soft": "color",
       "--ink-50": "color",
       "--ink-100": "color",
       "--ink-200": "color",
@@ -1469,6 +1422,8 @@
       "--violet-500": "color",
       "--violet-400": "color",
       "--violet-700": "color",
+      "--brand-mark-gray": "color",
+      "--brand-mark-dark": "color",
       "--font-sans": "font",
       "--font-mono": "font",
       "--font-icons": "font",
@@ -1483,6 +1438,16 @@
       "--fs-body2": "spacing",
       "--fs-caption": "spacing",
       "--fs-overline": "spacing",
+      "--fs-micro": "spacing",
+      "--fs-label": "spacing",
+      "--fs-figure": "spacing",
+      "--fs-amount": "spacing",
+      "--icon-xs": "spacing",
+      "--icon-sm": "spacing",
+      "--icon-md": "spacing",
+      "--icon-lg": "spacing",
+      "--icon-xl": "spacing",
+      "--icon-2xl": "spacing",
       "--fw-light": "font",
       "--fw-regular": "font",
       "--fw-medium": "font",
@@ -1509,6 +1474,9 @@
       "--row-h-dense": "spacing",
       "--control-h": "spacing",
       "--control-h-dense": "spacing",
+      "--control-pad-y": "spacing",
+      "--iconbtn-size": "spacing",
+      "--cell-pad-y": "spacing",
       "--radius-sm": "radius",
       "--radius-md": "radius",
       "--radius-lg": "radius",
@@ -1565,31 +1533,19 @@
       "--mud-palette-action-disabled": "color",
       "--mud-palette-action-disabled-background": "color",
       "--finance-income": "color",
-      "--finance-income-soft": "color",
-      "--finance-income-border": "color",
       "--finance-expense": "color",
-      "--finance-expense-soft": "color",
-      "--finance-expense-border": "color",
       "--finance-pending": "color",
-      "--finance-pending-soft": "color",
-      "--finance-pending-border": "color",
       "--brand-text": "font",
       "--focus-ring": "color",
-      "--info-soft": "color",
-      "--info-border": "color",
+      "--tint-soft": "other",
+      "--tint-border": "other",
       "--info-text": "font",
-      "--tag-soft": "color",
       "--tag-text": "font",
       "--violet-text": "font",
       "--pending-text": "font",
-      "--brand-soft": "color",
-      "--brand-border": "color",
       "--status-active": "color",
-      "--status-active-soft": "color",
       "--status-closed": "color",
-      "--status-closed-soft": "color",
       "--status-archived": "color",
-      "--status-archived-soft": "color",
       "--chart-1": "color",
       "--chart-2": "color",
       "--chart-3": "color",
@@ -1626,11 +1582,23 @@
       "--color-income": "color",
       "--color-expense": "color",
       "--color-overlay-scrim": "color",
+      "--finance-income-soft": "color",
+      "--finance-income-border": "color",
+      "--finance-expense-soft": "color",
+      "--finance-expense-border": "color",
+      "--finance-pending-soft": "color",
+      "--finance-pending-border": "color",
+      "--info-soft": "color",
+      "--info-border": "color",
+      "--tag-soft": "color",
+      "--brand-soft": "color",
+      "--brand-border": "color",
+      "--status-active-soft": "color",
+      "--status-closed-soft": "color",
+      "--status-archived-soft": "color",
       "--con-accent": "color",
       "--con-accent-soft": "color",
-      "--con-accent-line": "color",
-      "--con-tone": "color",
-      "--tkc-state": "color"
+      "--con-accent-line": "color"
     },
     "fontFamilies": [
       "Material Icons",

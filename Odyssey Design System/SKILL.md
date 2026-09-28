@@ -13,7 +13,7 @@ If the user invokes this skill without any other guidance, ask them what they wa
 ## What's here
 
 - `README.md` — product context, content fundamentals, visual foundations, iconography.
-- `colors_and_type.css` — every design token as a CSS custom property. Names mirror MudBlazor's `--mud-palette-*` so they wire 1:1 into a custom `MudTheme.PaletteDark` / `PaletteLight`.
+- `colors_and_type.css` — every design token as a CSS custom property (the Material Icons font is in `icons.css`). Names mirror MudBlazor's `--mud-palette-*` so they wire 1:1 into a custom `MudTheme.PaletteDark` / `PaletteLight`.
 - `assets/` — Odyssey logomark + wordmark SVGs and the Odyssey compass logomark rasterized as the favicon set (16 / 32 / 192 / 512).
 - `preview/` — small HTML cards specifying type, color, spacing, components.
 - `ui_kits/web/` — React + JSX recreation of the Odyssey web app (Blazor WebAssembly / MudBlazor v8). Open `index.html` for a click-thru.
@@ -39,7 +39,8 @@ If the user invokes this skill without any other guidance, ask them what they wa
 
 ## When you build something new
 
-1. Start the file with `<link rel="stylesheet" href="…/colors_and_type.css">` (or `@import` it). All tokens flow from there.
+1. For feature-specific rules (a page, record section or reference vocabulary), read the matching file in `docs/` — the README keeps foundations and the catalog only.
+1. Start the file with `<link rel="stylesheet" href="…/colors_and_type.css">` plus `…/icons.css` if it uses Material Icons (or link `styles.css`, which imports both). All tokens flow from there.
 2. Component vocabulary follows MudBlazor: buttons are `Filled` / `Outlined` / `Text`; cards are `Outlined` or elevated; text fields use `Variant.Outlined`; nav is a `MudDrawer` + `MudNavLink`. Reuse the components in `ui_kits/web/Components.jsx` rather than re-inventing.
 3. Layouts: authed views use the App Shell pattern (left `Drawer` 240px is the only chrome — brand lockup at top, primary nav, then a footer group of Preferences / User Account / About; no top AppBar) with a max-width `Large` container. Auth screens are a centered 420px card.
 4. Use the icon mappings in `README.md` for product concepts — don't pick new Material Icons for `Accounts`, `Budgets`, `Transactions`, etc.

@@ -105,8 +105,6 @@
    ============================================================ */
 .tx-roles {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  --odc-infotile-accent: var(--rec, var(--brand-text));
-  --odc-infotile-accent-soft: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
 }
 @media (max-width: 720px) { .tx-roles { grid-template-columns: 1fr; } }
 /* Role wells are DS InfoTiles whose foot carries one extra row: the tag chips. */

@@ -14,7 +14,7 @@
   font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  padding: 9px 16px;
+  padding: var(--control-pad-y) 16px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
@@ -24,7 +24,7 @@
   gap: 8px;
   transition: background-color var(--duration-base) var(--ease-standard), opacity var(--duration-base) var(--ease-standard);
 }
-.odc-btn .material-icons { font-size: 18px; }
+.odc-btn .material-icons { font-size: var(--icon-md); }
 .odc-btn.full { width: 100%; justify-content: center; }
 .odc-btn.filled   { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
 .odc-btn.filled:hover   { background: var(--mud-palette-primary-darken); }
@@ -71,7 +71,7 @@
   color: var(--mud-palette-text-primary);
   white-space: nowrap;
 }
-.odc-chip .material-icons { font-size: 14px; }
+.odc-chip .material-icons { font-size: var(--icon-xs); }
 .odc-chip .odc-chip-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
 .odc-chip.income  { color: var(--finance-income);  background: var(--finance-income-soft); }
 .odc-chip.expense { color: var(--finance-expense); background: var(--finance-expense-soft); }
@@ -135,10 +135,10 @@
 .odc-infotile-ic {
   display: inline-flex; align-items: center; justify-content: center;
   width: 30px; height: 30px; border-radius: var(--radius-sm);
-  background: var(--odc-infotile-accent-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
-  color: var(--odc-infotile-accent, var(--brand-text)); flex: none;
+  background: var(--odc-infotile-accent-soft, var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent)));
+  color: var(--odc-infotile-accent, var(--rec, var(--brand-text))); flex: none;
 }
-.odc-infotile-ic .material-icons { font-size: 17px; }
+.odc-infotile-ic .material-icons { font-size: var(--icon-md); }
 .odc-infotile-k {
   font: 600 var(--fs-overline)/1 var(--font-sans);
   letter-spacing: var(--tracking-caps); text-transform: uppercase;
@@ -166,7 +166,7 @@
   font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);
   color: var(--mud-palette-text-primary);
 }
-.odc-alert .material-icons { font-size: 20px; flex: none; }
+.odc-alert .material-icons { font-size: var(--icon-lg); flex: none; }
 .odc-alert.info    { background: var(--info-soft);             border-color: var(--info-border);             color: var(--info-text); }
 .odc-alert.success { background: var(--finance-income-soft);   border-color: var(--finance-income-border);   color: var(--finance-income); }
 .odc-alert.warning { background: var(--finance-pending-soft);  border-color: var(--finance-pending-border);  color: var(--pending-text); }
@@ -178,7 +178,7 @@
 .odc-pw-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .odc-pw-rules.cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-5); }
 .odc-pw-rule { display: flex; align-items: center; gap: var(--space-2); font: var(--fw-regular) var(--fs-body2)/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); transition: color var(--duration-fast) var(--ease-standard); }
-.odc-pw-rule .material-icons { font-size: 16px; flex: none; color: var(--mud-palette-text-disabled); transition: color var(--duration-fast) var(--ease-standard); }
+.odc-pw-rule .material-icons { font-size: var(--icon-sm); flex: none; color: var(--mud-palette-text-disabled); transition: color var(--duration-fast) var(--ease-standard); }
 .odc-pw-rule.met { color: var(--finance-income); }
 .odc-pw-rule.met .material-icons { color: var(--finance-income); }
 @media (max-width: 520px) { .odc-pw-rules.cols-2 { grid-template-columns: 1fr; } }
@@ -204,7 +204,7 @@
   background: var(--mud-palette-action-default-hover);
   color: var(--mud-palette-text-secondary);
 }
-.odc-empty-ic .material-icons { font-size: 28px; }
+.odc-empty-ic .material-icons { font-size: var(--icon-2xl); }
 .odc-empty.muted-ic .odc-empty-ic { background: color-mix(in oklab, var(--mud-palette-text-secondary) 8%, transparent); color: var(--mud-palette-text-disabled); }
 .odc-empty-ttl  { font: var(--fw-medium) var(--fs-h5)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 .odc-empty-desc { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 42ch; }
@@ -234,7 +234,7 @@
   font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);
   color: var(--mud-palette-text-secondary);
 }
-.odc-recordsection-notice .material-icons { font-size: 18px; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-recordsection-notice .material-icons { font-size: var(--icon-md); flex: none; color: var(--mud-palette-text-secondary); }
 .odc-recordsection-notice-body { flex: 1; min-width: 0; }
 .odc-recordsection-notice.warning { border-color: oklch(0.80 0.13 85 / 0.45); background: oklch(0.80 0.13 85 / 0.08); }
 .odc-recordsection-notice.warning .material-icons { color: oklch(0.80 0.13 85); }
@@ -242,7 +242,7 @@
 /* ---------- Icon button (shared: modal close, table actions) ---------- */
 .odc-iconbtn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; flex: none;
+  width: var(--iconbtn-size); height: var(--iconbtn-size); flex: none;
   border-radius: var(--radius-sm);
   border: 1px solid transparent; background: transparent;
   color: var(--mud-palette-text-secondary);
@@ -260,7 +260,7 @@
 .odc-input-wrap { position: relative; display: flex; align-items: center; }
 .odc-input-icon {
   position: absolute; left: 12px; pointer-events: none;
-  color: var(--mud-palette-text-secondary); font-size: 20px;
+  color: var(--mud-palette-text-secondary); font-size: var(--icon-lg);
 }
 .odc-input {
   width: 100%; box-sizing: border-box;
@@ -269,7 +269,7 @@
   background: var(--mud-palette-surface);
   border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm);
-  padding: 9px 12px;
+  padding: var(--control-pad-y) 12px;
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
 .odc-input.has-icon { padding-left: 38px; }
@@ -287,7 +287,7 @@
   transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
 }
 .odc-input-clear:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
-.odc-input-clear .material-icons { font-size: 16px; }
+.odc-input-clear .material-icons { font-size: var(--icon-sm); }
 /* SearchField: type="search" gets native webkit decorations — suppress them so
    only the DS clear (.odc-input-clear) shows, never doubled up. */
 .odc-input[type="search"]::-webkit-search-cancel-button,
@@ -329,8 +329,8 @@
 .odc-modal-body .odc-amount { background-color: var(--mud-palette-background); }
 /* Hero variant — a large, focal amount input (e.g. an Estimate value). */
 .odc-amount.lg { height: 60px; gap: 8px; padding: 0 18px; border-radius: 12px; background: var(--mud-palette-background); }
-.odc-amount.lg .odc-amount-adorn { font: 500 22px/1 var(--font-sans); }
-.odc-amount.lg .odc-amount-input { font: 400 30px/1 var(--font-mono); letter-spacing: -0.01em; }
+.odc-amount.lg .odc-amount-adorn { font: 500 var(--fs-figure)/1 var(--font-sans); }
+.odc-amount.lg .odc-amount-input { font: 400 var(--fs-amount)/1 var(--font-mono); letter-spacing: -0.01em; }
 
 /* ---------- MoneyField (amount + ISO currency code as one control) ---------- */
 /* One box owns the border, hover, focus and error states; the amount and the
@@ -380,10 +380,10 @@
 /* An option that names its own direction shows its GLYPH in the lead instead of
    a sign — the arrow of a contract term's Outgoing / Incoming, for a record that
    stores a direction rather than a sign. Same metrics as the sign it replaces. */
-.odc-money-dir-ic { font-size: 19px; line-height: 1; }
+.odc-money-dir-ic { font-size: var(--icon-lg); line-height: 1; }
 /* …or its short WORD, for an in/out vocabulary where an arrow would read as the
    figure beside it rising or falling. */
-.odc-money-dir-word { font: var(--fw-medium) 12px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
+.odc-money-dir-word { font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
 /* A word needs more room than a glyph, and a FIXED slot: "OUT" and "IN" are
    different widths, so without one the digits shift sideways every time the
    lead is flipped. Padding matches the amount's own inset so the three segments
@@ -417,7 +417,7 @@
 .odc-money-cur.btn.open { background: var(--mud-palette-action-default-hover); color: var(--brand-text); }
 .odc-money-cur.btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
 .odc-money-cur.btn:disabled { cursor: not-allowed; }
-.odc-money-chev { font-size: 18px; line-height: 1; transition: transform var(--duration-base) var(--ease-standard); }
+.odc-money-chev { font-size: var(--icon-md); line-height: 1; transition: transform var(--duration-base) var(--ease-standard); }
 .odc-money-cur.btn.open .odc-money-chev { transform: rotate(180deg); }
 /* Popover is right-anchored to the currency segment; codes stay mono. With a
    long list it gets a sticky filter box above the scrolling options. */
@@ -429,7 +429,7 @@
   padding: 0 12px; height: 44px;
   border-bottom: 1px solid var(--mud-palette-divider);
 }
-.odc-money-search .material-icons { font-size: 20px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-money-search .material-icons { font-size: var(--icon-lg); color: var(--mud-palette-text-secondary); flex: none; }
 /* Beat any ambient input styling from the host page — the row IS the field. */
 .odc-money-pop .odc-money-search input {
   flex: 1; min-width: 0; width: 100%; height: 100%; box-sizing: border-box;
@@ -453,17 +453,17 @@
 /* Hero variant — a large, focal money input. Radius stays at the standard field
    radius so it sits square with the rest of the form. */
 .odc-money.lg { height: 60px; border-radius: var(--radius-md); background: var(--mud-palette-background); }
-.odc-money.lg .odc-money-input { padding: 0 18px; font: 400 30px/1 var(--font-mono); letter-spacing: -0.01em; border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.odc-money.lg .odc-money-input { padding: 0 18px; font: 400 var(--fs-amount)/1 var(--font-mono); letter-spacing: -0.01em; border-radius: var(--radius-md) 0 0 var(--radius-md); }
 .odc-money.lg .odc-money-cur { padding: 0 16px; }
 .odc-money.lg .odc-money-cur.btn { border-radius: 0 var(--radius-md) var(--radius-md) 0; padding-right: 12px; }
-.odc-money.lg .odc-money-code { font: 500 17px/1 var(--font-mono); }
-.odc-money.lg .odc-money-chev { font-size: 20px; }
-.odc-money.lg .odc-money-sign { width: 22px; margin-left: 18px; font-size: 30px; }
+.odc-money.lg .odc-money-code { font: 500 var(--fs-h5)/1 var(--font-mono); }
+.odc-money.lg .odc-money-chev { font-size: var(--icon-lg); }
+.odc-money.lg .odc-money-sign { width: 22px; margin-left: 18px; font-size: var(--fs-amount); }
 .odc-money.lg .odc-money-sign + .odc-money-input { padding-left: 8px; }
 .odc-money.lg .odc-money-sign.btn { min-width: 48px; margin: 0; padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md); }
-.odc-money.lg .odc-money-dir-sign { font-size: 30px; }
-.odc-money.lg .odc-money-dir-ic { font-size: 26px; }
-.odc-money.lg .odc-money-dir-word { font-size: 15px; }
+.odc-money.lg .odc-money-dir-sign { font-size: var(--fs-amount); }
+.odc-money.lg .odc-money-dir-ic { font-size: var(--icon-2xl); }
+.odc-money.lg .odc-money-dir-word { font-size: var(--fs-body1); }
 .odc-money.lg .odc-money-sign.btn:has(.odc-money-dir-word) { min-width: 76px; padding: 0 18px; }
 .odc-money.lg .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-money-input { padding-left: 18px; }
 /* The same lead inside an AmountField (a percentage-unit value whose record
@@ -472,7 +472,7 @@
 .odc-amount.tone-income .odc-money-sign, .odc-amount.tone-income .odc-amount-input { color: var(--finance-income); }
 .odc-amount.tone-expense .odc-money-sign, .odc-amount.tone-expense .odc-amount-input { color: var(--finance-expense); }
 .odc-amount .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-amount-input { padding-left: 14px; }
-.odc-amount.lg .odc-money-dir-word { font-size: 15px; }
+.odc-amount.lg .odc-money-dir-word { font-size: var(--fs-body1); }
 .odc-amount.lg .odc-money-sign.btn { min-width: 48px; margin: 0; padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md); }
 .odc-amount.lg .odc-money-sign.btn:has(.odc-money-dir-word) { min-width: 76px; padding: 0 18px; }
 .odc-amount.lg .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-amount-input { padding-left: 18px; }
@@ -496,18 +496,18 @@
 .odc-refnum-input { font-family: var(--font-mono); letter-spacing: 0.02em; }
 .odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--mud-palette-lines-inputs); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
 .odc-refnum-strip:hover { background: var(--mud-palette-action-default-hover); }
-.odc-refnum-strip .material-icons { font-size: 15px; color: var(--mud-palette-text-secondary); }
+.odc-refnum-strip .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
 .odc-refnum { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; color: var(--mud-palette-text-primary); }
-.odc-refnum-icon { flex: none; font-size: 15px; color: var(--mud-palette-text-secondary); }
+.odc-refnum-icon { flex: none; font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
 .odc-refnum-text { min-width: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .odc-refnum.md .odc-refnum-text { font-size: var(--fs-body1); line-height: 1.35; overflow-wrap: anywhere; }
 .odc-refnum.sm .odc-refnum-text { font-size: var(--fs-caption); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mud-palette-text-secondary); }
-.odc-refnum.sm .odc-refnum-icon { font-size: 13px; }
+.odc-refnum.sm .odc-refnum-icon { font-size: var(--icon-xs); }
 .odc-refnum-mark { background: var(--brand-soft, rgba(88, 170, 220, 0.22)); color: var(--mud-palette-text-primary); border-radius: 2px; padding: 0 1px; }
 .odc-refnum-copy { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; margin-left: 2px; border: none; border-radius: var(--radius-pill, 999px); background: transparent; cursor: pointer; color: var(--mud-palette-text-secondary); transition: background var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard); }
 .odc-refnum-copy:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 .odc-refnum-copy:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-.odc-refnum-copy .material-icons { font-size: 16px; }
+.odc-refnum-copy .material-icons { font-size: var(--icon-sm); }
 .odc-refnum-copy.done { color: var(--finance-income); }
 
 /* ---------- FormRow (paired-field column grid) ---------- */
@@ -538,7 +538,7 @@
   background: var(--mud-palette-surface);
   border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm);
-  padding: 9px 10px 9px 12px;
+  padding: var(--control-pad-y) 10px var(--control-pad-y) 12px;
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
 .odc-select-trigger:hover { border-color: var(--mud-palette-text-secondary); }
@@ -547,7 +547,7 @@
 .odc-select-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
 .odc-select-trigger.placeholder .odc-select-val { color: var(--mud-palette-placeholder); }
 .odc-select-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.odc-select-chev { color: var(--mud-palette-text-secondary); font-size: 20px; flex: none; transition: transform var(--duration-base) var(--ease-standard); }
+.odc-select-chev { color: var(--mud-palette-text-secondary); font-size: var(--icon-lg); flex: none; transition: transform var(--duration-base) var(--ease-standard); }
 .odc-select-trigger.open .odc-select-chev { transform: rotate(180deg); }
 .odc-select.error .odc-select-trigger,
 .odc-field.error .odc-select-trigger { border-color: var(--mud-palette-error); }
@@ -569,7 +569,7 @@
 .odc-select-opt:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
 .odc-select-opt.selected { color: var(--brand-text); font-weight: var(--fw-medium); }
 .odc-select-tick { width: 16px; height: 16px; flex: none; margin-left: auto; display: grid; place-items: center; }
-.odc-select-tick .material-icons { font-size: 16px; color: var(--brand-text); }
+.odc-select-tick .material-icons { font-size: var(--icon-sm); color: var(--brand-text); }
 .odc-select-opt-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Optional per-option leading glyph (Select trigger + option rows, MultiSelect rows).
    Color is set inline from the option's iconColor; inherits currentColor otherwise. */
@@ -579,12 +579,12 @@
    so a prefixed Select reads like the "Sort by" control on the toolbar. */
 .odc-select-prefix { color: var(--mud-palette-text-secondary); flex: none; }
 .odc-select-trigger-main:has(.odc-select-prefix) .odc-select-val { flex: 0 1 auto; }
-.odc-opt-icon { flex: none; font-size: 18px; line-height: 1; }
+.odc-opt-icon { flex: none; font-size: var(--icon-md); line-height: 1; }
 
 /* ---------- TypeSelect (shared registry type picker — reuses .odc-select chrome) ---------- */
 /* Selected check pinned to the far right of the option row (vs base Select's left tick). */
 .odc-typesel-check { flex: none; width: 18px; height: 18px; display: grid; place-items: center; margin-left: var(--space-2); }
-.odc-typesel-check .material-icons { font-size: 18px; color: var(--brand-text); }
+.odc-typesel-check .material-icons { font-size: var(--icon-md); color: var(--brand-text); }
 /* Group heading + separator inside the popover. */
 .odc-typesel-group {
   padding: 8px 10px 4px; font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
@@ -597,7 +597,7 @@
 .odc-sortsel-field { position: relative; }
 .odc-sortsel-trigger, .odc-sortsel-dir {
   display: inline-flex; align-items: center; gap: 8px;
-  box-sizing: border-box; height: 40px; padding: 0 10px 0 12px;
+  box-sizing: border-box; height: var(--control-h); padding: 0 10px 0 12px;
   cursor: pointer; white-space: nowrap; text-align: left;
   font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
   color: var(--mud-palette-text-primary);
@@ -615,8 +615,8 @@
 .odc-sortsel-trigger:disabled, .odc-sortsel-dir:disabled { opacity: 0.5; cursor: not-allowed; }
 .odc-sortsel-prefix { color: var(--mud-palette-text-secondary); flex: none; }
 .odc-sortsel-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.odc-sortsel-glyph { color: var(--mud-palette-text-secondary); font-size: 18px; flex: none; }
-.odc-sortsel-dir .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-sortsel-glyph { color: var(--mud-palette-text-secondary); font-size: var(--icon-md); flex: none; }
+.odc-sortsel-dir .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-sortsel-dirlabel { font-size: var(--fs-body2); }
 /* Width stability: the current label + invisible ghosts of every other label
    this control can show stack in one inline-grid cell, so the control is
@@ -654,7 +654,7 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px; border-bottom: 1px solid var(--mud-palette-divider-light);
 }
-.odc-card-header-ttl { font: var(--fw-medium) 16px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-card-header-ttl { font: var(--fw-medium) var(--fs-body1)/1 var(--font-sans); color: var(--mud-palette-text-primary); }
 
 /* ---------- BreakdownTile (labelled icon·label·count distribution) ---------- */
 .odc-breakdown {
@@ -662,12 +662,12 @@
   background: var(--mud-palette-background); padding: 14px 16px;
   display: flex; flex-direction: column; gap: 8px;
 }
-.odc-breakdown-ov { font: var(--fw-medium) 10.5px/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.odc-breakdown-ov { font: var(--fw-medium) var(--fs-micro)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
 .odc-breakdown-rows { display: flex; flex-direction: column; gap: 6px; }
-.odc-breakdown-row { display: flex; align-items: center; gap: 8px; font: var(--fw-regular) 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.odc-breakdown-row .material-icons { font-size: 16px; flex: none; }
+.odc-breakdown-row { display: flex; align-items: center; gap: 8px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-breakdown-row .material-icons { font-size: var(--icon-sm); flex: none; }
 .odc-breakdown-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.odc-breakdown-n { margin-left: auto; font: 600 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
+.odc-breakdown-n { margin-left: auto; font: 600 var(--fs-label)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
 .odc-breakdown-empty { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 /* The total row — the tile's conclusion, ruled off from the categories above
    it and muted in its label so it never reads as another category. */
@@ -683,7 +683,7 @@
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box;
   border-radius: var(--radius-pill);
-  font: var(--fw-medium) 11px/1 var(--font-sans);
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
   font-variant-numeric: tabular-nums;
   background: var(--mud-palette-error); color: #fff;
 }
@@ -713,7 +713,7 @@
   overflow: hidden;
 }
 .odc-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.odc-avatar.sm { width: 28px; height: 28px; font-size: 12px; }
+.odc-avatar.sm { width: 28px; height: 28px; font-size: var(--fs-caption); }
 .odc-avatar.lg { width: 56px; height: 56px; font-size: var(--fs-h5); }
 .odc-avatar.tide { background: rgba(79, 215, 203, 0.16); color: var(--brand-text); }
 .odc-avatar.sea    { background: var(--info-soft);            color: var(--sea-400); }
@@ -793,8 +793,8 @@
   display: grid; place-items: center; margin-top: 1px;
   background: rgba(79, 215, 203, 0.14); color: var(--tide-400);
 }
-.odc-modal-lead .material-icons { font-size: 21px; }
-.odc-modal-lead-glyph { font: var(--fw-medium) 22px/1 var(--font-sans); }
+.odc-modal-lead .material-icons { font-size: var(--icon-lg); }
+.odc-modal-lead-glyph { font: var(--fw-medium) var(--fs-figure)/1 var(--font-sans); }
 .odc-modal-lead.warning { background: rgba(245, 184, 64, 0.15); color: var(--finance-pending); }
 .odc-modal-lead.error   { background: rgba(255, 107, 107, 0.15); color: var(--finance-expense); }
 .odc-modal-titles { flex: 1; min-width: 0; }
@@ -879,7 +879,7 @@
   color: var(--mud-palette-text-primary);
 }
 .odc-table th, .odc-table td {
-  text-align: left; padding: 12px var(--space-3);
+  text-align: left; padding: var(--cell-pad-y) var(--space-3);
   height: var(--row-h);
   border-bottom: 1px solid var(--mud-palette-table-lines);
   vertical-align: middle;
@@ -907,7 +907,7 @@
 .odc-th.num .odc-th-btn { flex-direction: row-reverse; }
 .odc-th-btn:hover { color: var(--mud-palette-text-primary); }
 .odc-th-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); border-radius: 2px; }
-.odc-th-sort { font-size: 16px; opacity: 0; transition: opacity var(--duration-base) var(--ease-standard); }
+.odc-th-sort { font-size: var(--icon-sm); opacity: 0; transition: opacity var(--duration-base) var(--ease-standard); }
 .odc-th-btn:hover .odc-th-sort { opacity: 0.5; }
 .odc-th-btn[data-active] .odc-th-sort { opacity: 1; color: var(--brand-text); }
 .odc-table .odc-td-actions { width: 1%; white-space: nowrap; text-align: right; }
@@ -934,7 +934,7 @@
   color: var(--mud-palette-text-primary);
   transition: background-color var(--duration-base) var(--ease-standard);
 }
-.odc-menu-item .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-menu-item .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); flex: none; }
 .odc-menu-item:hover { background: var(--mud-palette-action-default-hover); }
 .odc-menu-item:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
 .odc-menu-item.danger, .odc-menu-item.danger .material-icons { color: var(--mud-palette-error); }
@@ -1089,7 +1089,7 @@
   font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);
   color: var(--mud-palette-text-primary); text-wrap: pretty;
 }
-.odc-sfield-advisory .material-icons { font-size: 16px; flex: none; color: var(--pending-text); margin-top: 1px; }
+.odc-sfield-advisory .material-icons { font-size: var(--icon-sm); flex: none; color: var(--pending-text); margin-top: 1px; }
 .odc-sfield-advisory-t { font-weight: var(--fw-medium); color: var(--mud-palette-text-primary); }
 /* Direction marker, in the outline beside the label: this setting moves one way
    only. It sits where the bound lives rather than in the helper prose, so it is
@@ -1097,7 +1097,7 @@
 .odc-sfield-bound {
   margin-left: 7px; padding: 1px 6px; border-radius: var(--radius-pill, 999px);
   border: var(--border-thin, 1px) solid var(--mud-palette-divider);
-  font: var(--fw-medium) 9.5px/1.5 var(--font-mono);
+  font: var(--fw-medium) var(--fs-micro)/1.5 var(--font-mono);
   letter-spacing: var(--tracking-caps, 0.06em); text-transform: uppercase;
   color: var(--mud-palette-text-secondary); vertical-align: 1px;
 }
@@ -1154,7 +1154,7 @@
   background: var(--mud-palette-warning);
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16);
 }
-.odc-setting-warn-ic { font-size: 16px !important; margin-left: 6px; vertical-align: -3px; color: var(--amber-500); }
+.odc-setting-warn-ic { font-size: var(--icon-sm); margin-left: 6px; vertical-align: -3px; color: var(--amber-500); }
 /* Advisory band: amber, flush to the card edges, below the row and any footer.
    Distinct from an error by colour and by not gating the primary action. */
 .odc-setting-warn {
@@ -1165,7 +1165,7 @@
   font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);
   color: var(--mud-palette-text-primary);
 }
-.odc-setting-warn .material-icons { font-size: 17px; flex: none; color: var(--amber-500); }
+.odc-setting-warn .material-icons { font-size: var(--icon-md); flex: none; color: var(--amber-500); }
 .odc-setting-warn > div { max-width: 76ch; }
 
 /* ---------- SecretSettingField (write-only credential) ---------- */
@@ -1196,7 +1196,7 @@
   display: inline-flex; align-items: center; gap: 7px;
   font: var(--fw-medium) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-error);
 }
-.odc-secret-bad .material-icons { font-size: 17px; flex: none; }
+.odc-secret-bad .material-icons { font-size: var(--icon-md); flex: none; }
 .odc-secret-actions { display: flex; align-items: center; gap: 6px; flex: none; }
 /* Entry: a native password input, flattened into the frame like every other
    SettingField control, with a reveal toggle. Revealing matters here — a
@@ -1215,19 +1215,19 @@
 }
 .odc-secret-eye:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 .odc-secret-eye:disabled { color: var(--mud-palette-text-disabled); cursor: default; background: transparent; }
-.odc-secret-eye .material-icons { font-size: 18px; }
+.odc-secret-eye .material-icons { font-size: var(--icon-md); }
 /* Kind marker, in the outline where the bound marker lives: a derivation key is
    a different class of loss, and that has to be legible before the value is. */
 .odc-secret-kind {
   margin-left: 7px; padding: 1px 6px; border-radius: var(--radius-pill, 999px);
   border: var(--border-thin, 1px) solid var(--finance-expense-border);
   background: var(--finance-expense-soft);
-  font: var(--fw-medium) 9.5px/1.5 var(--font-mono);
+  font: var(--fw-medium) var(--fs-micro)/1.5 var(--font-mono);
   letter-spacing: var(--tracking-caps, 0.06em); text-transform: uppercase;
   color: var(--mud-palette-error); vertical-align: 1px;
 }
 .odc-secret-lock { display: inline-flex; align-items: center; gap: 5px; }
-.odc-secret-lock .material-icons { font-size: 14px; vertical-align: -2px; }
+.odc-secret-lock .material-icons { font-size: var(--icon-xs); vertical-align: -2px; }
 
 /* The irreversible-clear callout in the confirm dialog. Coral, not amber: this
    is not an advisory about cost, it is the loss itself. */
@@ -1239,7 +1239,7 @@
   font: var(--fw-regular) var(--fs-body2)/1.55 var(--font-sans);
   color: var(--mud-palette-text-primary); text-wrap: pretty;
 }
-.odc-secret-irrev .material-icons { font-size: 18px; flex: none; color: var(--mud-palette-error); margin-top: 1px; }
+.odc-secret-irrev .material-icons { font-size: var(--icon-md); flex: none; color: var(--mud-palette-error); margin-top: 1px; }
 .odc-secret-irrev b { font-weight: var(--fw-medium); }
 .odc-secret-dialog-p { margin: 0 0 10px; font: var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
 .odc-secret-dialog-p:last-child { margin-bottom: 0; }
@@ -1290,7 +1290,7 @@
    keeps the control discoverable without hovering. */
 .odc-picedit { position: relative; display: inline-flex; border-radius: var(--radius-pill); }
 .odc-picedit-badge { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: var(--radius-pill); background: var(--mud-palette-surface); box-shadow: 0 0 0 1px var(--mud-palette-divider); color: var(--mud-palette-text-secondary); transition: opacity 120ms ease; }
-.odc-picedit-badge .material-icons { font-size: 13px; }
+.odc-picedit-badge .material-icons { font-size: var(--icon-xs); }
 .odc-picedit-actions { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--radius-pill); background: rgba(0, 0, 0, 0.58); opacity: 0; transition: opacity 120ms ease; }
 .odc-picedit:hover .odc-picedit-actions, .odc-picedit:focus-within .odc-picedit-actions { opacity: 1; }
 .odc-picedit:hover .odc-picedit-badge, .odc-picedit:focus-within .odc-picedit-badge { opacity: 0; }
@@ -1298,7 +1298,7 @@
 .odc-picedit-btn:hover { background: rgba(255, 255, 255, 0.26); }
 .odc-picedit-btn.danger:hover { background: var(--mud-palette-error); }
 .odc-picedit-btn:focus-visible { outline: none; box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring, var(--mud-palette-primary)); }
-.odc-picedit-btn .material-icons { font-size: 17px; }
+.odc-picedit-btn .material-icons { font-size: var(--icon-md); }
 .odc-picedit-btn:disabled { cursor: default; opacity: 0.5; }
 
 /* ---------- ErrorSummary (blocking problems beside a disabled action) ---------- */
@@ -1318,7 +1318,7 @@
   outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
   outline-offset: var(--focus-ring-offset);
 }
-.odc-errsum .material-icons { font-size: 17px; }
+.odc-errsum .material-icons { font-size: var(--icon-md); }
 .odc-errsum-sep { opacity: 0.5; }
 .odc-errsum-act { text-decoration: underline; text-underline-offset: 2px; }
 .odc-errsum-chev { margin-left: -2px; margin-right: -3px; opacity: 0.8; }
@@ -1355,7 +1355,7 @@
   font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
   color: var(--mud-palette-text-secondary);
 }
-.odc-errsum-item-go { font-size: 16px !important; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-errsum-item-go { font-size: var(--icon-sm); flex: none; color: var(--mud-palette-text-secondary); }
 
 /* ---------- Button count badge ---------- */
 /* A pending quantity the action is about to commit. Reads as a solid pill on
@@ -1385,7 +1385,7 @@
   display: grid; place-items: center;
   transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
 }
-.odc-check-box .material-icons { font-size: 16px; color: var(--mud-palette-primary-text); opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); }
+.odc-check-box .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-primary-text); opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); }
 .odc-check input:checked + .odc-check-box,
 .odc-check input:indeterminate + .odc-check-box { background: var(--mud-palette-primary); border-color: var(--mud-palette-primary); }
 .odc-check input:checked + .odc-check-box .material-icons,
@@ -1437,10 +1437,10 @@
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
 .odc-combo-opt > span:not(.material-icons) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.odc-combo-opt > .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-combo-opt > .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); flex: none; }
 .odc-combo-opt.active { background: var(--mud-palette-action-default-hover); }
 .odc-combo-opt.selected { color: var(--brand-text); font-weight: var(--fw-medium); }
-.odc-combo-opt-check { flex: none; font-size: 18px !important; color: var(--brand-text) !important; }
+.odc-combo-opt-check { flex: none; font-size: var(--icon-md); color: var(--brand-text) !important; }
 .odc-combo-create { color: var(--brand-text); }
 /* The rule + gap belongs to the first create row only, so a stack of typed
    create rows reads as one group under the results. */
@@ -1455,15 +1455,15 @@
   color: var(--mud-palette-text-secondary);
   font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
 }
-.odc-combo-create-kind > .material-icons { font-size: 15px; color: var(--mud-palette-text-secondary); }
+.odc-combo-create-kind > .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
 .odc-combo-empty { padding: 12px; text-align: center; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 /* Combobox trailing controls — the clear (×) and chevron overlay INSIDE the
    input on the right (like the Select trigger), not as inline siblings beside
    the box. The clear sits left of the chevron; the input reserves room for
    both. The leading type glyph matches the field's 20px icon scale. */
-.odc-combo .odc-select-chev { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); font-size: 20px !important; pointer-events: none; }
+.odc-combo .odc-select-chev { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); font-size: var(--icon-lg); pointer-events: none; }
 .odc-combo .odc-input-clear { right: 35px; }
-.odc-combo .odc-input-icon { font-size: 20px !important; }
+.odc-combo .odc-input-icon { font-size: var(--icon-lg); }
 .odc-combo .odc-input { padding-right: 38px; }
 .odc-combo .odc-input.has-clear { padding-right: 62px; }
 .odc-combo-opt-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1504,14 +1504,14 @@
    a ≥24px dismiss. */
 .odc-match {
   display: inline-flex; align-items: center; gap: 5px; max-width: 100%; min-width: 0;
-  font: var(--fw-regular) 11.5px/1.3 var(--font-sans);
+  font: var(--fw-regular) var(--fs-overline)/1.3 var(--font-sans);
   color: var(--mud-palette-text-secondary);
   vertical-align: middle;
 }
 /* Only the no-match state wraps (so its Create action drops to its own line). */
 .odc-match.none { flex-wrap: wrap; row-gap: 4px; }
-.odc-match.sm { font-size: 11px; }
-.odc-match-ic { font-size: 14px !important; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-match.sm { font-size: var(--fs-overline); }
+.odc-match-ic { font-size: var(--icon-xs); flex: none; color: var(--mud-palette-text-secondary); }
 .odc-match-txt { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .odc-match-txt b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
 .odc-match-pct { flex: none; margin-left: 4px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -1547,7 +1547,7 @@
 }
 .odc-match-x:hover { background: rgba(0,0,0,0.10); color: var(--mud-palette-text-primary); }
 .odc-match-x:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
-.odc-match-x .material-icons { font-size: 15px !important; }
+.odc-match-x .material-icons { font-size: var(--icon-sm); }
 
 /* Inline action pill (brand-toned) — shared by the "No match → Create ‹name›"
    recovery and the sub-threshold "Suggested by AI → Use ‹name›" action. A quiet
@@ -1557,13 +1557,13 @@
   display: inline-flex; align-items: center; gap: 3px;
   cursor: pointer; border: 1px solid var(--brand-border);
   background: var(--brand-soft); color: var(--brand-text);
-  font: var(--fw-medium) 11px/1 var(--font-sans); letter-spacing: 0.01em;
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: 0.01em;
   padding: 3px 8px 3px 5px; border-radius: var(--radius-pill);
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
 .odc-match-act:hover { background: color-mix(in srgb, var(--brand-text) 22%, transparent); }
 .odc-match-act:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.odc-match-act .material-icons { font-size: 14px !important; flex: none; }
+.odc-match-act .material-icons { font-size: var(--icon-xs); flex: none; }
 .odc-match-act-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* No match → Create: same brand-soft pill as the suggestion "Use ‹name›" action. */
 .odc-match-createline { flex-basis: 100%; min-width: 0; display: flex; }
@@ -1572,13 +1572,13 @@
   display: inline-flex; align-items: center; gap: 3px;
   cursor: pointer; border: 1px solid var(--brand-border);
   background: var(--brand-soft); color: var(--brand-text);
-  font: var(--fw-medium) 11px/1 var(--font-sans); letter-spacing: 0.01em;
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: 0.01em;
   padding: 3px 8px 3px 5px; border-radius: var(--radius-pill);
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
 .odc-match-create:hover { background: color-mix(in srgb, var(--brand-text) 22%, transparent); }
 .odc-match-create:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.odc-match-create .material-icons { font-size: 14px !important; flex: none; }
+.odc-match-create .material-icons { font-size: var(--icon-xs); flex: none; }
 .odc-match-create-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- Custodian chip (account ↔ custodian contact link) ----------
@@ -1599,8 +1599,8 @@
   vertical-align: middle;
 }
 .odc-custodian.sm { gap: 5px; padding: 2px 8px 2px 6px; font-size: var(--fs-caption); }
-.odc-custodian-ic { font-size: 16px !important; flex: none; }
-.odc-custodian.sm .odc-custodian-ic { font-size: 14px !important; }
+.odc-custodian-ic { font-size: var(--icon-sm); flex: none; }
+.odc-custodian.sm .odc-custodian-ic { font-size: var(--icon-xs); }
 .odc-custodian-name { font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .odc-custodian-type { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); white-space: nowrap; }
 .odc-custodian-type::before { content: "·"; margin-right: 6px; color: var(--mud-palette-text-disabled); }
@@ -1616,7 +1616,7 @@
    primary text colour with an info glyph, so it is neither an error nor lost
    in the muted help tone. */
 .odc-hoa-field .odc-field-help.warn { display: flex; gap: 6px; align-items: flex-start; color: var(--mud-palette-text-primary); }
-.odc-hoa-warn-ic { font-size: 15px !important; line-height: 1.3 !important; color: var(--mud-palette-warning); flex: none; }
+.odc-hoa-warn-ic { font-size: var(--icon-sm); line-height: 1.3; color: var(--mud-palette-warning); flex: none; }
 
 /* ---------- Account-type chip ----------
    The sibling of the custodian chip — same pill shell, with the type glyph in
@@ -1633,10 +1633,10 @@
   vertical-align: middle;
 }
 .odc-typechip.sm { gap: 5px; padding: 2px 8px 2px 6px; font-size: var(--fs-caption); }
-.odc-typechip-ic { font-size: 16px !important; flex: none; }
+.odc-typechip-ic { font-size: var(--icon-sm); flex: none; }
 .odc-typechip-dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
 .odc-typechip.sm .odc-typechip-dot { width: 6px; height: 6px; }
-.odc-typechip.sm .odc-typechip-ic { font-size: 14px !important; }
+.odc-typechip.sm .odc-typechip-ic { font-size: var(--icon-xs); }
 .odc-typechip-name { font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .odc-typechip-group { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); white-space: nowrap; }
 .odc-typechip-group::before { content: "·"; margin-right: 6px; color: var(--mud-palette-text-disabled); }
@@ -1663,15 +1663,15 @@
 .odc-ms-trigger.quiet[aria-expanded="true"] { background: var(--mud-palette-surface); }
 .odc-ms-trigger[aria-expanded="true"] { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
 .odc-ms-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.odc-ms-trigger .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-ms-trigger .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 /* A typeset mark where the icon font has no glyph (§, №). Sized and coloured
    to sit in the icon's slot, so a trigger reads the same either way. */
-.odc-ms-glyph { font: var(--fw-medium) 18px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-ms-glyph { font: var(--fw-medium) var(--fs-h5)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-ms-count {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill);
   background: var(--mud-palette-primary); color: var(--mud-palette-primary-text);
-  font: var(--fw-medium) 11px/1 var(--font-sans); font-variant-numeric: tabular-nums;
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); font-variant-numeric: tabular-nums;
 }
 .odc-ms-pop {
   position: absolute; z-index: var(--z-dropdown); top: calc(100% + 4px); min-width: 224px;
@@ -1715,7 +1715,7 @@
 .odc-tagms-chips { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .odc-tagms-ph { color: var(--mud-palette-text-disabled); font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans); }
 .odc-tagms-chip { padding-right: 2px; }
-.odc-tagms-chip-ic { font-size: 14px; }
+.odc-tagms-chip-ic { font-size: var(--icon-xs); }
 /* A templated chip (ChipTemplate) brings its own chip body — the wrapper carries
    the pill border so the picker-owned remove button sits INSIDE the chip and the
    two read as one unit (the body's own border would double-apply). */
@@ -1737,12 +1737,12 @@
 }
 .odc-tagms-x:hover { opacity: 1; background: color-mix(in oklab, currentColor 22%, transparent); }
 .odc-tagms-x:focus-visible { opacity: 1; outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
-.odc-tagms-x .material-icons { font-size: 13px; }
+.odc-tagms-x .material-icons { font-size: var(--icon-xs); }
 .odc-tagms-trigger { border: none; background: transparent; padding: 2px; border-radius: var(--radius-sm); cursor: pointer; }
 .odc-tagms-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .odc-tagms-trigger:disabled { cursor: not-allowed; }
 .odc-tagms-add { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--mud-palette-text-secondary); font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); }
-.odc-tagms-add .material-icons { font-size: 18px; }
+.odc-tagms-add .material-icons { font-size: var(--icon-md); }
 .odc-tagms-pop {
   /* Body-portaled, so it must stack ABOVE the modal scrim (z 1200) — otherwise
      the picker opens behind the dialog when used inside a modal (the Analyze
@@ -1754,7 +1754,7 @@
 }
 .odc-tagms-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
 .odc-tagms-search:focus-within { border-color: var(--focus-ring); box-shadow: inset 0 0 0 1px var(--focus-ring); }
-.odc-tagms-search .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-tagms-search .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-tagms-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 .odc-tagms-list { max-height: 232px; overflow-y: auto; display: flex; flex-direction: column; }
 .odc-tagms-opt { padding: 7px 6px; border-radius: var(--radius-sm); cursor: pointer; width: 100%; box-sizing: border-box; }
@@ -1768,11 +1768,11 @@
 .odc-tagms-create:hover { background: var(--mud-palette-action-default-hover); }
 .odc-tagms-create.first { border-top: 1px solid var(--mud-palette-divider); margin-top: var(--space-1); padding-top: 10px; }
 .odc-tagms-create > span:not(.material-icons):not(.odc-tagms-create-kind) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: left; }
-.odc-tagms-create .material-icons { font-size: 18px; }
+.odc-tagms-create .material-icons { font-size: var(--icon-md); }
 .odc-tagms-loading { display: flex; align-items: center; gap: 8px; padding: 10px 6px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
-.odc-tagms-loading .material-icons { font-size: 17px; }
+.odc-tagms-loading .material-icons { font-size: var(--icon-md); }
 .odc-tagms-opt .odc-check-label { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
-.odc-tagms-opt-ic { font-size: 17px; color: var(--mud-palette-text-secondary); }
+.odc-tagms-opt-ic { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-tagms-opt-sub { color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); }
 .odc-tagms-empty { padding: 10px 6px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 .odc-tagms-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider); }
@@ -1817,7 +1817,7 @@
 }
 [data-theme='light'] .odc-toast { background: var(--ink-800); color: var(--ink-50); border-color: transparent; }
 @keyframes odc-toast-in { from { opacity: 0; transform: translateY(8px); } }
-.odc-toast-ic { font-size: 20px; flex: none; line-height: 1.4; }
+.odc-toast-ic { font-size: var(--icon-lg); flex: none; line-height: 1.4; }
 .odc-toast.success .odc-toast-ic { color: var(--mint-300); }
 .odc-toast.warning .odc-toast-ic { color: var(--amber-500); }
 .odc-toast.error   .odc-toast-ic { color: var(--coral-300); }
@@ -1834,7 +1834,7 @@
   color: var(--ink-300); width: 20px; height: 20px; display: grid; place-items: center;
   border-radius: var(--radius-sm); margin: -1px -4px 0 0;
 }
-.odc-toast-close .material-icons { font-size: 18px; }
+.odc-toast-close .material-icons { font-size: var(--icon-md); }
 .odc-toast-close:hover { color: var(--ink-50); }
 .odc-toast-close:focus-visible, .odc-toast-action:focus-visible { outline: var(--focus-ring-width) solid var(--tide-400); outline-offset: var(--focus-ring-offset); }
 
@@ -1843,7 +1843,7 @@
 
 /* ---------- Delta (variance · directional · signed change) ---------- */
 .odc-delta { display: inline-flex; align-items: center; gap: 5px; font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.odc-delta .material-icons { font-size: 15px; }
+.odc-delta .material-icons { font-size: var(--icon-sm); }
 .odc-delta-suffix { color: var(--mud-palette-text-secondary); font-family: var(--font-sans); }
 .odc-delta.reconciled { color: var(--finance-income); }
 .odc-delta.diff       { color: var(--finance-pending); }
@@ -1869,7 +1869,7 @@
   font: 600 var(--fs-caption)/1 var(--font-sans); letter-spacing: var(--tracking-wide);
   transition: filter var(--duration-base) var(--ease-standard);
 }
-.odc-problem-cta .material-icons { font-size: 16px; }
+.odc-problem-cta .material-icons { font-size: var(--icon-sm); }
 .odc-problem.warning .odc-problem-cta { background: var(--finance-pending); color: var(--ink-900); }
 .odc-problem.error   .odc-problem-cta { background: var(--finance-expense); color: #2A0E0E; }
 .odc-problem.info    .odc-problem-cta { background: var(--sea-400);         color: var(--ink-900); }
@@ -1905,7 +1905,7 @@
 .odc-lc-delta.neutral { color: var(--mud-palette-text-secondary); }
 .odc-lc-empty { padding: 28px 4px; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-line-svg { width: 100%; height: auto; display: block; }
-.odc-lc-axis { font: var(--fw-regular) 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
+.odc-lc-axis { font: var(--fw-regular) var(--fs-micro)/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
 /* Zero baseline — drawn only when the value domain straddles zero, so it is
    the line that separates positive from negative and is read, not decoration.
    Uses --chart-axis-strong (3:1, WCAG 1.4.11), not the decorative --chart-axis.
@@ -2014,9 +2014,9 @@
 
 /* ---------- Icon button sizes (base .odc-iconbtn defined above) ---------- */
 .odc-iconbtn.sm { width: 28px; height: 28px; }
-.odc-iconbtn.sm .material-icons { font-size: 18px; }
+.odc-iconbtn.sm .material-icons { font-size: var(--icon-md); }
 .odc-iconbtn.lg { width: 44px; height: 44px; }
-.odc-iconbtn.lg .material-icons { font-size: 26px; }
+.odc-iconbtn.lg .material-icons { font-size: var(--icon-2xl); }
 .odc-iconbtn.danger { color: var(--mud-palette-error); }
 .odc-iconbtn.danger:hover { background: var(--finance-expense-soft); color: var(--mud-palette-error); }
 
@@ -2088,7 +2088,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-er-marker:hover .odc-er-meta, .odc-er-marker:focus-within .odc-er-meta { opacity: 1; }
 /* Direct child only: the marker's own label. A `meta` line has its own type,
    and its inner spans must not inherit the mono uppercase treatment. */
-.odc-er-marker > span { font: 500 10px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); opacity: 0.75; }
+.odc-er-marker > span { font: 500 var(--fs-micro)/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mud-palette-text-secondary); opacity: 0.75; }
 .odc-er-marker::before { content: ''; position: absolute; left: 16px; top: 50%; box-sizing: border-box; border-radius: var(--radius-pill); outline: 3px solid var(--mud-palette-surface); }
 .odc-er-marker.tick::before { width: 10px; height: 10px; margin: -5px 0 0 -5px; background: var(--mud-palette-divider); }
 .odc-er-marker.open::before { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; background: var(--mud-palette-surface); border: 2px solid var(--mud-palette-text-secondary); }
@@ -2097,16 +2097,16 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-er-item { position: relative; display: flex; gap: 14px; padding: 9px 4px 11px 0; border-radius: var(--radius-md); }
 .odc-er-item.sel { background: var(--mud-palette-action-default-hover); }
 .odc-er-node { position: relative; z-index: 1; flex: none; width: 32px; height: 32px; border-radius: var(--radius-pill); display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; background: var(--mud-palette-surface); border: 1.5px solid var(--mud-palette-divider); outline: 3px solid var(--mud-palette-surface); }
-.odc-er-node .material-icons { font-size: 17px; color: var(--odc-er-node-fg, var(--mud-palette-text-secondary)); }
+.odc-er-node .material-icons { font-size: var(--icon-md); color: var(--odc-er-node-fg, var(--mud-palette-text-secondary)); }
 .odc-er-item.sel .odc-er-node { background: var(--mud-palette-action-default-hover); outline-color: var(--mud-palette-action-default-hover); }
 .odc-er-body { flex: 1; min-width: 0; padding-top: 4px; }
 .odc-er-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 28px; }
-.odc-er-title { font: 500 13px/1.35 var(--font-mono); color: var(--tide-400); }
-.odc-er-date { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.odc-er-title { font: 500 var(--fs-label)/1.35 var(--font-mono); color: var(--tide-400); }
+.odc-er-date { font: 400 var(--fs-overline)/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
 /* Two lines at most, so one long entry cannot push the rest off screen. */
-.odc-er-desc { margin-top: 3px; font: italic 400 12.5px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.odc-er-desc { margin-top: 3px; font: italic 400 var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 /* Provenance, not content: revealed by the same gesture as the row actions. */
-.odc-er-meta { margin-top: 6px; font: 400 11.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); opacity: 0; transition: opacity .12s ease; }
+.odc-er-meta { margin-top: 6px; font: 400 var(--fs-overline)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); opacity: 0; transition: opacity .12s ease; }
 .odc-er-item:hover .odc-er-meta, .odc-er-item:focus-within .odc-er-meta { opacity: 1; }
 @media (hover: none) { .odc-er-meta { opacity: 1; } }
 
@@ -2149,10 +2149,10 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-collapsible-trigger:hover { background: var(--mud-palette-action-default-hover); }
 .odc-collapsible-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
-.odc-collapsible-chev { color: var(--mud-palette-text-secondary); font-size: 20px; flex: none; transition: transform var(--duration-slow) var(--ease-standard); }
+.odc-collapsible-chev { color: var(--mud-palette-text-secondary); font-size: var(--icon-lg); flex: none; transition: transform var(--duration-slow) var(--ease-standard); }
 .odc-collapsible[data-open] .odc-collapsible-chev { transform: rotate(180deg); }
-.odc-collapsible-lead { color: var(--mud-palette-text-secondary); font-size: 18px; flex: none; }
-.odc-collapsible-lead.glyph { font: 600 19px/1 var(--font-sans); display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; }
+.odc-collapsible-lead { color: var(--mud-palette-text-secondary); font-size: var(--icon-md); flex: none; }
+.odc-collapsible-lead.glyph { font: 600 var(--fs-h4)/1 var(--font-sans); display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; }
 .odc-collapsible-title { font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary); flex: none; }
 .odc-collapsible-count {
   font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary);
@@ -2178,7 +2178,7 @@ tr:focus-within > .odc-rowactions.reveal,
   font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans);
   transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
 }
-.odc-seg-btn .material-icons { font-size: 18px; }
+.odc-seg-btn .material-icons { font-size: var(--icon-md); }
 .odc-seg-btn:hover { color: var(--mud-palette-text-primary); }
 .odc-seg-btn[aria-checked="true"] { background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); box-shadow: var(--mud-elevation-1); }
 .odc-seg-btn[aria-checked="true"].income  { color: var(--finance-income); }
@@ -2198,12 +2198,12 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-cardsel-opt:hover { border-color: var(--odc-cardsel-line, var(--odc-cardsel-accent, var(--mud-palette-primary))); color: var(--mud-palette-text-primary); }
 .odc-cardsel-opt[aria-checked="true"] { border-color: var(--odc-cardsel-line, var(--odc-cardsel-accent, var(--mud-palette-primary))); background: var(--odc-cardsel-soft, var(--mud-palette-action-default-hover)); color: var(--mud-palette-text-primary); }
-.odc-cardsel-opt .material-icons { font-size: 24px; color: var(--odc-cardsel-accent, var(--mud-palette-primary)); }
+.odc-cardsel-opt .material-icons { font-size: var(--icon-xl); color: var(--odc-cardsel-accent, var(--mud-palette-primary)); }
 .odc-cardsel-opt:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .odc-cardsel-opt:disabled { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
 .odc-cardsel-opt:disabled .material-icons { color: var(--mud-palette-action-disabled); }
-.odc-cardsel-lab { font: 500 12px/1.2 var(--font-sans); }
-.odc-cardsel-sub { font: 400 10.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-cardsel-lab { font: 500 var(--fs-caption)/1.2 var(--font-sans); }
+.odc-cardsel-sub { font: 400 var(--fs-micro)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* ---------- Date picker (calendar popover) ---------- */
 .odc-dp { position: relative; display: inline-flex; flex-direction: column; }
@@ -2216,7 +2216,7 @@ tr:focus-within > .odc-rowactions.reveal,
   color: var(--mud-palette-text-primary);
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
-.odc-dp-trigger .material-icons { font-size: 20px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-dp-trigger .material-icons { font-size: var(--icon-lg); color: var(--mud-palette-text-secondary); flex: none; }
 .odc-dp-val { flex: 1; text-align: left; }
 .odc-dp-trigger.placeholder .odc-dp-val { color: var(--mud-palette-placeholder); font-family: var(--font-sans); }
 .odc-dp-trigger:hover { border-color: var(--mud-palette-text-secondary); }
@@ -2259,13 +2259,13 @@ tr:focus-within > .odc-rowactions.reveal,
    two triggers drop their own border/background and shrink to 30px so the pill
    itself is the single input frame — matching Select / MultiSelect height. */
 .odc-dpr {
-  display: inline-flex; align-items: center; gap: 8px; height: 40px; box-sizing: border-box;
+  display: inline-flex; align-items: center; gap: 8px; height: var(--control-h); box-sizing: border-box;
   padding: 0 8px 0 12px; border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm); background: var(--mud-palette-surface);
 }
 .odc-dpr:focus-within { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
-.odc-dpr-ic { font-size: 16px; color: var(--mud-palette-text-secondary); flex: none; }
-.odc-dpr-lab { font: 600 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-dpr-ic { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); flex: none; }
+.odc-dpr-lab { font: 600 var(--fs-overline)/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none; }
 .odc-dpr-dash { color: var(--mud-palette-text-secondary); flex: none; }
 .odc-dpr .odc-dp { min-width: 116px; }
 .odc-dpr .odc-dp-trigger { height: 30px; border: none; background: transparent; padding: 0 4px; box-shadow: none; }
@@ -2277,7 +2277,7 @@ tr:focus-within > .odc-rowactions.reveal,
   background: transparent; color: var(--mud-palette-text-secondary);
   transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
 }
-.odc-dpr-clear .material-icons { font-size: 15px; }
+.odc-dpr-clear .material-icons { font-size: var(--icon-sm); }
 .odc-dpr-clear:hover { color: var(--mud-palette-text-primary); background: var(--mud-palette-action-default-hover, rgba(199,208,224,0.08)); }
 .odc-dpr-clear:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
 
@@ -2300,7 +2300,7 @@ tr:focus-within > .odc-rowactions.reveal,
   font: var(--fw-medium) var(--fs-body2)/1.2 var(--font-sans);
   transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
 }
-.odc-navitem .material-icons { font-size: 22px; flex: none; }
+.odc-navitem .material-icons { font-size: var(--icon-xl); flex: none; }
 .odc-navitem .odc-navitem-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .odc-navitem:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 .odc-navitem:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
@@ -2401,8 +2401,8 @@ tr:focus-within > .odc-rowactions.reveal,
   font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans);
 }
 .odc-upload-kind .odc-select-trigger-main { flex: 0 1 auto; gap: 7px; }
-.odc-upload-kind .odc-select-trigger .odc-opt-icon { font-size: 16px; }
-.odc-upload-kind .odc-select-chev { font-size: 18px; }
+.odc-upload-kind .odc-select-trigger .odc-opt-icon { font-size: var(--icon-sm); }
+.odc-upload-kind .odc-select-chev { font-size: var(--icon-md); }
 
 /* ---------- AccountSmartTagsSection ----------
    The per-account "Smart tags" disclosure: reuses .odc-collapsible chrome, adds
@@ -2437,7 +2437,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-smarttags-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .odc-smarttags-chip { padding-right: 4px; }
-.odc-smarttags-chip-ic { font-size: 13px; margin-right: -1px; opacity: 0.85; }
+.odc-smarttags-chip-ic { font-size: var(--icon-xs); margin-right: -1px; opacity: 0.85; }
 .odc-smarttags-x {
   display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 1px;
   appearance: none; border: none; padding: 0; background: transparent;
@@ -2446,7 +2446,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-smarttags-x:hover { opacity: 1; background: color-mix(in oklab, currentColor 22%, transparent); }
 .odc-smarttags-x:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
-.odc-smarttags-x .material-icons { font-size: 13px; }
+.odc-smarttags-x .material-icons { font-size: var(--icon-xs); }
 
 /* Add-tag trigger — quiet bordered pill that opens the checklist */
 .odc-smarttags-adder { display: inline-flex; }
@@ -2462,7 +2462,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-smarttags-add:hover { border-color: var(--mud-palette-primary); color: var(--brand-text); background: var(--mud-palette-action-default-hover); }
 .odc-smarttags-add.open { border-style: solid; border-color: var(--mud-palette-primary); color: var(--brand-text); }
 .odc-smarttags-add:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.odc-smarttags-add .material-icons { font-size: 16px; }
+.odc-smarttags-add .material-icons { font-size: var(--icon-sm); }
 
 /* Checklist popover (portaled) */
 .odc-smarttags-pop {
@@ -2472,7 +2472,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-smarttags-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
 .odc-smarttags-search:focus-within { border-color: var(--focus-ring); box-shadow: inset 0 0 0 1px var(--focus-ring); }
-.odc-smarttags-search .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-smarttags-search .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-smarttags-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 .odc-smarttags-list { max-height: 236px; overflow-y: auto; display: flex; flex-direction: column; }
 .odc-smarttags-opt { padding: 7px 6px; border-radius: var(--radius-sm); cursor: pointer; width: 100%; box-sizing: border-box; }
@@ -2497,7 +2497,7 @@ tr:focus-within > .odc-rowactions.reveal,
   background: var(--finance-expense-soft);
   font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-primary);
 }
-.odc-smarttags-refused > .material-icons { font-size: 16px; line-height: 1.35; color: var(--finance-expense); flex: none; }
+.odc-smarttags-refused > .material-icons { font-size: var(--icon-sm); line-height: 1.35; color: var(--finance-expense); flex: none; }
 .odc-smarttags-refused-txt { flex: 1 1 auto; }
 
 /* States */
@@ -2509,7 +2509,7 @@ tr:focus-within > .odc-rowactions.reveal,
   display: flex; align-items: center; gap: var(--space-3);
   padding: var(--space-5) var(--space-4); flex-wrap: wrap;
 }
-.odc-smarttags-state.error .odc-smarttags-state-ic { color: var(--finance-expense); font-size: 22px; flex: none; }
+.odc-smarttags-state.error .odc-smarttags-state-ic { color: var(--finance-expense); font-size: var(--icon-xl); flex: none; }
 .odc-smarttags-state-txt { flex: 1; min-width: 200px; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
 .odc-btn.sm { padding: 5px 12px; font-size: var(--fs-body2); }
 
@@ -2567,7 +2567,7 @@ tr:focus-within > .odc-rowactions.reveal,
   background: transparent; color: var(--mud-palette-text-secondary);
   cursor: pointer; transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
 }
-.odc-pager-btn .material-icons { font-size: 20px; }
+.odc-pager-btn .material-icons { font-size: var(--icon-lg); }
 .odc-pager-btn:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 .odc-pager-btn:focus-visible { outline: 2px solid var(--mud-palette-primary); outline-offset: var(--focus-ring-offset); }
 /* Bound / in-flight: dimmed and inert to the pointer, but still focusable. */
@@ -2606,8 +2606,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-rpp-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
 .odc-rpp-prefix { color: var(--mud-palette-text-secondary); }
 .odc-rpp-trigger b { font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }
-.odc-rpp-chev { font-size: 18px !important; color: var(--mud-palette-text-secondary); }
-.odc-rpp.mirror .odc-rpp-trigger { height: 40px; padding: 0 8px 0 12px; }
+.odc-rpp-chev { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
+.odc-rpp.mirror .odc-rpp-trigger { height: var(--control-h); padding: 0 8px 0 12px; }
 /* Menu is fixed-positioned inline by the component (top/bottom + left set from
    the trigger rect) so it escapes card / toolbar overflow; only the box styling
    lives here. */
@@ -2626,7 +2626,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-rpp-opt:hover { background: var(--mud-palette-action-default-hover); }
 .odc-rpp-opt.sel { color: var(--mud-palette-primary); font-weight: var(--fw-medium); }
-.odc-rpp-opt .material-icons { font-size: 18px; }
+.odc-rpp-opt .material-icons { font-size: var(--icon-md); }
 
 /* ---------- Infinite list (card-list server paging) ----------
    The card lists (Accounts, Budgets) page by appending batches as a sentinel
@@ -2675,7 +2675,7 @@ tr:focus-within > .odc-rowactions.reveal,
 /* ---------- JournalPhotoGallery ---------- */
 .odc-photogrid { display: flex; flex-direction: column; gap: var(--space-2); }
 .odc-photogrid-head { display: flex; align-items: center; gap: 8px; color: var(--mud-palette-text-secondary); }
-.odc-photogrid-head .material-icons { font-size: 18px; }
+.odc-photogrid-head .material-icons { font-size: var(--icon-md); }
 .odc-photogrid-title { font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary); }
 .odc-photogrid-count {
   font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary);
@@ -2751,7 +2751,7 @@ tr:focus-within > .odc-rowactions.reveal,
   width: 28px; height: 28px; border-radius: var(--radius-sm); display: grid; place-items: center;
   color: var(--mud-palette-text-secondary); transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
 }
-.odc-board-move .material-icons { font-size: 18px; }
+.odc-board-move .material-icons { font-size: var(--icon-md); }
 .odc-board-move:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 .odc-board-move:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
 .odc-board-move:disabled { opacity: 0.32; cursor: not-allowed; }
@@ -2773,7 +2773,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-swatch:hover { transform: scale(1.08); }
 .odc-swatch.selected { box-shadow: 0 0 0 2px var(--mud-palette-surface) inset, 0 0 0 4px var(--sw); }
-.odc-swatch-check { font-size: 18px; line-height: 1; display: block; color: var(--sw-fg); }
+.odc-swatch-check { font-size: var(--icon-md); line-height: 1; display: block; color: var(--sw-fg); }
 .odc-swatch:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 3px; }
 .odc-swatch:disabled { cursor: not-allowed; opacity: 0.5; }
 
@@ -2784,7 +2784,7 @@ tr:focus-within > .odc-rowactions.reveal,
   border-radius: var(--radius-sm); padding: 0 10px 0 12px; height: var(--control-h);
 }
 .odc-timefield.full { display: flex; width: 100%; }
-.odc-timefield-ic { font-size: 20px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-timefield-ic { font-size: var(--icon-lg); color: var(--mud-palette-text-secondary); flex: none; }
 .odc-timefield-input {
   flex: 1; min-width: 0; border: none; background: none; outline: none; height: 100%;
   font: var(--fw-regular) var(--fs-body1)/1 var(--font-mono); font-variant-numeric: tabular-nums;
@@ -2799,7 +2799,7 @@ tr:focus-within > .odc-rowactions.reveal,
   width: 22px; height: 22px; border-radius: var(--radius-pill); display: grid; place-items: center;
   color: var(--mud-palette-text-secondary);
 }
-.odc-timefield-clear .material-icons { font-size: 16px; }
+.odc-timefield-clear .material-icons { font-size: var(--icon-sm); }
 .odc-timefield-clear:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 .odc-timefield-pop {
   z-index: var(--z-popover); box-sizing: border-box; max-height: 240px; overflow-y: auto;
@@ -2917,13 +2917,12 @@ tr:focus-within > .odc-rowactions.reveal,
    a rhythm; a page that needs more says so by wrapping, not by shrinking.
    The header is the record's identity; the body order is fixed by the
    component (alert then details then content then sections). ONE ACCENT PER
-   RECORD: --rec / --rec-soft are set from the record's TYPE colour and
+   RECORD: --rec / --rec-soft are component API (never declared in CSS — every
+   use site carries a brand fallback, so they stay out of the token set), set from the record's TYPE colour and
    inherited by the header mark, the tile icon chips and any single-series chart
    inside. Unset falls back to the brand accent, which is the case for every
    record type with no type field (tax statements, journal entries). */
 .odc-record {
-  --rec: var(--brand-text);
-  --rec-soft: color-mix(in srgb, var(--brand-text) 16%, transparent);
   border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-lg, 12px);
   background: var(--mud-palette-surface); overflow: hidden;
   transition: border-color .15s ease, box-shadow .15s ease;
@@ -2946,9 +2945,9 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
 .odc-record-mark {
   flex: none; width: 48px; height: 48px; border-radius: var(--radius-md); display: grid; place-items: center;
-  background: var(--rec-soft); color: var(--rec);
+  background: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent)); color: var(--rec, var(--brand-text));
 }
-.odc-record-mark .material-icons { font-size: 24px; }
+.odc-record-mark .material-icons { font-size: var(--icon-xl); }
 /* Image mark — the record's own picture in place of its type glyph. The accent
    stays with the card; only this mark's content (and, for a logo, its ground)
    changes. `.ground` is the neutral letterbox; `.round` is a photograph. */
@@ -2961,7 +2960,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record-namerow { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .odc-record-namerow > * { flex: none; }
 .odc-record-name {
-  font: var(--fw-medium) 16px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
+  font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
   flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* One line, ellipsised, never wrapped: the scanning surface stays one row tall. */
@@ -2976,22 +2975,22 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record-metaitem { flex: none; }
 /* Any icon a meta item carries aligns with its label by default — the meta line
    is a flex row of flex items, never inline text with a floating glyph. */
-.odc-record-meta .material-icons { font-size: 14px; line-height: 1; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-record-meta .material-icons { font-size: var(--icon-xs); line-height: 1; flex: none; color: var(--mud-palette-text-secondary); }
 .odc-record-dot { opacity: 0.4; flex: none; }
 .odc-record-counts { display: inline-flex; gap: 12px; flex: none; }
 .odc-record-counts > span { display: inline-flex; align-items: center; gap: 4px; }
-.odc-record-counts .material-icons { font-size: 14px; opacity: 0.65; }
-.odc-record-glyph { font-size: 15px; line-height: 1; font-weight: 600; opacity: 0.65; }
+.odc-record-counts .material-icons { font-size: var(--icon-xs); opacity: 0.65; }
+.odc-record-glyph { font-size: var(--fs-body1); line-height: 1; font-weight: 600; opacity: 0.65; }
 .odc-record-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .odc-record-figure { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; white-space: nowrap; text-align: right; }
-.odc-record-value { font: var(--fw-medium) 22px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.odc-record-value { font: var(--fw-medium) var(--fs-figure)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
 .odc-record-value.income { color: var(--finance-income); }
 .odc-record-value.expense { color: var(--finance-expense); }
 .odc-record-value.pending { color: var(--finance-pending); }
 .odc-record-value.info { color: var(--sea-400); }
 .odc-record-value.muted { color: var(--mud-palette-text-secondary); }
 .odc-record-caption {
-  font: var(--fw-regular) 10.5px/1 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;
+  font: var(--fw-regular) var(--fs-micro)/1 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--mud-palette-text-secondary);
 }
 .odc-record-ctl { display: flex; align-items: center; gap: 2px; padding-right: 10px; }
@@ -3000,7 +2999,7 @@ tr:focus-within > .odc-rowactions.reveal,
   display: grid; place-items: center; color: var(--mud-palette-text-secondary);
 }
 .odc-record-chev:hover { background: var(--mud-palette-action-default-hover); }
-.odc-record-chev .material-icons { font-size: 22px; transition: transform .18s ease; }
+.odc-record-chev .material-icons { font-size: var(--icon-xl); transition: transform .18s ease; }
 .odc-record.open .odc-record-chev .material-icons { transform: rotate(180deg); }
 
 /* Body: the four slots, in order, with nothing else allowed between them. */
@@ -3029,8 +3028,6 @@ tr:focus-within > .odc-rowactions.reveal,
    of two; .dense drops the icon chips for records with seven or more facts. */
 .odc-tilegrid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
-  --odc-infotile-accent: var(--rec, var(--brand-text));
-  --odc-infotile-accent-soft: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
 }
 .odc-tilegrid.dense { grid-template-columns: repeat(auto-fit, minmax(152px, 1fr)); gap: 8px; }
 .odc-tilegrid.dense .odc-infotile { padding: 11px 12px; gap: 7px; }
@@ -3042,7 +3039,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-sectiondivider { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; }
 .odc-sectiondivider:first-child { margin-top: 2px; }
 .odc-sectiondivider-l {
-  font: 600 11px/1 var(--font-sans); letter-spacing: var(--tracking-caps, 0.08em);
+  font: 600 var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps, 0.08em);
   text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none;
 }
 .odc-sectiondivider-rule { flex: 1; height: 1px; background: var(--mud-palette-divider); }
@@ -3054,7 +3051,7 @@ tr:focus-within > .odc-rowactions.reveal,
   outline-offset: var(--space-1);
   border-radius: var(--radius-sm);
 }
-.odc-sectiondivider-meta { font: var(--fw-regular) 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); flex: none; }
+.odc-sectiondivider-meta { font: var(--fw-regular) var(--fs-overline)/1 var(--font-mono); color: var(--mud-palette-text-secondary); flex: none; }
 
 /* ---------- Picker shell — ONE search / list / row / footer treatment ----------
    TagMultiSelect (multi + chips), MultiSelect (filter bar) and Combobox (single
@@ -3084,7 +3081,7 @@ tr:focus-within > .odc-rowactions.reveal,
   background: var(--mud-palette-background);
 }
 .odc-tagms-search:focus-within, .odc-ms-search:focus-within { border-color: var(--focus-ring); box-shadow: inset 0 0 0 1px var(--focus-ring); }
-.odc-tagms-search .material-icons, .odc-ms-search .material-icons { font-size: 20px; color: var(--mud-palette-text-secondary); }
+.odc-tagms-search .material-icons, .odc-ms-search .material-icons { font-size: var(--icon-lg); color: var(--mud-palette-text-secondary); }
 .odc-tagms-search input, .odc-ms-search input {
   flex: 1; min-width: 0; border: none; outline: none; background: transparent;
   color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
@@ -3101,7 +3098,7 @@ tr:focus-within > .odc-rowactions.reveal,
   color: var(--mud-palette-text-secondary);
   font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
 }
-.odc-tagms-create-kind > .material-icons { font-size: 15px !important; color: var(--mud-palette-text-secondary) !important; }
+.odc-tagms-create-kind > .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary) !important; }
 .odc-tagms-opt, .odc-ms-opt, .odc-combo-opt {
   display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
   padding: 8px; border-radius: var(--radius-sm); cursor: pointer;
@@ -3115,13 +3112,13 @@ tr:focus-within > .odc-rowactions.reveal,
   background: var(--mud-palette-action-default-hover);
 }
 /* One option glyph size and tone across all three. */
-.odc-opt-icon, .odc-tagms-opt-ic { font-size: 17px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-opt-icon, .odc-tagms-opt-ic { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); flex: none; }
 /* Async + empty rows read identically — "loading" is never mistaken for "none". */
 .odc-tagms-loading, .odc-ms-loading, .odc-tagms-empty, .odc-combo-empty {
   display: flex; align-items: center; gap: 8px; padding: 10px 8px;
   color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.35 var(--font-sans);
 }
-.odc-tagms-loading .material-icons, .odc-ms-loading .material-icons { font-size: 17px; }
+.odc-tagms-loading .material-icons, .odc-ms-loading .material-icons { font-size: var(--icon-md); }
 .odc-tagms-foot, .odc-ms-foot {
   display: flex; justify-content: space-between; gap: 8px;
   margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider);
@@ -3133,7 +3130,7 @@ tr:focus-within > .odc-rowactions.reveal,
    ContactChip / CustodianChip, by TagChips, and by every picker's selected
    chips, so a "linked thing" looks the same wherever it is surfaced. */
 .odc-chip.entity { color: var(--mud-palette-text-primary); background: transparent; border: 1px solid var(--mud-palette-divider); }
-.odc-chip.entity .material-icons { font-size: 14px; }
+.odc-chip.entity .material-icons { font-size: var(--icon-xs); }
 
 /* ---------- ContactAliases — the alias section of a contact record ----------
    Its own grid, deliberately not the contact-method tile grid: an alias has no

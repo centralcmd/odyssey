@@ -20,15 +20,17 @@
  * tabindex keeps a single tab stop.
  */
 
+// `hex` is the persisted Calendar.Color value (a data contract, so it stays a
+// literal); `token` names the ramp stop it must equal — change both together.
 export const CALENDAR_SWATCHES = [
-  { key: 'blue',   name: 'Blue',   hex: '#0369A1', fg: '#FFFFFF' }, // sea-700
-  { key: 'teal',   name: 'Teal',   hex: '#006B5A', fg: '#FFFFFF' }, // tide-deep
-  { key: 'green',  name: 'Green',  hex: '#15803D', fg: '#FFFFFF' }, // mint-700
-  { key: 'coral',  name: 'Coral',  hex: '#B23B3B', fg: '#FFFFFF' }, // coral-700
-  { key: 'violet', name: 'Violet', hex: '#6D28D9', fg: '#FFFFFF' }, // violet-700
-  { key: 'slate',  name: 'Slate',  hex: '#4A5670', fg: '#FFFFFF' }, // ink-500
-  { key: 'amber',  name: 'Amber',  hex: '#F59E0B', fg: '#0E1525' }, // amber-500 · dark text
-  { key: 'sky',    name: 'Sky',    hex: '#7DD3FC', fg: '#0E1525' }, // sea-300 · dark text
+  { key: 'blue',   name: 'Blue',   hex: '#0369A1', fg: '#FFFFFF', token: '--sea-700' },
+  { key: 'teal',   name: 'Teal',   hex: '#006B5A', fg: '#FFFFFF', token: '--tide-deep' },
+  { key: 'green',  name: 'Green',  hex: '#15803D', fg: '#FFFFFF', token: '--mint-700' },
+  { key: 'coral',  name: 'Coral',  hex: '#B23B3B', fg: '#FFFFFF', token: '--coral-700' },
+  { key: 'violet', name: 'Violet', hex: '#6D28D9', fg: '#FFFFFF', token: '--violet-700' },
+  { key: 'slate',  name: 'Slate',  hex: '#4A5670', fg: '#FFFFFF', token: '--ink-500' },
+  { key: 'amber',  name: 'Amber',  hex: '#F59E0B', fg: '#0E1525', token: '--amber-500' },
+  { key: 'sky',    name: 'Sky',    hex: '#7DD3FC', fg: '#0E1525', token: '--sea-300' },
 ];
 
 export const DEFAULT_CALENDAR_COLOR = '#0369A1';

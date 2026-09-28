@@ -33,8 +33,9 @@
 .con-charge-go { font: var(--fw-medium) 12px/1 var(--font-sans); color: var(--brand-text); white-space: nowrap; }
 /* Next receipts sit in the same panel, in rows of the same shape: the GROUP
    HEADING names the direction, and the amount is the only thing that changes
-   color — mint for money in, per the finance semantics. */
+   color — mint for money in, coral for money out, per the finance semantics. */
 .con-charge-amt.in { color: var(--finance-income); }
+.con-charge-amt.out { color: var(--finance-expense); }
 .con-charge-row.incoming .con-charge-md { color: var(--mud-palette-text-primary); }
 @media (max-width: 720px) {
   .con-charge-row { grid-template-columns: 1fr auto; row-gap: 4px; }
@@ -47,14 +48,9 @@
   --con-accent-line: oklch(0.70 0.13 42 / 0.42);
 }
 
-/* ONE ACCENT PER RECORD (the RecordCard accent rule). Inside an open card the feature
-   vars resolve to the record's own type colour (--rec / --rec-soft, published by
-   RecordCard); the feature amber stays the fallback outside a card. */
-.odc-record-body {
-  --con-accent: var(--rec);
-  --con-accent-soft: var(--rec-soft);
-  --con-accent-line: color-mix(in srgb, var(--rec) 42%, transparent);
-}
+/* ONE ACCENT PER RECORD (the RecordCard accent rule). Use sites read the record's
+   own type colour first (--rec / --rec-soft, published by RecordCard) and fall back
+   to the feature amber outside a card — no scoped re-declaration needed. */
 
 /* ============================================================
    Portfolio summary strip (header Overview region)
@@ -190,14 +186,6 @@
    agreement is settled yet. The opposite reading to archived, which is dimmed
    because it is finished. Only the outer edge changes — density, type and
    every control inside stay identical, so the row is marked, not decorated. */
-/* Header mark follows the derived status tone (same as the chip + figure). Only
-   the mark: --rec stays the type accent for everything inside the card. */
-.con-card[data-tone] > .odc-record .odc-record-mark:not(.img) { color: var(--con-tone); background: color-mix(in srgb, var(--con-tone) 14%, transparent); }
-.con-card[data-tone="income"] { --con-tone: var(--finance-income); }
-.con-card[data-tone="expense"] { --con-tone: var(--finance-expense); }
-.con-card[data-tone="pending"] { --con-tone: var(--finance-pending); }
-.con-card[data-tone="info"] { --con-tone: var(--sea-400); }
-.con-card[data-tone="muted"] { --con-tone: var(--mud-palette-text-secondary); }
 .con-unsigned > .odc-record { border-style: dashed; border-color: color-mix(in srgb, var(--mud-palette-text-secondary) 40%, transparent); }
 
 /* An OBJECT party — the thing the agreement is about. The overline gains a

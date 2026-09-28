@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountFileTypeMultiSelect","sourcePath":"components/AccountFileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountFileTypeSelect","sourcePath":"components/AccountFileTypeSelect.jsx"},{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AllocationDonuts","sourcePath":"components/AllocationDonuts.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"HomeownerAssociationSelect","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"PROPERTY_EVENT_TYPES","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_SYSTEM_ONLY","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_TYPE_MATRIX","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyEventTypeSelect","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyFileTypeMultiSelect","sourcePath":"components/PropertyFileTypeMultiSelect.jsx"},{"name":"PROPERTY_FILE_TYPES","sourcePath":"components/PropertyFileTypeSelect.jsx"},{"name":"PropertyFileTypeSelect","sourcePath":"components/PropertyFileTypeSelect.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TaxStatementFileTypeMultiSelect","sourcePath":"components/TaxStatementFileTypeMultiSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TaxStatementFileTypeSelect","sourcePath":"components/TaxStatementFileTypeSelect.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionFileTypeMultiSelect","sourcePath":"components/TransactionFileTypeMultiSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionFileTypeSelect","sourcePath":"components/TransactionFileTypeSelect.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountFileTypeMultiSelect.jsx":"5f6e9865df7e","components/AccountFileTypeSelect.jsx":"9d6eadceefbf","components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"71a8e6f1f26b","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AllocationDonuts.jsx":"044b0391cba9","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"4a47af1d526c","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"5ba0e3a2746d","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"7199bec81b21","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"303c5a5986de","components/FormRow.jsx":"760803e7e9a9","components/HomeownerAssociationSelect.jsx":"4b0af1f20e4a","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"b664702fd083","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/PropertyEventTypeSelect.jsx":"e9232a5f7149","components/PropertyFileTypeMultiSelect.jsx":"9391985612da","components/PropertyFileTypeSelect.jsx":"7a590c69bc2b","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"16fd3e1342f6","components/RegistrySelect.jsx":"7339718ce29a","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d8b4b57a7ba3","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TaxStatementFileTypeMultiSelect.jsx":"11414abef269","components/TaxStatementFileTypeSelect.jsx":"24f911ceb328","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionFileTypeMultiSelect.jsx":"7d338f60f5a7","components/TransactionFileTypeSelect.jsx":"b109c4d4b5e2","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"ae4664340137","ui_kits/web/AccountEstimates.jsx":"eff790136b25","ui_kits/web/AccountTerms.jsx":"268973cd5272","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"53971d37b9e8","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"5671cc00067f","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"496d5f963e1a","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddPropertyEventModal.jsx":"7bd99a614e1c","ui_kits/web/AddPropertyFileModal.jsx":"71fc7170d954","ui_kits/web/AddPropertyModal.jsx":"2b9baf5ac130","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"8829e073f771","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/Budgets.jsx":"77c8b3b8b457","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"de0caddebf17","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"672a3e086f82","ui_kits/web/ContractEvents.jsx":"5e6987305ced","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"fc4232e2e1bf","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"2357237a2a86","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"7bfc14bbad44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"132b02ce0397","ui_kits/web/PropertyEstimates.jsx":"19fbc1ab18df","ui_kits/web/PropertyEvents.jsx":"661071ddeedc","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3d85e94a56b4","ui_kits/web/TaxStatements.jsx":"df9be16a340d","ui_kits/web/TransactionTags.jsx":"f3bf3f5cb39e","ui_kits/web/Transactions.jsx":"bf5f2c238911","ui_kits/web/Users.jsx":"4ddab8478138","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"b6b90dc34d06","ui_kits/web/contracts-data.js":"77678f2f0b03","ui_kits/web/data.js":"526050ea49e9","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"64839a67d3d5","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"ec78251314db","ui_kits/web/property-events-data.js":"2c6c4672c3ac","ui_kits/web/system-settings-data.js":"c05e455acb51","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"homeownerAssociationState","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"propertyEventTypeLegality","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"propertyEventTypesFor","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AllocationDonuts","sourcePath":"components/AllocationDonuts.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileTypeMultiSelect","sourcePath":"components/FileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"PROPERTY_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FILE_TYPE_REGISTRIES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileTypeSelect","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"HomeownerAssociationSelect","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"PROPERTY_EVENT_TYPES","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_SYSTEM_ONLY","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_TYPE_MATRIX","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyEventTypeSelect","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"71a8e6f1f26b","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AllocationDonuts.jsx":"044b0391cba9","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"c39daff274ff","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"ace06e34d445","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"a44940f2426c","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileTypeMultiSelect.jsx":"fbaef310b135","components/FileTypeSelect.jsx":"602105962a04","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"e78979830d2b","components/FormRow.jsx":"760803e7e9a9","components/HomeownerAssociationSelect.jsx":"4b0af1f20e4a","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"b664702fd083","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/PropertyEventTypeSelect.jsx":"e9232a5f7149","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"d54e41a6f196","components/RegistrySelect.jsx":"cfdb93825f1e","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d8b4b57a7ba3","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"ae4664340137","ui_kits/web/AccountEstimates.jsx":"eff790136b25","ui_kits/web/AccountTerms.jsx":"268973cd5272","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"53971d37b9e8","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"5671cc00067f","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"496d5f963e1a","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddPropertyEventModal.jsx":"7bd99a614e1c","ui_kits/web/AddPropertyFileModal.jsx":"71fc7170d954","ui_kits/web/AddPropertyModal.jsx":"2b9baf5ac130","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"8829e073f771","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/Budgets.jsx":"77c8b3b8b457","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"e05a368b0bb4","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"672a3e086f82","ui_kits/web/ContractEvents.jsx":"5e6987305ced","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"69a038d4ce99","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"2357237a2a86","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"7bfc14bbad44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"132b02ce0397","ui_kits/web/PropertyEstimates.jsx":"19fbc1ab18df","ui_kits/web/PropertyEvents.jsx":"661071ddeedc","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3b260ae177cb","ui_kits/web/TaxStatements.jsx":"df9be16a340d","ui_kits/web/TransactionTags.jsx":"f3bf3f5cb39e","ui_kits/web/Transactions.jsx":"bf5f2c238911","ui_kits/web/Users.jsx":"4ddab8478138","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"b6b90dc34d06","ui_kits/web/contracts-data.js":"77678f2f0b03","ui_kits/web/data.js":"526050ea49e9","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"64839a67d3d5","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"ec78251314db","ui_kits/web/property-events-data.js":"2c6c4672c3ac","ui_kits/web/system-settings-data.js":"c05e455acb51","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"homeownerAssociationState","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"propertyEventTypeLegality","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"propertyEventTypesFor","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -7,195 +7,6 @@ const __ds_ns = (window.OdysseyDesignSystem_d5aa51 = window.OdysseyDesignSystem_
 const __ds_scope = {};
 
 (__ds_ns.__errors = __ds_ns.__errors || []);
-
-// components/AccountFileTypeMultiSelect.jsx
-try { (() => {
-function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-/**
- * Odyssey DS — AccountFileTypeMultiSelect
- * The Files-page filter pre-wired to the AccountFileType vocabulary: a checkbox-
- * list popover whose rows each carry the type's Material icon in its category
- * color, with a count badge on the trigger. A thin wrapper over `MultiSelect` —
- * `value` (array of enum keys) + `onChange` pass straight through, as do `icon`
- * and `align`.
- *
- * Defaults: trigger label "Any type", trigger glyph `folder`. The registry is the
- * same canonical `ACCOUNT_FILE_TYPES` exported by AccountFileTypeSelect; read off
- * the DS namespace at render time (bundle components can't import each other).
- */
-
-function AccountFileTypeMultiSelect({
-  value = [],
-  onChange,
-  label = 'Any type',
-  icon = 'folder',
-  align,
-  types,
-  ...rest
-}) {
-  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
-  const {
-    RegistryMultiSelect
-  } = NS;
-  const registry = types || NS.ACCOUNT_FILE_TYPES || [];
-  if (!RegistryMultiSelect) return null;
-  return /*#__PURE__*/React.createElement(RegistryMultiSelect, _extends({
-    value: value,
-    onChange: onChange,
-    label: label,
-    icon: icon,
-    align: align,
-    types: registry
-  }, rest));
-}
-Object.assign(__ds_scope, { AccountFileTypeMultiSelect });
-})(); } catch (e) { __ds_ns.__errors.push({ path: "components/AccountFileTypeMultiSelect.jsx", error: String((e && e.message) || e) }); }
-
-// components/AccountFileTypeSelect.jsx
-try { (() => {
-function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-/**
- * Odyssey DS — AccountFileTypeSelect
- * A single-select pre-wired to the AccountFileType vocabulary — the kind of
- * document attached to an *account*: Message · Statement · Contract · Tax ·
- * Documentation · InsurancePolicy · LoanAgreement · RepaymentSchedule ·
- * PurchaseAgreement · Valuation · Warranty · Registration · Prospectus · Other.
- * Each option renders with its Material icon in its category color. A thin,
- * domain-typed wrapper over the base `Select`; every Select prop (label, help,
- * error, required, disabled, placeholder, id, className) passes straight through.
- *
- * Value is the enum key. Controlled: pass `value` + `onChange(key, event)`.
- *
- * `ACCOUNT_FILE_TYPES` (exported here) is the canonical registry — name · icon ·
- * color · soft tint · enumValue — and the consumable layer's source of truth for
- * account file types. It mirrors `OdysseyData.accountFileTypes` and the C#
- * `AccountFileType` enum (field `FileType` on `ExistingAccountFile`); keep them
- * in lockstep. For files attached to a *transaction*, use TransactionFileTypeSelect.
- *
- * Bundle components can't import each other, so this reads the base Select off
- * the DS namespace at render time (the same way the kit consumes every atom).
- */
-
-const ACCOUNT_FILE_TYPES = [{
-  key: 'Message',
-  label: 'Message',
-  enumValue: 1,
-  icon: 'mail',
-  color: 'oklch(0.76 0.13 225)',
-  soft: 'oklch(0.76 0.13 225 / 0.16)'
-}, {
-  key: 'Statement',
-  label: 'Statement',
-  enumValue: 2,
-  icon: 'description',
-  color: 'oklch(0.79 0.115 188)',
-  soft: 'oklch(0.79 0.115 188 / 0.16)'
-}, {
-  key: 'Contract',
-  label: 'Contract',
-  enumValue: 3,
-  icon: 'history_edu',
-  color: 'oklch(0.72 0.16 295)',
-  soft: 'oklch(0.72 0.16 295 / 0.16)'
-}, {
-  key: 'Tax',
-  label: 'Tax',
-  enumValue: 4,
-  icon: 'request_quote',
-  color: 'oklch(0.75 0.16 330)',
-  soft: 'oklch(0.75 0.16 330 / 0.16)'
-}, {
-  key: 'Documentation',
-  label: 'Documentation',
-  enumValue: 5,
-  icon: 'menu_book',
-  color: 'oklch(0.77 0.14 110)',
-  soft: 'oklch(0.77 0.14 110 / 0.16)'
-}, {
-  key: 'InsurancePolicy',
-  label: 'Insurance policy',
-  enumValue: 6,
-  icon: 'shield',
-  color: 'oklch(0.74 0.15 30)',
-  soft: 'oklch(0.74 0.15 30 / 0.16)'
-}, {
-  key: 'LoanAgreement',
-  label: 'Loan agreement',
-  enumValue: 7,
-  icon: 'gavel',
-  color: 'oklch(0.72 0.15 265)',
-  soft: 'oklch(0.72 0.15 265 / 0.16)'
-}, {
-  key: 'RepaymentSchedule',
-  label: 'Repayment schedule',
-  enumValue: 8,
-  icon: 'event_repeat',
-  color: 'oklch(0.78 0.14 160)',
-  soft: 'oklch(0.78 0.14 160 / 0.16)'
-}, {
-  key: 'PurchaseAgreement',
-  label: 'Purchase agreement',
-  enumValue: 9,
-  icon: 'sell',
-  color: 'oklch(0.79 0.14 60)',
-  soft: 'oklch(0.79 0.14 60 / 0.16)'
-}, {
-  key: 'Valuation',
-  label: 'Valuation',
-  enumValue: 10,
-  icon: 'price_check',
-  color: 'oklch(0.80 0.15 140)',
-  soft: 'oklch(0.80 0.15 140 / 0.16)'
-}, {
-  key: 'Warranty',
-  label: 'Warranty',
-  enumValue: 11,
-  icon: 'verified',
-  color: 'oklch(0.77 0.13 205)',
-  soft: 'oklch(0.77 0.13 205 / 0.16)'
-}, {
-  key: 'Registration',
-  label: 'Registration',
-  enumValue: 12,
-  icon: 'app_registration',
-  color: 'oklch(0.74 0.15 310)',
-  soft: 'oklch(0.74 0.15 310 / 0.16)'
-}, {
-  key: 'Prospectus',
-  label: 'Prospectus',
-  enumValue: 13,
-  icon: 'auto_stories',
-  color: 'oklch(0.78 0.14 95)',
-  soft: 'oklch(0.78 0.14 95 / 0.16)'
-}, {
-  key: 'Other',
-  label: 'Other',
-  enumValue: 0,
-  icon: 'insert_drive_file',
-  color: 'oklch(0.74 0.02 250)',
-  soft: 'oklch(0.74 0.02 250 / 0.16)'
-}];
-function AccountFileTypeSelect({
-  value,
-  onChange,
-  label = 'Type',
-  types,
-  ...rest
-}) {
-  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
-  const {
-    RegistrySelect
-  } = NS;
-  if (!RegistrySelect) return null;
-  return /*#__PURE__*/React.createElement(RegistrySelect, _extends({
-    value: value,
-    onChange: onChange,
-    label: label,
-    types: types || ACCOUNT_FILE_TYPES
-  }, rest));
-}
-Object.assign(__ds_scope, { ACCOUNT_FILE_TYPES, AccountFileTypeSelect });
-})(); } catch (e) { __ds_ns.__errors.push({ path: "components/AccountFileTypeSelect.jsx", error: String((e && e.message) || e) }); }
 
 // components/AccountSmartTagsSection.jsx
 try { (() => {
@@ -1641,8 +1452,9 @@ try { (() => {
 /**
  * Odyssey DS — BrandMark
  * Static inline-SVG render of the official Odyssey compass-rose logomark
- * (bold weight). Pure rendering — the colors are the brand's exact hex values
- * (see the Brand cards in the Design System tab). `withWordmark` adds the
+ * (bold weight). Pure rendering — colors come from the brand tokens (--tide-deep,
+ * --tide-glow, --brand-mark-gray/-dark), applied via style so var() resolves
+ * (SVG presentation attributes don't accept var()). `withWordmark` adds the
  * spaced-caps ODYSSEY wordmark under the compass (the lockup used by the
  * drawer and the login card). Self-contained.
  */
@@ -1650,10 +1462,10 @@ function BrandMark({
   size = 28,
   withWordmark = false
 }) {
-  const FRAME = '#006B5A';
-  const GLOW = '#00F5D4';
-  const GRAY = '#707070';
-  const DARK = '#404040';
+  const FRAME = 'var(--tide-deep, #006B5A)';
+  const GLOW = 'var(--tide-glow, #00F5D4)';
+  const GRAY = 'var(--brand-mark-gray, #707070)';
+  const DARK = 'var(--brand-mark-dark, #404040)';
   const vb = withWordmark ? '0 0 200 240' : '0 0 200 210';
   // Render compass at the (100,105) center, r=90 outer. Bold strokes + rose.
   return /*#__PURE__*/React.createElement("svg", {
@@ -1668,108 +1480,148 @@ function BrandMark({
     cy: "105",
     r: "90",
     fill: "none",
-    stroke: FRAME,
-    strokeWidth: "13"
+    strokeWidth: "13",
+    style: {
+      stroke: FRAME
+    }
   }), /*#__PURE__*/React.createElement("circle", {
     cx: "100",
     cy: "105",
     r: "66",
     fill: "none",
-    stroke: FRAME,
     strokeWidth: "2.5",
-    strokeDasharray: "6 4"
+    strokeDasharray: "6 4",
+    style: {
+      stroke: FRAME
+    }
   }), /*#__PURE__*/React.createElement("line", {
     x1: "100",
     y1: "9",
     x2: "100",
     y2: "29",
-    stroke: FRAME,
-    strokeWidth: "7"
+    strokeWidth: "7",
+    style: {
+      stroke: FRAME
+    }
   }), /*#__PURE__*/React.createElement("line", {
     x1: "100",
     y1: "181",
     x2: "100",
     y2: "201",
-    stroke: FRAME,
-    strokeWidth: "7"
+    strokeWidth: "7",
+    style: {
+      stroke: FRAME
+    }
   }), /*#__PURE__*/React.createElement("line", {
     x1: "4",
     y1: "105",
     x2: "24",
     y2: "105",
-    stroke: FRAME,
-    strokeWidth: "7"
+    strokeWidth: "7",
+    style: {
+      stroke: FRAME
+    }
   }), /*#__PURE__*/React.createElement("line", {
     x1: "176",
     y1: "105",
     x2: "196",
     y2: "105",
-    stroke: FRAME,
-    strokeWidth: "7"
+    strokeWidth: "7",
+    style: {
+      stroke: FRAME
+    }
   }), /*#__PURE__*/React.createElement("line", {
     x1: "36",
     y1: "41",
     x2: "50",
     y2: "55",
-    stroke: FRAME,
-    strokeWidth: "5"
+    strokeWidth: "5",
+    style: {
+      stroke: FRAME
+    }
   }), /*#__PURE__*/React.createElement("line", {
     x1: "164",
     y1: "41",
     x2: "150",
     y2: "55",
-    stroke: FRAME,
-    strokeWidth: "5"
+    strokeWidth: "5",
+    style: {
+      stroke: FRAME
+    }
   }), /*#__PURE__*/React.createElement("line", {
     x1: "36",
     y1: "169",
     x2: "50",
     y2: "155",
-    stroke: FRAME,
-    strokeWidth: "5"
+    strokeWidth: "5",
+    style: {
+      stroke: FRAME
+    }
   }), /*#__PURE__*/React.createElement("line", {
     x1: "164",
     y1: "169",
     x2: "150",
     y2: "155",
-    stroke: FRAME,
-    strokeWidth: "5"
+    strokeWidth: "5",
+    style: {
+      stroke: FRAME
+    }
   }), /*#__PURE__*/React.createElement("polygon", {
     points: "100,25  91,105 100,82  109,105",
-    fill: GLOW
+    style: {
+      fill: GLOW
+    }
   }), /*#__PURE__*/React.createElement("polygon", {
     points: "100,105 91,105 100,82  109,105",
-    fill: FRAME
+    style: {
+      fill: FRAME
+    }
   }), /*#__PURE__*/React.createElement("polygon", {
     points: "100,185 91,105 100,128 109,105",
-    fill: GRAY
+    style: {
+      fill: GRAY
+    }
   }), /*#__PURE__*/React.createElement("polygon", {
     points: "100,105 91,105 100,128 109,105",
-    fill: DARK
+    style: {
+      fill: DARK
+    }
   }), /*#__PURE__*/React.createElement("polygon", {
     points: "185,105 100,96 123,105 100,114",
-    fill: GRAY
+    style: {
+      fill: GRAY
+    }
   }), /*#__PURE__*/React.createElement("polygon", {
     points: "100,105 100,96 123,105 100,114",
-    fill: DARK
+    style: {
+      fill: DARK
+    }
   }), /*#__PURE__*/React.createElement("polygon", {
     points: "15,105  100,96 77,105  100,114",
-    fill: GRAY
+    style: {
+      fill: GRAY
+    }
   }), /*#__PURE__*/React.createElement("polygon", {
     points: "100,105 100,96 77,105  100,114",
-    fill: DARK
+    style: {
+      fill: DARK
+    }
   }), /*#__PURE__*/React.createElement("circle", {
     cx: "100",
     cy: "105",
     r: "11",
     fill: "none",
-    stroke: FRAME,
-    strokeWidth: "3"
+    strokeWidth: "3",
+    style: {
+      stroke: FRAME
+    }
   }), /*#__PURE__*/React.createElement("circle", {
     cx: "100",
     cy: "105",
     r: "5",
-    fill: GLOW
+    style: {
+      fill: GLOW
+    }
   }), withWordmark && /*#__PURE__*/React.createElement("text", {
     x: "100",
     y: "226",
@@ -1778,7 +1630,9 @@ function BrandMark({
     fontWeight: "500",
     fontSize: "18",
     letterSpacing: "5",
-    fill: GLOW
+    style: {
+      fill: GLOW
+    }
   }, "ODYSSEY"));
 }
 Object.assign(__ds_scope, { BrandMark });
@@ -2096,7 +1950,7 @@ function CalendarGrid({
 }) {
   const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
   const swatchFor = NS.swatchFor || (hex => ({
-    hex: hex || '#0369A1',
+    hex: hex || NS.DEFAULT_CALENDAR_COLOR,
     fg: '#fff'
   }));
   const monthIso = month instanceof Date ? cgIso(month.getFullYear(), month.getMonth(), month.getDate()) : `${String(month).slice(0, 7)}-01`;
@@ -2917,62 +2771,57 @@ try { (() => {
  * tabindex keeps a single tab stop.
  */
 
+// `hex` is the persisted Calendar.Color value (a data contract, so it stays a
+// literal); `token` names the ramp stop it must equal — change both together.
 const CALENDAR_SWATCHES = [{
   key: 'blue',
   name: 'Blue',
   hex: '#0369A1',
-  fg: '#FFFFFF'
-},
-// sea-700
-{
+  fg: '#FFFFFF',
+  token: '--sea-700'
+}, {
   key: 'teal',
   name: 'Teal',
   hex: '#006B5A',
-  fg: '#FFFFFF'
-},
-// tide-deep
-{
+  fg: '#FFFFFF',
+  token: '--tide-deep'
+}, {
   key: 'green',
   name: 'Green',
   hex: '#15803D',
-  fg: '#FFFFFF'
-},
-// mint-700
-{
+  fg: '#FFFFFF',
+  token: '--mint-700'
+}, {
   key: 'coral',
   name: 'Coral',
   hex: '#B23B3B',
-  fg: '#FFFFFF'
-},
-// coral-700
-{
+  fg: '#FFFFFF',
+  token: '--coral-700'
+}, {
   key: 'violet',
   name: 'Violet',
   hex: '#6D28D9',
-  fg: '#FFFFFF'
-},
-// violet-700
-{
+  fg: '#FFFFFF',
+  token: '--violet-700'
+}, {
   key: 'slate',
   name: 'Slate',
   hex: '#4A5670',
-  fg: '#FFFFFF'
-},
-// ink-500
-{
+  fg: '#FFFFFF',
+  token: '--ink-500'
+}, {
   key: 'amber',
   name: 'Amber',
   hex: '#F59E0B',
-  fg: '#0E1525'
-},
-// amber-500 · dark text
-{
+  fg: '#0E1525',
+  token: '--amber-500'
+}, {
   key: 'sky',
   name: 'Sky',
   hex: '#7DD3FC',
-  fg: '#0E1525'
-} // sea-300 · dark text
-];
+  fg: '#0E1525',
+  token: '--sea-300'
+}];
 const DEFAULT_CALENDAR_COLOR = '#0369A1';
 const ODC_SW_BY_HEX = CALENDAR_SWATCHES.reduce((m, s) => {
   m[s.hex.toUpperCase()] = s;
@@ -7198,6 +7047,392 @@ function FieldShell({
 Object.assign(__ds_scope, { FieldShell });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/FieldShell.jsx", error: String((e && e.message) || e) }); }
 
+// components/FileTypeMultiSelect.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/**
+ * Odyssey DS — FileTypeMultiSelect
+ * The Files-list filter for document type: a checkbox-list popover whose rows
+ * each carry the type's Material icon in its category color, with a count badge
+ * on the trigger. `kind` picks the vocabulary (account · transaction ·
+ * taxStatement · property) from FILE_TYPE_REGISTRIES, exported by FileTypeSelect
+ * and read off the DS namespace at render time (bundle components can't import
+ * each other).
+ *
+ * Defaults: trigger label "Any type"; trigger glyph per kind (folder ·
+ * receipt_long · request_quote · home_work). `value` (array of enum keys),
+ * `onChange`, `icon`, `align` and `types` pass straight through.
+ *
+ * Replaces AccountFileTypeMultiSelect · TransactionFileTypeMultiSelect ·
+ * TaxStatementFileTypeMultiSelect · PropertyFileTypeMultiSelect.
+ */
+function FileTypeMultiSelect({
+  kind = 'account',
+  value = [],
+  onChange,
+  label = 'Any type',
+  icon,
+  align,
+  types,
+  ...rest
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    RegistryMultiSelect
+  } = NS;
+  if (!RegistryMultiSelect) return null;
+  const regs = NS.FILE_TYPE_REGISTRIES || {};
+  const reg = regs[kind] || regs.account || {
+    types: [],
+    filterIcon: 'folder'
+  };
+  return /*#__PURE__*/React.createElement(RegistryMultiSelect, _extends({
+    value: value,
+    onChange: onChange,
+    label: label,
+    icon: icon || reg.filterIcon,
+    align: align,
+    types: types || reg.types
+  }, rest));
+}
+Object.assign(__ds_scope, { FileTypeMultiSelect });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/FileTypeMultiSelect.jsx", error: String((e && e.message) || e) }); }
+
+// components/FileTypeSelect.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/**
+ * Odyssey DS — FileTypeSelect
+ * The one single-select for "what kind of document is this?". `kind` picks the
+ * vocabulary — the entity the file is attached to:
+ *   'account'      AccountFileType      (field `FileType` on ExistingAccountFile)
+ *   'transaction'  TransactionFileType  (field `Type` on ExistingTransactionFile)
+ *   'taxStatement' TaxStatementFileType (field `FileType` on TaxStatementFile)
+ *   'property'     PropertyFileType     (field `FileType` on PropertyFile)
+ * Each option renders its Material icon in its category color via RegistrySelect.
+ * Every Select prop (label, help, error, required, disabled, placeholder, id,
+ * className) passes straight through; `types` overrides / subsets the registry.
+ *
+ * Value is the enum key. Controlled: pass `value` + `onChange(key, event)`.
+ *
+ * The four registries below are the consumable layer's source of truth for file
+ * types. They mirror `OdysseyData.*FileTypes` and the C# enums — keep them in
+ * lockstep. Ordinals are a wire + persistence contract: never renumbered, never
+ * reused. Keys shared across enums (PurchaseAgreement, Valuation, Warranty,
+ * Registration, Tax, Receipt, Documentation, Other) share icon and color, so a
+ * key reads the same on every surface.
+ *
+ * Replaces AccountFileTypeSelect · TransactionFileTypeSelect ·
+ * TaxStatementFileTypeSelect · PropertyFileTypeSelect.
+ */
+
+const ACCOUNT_FILE_TYPES = [{
+  key: 'Message',
+  label: 'Message',
+  enumValue: 1,
+  icon: 'mail',
+  color: 'oklch(0.76 0.13 225)',
+  soft: 'oklch(0.76 0.13 225 / 0.16)'
+}, {
+  key: 'Statement',
+  label: 'Statement',
+  enumValue: 2,
+  icon: 'description',
+  color: 'oklch(0.79 0.115 188)',
+  soft: 'oklch(0.79 0.115 188 / 0.16)'
+}, {
+  key: 'Contract',
+  label: 'Contract',
+  enumValue: 3,
+  icon: 'history_edu',
+  color: 'oklch(0.72 0.16 295)',
+  soft: 'oklch(0.72 0.16 295 / 0.16)'
+}, {
+  key: 'Tax',
+  label: 'Tax',
+  enumValue: 4,
+  icon: 'request_quote',
+  color: 'oklch(0.75 0.16 330)',
+  soft: 'oklch(0.75 0.16 330 / 0.16)'
+}, {
+  key: 'Documentation',
+  label: 'Documentation',
+  enumValue: 5,
+  icon: 'menu_book',
+  color: 'oklch(0.77 0.14 110)',
+  soft: 'oklch(0.77 0.14 110 / 0.16)'
+}, {
+  key: 'InsurancePolicy',
+  label: 'Insurance policy',
+  enumValue: 6,
+  icon: 'shield',
+  color: 'oklch(0.74 0.15 30)',
+  soft: 'oklch(0.74 0.15 30 / 0.16)'
+}, {
+  key: 'LoanAgreement',
+  label: 'Loan agreement',
+  enumValue: 7,
+  icon: 'gavel',
+  color: 'oklch(0.72 0.15 265)',
+  soft: 'oklch(0.72 0.15 265 / 0.16)'
+}, {
+  key: 'RepaymentSchedule',
+  label: 'Repayment schedule',
+  enumValue: 8,
+  icon: 'event_repeat',
+  color: 'oklch(0.78 0.14 160)',
+  soft: 'oklch(0.78 0.14 160 / 0.16)'
+}, {
+  key: 'PurchaseAgreement',
+  label: 'Purchase agreement',
+  enumValue: 9,
+  icon: 'sell',
+  color: 'oklch(0.79 0.14 60)',
+  soft: 'oklch(0.79 0.14 60 / 0.16)'
+}, {
+  key: 'Valuation',
+  label: 'Valuation',
+  enumValue: 10,
+  icon: 'price_check',
+  color: 'oklch(0.80 0.15 140)',
+  soft: 'oklch(0.80 0.15 140 / 0.16)'
+}, {
+  key: 'Warranty',
+  label: 'Warranty',
+  enumValue: 11,
+  icon: 'verified',
+  color: 'oklch(0.77 0.13 205)',
+  soft: 'oklch(0.77 0.13 205 / 0.16)'
+}, {
+  key: 'Registration',
+  label: 'Registration',
+  enumValue: 12,
+  icon: 'app_registration',
+  color: 'oklch(0.74 0.15 310)',
+  soft: 'oklch(0.74 0.15 310 / 0.16)'
+}, {
+  key: 'Prospectus',
+  label: 'Prospectus',
+  enumValue: 13,
+  icon: 'auto_stories',
+  color: 'oklch(0.78 0.14 95)',
+  soft: 'oklch(0.78 0.14 95 / 0.16)'
+}, {
+  key: 'Other',
+  label: 'Other',
+  enumValue: 0,
+  icon: 'insert_drive_file',
+  color: 'oklch(0.74 0.02 250)',
+  soft: 'oklch(0.74 0.02 250 / 0.16)'
+}];
+const TRANSACTION_FILE_TYPES = [{
+  key: 'Receipt',
+  label: 'Receipt',
+  enumValue: 0,
+  icon: 'receipt_long',
+  color: 'oklch(0.80 0.15 150)',
+  soft: 'oklch(0.80 0.15 150 / 0.16)'
+}, {
+  key: 'Invoice',
+  label: 'Invoice',
+  enumValue: 1,
+  icon: 'receipt',
+  color: 'oklch(0.80 0.13 85)',
+  soft: 'oklch(0.80 0.13 85 / 0.16)'
+}, {
+  key: 'CreditNote',
+  label: 'Credit note',
+  enumValue: 3,
+  icon: 'assignment_return',
+  color: 'oklch(0.72 0.16 22)',
+  soft: 'oklch(0.72 0.16 22 / 0.16)'
+}, {
+  key: 'Quote',
+  label: 'Quote',
+  enumValue: 4,
+  icon: 'format_quote',
+  color: 'oklch(0.72 0.16 295)',
+  soft: 'oklch(0.72 0.16 295 / 0.16)'
+}, {
+  key: 'PaymentConfirmation',
+  label: 'Payment confirmation',
+  enumValue: 5,
+  icon: 'price_check',
+  color: 'oklch(0.76 0.13 225)',
+  soft: 'oklch(0.76 0.13 225 / 0.16)'
+}, {
+  key: 'Documentation',
+  label: 'Documentation',
+  enumValue: 6,
+  icon: 'menu_book',
+  color: 'oklch(0.77 0.14 110)',
+  soft: 'oklch(0.77 0.14 110 / 0.16)'
+}, {
+  key: 'Other',
+  label: 'Other',
+  enumValue: 2,
+  icon: 'insert_drive_file',
+  color: 'oklch(0.74 0.02 250)',
+  soft: 'oklch(0.74 0.02 250 / 0.16)'
+}];
+const TAX_STATEMENT_FILE_TYPES = [{
+  key: 'TaxReturn',
+  label: 'Tax return',
+  enumValue: 0,
+  icon: 'assignment',
+  color: 'oklch(0.75 0.16 330)',
+  soft: 'oklch(0.75 0.16 330 / 0.16)'
+}, {
+  key: 'TaxAssessment',
+  label: 'Tax assessment',
+  enumValue: 1,
+  icon: 'fact_check',
+  color: 'oklch(0.72 0.16 295)',
+  soft: 'oklch(0.72 0.16 295 / 0.16)'
+}, {
+  key: 'SupportingDocument',
+  label: 'Supporting document',
+  enumValue: 2,
+  icon: 'attach_file',
+  color: 'oklch(0.77 0.14 110)',
+  soft: 'oklch(0.77 0.14 110 / 0.16)'
+}, {
+  key: 'Other',
+  label: 'Other',
+  enumValue: 3,
+  icon: 'insert_drive_file',
+  color: 'oklch(0.74 0.02 250)',
+  soft: 'oklch(0.74 0.02 250 / 0.16)'
+}];
+const PROPERTY_FILE_TYPES = [{
+  key: 'Deed',
+  label: 'Deed',
+  enumValue: 1,
+  icon: 'workspace_premium',
+  color: 'oklch(0.74 0.15 290)',
+  soft: 'oklch(0.74 0.15 290 / 0.16)'
+}, {
+  key: 'PurchaseAgreement',
+  label: 'Purchase agreement',
+  enumValue: 2,
+  icon: 'sell',
+  color: 'oklch(0.79 0.14 60)',
+  soft: 'oklch(0.79 0.14 60 / 0.16)'
+}, {
+  key: 'Valuation',
+  label: 'Valuation',
+  enumValue: 3,
+  icon: 'price_check',
+  color: 'oklch(0.80 0.15 140)',
+  soft: 'oklch(0.80 0.15 140 / 0.16)'
+}, {
+  key: 'Inspection',
+  label: 'Inspection',
+  enumValue: 4,
+  icon: 'troubleshoot',
+  color: 'oklch(0.78 0.12 180)',
+  soft: 'oklch(0.78 0.12 180 / 0.16)'
+}, {
+  key: 'Registration',
+  label: 'Registration',
+  enumValue: 5,
+  icon: 'app_registration',
+  color: 'oklch(0.74 0.15 310)',
+  soft: 'oklch(0.74 0.15 310 / 0.16)'
+}, {
+  key: 'Insurance',
+  label: 'Insurance',
+  enumValue: 6,
+  icon: 'shield',
+  color: 'oklch(0.74 0.15 30)',
+  soft: 'oklch(0.74 0.15 30 / 0.16)'
+}, {
+  key: 'Warranty',
+  label: 'Warranty',
+  enumValue: 7,
+  icon: 'verified',
+  color: 'oklch(0.77 0.13 205)',
+  soft: 'oklch(0.77 0.13 205 / 0.16)'
+}, {
+  key: 'Receipt',
+  label: 'Receipt',
+  enumValue: 8,
+  icon: 'receipt_long',
+  color: 'oklch(0.80 0.15 150)',
+  soft: 'oklch(0.80 0.15 150 / 0.16)'
+}, {
+  key: 'Maintenance',
+  label: 'Maintenance',
+  enumValue: 9,
+  icon: 'build',
+  color: 'oklch(0.80 0.14 95)',
+  soft: 'oklch(0.80 0.14 95 / 0.16)'
+}, {
+  key: 'Tax',
+  label: 'Tax',
+  enumValue: 10,
+  icon: 'request_quote',
+  color: 'oklch(0.75 0.16 330)',
+  soft: 'oklch(0.75 0.16 330 / 0.16)'
+}, {
+  key: 'Drawing',
+  label: 'Drawing',
+  enumValue: 11,
+  icon: 'architecture',
+  color: 'oklch(0.76 0.12 240)',
+  soft: 'oklch(0.76 0.12 240 / 0.16)'
+}, {
+  key: 'Other',
+  label: 'Other',
+  enumValue: 0,
+  icon: 'insert_drive_file',
+  color: 'oklch(0.74 0.02 250)',
+  soft: 'oklch(0.74 0.02 250 / 0.16)'
+}];
+
+/** kind → { types, filterIcon } — the filter glyph is the multi-select trigger default. */
+const FILE_TYPE_REGISTRIES = {
+  account: {
+    types: ACCOUNT_FILE_TYPES,
+    filterIcon: 'folder'
+  },
+  transaction: {
+    types: TRANSACTION_FILE_TYPES,
+    filterIcon: 'receipt_long'
+  },
+  taxStatement: {
+    types: TAX_STATEMENT_FILE_TYPES,
+    filterIcon: 'request_quote'
+  },
+  property: {
+    types: PROPERTY_FILE_TYPES,
+    filterIcon: 'home_work'
+  }
+};
+function FileTypeSelect({
+  kind = 'account',
+  value,
+  onChange,
+  label = 'Type',
+  types,
+  ...rest
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const {
+    RegistrySelect
+  } = NS;
+  if (!RegistrySelect) return null;
+  const reg = FILE_TYPE_REGISTRIES[kind] || FILE_TYPE_REGISTRIES.account;
+  return /*#__PURE__*/React.createElement(RegistrySelect, _extends({
+    value: value,
+    onChange: onChange,
+    label: label,
+    types: types || reg.types
+  }, rest));
+}
+Object.assign(__ds_scope, { ACCOUNT_FILE_TYPES, TRANSACTION_FILE_TYPES, TAX_STATEMENT_FILE_TYPES, PROPERTY_FILE_TYPES, FILE_TYPE_REGISTRIES, FileTypeSelect });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/FileTypeSelect.jsx", error: String((e && e.message) || e) }); }
+
 // components/FileUpload.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
@@ -7707,7 +7942,7 @@ function FTEditModal({
     Button,
     Modal,
     TypeSelect,
-    AccountFileTypeSelect,
+    FileTypeSelect,
     ContactSelect
   } = NS;
   const [name, setName] = useState(f.name);
@@ -7777,7 +8012,8 @@ function FTEditModal({
     placeholder: "Select type\u2026",
     onChange: k => setKind(k),
     error: touched && typeMissing ? 'Pick the document type.' : undefined
-  }) : AccountFileTypeSelect ? /*#__PURE__*/React.createElement(AccountFileTypeSelect, {
+  }) : FileTypeSelect ? /*#__PURE__*/React.createElement(FileTypeSelect, {
+    kind: "account",
     label: "Document type",
     value: kind,
     types: kinds,
@@ -12216,179 +12452,6 @@ function PropertyEventTypeSelect({
 Object.assign(__ds_scope, { PROPERTY_EVENT_TYPES, PROPERTY_EVENT_SYSTEM_ONLY, PROPERTY_EVENT_TYPE_MATRIX, propertyEventTypeLegality, propertyEventTypesFor, PropertyEventTypeSelect });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/PropertyEventTypeSelect.jsx", error: String((e && e.message) || e) }); }
 
-// components/PropertyFileTypeMultiSelect.jsx
-try { (() => {
-function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-/**
- * Odyssey DS — PropertyFileTypeMultiSelect
- * A checkbox-list filter pre-wired to the PropertyFileType vocabulary: each row
- * carries its Material icon in its category color, with a count badge on the
- * trigger. A thin wrapper over `RegistryMultiSelect` — `value` (array of enum
- * keys) + `onChange` pass straight through, as do `icon` and `align`.
- *
- * Defaults: trigger label "Any type", trigger glyph `home_work`. The registry is
- * the canonical `PROPERTY_FILE_TYPES` exported by PropertyFileTypeSelect, read
- * off the DS namespace at render time (bundle components can't import each other).
- */
-
-function PropertyFileTypeMultiSelect({
-  value = [],
-  onChange,
-  label = 'Any type',
-  icon = 'home_work',
-  align,
-  types,
-  ...rest
-}) {
-  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
-  const {
-    RegistryMultiSelect
-  } = NS;
-  const registry = types || NS.PROPERTY_FILE_TYPES || [];
-  if (!RegistryMultiSelect) return null;
-  return /*#__PURE__*/React.createElement(RegistryMultiSelect, _extends({
-    value: value,
-    onChange: onChange,
-    label: label,
-    icon: icon,
-    align: align,
-    types: registry
-  }, rest));
-}
-Object.assign(__ds_scope, { PropertyFileTypeMultiSelect });
-})(); } catch (e) { __ds_ns.__errors.push({ path: "components/PropertyFileTypeMultiSelect.jsx", error: String((e && e.message) || e) }); }
-
-// components/PropertyFileTypeSelect.jsx
-try { (() => {
-function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-/**
- * Odyssey DS — PropertyFileTypeSelect
- * A single-select pre-wired to the PropertyFileType vocabulary — the kind of
- * document attached to a *property* (house, cabin, car, boat): Deed ·
- * PurchaseAgreement · Valuation · Inspection · Registration · Insurance ·
- * Warranty · Receipt · Maintenance · Tax · Drawing · Other. Each option renders
- * with its Material icon in its category color. A thin, domain-typed wrapper
- * over the base `RegistrySelect`; every Select prop passes straight through.
- *
- * Value is the enum key. Controlled: pass `value` + `onChange(key, event)`.
- *
- * `PROPERTY_FILE_TYPES` (exported here) is the canonical registry — name · icon ·
- * color · soft tint · enumValue — mirroring `OdysseyData.propertyFileTypes` and
- * the C# `PropertyFileType` enum (field `FileType` on `PropertyFile`). Ordinals
- * are a wire and persistence contract: never renumbered, never reused. `Other`
- * is ordinal 0 (the AccountFileType shape) and sorts last. Keys shared with
- * another file enum (PurchaseAgreement, Valuation, Warranty, Registration, Tax,
- * Receipt, Other) reuse that enum's icon and color, so a key reads the same on
- * every surface.
- */
-
-const PROPERTY_FILE_TYPES = [{
-  key: 'Deed',
-  label: 'Deed',
-  enumValue: 1,
-  icon: 'workspace_premium',
-  color: 'oklch(0.74 0.15 290)',
-  soft: 'oklch(0.74 0.15 290 / 0.16)'
-}, {
-  key: 'PurchaseAgreement',
-  label: 'Purchase agreement',
-  enumValue: 2,
-  icon: 'sell',
-  color: 'oklch(0.79 0.14 60)',
-  soft: 'oklch(0.79 0.14 60 / 0.16)'
-}, {
-  key: 'Valuation',
-  label: 'Valuation',
-  enumValue: 3,
-  icon: 'price_check',
-  color: 'oklch(0.80 0.15 140)',
-  soft: 'oklch(0.80 0.15 140 / 0.16)'
-}, {
-  key: 'Inspection',
-  label: 'Inspection',
-  enumValue: 4,
-  icon: 'troubleshoot',
-  color: 'oklch(0.78 0.12 180)',
-  soft: 'oklch(0.78 0.12 180 / 0.16)'
-}, {
-  key: 'Registration',
-  label: 'Registration',
-  enumValue: 5,
-  icon: 'app_registration',
-  color: 'oklch(0.74 0.15 310)',
-  soft: 'oklch(0.74 0.15 310 / 0.16)'
-}, {
-  key: 'Insurance',
-  label: 'Insurance',
-  enumValue: 6,
-  icon: 'shield',
-  color: 'oklch(0.74 0.15 30)',
-  soft: 'oklch(0.74 0.15 30 / 0.16)'
-}, {
-  key: 'Warranty',
-  label: 'Warranty',
-  enumValue: 7,
-  icon: 'verified',
-  color: 'oklch(0.77 0.13 205)',
-  soft: 'oklch(0.77 0.13 205 / 0.16)'
-}, {
-  key: 'Receipt',
-  label: 'Receipt',
-  enumValue: 8,
-  icon: 'receipt_long',
-  color: 'oklch(0.80 0.15 150)',
-  soft: 'oklch(0.80 0.15 150 / 0.16)'
-}, {
-  key: 'Maintenance',
-  label: 'Maintenance',
-  enumValue: 9,
-  icon: 'build',
-  color: 'oklch(0.80 0.14 95)',
-  soft: 'oklch(0.80 0.14 95 / 0.16)'
-}, {
-  key: 'Tax',
-  label: 'Tax',
-  enumValue: 10,
-  icon: 'request_quote',
-  color: 'oklch(0.75 0.16 330)',
-  soft: 'oklch(0.75 0.16 330 / 0.16)'
-}, {
-  key: 'Drawing',
-  label: 'Drawing',
-  enumValue: 11,
-  icon: 'architecture',
-  color: 'oklch(0.76 0.12 240)',
-  soft: 'oklch(0.76 0.12 240 / 0.16)'
-}, {
-  key: 'Other',
-  label: 'Other',
-  enumValue: 0,
-  icon: 'insert_drive_file',
-  color: 'oklch(0.74 0.02 250)',
-  soft: 'oklch(0.74 0.02 250 / 0.16)'
-}];
-function PropertyFileTypeSelect({
-  value,
-  onChange,
-  label = 'Type',
-  types,
-  ...rest
-}) {
-  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
-  const {
-    RegistrySelect
-  } = NS;
-  if (!RegistrySelect) return null;
-  return /*#__PURE__*/React.createElement(RegistrySelect, _extends({
-    value: value,
-    onChange: onChange,
-    label: label,
-    types: types || PROPERTY_FILE_TYPES
-  }, rest));
-}
-Object.assign(__ds_scope, { PROPERTY_FILE_TYPES, PropertyFileTypeSelect });
-})(); } catch (e) { __ds_ns.__errors.push({ path: "components/PropertyFileTypeSelect.jsx", error: String((e && e.message) || e) }); }
-
 // components/RadioGroup.jsx
 try { (() => {
 /**
@@ -13468,8 +13531,8 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
  * trigger + count badge. Every other prop (value, onChange, label, icon, align, …)
  * passes straight through.
  *
- * Don't reach for this in product code — use the domain wrapper (AccountFileType-
- * MultiSelect, ContactTypeMultiSelect, …), each of which feeds its canonical
+ * Don't reach for this in product code — use the domain wrapper (FileTypeMultiSelect,
+ * , ContactTypeMultiSelect, …), each of which feeds its canonical
  * registry in. Reads `MultiSelect` off the DS namespace at render time (bundle
  * components can't import each other).
  */
@@ -13507,8 +13570,8 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
  * namespace yet. Every other prop (value, onChange, label, placeholder, help,
  * error, required, disabled, id, …) passes straight through.
  *
- * Don't reach for this in product code — use the domain wrapper (AccountFileType-
- * Select, ContractTypeSelect, …), each of which feeds its canonical
+ * Don't reach for this in product code — use the domain wrapper (FileTypeSelect,
+ * , ContractTypeSelect, …), each of which feeds its canonical
  * registry in. Reads the base control off the DS namespace at render time (bundle
  * components can't import each other).
  */
@@ -17203,126 +17266,6 @@ function TaskBoard({
 Object.assign(__ds_scope, { TaskBoard });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/TaskBoard.jsx", error: String((e && e.message) || e) }); }
 
-// components/TaxStatementFileTypeMultiSelect.jsx
-try { (() => {
-function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-/**
- * Odyssey DS — TaxStatementFileTypeMultiSelect
- * A checkbox-list filter pre-wired to the TaxStatementFileType vocabulary
- * (TaxReturn · TaxAssessment · SupportingDocument · Other): each row carries its
- * Material icon in its category color, with a count badge on the trigger. A thin
- * wrapper over `MultiSelect` — `value` (array of enum keys) + `onChange` pass
- * straight through, as do `icon` and `align`.
- *
- * Defaults: trigger label "Any type", trigger glyph `request_quote`. The registry
- * is the same canonical `TAX_STATEMENT_FILE_TYPES` exported by
- * TaxStatementFileTypeSelect; read off the DS namespace at render time (bundle
- * components can't import each other).
- */
-
-function TaxStatementFileTypeMultiSelect({
-  value = [],
-  onChange,
-  label = 'Any type',
-  icon = 'request_quote',
-  align,
-  types,
-  ...rest
-}) {
-  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
-  const {
-    RegistryMultiSelect
-  } = NS;
-  const registry = types || NS.TAX_STATEMENT_FILE_TYPES || [];
-  if (!RegistryMultiSelect) return null;
-  return /*#__PURE__*/React.createElement(RegistryMultiSelect, _extends({
-    value: value,
-    onChange: onChange,
-    label: label,
-    icon: icon,
-    align: align,
-    types: registry
-  }, rest));
-}
-Object.assign(__ds_scope, { TaxStatementFileTypeMultiSelect });
-})(); } catch (e) { __ds_ns.__errors.push({ path: "components/TaxStatementFileTypeMultiSelect.jsx", error: String((e && e.message) || e) }); }
-
-// components/TaxStatementFileTypeSelect.jsx
-try { (() => {
-function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-/**
- * Odyssey DS — TaxStatementFileTypeSelect
- * A single-select pre-wired to the TaxStatementFileType vocabulary — the kind of
- * document attached to a *tax statement*: TaxReturn · TaxAssessment ·
- * SupportingDocument · Other. Each option renders with its Material icon in its
- * category color. A thin, domain-typed wrapper over the base `Select`; every
- * Select prop (label, help, error, required, disabled, placeholder, id,
- * className) passes straight through.
- *
- * Value is the enum key. Controlled: pass `value` + `onChange(key, event)`.
- *
- * `TAX_STATEMENT_FILE_TYPES` (exported here) is the canonical registry — name ·
- * icon · color · soft tint · enumValue — and the consumable layer's source of
- * truth for tax-statement file types. It mirrors `OdysseyData.taxStatementFileTypes`
- * and the C# `TaxStatementFileType` enum (field `FileType` on `TaxStatementFile`);
- * keep them in lockstep. For files attached to an *account* use
- * AccountFileTypeSelect; to a *transaction*, TransactionFileTypeSelect.
- *
- * Bundle components can't import each other, so this reads the base Select off
- * the DS namespace at render time (the same way the kit consumes every atom).
- */
-
-const TAX_STATEMENT_FILE_TYPES = [{
-  key: 'TaxReturn',
-  label: 'Tax return',
-  enumValue: 0,
-  icon: 'assignment',
-  color: 'oklch(0.75 0.16 330)',
-  soft: 'oklch(0.75 0.16 330 / 0.16)'
-}, {
-  key: 'TaxAssessment',
-  label: 'Tax assessment',
-  enumValue: 1,
-  icon: 'fact_check',
-  color: 'oklch(0.72 0.16 295)',
-  soft: 'oklch(0.72 0.16 295 / 0.16)'
-}, {
-  key: 'SupportingDocument',
-  label: 'Supporting document',
-  enumValue: 2,
-  icon: 'attach_file',
-  color: 'oklch(0.77 0.14 110)',
-  soft: 'oklch(0.77 0.14 110 / 0.16)'
-}, {
-  key: 'Other',
-  label: 'Other',
-  enumValue: 3,
-  icon: 'insert_drive_file',
-  color: 'oklch(0.74 0.02 250)',
-  soft: 'oklch(0.74 0.02 250 / 0.16)'
-}];
-function TaxStatementFileTypeSelect({
-  value,
-  onChange,
-  label = 'Type',
-  types,
-  ...rest
-}) {
-  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
-  const {
-    RegistrySelect
-  } = NS;
-  if (!RegistrySelect) return null;
-  return /*#__PURE__*/React.createElement(RegistrySelect, _extends({
-    value: value,
-    onChange: onChange,
-    label: label,
-    types: types || TAX_STATEMENT_FILE_TYPES
-  }, rest));
-}
-Object.assign(__ds_scope, { TAX_STATEMENT_FILE_TYPES, TaxStatementFileTypeSelect });
-})(); } catch (e) { __ds_ns.__errors.push({ path: "components/TaxStatementFileTypeSelect.jsx", error: String((e && e.message) || e) }); }
-
 // components/TermHistoryChart.jsx
 try { (() => {
 /**
@@ -18375,143 +18318,6 @@ function Tooltip({
 }
 Object.assign(__ds_scope, { Tooltip });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/Tooltip.jsx", error: String((e && e.message) || e) }); }
-
-// components/TransactionFileTypeMultiSelect.jsx
-try { (() => {
-function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-/**
- * Odyssey DS — TransactionFileTypeMultiSelect
- * A checkbox-list filter pre-wired to the TransactionFileType vocabulary (Receipt ·
- * Invoice · Other): each row carries its Material icon in its category color, with a
- * count badge on the trigger. A thin wrapper over `MultiSelect` — `value` (array of
- * enum keys) + `onChange` pass straight through, as do `icon` and `align`.
- *
- * Defaults: trigger label "Any type", trigger glyph `receipt_long`. The registry is
- * the same canonical `TRANSACTION_FILE_TYPES` exported by TransactionFileTypeSelect;
- * read off the DS namespace at render time (bundle components can't import each other).
- */
-
-function TransactionFileTypeMultiSelect({
-  value = [],
-  onChange,
-  label = 'Any type',
-  icon = 'receipt_long',
-  align,
-  types,
-  ...rest
-}) {
-  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
-  const {
-    RegistryMultiSelect
-  } = NS;
-  const registry = types || NS.TRANSACTION_FILE_TYPES || [];
-  if (!RegistryMultiSelect) return null;
-  return /*#__PURE__*/React.createElement(RegistryMultiSelect, _extends({
-    value: value,
-    onChange: onChange,
-    label: label,
-    icon: icon,
-    align: align,
-    types: registry
-  }, rest));
-}
-Object.assign(__ds_scope, { TransactionFileTypeMultiSelect });
-})(); } catch (e) { __ds_ns.__errors.push({ path: "components/TransactionFileTypeMultiSelect.jsx", error: String((e && e.message) || e) }); }
-
-// components/TransactionFileTypeSelect.jsx
-try { (() => {
-function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-/**
- * Odyssey DS — TransactionFileTypeSelect
- * A single-select pre-wired to the TransactionFileType vocabulary — the kind of
- * document attached to a *transaction*: Receipt · Invoice · CreditNote · Quote ·
- * PaymentConfirmation · Documentation · Other. Each option
- * renders with its Material icon in its category color. A thin, domain-typed
- * wrapper over the base `Select`; every Select prop passes straight through.
- *
- * Value is the enum key. Controlled: pass `value` + `onChange(key, event)`.
- *
- * `TRANSACTION_FILE_TYPES` (exported here) is the canonical registry and the
- * consumable layer's source of truth for transaction file types. It mirrors
- * `OdysseyData.transactionFileTypes` and the C# `TransactionFileType` enum
- * (field `Type` on `ExistingTransactionFile`); keep them in lockstep. For files
- * attached to an *account*, use AccountFileTypeSelect.
- *
- * Bundle components can't import each other, so this reads the base Select off
- * the DS namespace at render time (the same way the kit consumes every atom).
- */
-
-const TRANSACTION_FILE_TYPES = [{
-  key: 'Receipt',
-  label: 'Receipt',
-  enumValue: 0,
-  icon: 'receipt_long',
-  color: 'oklch(0.80 0.15 150)',
-  soft: 'oklch(0.80 0.15 150 / 0.16)'
-}, {
-  key: 'Invoice',
-  label: 'Invoice',
-  enumValue: 1,
-  icon: 'receipt',
-  color: 'oklch(0.80 0.13 85)',
-  soft: 'oklch(0.80 0.13 85 / 0.16)'
-}, {
-  key: 'CreditNote',
-  label: 'Credit note',
-  enumValue: 3,
-  icon: 'assignment_return',
-  color: 'oklch(0.72 0.16 22)',
-  soft: 'oklch(0.72 0.16 22 / 0.16)'
-}, {
-  key: 'Quote',
-  label: 'Quote',
-  enumValue: 4,
-  icon: 'format_quote',
-  color: 'oklch(0.72 0.16 295)',
-  soft: 'oklch(0.72 0.16 295 / 0.16)'
-}, {
-  key: 'PaymentConfirmation',
-  label: 'Payment confirmation',
-  enumValue: 5,
-  icon: 'price_check',
-  color: 'oklch(0.76 0.13 225)',
-  soft: 'oklch(0.76 0.13 225 / 0.16)'
-}, {
-  key: 'Documentation',
-  label: 'Documentation',
-  enumValue: 6,
-  icon: 'menu_book',
-  color: 'oklch(0.77 0.14 110)',
-  soft: 'oklch(0.77 0.14 110 / 0.16)'
-}, {
-  key: 'Other',
-  label: 'Other',
-  enumValue: 2,
-  icon: 'insert_drive_file',
-  color: 'oklch(0.74 0.02 250)',
-  soft: 'oklch(0.74 0.02 250 / 0.16)'
-}];
-function TransactionFileTypeSelect({
-  value,
-  onChange,
-  label = 'Type',
-  types,
-  ...rest
-}) {
-  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
-  const {
-    RegistrySelect
-  } = NS;
-  if (!RegistrySelect) return null;
-  return /*#__PURE__*/React.createElement(RegistrySelect, _extends({
-    value: value,
-    onChange: onChange,
-    label: label,
-    types: types || TRANSACTION_FILE_TYPES
-  }, rest));
-}
-Object.assign(__ds_scope, { TRANSACTION_FILE_TYPES, TransactionFileTypeSelect });
-})(); } catch (e) { __ds_ns.__errors.push({ path: "components/TransactionFileTypeSelect.jsx", error: String((e && e.message) || e) }); }
 
 // components/TransactionTagPicker.jsx
 try { (() => {
@@ -33707,128 +33513,65 @@ const ContactTypeSelect = ({
   }, props));
 };
 
-// FileType pickers — typed, registry-backed (icon + color per option). Two
-// vocabularies: AccountFileType (files on an account) and TransactionFileType
-// (files on a transaction). Same fallback pattern: until the bundle carries the
-// typed components, feed the registry into the base DS.Select / DS.MultiSelect.
+// FileType pickers — one typed, registry-backed pair in the bundle
+// (DS.FileTypeSelect / DS.FileTypeMultiSelect, `kind` picks the vocabulary).
+// The kit keeps its per-entity names as thin presets so page code is unchanged.
 const optsFrom = arr => (arr || []).map(t => ({
   value: t.key,
   label: t.label,
   icon: t.icon,
   iconColor: t.color
 }));
-const acctFileOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.accountFileTypes);
-const txnFileOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.transactionFileTypes);
-const taxFileOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.taxStatementFileTypes);
-const AccountFileTypeSelect = ({
+const FILE_KIND_DATA = {
+  account: 'accountFileTypes',
+  transaction: 'transactionFileTypes',
+  taxStatement: 'taxStatementFileTypes',
+  property: 'propertyFileTypes'
+};
+const FILE_KIND_ICON = {
+  account: 'folder',
+  transaction: 'receipt_long',
+  taxStatement: 'request_quote',
+  property: 'home_work'
+};
+const kindOpts = kind => optsFrom(window.OdysseyData && window.OdysseyData[FILE_KIND_DATA[kind]]);
+const fileTypeSelectFor = kind => ({
   helper,
   types,
   ...props
 }) => {
-  if (DS.AccountFileTypeSelect) return /*#__PURE__*/React.createElement(DS.AccountFileTypeSelect, _extends({
+  if (DS.FileTypeSelect) return /*#__PURE__*/React.createElement(DS.FileTypeSelect, _extends({
+    kind: kind,
     help: helper,
     types: types
   }, props));
   return /*#__PURE__*/React.createElement(DS.Select, _extends({
     help: helper,
-    options: types ? optsFrom(types) : acctFileOpts()
+    options: types ? optsFrom(types) : kindOpts(kind)
   }, props));
 };
-const AccountFileTypeMultiSelect = ({
+const fileTypeMultiSelectFor = kind => ({
   types,
   ...props
 }) => {
-  if (DS.AccountFileTypeMultiSelect) return /*#__PURE__*/React.createElement(DS.AccountFileTypeMultiSelect, _extends({
+  if (DS.FileTypeMultiSelect) return /*#__PURE__*/React.createElement(DS.FileTypeMultiSelect, _extends({
+    kind: kind,
     types: types
   }, props));
   return /*#__PURE__*/React.createElement(DS.MultiSelect, _extends({
     label: "Any type",
-    icon: "folder",
-    options: types ? optsFrom(types) : acctFileOpts()
+    icon: FILE_KIND_ICON[kind],
+    options: types ? optsFrom(types) : kindOpts(kind)
   }, props));
 };
-const TransactionFileTypeSelect = ({
-  helper,
-  types,
-  ...props
-}) => {
-  if (DS.TransactionFileTypeSelect) return /*#__PURE__*/React.createElement(DS.TransactionFileTypeSelect, _extends({
-    help: helper,
-    types: types
-  }, props));
-  return /*#__PURE__*/React.createElement(DS.Select, _extends({
-    help: helper,
-    options: types ? optsFrom(types) : txnFileOpts()
-  }, props));
-};
-const TransactionFileTypeMultiSelect = ({
-  types,
-  ...props
-}) => {
-  if (DS.TransactionFileTypeMultiSelect) return /*#__PURE__*/React.createElement(DS.TransactionFileTypeMultiSelect, _extends({
-    types: types
-  }, props));
-  return /*#__PURE__*/React.createElement(DS.MultiSelect, _extends({
-    label: "Any type",
-    icon: "receipt_long",
-    options: types ? optsFrom(types) : txnFileOpts()
-  }, props));
-};
-const TaxStatementFileTypeSelect = ({
-  helper,
-  types,
-  ...props
-}) => {
-  if (DS.TaxStatementFileTypeSelect) return /*#__PURE__*/React.createElement(DS.TaxStatementFileTypeSelect, _extends({
-    help: helper,
-    types: types
-  }, props));
-  return /*#__PURE__*/React.createElement(DS.Select, _extends({
-    help: helper,
-    options: types ? optsFrom(types) : taxFileOpts()
-  }, props));
-};
-const TaxStatementFileTypeMultiSelect = ({
-  types,
-  ...props
-}) => {
-  if (DS.TaxStatementFileTypeMultiSelect) return /*#__PURE__*/React.createElement(DS.TaxStatementFileTypeMultiSelect, _extends({
-    types: types
-  }, props));
-  return /*#__PURE__*/React.createElement(DS.MultiSelect, _extends({
-    label: "Any type",
-    icon: "request_quote",
-    options: types ? optsFrom(types) : taxFileOpts()
-  }, props));
-};
-const propFileOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.propertyFileTypes);
-const PropertyFileTypeSelect = ({
-  helper,
-  types,
-  ...props
-}) => {
-  if (DS.PropertyFileTypeSelect) return /*#__PURE__*/React.createElement(DS.PropertyFileTypeSelect, _extends({
-    help: helper,
-    types: types
-  }, props));
-  return /*#__PURE__*/React.createElement(DS.Select, _extends({
-    help: helper,
-    options: types ? optsFrom(types) : propFileOpts()
-  }, props));
-};
-const PropertyFileTypeMultiSelect = ({
-  types,
-  ...props
-}) => {
-  if (DS.PropertyFileTypeMultiSelect) return /*#__PURE__*/React.createElement(DS.PropertyFileTypeMultiSelect, _extends({
-    types: types
-  }, props));
-  return /*#__PURE__*/React.createElement(DS.MultiSelect, _extends({
-    label: "Any type",
-    icon: "home_work",
-    options: types ? optsFrom(types) : propFileOpts()
-  }, props));
-};
+const AccountFileTypeSelect = fileTypeSelectFor('account');
+const AccountFileTypeMultiSelect = fileTypeMultiSelectFor('account');
+const TransactionFileTypeSelect = fileTypeSelectFor('transaction');
+const TransactionFileTypeMultiSelect = fileTypeMultiSelectFor('transaction');
+const TaxStatementFileTypeSelect = fileTypeSelectFor('taxStatement');
+const TaxStatementFileTypeMultiSelect = fileTypeMultiSelectFor('taxStatement');
+const PropertyFileTypeSelect = fileTypeSelectFor('property');
+const PropertyFileTypeMultiSelect = fileTypeMultiSelectFor('property');
 const contractTypeOpts = () => optsFrom(window.OdysseyData && window.OdysseyData.contractTypes);
 const ContractTypeSelect = ({
   helper,
@@ -40964,7 +40707,7 @@ const ContractsSummary = ({
   const typeRows = s.typeRows.map(r => ({
     key: r.key,
     icon: r.icon,
-    iconColor: 'var(--mud-palette-text-secondary)',
+    iconColor: CON_H.contractTypeInfo(r.key).color,
     label: r.label,
     count: r.count
   }));
@@ -41041,7 +40784,7 @@ const ContractsSummary = ({
       return {
         key: k,
         icon: ty.icon,
-        iconColor: 'var(--mud-palette-text-secondary)',
+        iconColor: ty.color,
         label: ty.label,
         count: netCell(netOf(k, getter))
       };
@@ -41450,7 +41193,7 @@ const Contracts = ({
       }, c.name), /*#__PURE__*/React.createElement("span", {
         className: "con-charge-term"
       }, CON_H.termDisplayName(term, null))), /*#__PURE__*/React.createElement("span", {
-        className: "con-charge-amt mono"
+        className: "con-charge-amt mono out"
       }, CON_H.money(term.value, term.currency || 'USD')), /*#__PURE__*/React.createElement("span", {
         className: "con-charge-go"
       }, "View \u2192"));
@@ -53804,24 +53547,24 @@ const TaskRail = ({
 }) => {
   const r = taskRail(t, status);
   return /*#__PURE__*/React.createElement("div", {
-    className: "tkc-rail",
+    className: "tk-list-rail",
     "data-tone": r.tone || undefined
   }, r.dash ? /*#__PURE__*/React.createElement("span", {
-    className: "tkc-dash",
+    className: "tk-list-dash",
     "aria-hidden": "true"
   }, "\u2014") : null, r.tick ? /*#__PURE__*/React.createElement("span", {
-    className: "tkc-tick material-icons",
+    className: "tk-list-tick material-icons",
     "aria-hidden": "true"
   }, "check") : null, r.word ? /*#__PURE__*/React.createElement("span", {
-    className: "tkc-word"
+    className: "tk-list-word"
   }, r.word) : null, r.count != null ? /*#__PURE__*/React.createElement("span", {
-    className: "tkc-count"
+    className: "tk-list-count"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "tkc-sign"
+    className: "tk-list-sign"
   }, r.sign), r.count) : null, r.unit ? /*#__PURE__*/React.createElement("span", {
-    className: "tkc-unit"
+    className: "tk-list-unit"
   }, r.unit) : null, /*#__PURE__*/React.createElement("span", {
-    className: "tkc-st",
+    className: "tk-list-st",
     onClick: e => e.stopPropagation()
   }, /*#__PURE__*/React.createElement(TaskStatusButton, {
     status: status,
@@ -53835,18 +53578,18 @@ const TaskMeta = ({
   t,
   status
 }) => /*#__PURE__*/React.createElement("div", {
-  className: "tkc-meta"
+  className: "tk-list-meta"
 }, status === 'Archived' ? /*#__PURE__*/React.createElement("span", {
   className: "odc-chip outline sm archived"
 }, "Archived") : null, status === 'Done' && t.completedAt ? /*#__PURE__*/React.createElement("span", {
-  className: "tkc-due"
+  className: "tk-list-due"
 }, /*#__PURE__*/React.createElement(MIcon, {
   name: "check",
   size: 14
 }), "Completed ", /*#__PURE__*/React.createElement("span", {
   className: "mono"
 }, T_H.jDateTime(t.completedAt))) : t.deadline ? /*#__PURE__*/React.createElement("span", {
-  className: "tkc-due"
+  className: "tk-list-due"
 }, /*#__PURE__*/React.createElement(MIcon, {
   name: "event",
   size: 14
@@ -53870,18 +53613,18 @@ const TaskListRow = ({
   const atts = (t.attachments || []).length;
   const tags = T_H.jTaskTags(t);
   return /*#__PURE__*/React.createElement("article", {
-    className: `tkc-card${t.archived ? ' archived' : ''}`,
+    className: `tk-list${t.archived ? ' archived' : ''}`,
     "data-status": status
   }, /*#__PURE__*/React.createElement(TaskRail, {
     t: t,
     status: status,
     onStatus: onStatus
   }), /*#__PURE__*/React.createElement("div", {
-    className: "tkc-body"
+    className: "tk-list-body"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "tkc-top"
+    className: "tk-list-top"
   }, /*#__PURE__*/React.createElement("h3", {
-    className: "tkc-title"
+    className: "tk-list-title"
   }, t.title), /*#__PURE__*/React.createElement("div", {
     className: "je-cardmenu",
     onClick: e => e.stopPropagation()
@@ -53910,11 +53653,11 @@ const TaskListRow = ({
     t: t,
     status: status
   }), t.content ? /*#__PURE__*/React.createElement("p", {
-    className: "tkc-note"
+    className: "tk-list-note"
   }, t.content) : null, tags.length || atts ? /*#__PURE__*/React.createElement("div", {
-    className: "tkc-foot"
+    className: "tk-list-foot"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "tkc-chips"
+    className: "tk-list-chips"
   }, tags.map(x => /*#__PURE__*/React.createElement("span", {
     className: "odc-chip tag",
     key: x.id
@@ -53922,7 +53665,7 @@ const TaskListRow = ({
     name: "label",
     size: 13
   }), x.name))), atts ? /*#__PURE__*/React.createElement("span", {
-    className: "tkc-att"
+    className: "tk-list-att"
   }, /*#__PURE__*/React.createElement(MIcon, {
     name: "attach_file",
     size: 15
@@ -70077,12 +69820,6 @@ Object.assign(window, {
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/tweaks-panel.jsx", error: String((e && e.message) || e) }); }
 
-__ds_ns.AccountFileTypeMultiSelect = __ds_scope.AccountFileTypeMultiSelect;
-
-__ds_ns.ACCOUNT_FILE_TYPES = __ds_scope.ACCOUNT_FILE_TYPES;
-
-__ds_ns.AccountFileTypeSelect = __ds_scope.AccountFileTypeSelect;
-
 __ds_ns.AccountSmartTagsSection = __ds_scope.AccountSmartTagsSection;
 
 __ds_ns.AccountStatusChip = __ds_scope.AccountStatusChip;
@@ -70233,6 +69970,20 @@ __ds_ns.Field = __ds_scope.Field;
 
 __ds_ns.FieldShell = __ds_scope.FieldShell;
 
+__ds_ns.FileTypeMultiSelect = __ds_scope.FileTypeMultiSelect;
+
+__ds_ns.ACCOUNT_FILE_TYPES = __ds_scope.ACCOUNT_FILE_TYPES;
+
+__ds_ns.TRANSACTION_FILE_TYPES = __ds_scope.TRANSACTION_FILE_TYPES;
+
+__ds_ns.TAX_STATEMENT_FILE_TYPES = __ds_scope.TAX_STATEMENT_FILE_TYPES;
+
+__ds_ns.PROPERTY_FILE_TYPES = __ds_scope.PROPERTY_FILE_TYPES;
+
+__ds_ns.FILE_TYPE_REGISTRIES = __ds_scope.FILE_TYPE_REGISTRIES;
+
+__ds_ns.FileTypeSelect = __ds_scope.FileTypeSelect;
+
 __ds_ns.FileUpload = __ds_scope.FileUpload;
 
 __ds_ns.FilesTable = __ds_scope.FilesTable;
@@ -70296,12 +70047,6 @@ __ds_ns.PROPERTY_EVENT_SYSTEM_ONLY = __ds_scope.PROPERTY_EVENT_SYSTEM_ONLY;
 __ds_ns.PROPERTY_EVENT_TYPE_MATRIX = __ds_scope.PROPERTY_EVENT_TYPE_MATRIX;
 
 __ds_ns.PropertyEventTypeSelect = __ds_scope.PropertyEventTypeSelect;
-
-__ds_ns.PropertyFileTypeMultiSelect = __ds_scope.PropertyFileTypeMultiSelect;
-
-__ds_ns.PROPERTY_FILE_TYPES = __ds_scope.PROPERTY_FILE_TYPES;
-
-__ds_ns.PropertyFileTypeSelect = __ds_scope.PropertyFileTypeSelect;
 
 __ds_ns.RadioGroup = __ds_scope.RadioGroup;
 
@@ -70381,12 +70126,6 @@ __ds_ns.TagMultiSelect = __ds_scope.TagMultiSelect;
 
 __ds_ns.TaskBoard = __ds_scope.TaskBoard;
 
-__ds_ns.TaxStatementFileTypeMultiSelect = __ds_scope.TaxStatementFileTypeMultiSelect;
-
-__ds_ns.TAX_STATEMENT_FILE_TYPES = __ds_scope.TAX_STATEMENT_FILE_TYPES;
-
-__ds_ns.TaxStatementFileTypeSelect = __ds_scope.TaxStatementFileTypeSelect;
-
 __ds_ns.TermHistoryChart = __ds_scope.TermHistoryChart;
 
 __ds_ns.TextInputField = __ds_scope.TextInputField;
@@ -70406,12 +70145,6 @@ __ds_ns.TODO_STATUSES = __ds_scope.TODO_STATUSES;
 __ds_ns.TodoStatusChip = __ds_scope.TodoStatusChip;
 
 __ds_ns.Tooltip = __ds_scope.Tooltip;
-
-__ds_ns.TransactionFileTypeMultiSelect = __ds_scope.TransactionFileTypeMultiSelect;
-
-__ds_ns.TRANSACTION_FILE_TYPES = __ds_scope.TRANSACTION_FILE_TYPES;
-
-__ds_ns.TransactionFileTypeSelect = __ds_scope.TransactionFileTypeSelect;
 
 __ds_ns.TransactionTagPicker = __ds_scope.TransactionTagPicker;
 

@@ -56,7 +56,7 @@ export function CalendarGrid({
   today,
 }) {
   const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
-  const swatchFor = NS.swatchFor || ((hex) => ({ hex: hex || '#0369A1', fg: '#fff' }));
+  const swatchFor = NS.swatchFor || ((hex) => ({ hex: hex || NS.DEFAULT_CALENDAR_COLOR, fg: '#fff' }));
 
   const monthIso = month instanceof Date ? cgIso(month.getFullYear(), month.getMonth(), month.getDate()) : `${String(month).slice(0, 7)}-01`;
   const view = cgParse(monthIso);

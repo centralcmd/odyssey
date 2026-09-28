@@ -6,8 +6,8 @@
  * trigger + count badge. Every other prop (value, onChange, label, icon, align, …)
  * passes straight through.
  *
- * Don't reach for this in product code — use the domain wrapper (AccountFileType-
- * MultiSelect, ContactTypeMultiSelect, …), each of which feeds its canonical
+ * Don't reach for this in product code — use the domain wrapper (FileTypeMultiSelect,
+ * , ContactTypeMultiSelect, …), each of which feeds its canonical
  * registry in. Reads `MultiSelect` off the DS namespace at render time (bundle
  * components can't import each other).
  */

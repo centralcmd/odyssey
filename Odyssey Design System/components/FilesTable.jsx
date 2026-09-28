@@ -126,7 +126,7 @@ function FTDateField({ label, value, onChange, min, max, error }) {
 function FTEditModal({ f, kinds, issuers, onCreateContact, onSave, onClose, renameable = true, requireType = false }) {
   const { useState } = React;
   const NS = (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51) || {};
-  const { Field, Button, Modal, TypeSelect, AccountFileTypeSelect, ContactSelect } = NS;
+  const { Field, Button, Modal, TypeSelect, FileTypeSelect, ContactSelect } = NS;
   const [name, setName] = useState(f.name);
   const [kind, setKind] = useState(f.kind);
   const [validFrom, setValidFrom] = useState(f.validFrom || null);
@@ -177,8 +177,8 @@ function FTEditModal({ f, kinds, issuers, onCreateContact, onSave, onClose, rena
         <TypeSelect label="Document type" value={kind} types={kinds} required={requireType}
           placeholder="Select type…" onChange={(k) => setKind(k)}
           error={touched && typeMissing ? 'Pick the document type.' : undefined} />
-      ) : AccountFileTypeSelect ? (
-        <AccountFileTypeSelect label="Document type" value={kind} types={kinds} required={requireType}
+      ) : FileTypeSelect ? (
+        <FileTypeSelect kind="account" label="Document type" value={kind} types={kinds} required={requireType}
           onChange={(k) => setKind(k)} />
       ) : null}
       {showValidity && (

@@ -82,6 +82,8 @@ html, body, #root {
   padding: 24px 32px 64px;
   overflow-y: auto;
 }
+/* Fill the row beside the rail even when the page is sparse. */
+.odn-app > .main { flex: 1; min-width: 0; }
 .container-lg { max-width: 1280px; margin: 0 auto; }
 
 /* ---------- Card ---------- */

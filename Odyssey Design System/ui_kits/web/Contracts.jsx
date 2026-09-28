@@ -733,7 +733,7 @@ const ContractsSummary = ({ contracts, today, endingWindow }) => {
   // Distribution rows for the two BreakdownTile instances. Status tones map to
   // the same finance accents the pills / chips use — no new hue enters.
   const TONE_COLOR = { income: 'var(--finance-income)', info: 'var(--sea-400)', expense: 'var(--finance-expense)', outline: 'var(--mud-palette-text-secondary)', pending: 'var(--finance-pending)' };
-  const typeRows = s.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: 'var(--mud-palette-text-secondary)', label: r.label, count: r.count }));
+  const typeRows = s.typeRows.map(r => ({ key: r.key, icon: r.icon, iconColor: CON_H.contractTypeInfo(r.key).color, label: r.label, count: r.count }));
   const statusRows = order.map(k => {
     const m = CON_H.conStatusMeta(k);
     return { key: k, icon: m.icon, iconColor: TONE_COLOR[m.tone] || TONE_COLOR.outline, label: m.label, count: s.countsByStatus[k] || 0 };
@@ -801,7 +801,7 @@ const ContractsSummary = ({ contracts, today, endingWindow }) => {
     if (!keys.length) return [];
     const rows = keys.map(k => {
       const ty = CON_H.contractTypeInfo(k);
-      return { key: k, icon: ty.icon, iconColor: 'var(--mud-palette-text-secondary)', label: ty.label, count: netCell(netOf(k, getter)) };
+      return { key: k, icon: ty.icon, iconColor: ty.color, label: ty.label, count: netCell(netOf(k, getter)) };
     });
     return rows;
   };
@@ -1046,7 +1046,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
                 <span className="con-charge-title">{c.name}</span>
                 <span className="con-charge-term">{CON_H.termDisplayName(term, null)}</span>
               </span>
-              <span className="con-charge-amt mono">{CON_H.money(term.value, term.currency || 'USD')}</span>
+              <span className="con-charge-amt mono out">{CON_H.money(term.value, term.currency || 'USD')}</span>
               <span className="con-charge-go">View →</span>
             </div>
           );

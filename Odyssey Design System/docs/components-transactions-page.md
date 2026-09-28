@@ -1,0 +1,36 @@
+# Components — Transactions page
+
+> Part of the [Odyssey Design System](../README.md) docs. Foundations, tokens and the component catalog live in the README; this file is the per-feature detail.
+
+
+The **Transactions page** (`Transactions.jsx`) is the ledger screen at `/transactions` — every transaction across every account in one searchable, sortable table. Sister to the Accounts and Budgets pages, it invents almost no new chrome: the **Page header** over a data table whose rows follow the same **expand → detail → edit** lifecycle as every other record. Specimen: `templates/transactions` (the whole page, one row expanded, static), with `components/txntable.html` for the row anatomy and states; reference build: `ui_kits/web/Transactions.jsx`.
+
+**One table, four homes.** The page's defining fact is that its table is the consumable DS **`TxnTable`** (`components/TxnTable.jsx` — see *Components — data table* above). The Accounts page embeds the very same table inside a single account's detail (passing `hideAccount` to drop the Account column), Budgets renders it for a budget's matched transactions, and the Dashboard for the recent list; the Transactions page renders it unfiltered by account and in full — **no pagination in the MVP, the filtered list renders whole**. Fix the table once and every surface updates.
+
+**The header.** A Page header whose **Search** region holds everything: a debounced (~300ms) query over description · contact · amount, plus four `MultiSelect` filters — account, status, tag, direction. The sub-line is a running tally of the filtered set (`248 transactions · in $24,310.00 · out $9,884.20`). There is **no Overview or Problems region** — a transaction is a leaf record, with nothing to roll up. The primary is **New transaction**, which opens `AddTransactionModal` (pre-filled with the account when a single one is filtered).
+
+**The table.** Eight columns, all sortable — Description (the title), Contact, Account, Tags, Status, Amount, Date (the default sort, newest first) — plus a row-actions cell (overflow menu + disclosure). A direction-tinted **type avatar** leads each row: coral `shopping_cart` for money out, mint `arrow_downward` for money in. The amount is monospace, right-aligned and signed in the direction colour. The **Tags** cell renders the transaction's tag set via `TagChips` (capped at two chips + a `+N`). A row expands in place into a read-only **detail** — a metadata grid (ID · account · contact · tags · status · direction · amount · date · currency, plus optional status comment and external / internal IDs) over a **Files** collapsible — exactly like a budget. The **Tag** filter matches a transaction carrying **any** of the selected tags.
+
+**Status & direction.** Two vocabularies, both on existing finance accents so no new hue enters. **Status** (`TransactionStatus`): **New** (informational sea) · **Approved** (income mint) · **Flagged** (expense coral). **Direction**: **Money in** (mint) vs **Money out** (coral), reused on the avatar and the amount. Brand tide never encodes money.
+
+**Edit opens the New / Edit transaction dialog.** Selecting **Edit** opens `AddTransactionModal` in edit mode (the row never navigates and no longer swaps to an inline panel) — pre-filled with the transaction's values and its existing attachments. Every field maps to a `NewTransaction` field, and Save commits a patch via the table's `onSave(id, patch)`. Because the table owns the dialog, all four `TxnTable` homes (Transactions page, Accounts detail, Budgets, Dashboard) get the same edit surface:
+
+| Field | Maps to | Control |
+|---|---|---|
+| Date | `TimeStamp` | Date picker — the default sort key, newest first. |
+| Description | `Description` | Text; its leading segment is read as the contact label. |
+| Contact | `ContactId` | Combobox — search an existing contact or create one inline. |
+| Account | `AccountId` | Select across the user's accounts. |
+| Tags | `TransactionTagIds` | `TagMultiSelect` — zero, one, or many tags (search / check / create inline). |
+| Status | `Status` (`TransactionStatus`) | New / Approved / Flagged. |
+| Direction | sign of `Amount` | Money in / Money out — re-signs the amount. |
+| Amount | `Amount` (signed) | Number, coloured by sign; stored signed. |
+| Currency | `CurrencyCode` | ISO-4217, `"USD"` default. |
+| Files | attached `AccountFile`s | Existing attachments (deletable) + the upload dropzone. |
+| Status comment · External / Internal ID · Extra data | `StatusComment` · `ExternalId` · `InternalId` · `ExtraData` | Optional — behind the advanced disclosure. |
+
+**Lifecycle.** Accordion-style: opening a row collapses the others — except a row mid-edit, which stays open until Save or Cancel. The row menu carries View details · Edit · Copy transaction ID · — · Delete. New rows always post as `Status = New`.
+
+> **Stack reality check.** The list is `Transactions.razor` (`/transactions`), standing in for MudBlazor's `MudTable` + `MudTableSortLabel` (+ the shared **`Pager`** / `MudBlazor` button pager once the page moves to the server-paged contract — see *Components — server pagination* below; the interim build renders the filtered window whole), driven by the `Odyssey.Finance` transaction DTOs (`Transaction`, `NewTransaction`, `TransactionStatus`). `Amount` is stored signed and `CurrencyCode` as ISO-4217 (`"USD"` default). The contact combobox and tag picker read `GET /api/contacts` and `/api/transaction-tags`; the list is `GET /api/transactions` (searched/filtered/sorted), create `POST /api/transactions`, edit `PATCH /api/transactions/{id}`, delete `DELETE /api/transactions/{id}`. The prototype computes the running in / out tally and the shared-table view state client-side in `Transactions.jsx`.
+
+> **Multi-tag (many-to-many).** A transaction carries a **set** of `TransactionTag`s, not one — `NewTransaction.TransactionTagIds` (a `Guid[]`) on the way in, `ExistingTransaction.TransactionTags` (a list) on the way out, backed by a `TransactionTagLink` join table. The whole frontend is wired for it: data rows use `tags: string[]` (the legacy single `tag` still reads through `OdysseyData.txnTagIds` / `txnTags` for back-compat); the ledger Tag column + detail tile render the set via `TagChips`; the create dialog and inline edit use `TagMultiSelect`; the header Tag filter is *any-of*; search matches across all of a transaction's tag names; and the Analyze-file import carries `TransactionTagIds`. Budget matching reads the set too — a budget claims a transaction if it carries **any** of the budget's item tags (de-duplicated to one row), and a transaction tagged with two of a budget's item tags counts under **each** item, so per-tag buckets can sum past the de-duplicated transaction total (no amount splitting in v1). **Budget items themselves stay single-tag** (`BudgetItem.TransactionTagId` is unchanged) — only transactions became multi-tag.

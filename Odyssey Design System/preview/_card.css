@@ -1,6 +1,7 @@
 /* Shared card shell for preview/*.html — designs are scaled to 700px wide
    and capped at the registered card height. Body bg matches dark surface. */
 @import url('../colors_and_type.css');
+@import url('../icons.css');
 
 html, body {
   margin: 0;

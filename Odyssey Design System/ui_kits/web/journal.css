@@ -174,7 +174,7 @@
 .tk-card-tags:empty { display: none; }
 
 /* ---------------- Task list card (/tasks list view) ----------------
-   Purpose-built (.tkc-*), not the shared .acct-item record card: a task has no
+   Purpose-built (.tk-list / .tk-list-*; formerly .tkc-*), not the shared .acct-item record card: a task has no
    headline figure and nothing worth collapsing, so the card is always open and
    IS the detail — the journal entry card's premise, with the rail repointed.
    The rail carries the DEADLINE COUNT (signed days, top-aligned) above a
@@ -183,72 +183,71 @@
    at the card's outer edge — the furthest point from the count, so state and
    urgency never read as one signal. Decisions + the full state matrix are
    recorded in preview/explore-task-list-card-b1d1.html. */
-.tkc-card {
+.tk-list {
   display: grid; grid-template-columns: 92px minmax(0, 1fr);
   background: var(--mud-palette-surface);
   border: 1px solid var(--mud-palette-divider);
   border-radius: var(--radius-md); box-shadow: var(--mud-elevation-1);
   overflow: hidden;
 }
-.tkc-card.archived { opacity: 0.72; }
-.tkc-card.highlight { border-color: var(--brand-text); box-shadow: 0 0 0 2px var(--brand-soft); }
+.tk-list.archived { opacity: 0.72; }
+.tk-list.highlight { border-color: var(--brand-text); box-shadow: 0 0 0 2px var(--brand-soft); }
 /* Backlog carries no stripe — it is the resting state, and a stripe on every
    card would stop marking anything. */
-.tkc-card[data-status="Doing"] { --tkc-state: var(--sea-400); }
-.tkc-card[data-status="Done"] { --tkc-state: var(--finance-income); }
-.tkc-card[data-status="Archived"] { --tkc-state: var(--mud-palette-text-disabled); }
-.tkc-rail { box-shadow: inset 3px 0 0 var(--tkc-state, transparent); }
+.tk-list[data-status="Doing"] .tk-list-rail { box-shadow: inset 3px 0 0 var(--sea-400); }
+.tk-list[data-status="Done"] .tk-list-rail { box-shadow: inset 3px 0 0 var(--finance-income); }
+.tk-list[data-status="Archived"] .tk-list-rail { box-shadow: inset 3px 0 0 var(--mud-palette-text-disabled); }
 
-.tkc-rail {
+.tk-list-rail {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   padding: 16px 14px 14px; text-align: center;
   background: var(--mud-palette-background-gray);
   border-right: 1px solid var(--mud-palette-divider);
 }
 /* 92px is sized on the widest count the scale produces (−366). */
-.tkc-count { font: var(--fw-light) var(--fs-h2)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
-.tkc-sign { color: var(--mud-palette-text-secondary); }
-.tkc-unit { font: var(--fw-medium) var(--fs-overline)/1.3 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
-.tkc-word { font: var(--fw-medium) var(--fs-h6)/1.1 var(--font-sans); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
-.tkc-dash { font: var(--fw-light) var(--fs-h3)/1 var(--font-sans); color: var(--mud-palette-text-disabled); }
-.tkc-tick.material-icons { font-size: 26px; line-height: 1; }
+.tk-list-count { font: var(--fw-light) var(--fs-h2)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.tk-list-sign { color: var(--mud-palette-text-secondary); }
+.tk-list-unit { font: var(--fw-medium) var(--fs-overline)/1.3 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.tk-list-word { font: var(--fw-medium) var(--fs-h6)/1.1 var(--font-sans); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.tk-list-dash { font: var(--fw-light) var(--fs-h3)/1 var(--font-sans); color: var(--mud-palette-text-disabled); }
+.tk-list-tick.material-icons { font-size: 26px; line-height: 1; }
 /* The control keeps a fixed slot below the hairline, so it can't drift with
    card height the way a justified rail's would. */
-.tkc-st { display: flex; justify-content: center; width: 44px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--mud-palette-divider); }
-.tkc-rail[data-tone="overdue"] .tkc-count, .tkc-rail[data-tone="overdue"] .tkc-unit, .tkc-rail[data-tone="overdue"] .tkc-word { color: var(--finance-expense); }
-.tkc-rail[data-tone="soon"] .tkc-count, .tkc-rail[data-tone="soon"] .tkc-unit, .tkc-rail[data-tone="soon"] .tkc-word { color: var(--pending-text); }
-.tkc-rail[data-tone="done"] .tkc-count, .tkc-rail[data-tone="done"] .tkc-unit, .tkc-rail[data-tone="done"] .tkc-tick { color: var(--finance-income); }
-.tkc-rail[data-tone="muted"] .tkc-tick, .tkc-rail[data-tone="muted"] .tkc-unit { color: var(--mud-palette-text-secondary); }
+.tk-list-st { display: flex; justify-content: center; width: 44px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--mud-palette-divider); }
+.tk-list-rail[data-tone="overdue"] .tk-list-count, .tk-list-rail[data-tone="overdue"] .tk-list-unit, .tk-list-rail[data-tone="overdue"] .tk-list-word { color: var(--finance-expense); }
+.tk-list-rail[data-tone="soon"] .tk-list-count, .tk-list-rail[data-tone="soon"] .tk-list-unit, .tk-list-rail[data-tone="soon"] .tk-list-word { color: var(--pending-text); }
+.tk-list-rail[data-tone="done"] .tk-list-count, .tk-list-rail[data-tone="done"] .tk-list-unit, .tk-list-rail[data-tone="done"] .tk-list-tick { color: var(--finance-income); }
+.tk-list-rail[data-tone="muted"] .tk-list-tick, .tk-list-rail[data-tone="muted"] .tk-list-unit { color: var(--mud-palette-text-secondary); }
 
-.tkc-body { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 14px; min-width: 0; }
-.tkc-top { display: flex; align-items: flex-start; gap: 10px; }
+.tk-list-body { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 14px; min-width: 0; }
+.tk-list-top { display: flex; align-items: flex-start; gap: 10px; }
 /* -4px centres the 32px action button on the title's first line; -6px pulls its
    box out so the glyph sits optically on the padding edge. */
-.tkc-top .odc-iconbtn, .tkc-top .je-cardmenu { margin: -4px -6px 0 0; }
-.tkc-title { margin: 0; flex: 1; min-width: 0; font: var(--fw-medium) var(--fs-h6)/var(--lh-snug) var(--font-sans); text-wrap: pretty; }
-.tkc-card[data-status="Archived"] .tkc-title { color: var(--mud-palette-text-secondary); }
+.tk-list-top .odc-iconbtn, .tk-list-top .je-cardmenu { margin: -4px -6px 0 0; }
+.tk-list-title { margin: 0; flex: 1; min-width: 0; font: var(--fw-medium) var(--fs-h6)/var(--lh-snug) var(--font-sans); text-wrap: pretty; }
+.tk-list[data-status="Archived"] .tk-list-title { color: var(--mud-palette-text-secondary); }
 /* The title and its meta line are one unit — the 12px body gap is for the gaps
    BETWEEN groups. */
-.tkc-top + .tkc-meta { margin-top: -7px; }
-.tkc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: var(--mud-palette-text-secondary); font-size: var(--fs-caption); }
-.tkc-meta > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.tkc-meta .material-icons { font-size: 14px; }
+.tk-list-top + .tk-list-meta { margin-top: -7px; }
+.tk-list-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; color: var(--mud-palette-text-secondary); font-size: var(--fs-caption); }
+.tk-list-meta > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.tk-list-meta .material-icons { font-size: 14px; }
 /* The deadline is the meta line's one primary-ink fact. */
-.tkc-due { color: var(--mud-palette-text-primary); }
-.tkc-due .material-icons { color: var(--mud-palette-text-secondary); }
-.tkc-due .mono { font-variant-numeric: tabular-nums; }
+.tk-list-due { color: var(--mud-palette-text-primary); }
+.tk-list-due .material-icons { color: var(--mud-palette-text-secondary); }
+.tk-list-due .mono { font-variant-numeric: tabular-nums; }
 /* Uncapped by decision: the card is the detail, so the note is never clamped. */
-.tkc-note { margin: 0; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans); text-wrap: pretty; white-space: pre-wrap; }
+.tk-list-note { margin: 0; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans); text-wrap: pretty; white-space: pre-wrap; }
 /* Two tracks, so the attachment count keeps a fixed slot instead of drifting to
    wherever the tag chips happen to wrap. */
-.tkc-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 14px; padding-top: 10px; border-top: 1px solid var(--mud-palette-divider-light); }
-.tkc-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
-.tkc-chips:empty { display: none; }
-.tkc-att { display: inline-flex; align-items: center; gap: 5px; flex: none; color: var(--mud-palette-text-secondary); font-size: var(--fs-caption); }
-.tkc-att .material-icons { font-size: 15px; }
-.tkc-att .mono { color: var(--mud-palette-text-primary); font-variant-numeric: tabular-nums; }
+.tk-list-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 14px; padding-top: 10px; border-top: 1px solid var(--mud-palette-divider-light); }
+.tk-list-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.tk-list-chips:empty { display: none; }
+.tk-list-att { display: inline-flex; align-items: center; gap: 5px; flex: none; color: var(--mud-palette-text-secondary); font-size: var(--fs-caption); }
+.tk-list-att .material-icons { font-size: 15px; }
+.tk-list-att .mono { color: var(--mud-palette-text-primary); font-variant-numeric: tabular-nums; }
 /* The archived label is the only text stating the state, and an ancestor's
    opacity rasterizes the subtree — raise the ink instead of fighting the dim. */
-.tkc-card.archived .odc-chip.archived { color: var(--mud-palette-text-primary); }
+.tk-list.archived .odc-chip.archived { color: var(--mud-palette-text-primary); }
 
 .tk-archived { margin-top: var(--space-6); }

@@ -1,0 +1,35 @@
+# Components — Contact image (profile picture / logo)
+
+> Part of the [Odyssey Design System](../README.md) docs. Foundations, tokens and the component catalog live in the README; this file is the per-feature detail.
+
+
+A contact carries **exactly one image**: a **profile picture** for a `Person`, a **company logo** for an `Organization`. It lives in the existing Files store (`FileMetadata` + `FileBlob`), so the only new member on the read DTO is `AvatarFileId` (`Guid?`) — no dimensions, no filename, no uploader, no timestamp. The point is recognition: a long contact list is read by picture instead of by name, and an organization record looks like the institution it represents.
+
+**One slot, two framings.** The types share one storage slot, one upload pipeline and one set of limits, and differ only in presentation.
+
+| | Person | Organization |
+|---|---|---|
+| Mark | circular | rounded rect (8 px) |
+| Fit | `cover` — square-cropped | `contain` — letterboxed on a neutral ground, never cut |
+| Ground | the record's type tint | **neutral** (`background` + a 3:1 inset boundary) |
+| Crop output | 512 × 512 **JPEG** (q 0.85) | 512 × 512 **PNG**, transparency kept |
+| vCard | `PHOTO` | `LOGO` |
+
+Fit is chosen from what the image **is**, not from the shape it lands in: a portrait has its subject in the middle and survives a crop; a logo is a shape on transparency, often a wide wordmark, with no safe crop.
+
+**Rules that matter to a designer.**
+
+- **One surface, one menu.** The image renders as the list card's identity mark (`RecordCard image`), and every avatar *action* lives in the record row's ⋯ menu — **Add / Change picture** (logo for an organization) and **Remove picture**, beside Edit contact. The expanded card body gains no image tile, and the New / Edit contact dialogs gain no picture field: a contact is created first and given its image from the menu afterwards, so no upload ever rides on the create `POST` and there is no partial-success state to recover from. `ContactChip`, `ContactSelect` and the finance `ContactEmbed` are **unchanged**: the chip renders on transaction rows and insurance tiles gated by `transactions.read` / `insurance.read`, so putting a photograph of a natural person there would push it across the exact boundary the embed exists to hold.
+- **The accent does not move with the image.** `accent` / `accentSoft` still set `--rec` / `--rec-soft` for every icon chip and single-series chart in the card. The image changes the mark's *content*, and for a contained logo the mark's own *ground* — nothing else.
+- **`ImageUnavailable` is a mechanism, not prose.** `Avatar`'s `onError` swaps back to the type glyph, silently: no toast, no broken-image icon, nothing announced. Responses are `no-cache` with a strong `ETag`, which makes that state *hotter* — a deleted image 404s on every revalidation instead of hiding behind a cached `200`.
+- **Every list image is `loading="lazy"` + `decoding="async"`**, and `Avatar` renders a plain `<img>` for exactly that reason. A 50-row view must not decode fifty pictures to show ten.
+- **Two caps, deliberately different.** The **source** the crop dialog will open: 20 MB / 8192 px, browser-only, one image on the user's own action. The **stored** avatar: `min(global upload cap, 2 MB)` and 1024 × 1024, enforced server-side. Every number is a named constant (`ContactAvatarLimits`) and every displayed cap is interpolated from the live upload-limits lookup — never a literal in a page.
+- **The crop dialog is keyboard-first.** The image source is the shared **`FileUpload`** field — single-file and kind-less (one image per contact, and the stored filename and description are generated, so the file's kind is not the user's to set) — which brings the click-or-drop zone, its keyboard path, its composed size hint and its error state with it. `FileUpload` gained **`onFiles`** for this: a surface that must read the BYTES (a client-side crop, a checksum, a preview) needs the raw `File`, not just the queued row. Only the crop stage below it is contacts-local: Zoom / Horizontal / Vertical are native `<input type="range">` with visible labels and an `aria-valuetext` percentage; pointer drag on the canvas is an *addition*, never the only affordance. The `<canvas>` is `aria-hidden` with its state in text beside it ("Showing the centre of your picture at 140 %"), because a canvas exposes no accessible structure. Tab order: close → dropzone → Zoom → Horizontal → Vertical → Reset → Cancel → Save. Escape closes and returns focus.
+- **One validation-failure rule.** A failure attributable to a control (a rejected file) renders on that control with `aria-invalid` + `aria-describedby` and moves focus there — **not** `role="alert"`, which would announce it twice. A server or network failure goes to a `role="alert"` region, carries the server's `ProblemDetails` message verbatim (it names the actual limit), and does not move focus.
+- **Alt text.** The list mark is decorative (`alt=""`) — the adjacent cell already names the contact. The identity tile's image is the subject of its own Change / Remove controls, so it gets `alt="Profile picture of {resolved display name}"` / `alt="Logo of …"` — the *resolved* name, never the nullable one. Type and archived state stay in text on every surface.
+- **Gating.** Every avatar action requires **`contacts.update`**, the same single claim as any other contact edit — no `files.*`, no new claim. An **archived contact keeps and keeps rendering its image**; only the actions are hidden. Archival is a display state, not a lifecycle event.
+- **Removing is confirmed; replacing is not.** Removal deletes the file, so it asks first and says so ("the image file is deleted, not just detached"). A replace is an ordinary action and just happens.
+- **Nothing here is animated.** GIF is not accepted at all; animated WebP and animated PNG are rejected rather than silently flattened — de-animating is a different outcome than the user uploaded.
+- **What the stored file does not keep.** Metadata is stripped server-side and the stripped output re-verified, so GPS, capture time and device serials never land in the store — the opposite posture to the Photos module, where a library photo's metadata is the point. Two consequences are accepted and worth knowing: a direct API upload of a rotated phone photo renders rotated (EXIF `Orientation` is gone), and all ICC profiles are dropped, so a wide-gamut source renders as untagged sRGB — a brand logo's exact colour is a real cost.
+
+**Where it surfaces.** `components/Avatar.jsx` (`fit`, `onError`, plain `<img>`) · `components/RecordCard.jsx` (the `image` mark) · `components/FileUpload.jsx` (`onFiles`) · `components/ImageCropDialog.jsx` (the **shared** crop dialog — `ui_kits/web/ContactAvatarDialog.jsx` keeps only the contact-specific limits and copy) · `ui_kits/web/Contacts.jsx` (the list mark, the ⋯ menu items, the remove confirm). Specimens: `components/contact-avatar.html`, `components/image-crop-dialog.html`, `preview/63-dialog-crop-image.html`, `preview/43-dialog-new-contact.html`.

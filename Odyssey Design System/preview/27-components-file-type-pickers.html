@@ -5,6 +5,7 @@
   <meta charset="utf-8" />
   <title>Odyssey · File type pickers</title>
   <link rel="stylesheet" href="../colors_and_type.css" />
+  <link rel="stylesheet" href="../icons.css" />
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
@@ -54,7 +55,7 @@
 <body>
   <div class="spec-doc">
     <h2>File type pickers</h2>
-    <p class="spec-lead">Eight typed, domain pickers — one pair per file-type enum. <b>AccountFileTypeSelect / …MultiSelect</b> are pre-wired to <code>ACCOUNT_FILE_TYPES</code> (files on an account); <b>TransactionFileTypeSelect / …MultiSelect</b> to <code>TRANSACTION_FILE_TYPES</code> (files on a transaction); <b>TaxStatementFileTypeSelect / …MultiSelect</b> to <code>TAX_STATEMENT_FILE_TYPES</code> (files on a tax statement); <b>PropertyFileTypeSelect / …MultiSelect</b> to <code>PROPERTY_FILE_TYPES</code> (documents on a property). The single-selects delegate to the shared <code>TypeSelect</code>; the multis wrap <code>MultiSelect</code>. Every option shows its Material icon in its category color, with no per-call option wiring. Value is the enum key; everything the control accepts (label, help, error, disabled…) passes straight through. Pass <code>types</code> to subset.</p>
+    <p class="spec-lead">One pair for every file-type enum. <b>FileTypeSelect</b> and <b>FileTypeMultiSelect</b> take a <code>kind</code> — <code>'account'</code> · <code>'transaction'</code> · <code>'taxStatement'</code> · <code>'property'</code> — that picks the registry (<code>ACCOUNT_FILE_TYPES</code> · <code>TRANSACTION_FILE_TYPES</code> · <code>TAX_STATEMENT_FILE_TYPES</code> · <code>PROPERTY_FILE_TYPES</code>, all in <code>FILE_TYPE_REGISTRIES</code>). The single-select delegates to <code>TypeSelect</code>; the multi wraps <code>MultiSelect</code> with a per-kind trigger glyph. Every option shows its Material icon in its category color. Value is the enum key; everything else passes straight through. Pass <code>types</code> to subset.</p>
     <div class="spec-src">
       <span class="pill">Single → <b>TypeSelect</b> · multi → <b>MultiSelect</b></span>
       <span class="pill">Registry <b>ACCOUNT_FILE_TYPES</b> · <b>TRANSACTION_FILE_TYPES</b> · <b>TAX_STATEMENT_FILE_TYPES</b> · <b>PROPERTY_FILE_TYPES</b></span>
@@ -76,8 +77,8 @@
 
   <div class="spec-doc" style="margin-top: 20px;">
     <ul class="spec-notes">
-      <li><span class="material-icons">bolt</span><b>Zero option wiring.</b> <code>&lt;AccountFileTypeSelect value onChange /&gt;</code> — no <code>options</code> prop. The registry is the source; pass <code>types</code> only to subset or reorder.</li>
-      <li><span class="material-icons">call_split</span><b>Pick the right vocabulary for the context.</b> The Files page (account files) uses the Account pickers; transaction attachments use the Transaction pickers (Receipt · Invoice · Other).</li>
+      <li><span class="material-icons">bolt</span><b>Zero option wiring.</b> <code>&lt;FileTypeSelect kind="account" value onChange /&gt;</code> — no <code>options</code> prop. The registry is the source; pass <code>types</code> only to subset or reorder.</li>
+      <li><span class="material-icons">call_split</span><b>Pick the right vocabulary for the context.</b> The Files page (account files) uses <code>kind="account"</code>; transaction attachments use <code>kind="transaction"</code> (Receipt · Invoice · Other).</li>
       <li><span class="material-icons">extension</span><b>Built on the base controls</b> via the same optional per-option <code>icon</code> &amp; <code>iconColor</code> the contact pickers introduced — additive and backward-compatible.</li>
       <li><span class="material-icons">hub</span><b>One registry per enum,</b> exported on the DS namespace; the multi-selects read them too. Recolor a type once and both its pickers, the table avatar, and the chip update together.</li>
     </ul>
@@ -92,15 +93,16 @@
     const PROP = DS.PROPERTY_FILE_TYPES || D.propertyFileTypes || [];
     const opts = (arr) => arr.map(t => ({ value: t.key, label: t.label, icon: t.icon, iconColor: t.color }));
 
-    const AccountFileTypeSelect = DS.AccountFileTypeSelect || (({ types, ...p }) => <DS.Select options={opts(ACCT)} {...p} />);
-    const AccountFileTypeMultiSelect = DS.AccountFileTypeMultiSelect || (({ types, ...p }) => <DS.MultiSelect options={opts(ACCT)} label="Any type" icon="folder" {...p} />);
-    const TransactionFileTypeSelect = DS.TransactionFileTypeSelect || (({ types, ...p }) => <DS.Select options={opts(TXN)} {...p} />);
-    const TransactionFileTypeMultiSelect = DS.TransactionFileTypeMultiSelect || (({ types, ...p }) => <DS.MultiSelect options={opts(TXN)} label="Any type" icon="receipt_long" {...p} />);
-    const TaxStatementFileTypeSelect = DS.TaxStatementFileTypeSelect || (({ types, ...p }) => <DS.Select options={opts(TAX)} {...p} />);
-    const TaxStatementFileTypeMultiSelect = DS.TaxStatementFileTypeMultiSelect || (({ types, ...p }) => <DS.MultiSelect options={opts(TAX)} label="Any type" icon="request_quote" {...p} />);
-
-    const PropertyFileTypeSelect = DS.PropertyFileTypeSelect || (({ types, ...p }) => <DS.Select options={opts(PROP)} {...p} />);
-    const PropertyFileTypeMultiSelect = DS.PropertyFileTypeMultiSelect || (({ types, ...p }) => <DS.MultiSelect options={opts(PROP)} label="Any type" icon="home_work" {...p} />);
+    const mk = (kind, arr, icon) => {
+      const S = DS.FileTypeSelect ? (p) => <DS.FileTypeSelect kind={kind} {...p} /> : (({ types, ...p }) => <DS.Select options={opts(arr)} {...p} />);
+      const M = DS.FileTypeMultiSelect ? (p) => <DS.FileTypeMultiSelect kind={kind} {...p} /> : (({ types, ...p }) => <DS.MultiSelect options={opts(arr)} label="Any type" icon={icon} {...p} />);
+      S.__name = `FileTypeSelect kind="${kind}"`; M.__name = `FileTypeMultiSelect kind="${kind}"`;
+      return [S, M];
+    };
+    const [AccountFileTypeSelect, AccountFileTypeMultiSelect] = mk('account', ACCT, 'folder');
+    const [TransactionFileTypeSelect, TransactionFileTypeMultiSelect] = mk('transaction', TXN, 'receipt_long');
+    const [TaxStatementFileTypeSelect, TaxStatementFileTypeMultiSelect] = mk('taxStatement', TAX, 'request_quote');
+    const [PropertyFileTypeSelect, PropertyFileTypeMultiSelect] = mk('property', PROP, 'home_work');
 
     const byKey = Object.fromEntries([...PROP, ...ACCT, ...TXN, ...TAX].map(t => [t.key, t]));
     const TypeChip = ({ k }) => {
@@ -142,14 +144,6 @@
       );
     }
 
-    AccountFileTypeSelect.__name = 'AccountFileTypeSelect';
-    AccountFileTypeMultiSelect.__name = 'AccountFileTypeMultiSelect';
-    TransactionFileTypeSelect.__name = 'TransactionFileTypeSelect';
-    TransactionFileTypeMultiSelect.__name = 'TransactionFileTypeMultiSelect';
-    TaxStatementFileTypeSelect.__name = 'TaxStatementFileTypeSelect';
-    TaxStatementFileTypeMultiSelect.__name = 'TaxStatementFileTypeMultiSelect';
-    PropertyFileTypeSelect.__name = 'PropertyFileTypeSelect';
-    PropertyFileTypeMultiSelect.__name = 'PropertyFileTypeMultiSelect';
 
     ReactDOM.createRoot(document.getElementById('acct-root')).render(
       <Pair SelectC={AccountFileTypeSelect} MultiC={AccountFileTypeMultiSelect}

@@ -178,13 +178,13 @@ const taskRail = (t, status) => {
 const TaskRail = ({ t, status, onStatus }) => {
   const r = taskRail(t, status);
   return (
-    <div className="tkc-rail" data-tone={r.tone || undefined}>
-      {r.dash ? <span className="tkc-dash" aria-hidden="true">—</span> : null}
-      {r.tick ? <span className="tkc-tick material-icons" aria-hidden="true">check</span> : null}
-      {r.word ? <span className="tkc-word">{r.word}</span> : null}
-      {r.count != null ? <span className="tkc-count"><span className="tkc-sign">{r.sign}</span>{r.count}</span> : null}
-      {r.unit ? <span className="tkc-unit">{r.unit}</span> : null}
-      <span className="tkc-st" onClick={(e) => e.stopPropagation()}>
+    <div className="tk-list-rail" data-tone={r.tone || undefined}>
+      {r.dash ? <span className="tk-list-dash" aria-hidden="true">—</span> : null}
+      {r.tick ? <span className="tk-list-tick material-icons" aria-hidden="true">check</span> : null}
+      {r.word ? <span className="tk-list-word">{r.word}</span> : null}
+      {r.count != null ? <span className="tk-list-count"><span className="tk-list-sign">{r.sign}</span>{r.count}</span> : null}
+      {r.unit ? <span className="tk-list-unit">{r.unit}</span> : null}
+      <span className="tk-list-st" onClick={(e) => e.stopPropagation()}>
         <TaskStatusButton status={status} onCycle={(v) => onStatus(t, v)} />
       </span>
     </div>
@@ -194,12 +194,12 @@ const TaskRail = ({ t, status, onStatus }) => {
 // The meta line: the deadline first, labelled and in primary ink, then the
 // author. Once completed the deadline's slot carries the completion instead.
 const TaskMeta = ({ t, status }) => (
-  <div className="tkc-meta">
+  <div className="tk-list-meta">
     {status === 'Archived' ? <span className="odc-chip outline sm archived">Archived</span> : null}
     {status === 'Done' && t.completedAt ? (
-      <span className="tkc-due"><MIcon name="check" size={14} />Completed <span className="mono">{T_H.jDateTime(t.completedAt)}</span></span>
+      <span className="tk-list-due"><MIcon name="check" size={14} />Completed <span className="mono">{T_H.jDateTime(t.completedAt)}</span></span>
     ) : t.deadline ? (
-      <span className="tkc-due"><MIcon name="event" size={14} />Due <span className="mono">{T_H.jDeadline(t.deadline)}</span></span>
+      <span className="tk-list-due"><MIcon name="event" size={14} />Due <span className="mono">{T_H.jDeadline(t.deadline)}</span></span>
     ) : (
       <span>No deadline</span>
     )}
@@ -213,11 +213,11 @@ const TaskListRow = ({ t, onStatus, onEdit, onArchive, onDelete, onExport }) => 
   const atts = (t.attachments || []).length;
   const tags = T_H.jTaskTags(t);
   return (
-    <article className={`tkc-card${t.archived ? ' archived' : ''}`} data-status={status}>
+    <article className={`tk-list${t.archived ? ' archived' : ''}`} data-status={status}>
       <TaskRail t={t} status={status} onStatus={onStatus} />
-      <div className="tkc-body">
-        <div className="tkc-top">
-          <h3 className="tkc-title">{t.title}</h3>
+      <div className="tk-list-body">
+        <div className="tk-list-top">
+          <h3 className="tk-list-title">{t.title}</h3>
           <div className="je-cardmenu" onClick={(e) => e.stopPropagation()}>
             <ActionMenu items={[
               { icon: 'edit', label: 'Edit task', onClick: () => onEdit(t) },
@@ -229,14 +229,14 @@ const TaskListRow = ({ t, onStatus, onEdit, onArchive, onDelete, onExport }) => 
           </div>
         </div>
         <TaskMeta t={t} status={status} />
-        {t.content ? <p className="tkc-note">{t.content}</p> : null}
+        {t.content ? <p className="tk-list-note">{t.content}</p> : null}
         {tags.length || atts ? (
-          <div className="tkc-foot">
+          <div className="tk-list-foot">
             {/* Same treatment as the journal entry card's footer chips: the tag tone with a label glyph, rendered directly rather than through TagChips' entity-outline chips. */}
-            <div className="tkc-chips">{tags.map((x) => (
+            <div className="tk-list-chips">{tags.map((x) => (
               <span className="odc-chip tag" key={x.id}><MIcon name="label" size={13} />{x.name}</span>
             ))}</div>
-            {atts ? <span className="tkc-att"><MIcon name="attach_file" size={15} /><span className="mono">{atts}</span></span> : null}
+            {atts ? <span className="tk-list-att"><MIcon name="attach_file" size={15} /><span className="mono">{atts}</span></span> : null}
           </div>
         ) : null}
       </div>
