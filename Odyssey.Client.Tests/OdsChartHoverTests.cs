@@ -78,6 +78,18 @@ public class OdsChartHoverTests
     }
 
     [Fact]
+    public void A_caller_can_withhold_the_legends_change_and_keep_its_value()
+    {
+        using var ctx = NewContext();
+        var cut = Line(ctx, [new("Jan", 100), new("Feb", 150)], p => p
+            .Add(c => c.Legend, true)
+            .Add(c => c.LegendShowsChange, false));
+
+        Assert.Equal("150", cut.Find(".odc-sc-leg-val").TextContent);
+        Assert.Empty(cut.FindAll(".odc-sc-leg-idx"));
+    }
+
+    [Fact]
     public void Controls_end_render_in_the_head_even_on_an_empty_series()
     {
         using var ctx = NewContext();

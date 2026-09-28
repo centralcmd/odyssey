@@ -1,0 +1,2 @@
+.nw-range { display: flex; flex-direction: column; gap: var(--space-5); }
+.nw-range-dates { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11.25rem), 1fr)); gap: var(--space-4); }

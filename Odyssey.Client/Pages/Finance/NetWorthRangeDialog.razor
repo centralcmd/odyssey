@@ -1,0 +1,95 @@
+@*
+    NetWorthRangeDialog — the net-worth chart's settings (Odyssey Design System · Dashboard ·
+    NetWorthRangeDialog): the period the history covers. A preset radio group; Custom opens a
+    From / To pair, either end of which may be left empty to run as far as All time does. A custom
+    span shorter than a month is refused on the To field, shown only after an Apply attempt.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="Close" Icon="settings" RequiredLegend="false"
+          Title="@TitleFragment" Subtitle="@SubtitleFragment">
+    <ChildContent>
+        <div class="ods-modal-body nw-range">
+            <OdsRadioGroup Label="Date range" Value="@_preset.ToString()" ValueChanged="OnPresetChanged"
+                           Options="PresetOptions" />
+            @if (_preset == NetWorthRangePreset.Custom)
+            {
+                <div class="nw-range-dates">
+                    <OdsDateField Label="From" Value="_from" ValueChanged="@((DateTime? v) => _from = v)"
+                                  Min="MinDate" Max="@(_to ?? MaxDate)"
+                                  Placeholder="Earliest" Help="Empty starts at the earliest data" />
+                    <OdsDateField Label="To" Value="_to" ValueChanged="@((DateTime? v) => _to = v)"
+                                  Min="@(_from ?? MinDate)" Max="MaxDate" Align="OdsAlign.End"
+                                  Placeholder="Today" Help="Empty runs to today"
+                                  Error="@(_tried ? Draft.Error : null)" />
+                </div>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="Close">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" OnClick="Apply">Apply</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The range in force; the dialog edits a copy and hands back the new one on Apply.</summary>
+    [Parameter, EditorRequired] public NetWorthRange Value { get; set; } = NetWorthRange.Default;
+
+    [Parameter] public EventCallback<NetWorthRange> OnApply { get; set; }
+
+    /// <summary>The earliest date From may take (the earliest data); null leaves it open.</summary>
+    [Parameter] public DateTime? MinDate { get; set; }
+
+    /// <summary>The latest date either end may take — today (UTC), which the server accepts.</summary>
+    [Parameter, EditorRequired] public DateTime MaxDate { get; set; }
+
+    private static readonly IReadOnlyList<OdsRadioOption> PresetOptions =
+        [.. NetWorthRange.Options.Select(o => new OdsRadioOption(o.Preset.ToString(), o.Label))];
+
+    private RenderFragment TitleFragment => @<text>Net worth chart</text>;
+    private RenderFragment SubtitleFragment => @<text>Choose the period the chart covers.</text>;
+
+    private NetWorthRangePreset _preset;
+    private DateTime? _from;
+    private DateTime? _to;
+    private bool _tried;
+    private bool _wasOpen;
+
+    // Re-seeded each time the dialog opens, so Cancel discards the draft.
+    protected override void OnParametersSet()
+    {
+        if (Open && !_wasOpen)
+        {
+            _preset = Value.Preset;
+            _from = Value.From?.ToDateTime(TimeOnly.MinValue);
+            _to = Value.To?.ToDateTime(TimeOnly.MinValue);
+            _tried = false;
+        }
+        _wasOpen = Open;
+    }
+
+    private NetWorthRange Draft => new(
+        _preset,
+        _from is { } f ? DateOnly.FromDateTime(f) : null,
+        _to is { } t ? DateOnly.FromDateTime(t) : null);
+
+    private void OnPresetChanged(string value)
+    {
+        if (Enum.TryParse<NetWorthRangePreset>(value, out var preset))
+            _preset = preset;
+    }
+
+    private async Task Apply()
+    {
+        _tried = true;
+        if (Draft.Error is not null)
+            return;
+        await OnApply.InvokeAsync(Draft.Normalized);
+        await Close();
+    }
+
+    private Task Close() => OpenChanged.InvokeAsync(false);
+}

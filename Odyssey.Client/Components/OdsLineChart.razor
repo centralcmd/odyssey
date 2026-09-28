@@ -205,7 +205,7 @@
                     <span class="odc-sc-swatch" style="@($"background:{Color}")"></span>
                     <span class="odc-sc-leg-name">@(LegendLabel ?? Title)</span>
                     <span class="odc-sc-leg-val" style="@($"color:{Color}")">@Format((decimal)_pts[^1].Value)</span>
-                    @if (_pts.Count > 1)
+                    @if (_pts.Count > 1 && LegendShowsChange)
                     {
                         <span class="odc-sc-leg-idx">@LegendChange</span>
                     }

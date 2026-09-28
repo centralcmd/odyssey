@@ -64,6 +64,13 @@ public partial class OdsLineChart
     /// </summary>
     [Parameter] public bool Legend { get; set; }
 
+    /// <summary>
+    /// Whether the legend row states the change since the first point. Default true, as in the
+    /// design. A Blazor-side addition for a caller that withholds the change for a reason of its own
+    /// beyond an understated endpoint (the dashboard's: an endpoint that did not contribute).
+    /// </summary>
+    [Parameter] public bool LegendShowsChange { get; set; } = true;
+
     /// <summary>Name in the legend row. Defaults to <see cref="Title"/>.</summary>
     [Parameter] public string? LegendLabel { get; set; }
 

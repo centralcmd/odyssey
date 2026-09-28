@@ -11,6 +11,7 @@
 @inject IAccountsApiClient Accounts
 @inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
 @inject IReferenceDataCache ReferenceData
+@inject IPageStateService PageState
 
 <PageTitle>Home</PageTitle>
 
@@ -38,6 +39,12 @@
         there is no fallback series, and the empty copy NAMES its cause, which the
         response carries because several of the causes cannot be told apart from the
         rest of the payload.
+      • The chart's period is the reader's (NetWorthRangeDialog, behind the head's settings
+        button): last 6 or 12 months, all time from the earliest account, or a custom range.
+        It persists in the "home-page" page state, so it sticks across visits. The figure and
+        its change sit in the legend row under the plot rather than in the head.
+      • The allocation donuts under the chart draw the totals' own composition rows, already
+        converted into the main currency, so the slices sum to the header's net worth.
       • Recent transactions are the eight newest rows from api/transactions, drawn
         with the design's Description · Tag · Status · Amount · Date columns.
       • Each region is permission-gated: the chart needs accounts.read, the table
@@ -52,7 +59,7 @@
         <SubLine>@HeaderSubLine</SubLine>
     </PageHeader>
 
-    @* 2 · Net worth chart (the design-system LineChart) *@
+    @* 2 · Net worth chart (the design-system LineChart), with its period settings *@
     @if (_canReadAccounts)
     {
         @* Gated on BOTH loads: the series and the figure arrive separately, and showing the chart
@@ -65,13 +72,17 @@
         }
         else
         {
+            @* The figure rides in the legend row under the plot (ShowFigure off); the change there
+               follows the same V15 rule the head delta did. *@
             <OdsLineChart Class="ods-outline"
                           Title="Net worth"
                           Series="_chartSeries"
                           Color="var(--chart-1)"
                           Format="FormatMoney"
                           AxisFormat="KLabel"
-                          ShowDelta="ChartShowsDelta"
+                          ShowFigure="false"
+                          Legend="true"
+                          LegendShowsChange="ChartShowsDelta"
                           DeltaSuffix="@ChartDeltaSuffix"
                           XTickEveryAuto="true"
                           TextEquivalent="true"
@@ -79,6 +90,10 @@
                           RevaluedDescription="@ChartRevaluedDescription"
                           AriaLabel="@ChartAriaLabel"
                           EmptyLabel="@ChartEmptyLabel">
+                <ControlsEnd>
+                    <OdsIconButton Icon="settings" Size="OdsSize.Sm" AriaLabel="Chart settings"
+                                   OnClick="@(() => _rangeDialogOpen = true)" />
+                </ControlsEnd>
                 <Sub>
                     <span>@ChartCaption</span>
                     @* The property share of the latest figure, as plain text in document order —
@@ -100,6 +115,27 @@
                     }
                 </Sub>
             </OdsLineChart>
+
+            <NetWorthRangeDialog @bind-Open="_rangeDialogOpen" Value="_range" OnApply="ApplyRangeAsync"
+                                 MinDate="@(EarliestOpened?.ToDateTime(TimeOnly.MinValue))"
+                                 MaxDate="@TodayUtc.ToDateTime(TimeOnly.MinValue)" />
+        }
+
+        @* 2b · Asset / liability allocation — accounts plus, when the figure includes it, owned
+           property at its in-force estimate, every slice already in the main currency. *@
+        @if (!_isLoadingAccounts && _totals is not null)
+        {
+            var (assetSlices, liabilitySlices) = DashboardFigures.AllocationSlices(_totals);
+            <OdsAllocationDonuts AssetSlices="assetSlices"
+                                 LiabilitySlices="liabilitySlices"
+                                 Format="AllocationFormat"
+                                 AssetsEmpty="Nothing held yet"
+                                 LiabilitiesEmpty="Nothing owed"
+                                 AssetsAriaLabel="Asset allocation in your main currency"
+                                 LiabilitiesAriaLabel="Liability allocation in your main currency">
+                <AssetsSub>@DashboardFigures.AllocationAssetsSub(_totals, assetSlices)</AssetsSub>
+                <LiabilitiesSub>@DashboardFigures.AllocationLiabilitiesSub(liabilitySlices)</LiabilitiesSub>
+            </OdsAllocationDonuts>
         }
     }
 
