@@ -189,8 +189,38 @@ public partial class OdsLineChart
     internal const string DefaultPartialDescription = "Understated — an account had no exchange rate for this period";
     internal const string DefaultRevaluedDescription = "Revalued — an estimate took effect in this period";
 
-    // The plot box inside the 1000 × 252 viewBox. The x-tick baseline sits at YBot + 26 = 238.
-    private const double X0 = 64, X1 = 968, YTop = 28, YBot = 212;
+    // The plot box inside the 1000 × 252 viewBox. The x-tick baseline sits at YBot + 26 = 238. The
+    // left edge is not fixed: it widens past DefaultX0 when a y label would not fit (AxisGutter).
+    private const double X1 = 968, YTop = 28, YBot = 212;
+    private double X0 => _x0;
+    private double _x0 = DefaultX0;
+
+    /// <summary>The plot's left edge when every y label fits the default gutter.</summary>
+    internal const double DefaultX0 = 64;
+
+    /// <summary>The gap between a y label's right end and the plot.</summary>
+    internal const double AxisLabelGap = 12;
+
+    /// <summary>
+    /// The advance of one axis character, in viewBox units: <c>.odc-lc-axis</c> is 10-unit monospace,
+    /// whose glyphs advance about 0.6em. Rounded up so an estimate errs toward a wider gutter.
+    /// </summary>
+    internal const double AxisCharWidth = 6.2;
+
+    /// <summary>Clear space kept left of the widest label, inside the viewBox.</summary>
+    internal const double AxisLabelMargin = 4;
+
+    /// <summary>
+    /// The plot's left edge for these y labels: <see cref="DefaultX0"/>, or wider when the longest
+    /// label would otherwise start left of the viewBox and be clipped. A compact money tick carries its
+    /// currency code (<c>17.23M NOK</c>, ten characters), which the fixed 52-unit gutter cut to
+    /// <c>7.23M NOK</c>. Shared with <see cref="OdsStepChart"/>, which draws the same card.
+    /// </summary>
+    internal static double AxisGutter(IEnumerable<string> labels)
+    {
+        var longest = labels.Select(l => l.Length).DefaultIfEmpty(0).Max();
+        return Math.Max(DefaultX0, Math.Ceiling(AxisLabelMargin + longest * AxisCharWidth + AxisLabelGap));
+    }
 
     private readonly List<(string Label, double Value, OdsLinePointKind Kind)> _pts = [];
     private bool _single;
@@ -224,6 +254,7 @@ public partial class OdsLineChart
                    && _pts[^1].Kind != OdsLinePointKind.Partial;
 
         if (_hover >= _pts.Count) _hover = null;
+        _x0 = DefaultX0;
         if (_pts.Count == 0) return;
 
         _single = _pts.Count == 1;
@@ -247,6 +278,7 @@ public partial class OdsLineChart
             ? [_yMax, _yMax / 2, 0, _yMin / 2, _yMin]
             : [_yMax, _yMin + (_yMax - _yMin) * 2 / 3, _yMin + (_yMax - _yMin) / 3, _yMin];
 
+        _x0 = AxisGutter(_gridVals.Select(YLabel));
         _every = XTickEveryAuto ? TickEvery(_pts.Count) : (XTickEvery > 0 ? XTickEvery : 1);
         _fillId = $"odc-lc-fill-{Guid.NewGuid():N}";
     }
@@ -292,8 +324,10 @@ public partial class OdsLineChart
 
     // Razor reserves <text> as a control keyword, so the axis labels are emitted as raw SVG markup.
     private string YAxisMarkup => string.Concat(_gridVals.Select(v =>
-        $"<text x=\"{Fmt(X0 - 12)}\" y=\"{Fmt(Sy(v) + 4)}\" text-anchor=\"end\""
-        + $"{(v == 0 ? " class=\"odc-lc-axis-zero\"" : "")}>{Enc(FmtAxis((decimal)AxisRound(v)))}</text>"));
+        $"<text x=\"{Fmt(X0 - AxisLabelGap)}\" y=\"{Fmt(Sy(v) + 4)}\" text-anchor=\"end\""
+        + $"{(v == 0 ? " class=\"odc-lc-axis-zero\"" : "")}>{Enc(YLabel(v))}</text>"));
+
+    private string YLabel(double v) => FmtAxis((decimal)AxisRound(v));
 
     // A domain under 10 keeps its fractions: rounding a 0–4 axis to whole numbers prints "1, 1, 3, 4"
     // for four distinct gridlines.

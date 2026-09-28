@@ -156,4 +156,58 @@ public class OdsChartHoverTests
         cut.Find(".odc-lc-plot").MouseLeave();
         Assert.Empty(cut.FindAll(".odc-lc-tip"));
     }
+
+    // ── The y-axis gutter fits its labels ────────────────────────────────────────────────────
+
+    [Fact]
+    public void Short_axis_labels_keep_the_default_gutter() =>
+        Assert.Equal(OdsLineChart.DefaultX0, OdsLineChart.AxisGutter(["36K", "31K", "25K", "20K"]));
+
+    [Fact]
+    public void A_long_axis_label_widens_the_gutter_so_it_starts_inside_the_viewbox()
+    {
+        var x0 = OdsLineChart.AxisGutter(["17.23M NOK", "6M NOK"]);
+
+        var start = x0 - OdsLineChart.AxisLabelGap - "17.23M NOK".Length * OdsLineChart.AxisCharWidth;
+        Assert.True(x0 > OdsLineChart.DefaultX0);
+        Assert.True(start >= OdsLineChart.AxisLabelMargin, $"The widest label starts at {start}.");
+    }
+
+    [Fact]
+    public void The_line_chart_lays_its_plot_out_against_the_widened_gutter()
+    {
+        using var ctx = NewContext();
+        var cut = Line(ctx, [new("Jan", 15_000_000), new("Feb", 17_000_000)], p => p
+            .Add(c => c.AxisFormat, v => (v / 1_000_000m).ToString("0.00", CultureInfo.InvariantCulture) + "M NOK"));
+
+        var labels = cut.FindAll("g.odc-lc-axis text[text-anchor=end]");
+        var widest = labels.Max(t => t.TextContent.Length);
+        var labelX = double.Parse(labels[0].GetAttribute("x")!, CultureInfo.InvariantCulture);
+        Assert.True(labelX - widest * OdsLineChart.AxisCharWidth >= OdsLineChart.AxisLabelMargin);
+
+        // The first point sits on the plot's left edge, right of the labels rather than under them.
+        var firstX = cut.FindAll("rect.odc-lc-hit")[0];
+        var edge = double.Parse(firstX.GetAttribute("x")!, CultureInfo.InvariantCulture)
+                   + double.Parse(firstX.GetAttribute("width")!, CultureInfo.InvariantCulture) / 2;
+        Assert.Equal(labelX + OdsLineChart.AxisLabelGap, edge, 0.5);
+    }
+
+    [Fact]
+    public void The_step_chart_widens_its_gutter_the_same_way()
+    {
+        using var ctx = NewContext();
+        var cut = ctx.Render<OdsStepChart>(p => p
+            .Add(c => c.Series,
+            [
+                new OdsStepPoint(new DateOnly(2025, 1, 1), 15_000_000),
+                new OdsStepPoint(new DateOnly(2026, 1, 1), 17_000_000),
+            ])
+            .Add(c => c.Format, v => v.ToString("#,##0.00", CultureInfo.InvariantCulture) + " NOK")
+            .Add(c => c.Now, Now));
+
+        var labels = cut.FindAll("g.odc-lc-axis text[text-anchor=end]");
+        var widest = labels.Max(t => t.TextContent.Length);
+        var labelX = double.Parse(labels[0].GetAttribute("x")!, CultureInfo.InvariantCulture);
+        Assert.True(labelX - widest * OdsLineChart.AxisCharWidth >= OdsLineChart.AxisLabelMargin);
+    }
 }

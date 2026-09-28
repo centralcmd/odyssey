@@ -93,8 +93,11 @@ public partial class OdsStepChart
     /// <summary>The present, for the today marker and the in-force split. Defaults to now (UTC); tests pin it.</summary>
     [Parameter] public DateTime? Now { get; set; }
 
-    // The plot box inside the 1000 × 252 viewBox — LineChart's, so the two cards read as one.
-    private const double X0 = 64, X1 = 968, YTop = 28, YBot = 212;
+    // The plot box inside the 1000 × 252 viewBox — LineChart's, so the two cards read as one. The left
+    // edge widens with the y labels exactly as LineChart's does (OdsLineChart.AxisGutter).
+    private const double X1 = 968, YTop = 28, YBot = 212;
+    private double X0 => _x0;
+    private double _x0 = OdsLineChart.DefaultX0;
 
     internal sealed record Plot(
         string Id,
@@ -186,6 +189,8 @@ public partial class OdsStepChart
         _yMin = lo >= 0 ? Math.Max(0, lo - pad) : lo - pad;
         _yMax = hi + pad;
         _gridVals = [_yMax, _yMin + (_yMax - _yMin) * 2 / 3, _yMin + (_yMax - _yMin) / 3, _yMin];
+        // Before any Sx call: the paths below are laid out against this edge.
+        _x0 = OdsLineChart.AxisGutter(_gridVals.Select(Tick));
 
         var nowX = Sx(_now);
         for (var i = 0; i < sets.Count; i++)
@@ -405,7 +410,7 @@ public partial class OdsStepChart
 
     // Razor reserves <text> as a control keyword, so the axis labels are emitted as raw SVG markup.
     private string YAxisMarkup => string.Concat(_gridVals.Select(v =>
-        $"<text x=\"{F(X0 - 12)}\" y=\"{F(Sy(v) + 4)}\" text-anchor=\"end\">{Enc(Tick(v))}</text>"));
+        $"<text x=\"{F(X0 - OdsLineChart.AxisLabelGap)}\" y=\"{F(Sy(v) + 4)}\" text-anchor=\"end\">{Enc(Tick(v))}</text>"));
 
     /// <summary>One label per change, dropped where two would collide, never within reach of the now label.</summary>
     private string XAxisMarkup
