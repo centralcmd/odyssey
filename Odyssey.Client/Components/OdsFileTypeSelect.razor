@@ -1,0 +1,53 @@
+@*
+    OdsFileTypeSelect — the one single-select for "what kind of document is this?"
+    (Odyssey Design System · components/FileTypeSelect). `Kind` picks the vocabulary —
+    the entity the file is attached to: Account · Transaction · TaxStatement · Property —
+    and each option renders its Material icon in its category color. A thin wrapper over
+    OdsSelect; every OdsSelect prop passes straight through, and `Options` overrides or
+    subsets the registry. Value is the enum key. Bind via @bind-Value.
+
+    Replaces OdsAccountFileTypeSelect · OdsTransactionFileTypeSelect ·
+    OdsTaxStatementFileTypeSelect · OdsPropertyFileTypeSelect.
+*@
+
+<OdsSelect Value="@Value"
+           ValueChanged="ValueChanged"
+           Options="@(Options ?? OdsTypeRegistries.FileOptionsFor(Kind))"
+           Label="@Label"
+           Placeholder="@Placeholder"
+           Help="@Help"
+           Error="@Error"
+           Required="@Required"
+           Disabled="@Disabled"
+           Class="@Class"
+           @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Which entity the file is attached to — selects the vocabulary.</summary>
+    [Parameter] public OdsFileTypeKind Kind { get; set; } = OdsFileTypeKind.Account;
+
+    /// <summary>Selected enum key. Bindable via @bind-Value.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>Overrides / subsets the registry for <see cref="Kind"/>.</summary>
+    [Parameter] public IReadOnlyList<OdsOption>? Options { get; set; }
+
+    [Parameter] public string? Label { get; set; } = "Type";
+
+    [Parameter] public string? Placeholder { get; set; } = "Select type…";
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+}

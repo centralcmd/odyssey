@@ -10,8 +10,9 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The contract record card's derived tone: the headline figure and the header mark read one colour,
-/// taken from the headline's own urgency where it has one and from the status chip otherwise.
+/// The contract record card's derived tone: the headline figure reads one colour, taken from the
+/// headline's own urgency where it has one and from the status chip otherwise. The header mark does NOT
+/// follow it — the design system retired that tint, so the mark reads the type accent.
 /// </summary>
 public class ContractCardToneTests
 {
@@ -46,23 +47,20 @@ public class ContractCardToneTests
     }
 
     [Theory]
-    [InlineData(OdsRecordFigureTone.Income, false, "con-card con-tone-income")]
-    [InlineData(OdsRecordFigureTone.Info, false, "con-card con-tone-info")]
-    [InlineData(OdsRecordFigureTone.Muted, true, "con-card con-tone-muted con-unsigned")]
-    [InlineData(OdsRecordFigureTone.Pending, true, "con-card con-tone-pending con-unsigned")]
-    public void The_card_class_carries_the_tone_and_the_unsigned_modifier(OdsRecordFigureTone tone, bool unsigned, string expected)
+    [InlineData(false, "con-card")]
+    [InlineData(true, "con-card con-unsigned")]
+    public void The_card_class_carries_only_the_unsigned_modifier(bool unsigned, string expected)
     {
-        Assert.Equal(expected, ContractCardTone.CardClass(tone, unsigned));
+        Assert.Equal(expected, ContractCardTone.CardClass(unsigned));
     }
 
     [Fact]
-    public void Every_hued_card_tone_has_a_stylesheet_rule()
+    public void The_header_mark_takes_no_status_tint()
     {
-        // Muted is the base rule's default, so it needs no modifier of its own.
+        // The design system dropped the rule that repainted the mark with the figure's tone; a returning
+        // con-tone rule would silently override the type accent the mark now reads.
         var css = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css"));
-        foreach (var tone in new[] { "income", "expense", "pending", "info" })
-            Assert.Matches(new Regex(@"\.odc-record\.con-card\.con-tone-" + tone + @"\s*\{\s*--con-tone:"), css);
-        Assert.Matches(new Regex(@"\.odc-record\.con-card\s*\{\s*--con-tone:\s*var\(--mud-palette-text-secondary\)"), css);
+        Assert.DoesNotContain("con-tone", css, StringComparison.Ordinal);
     }
 
     [Theory]

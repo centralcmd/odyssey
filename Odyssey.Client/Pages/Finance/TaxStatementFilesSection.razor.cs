@@ -35,7 +35,7 @@ public partial class TaxStatementFilesSection
     private bool _isOpen;
     private bool _isUploading;
 
-    // Bound to OdsTaxStatementFileTypeSelect (the DS picker keys on the enum name).
+    // Bound to OdsFileTypeSelect (the DS picker keys on the enum name).
     private string _selectedFileType = nameof(TaxStatementFileType.Other);
     private TaxStatementFileType SelectedFileTypeEnum =>
         Enum.TryParse<TaxStatementFileType>(_selectedFileType, out var fileType) ? fileType : TaxStatementFileType.Other;

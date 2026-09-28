@@ -243,20 +243,33 @@ public class OdsTypeRegistriesTests
     /// row drifts from its source; this is what catches the drift, the same way
     /// <see cref="ContractEventTypes_agrees_with_the_design_systems_registry"/> does for events. Issue #210
     /// adds <c>PROPERTY_FILE_TYPES</c>, whose reading order (Other last, ordinal 0) likewise differs from
-    /// its ordinal order.
+    /// its ordinal order. The design system later folded the four per-entity file-type pickers into one
+    /// <c>FileTypeSelect.jsx</c> exporting all four registries, so a file-type row names the export it reads
+    /// (<paramref name="dsExport"/>) — without that scoping the four arrays would be read as one.
     /// </summary>
     [Theory]
-    [InlineData(nameof(OdsTypeRegistries.ContractTypes), "ContractTypeSelect.jsx", typeof(ContractType))]
-    [InlineData(nameof(OdsTypeRegistries.ContractPartyRoles), "ContractPartyRoleSelect.jsx", typeof(ContractPartyRole))]
-    [InlineData(nameof(OdsTypeRegistries.PropertyFileTypes), "PropertyFileTypeSelect.jsx", typeof(PropertyFileType))]
+    [InlineData(nameof(OdsTypeRegistries.ContractTypes), "ContractTypeSelect.jsx", null, typeof(ContractType))]
+    [InlineData(nameof(OdsTypeRegistries.ContractPartyRoles), "ContractPartyRoleSelect.jsx", null, typeof(ContractPartyRole))]
+    [InlineData(nameof(OdsTypeRegistries.AccountFileTypes), "FileTypeSelect.jsx", "ACCOUNT_FILE_TYPES", typeof(AccountFileType))]
+    [InlineData(nameof(OdsTypeRegistries.TransactionFileTypes), "FileTypeSelect.jsx", "TRANSACTION_FILE_TYPES", typeof(TransactionFileType))]
+    [InlineData(nameof(OdsTypeRegistries.TaxStatementFileTypes), "FileTypeSelect.jsx", "TAX_STATEMENT_FILE_TYPES", typeof(TaxStatementFileType))]
+    [InlineData(nameof(OdsTypeRegistries.PropertyFileTypes), "FileTypeSelect.jsx", "PROPERTY_FILE_TYPES", typeof(PropertyFileType))]
     public void Select_backed_registries_agree_with_the_design_system(
-        string registryName, string dsFile, Type enumType)
+        string registryName, string dsFile, string? dsExport, Type enumType)
     {
         var path = ClientSource.Sibling(Path.Combine("Odyssey Design System", "components", dsFile));
         Assert.True(File.Exists(path), $"The design system's registry is missing at {path}.");
 
+        var source = File.ReadAllText(path);
+        if (dsExport is not null)
+        {
+            var block = Regex.Match(source, @"export const " + dsExport + @"\s*=\s*\[(?<body>.*?)\];", RegexOptions.Singleline);
+            Assert.True(block.Success, $"{dsFile} no longer exports {dsExport}.");
+            source = block.Groups["body"].Value;
+        }
+
         var declared = Regex.Matches(
-                File.ReadAllText(path),
+                source,
                 @"\{\s*key:\s*'(?<key>\w+)',\s*label:\s*'(?<label>[^']*)',\s*enumValue:\s*(?<ordinal>\d+),"
                 + @"\s*icon:\s*'(?<icon>[^']+)',\s*color:\s*'(?<color>[^']*)',\s*soft:\s*'(?<soft>[^']*)'")
             .Select(m => (

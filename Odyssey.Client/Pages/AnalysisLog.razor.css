@@ -72,7 +72,7 @@
 }
 
 .fal-pill.ok      { background: var(--finance-income-soft);  color: var(--finance-income); }
-.fal-pill.pending { background: var(--finance-pending-soft); color: var(--finance-pending); }
+.fal-pill.pending { background: var(--finance-pending-soft); color: var(--warning-text); }
 .fal-pill.err     { background: var(--finance-expense-soft); color: var(--finance-expense); }
 
 /* ── Row sub-line: user · account · provider ── */

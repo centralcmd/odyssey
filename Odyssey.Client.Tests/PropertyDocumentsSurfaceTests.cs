@@ -124,7 +124,8 @@ public class PropertyDocumentsSurfaceTests
     {
         await using var ctx = NewContext();
         string? chosen = null;
-        var cut = ctx.Render<OdsPropertyFileTypeSelect>(p => p
+        var cut = ctx.Render<OdsFileTypeSelect>(p => p
+            .Add(s => s.Kind, OdsFileTypeKind.Property)
             .Add(s => s.Value, "Deed")
             .Add(s => s.ValueChanged, (string v) => chosen = v));
 
@@ -142,7 +143,8 @@ public class PropertyDocumentsSurfaceTests
     {
         await using var ctx = NewContext();
         IReadOnlyCollection<string>? chosen = null;
-        var cut = ctx.Render<OdsPropertyFileTypeMultiSelect>(p => p
+        var cut = ctx.Render<OdsFileTypeMultiSelect>(p => p
+            .Add(s => s.Kind, OdsFileTypeKind.Property)
             .Add(s => s.ValuesChanged, (IReadOnlyCollection<string> v) => chosen = v));
 
         var multi = cut.FindComponent<OdsMultiSelect>().Instance;

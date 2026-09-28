@@ -125,15 +125,14 @@
                         new OdsRecordCount("history", c.EventCount.ToString(CultureInfo.CurrentCulture), "Events"),
                     };
 
-                    @* The figure and the header mark read ONE derived tone: the headline's own
-                       urgency when it has one, the status's hue otherwise. The type accent still
-                       colours everything inside the card. *@
+                    @* The figure reads ONE derived tone: the headline's own urgency when it has
+                       one, the status's hue otherwise. The type accent colours everything else,
+                       the header mark included. *@
                     var figureTone = ContractCardTone.Headline(headline.Cls, c.Status);
                 }
-                @* One accent per record, taken from the contract's TYPE — the body's accent-reading
-                   surfaces resolve from it. The header mark alone follows the status tone
-                   (con-tone-*), and the body's field tiles draw their icons grey unless their value
-                   carries a hue.
+                @* One accent per record, taken from the contract's TYPE — the header mark and the
+                   body's accent-reading surfaces resolve from it, and the body's field tiles draw
+                   their icons grey unless their value carries a hue.
 
                    Dimmed follows ARCHIVE alone: a paused contract stays at full brightness, which is
                    most of what distinguishes the two states. Pausing suspends what an agreement
@@ -148,7 +147,7 @@
                                FigureCaption="@headline.Word"
                                FigureTone="@figureTone"
                                Dimmed="archived"
-                               Class="@ContractCardTone.CardClass(figureTone, unsigned)"
+                               Class="@ContractCardTone.CardClass(unsigned)"
                                Highlight="@(_flashId == c.ContractId)"
                                Open="IsExpanded(c.ContractId)"
                                OnToggle="@(_ => ToggleExpand(c.ContractId))">

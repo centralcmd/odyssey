@@ -13,7 +13,7 @@
         @if (CanUpload)
         {
             <div class="file-upload-zone">
-                <OdsTransactionFileTypeSelect Label="File type" @bind-Value="_selectedFileType" Class="mb-2" />
+                <OdsFileTypeSelect Kind="OdsFileTypeKind.Transaction" Label="File type" @bind-Value="_selectedFileType" Class="mb-2" />
                 <MudFileUpload T="IReadOnlyList<IBrowserFile>"
                                FilesChanged="UploadFilesAsync"
                                MaximumFileCount="@MaxFileCount"
@@ -102,7 +102,7 @@
         StagedRemovals.Count == 0 ? items : items.Where(f => !StagedRemovals.Contains(f.FileMetadata.Id));
 
     private bool _isOpen = false;
-    // Bound to OdsTransactionFileTypeSelect (the DS picker keys on the enum name).
+    // Bound to OdsFileTypeSelect (the DS picker keys on the enum name).
     private string _selectedFileType = nameof(TransactionFileType.Other);
     private TransactionFileType SelectedFileTypeEnum =>
         Enum.TryParse<TransactionFileType>(_selectedFileType, out var fileType) ? fileType : TransactionFileType.Other;

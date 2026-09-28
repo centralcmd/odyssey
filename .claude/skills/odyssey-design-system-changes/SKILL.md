@@ -23,8 +23,8 @@ authoring the design system; you are catching the implementation up to it.
 
 | Side | Location | Role |
 |---|---|---|
-| **Source of truth (already updated)** | `Odyssey Design System/` — `SKILL.md`, `README.md`, `colors_and_type.css` (tokens), `components.css`, `components/*.jsx` + `*.html` specimens, `preview/*.html`, `ui_kits/web/*.jsx`, `_ds_manifest.json` | What the design now *is*. Never edit it to accommodate the implementation — the pipeline re-exports the whole folder and your edit disappears. |
-| **Implementation (you update this)** | `Odyssey.Client/Components/Ods*.razor` (+ scoped `.razor.css`), `wwwroot/css/app.css` (tokens), `wwwroot/css/odyssey-components.css` (global), `Theme/OdysseyTheme.cs` (`MudTheme`), consuming pages | What the app ships. Bring it to parity. |
+| **Source of truth (already updated)** | `Odyssey Design System/` — `SKILL.md`, `README.md` + `docs/*.md` (per-feature rules split out of the README), `colors_and_type.css` (tokens), `icons.css` (Material Icons face), `components.css`, `components/*.jsx` + `*.html` specimens, `preview/*.html`, `ui_kits/web/*.jsx`, `_ds_manifest.json` | What the design now *is*. Never edit it to accommodate the implementation — the pipeline re-exports the whole folder and your edit disappears. |
+| **Implementation (you update this)** | `Odyssey.Client/Components/Ods*.razor` (+ scoped `.razor.css`), `wwwroot/css/app.css` (tokens), `wwwroot/css/fonts.css` (the `.material-icons` base), `wwwroot/css/odyssey-components.css` (global), `Theme/OdysseyTheme.cs` (`MudTheme`), consuming pages | What the app ships. Bring it to parity. |
 
 > Naming contract: design-system `Foo.jsx` ⇄ Blazor `OdsFoo.razor`; each `colors_and_type.css` token ⇄
 > its `app.css` / `MudTheme` counterpart. After this skill runs there should be **no drift**.
@@ -66,7 +66,9 @@ for understanding what the designer intended by the change.
 | Rules in `components.css` | `wwwroot/css/odyssey-components.css` (global) or the relevant scoped `.razor.css` |
 | A new/changed `preview/*.html` page or state | The consuming page/component that renders that pattern |
 | `ui_kits/web/*.jsx` / `*-data.js` (screen and mock-data changes) | The consuming page. Mock data itself needs no port — but a screen that now **derives** something from the mocks the API does not serve (per-item converted values, a filtered window) is a backend requirement hiding in a JS file. Name it and **ask the user** whether it is in scope before building the page against data that does not exist |
-| `_ds_manifest.json` gained a component | A new `Ods*` wrapper is owed — confirm none of the 143 existing atoms already covers it |
+| `icons.css` (the Material Icons face + `.material-icons` base) | `wwwroot/css/fonts.css` |
+| A `components/*.jsx` file renamed, merged or deleted | Besides the `Ods*` wrapper, grep `Odyssey.Client.Tests` for the old file name: several parity tests read a design-system file by path and fail on a missing one |
+| `_ds_manifest.json` gained a component | A new `Ods*` wrapper is owed — confirm none of the 137 existing atoms already covers it |
 
 ```bash
 ls Odyssey.Client/Components/Ods*.razor

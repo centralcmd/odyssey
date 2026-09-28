@@ -1,0 +1,53 @@
+@* DS parity — no consumer yet: blocked on data, not on wiring. The design system's Files
+   screen filters by AccountFileType, but the client's flat /files list carries no document
+   type at all (see Pages/Files.razor), so its Type filter is derived from the MIME kind via a
+   generic OdsMultiSelect; the per-entity attachment sections (transaction, tax statement,
+   property) list one record's files and are short enough to need no filter. Adopt this once a
+   surface filters across files by document type. *@
+@*
+    OdsFileTypeMultiSelect — the document-type filter (Odyssey Design System ·
+    components/FileTypeMultiSelect). `Kind` picks the vocabulary (Account · Transaction ·
+    TaxStatement · Property). A checkbox-list popover whose rows each carry the type's
+    Material icon in its category color, with a count badge on the trigger. A thin wrapper
+    over OdsMultiSelect — Values + Align pass straight through, and `Options` overrides or
+    subsets the registry (e.g. only the types present in the list). Defaults: trigger label
+    "Any type", trigger glyph per kind (folder · receipt_long · request_quote · home_work).
+    Bind the chosen keys via @bind-Values.
+
+    Replaces OdsAccountFileTypeMultiSelect · OdsTransactionFileTypeMultiSelect ·
+    OdsTaxStatementFileTypeMultiSelect · OdsPropertyFileTypeMultiSelect.
+*@
+
+<OdsMultiSelect Values="@Values"
+                ValuesChanged="ValuesChanged"
+                Options="@(Options ?? OdsTypeRegistries.FileOptionsFor(Kind))"
+                Label="@Label"
+                Icon="@(Icon ?? OdsTypeRegistries.FileTypeFilterIcon(Kind))"
+                Align="@Align"
+                Class="@Class"
+                @attributes="UserAttributes" />
+
+@code {
+    /// <summary>Which entity the files are attached to — selects the vocabulary.</summary>
+    [Parameter] public OdsFileTypeKind Kind { get; set; } = OdsFileTypeKind.Account;
+
+    /// <summary>Selected enum keys. Bindable via @bind-Values.</summary>
+    [Parameter] public IReadOnlyCollection<string> Values { get; set; } = [];
+
+    [Parameter] public EventCallback<IReadOnlyCollection<string>> ValuesChanged { get; set; }
+
+    /// <summary>Overrides / subsets the registry for <see cref="Kind"/>.</summary>
+    [Parameter] public IReadOnlyList<OdsOption>? Options { get; set; }
+
+    [Parameter] public string? Label { get; set; } = "Any type";
+
+    /// <summary>Trigger glyph. Defaults per <see cref="Kind"/>.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? UserAttributes { get; set; }
+}

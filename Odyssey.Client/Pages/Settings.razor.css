@@ -79,7 +79,7 @@
     border-radius: var(--radius-pill);
     font: var(--fw-medium) var(--fs-caption)/1.3 var(--font-sans);
     background: var(--finance-pending-soft);
-    color: var(--pending-text);
+    color: var(--warning-text);
 }
 
 /* Full-width bands inside the card, above the grid: the partial-permissions note and the

@@ -86,8 +86,8 @@
                                     {
                                         <div class="prop-lib-extra">
                                             <div class="prop-lib-type">
-                                                <OdsPropertyFileTypeSelect Label="Document type" Value="@picked.Kind"
-                                                                           ValueChanged="@(v => picked.Kind = v ?? nameof(PropertyFileType.Other))" />
+                                                <OdsFileTypeSelect Kind="OdsFileTypeKind.Property" Label="Document type" Value="@picked.Kind"
+                                                                   ValueChanged="@(v => picked.Kind = v ?? nameof(PropertyFileType.Other))" />
                                             </div>
                                             @ValidityEditor(new OdsUploadFileExtraContext(picked, EventCallback.Factory.Create(this, () => { })))
                                         </div>

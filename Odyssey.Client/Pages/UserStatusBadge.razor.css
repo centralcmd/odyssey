@@ -16,7 +16,7 @@
 }
 
 .usr-badge.on { background: var(--status-active-soft); color: var(--status-active); }
-.usr-badge.off { background: var(--status-closed-soft); color: var(--pending-text); } /* text-safe amber (1.4.3), not the graphics amber-600 */
+.usr-badge.off { background: var(--status-closed-soft); color: var(--warning-text); } /* text-safe amber on its own tint (1.4.3): amber-700 dips to ~4.4:1 here */
 .usr-badge.confirmed { background: color-mix(in srgb, var(--mud-palette-info) 16%, transparent); color: var(--mud-palette-info); }
 .usr-badge.unconfirmed { background: var(--status-archived-soft); color: var(--status-archived); }
 

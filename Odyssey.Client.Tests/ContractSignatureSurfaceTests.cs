@@ -424,8 +424,8 @@ public class ContractSignatureSurfaceTests
         var markup = Source("ContractsCard.razor");
 
         Assert.Matches(new Regex(@"var unsigned = ContractStatusOrder\.IsUnsigned\(c\.Status\);"), markup);
-        Assert.Matches(new Regex(@"Class=""@ContractCardTone\.CardClass\(figureTone, unsigned\)"""), markup);
-        Assert.EndsWith(" con-unsigned", ContractCardTone.CardClass(OdsRecordFigureTone.Muted, unsigned: true));
+        Assert.Matches(new Regex(@"Class=""@ContractCardTone\.CardClass\(unsigned\)"""), markup);
+        Assert.EndsWith(" con-unsigned", ContractCardTone.CardClass(unsigned: true));
         // Dimming still follows the archive stamp ALONE.
         Assert.Matches(new Regex(@"Dimmed=""archived"""), markup);
         Assert.DoesNotMatch(new Regex(@"Dimmed=""[^""]*unsigned"), markup);

@@ -62,8 +62,9 @@
 
     private string RowClass => Incoming ? "con-charge-row incoming" : "con-charge-row";
 
-    // Mint for money in, per the finance semantics. The amount is the only thing that changes colour.
-    private string AmountClass => Incoming ? "con-charge-amt in" : "con-charge-amt";
+    // Mint for money in, coral for money out, per the finance semantics. The amount is the only thing
+    // that changes colour.
+    private string AmountClass => Incoming ? "con-charge-amt in" : "con-charge-amt out";
 
     private OdsTypeOption TypeInfo => OdsTypeRegistries.ContractTypeOf(Charge.Type);
 

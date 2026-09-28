@@ -29,19 +29,22 @@
     background: var(--mud-palette-action-default-hover);
     color: var(--mud-palette-text-primary); white-space: nowrap;
 }
-.odc-chip .material-icons { font-size: 14px; }
+.odc-chip .material-icons { font-size: var(--icon-xs); }
 .odc-chip-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
 .odc-chip.income  { color: var(--finance-income);  background: var(--finance-income-soft); }
 .odc-chip.expense { color: var(--finance-expense); background: var(--finance-expense-soft); }
-.odc-chip.pending { color: var(--pending-text);    background: var(--finance-pending-soft); }
+/* Text on the pending tint takes --warning-text, not the design system's --pending-text: since the light
+   --finance-pending moved to amber-600 its tint darkened, and amber-700 on it measures ~4.4:1 on white
+   (under WCAG 1.4.3's 4.5:1). amber-800 clears ~6.2:1; dark resolves both to amber-500 either way. */
+.odc-chip.pending { color: var(--warning-text);    background: var(--finance-pending-soft); }
 .odc-chip.info    { color: var(--info-text);       background: var(--info-soft); }
 .odc-chip.tag     { color: var(--tag-text);        background: var(--tag-soft); }
 /* The one chip a LINKED RECORD wears — contacts, accounts, albums — as against .tag's coloured
    category pill: outline, a coloured type glyph, the name in text. Every entity picker that
    supplies no ChipTemplate renders through this. */
 .odc-chip.entity  { color: var(--mud-palette-text-primary); background: transparent; border: 1px solid var(--mud-palette-divider); }
-.odc-chip.entity .material-icons { font-size: 14px; }
-.odc-chip.warning { color: var(--pending-text);    background: var(--finance-pending-soft); }
+.odc-chip.entity .material-icons { font-size: var(--icon-xs); }
+.odc-chip.warning { color: var(--warning-text);    background: var(--finance-pending-soft); }
 .odc-chip.error   { color: var(--finance-expense); background: var(--finance-expense-soft); }
 .odc-chip.outline { color: var(--mud-palette-text-secondary); background: transparent; border: 1px solid var(--mud-palette-divider); }
 /* Compact chip + the CoverageStatusChip's muted trailing detail segment
@@ -66,8 +69,8 @@
     vertical-align: middle;
 }
 .odc-custodian.sm { gap: 5px; padding: 2px 8px 2px 6px; font-size: var(--fs-caption); }
-.odc-custodian-ic { font-size: 16px !important; flex: none; }
-.odc-custodian.sm .odc-custodian-ic { font-size: 14px !important; }
+.odc-custodian-ic { font-size: var(--icon-sm); flex: none; }
+.odc-custodian.sm .odc-custodian-ic { font-size: var(--icon-xs); }
 .odc-custodian-name { font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .odc-custodian-type { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); white-space: nowrap; }
 .odc-custodian-type::before { content: "·"; margin-right: 6px; color: var(--mud-palette-text-disabled); }
@@ -83,7 +86,7 @@
    in the primary text colour with an info glyph, so it is neither an error nor lost
    in the muted help tone (Odyssey Design System · components/HomeownerAssociationSelect). */
 .odc-hoa-field .odc-field-help.warn { display: flex; gap: 6px; align-items: flex-start; color: var(--mud-palette-text-primary); }
-.odc-hoa-warn-ic { font-size: 15px !important; line-height: 1.3 !important; color: var(--mud-palette-warning); flex: none; }
+.odc-hoa-warn-ic { font-size: var(--icon-sm); line-height: 1.3; color: var(--mud-palette-warning); flex: none; }
 
 /* ---------- Account-type / account-status chip ----------
    The siblings of the custodian chip — same pill shell. AccountTypeChip puts the
@@ -102,10 +105,10 @@
     vertical-align: middle;
 }
 .odc-typechip.sm { gap: 5px; padding: 2px 8px 2px 6px; font-size: var(--fs-caption); }
-.odc-typechip-ic { font-size: 16px !important; flex: none; }
+.odc-typechip-ic { font-size: var(--icon-sm); flex: none; }
 .odc-typechip-dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; }
 .odc-typechip.sm .odc-typechip-dot { width: 6px; height: 6px; }
-.odc-typechip.sm .odc-typechip-ic { font-size: 14px !important; }
+.odc-typechip.sm .odc-typechip-ic { font-size: var(--icon-xs); }
 .odc-typechip-name { font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .odc-typechip-group { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); white-space: nowrap; }
 .odc-typechip-group::before { content: "·"; margin-right: 6px; color: var(--mud-palette-text-disabled); }
@@ -118,7 +121,7 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px; border-bottom: 1px solid var(--mud-palette-divider-light);
 }
-.odc-card-header-ttl { font: var(--fw-medium) 16px/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-card-header-ttl { font: var(--fw-medium) var(--fs-body1)/1 var(--font-sans); color: var(--mud-palette-text-primary); }
 
 /* ---------- BreakdownTile (labelled icon·label·count distribution) ---------- */
 .odc-breakdown {
@@ -126,12 +129,12 @@
   background: var(--mud-palette-background); padding: 14px 16px;
   display: flex; flex-direction: column; gap: 8px;
 }
-.odc-breakdown-ov { font: var(--fw-medium) 10.5px/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.odc-breakdown-ov { font: var(--fw-medium) var(--fs-micro)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
 .odc-breakdown-rows { display: flex; flex-direction: column; gap: 6px; }
-.odc-breakdown-row { display: flex; align-items: center; gap: 8px; font: var(--fw-regular) 12.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.odc-breakdown-row .material-icons { font-size: 16px; flex: none; }
+.odc-breakdown-row { display: flex; align-items: center; gap: 8px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-breakdown-row .material-icons { font-size: var(--icon-sm); flex: none; }
 .odc-breakdown-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.odc-breakdown-n { margin-left: auto; font: 600 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
+.odc-breakdown-n { margin-left: auto; font: 600 var(--fs-label)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
 .odc-breakdown-empty { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 /* The total row — the tile's conclusion, ruled off from the categories above it and muted in its
    label so it never reads as another category. */
@@ -147,7 +150,7 @@
     display: inline-flex; align-items: center; justify-content: center;
     min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box;
     border-radius: var(--radius-pill);
-    font: var(--fw-medium) 11px/1 var(--font-sans); font-variant-numeric: tabular-nums;
+    font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); font-variant-numeric: tabular-nums;
     background: var(--mud-palette-error); color: #fff;
 }
 .odc-badge.primary { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
@@ -192,10 +195,10 @@
 .odc-infotile-ic {
     display: inline-flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; border-radius: var(--radius-sm);
-    background: var(--odc-infotile-accent-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
-    color: var(--odc-infotile-accent, var(--brand-text)); flex: none;
+    background: var(--odc-infotile-accent-soft, var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent)));
+    color: var(--odc-infotile-accent, var(--rec, var(--brand-text))); flex: none;
 }
-.odc-infotile-ic .material-icons { font-size: 17px; }
+.odc-infotile-ic .material-icons { font-size: var(--icon-md); }
 .odc-infotile-k {
     font: 600 var(--fs-overline)/1 var(--font-sans);
     letter-spacing: var(--tracking-caps); text-transform: uppercase;
@@ -224,7 +227,7 @@
     background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-secondary);
 }
 .odc-empty.muted-ic .odc-empty-ic { background: color-mix(in oklab, var(--mud-palette-text-secondary) 8%, transparent); color: var(--mud-palette-text-disabled); }
-.odc-empty-ic .material-icons { font-size: 28px; }
+.odc-empty-ic .material-icons { font-size: var(--icon-2xl); }
 .odc-empty-ttl  { font: var(--fw-medium) var(--fs-h5)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 .odc-empty-desc { font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); max-width: 42ch; }
 .odc-empty-actions { margin-top: var(--space-2); }
@@ -256,7 +259,7 @@
     font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);
     color: var(--mud-palette-text-secondary);
 }
-.odc-recordsection-notice .material-icons { font-size: 18px; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-recordsection-notice .material-icons { font-size: var(--icon-md); flex: none; color: var(--mud-palette-text-secondary); }
 /* Mirrors the design system's own literal (components.css) for the warning tint, the same
    deliberate oklch exception the pickers carry — these are not tokenized upstream either. */
 .odc-recordsection-notice.warning { border-color: oklch(0.80 0.13 85 / 0.45); background: oklch(0.80 0.13 85 / 0.08); }
@@ -285,7 +288,7 @@
     font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans);
     transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
 }
-.odc-seg-btn .material-icons { font-size: 18px; }
+.odc-seg-btn .material-icons { font-size: var(--icon-md); }
 .odc-seg-btn:hover { color: var(--mud-palette-text-primary); }
 .odc-seg-btn[aria-checked="true"] { background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); box-shadow: var(--mud-elevation-1); }
 .odc-seg-btn[aria-checked="true"].income  { color: var(--finance-income); }
@@ -305,12 +308,12 @@
 }
 .odc-cardsel-opt:hover { border-color: var(--odc-cardsel-line, var(--odc-cardsel-accent, var(--mud-palette-primary))); color: var(--mud-palette-text-primary); }
 .odc-cardsel-opt[aria-checked="true"] { border-color: var(--odc-cardsel-line, var(--odc-cardsel-accent, var(--mud-palette-primary))); background: var(--odc-cardsel-soft, var(--mud-palette-action-default-hover)); color: var(--mud-palette-text-primary); }
-.odc-cardsel-opt .material-icons { font-size: 24px; color: var(--odc-cardsel-accent, var(--mud-palette-primary)); }
+.odc-cardsel-opt .material-icons { font-size: var(--icon-xl); color: var(--odc-cardsel-accent, var(--mud-palette-primary)); }
 .odc-cardsel-opt:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .odc-cardsel-opt:disabled { color: var(--mud-palette-action-disabled); cursor: not-allowed; }
 .odc-cardsel-opt:disabled .material-icons { color: var(--mud-palette-action-disabled); }
-.odc-cardsel-lab { font: var(--fw-medium) 12px/1.2 var(--font-sans); }
-.odc-cardsel-sub { font: var(--fw-regular) 10.5px/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-cardsel-lab { font: var(--fw-medium) var(--fs-caption)/1.2 var(--font-sans); }
+.odc-cardsel-sub { font: var(--fw-regular) var(--fs-micro)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* ---------- Collapsible (disclosure) ---------- */
 .odc-collapsible { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); overflow: hidden; }
@@ -328,11 +331,11 @@
 .odc-collapsible-trigger:hover { background: var(--mud-palette-action-default-hover); }
 .odc-collapsible-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
 /* Chevron leads the row (design-system order) — left of the lead glyph. */
-.material-icons.odc-collapsible-chev { color: var(--mud-palette-text-secondary); font-size: 20px; flex: none; transition: transform var(--duration-slow) var(--ease-standard); }
+.material-icons.odc-collapsible-chev { color: var(--mud-palette-text-secondary); font-size: var(--icon-lg); flex: none; transition: transform var(--duration-slow) var(--ease-standard); }
 .odc-collapsible[data-open] .odc-collapsible-chev { transform: rotate(180deg); }
 /* Lead is either a Material Icons ligature or a literal symbol (.glyph, e.g. "§"). */
-.material-icons.odc-collapsible-lead { color: var(--mud-palette-text-secondary); font-size: 18px; flex: none; }
-.odc-collapsible-lead.glyph { color: var(--mud-palette-text-secondary); font: 600 19px/1 var(--font-sans); flex: none; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; }
+.material-icons.odc-collapsible-lead { color: var(--mud-palette-text-secondary); font-size: var(--icon-md); flex: none; }
+.odc-collapsible-lead.glyph { color: var(--mud-palette-text-secondary); font: 600 var(--fs-h4)/1 var(--font-sans); flex: none; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; }
 .odc-collapsible-title { font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary); flex: none; }
 .odc-collapsible-count {
     font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary);
@@ -386,10 +389,10 @@
 
 /* ---------- Delta (variance · directional · signed change) ---------- */
 .odc-delta { display: inline-flex; align-items: center; gap: 5px; font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.odc-delta .material-icons { font-size: 15px; }
+.odc-delta .material-icons { font-size: var(--icon-sm); }
 .odc-delta-suffix { color: var(--mud-palette-text-secondary); font-family: var(--font-sans); }
 .odc-delta.reconciled { color: var(--finance-income); }
-.odc-delta.diff       { color: var(--finance-pending); }
+.odc-delta.diff       { color: var(--pending-text); }
 .odc-delta.income, .odc-delta.up   { color: var(--finance-income); }
 .odc-delta.expense, .odc-delta.down { color: var(--finance-expense); }
 .odc-delta.flat { color: var(--mud-palette-text-secondary); }
@@ -412,7 +415,7 @@
   font: 600 var(--fs-caption)/1 var(--font-sans); letter-spacing: var(--tracking-wide);
   transition: filter var(--duration-base) var(--ease-standard);
 }
-.odc-problem-cta .material-icons { font-size: 16px; }
+.odc-problem-cta .material-icons { font-size: var(--icon-sm); }
 .odc-problem.warning .odc-problem-cta { background: var(--finance-pending); color: var(--ink-900); }
 .odc-problem.error   .odc-problem-cta { background: var(--finance-expense); color: #2A0E0E; }
 .odc-problem.info    .odc-problem-cta { background: var(--sea-400);         color: var(--ink-900); }
@@ -450,7 +453,7 @@
 .odc-lc-delta.neutral { color: var(--mud-palette-text-secondary); }
 /* .odc-lc-empty retired — an empty series renders the shared <OdsEmptyLine> (.odc-empty.line). */
 .odc-line-svg { width: 100%; height: auto; display: block; }
-.odc-lc-axis { font: var(--fw-regular) 10px/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
+.odc-lc-axis { font: var(--fw-regular) var(--fs-micro)/1 var(--font-mono); fill: var(--mud-palette-text-secondary); }
 /* Zero baseline — drawn only when the value domain straddles zero, so it is
    the line that separates positive from negative and is read, not decoration.
    Uses --chart-axis-strong (3:1, WCAG 1.4.11), not the decorative --chart-axis.
@@ -626,8 +629,8 @@
     font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans);
 }
 .odc-upload-kind .odc-select-trigger-main { flex: 0 1 auto; gap: 7px; }
-.odc-upload-kind .odc-select-trigger .odc-opt-icon { font-size: 16px; }
-.odc-upload-kind .odc-select-chev { font-size: 18px; }
+.odc-upload-kind .odc-select-trigger .odc-opt-icon { font-size: var(--icon-sm); }
+.odc-upload-kind .odc-select-chev { font-size: var(--icon-md); }
 /* The picker's trigger is compact (auto-width); MudBlazor otherwise pins the portaled popover
    to that narrow trigger (inline width/min-width) and the option label clips (flex ellipsis)
    instead of widening it. Override to shrink-to-fit the option names: an absolutely-positioned
@@ -672,7 +675,7 @@
    inline from the option's IconColor; inherits currentColor otherwise. Compounded with
    .material-icons so the 18px size beats the Google Material Icons base (24px) rule. */
 .odc-select-opt { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
-.material-icons.odc-opt-icon { font-size: 18px; line-height: 1; flex: none; }
+.material-icons.odc-opt-icon { font-size: var(--icon-md); line-height: 1; flex: none; }
 
 /* ---------- Modal (OdsModal — DS components/Modal) ----------
    The head and footer are tinted bands (a 2% ink wash) divided from the body by a
@@ -839,17 +842,17 @@
 .odc-ms-trigger.quiet[aria-expanded="true"] { background: var(--mud-palette-surface); }
 .odc-ms-trigger[aria-expanded="true"] { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
 .odc-ms-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.odc-ms-trigger .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-ms-trigger .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 /* A typeset mark where the icon font has no glyph (§, №). Sized and coloured
    to sit in the icon's slot, so a trigger reads the same either way. */
-.odc-ms-glyph { font: var(--fw-medium) 18px/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-ms-glyph { font: var(--fw-medium) var(--fs-h5)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-ms-label { overflow: hidden; text-overflow: ellipsis; }
 .odc-ms-chevron { margin-inline-start: auto; }
 .odc-ms-count {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-pill);
   background: var(--mud-palette-primary); color: var(--mud-palette-primary-text);
-  font: var(--fw-medium) 11px/1 var(--font-sans); font-variant-numeric: tabular-nums;
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); font-variant-numeric: tabular-nums;
 }
 
 /* The popover surface lives on the inner .odc-ms-pop panel; neutralise MudMenu's
@@ -878,7 +881,7 @@
   display: grid; place-items: center;
   transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
 }
-.odc-check-box .material-icons { font-size: 16px; color: var(--mud-palette-primary-text); opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); }
+.odc-check-box .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-primary-text); opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); }
 .odc-check input:checked + .odc-check-box { background: var(--mud-palette-primary); border-color: var(--mud-palette-primary); }
 .odc-check input:checked + .odc-check-box .material-icons { opacity: 1; }
 /* Mixed ("select all" header) state — a filled box with a dash, driven by markup
@@ -920,7 +923,7 @@
    live globally (scoped CSS can't reach it). Mirrors the DS .odc-combo-opt
    language; the per-option category color rides on the inline icon style. */
 .odc-combo-item { display: inline-flex; align-items: center; gap: 10px; width: 100%; min-width: 0; }
-.odc-combo-opt-ic { font-size: 18px; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-combo-opt-ic { font-size: var(--icon-md); flex: none; color: var(--mud-palette-text-secondary); }
 .odc-combo-opt-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .odc-combo-empty { padding: 12px; text-align: center; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 /* The inline create row(s). The rule + gap belong to the FIRST row only, so a
@@ -938,7 +941,7 @@
   color: var(--mud-palette-text-secondary);
   font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
 }
-.odc-combo-create-kind > .material-icons { font-size: 15px; color: var(--mud-palette-text-secondary); }
+.odc-combo-create-kind > .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
 /* Row qualifier ("in use", "Archived") — muted, trailing, always WORDS: a row never says why it
    can't be picked by colour alone. */
 .odc-combo-opt-note {
@@ -979,11 +982,11 @@
 /* Per-cell match indicator — meaning is in the text; the leading glyph only tints. */
 .odc-match {
   display: inline-flex; align-items: center; gap: 5px; max-width: 100%; min-width: 0;
-  font: var(--fw-regular) 11.5px/1.3 var(--font-sans);
+  font: var(--fw-regular) var(--fs-overline)/1.3 var(--font-sans);
   color: var(--mud-palette-text-secondary); vertical-align: middle;
 }
-.odc-match.sm { font-size: 11px; }
-.odc-match-ic { font-size: 14px !important; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-match.sm { font-size: var(--fs-overline); }
+.odc-match-ic { font-size: var(--icon-xs); flex: none; color: var(--mud-palette-text-secondary); }
 .odc-match-txt { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .odc-match-txt b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
 .odc-match-pct { flex: none; margin-left: 4px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -1000,7 +1003,7 @@
   background: var(--finance-pending-soft);
   border: 1px solid color-mix(in srgb, var(--finance-pending) 32%, transparent);
   /* AA body text on the amber-soft fill — text-secondary is too light here (verified in PR #268). */
-  color: var(--pending-text);
+  color: var(--warning-text);
 }
 /* Two-row, container-less form: a status row ("Suggested by AI · 42%") over an
    action row ("+ Use <name>" + dismiss), so a narrow cell shows the full name
@@ -1023,13 +1026,13 @@
   display: inline-flex; align-items: center; gap: 3px;
   cursor: pointer; border: 1px solid var(--brand-border);
   background: var(--brand-soft); color: var(--brand-text);
-  font: var(--fw-medium) 11px/1 var(--font-sans); letter-spacing: 0.01em;
+  font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: 0.01em;
   padding: 3px 8px 3px 5px; border-radius: var(--radius-pill);
   transition: background-color var(--duration-fast) var(--ease-standard);
 }
 .odc-match-act:hover, .odc-match-create:hover { background: color-mix(in srgb, var(--brand-text) 22%, transparent); color: var(--brand-text-hover); }
 .odc-match-act:focus-visible, .odc-match-create:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.odc-match-act .material-icons, .odc-match-create .material-icons { font-size: 14px !important; flex: none; }
+.odc-match-act .material-icons, .odc-match-create .material-icons { font-size: var(--icon-xs); flex: none; }
 .odc-match-act-txt, .odc-match-create-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* No match → Create lives on its own line under "No match". */
 .odc-match-createline { flex-basis: 100%; min-width: 0; display: flex; }
@@ -1041,7 +1044,7 @@
 }
 .odc-match-x:hover { background: rgba(0,0,0,0.10); color: var(--mud-palette-text-primary); }
 .odc-match-x:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
-.odc-match-x .material-icons { font-size: 15px !important; }
+.odc-match-x .material-icons { font-size: var(--icon-sm); }
 
 /* ---------- TagMultiSelect (multi-tag form picker) ---------- */
 /* Field chrome for custom (non-Mud-label) controls — the label-above + helper
@@ -1073,7 +1076,7 @@
   background: var(--mud-palette-surface);
   border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm);
-  padding: 9px 12px;
+  padding: var(--control-pad-y) 12px;
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
 .odc-input-multiline { min-height: 76px; resize: vertical; line-height: 1.45; }
@@ -1112,8 +1115,8 @@
 .ods-modal-body .odc-amount { background-color: var(--mud-palette-background); }
 /* Hero variant — a large, focal amount input (e.g. an Estimate value). */
 .odc-amount.lg { height: 60px; gap: 8px; padding: 0 18px; border-radius: 12px; background: var(--mud-palette-background); }
-.odc-amount.lg .odc-amount-adorn { font: 500 22px/1 var(--font-sans); }
-.odc-amount.lg .odc-amount-input { font: 400 30px/1 var(--font-mono); letter-spacing: -0.01em; }
+.odc-amount.lg .odc-amount-adorn { font: 500 var(--fs-figure)/1 var(--font-sans); }
+.odc-amount.lg .odc-amount-input { font: 400 var(--fs-amount)/1 var(--font-mono); letter-spacing: -0.01em; }
 
 /* ---------- MoneyField (amount + ISO currency code as one control) ---------- */
 /* One box owns the border, hover, focus and error states; the amount and the
@@ -1162,10 +1165,10 @@
 .odc-money-dir-sign { font: var(--fw-medium) var(--fs-body1)/1 var(--font-sans); }
 /* An option that names its own direction shows its GLYPH in the lead instead of a sign — for a
    record that stores a direction rather than a sign. Same metrics as the sign it replaces. */
-.odc-money-dir-ic { font-size: 19px; line-height: 1; }
+.odc-money-dir-ic { font-size: var(--icon-lg); line-height: 1; }
 /* …or its short WORD, for an in/out vocabulary where an arrow would read as the figure beside it
    rising or falling. */
-.odc-money-dir-word { font: var(--fw-medium) 12px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
+.odc-money-dir-word { font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; }
 /* A word needs more room than a glyph, and a FIXED slot: "OUT" and "IN" are different widths, so
    without one the digits shift sideways every time the lead is flipped. The padding matches the
    amount's own inset so the three segments (lead · amount · code) read as evenly spaced. */
@@ -1203,7 +1206,7 @@
 .odc-money-cur.btn.open { background: var(--mud-palette-action-default-hover); color: var(--brand-text); }
 .odc-money-cur.btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
 .odc-money-cur.btn:disabled { cursor: not-allowed; }
-.odc-money-chev { font-size: 18px; line-height: 1; transition: transform var(--duration-base) var(--ease-standard); }
+.odc-money-chev { font-size: var(--icon-md); line-height: 1; transition: transform var(--duration-base) var(--ease-standard); }
 .odc-money-cur.btn.open .odc-money-chev { transform: rotate(180deg); }
 /* The popover is hosted by MudMenu (portaled, flips when there's no room below),
    so the panel below carries the surface and MudBlazor's own paper is neutralised
@@ -1222,7 +1225,7 @@
   padding: 0 12px; height: 44px;
   border-bottom: 1px solid var(--mud-palette-divider);
 }
-.odc-money-search .material-icons { font-size: 20px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-money-search .material-icons { font-size: var(--icon-lg); color: var(--mud-palette-text-secondary); flex: none; }
 /* Beat any ambient input styling from the host page — the row IS the field. */
 .odc-money-pop .odc-money-search input {
   flex: 1; min-width: 0; width: 100%; height: 100%; box-sizing: border-box;
@@ -1262,17 +1265,17 @@
 /* Hero variant — a large, focal money input. Radius stays at the standard field
    radius so it sits square with the rest of the form. */
 .odc-money.lg { height: 60px; border-radius: var(--radius-md); background: var(--mud-palette-background); }
-.odc-money.lg .odc-money-input { padding: 0 18px; font: 400 30px/1 var(--font-mono); letter-spacing: -0.01em; border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.odc-money.lg .odc-money-input { padding: 0 18px; font: 400 var(--fs-amount)/1 var(--font-mono); letter-spacing: -0.01em; border-radius: var(--radius-md) 0 0 var(--radius-md); }
 .odc-money.lg .odc-money-cur { padding: 0 16px; }
 .odc-money.lg .odc-money-cur.btn { border-radius: 0 var(--radius-md) var(--radius-md) 0; padding-right: 12px; }
-.odc-money.lg .odc-money-code { font: 500 17px/1 var(--font-mono); }
-.odc-money.lg .odc-money-chev { font-size: 20px; }
-.odc-money.lg .odc-money-sign { width: 22px; margin-left: 18px; font-size: 30px; }
+.odc-money.lg .odc-money-code { font: 500 var(--fs-h5)/1 var(--font-mono); }
+.odc-money.lg .odc-money-chev { font-size: var(--icon-lg); }
+.odc-money.lg .odc-money-sign { width: 22px; margin-left: 18px; font-size: var(--fs-amount); }
 .odc-money.lg .odc-money-sign + .odc-money-input { padding-left: 8px; }
 .odc-money.lg .odc-money-sign.btn { min-width: 48px; margin: 0; padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md); }
-.odc-money.lg .odc-money-dir-sign { font-size: 30px; }
-.odc-money.lg .odc-money-dir-ic { font-size: 26px; }
-.odc-money.lg .odc-money-dir-word { font-size: 15px; }
+.odc-money.lg .odc-money-dir-sign { font-size: var(--fs-amount); }
+.odc-money.lg .odc-money-dir-ic { font-size: var(--icon-2xl); }
+.odc-money.lg .odc-money-dir-word { font-size: var(--fs-body1); }
 .odc-money.lg .odc-money-sign.btn:has(.odc-money-dir-word) { min-width: 76px; padding: 0 18px; }
 .odc-money.lg .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-money-input { padding-left: 18px; }
 /* The same lead inside an OdsAmountField (a percentage-unit value whose record stores a direction):
@@ -1281,7 +1284,7 @@
 .odc-amount.tone-income .odc-money-sign, .odc-amount.tone-income .odc-amount-input { color: var(--finance-income); }
 .odc-amount.tone-expense .odc-money-sign, .odc-amount.tone-expense .odc-amount-input { color: var(--finance-expense); }
 .odc-amount .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-amount-input { padding-left: 14px; }
-.odc-amount.lg .odc-money-dir-word { font-size: 15px; }
+.odc-amount.lg .odc-money-dir-word { font-size: var(--fs-body1); }
 .odc-amount.lg .odc-money-sign.btn { min-width: 48px; margin: 0; padding: 0 12px; border-radius: var(--radius-md) 0 0 var(--radius-md); }
 .odc-amount.lg .odc-money-sign.btn:has(.odc-money-dir-word) { min-width: 76px; padding: 0 18px; }
 .odc-amount.lg .odc-money-sign.btn:has(.odc-money-dir-word) + .odc-amount-input { padding-left: 18px; }
@@ -1311,25 +1314,25 @@
 /* ---------- ReferenceNumberField / ReferenceNumber — a counterparty identifier (issue #181).
    Mirrors the DS components.css block of the same name, plus the leading-icon input rule
    (.odc-input-icon / .has-icon) the field is the first raw-input consumer of. ---------- */
-.odc-input-icon { position: absolute; left: 12px; pointer-events: none; color: var(--mud-palette-text-secondary); font-size: 20px; }
+.odc-input-icon { position: absolute; left: 12px; pointer-events: none; color: var(--mud-palette-text-secondary); font-size: var(--icon-lg); }
 .odc-input.has-icon { padding-left: 38px; }
 .odc-refnum-field { display: flex; flex-direction: column; gap: var(--space-2); }
 .odc-refnum-input { font-family: var(--font-mono); letter-spacing: 0.02em; }
 .odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--mud-palette-lines-inputs); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
 .odc-refnum-strip:hover { background: var(--mud-palette-action-default-hover); }
 .odc-refnum-strip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-.odc-refnum-strip .material-icons { font-size: 15px; color: var(--mud-palette-text-secondary); }
+.odc-refnum-strip .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
 .odc-refnum { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; max-width: 100%; color: var(--mud-palette-text-primary); }
-.odc-refnum-icon { flex: none; font-size: 15px; color: var(--mud-palette-text-secondary); }
+.odc-refnum-icon { flex: none; font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
 .odc-refnum-text { min-width: 0; font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .odc-refnum.md .odc-refnum-text { font-size: var(--fs-body1); line-height: 1.35; overflow-wrap: anywhere; }
 .odc-refnum.sm .odc-refnum-text { font-size: var(--fs-caption); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mud-palette-text-secondary); }
-.odc-refnum.sm .odc-refnum-icon { font-size: 13px; }
+.odc-refnum.sm .odc-refnum-icon { font-size: var(--icon-xs); }
 .odc-refnum-mark { background: var(--brand-soft); color: var(--mud-palette-text-primary); border-radius: 2px; padding: 0 1px; }
 .odc-refnum-copy { flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; margin-left: 2px; border: none; border-radius: var(--radius-pill, 999px); background: transparent; cursor: pointer; color: var(--mud-palette-text-secondary); transition: background var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard); }
 .odc-refnum-copy:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 .odc-refnum-copy:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-.odc-refnum-copy .material-icons { font-size: 16px; }
+.odc-refnum-copy .material-icons { font-size: var(--icon-sm); }
 .odc-refnum-copy.done { color: var(--finance-income); }
 /* A detail tile holds the display rather than plain text, so let it fill and wrap. */
 .con-ref-tile .odc-infotile-v, .con-ref-tile .odc-refnum { max-width: 100%; }
@@ -1428,7 +1431,7 @@
 .ods-modal-body .odc-ms-trigger { background-color: var(--mud-palette-background); }
 .odc-select-trigger-main { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .odc-select-val { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.odc-select-chev { color: var(--mud-palette-text-secondary); font-size: 20px; flex: none; transition: transform var(--duration-base) var(--ease-standard); }
+.odc-select-chev { color: var(--mud-palette-text-secondary); font-size: var(--icon-lg); flex: none; transition: transform var(--duration-base) var(--ease-standard); }
 .odc-select-trigger.open .odc-select-chev { transform: rotate(180deg); }
 
 /* The option row itself (issue #51). It is a real single-choice menu row — role="menuitemradio"
@@ -1446,7 +1449,7 @@
 .odc-typesel-item.selected { color: var(--brand-text); font-weight: var(--fw-medium); }
 .odc-typesel-lab { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .odc-typesel-check { flex: none; width: 18px; height: 18px; display: grid; place-items: center; margin-left: var(--space-2); }
-.odc-typesel-check .material-icons { font-size: 18px; color: var(--brand-text); }
+.odc-typesel-check .material-icons { font-size: var(--icon-md); color: var(--brand-text); }
 /* Group heading + separator inside the popover. */
 .odc-typesel-group { padding: 8px 10px 4px; font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
 .odc-typesel-sep { height: 1px; background: var(--mud-palette-divider); margin: var(--space-1) 0; }
@@ -1456,7 +1459,7 @@
 .odc-sortsel-field { position: relative; }
 .odc-sortsel-trigger, .odc-sortsel-dir {
   display: inline-flex; align-items: center; gap: 8px;
-  box-sizing: border-box; height: 40px; padding: 0 10px 0 12px;
+  box-sizing: border-box; height: var(--control-h); padding: 0 10px 0 12px;
   cursor: pointer; white-space: nowrap; text-align: left;
   font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
   color: var(--mud-palette-text-primary);
@@ -1474,7 +1477,7 @@
 .odc-sortsel-trigger:disabled, .odc-sortsel-dir:disabled { opacity: 0.5; cursor: not-allowed; }
 .odc-sortsel-prefix { color: var(--mud-palette-text-secondary); flex: none; }
 .odc-sortsel-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.odc-sortsel-dir .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-sortsel-dir .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-sortsel-dirlabel { font-size: var(--fs-body2); }
 /* Width stability: the current label + invisible ghosts of every other label this control can show
    stack in one inline-grid cell, so the control is always as wide as its widest state and the filter
@@ -1519,7 +1522,7 @@
 .odc-tagms-chips { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .odc-tagms-ph { color: var(--mud-palette-placeholder); font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans); }
 .odc-tagms-chip { padding-right: 2px; }
-.odc-tagms-chip-ic { font-size: 14px; }
+.odc-tagms-chip-ic { font-size: var(--icon-xs); }
 /* A templated chip (ChipTemplate) brings its own chip body — the wrapper carries the pill border so
    the picker-owned remove button sits INSIDE the chip and the two read as one unit (the body's own
    border would double-apply). */
@@ -1540,7 +1543,7 @@
 }
 .odc-tagms-x:hover { opacity: 1; background: color-mix(in oklab, currentColor 22%, transparent); }
 .odc-tagms-x:focus-visible { opacity: 1; outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
-.odc-tagms-x .material-icons { font-size: 13px; }
+.odc-tagms-x .material-icons { font-size: var(--icon-xs); }
 /* The ONLY thing that opens the popover now, so it carries a real 24x24 target of its own — once
    there are chips it renders as an icon with a visually-hidden label, and a bare glyph would be the
    smallest control on the surface. */
@@ -1551,7 +1554,7 @@
 .odc-tagms-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .odc-tagms-trigger:disabled { cursor: not-allowed; }
 .odc-tagms-add { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--mud-palette-text-secondary); font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); }
-.odc-tagms-add .material-icons { font-size: 18px; }
+.odc-tagms-add .material-icons { font-size: var(--icon-md); }
 .odc-tagms-pop {
   box-sizing: border-box; min-width: 240px;
   background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
@@ -1560,7 +1563,7 @@
 }
 .odc-tagms-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
 .odc-tagms-search:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); box-shadow: inset 0 0 0 1px var(--focus-ring, var(--mud-palette-primary)); }
-.odc-tagms-search .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-tagms-search .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-tagms-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 .odc-tagms-list { max-height: 232px; overflow-y: auto; display: flex; flex-direction: column; }
 .odc-tagms-opt { display: flex; align-items: center; gap: 10px; padding: 7px 6px; border-radius: var(--radius-sm); cursor: pointer; width: 100%; box-sizing: border-box; }
@@ -1572,7 +1575,7 @@
   background: var(--mud-palette-action-default-hover);
 }
 .odc-tagms-opt .odc-check-label { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
-.odc-tagms-opt-ic { font-size: 17px; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-tagms-opt-ic { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); flex: none; }
 /* The option row's secondary caption — the type, an account number — which is what disambiguates
    two same-named records in a picker whose whole job here is naming one of several. */
 .odc-tagms-opt-sub { color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); }
@@ -1587,18 +1590,18 @@
 /* The typed name takes the row's slack and ellipsises, so a long one never pushes
    the kind caption out of the popover. */
 .odc-tagms-create > span:not(.material-icons):not(.odc-tagms-create-kind) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
-.odc-tagms-create .material-icons { font-size: 18px; }
+.odc-tagms-create .material-icons { font-size: var(--icon-md); }
 /* The type being created — muted, trailing, never competing with the action. */
 .odc-tagms-create-kind {
   flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 5px;
   color: var(--mud-palette-text-secondary);
   font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
 }
-.odc-tagms-create-kind > .material-icons { font-size: 15px; color: var(--mud-palette-text-secondary); }
+.odc-tagms-create-kind > .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
 .odc-tagms-empty { padding: 10px 6px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 /* The async row reads identically to the empty one, so "loading" is never mistaken for "none". */
 .odc-tagms-loading { display: flex; align-items: center; gap: 8px; padding: 10px 6px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
-.odc-tagms-loading .material-icons { font-size: 17px; }
+.odc-tagms-loading .material-icons { font-size: var(--icon-md); }
 .odc-tagms-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider); }
 
 /* ---------- Menu item (OdsMenu — ligature/glyph icon + label inside MudMenuItem) ----------
@@ -1840,7 +1843,7 @@ tr:focus-within > .odc-rowactions.reveal,
    under the 4.5:1 AA minimum for normal text. The token is already the muted one; muting it twice
    is what over-shot. */
 .odc-er-marker > span {
-    font: var(--fw-medium) var(--fs-overline)/1 var(--font-mono);
+    font: var(--fw-medium) var(--fs-micro)/1 var(--font-mono);
     letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--mud-palette-text-secondary);
 }
@@ -1863,12 +1866,12 @@ tr:focus-within > .odc-rowactions.reveal,
     box-sizing: border-box; background: var(--mud-palette-surface);
     border: 1.5px solid var(--mud-palette-divider); outline: 3px solid var(--mud-palette-surface);
 }
-.odc-er-node .material-icons { font-size: 17px; color: var(--odc-er-node-fg, var(--mud-palette-text-secondary)); }
+.odc-er-node .material-icons { font-size: var(--icon-md); color: var(--odc-er-node-fg, var(--mud-palette-text-secondary)); }
 .odc-er-item.sel .odc-er-node { background: var(--mud-palette-action-default-hover); outline-color: var(--mud-palette-action-default-hover); }
 .odc-er-body { flex: 1; min-width: 0; padding-top: 4px; }
 .odc-er-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 28px; }
-.odc-er-title { font: var(--fw-medium) var(--fs-body2)/1.35 var(--font-mono); color: var(--tide-400); }
-.odc-er-date { font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
+.odc-er-title { font: var(--fw-medium) var(--fs-label)/1.35 var(--font-mono); color: var(--tide-400); }
+.odc-er-date { font: var(--fw-regular) var(--fs-overline)/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
 /* Two lines at most, so one long entry cannot push the rest off screen. */
 .odc-er-desc {
     margin-top: 3px; font: italic var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans);
@@ -1877,7 +1880,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 /* Provenance, not content: revealed by the same gesture as the row actions. */
 .odc-er-meta {
-    margin-top: 6px; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans);
+    margin-top: 6px; font: var(--fw-regular) var(--fs-overline)/1.3 var(--font-sans);
     color: var(--mud-palette-text-secondary); opacity: 0; transition: opacity var(--duration-base) var(--ease-standard);
 }
 .odc-er-item:hover .odc-er-meta, .odc-er-item:focus-within .odc-er-meta { opacity: 1; }
@@ -2303,7 +2306,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-smarttags-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .odc-smarttags-chip { padding-right: 4px; }
-.odc-smarttags-chip-ic { font-size: 13px; margin-right: -1px; opacity: 0.85; }
+.odc-smarttags-chip-ic { font-size: var(--icon-xs); margin-right: -1px; opacity: 0.85; }
 .odc-smarttags-x {
   display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 1px;
   appearance: none; border: none; padding: 0; background: transparent;
@@ -2312,7 +2315,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-smarttags-x:hover { opacity: 1; background: color-mix(in oklab, currentColor 22%, transparent); }
 .odc-smarttags-x:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
-.odc-smarttags-x .material-icons { font-size: 13px; }
+.odc-smarttags-x .material-icons { font-size: var(--icon-xs); }
 
 /* Add-tag trigger — quiet dashed pill that opens the checklist */
 .odc-smarttags-adder { display: inline-flex; }
@@ -2328,7 +2331,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-smarttags-add:hover { border-color: var(--mud-palette-primary); color: var(--brand-text); background: var(--mud-palette-action-default-hover); }
 .odc-smarttags-add.open { border-style: solid; border-color: var(--mud-palette-primary); color: var(--brand-text); }
 .odc-smarttags-add:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.odc-smarttags-add .material-icons { font-size: 16px; }
+.odc-smarttags-add .material-icons { font-size: var(--icon-sm); }
 
 /* Checklist popover (portaled by MudMenu) */
 .odc-smarttags-pop {
@@ -2338,7 +2341,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-smarttags-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
 .odc-smarttags-search:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); box-shadow: inset 0 0 0 1px var(--focus-ring, var(--mud-palette-primary)); }
-.odc-smarttags-search .material-icons { font-size: 18px; color: var(--mud-palette-text-secondary); }
+.odc-smarttags-search .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-smarttags-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 .odc-smarttags-list { max-height: 236px; overflow-y: auto; display: flex; flex-direction: column; }
 .odc-smarttags-opt { padding: 7px 6px; border-radius: var(--radius-sm); cursor: pointer; width: 100%; box-sizing: border-box; }
@@ -2363,7 +2366,7 @@ tr:focus-within > .odc-rowactions.reveal,
   background: var(--finance-expense-soft);
   font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-primary);
 }
-.odc-smarttags-refused > .material-icons { font-size: 16px; line-height: 1.35; color: var(--finance-expense); flex: none; }
+.odc-smarttags-refused > .material-icons { font-size: var(--icon-sm); line-height: 1.35; color: var(--finance-expense); flex: none; }
 .odc-smarttags-refused-txt { flex: 1 1 auto; }
 
 /* States */
@@ -2374,7 +2377,7 @@ tr:focus-within > .odc-rowactions.reveal,
   display: flex; align-items: center; gap: var(--space-3);
   padding: var(--space-5) var(--space-4); flex-wrap: wrap;
 }
-.odc-smarttags-state.error .odc-smarttags-state-ic { color: var(--finance-expense); font-size: 22px; flex: none; }
+.odc-smarttags-state.error .odc-smarttags-state-ic { color: var(--finance-expense); font-size: var(--icon-xl); flex: none; }
 .odc-smarttags-state-txt { flex: 1; min-width: 200px; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
 
 /* Indeterminate progress sweep for the loading state */
@@ -2438,9 +2441,9 @@ tr:focus-within > .odc-rowactions.reveal,
    fixes every consumer at once — the current-period row tint, the per-row document chips,
    the documents panel and the premium trend line. */
 .odc-record-body {
-  --ins-accent: var(--rec);
-  --ins-accent-soft: var(--rec-soft);
-  --ins-accent-line: color-mix(in srgb, var(--rec) 42%, transparent);
+  --ins-accent: var(--rec, var(--brand-text));
+  --ins-accent-soft: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
+  --ins-accent-line: color-mix(in srgb, var(--rec, var(--brand-text)) 42%, transparent);
 }
 
 /* The collapsed headline figure is the record card's own `.odc-record-value` /
@@ -2543,7 +2546,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .ins-status { display: inline-flex; align-items: center; gap: 4px; font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
 .ins-status .material-icons { font-size: 12px; }
 .ins-status.current  { color: var(--finance-income);  background: var(--finance-income-soft); }
-.ins-status.upcoming { color: var(--pending-text);     background: var(--finance-pending-soft); }
+.ins-status.upcoming { color: var(--warning-text);     background: var(--finance-pending-soft); }
 .ins-status.past     { color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-default-hover); }
 
 /* Inline row actions — reveal on hover */
@@ -2670,8 +2673,9 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-charge-term { font: var(--fw-regular) var(--fs-caption) / 1 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .con-charge-amt { font: var(--fw-medium) var(--fs-body2) / 1 var(--font-mono); color: var(--mud-palette-text-primary); }
 /* Next receipts sit in the same panel, in rows of the same shape: the GROUP HEADING names the
-   direction, and the amount is the only thing that changes colour — mint for money in. */
+   direction, and the amount is the only thing that changes colour — mint for money in, coral for money out. */
 .con-charge-amt.in { color: var(--finance-income); }
+.con-charge-amt.out { color: var(--finance-expense); }
 .con-charge-row.incoming .con-charge-md { color: var(--mud-palette-text-primary); }
 .con-charge-go { font: var(--fw-medium) var(--fs-caption) / 1 var(--font-sans); color: var(--brand-text); white-space: nowrap; }
 
@@ -2786,19 +2790,6 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record.con-unsigned {
     border-style: dashed;
     border-color: color-mix(in srgb, var(--mud-palette-text-secondary) 40%, transparent);
-}
-
-/* Header mark follows the derived status tone (the same one the figure takes). Only the mark: --rec
-   stays the type accent for everything inside the card. The design keys this on data-tone; the
-   record card takes classes, so it is con-tone-* here, like con-unsigned above. */
-.odc-record.con-card { --con-tone: var(--mud-palette-text-secondary); }
-.odc-record.con-card.con-tone-income  { --con-tone: var(--finance-income); }
-.odc-record.con-card.con-tone-expense { --con-tone: var(--finance-expense); }
-.odc-record.con-card.con-tone-pending { --con-tone: var(--finance-pending); }
-.odc-record.con-card.con-tone-info    { --con-tone: var(--sea-400); }
-.odc-record.con-card > .odc-record-head .odc-record-mark:not(.img) {
-    color: var(--con-tone);
-    background: color-mix(in srgb, var(--con-tone) 14%, transparent);
 }
 
 /* Detail-tile icons (contracts + budgets): grey like the field name, unless the value carries a hue.
@@ -2987,7 +2978,7 @@ tr:focus-within > .odc-rowactions.reveal,
   background: transparent; color: var(--mud-palette-text-secondary);
   cursor: pointer; transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
 }
-.odc-pager-btn .material-icons { font-size: 20px; }
+.odc-pager-btn .material-icons { font-size: var(--icon-lg); }
 .odc-pager-btn:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 .odc-pager-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 /* Bound / in-flight: dimmed and inert to the pointer, but still focusable. */
@@ -3028,8 +3019,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-rpp-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
 .odc-rpp-prefix { color: var(--mud-palette-text-secondary); }
 .odc-rpp-trigger b { font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }
-.odc-rpp-chev { font-size: 18px !important; color: var(--mud-palette-text-secondary); }
-.odc-rpp.mirror .odc-rpp-trigger { height: 40px; padding: 0 8px 0 12px; }
+.odc-rpp-chev { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
+.odc-rpp.mirror .odc-rpp-trigger { height: var(--control-h); padding: 0 8px 0 12px; }
 /* The menu options are MudMenuItems styled by the shared .odc-typesel-item (see OdsSortSelect). */
 
 /* ---------- Infinite list (card-list server paging) ----------
@@ -3066,7 +3057,7 @@ tr:focus-within > .odc-rowactions.reveal,
 /* ---------- JournalPhotoGallery ---------- */
 .odc-photogrid { display: flex; flex-direction: column; gap: var(--space-2); }
 .odc-photogrid-head { display: flex; align-items: center; gap: 8px; color: var(--mud-palette-text-secondary); }
-.odc-photogrid-head .material-icons { font-size: 18px; }
+.odc-photogrid-head .material-icons { font-size: var(--icon-md); }
 .odc-photogrid-title { font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary); }
 .odc-photogrid-count {
   font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary);
@@ -3141,7 +3132,7 @@ tr:focus-within > .odc-rowactions.reveal,
   width: 28px; height: 28px; border-radius: var(--radius-sm); display: grid; place-items: center;
   color: var(--mud-palette-text-secondary); transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
 }
-.odc-board-move .material-icons { font-size: 18px; }
+.odc-board-move .material-icons { font-size: var(--icon-md); }
 .odc-board-move:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 .odc-board-move:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
 .odc-board-move:disabled { opacity: 0.32; cursor: not-allowed; }
@@ -3172,10 +3163,10 @@ tr:focus-within > .odc-rowactions.reveal,
 /* DateRangePicker — a pill with two date pickers + dash + clear. The DS styles the inner picker via
    .odc-dp; OdsDatePicker is MudDatePicker here, so the inner overrides target the MudBlazor field
    (borderless, compact) instead — the same adaptation used by the photos .pl-daterange filter. */
-.odc-dpr { display: inline-flex; align-items: center; gap: 8px; height: 40px; box-sizing: border-box; padding: 0 8px 0 12px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-surface); }
+.odc-dpr { display: inline-flex; align-items: center; gap: 8px; height: var(--control-h); box-sizing: border-box; padding: 0 8px 0 12px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-surface); }
 .odc-dpr:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); box-shadow: inset 0 0 0 1px var(--focus-ring, var(--mud-palette-primary)); }
-.odc-dpr-ic { font-size: 16px; color: var(--mud-palette-text-secondary); flex: none; }
-.odc-dpr-lab { font: 600 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none; }
+.odc-dpr-ic { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); flex: none; }
+.odc-dpr-lab { font: 600 var(--fs-overline)/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none; }
 .odc-dpr-dash { color: var(--mud-palette-text-secondary); flex: none; }
 .odc-dpr .mud-picker { min-width: 0; }
 .odc-dpr .mud-input-control { margin: 0; }
@@ -3185,7 +3176,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-dpr .mud-input-adornment { margin: 0; }
 .odc-dpr .mud-input-adornment .mud-icon-root { font-size: 18px; color: var(--mud-palette-text-secondary); }
 .odc-dpr-clear { flex: none; width: 26px; height: 26px; border-radius: var(--radius-sm); border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; background: transparent; color: var(--mud-palette-text-secondary); transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard); }
-.odc-dpr-clear .material-icons { font-size: 15px; }
+.odc-dpr-clear .material-icons { font-size: var(--icon-sm); }
 .odc-dpr-clear:hover { color: var(--mud-palette-text-primary); background: var(--mud-palette-action-default-hover, rgba(199, 208, 224, 0.08)); }
 .odc-dpr-clear:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
 
@@ -3194,7 +3185,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-swatch { appearance: none; cursor: pointer; width: 30px; height: 30px; flex: none; border-radius: var(--radius-pill); background: var(--sw); border: 2px solid transparent; box-shadow: 0 0 0 1px var(--mud-palette-divider) inset; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: transform var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
 .odc-swatch:hover { transform: scale(1.08); }
 .odc-swatch.selected { box-shadow: 0 0 0 2px var(--mud-palette-surface) inset, 0 0 0 4px var(--sw); }
-.odc-swatch-check { font-size: 18px; line-height: 1; display: block; color: var(--sw-fg); }
+.odc-swatch-check { font-size: var(--icon-md); line-height: 1; display: block; color: var(--sw-fg); }
 .odc-swatch:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 3px; }
 .odc-swatch:disabled { cursor: not-allowed; opacity: 0.5; }
 
@@ -3695,7 +3686,7 @@ tr:focus-within > .odc-rowactions.reveal,
     font-size: 0.6875rem; font-weight: 500; line-height: 1.2; white-space: nowrap;
 }
 .acct-flag .material-icons { font-size: 13px; }
-.acct-flag.warning { background: var(--finance-pending-soft); color: var(--finance-pending); }
+.acct-flag.warning { background: var(--finance-pending-soft); color: var(--warning-text); }
 .acct-flag.error   { background: var(--finance-expense-soft); color: var(--finance-expense); }
 .acct-flag.info    { background: color-mix(in srgb, var(--mud-palette-info) 16%, transparent); color: var(--mud-palette-info); }
 
@@ -3962,14 +3953,14 @@ tr:focus-within > .odc-rowactions.reveal,
     color: var(--mud-palette-text-primary); text-wrap: pretty;
 }
 /* Full opacity, deliberately: a 0.8-alpha glyph lands under 3:1. */
-.odc-sfield-advisory .material-icons { font-size: 16px; flex: none; color: var(--pending-text); margin-top: 1px; }
+.odc-sfield-advisory .material-icons { font-size: var(--icon-sm); flex: none; color: var(--pending-text); margin-top: 1px; }
 .odc-sfield-advisory-t { font-weight: var(--fw-medium); color: var(--mud-palette-text-primary); }
 /* Direction marker, in the outline beside the label: this setting moves one way only. It sits where
    the bound lives rather than in the helper prose, so it is legible before the value is read. */
 .odc-sfield-bound {
     margin-left: 7px; padding: 1px 6px; border-radius: var(--radius-pill);
     border: var(--border-thin) solid var(--mud-palette-divider);
-    font: var(--fw-medium) 9.5px/1.5 var(--font-mono);
+    font: var(--fw-medium) var(--fs-micro)/1.5 var(--font-mono);
     letter-spacing: var(--tracking-caps); text-transform: uppercase;
     color: var(--mud-palette-text-secondary); vertical-align: 1px;
 }
@@ -4031,7 +4022,7 @@ tr:focus-within > .odc-rowactions.reveal,
     outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
     outline-offset: var(--focus-ring-offset);
 }
-.odc-errsum .material-icons { font-size: 17px; }
+.odc-errsum .material-icons { font-size: var(--icon-md); }
 .odc-errsum-sep { opacity: 0.5; }
 .odc-errsum-act { text-decoration: underline; text-underline-offset: 2px; }
 .odc-errsum-chev { margin-left: -2px; margin-right: -3px; opacity: 0.8; }
@@ -4068,7 +4059,7 @@ tr:focus-within > .odc-rowactions.reveal,
     font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
     color: var(--mud-palette-text-secondary);
 }
-.odc-errsum-item-go { font-size: 16px !important; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-errsum-item-go { font-size: var(--icon-sm); flex: none; color: var(--mud-palette-text-secondary); }
 
 /* ---------- Button count badge ----------
    A pending quantity the action is about to commit (unsaved changes, queued uploads). Reads as a
@@ -4097,12 +4088,11 @@ tr:focus-within > .odc-rowactions.reveal,
    rows share a rhythm; a page that needs more says so by wrapping, not by shrinking.
    The header is the record's identity; the body order is fixed by the component (alert
    then details then content then sections). ONE ACCENT PER RECORD: --rec / --rec-soft
-   are set from the record's TYPE colour and inherited by the header mark, the tile icon
+   are component API (never declared in CSS — every use site carries a brand fallback,
+   so they stay out of the token set), set from the record's TYPE colour and inherited by the header mark, the tile icon
    chips and any single-series chart inside. Unset falls back to the brand accent, which
    is the case for every record type with no type field (tax statements, journal entries). */
 .odc-record {
-    --rec: var(--brand-text);
-    --rec-soft: color-mix(in srgb, var(--brand-text) 16%, transparent);
     border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-lg);
     background: var(--mud-palette-surface); overflow: hidden;
     transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
@@ -4129,9 +4119,9 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
 .odc-record-mark {
     flex: none; width: 48px; height: 48px; border-radius: var(--radius-md); display: grid; place-items: center;
-    background: var(--rec-soft); color: var(--rec);
+    background: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent)); color: var(--rec, var(--brand-text));
 }
-.odc-record-mark .material-icons { font-size: 24px; }
+.odc-record-mark .material-icons { font-size: var(--icon-xl); }
 /* Image mark — the record's own picture in place of its type glyph. The accent
    stays with the card; only this mark's content (and, for a logo, its ground)
    changes. `.ground` is the neutral letterbox; `.round` is a photograph. */
@@ -4144,7 +4134,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record-namerow { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .odc-record-namerow > * { flex: none; }
 .odc-record-name {
-    font: var(--fw-medium) 16px/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
+    font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); color: var(--mud-palette-text-primary);
     flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* One line, ellipsised, never wrapped: the scanning surface stays one row tall. */
@@ -4159,22 +4149,22 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record-metaitem { flex: none; }
 /* Any icon a meta item carries aligns with its label by default — the meta line is a
    flex row of flex items, never inline text with a floating glyph. */
-.odc-record-meta .material-icons { font-size: 14px; line-height: 1; flex: none; color: var(--mud-palette-text-secondary); }
+.odc-record-meta .material-icons { font-size: var(--icon-xs); line-height: 1; flex: none; color: var(--mud-palette-text-secondary); }
 .odc-record-dot { opacity: 0.4; flex: none; }
 .odc-record-counts { display: inline-flex; gap: var(--space-3); flex: none; }
 .odc-record-counts > span { display: inline-flex; align-items: center; gap: var(--space-1); }
-.odc-record-counts .material-icons { font-size: 14px; opacity: 0.65; }
-.odc-record-glyph { font-size: 15px; line-height: 1; font-weight: 600; opacity: 0.65; }
+.odc-record-counts .material-icons { font-size: var(--icon-xs); opacity: 0.65; }
+.odc-record-glyph { font-size: var(--fs-body1); line-height: 1; font-weight: 600; opacity: 0.65; }
 .odc-record-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .odc-record-figure { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; white-space: nowrap; text-align: right; }
-.odc-record-value { font: var(--fw-medium) 22px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.odc-record-value { font: var(--fw-medium) var(--fs-figure)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
 .odc-record-value.income  { color: var(--finance-income); }
 .odc-record-value.expense { color: var(--finance-expense); }
-.odc-record-value.pending { color: var(--finance-pending); }
+.odc-record-value.pending { color: var(--pending-text); }
 .odc-record-value.info    { color: var(--sea-400); }
 .odc-record-value.muted   { color: var(--mud-palette-text-secondary); }
 .odc-record-caption {
-    font: var(--fw-regular) 10.5px/1 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;
+    font: var(--fw-regular) var(--fs-micro)/1 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase;
     color: var(--mud-palette-text-secondary);
 }
 .odc-record-ctl { display: flex; align-items: center; gap: 2px; padding-right: 10px; }
@@ -4183,7 +4173,7 @@ tr:focus-within > .odc-rowactions.reveal,
     display: grid; place-items: center; color: var(--mud-palette-text-secondary);
 }
 .odc-record-chev:hover { background: var(--mud-palette-action-default-hover); }
-.odc-record-chev .material-icons { font-size: 22px; transition: transform var(--duration-slow) var(--ease-standard); }
+.odc-record-chev .material-icons { font-size: var(--icon-xl); transition: transform var(--duration-slow) var(--ease-standard); }
 .odc-record.open .odc-record-chev .material-icons { transform: rotate(180deg); }
 
 /* Body: the four slots, in order, with nothing else allowed between them. */
@@ -4229,7 +4219,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-sectiondivider { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) 0 2px; }
 .odc-sectiondivider:first-child { margin-top: 2px; }
 .odc-sectiondivider-l {
-    font: 600 11px/1 var(--font-sans); letter-spacing: var(--tracking-caps, 0.08em);
+    font: 600 var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps, 0.08em);
     text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none;
 }
 /* Only a divider given HeadingId is focusable, and only programmatically — it carries
@@ -4243,7 +4233,7 @@ tr:focus-within > .odc-rowactions.reveal,
     border-radius: var(--radius-sm);
 }
 .odc-sectiondivider-rule { flex: 1; height: 1px; background: var(--mud-palette-divider); }
-.odc-sectiondivider-meta { font: var(--fw-regular) 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); flex: none; }
+.odc-sectiondivider-meta { font: var(--fw-regular) var(--fs-overline)/1 var(--font-mono); color: var(--mud-palette-text-secondary); flex: none; }
 
 /* Smart tags, bare (AccountSmartTagsSection Chrome="false") — the host supplies the
    divider, so the section drops the disclosure body's own padding. Inside a record card
@@ -4421,7 +4411,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-picedit-note { display: inline-flex; align-items: flex-start; gap: 7px; margin-left: 12px; max-width: 46ch; font: var(--fw-regular) var(--fs-caption)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
 .odc-picedit-note .material-icons { flex: none; margin-top: 1px; font-size: 15px; color: var(--mud-palette-placeholder); }
 .odc-picedit-badge { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: var(--radius-pill); background: var(--mud-palette-surface); box-shadow: 0 0 0 1px var(--mud-palette-divider); color: var(--mud-palette-text-secondary); transition: opacity 120ms ease; }
-.odc-picedit-badge .material-icons { font-size: 13px; }
+.odc-picedit-badge .material-icons { font-size: var(--icon-xs); }
 .odc-picedit-actions { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--radius-pill); background: rgba(0, 0, 0, 0.58); opacity: 0; transition: opacity 120ms ease; }
 .odc-picedit:hover .odc-picedit-actions, .odc-picedit:focus-within .odc-picedit-actions { opacity: 1; }
 .odc-picedit:hover .odc-picedit-badge, .odc-picedit:focus-within .odc-picedit-badge { opacity: 0; }
@@ -4429,7 +4419,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-picedit-btn:hover { background: rgba(255, 255, 255, 0.26); }
 .odc-picedit-btn.danger:hover { background: var(--mud-palette-error); }
 .odc-picedit-btn:focus-visible { outline: none; box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring, var(--mud-palette-primary)); }
-.odc-picedit-btn .material-icons { font-size: 17px; }
+.odc-picedit-btn .material-icons { font-size: var(--icon-md); }
 .odc-picedit-btn:disabled { cursor: default; opacity: 0.5; }
 
 /* The overlay actions must not animate for someone who has asked for less motion;
@@ -4440,8 +4430,8 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* ── Properties (/properties, issue #167) — page-specific bits only; everything else is the shared
    record scaffold (design system · ui_kits/web/properties.css). ─────────────────────────────── */
-.prop-type-locked { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-lines-default); border-radius: 10px; background: var(--rec-soft); }
-.prop-type-glyph { flex: none; width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: var(--mud-palette-surface); color: var(--rec); }
+.prop-type-locked { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-lines-default); border-radius: 10px; background: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent)); }
+.prop-type-glyph { flex: none; width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: var(--mud-palette-surface); color: var(--rec, var(--brand-text)); }
 .prop-type-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .prop-type-label { display: flex; align-items: center; gap: var(--space-2); font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 .prop-type-label .material-icons { font-size: var(--fs-body2); color: var(--mud-palette-text-secondary); }

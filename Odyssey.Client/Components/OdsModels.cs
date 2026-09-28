@@ -81,6 +81,25 @@ public sealed record OdsStepLine
     public required IReadOnlyList<OdsStepPoint> Points { get; init; }
 }
 
+/// <summary>
+/// Which entity a file is attached to — selects the document-type vocabulary of
+/// <c>OdsFileTypeSelect</c> / <c>OdsFileTypeMultiSelect</c> (mirrors the DS <c>FileTypeKind</c>).
+/// </summary>
+public enum OdsFileTypeKind
+{
+    /// <summary><c>AccountFileType</c>.</summary>
+    Account = 0,
+
+    /// <summary><c>TransactionFileType</c>.</summary>
+    Transaction = 1,
+
+    /// <summary><c>TaxStatementFileType</c>.</summary>
+    TaxStatement = 2,
+
+    /// <summary><c>PropertyFileType</c>.</summary>
+    Property = 3,
+}
+
 /// <summary>How an <see cref="OdsStepChart"/> plots its y-axis (mirrors the DS <c>scale</c>).</summary>
 public enum OdsStepScale
 {

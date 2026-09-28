@@ -328,8 +328,8 @@ public class SettingAdvisoryTests
 
     /// <summary>
     /// The amber tint composited over the card surface — what the advisory's text actually sits on. Both
-    /// halves come from source: the surface from the MudTheme palette, the tint alpha from
-    /// <c>--finance-pending-soft</c>.
+    /// halves come from source: the surface from the MudTheme palette, the tint from
+    /// <c>--finance-pending-soft</c> — its base colour and the theme's <c>--tint-soft</c> strength.
     /// </summary>
     private static (int R, int G, int B) EffectiveRowBackground(bool dark)
     {
@@ -345,14 +345,31 @@ public class SettingAdvisoryTests
             ?? Declaration(ThemeBlock(dark: false), "--finance-pending-soft");
         Assert.NotNull(tint);
 
-        var rgba = Regex.Match(tint!, @"rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)");
-        Assert.True(rgba.Success, $"--finance-pending-soft is not an rgba() value: '{tint}'.");
-
-        var over = (
-            int.Parse(rgba.Groups[1].Value, CultureInfo.InvariantCulture),
-            int.Parse(rgba.Groups[2].Value, CultureInfo.InvariantCulture),
-            int.Parse(rgba.Groups[3].Value, CultureInfo.InvariantCulture));
-        var alpha = double.Parse(rgba.Groups[4].Value, CultureInfo.InvariantCulture);
+        // The tint is derived (colors_and_type.css §2c): its base colour mixed toward transparent
+        // at the theme's --tint-soft strength. Resolve both halves through the same token chain; a
+        // legacy rgba() literal is still read directly.
+        (int R, int G, int B) over;
+        double alpha;
+        var mix = Regex.Match(tint!,
+            @"color-mix\(\s*in\s+srgb\s*,\s*var\(\s*(?<base>--[a-z0-9-]+)\s*\)\s+var\(\s*(?<pct>--[a-z0-9-]+)\s*\)\s*,\s*transparent\s*\)");
+        if (mix.Success)
+        {
+            over = ResolveToken(mix.Groups["base"].Value, dark);
+            var pct = Declaration(ThemeBlock(dark), mix.Groups["pct"].Value)
+                ?? Declaration(ThemeBlock(dark: false), mix.Groups["pct"].Value);
+            Assert.NotNull(pct);
+            alpha = double.Parse(pct!.TrimEnd('%'), CultureInfo.InvariantCulture) / 100;
+        }
+        else
+        {
+            var rgba = Regex.Match(tint!, @"rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)");
+            Assert.True(rgba.Success, $"--finance-pending-soft is neither a derived color-mix() nor an rgba() value: '{tint}'.");
+            over = (
+                int.Parse(rgba.Groups[1].Value, CultureInfo.InvariantCulture),
+                int.Parse(rgba.Groups[2].Value, CultureInfo.InvariantCulture),
+                int.Parse(rgba.Groups[3].Value, CultureInfo.InvariantCulture));
+            alpha = double.Parse(rgba.Groups[4].Value, CultureInfo.InvariantCulture);
+        }
 
         return Composite(over, alpha, Hex(dark ? surfaces[0] : surfaces[1]));
     }

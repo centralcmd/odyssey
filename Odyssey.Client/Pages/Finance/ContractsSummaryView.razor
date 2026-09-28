@@ -75,7 +75,7 @@
         .Select(r =>
         {
             var info = OdsTypeRegistries.ContractTypeOf(r.Type);
-            return new OdsBreakdownRow { Key = r.Type, Icon = info.Icon, IconColor = "var(--mud-palette-text-secondary)", Label = info.Label, Count = r.Count };
+            return new OdsBreakdownRow { Key = r.Type, Icon = info.Icon, IconColor = info.Color, Label = info.Label, Count = r.Count };
         })
         .ToList();
 
@@ -144,7 +144,7 @@
                     {
                         Key = type,
                         Icon = info.Icon,
-                        IconColor = "var(--mud-palette-text-secondary)",
+                        IconColor = info.Color,
                         Label = info.Label,
                         Count = NetCell(inValue - outValue),
                     };

@@ -24,7 +24,7 @@ public partial class AccountFilesSection
     [Parameter] public string? AccountName { get; set; }
 
     private bool _isOpen = false;
-    // Bound to OdsAccountFileTypeSelect (the DS picker keys on the enum name).
+    // Bound to OdsFileTypeSelect (the DS picker keys on the enum name).
     private string _selectedFileType = nameof(AccountFileType.Other);
     private AccountFileType SelectedFileTypeEnum =>
         Enum.TryParse<AccountFileType>(_selectedFileType, out var fileType) ? fileType : AccountFileType.Other;
