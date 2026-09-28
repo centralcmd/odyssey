@@ -48,10 +48,6 @@
    ("12 days left" / "ended Jun 1"). The detail keeps the chip's tone color but
    reads quieter, separated by a hairline so the status word stays primary. */
 .odc-chip.sm { padding: 1px 8px; font-size: var(--fs-caption); }
-.odc-coverage-detail {
-    margin-left: 2px; padding-left: 7px; opacity: 0.72;
-    border-left: 1px solid currentColor; font-variant-numeric: tabular-nums;
-}
 
 /* ---------- Custodian chip ----------
    The read-only "held at <contact>" link on the account card. Same pill
@@ -244,7 +240,6 @@
     color: var(--mud-palette-text-secondary);
 }
 .odc-empty.line.center { text-align: center; }
-.odc-empty.line.pad-sm { padding: var(--space-3) var(--space-4); }
 .odc-empty.line.pad-lg { padding: var(--space-12) var(--space-6); }
 
 /* ---------- Record section (divider + notice + view) ---------- */
@@ -1899,7 +1894,6 @@ tr:focus-within > .odc-rowactions.reveal,
    `border:1px solid var(--mud-palette-divider)` repeated across pages. */
 .ods-outline { border: 1px solid var(--mud-palette-divider); }
 
-
 /* =============================================================
    Contract events — the "Events" section inside an expanded contract
    record (issue #138). The rail itself is the DS event rail
@@ -1936,17 +1930,6 @@ tr:focus-within > .odc-rowactions.reveal,
    Ported from the Odyssey Design System (account-terms.css); the
    term-specific surfaces are prefixed .trm-*.
    ============================================================= */
-
-/* ---- Section shell (lives in the collapsible body) ---- */
-.trm-section { display: flex; flex-direction: column; gap: 22px; padding: 18px 16px 20px; }
-.trm-sub { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.trm-sub-label {
-  font: 600 11px/1 var(--font-sans);
-  letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--mud-palette-text-secondary);
-}
-.trm-sub-rule { flex: 1; height: 1px; background: var(--mud-palette-divider-light); }
-.trm-sub-meta { font: 400 11.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); }
 
 /* Kind glyph tile — soft tint + colored icon. */
 .trm-kind-ic { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 8px; }
@@ -2084,7 +2067,6 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* Row actions are the shared <OdsRowActions> (.odc-rowactions) — the reveal on row
    hover/focus lives with the component, not here. */
-
 
 /* ---- NEW / EDIT TERM dialog ---- */
 
@@ -3615,7 +3597,6 @@ tr:focus-within > .odc-rowactions.reveal,
 
 @media (max-width: 520px) { .cp-imp-stats { grid-template-columns: 1fr; } }
 
-
 /* ── Shared UserProfile field set (issue #316) — used by both the Account → Profile card
    and the first-sign-in onboarding gate (OdsProfileFields / OdsProfileTransparencyNote). ── */
 .pf-fields { display: flex; flex-direction: column; gap: 16px; max-width: 560px; }
@@ -3706,13 +3687,6 @@ tr:focus-within > .odc-rowactions.reveal,
 /* Custodian name, account type and friends read as plain muted meta text — the design
    system reserves chips on the row for status / problem signals. */
 .acct-meta { color: var(--mud-palette-text-secondary); }
-.acct-dot { opacity: 0.4; }
-
-.acct-counts { display: inline-flex; gap: 12px; font-size: 0.75rem; line-height: 1; color: var(--mud-palette-text-secondary); }
-.acct-counts span { display: inline-flex; align-items: center; gap: 4px; }
-.acct-counts .material-icons { font-size: 14px; opacity: 0.65; }
-/* Terms counts with a typographic § (section sign) rather than a Material icon. */
-.acct-counts .acct-count-glyph { font-size: 15px; line-height: 1; font-weight: 600; opacity: 0.65; }
 
 /* ── Per-record problem chip, in the name row ── */
 .acct-flag {
@@ -3729,10 +3703,6 @@ tr:focus-within > .odc-rowactions.reveal,
 .acct-figures {
     text-align: right; display: flex; flex-direction: column;
     align-items: flex-end; gap: 3px; white-space: nowrap;
-}
-.acct-balance {
-    font-family: var(--font-mono); font-variant-numeric: tabular-nums;
-    font-size: 1.375rem; font-weight: 500; line-height: 1;
 }
 
 /* ── Controls — the row menu plus the expand trigger ── */
@@ -4310,7 +4280,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* The 18px/16px insets were the old disclosure body's padding; a section's content sits
    flush with its divider label. */
-.odc-record-body .trm-section, .odc-record-body .est-section { padding: 0; }
+.odc-record-body .est-section { padding: 0; }
 
 /* Section tables read as cards, the same frame as the charts beside them. */
 .odc-record-body .acct-table-frame,
@@ -4361,7 +4331,6 @@ tr:focus-within > .odc-rowactions.reveal,
 .cpl-policy-kinds { flex: none; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .cpl-note { margin: 14px 0 0; font: var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .cpl-note strong { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
-
 
 /* ---------- Avatar image + fit (Odyssey Design System · components/Avatar) ----------
    OdsAvatar keeps MudAvatar as its frame, so these rules target the <img> the

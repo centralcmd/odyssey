@@ -296,10 +296,10 @@
                             </div>
                         }
 
-                        @* Statement documents — last section. Upload is the row's "Upload file"
+                        @* Documents — last section. Upload is the row's "Upload file"
                            action (TaxUploadFileDialog): a section header labels, it does not act. *@
                         <div class="tax-section">
-                            <OdsSectionDivider Label="Statement documents"
+                            <OdsSectionDivider Label="Documents"
                                                Meta="@($"{s.Files.Count} file{(s.Files.Count == 1 ? "" : "s")}")" />
                             <div class="tax-tbl-frame">
                                 <TaxStatementFilesSection @key="@($"files:{s.TaxStatementId}:{_filesRefreshToken}")"

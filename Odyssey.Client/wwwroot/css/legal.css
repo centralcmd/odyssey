@@ -87,14 +87,14 @@
 }
 .lg-scroll.prose { font-family: var(--font-sans); font-size: 14.5px; line-height: 1.75; }
 /* Themed scrollbar (matches the shared .acct-menu-pop treatment). */
-.lg-scroll, .lg-reg-scroll, .lg-ver-view, .lg-admin-card .odc-input-multiline { scrollbar-width: thin; scrollbar-color: var(--mud-palette-lines-inputs) transparent; }
-.lg-scroll::-webkit-scrollbar, .lg-reg-scroll::-webkit-scrollbar, .lg-ver-view::-webkit-scrollbar, .lg-admin-card .odc-input-multiline::-webkit-scrollbar { width: 12px; }
-.lg-scroll::-webkit-scrollbar-track, .lg-reg-scroll::-webkit-scrollbar-track, .lg-ver-view::-webkit-scrollbar-track, .lg-admin-card .odc-input-multiline::-webkit-scrollbar-track { background: transparent; }
-.lg-scroll::-webkit-scrollbar-thumb, .lg-reg-scroll::-webkit-scrollbar-thumb, .lg-ver-view::-webkit-scrollbar-thumb, .lg-admin-card .odc-input-multiline::-webkit-scrollbar-thumb {
+.lg-scroll, .lg-ver-view, .lg-admin-card .odc-input-multiline { scrollbar-width: thin; scrollbar-color: var(--mud-palette-lines-inputs) transparent; }
+.lg-scroll::-webkit-scrollbar, .lg-ver-view::-webkit-scrollbar, .lg-admin-card .odc-input-multiline::-webkit-scrollbar { width: 12px; }
+.lg-scroll::-webkit-scrollbar-track, .lg-ver-view::-webkit-scrollbar-track, .lg-admin-card .odc-input-multiline::-webkit-scrollbar-track { background: transparent; }
+.lg-scroll::-webkit-scrollbar-thumb, .lg-ver-view::-webkit-scrollbar-thumb, .lg-admin-card .odc-input-multiline::-webkit-scrollbar-thumb {
   background: var(--mud-palette-lines-inputs); border-radius: 999px;
   border: 3px solid var(--mud-palette-background); background-clip: padding-box;
 }
-.lg-scroll::-webkit-scrollbar-thumb:hover, .lg-reg-scroll::-webkit-scrollbar-thumb:hover, .lg-ver-view::-webkit-scrollbar-thumb:hover, .lg-admin-card .odc-input-multiline::-webkit-scrollbar-thumb:hover {
+.lg-scroll::-webkit-scrollbar-thumb:hover, .lg-ver-view::-webkit-scrollbar-thumb:hover, .lg-admin-card .odc-input-multiline::-webkit-scrollbar-thumb:hover {
   background: var(--mud-palette-text-secondary); background-clip: padding-box;
 }
 .lg-scroll:focus-visible { outline: 2px solid var(--tide-400); outline-offset: -2px; }
@@ -191,11 +191,6 @@
 .lg-reg-nopub { display: inline-flex; align-items: center; gap: 6px; font: 400 12px/1.4 var(--font-sans); font-style: italic; color: var(--mud-palette-text-secondary); }
 .lg-reg-nopub .material-icons { font-size: 15px; opacity: 0.8; }
 .lg-reg { display: flex; flex-direction: column; gap: 10px; }
-.lg-reg-doc { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; }
-.lg-reg-doc-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font: 500 12.5px/1 var(--font-sans); color: var(--mud-palette-text-primary); border-bottom: 1px solid var(--mud-palette-divider); }
-.lg-reg-doc-head .material-icons { font-size: 16px; color: var(--tide-400); }
-.lg-reg-scroll { max-height: 108px; overflow-y: auto; padding: 10px 12px; font: 400 11.5px/1.55 var(--font-mono); white-space: pre-wrap; word-break: break-word; color: var(--mud-palette-text-secondary); }
-.lg-reg-scroll.prose { font-family: var(--font-sans); font-size: 12px; }
 .lg-reg-check { padding: 9px 12px; border-top: 1px solid var(--mud-palette-divider); }
 
 @media (max-width: 620px) {

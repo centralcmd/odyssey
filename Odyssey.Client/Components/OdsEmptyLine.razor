@@ -32,7 +32,7 @@
     /// <summary>Leading (inside a frame) or centered (standing in for a whole list).</summary>
     [Parameter] public OdsEmptyLineAlign Align { get; set; } = OdsEmptyLineAlign.Start;
 
-    /// <summary>Padding step — Md inside a frame, Lg for a whole list, Sm where the frame is tight.</summary>
+    /// <summary>Padding step — Md inside a frame, Lg for a whole list. Sm still emits <c>pad-sm</c>, but the design system retired its rule, so it reads as Md.</summary>
     [Parameter] public OdsSize Pad { get; set; } = OdsSize.Md;
 
     /// <summary>DOM id — a focus or jump target for a link that lands on the empty section.</summary>

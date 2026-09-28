@@ -77,6 +77,46 @@ public class OdsTypeRegistriesTests
     }
 
     /// <summary>
+    /// The registry entries whose icon is a plain typographic glyph rather than a Material Icons
+    /// ligature. Each is named here, member by member, so a stray non-ligature character anywhere else
+    /// still fails <see cref="Every_registry_entry_is_fully_populated"/>.
+    /// </summary>
+    private static readonly HashSet<(string Registry, string Key, string Icon)> GlyphIcons =
+    [
+        (nameof(OdsTypeRegistries.ContractEventTypes), nameof(ContractEventType.TermChanged), "§"),
+    ];
+
+    /// <summary>
+    /// A term change reads as the section sign, the design system's glyph for a term. It renders only
+    /// because <c>.material-icons</c> falls back to a text font — see
+    /// <see cref="Icon_font_falls_back_to_a_text_font_so_a_glyph_icon_renders"/>.
+    /// </summary>
+    [Fact]
+    public void TermChanged_reads_as_the_section_sign() =>
+        Assert.Equal("§", OdsTypeRegistries.ContractEventTypeOf(ContractEventType.TermChanged).Icon);
+
+    /// <summary>
+    /// A glyph icon such as <c>§</c> is not in the Material Icons font, so it renders only when
+    /// <c>.material-icons</c> takes its family from <c>--font-icons</c> and that token lists a text
+    /// font after the icon font. Either line reverted by a later sync renders the glyph blank, silently.
+    /// </summary>
+    [Fact]
+    public void Icon_font_falls_back_to_a_text_font_so_a_glyph_icon_renders()
+    {
+        var fonts = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "fonts.css"));
+        var rule = Regex.Match(fonts, @"\.material-icons\s*\{(?<body>[^}]*)\}");
+        Assert.True(rule.Success, "fonts.css has no .material-icons rule.");
+        Assert.Matches(@"font-family:\s*var\(--font-icons\b", rule.Groups["body"].Value);
+
+        var app = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "app.css"));
+        var token = Regex.Match(app, @"--font-icons:\s*(?<value>[^;]+);");
+        Assert.True(token.Success, "app.css does not define --font-icons.");
+        var families = token.Groups["value"].Value.Split(',').Select(f => f.Trim().Trim('\'', '"')).ToList();
+        Assert.Equal("Material Icons", families[0]);
+        Assert.Contains("Roboto", families.Skip(1));
+    }
+
+    /// <summary>
     /// A blank glyph renders as the raw ligature text inside the badge, and a blank colour drops the
     /// badge to the browser default — both visible, neither detectable at compile time.
     /// </summary>
@@ -89,7 +129,10 @@ public class OdsTypeRegistriesTests
         foreach (var option in Registry(registryName))
         {
             Assert.False(string.IsNullOrWhiteSpace(option.Label), $"{registryName}.{option.Key} has no label");
-            Assert.Matches("^[a-z0-9_]+$", option.Icon);   // Material Icons ligature
+            if (!GlyphIcons.Contains((registryName, option.Key, option.Icon)))
+            {
+                Assert.Matches("^[a-z0-9_]+$", option.Icon);   // Material Icons ligature
+            }
             Assert.StartsWith("oklch(", option.Color);
             Assert.StartsWith("oklch(", option.Soft);
         }
@@ -215,7 +258,7 @@ public class OdsTypeRegistriesTests
         var declared = Regex.Matches(
                 File.ReadAllText(path),
                 @"\{\s*key:\s*'(?<key>\w+)',\s*label:\s*'(?<label>[^']*)',\s*enumValue:\s*(?<ordinal>\d+),"
-                + @"\s*icon:\s*'(?<icon>\w+)',\s*color:\s*'(?<color>[^']*)',\s*soft:\s*'(?<soft>[^']*)'")
+                + @"\s*icon:\s*'(?<icon>[^']+)',\s*color:\s*'(?<color>[^']*)',\s*soft:\s*'(?<soft>[^']*)'")
             .Select(m => (
                 Key: m.Groups["key"].Value,
                 Label: m.Groups["label"].Value,
@@ -300,7 +343,7 @@ public class OdsTypeRegistriesTests
         var declared = Regex.Matches(
                 File.ReadAllText(path),
                 @"\{\s*key:\s*'(?<key>\w+)',\s*label:\s*'(?<label>[^']*)',\s*enumValue:\s*(?<ordinal>\d+),"
-                + @"\s*icon:\s*'(?<icon>\w+)',\s*color:\s*'(?<color>[^']*)',\s*soft:\s*'(?<soft>[^']*)'")
+                + @"\s*icon:\s*'(?<icon>[^']+)',\s*color:\s*'(?<color>[^']*)',\s*soft:\s*'(?<soft>[^']*)'")
             .Select(m => (
                 Key: m.Groups["key"].Value,
                 Label: m.Groups["label"].Value.Replace("\u2019", "'", StringComparison.Ordinal),
