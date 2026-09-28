@@ -65,7 +65,8 @@ for understanding what the designer intended by the change.
 | `components/<Name>.jsx` (new or revised atom) | `Components/Ods<Name>.razor` (+ scoped `Ods<Name>.razor.css`) — create it if the atom is new |
 | Rules in `components.css` | `wwwroot/css/odyssey-components.css` (global) or the relevant scoped `.razor.css` |
 | A new/changed `preview/*.html` page or state | The consuming page/component that renders that pattern |
-| `_ds_manifest.json` gained a component | A new `Ods*` wrapper is owed — confirm none of the 136 existing atoms already covers it |
+| `ui_kits/web/*.jsx` / `*-data.js` (screen and mock-data changes) | The consuming page. Mock data itself needs no port — but a screen that now **derives** something from the mocks the API does not serve (per-item converted values, a filtered window) is a backend requirement hiding in a JS file. Name it and **ask the user** whether it is in scope before building the page against data that does not exist |
+| `_ds_manifest.json` gained a component | A new `Ods*` wrapper is owed — confirm none of the 143 existing atoms already covers it |
 
 ```bash
 ls Odyssey.Client/Components/Ods*.razor
