@@ -389,7 +389,7 @@
 .odc-delta .material-icons { font-size: var(--icon-sm); }
 .odc-delta-suffix { color: var(--mud-palette-text-secondary); font-family: var(--font-sans); }
 .odc-delta.reconciled { color: var(--finance-income); }
-.odc-delta.diff       { color: var(--finance-pending); }
+.odc-delta.diff       { color: var(--pending-text); }
 .odc-delta.income, .odc-delta.up   { color: var(--finance-income); }
 .odc-delta.expense, .odc-delta.down { color: var(--finance-expense); }
 .odc-delta.flat { color: var(--mud-palette-text-secondary); }
@@ -3683,7 +3683,7 @@ tr:focus-within > .odc-rowactions.reveal,
     font-size: 0.6875rem; font-weight: 500; line-height: 1.2; white-space: nowrap;
 }
 .acct-flag .material-icons { font-size: 13px; }
-.acct-flag.warning { background: var(--finance-pending-soft); color: var(--finance-pending); }
+.acct-flag.warning { background: var(--finance-pending-soft); color: var(--pending-text); }
 .acct-flag.error   { background: var(--finance-expense-soft); color: var(--finance-expense); }
 .acct-flag.info    { background: color-mix(in srgb, var(--mud-palette-info) 16%, transparent); color: var(--mud-palette-info); }
 
@@ -4157,7 +4157,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record-value { font: var(--fw-medium) var(--fs-figure)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
 .odc-record-value.income  { color: var(--finance-income); }
 .odc-record-value.expense { color: var(--finance-expense); }
-.odc-record-value.pending { color: var(--finance-pending); }
+.odc-record-value.pending { color: var(--pending-text); }
 .odc-record-value.info    { color: var(--sea-400); }
 .odc-record-value.muted   { color: var(--mud-palette-text-secondary); }
 .odc-record-caption {
