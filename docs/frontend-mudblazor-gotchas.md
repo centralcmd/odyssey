@@ -39,7 +39,7 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
 
 ## Project conventions
 
-- **Component library:** `Odyssey.Client/Components/` — 143 `Ods*.razor` atoms today. Shared model
+- **Component library:** `Odyssey.Client/Components/` — 137 `Ods*.razor` atoms today. Shared model
   types live in `OdsModels.cs`; enum icon/colour/label metadata belongs in `OdsTypeRegistries.cs`
   (and the `*Visuals` types beside it), never hardcoded at a call site.
 - **A registry `Icon` may be one typographic glyph, not a ligature** — `ContractEventTypes`'
@@ -54,6 +54,21 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
   utilities map 1:1. There is no `--spacing-*` family — a `var(--spacing-md)` will simply resolve to
   nothing.
 - **No raw hex, no raw `px`** in component or page CSS. Values flow from tokens.
+- **Glyph and small-type sizes have their own scales.** A Material Icons glyph takes `--icon-xs` …
+  `--icon-2xl` (14 / 16 / 18 / 20 / 24 / 28px), and type below the MudBlazor steps takes `--fs-micro`
+  (10px), `--fs-label` (13px), `--fs-figure` (22px) or `--fs-amount` (30px). An odd size snaps to the
+  scale rather than getting a literal. Control geometry reads `--control-h`, `--control-pad-y`,
+  `--iconbtn-size` and `--cell-pad-y`, which `[data-density='compact']` switches to the dense step.
+- **`.material-icons` sizes at zero specificity** (`:where(.material-icons)` in `wwwroot/css/fonts.css`,
+  mirroring the design system's `icons.css`), so any component rule that sizes a glyph wins without
+  `!important`. Don't add one back.
+- **Every `*-soft` / `*-border` tint is derived**, not written: `color-mix` of its base colour at the
+  theme's `--tint-soft` / `--tint-border` strength (`app.css`, "Derived tints"). Change the base or the
+  strength, never the tint, and don't reintroduce an `rgba()` literal for one.
+- **`--rec` / `--rec-soft` are component API, not tokens.** `OdsRecordCard` / `OdsRecordBody` publish
+  them from the record's type colour and nothing declares a default, so every use site writes the
+  brand fallback: `var(--rec, var(--brand-text))`,
+  `var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent))`.
 - **Brand colours are brand only.** Tide (teal) and Sea (cyan) never encode income or expense — mint
   and coral do. No emoji, no gradients in product chrome. Numbers tabular; negatives use `−` plus
   the expense colour.
