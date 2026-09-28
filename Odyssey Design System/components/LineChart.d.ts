@@ -47,6 +47,19 @@ export interface LineChartProps {
   deltaSuffix?: string;
   /** Override the headline figure node (else the latest point, via `format`). */
   figure?: React.ReactNode;
+  /** Show the headline figure + delta in the head. Default true. Turn off when
+   *  `legend` carries them. */
+  showFigure?: boolean;
+  /** Ledger row under the plot (as StepChart): swatch · name · value in force ·
+   *  change since the first point (+ `deltaSuffix`). Change is withheld when an
+   *  endpoint is `partial`. The marker key (`markLegend`) joins this row
+   *  instead of its own. Default false. */
+  legend?: boolean;
+  /** Name in the legend row. Defaults to `title`. */
+  legendLabel?: React.ReactNode;
+  /** Controls rendered above the headline figure, right of the head — e.g. an
+   *  interval `SegmentedControl`. Also shown on an empty series. */
+  controlsEnd?: React.ReactNode;
   /** Render every Nth category label (the last is always shown). Default 1.
    *  `'auto'` derives a stride from the point count that never leaves two
    *  adjacent labels at the tail. */

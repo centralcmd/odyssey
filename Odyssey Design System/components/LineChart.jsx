@@ -29,6 +29,8 @@
  *     table of every point and its state. Opt-in, so existing consumers'
  *     assistive-tech output is unchanged.
  *
+ * `controlsEnd` sits above the figure (e.g. an interval SegmentedControl).
+ *
  * `sub` is a node, so a consumer can hand it note sentences rather than a
  * single caption string. `xTickEvery="auto"` picks a stride that never leaves
  * two adjacent labels at the tail.
@@ -67,6 +69,10 @@ export function LineChart({
   showDelta = false,
   deltaSuffix,
   figure,
+  showFigure = true,
+  legend = false,
+  legendLabel,
+  controlsEnd,
   xTickEvery = 1,
   area = true,
   markLegend = true,
@@ -78,6 +84,7 @@ export function LineChart({
 }) {
   const uid = React.useId();
   const fmtAxis = axisFormat || format;
+  const [hover, setHover] = React.useState(null);   // index of the hovered point
 
   // Build the plotted points (oldest → newest), applying the running total in
   // cumulative mode. Partial and revalued points are plotted and marked, never
@@ -108,10 +115,11 @@ export function LineChart({
         {title ? <div className="odc-lc-ttl">{title}</div> : null}
         {sub ? <div className="odc-lc-sub">{sub}</div> : null}
       </div>
-      {(figure != null || pts.length > 0) && (
+      {(controlsEnd || (showFigure && (figure != null || pts.length > 0))) && (
         <div className="odc-lc-figure">
-          <div className="odc-lc-num">{figure != null ? figure : format(last.value)}</div>
-          {deltaOk && (() => {
+          {controlsEnd ? <div className="odc-lc-controls end">{controlsEnd}</div> : null}
+          {showFigure && (figure != null || pts.length > 0) && <div className="odc-lc-num">{figure != null ? figure : format(last.value)}</div>}
+          {showFigure && deltaOk && (() => {
             const delta = last.value - first.value;
             return (
               <div className={`odc-lc-delta ${delta >= 0 ? 'income' : 'expense'}`}>
@@ -164,6 +172,30 @@ export function LineChart({
   const anyMarked = pts.some((p) => p.kind !== 'normal');
   const fillId = `odc-lc-fill-${uid.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
+  const markItems = (
+    <React.Fragment>
+          {pts.some((p) => p.kind === 'partial') && (
+            <span className="odc-lc-mark">
+              <svg width="26" height="10" viewBox="0 0 26 10" aria-hidden="true">
+                <line x1="0" y1="5" x2="26" y2="5" stroke={color} strokeWidth="2" strokeDasharray="2 5" />
+                <circle cx="13" cy="5" r="3.6" fill="var(--mud-palette-surface)" stroke={color} strokeWidth="1.6" />
+              </svg>
+              Understated
+            </span>
+          )}
+          {pts.some((p) => p.kind === 'revalued') && (
+            <span className="odc-lc-mark">
+              <svg width="26" height="10" viewBox="0 0 26 10" aria-hidden="true">
+                <line x1="0" y1="5" x2="26" y2="5" stroke={color} strokeWidth="2" />
+                <line x1="13" y1="0" x2="13" y2="10" stroke={color} strokeWidth="1.6" />
+                <circle cx="13" cy="5" r="2.6" fill={color} />
+              </svg>
+              Revalued
+            </span>
+          )}
+    </React.Fragment>
+  );
+
   const segments = [];
   for (let i = 1; i < pts.length; i++) {
     const understated = pts[i - 1].kind === 'partial' || pts[i].kind === 'partial';
@@ -173,6 +205,7 @@ export function LineChart({
   return (
     <div className={`odc-lc${className ? ' ' + className : ''}`}>
       {head}
+      <div className="odc-lc-plot" onMouseLeave={() => setHover(null)}>
       <svg className="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
         role="img" aria-label={ariaLabel || (title ? `${title} — line chart` : 'Line chart')}>
         <g stroke="var(--chart-grid)" strokeWidth="1">
@@ -240,30 +273,59 @@ export function LineChart({
           }
           return <circle key={i} cx={cx} cy={cy} r={r} fill={color} />;
         })}
+        {hover != null && pts[hover] && (
+          <circle className="odc-lc-hring" cx={sx(hover).toFixed(1)} cy={sy(pts[hover].value).toFixed(1)} r="7.5" stroke={color} />
+        )}
+        {/* Hover targets — full-height columns, so a point is found by x alone. */}
+        {pts.map((p, i) => {
+          const half = single ? (x1 - x0) / 2 : (x1 - x0) / (pts.length - 1) / 2;
+          return (
+            <rect key={`hit-${i}`} className="odc-lc-hit" x={(sx(i) - half).toFixed(1)} y={yTop - 14}
+              width={(half * 2).toFixed(1)} height={yBot - yTop + 14} onMouseEnter={() => setHover(i)} />
+          );
+        })}
       </svg>
+      {hover != null && pts[hover] && (() => {
+        const p = pts[hover];
+        const left = sx(hover) / 10;
+        const top = (sy(p.value) / 252) * 100;
+        const before = hover > 0 ? pts[hover - 1] : null;
+        const d = before ? p.value - before.value : 0;
+        const edge = left < 14 ? ' start' : left > 86 ? ' end' : '';
+        return (
+          <div className={`odc-lc-tip${edge}`} style={{ left: `${left}%`, top: `${top}%` }} role="status">
+            <div className="odc-lc-tip-k">{p.label}{p.kind !== 'normal' ? ` \u00b7 ${LINE_CHART_KINDS[p.kind].label}` : ''}</div>
+            <div className="odc-lc-tip-v" style={{ color: color }}>
+              {format(p.value)}
+              {before && d !== 0 && <span className="odc-lc-tip-d">{d > 0 ? '+' : '\u2212'}{format(Math.abs(d))}</span>}
+            </div>
+          </div>
+        );
+      })()}
+      </div>
 
-      {markLegend && anyMarked && (
-        <div className="odc-lc-marks">
-          {pts.some((p) => p.kind === 'partial') && (
-            <span className="odc-lc-mark">
-              <svg width="26" height="10" viewBox="0 0 26 10" aria-hidden="true">
-                <line x1="0" y1="5" x2="26" y2="5" stroke={color} strokeWidth="2" strokeDasharray="2 5" />
-                <circle cx="13" cy="5" r="3.6" fill="var(--mud-palette-surface)" stroke={color} strokeWidth="1.6" />
-              </svg>
-              Understated
-            </span>
-          )}
-          {pts.some((p) => p.kind === 'revalued') && (
-            <span className="odc-lc-mark">
-              <svg width="26" height="10" viewBox="0 0 26 10" aria-hidden="true">
-                <line x1="0" y1="5" x2="26" y2="5" stroke={color} strokeWidth="2" />
-                <line x1="13" y1="0" x2="13" y2="10" stroke={color} strokeWidth="1.6" />
-                <circle cx="13" cy="5" r="2.6" fill={color} />
-              </svg>
-              Revalued
-            </span>
-          )}
+      {/* Legend — the StepChart ledger row: swatch · name · value · change.
+          Carries the figure when `showFigure={false}`. */}
+      {legend && (
+        <div className="odc-sc-legend">
+          <span className="odc-sc-leg">
+            <span className="odc-sc-swatch" style={{ background: color }}></span>
+            <span className="odc-sc-leg-name">{legendLabel || title}</span>
+            <span className="odc-sc-leg-val" style={{ color }}>{format(last.value)}</span>
+            {pts.length > 1 && (
+              <span className="odc-sc-leg-idx">
+                {first.kind === 'partial' || last.kind === 'partial'
+                  ? 'change withheld'
+                  : (() => { const d = last.value - first.value; return `${d > 0 ? '+' : d < 0 ? '\u2212' : ''}${format(Math.abs(d))}${deltaSuffix ? ` ${deltaSuffix}` : ''}`; })()}
+              </span>
+            )}
+          </span>
+          {markLegend && anyMarked ? markItems : null}
         </div>
+      )}
+
+      {markLegend && anyMarked && !legend && (
+        <div className="odc-lc-marks">{markItems}</div>
       )}
 
       {textEquivalent && (

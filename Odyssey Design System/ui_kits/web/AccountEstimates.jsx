@@ -197,10 +197,28 @@ const EstimateHero = ({ estimates, account, chartMode, chartStyle = 'estimate' }
   if (!series.length) return null;
   const ti = estTypeInfo(account);
   const color = 'var(--rec, var(--finance-income))';
-  const current = series[series.length - 1];
-  const prev = series.length > 1 ? series[series.length - 2] : null;
+  /* In force = latest entry on/before today; a scheduled entry never headlines. */
+  const today = new Date().toISOString().slice(0, 10);
+  const pastCount = series.filter((p) => p.date <= today).length;
+  const ci = pastCount > 0 ? pastCount - 1 : 0;
+  const current = series[ci];
+  const prev = ci > 0 ? series[ci - 1] : null;
   const diff = prev ? current.value - prev.value : 0;
   const dir = !prev ? 'flat' : diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
+
+  /* chartStyle="history" — the DS TermHistoryChart card, as on Properties' value history. */
+  const DS = window.OdysseyDesignSystem_d5aa51 || {};
+  if (chartStyle === 'history' && DS.TermHistoryChart) {
+    const cur = account.currency;
+    const hSeries = [{
+      key: 'value', label: 'Estimated value', value: EST_H.money(current.value, cur),
+      color: ti.color, group: `amt:${cur}`,
+      points: series.map((p) => ({ id: p.id, date: p.date, value: p.value, note: p.note })),
+      format: (v) => EST_H.money(v, cur),
+      axisFormat: (v) => { const a = Math.abs(v), s = v < 0 ? '\u2212' : ''; return s + (a >= 1e6 ? (a / 1e6).toFixed(2) + 'M' : a >= 1e4 ? Math.round(a / 1e3) + 'K' : a.toLocaleString('en-US', { maximumFractionDigits: 0 })); },
+    }];
+    return <DS.TermHistoryChart className="trm-seriesplot" series={hSeries} pickerLabel="Value" glyph="\u00a4" curve="smooth" />;
+  }
 
   /* chartStyle="term" — the contract-term hero card verbatim (trm-* classes), value in money. */
   if (chartStyle === 'term' && window.TermStepChart) {

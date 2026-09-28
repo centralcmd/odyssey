@@ -238,6 +238,7 @@ Consumable, typed components in `/components` (`.jsx` + `.d.ts`), exported on `w
 | `StepChart` | The dated-value card — LineChart's shell on a real time axis: staircase line, today marker (solid up to it, dashed past), hollow dot on a scheduled entry, in-force (never scheduled) figure + latest-change delta, `lines` to compare several histories, `scale` auto · indexed · absolute, `controls` / `controlsEnd` head slots, `showFigure` | `components/stepchart.html` |
 | `TermHistoryChart` | `StepChart` whose head is its controls — quiet § Terms multi-select (what is plotted) left, Change / Value toggle (how it reads) right. Takes plain resolved series; owns one-unit-per-axis, stable leased colours, a four-line cap, never-empty. Backs the contract terms chart | `components/termhistorychart.html` |
 | `Donut` · `DonutLegend` | Allocation ring (watermark hole) + slice ledger · the ledger standalone | `preview/26` |
+| `AllocationDonuts` | Asset / liability pair — two recessed wells, each a stacked `Donut`. Plain one-currency slices in; the sub-line states what is counted and excluded. Accounts (accounts only) and Dashboard (accounts + owned property) | `components/allocationdonuts.html` |
 | `Timeline` · `TimelineItem` | Vertical rail history list — the alternative rendering of an effective-dated record table | `components/timeline.html` |
 
 ### Token map — the ones you reach for most

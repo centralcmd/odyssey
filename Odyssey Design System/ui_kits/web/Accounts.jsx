@@ -246,38 +246,48 @@ const DonutPanel = ({ title, sub, centerLabel, centerIcon, colors, items }) => {
   );
 };
 
-/* ---- Asset & liability donuts, fed from the account balances ---- */
-const AllocationDonuts = () => {
-  const d = window.OdysseyData;
-  const live = d.accounts.filter(a => !a.archived);
-  const assets = live.filter(a => a.balance > 0).sort((a, b) => b.balance - a.balance)
-    .map(a => ({ name: a.name, value: a.balance, color: typeInfo(a.type).color }));
-  const liabilities = live.filter(a => a.balance < 0).sort((a, b) => a.balance - b.balance)
-    .map(a => ({ name: a.name, value: Math.abs(a.balance), color: typeInfo(a.type).color }));
+/* ---- Asset & liability donuts, fed from the account balances ----
+   `includeProperties` (Dashboard) adds every owned property at its in-force
+   estimate, converted to the main currency at the latest rate. A property whose
+   currency has no rate is left out and named in the sub-line — never 1:1. */
+const allocPropertyAssets = () => {
+  const d = window.OdysseyData, H = window.OdysseyHelpers;
+  if (!d.properties || !H.propCurrentEstimate) return { items: [], missing: [] };
+  const main = (d.userPreferences || {}).mainCurrency || 'USD';
+  const rateOf = (f, t) => {
+    const pick = (x, y) => (d.exchangeRates || []).filter(r => r.from === x && r.to === y).sort((p, q) => (p.asOf < q.asOf ? 1 : -1))[0];
+    const r = pick(f, t); if (r) return r.rate;
+    const i = pick(t, f); return i ? 1 / i.rate : null;
+  };
+  const items = [], missing = [];
+  d.properties.filter(p => H.propStatus(p) === 'Owned').forEach(p => {
+    const c = H.propCurrentEstimate((d.propertyEstimates || {})[p.id] || []);
+    if (!c || !(c.value > 0)) return;
+    const rate = p.currencyCode === main ? 1 : rateOf(p.currencyCode, main);
+    if (rate == null) { missing.push(p.name); return; }
+    items.push({ name: p.name, value: Math.round(c.value * rate * 100) / 100, color: H.propTypeInfo(p.type).color });
+  });
+  return { items, missing };
+};
 
+const AllocationDonuts = ({ includeProperties = false }) => {
+  const d = window.OdysseyData;
+  const DSAllocationDonuts = (window.OdysseyDesignSystem_d5aa51 || {}).AllocationDonuts;
+  const live = d.accounts.filter(a => !a.archived);
+  const acctAssets = live.filter(a => a.balance > 0)
+    .map(a => ({ label: a.name, value: a.balance, color: typeInfo(a.type).color }));
+  const liabilities = live.filter(a => a.balance < 0)
+    .map(a => ({ label: a.name, value: Math.abs(a.balance), color: typeInfo(a.type).color }));
+  const props = includeProperties ? allocPropertyAssets() : { items: [], missing: [] };
+  const assets = acctAssets.concat(props.items.map(p => ({ label: p.name, value: p.value, color: p.color })));
+  const assetSub = includeProperties
+    ? `Accounts and property · ${acctAssets.length} accounts, ${props.items.length} properties${props.missing.length ? ` · ${props.missing.join(', ')} excl. (no rate)` : ''}`
+    : `Where your money sits · ${assets.length} accounts`;
+  if (!DSAllocationDonuts) return null;
   return (
-    <div className="acct-donuts-row">
-      <div className="acct-donut-card">
-        <DonutPanel
-          title="Asset allocation"
-          sub={`Where your money sits · ${assets.length} accounts`}
-          centerLabel="Total assets"
-          centerIcon="account_balance_wallet"
-          colors={ASSET_COLORS}
-          items={assets}
-        />
-      </div>
-      <div className="acct-donut-card">
-        <DonutPanel
-          title="Liability allocation"
-          sub={`What you owe · ${liabilities.length} accounts`}
-          centerLabel="Total owed"
-          centerIcon="credit_card"
-          colors={LIAB_COLORS}
-          items={liabilities}
-        />
-      </div>
-    </div>
+    <DSAllocationDonuts assets={assets} liabilities={liabilities} format={(v) => H.money(v)}
+      assetsSub={assetSub} liabilitiesSub={`What you owe · ${liabilities.length} accounts`}
+      assetColors={ASSET_COLORS} liabilityColors={LIAB_COLORS} />
   );
 };
 
@@ -537,7 +547,7 @@ const AccountDetail = ({ a, problem, onFix, onNavigate, txns, onSaveTxn, onDelet
 
       {estimates.length > 0 ? (
         <RecordSection className="acct-section" label="Estimates" meta={`${estimates.length} ${estimates.length === 1 ? 'estimate' : 'estimates'}`}>
-          <AccountEstimates account={a} estimates={estimates} txns={txns} chrome={false} bareAction={false} showCurrent={false}
+          <AccountEstimates account={a} estimates={estimates} txns={txns} chrome={false} bareAction={false} showCurrent={false} chartStyle="history"
             onNew={onNewEstimate} onEdit={onEditEstimate} onDelete={onDeleteEstimate} />
         </RecordSection>
       ) : null}
@@ -998,4 +1008,4 @@ const Accounts = ({ onNavigate }) => {
   );
 };
 
-Object.assign(window, { Accounts, ACCOUNT_TYPE_LABEL, MultiSelect, DonutPanel, FilesTable, FILE_ICON, FILE_ICON_FALLBACK });
+Object.assign(window, { Accounts, ACCOUNT_TYPE_LABEL, MultiSelect, DonutPanel, AllocationDonuts, FilesTable, FILE_ICON, FILE_ICON_FALLBACK });

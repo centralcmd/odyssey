@@ -1458,6 +1458,17 @@ window.OdysseyData.accountEstimates = {
   // The house (formerly account '7', type Property) now lives on property 'p-maple'
   // with its own estimate history — see properties-data.js.
   // Chase Checking ('1') intentionally has no estimates — drives the empty state.
+  // Wells Fargo Brokerage (opened 2021-06-15, balance 21,453) — valuation history
+  // with a scheduled entry ahead of today.
+  'acc-demo-24': [
+    { id: 'ae-wfb-1', accountId: 'acc-demo-24', value: 12000, currencyCode: 'USD', effectiveFrom: '2021-06-15', note: 'Opening deposit', createdAtUtc: '2021-06-15T09:00:00Z' },
+    { id: 'ae-wfb-2', accountId: 'acc-demo-24', value: 13850, currencyCode: 'USD', effectiveFrom: '2022-01-03', note: 'Year-end statement', createdAtUtc: '2022-01-03T09:00:00Z' },
+    { id: 'ae-wfb-3', accountId: 'acc-demo-24', value: 11920, currencyCode: 'USD', effectiveFrom: '2022-10-04', note: 'Q3 statement — market drawdown', createdAtUtc: '2022-10-04T09:00:00Z' },
+    { id: 'ae-wfb-4', accountId: 'acc-demo-24', value: 15400, currencyCode: 'USD', effectiveFrom: '2023-12-29', note: 'Year-end statement', createdAtUtc: '2023-12-29T09:00:00Z' },
+    { id: 'ae-wfb-5', accountId: 'acc-demo-24', value: 18760, currencyCode: 'USD', effectiveFrom: '2025-01-02', note: 'Year-end statement', createdAtUtc: '2025-01-02T09:00:00Z' },
+    { id: 'ae-wfb-6', accountId: 'acc-demo-24', value: 21453, currencyCode: 'USD', effectiveFrom: '2026-07-01', note: 'Q2 statement', createdAtUtc: '2026-07-01T09:00:00Z' },
+    { id: 'ae-wfb-7', accountId: 'acc-demo-24', value: 22300, currencyCode: 'USD', effectiveFrom: '2026-12-31', note: 'Projected year-end, advisor estimate', createdAtUtc: '2026-09-20T09:00:00Z' },
+  ],
 };
 
 Object.assign(window.OdysseyHelpers, {

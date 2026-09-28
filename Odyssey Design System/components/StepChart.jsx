@@ -119,6 +119,7 @@ function scMonotone(pts, n = 16) {
   }
   return out;
 }
+const scDayFmt = (iso) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 const scSort = (pts) => (pts || [])
   .filter((p) => p && p.value != null && p.date)
   .slice()
@@ -152,6 +153,7 @@ export function StepChart({
 }) {
   const uid = React.useId();
   const fmtAxis = axisFormat || format;
+  const [hover, setHover] = React.useState(null);   // { sid, i } of the hovered entry
 
   /* `lines` says what to plot; the COUNT says how to read it. One line has a
      headline figure and a real-value axis whether it arrived as `series` or as
@@ -343,6 +345,7 @@ export function StepChart({
     <div className={`odc-lc${className ? ' ' + className : ''}`}>
       {head}
 
+      <div className="odc-lc-plot" onMouseLeave={() => setHover(null)}>
       <svg className="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
         role="img" aria-label={autoAria}>
         <g stroke="var(--chart-grid)" strokeWidth="1">
@@ -394,7 +397,48 @@ export function StepChart({
             })}
           </g>
         ))}
+
+        {/* Hover targets — generous invisible discs over each entry. */}
+        {plots.map((s) => (
+          <g key={`hit-${s.id}`} transform={s.dodge ? `translate(0 ${s.dodge.toFixed(2)})` : undefined}>
+            {s.pts.map((p, i) => {
+              const cx = sx(scMs(p.date)).toFixed(1), cy = sy(plotted(s, p.value)).toFixed(1);
+              const on = hover && hover.sid === s.id && hover.i === i;
+              return (
+                <React.Fragment key={`${s.id}-${p.id || i}`}>
+                  {on && <circle className="odc-lc-hring" cx={cx} cy={cy} r="7.5" stroke={s.color} />}
+                  <circle className="odc-lc-hit" cx={cx} cy={cy} r="14"
+                    onMouseEnter={() => setHover({ sid: s.id, i })} />
+                </React.Fragment>
+              );
+            })}
+          </g>
+        ))}
       </svg>
+      {(() => {
+        const s = hover && plots.find((q) => q.id === hover.sid);
+        const p = s && s.pts[hover.i];
+        if (!p) return null;
+        const left = sx(scMs(p.date)) / 10;
+        const top = ((sy(plotted(s, p.value)) + (s.dodge || 0)) / 252) * 100;
+        const before = hover.i > 0 ? s.pts[hover.i - 1] : null;
+        const d = before ? p.value - before.value : 0;
+        const edge = left < 14 ? ' start' : left > 86 ? ' end' : '';
+        return (
+          <div className={`odc-lc-tip${edge}`} style={{ left: `${left}%`, top: `${top}%` }} role="status">
+            <div className="odc-lc-tip-k">
+              {multi && s.label ? `${s.label} \u00b7 ` : ''}{scDayFmt(p.date)}{scMs(p.date) > now ? ' \u00b7 Scheduled' : ''}
+            </div>
+            <div className="odc-lc-tip-v" style={{ color: s.color }}>
+              {format(p.value)}
+              {before && d !== 0 && <span className="odc-lc-tip-d">{d > 0 ? '+' : '\u2212'}{format(Math.abs(d))}</span>}
+              {indexed && multi && hover.i > 0 && <span className="odc-lc-tip-d">{fmtIndexed(moveOf(s, p.value))}</span>}
+            </div>
+            {p.note ? <div className="odc-lc-tip-k">{p.note}</div> : null}
+          </div>
+        );
+      })()}
+      </div>
 
       {/* The legend IS the readout when several lines share the axis, and it
           still earns its place with one: the swatch ties the line to its name,

@@ -99,6 +99,10 @@
         "message": "<Alert> severity must be one of 'info' | 'success' | 'warning' | 'error'."
       },
       {
+        "selector": "JSXOpeningElement[name.name='AllocationDonuts'] > JSXAttribute > JSXIdentifier[name!=/^(?:assets|liabilities|assetsTitle|liabilitiesTitle|assetsSub|liabilitiesSub|assetsTotalLabel|liabilitiesTotalLabel|assetsIcon|liabilitiesIcon|assetColors|liabilityColors|format|showAssets|showLiabilities|className|key|ref|className|style|children)$/]",
+        "message": "<AllocationDonuts> doesn't accept that prop. Declared props: assets, liabilities, assetsTitle, liabilitiesTitle, assetsSub, liabilitiesSub, assetsTotalLabel, liabilitiesTotalLabel, assetsIcon, liabilitiesIcon, assetColors, liabilityColors, format, showAssets, showLiabilities, className."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='AmountField'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|value|onChange|prefix|suffix|placeholder|size|align|allowNegative|direction|onDirectionChange|directionOptions|tone|help|error|required|optional|disabled|autoFocus|className|id|key|ref|className|style|children)$/]",
         "message": "<AmountField> doesn't accept that prop. Declared props: label, value, onChange, prefix, suffix, placeholder, size, align, allowNegative, direction, onDirectionChange, directionOptions, tone, help, error, required, optional, disabled, autoFocus, className, id."
       },
@@ -849,6 +853,9 @@
         "replaces": []
       },
       "Alert": {
+        "replaces": []
+      },
+      "AllocationDonuts": {
         "replaces": []
       },
       "AmountField": {

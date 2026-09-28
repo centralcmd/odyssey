@@ -70,7 +70,7 @@
       v -= NWH_PERIODS[i].move;
     }
 
-    const points = NWH_PERIODS.map(function (p, i) {
+    let points = NWH_PERIODS.map(function (p, i) {
       const net = values[i];
       const liabilities = Math.round(Math.abs(net) * NWH_LIABILITY_SHARE);
       return {
@@ -86,10 +86,26 @@
       };
     });
 
+    /* Range: `months` keeps the last N months — N+1 period ends, so the first
+       point is the figure N months ago and the delta spans the whole range. */
+    /* Custom window: `from` / `to` (ISO) keep the period ends inside it. */
+    if (o.from || o.to) {
+      const inWin = points.filter(function (p) { return (!o.from || p.date >= o.from) && (!o.to || p.date <= o.to); });
+      if (inWin.length) points = inWin;
+    }
+    if ((o.months > 0 && points.length > o.months + 1) || o.from) {
+      if (o.months > 0 && points.length > o.months + 1) points = points.slice(-(o.months + 1));
+      // The first label must carry its year once the one that did is cut off.
+      if (points[0].label.indexOf('\u2019') < 0) {
+        const c = new Date(points[0].date + 'T00:00:00'); c.setDate(c.getDate() - 1);
+        points[0] = Object.assign({}, points[0], { label: points[0].label + ' \u2019' + String(c.getFullYear()).slice(2) });
+      }
+    }
+
     return {
       mainCurrencyCode: 'USD',
       interval: 'Monthly',
-      from: NWH_PERIODS[0].date,
+      from: points[0].date,
       to: NWH_PERIODS[NWH_PERIODS.length - 1].date,
       emptyReason: null,
       points: points,
