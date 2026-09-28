@@ -81,12 +81,15 @@ public sealed class DerivedTintTokensTests
     }
 
     /// <summary>
-    /// Amber-700 (<c>--pending-text</c>) on the derived pending tint measures ~4.4:1 on white — under
-    /// WCAG 1.4.3's 4.5:1 — once the light <c>--finance-pending</c> is amber-600. Text on that tint takes
-    /// <c>--warning-text</c> (amber-800, ~6.2:1). Glyphs and dots may keep <c>--finance-pending</c>.
+    /// Amber-700 (<c>--pending-text</c>) on an amber-600 tint — <c>--finance-pending-soft</c>, or
+    /// <c>--status-closed-soft</c>, which derives from the same stop — measures ~4.4:1 on white, under WCAG
+    /// 1.4.3's 4.5:1. Text on either tint takes <c>--warning-text</c> (amber-800, ~6.2:1). The tint may be
+    /// on the rule itself or on its container, which the stylesheets name as the class prefix
+    /// (<c>.fan-degraded</c> → <c>.fan-degraded-text</c>). Icon rules are exempt: a glyph is a graphic
+    /// and needs only 3:1.
     /// </summary>
     [Fact]
-    public void Text_on_the_pending_tint_never_uses_pending_text()
+    public void Text_on_an_amber_tint_never_uses_pending_text()
     {
         var files = Directory.EnumerateFiles(ClientSource.Root, "*.css", SearchOption.AllDirectories)
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
@@ -94,20 +97,44 @@ public sealed class DerivedTintTokensTests
             .ToList();
         Assert.NotEmpty(files);
 
+        const string Tint = @"background(?:-color)?\s*:\s*var\(--(?:finance-pending|status-closed)-soft\)";
+        const string PendingText = @"(?<![-\w])color\s*:\s*var\(--pending-text\)";
+
         var offenders = new List<string>();
         foreach (var file in files)
         {
             var css = Regex.Replace(File.ReadAllText(file), @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
-            foreach (Match rule in Regex.Matches(css, @"(?<selector>[^{}]+)\{(?<body>[^}]*)\}"))
+            var rules = Regex.Matches(css, @"(?<selector>[^{}]+)\{(?<body>[^}]*)\}")
+                .Select(m => (Selector: Regex.Replace(m.Groups["selector"].Value, @"\s+", " ").Trim(), Body: m.Groups["body"].Value))
+                .ToList();
+
+            var tinted = rules.Where(r => Regex.IsMatch(r.Body, Tint))
+                .SelectMany(r => r.Selector.Split(','))
+                .Select(LeadClass)
+                .Where(c => c is not null)
+                .ToHashSet();
+
+            foreach (var (selector, body) in rules)
             {
-                var body = rule.Groups["body"].Value;
-                if (Regex.IsMatch(body, @"background(?:-color)?\s*:\s*var\(--finance-pending-soft\)")
-                    && Regex.IsMatch(body, @"(?<![-\w])color\s*:\s*var\(--pending-text\)"))
-                    offenders.Add($"{ClientSource.Relative(file)}: {rule.Groups["selector"].Value.Trim()}");
+                if (!Regex.IsMatch(body, PendingText) || selector.Contains("material-icons", StringComparison.Ordinal)
+                    || selector.Contains("mud-icon", StringComparison.Ordinal) || selector.EndsWith("-ic", StringComparison.Ordinal))
+                    continue;
+
+                var onTint = Regex.IsMatch(body, Tint)
+                    || selector.Split(',').Select(LeadClass).Any(c => c is not null && tinted.Any(t => c.StartsWith(t!, StringComparison.Ordinal)));
+                if (onTint)
+                    offenders.Add($"{ClientSource.Relative(file)}: {selector}");
             }
         }
 
         Assert.Empty(offenders);
+    }
+
+    /// <summary>The first class of a selector's first compound — <c>.fan-degraded</c> in <c>.fan-degraded b</c>.</summary>
+    private static string? LeadClass(string selector)
+    {
+        var match = Regex.Match(selector.Trim(), @"^\.(?<cls>[a-zA-Z][\w-]*)");
+        return match.Success ? match.Groups["cls"].Value : null;
     }
 
     private static List<(string Token, string Value)> DerivedBlock()
