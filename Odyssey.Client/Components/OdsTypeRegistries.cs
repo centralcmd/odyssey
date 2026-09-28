@@ -795,6 +795,28 @@ public static class OdsTypeRegistries
     public static readonly IReadOnlyList<OdsOption> ContractFileOptions = ToOptions(ContractFileTypes);
     public static readonly IReadOnlyList<OdsOption> PropertyFileOptions = ToOptions(PropertyFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractPartyRoleOptions = ToOptions(ContractPartyRoles);
+
+    /// <summary>
+    /// The document-type vocabulary for a file attached to <paramref name="kind"/> — the DS
+    /// <c>FILE_TYPE_REGISTRIES[kind].types</c>. Contract files keep their own
+    /// <see cref="ContractFileOptions"/>: the design system does not fold them into this set.
+    /// </summary>
+    public static IReadOnlyList<OdsOption> FileOptionsFor(OdsFileTypeKind kind) => kind switch
+    {
+        OdsFileTypeKind.Transaction => TransactionFileOptions,
+        OdsFileTypeKind.TaxStatement => TaxStatementFileOptions,
+        OdsFileTypeKind.Property => PropertyFileOptions,
+        _ => AccountFileOptions,
+    };
+
+    /// <summary>The multi-select filter's default trigger glyph per kind — the DS <c>filterIcon</c>.</summary>
+    public static string FileTypeFilterIcon(OdsFileTypeKind kind) => kind switch
+    {
+        OdsFileTypeKind.Transaction => "receipt_long",
+        OdsFileTypeKind.TaxStatement => "request_quote",
+        OdsFileTypeKind.Property => "home_work",
+        _ => "folder",
+    };
 }
 
 /// <summary>

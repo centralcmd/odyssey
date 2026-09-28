@@ -23,7 +23,7 @@
         @if (CanUpload)
         {
             <div class="file-upload-zone">
-                <OdsTaxStatementFileTypeSelect Label="Document type" @bind-Value="_selectedFileType" Class="mb-2" />
+                <OdsFileTypeSelect Kind="OdsFileTypeKind.TaxStatement" Label="Document type" @bind-Value="_selectedFileType" Class="mb-2" />
                 <MudFileUpload T="IReadOnlyList<IBrowserFile>"
                                FilesChanged="UploadFilesAsync"
                                Accept=".pdf,.jpg,.jpeg,.png,.webp"

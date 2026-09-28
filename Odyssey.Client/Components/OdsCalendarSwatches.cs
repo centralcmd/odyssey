@@ -3,9 +3,11 @@ namespace Odyssey.Client.Components;
 /// <summary>
 /// A curated, contrast-vetted calendar colour swatch (Odyssey Design System · ColorSwatchSelect).
 /// Each swatch ships a pre-computed foreground (<see cref="Fg"/>) that clears WCAG 1.4.3 against
-/// <see cref="Hex"/>, so a chip painted with the pair never has to compute contrast.
+/// <see cref="Hex"/>, so a chip painted with the pair never has to compute contrast. <see cref="Hex"/> is
+/// the persisted <c>Calendar.Color</c> value — a data contract, so it stays a literal — and
+/// <see cref="Token"/> names the ramp stop it must equal: change both together.
 /// </summary>
-public sealed record OdsCalendarSwatch(string Key, string Name, string Hex, string Fg);
+public sealed record OdsCalendarSwatch(string Key, string Name, string Hex, string Fg, string Token);
 
 /// <summary>
 /// The calendar palette + lookup helpers. Mapped onto the Odyssey ramps (sea / tide / mint / coral /
@@ -16,14 +18,14 @@ public static class OdsCalendarSwatches
 {
     public static readonly IReadOnlyList<OdsCalendarSwatch> All =
     [
-        new("blue", "Blue", "#0369A1", "#FFFFFF"),     // sea-700
-        new("teal", "Teal", "#006B5A", "#FFFFFF"),     // tide-deep
-        new("green", "Green", "#15803D", "#FFFFFF"),   // mint-700
-        new("coral", "Coral", "#B23B3B", "#FFFFFF"),   // coral-700
-        new("violet", "Violet", "#6D28D9", "#FFFFFF"), // violet-700
-        new("slate", "Slate", "#4A5670", "#FFFFFF"),   // ink-500
-        new("amber", "Amber", "#F59E0B", "#0E1525"),   // amber-500 · dark text
-        new("sky", "Sky", "#7DD3FC", "#0E1525"),       // sea-300 · dark text
+        new("blue", "Blue", "#0369A1", "#FFFFFF", "--sea-700"),
+        new("teal", "Teal", "#006B5A", "#FFFFFF", "--tide-deep"),
+        new("green", "Green", "#15803D", "#FFFFFF", "--mint-700"),
+        new("coral", "Coral", "#B23B3B", "#FFFFFF", "--coral-700"),
+        new("violet", "Violet", "#6D28D9", "#FFFFFF", "--violet-700"),
+        new("slate", "Slate", "#4A5670", "#FFFFFF", "--ink-500"),
+        new("amber", "Amber", "#F59E0B", "#0E1525", "--amber-500"), // dark text
+        new("sky", "Sky", "#7DD3FC", "#0E1525", "--sea-300"),     // dark text
     ];
 
     /// <summary>The default swatch hex (Blue).</summary>

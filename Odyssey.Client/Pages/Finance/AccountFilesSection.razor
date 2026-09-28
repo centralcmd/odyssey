@@ -21,7 +21,7 @@
             @if (CanUpload)
             {
                 <div class="file-upload-zone">
-                    <OdsAccountFileTypeSelect Label="File type" @bind-Value="_selectedFileType" Class="mb-2" />
+                    <OdsFileTypeSelect Kind="OdsFileTypeKind.Account" Label="File type" @bind-Value="_selectedFileType" Class="mb-2" />
                     <MudFileUpload T="IReadOnlyList<IBrowserFile>"
                                    FilesChanged="UploadFilesAsync"
                                    MaximumFileCount="@MaxFileCount"

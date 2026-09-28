@@ -273,7 +273,7 @@ public class PropertyAttachDialogTests
 
         h.Pick(Html);
 
-        Assert.Empty(h.Host.FindComponents<OdsPropertyFileTypeSelect>());
+        Assert.Empty(h.Host.FindComponents<OdsFileTypeSelect>());
         Assert.True(h.SubmitButton.HasAttribute("disabled"));
     }
 
@@ -335,7 +335,7 @@ public class PropertyAttachDialogTests
         h.Pick(Deed);
         h.Pick(Scan);
 
-        var pickers = h.Host.FindComponents<OdsPropertyFileTypeSelect>();
+        var pickers = h.Host.FindComponents<OdsFileTypeSelect>();
         Assert.Equal(["Deed", "Other"], pickers.Select(p => p.Instance.Value));
         Assert.Equal("true", h.Row(Deed).QuerySelector("button.prop-lib-main")!.GetAttribute("aria-pressed"));
         Assert.Contains("Attach 2 documents", h.SubmitButton.TextContent, StringComparison.Ordinal);
@@ -350,7 +350,7 @@ public class PropertyAttachDialogTests
         h.Pick(Deed);
         h.Pick(Deed);
 
-        Assert.Empty(h.Host.FindComponents<OdsPropertyFileTypeSelect>());
+        Assert.Empty(h.Host.FindComponents<OdsFileTypeSelect>());
         Assert.Equal("false", h.Row(Deed).QuerySelector("button.prop-lib-main")!.GetAttribute("aria-pressed"));
     }
 
@@ -362,7 +362,7 @@ public class PropertyAttachDialogTests
 
         h.Pick(Deed);
         h.Pick(Vognkort);
-        var vognkortPicker = h.Host.FindComponents<OdsPropertyFileTypeSelect>()
+        var vognkortPicker = h.Host.FindComponents<OdsFileTypeSelect>()
             .Single(p => p.Instance.Value == nameof(PropertyFileType.Registration));
         await h.Host.InvokeAsync(() => vognkortPicker.Instance.ValueChanged.InvokeAsync(nameof(PropertyFileType.Insurance)));
 
