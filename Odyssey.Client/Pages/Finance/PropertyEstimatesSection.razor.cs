@@ -168,7 +168,7 @@ public partial class PropertyEstimatesSection
                         }),
                 ],
                 Format = v => Money(v),
-                AxisFormat = CompactTick,
+                AxisFormat = EstimateVisuals.CompactTick,
             },
         ];
     }
@@ -195,16 +195,4 @@ public partial class PropertyEstimatesSection
 
     private static string MonthYear(DateTime date) =>
         date.ToString("MMM", CultureInfo.InvariantCulture) + " ’" + (date.Year % 100).ToString("00", CultureInfo.InvariantCulture);
-
-    // No currency code on the tick (it is stated once, on the series): compact so 5.14M fits.
-    private static string CompactTick(decimal v)
-    {
-        var a = Math.Abs(v);
-        var sign = v < 0 ? "−" : "";
-        return sign + (a >= 1_000_000m
-            ? (a / 1_000_000m).ToString("0.00", CultureInfo.InvariantCulture) + "M"
-            : a >= 10_000m
-                ? Math.Round(a / 1_000m).ToString("0", CultureInfo.InvariantCulture) + "K"
-                : a.ToString("#,##0", CultureInfo.InvariantCulture));
-    }
 }

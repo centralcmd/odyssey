@@ -77,8 +77,14 @@
         {
             <div class="est-section">
 
-                @* HERO — current estimated value + delta + value chart *@
-                @if (_hero is not null)
+                @* HERO — current estimated value + delta + value chart. The History style draws the
+                   property section's value-history card instead. *@
+                @if (ChartStyle == EstimateChartStyle.History)
+                {
+                    <OdsTermHistoryChart Class="trm-seriesplot" Series="_chartSeries" PickerLabel="Value" Glyph="¤"
+                                         Curve="OdsStepCurve.Smooth" />
+                }
+                else if (_hero is not null)
                 {
                     <div class="est-hero">
                         <div class="est-hero-head">

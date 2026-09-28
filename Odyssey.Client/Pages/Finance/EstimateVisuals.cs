@@ -1,7 +1,19 @@
+using System.Globalization;
 using Odyssey.Client.Components;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance;
+
+/// <summary>
+/// How <c>AccountEstimatesSection</c> draws its value chart (Odyssey Design System · AccountEstimates
+/// <c>chartStyle</c>): its own estimate hero card, or the TermHistoryChart card the property value
+/// history uses, which the account detail takes.
+/// </summary>
+public enum EstimateChartStyle
+{
+    Estimate,
+    History,
+}
 
 /// <summary>
 /// Visual + presentation helpers for the account value-estimate surfaces (the "Estimates" section
@@ -32,4 +44,19 @@ public static class EstimateVisuals
     /// and the full amounts above it cannot drift on the sign slot or the code's placement.</summary>
     public static string MoneyCompact(decimal value, string? currencyCode) =>
         OdsMoney.Compact(value, currencyCode);
+
+    /// <summary>
+    /// The value-history chart's y-axis tick: no currency code (the series states it once), compact so
+    /// 5.14M fits. Shared by the account and the property value histories, which draw the same card.
+    /// </summary>
+    public static string CompactTick(decimal v)
+    {
+        var a = Math.Abs(v);
+        var sign = v < 0 ? "−" : "";
+        return sign + (a >= 1_000_000m
+            ? (a / 1_000_000m).ToString("0.00", CultureInfo.InvariantCulture) + "M"
+            : a >= 10_000m
+                ? Math.Round(a / 1_000m).ToString("0", CultureInfo.InvariantCulture) + "K"
+                : a.ToString("#,##0", CultureInfo.InvariantCulture));
+    }
 }

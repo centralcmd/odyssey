@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using System.Globalization;
 using System.Text;
 using Microsoft.AspNetCore.Components;
@@ -32,6 +33,13 @@ public partial class AccountEstimatesSection
     /// </summary>
     [Parameter] public bool BareAction { get; set; } = true;
 
+    /// <summary>
+    /// Which value chart to draw. <see cref="EstimateChartStyle.History"/> is the account detail's
+    /// choice: the value-history card the property section draws, whose figure, delta and hover
+    /// readout follow the same in-force rule as the hero.
+    /// </summary>
+    [Parameter] public EstimateChartStyle ChartStyle { get; set; } = EstimateChartStyle.Estimate;
+
     /// <summary>Raised after an estimate is created/edited/deleted so the host can refresh the account
     /// list (the header shows the in-force estimate as the headline value).</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
@@ -46,6 +54,7 @@ public partial class AccountEstimatesSection
     private ExistingAccountEstimate? _current;
     private Dictionary<Guid, decimal?> _changes = [];
     private HeroModel? _hero;
+    private IReadOnlyList<OdsTermHistorySeries> _chartSeries = [];
     private bool _recommended;
 
     private bool _isLoading;
@@ -113,7 +122,34 @@ public partial class AccountEstimatesSection
             _changes[ascending[i].AccountEstimateId] = i == 0 ? null : ascending[i].Value - ascending[i - 1].Value;
 
         _hero = BuildHero(ascending);
+        _chartSeries = BuildHistorySeries(ascending);
     }
+
+    // The value-history card's one series — the property section's shape, so the two read as one.
+    private IReadOnlyList<OdsTermHistorySeries> BuildHistorySeries(List<ExistingAccountEstimate> ascending) =>
+        ascending.Count == 0 ? [] :
+        [
+            new OdsTermHistorySeries
+            {
+                Key = "value",
+                Label = "Estimated value",
+                Value = _current is { } c ? FormatMoney(c.Value, Account.CurrencyCode) : "—",
+                // A chart token rather than the account type's hue: a type hue is a glyph-on-soft
+                // colour that reads about 2:1 on the light theme, too faint for a line.
+                Color = "var(--chart-1)",
+                Group = $"amt:{Account.CurrencyCode}",
+                Points =
+                [
+                    .. ascending.Select(e => new OdsStepPoint(DateOnly.FromDateTime(e.EffectiveFrom), e.Value)
+                    {
+                        Id = e.AccountEstimateId.ToString(),
+                        Note = e.Note,
+                    }),
+                ],
+                Format = v => FormatMoney(v, Account.CurrencyCode),
+                AxisFormat = EstimateVisuals.CompactTick,
+            },
+        ];
 
     private void OpenNew()
     {
