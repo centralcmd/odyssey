@@ -8,7 +8,7 @@
 .tk-list {
     display: grid; grid-template-columns: 92px minmax(0, 1fr);
     background: var(--mud-palette-surface);
-    border: 1px solid var(--mud-palette-divider);
+    border: var(--border-thin) solid var(--mud-palette-divider);
     border-radius: var(--radius-md); box-shadow: var(--mud-elevation-1);
     overflow: hidden;
 }
@@ -24,9 +24,9 @@
 
 .tk-list-rail {
     display: flex; flex-direction: column; align-items: center; gap: 2px;
-    padding: 16px 14px 14px; text-align: center;
+    padding: var(--space-4) 14px 14px; text-align: center;
     background: var(--mud-palette-background-gray);
-    border-right: 1px solid var(--mud-palette-divider);
+    border-right: var(--border-thin) solid var(--mud-palette-divider);
 }
 /* 92px is sized on the widest count the scale produces (−366). */
 .tk-list-count { font: var(--fw-light) var(--fs-h2)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -46,12 +46,12 @@
    3:1 large-text minimum (WCAG 1.4.3). text-secondary reads 6.9:1 light / 7.8:1 dark, and is already
    the rail's own secondary ink (.tk-list-sign, .tk-list-unit). */
 .tk-list-dash { font: var(--fw-light) var(--fs-h3)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.tk-list-tick.material-icons { font-size: 26px; line-height: 1; }
+.tk-list-tick.material-icons { font-size: var(--icon-2xl); line-height: 1; }
 /* The control keeps a fixed slot below the hairline, so it can't drift with card height the way a
    justified rail's would. */
 .tk-list-st {
     display: flex; justify-content: center; width: 44px;
-    margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--mud-palette-divider);
+    margin-top: var(--space-3); padding-top: 10px; border-top: var(--border-thin) solid var(--mud-palette-divider);
 }
 .tk-list-rail[data-tone="overdue"] .tk-list-count,
 .tk-list-rail[data-tone="overdue"] .tk-list-unit,
@@ -65,7 +65,7 @@
 .tk-list-rail[data-tone="muted"] .tk-list-tick,
 .tk-list-rail[data-tone="muted"] .tk-list-unit { color: var(--mud-palette-text-secondary); }
 
-.tk-list-body { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 14px; min-width: 0; }
+.tk-list-body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4) 18px 14px; min-width: 0; }
 .tk-list-top { display: flex; align-items: flex-start; gap: 10px; }
 /* -4px centres the 32px action button on the title's first line; -6px pulls its box out so the glyph
    sits optically on the padding edge. */
@@ -85,8 +85,8 @@
     display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
     color: var(--mud-palette-text-secondary); font-size: var(--fs-caption);
 }
-.tk-list-meta > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.tk-list-meta .material-icons { font-size: 14px; }
+.tk-list-meta > span { display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.tk-list-meta .material-icons { font-size: var(--icon-xs); }
 .tk-list-meta .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 /* The deadline is the meta line's one primary-ink fact. */
 .tk-list-due { color: var(--mud-palette-text-primary); }
@@ -101,15 +101,15 @@
    chips happen to wrap. */
 .tk-list-foot {
     display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
-    gap: 8px 14px; padding-top: 10px; border-top: 1px solid var(--mud-palette-divider-light);
+    gap: 8px 14px; padding-top: 10px; border-top: var(--border-thin) solid var(--mud-palette-divider-light);
 }
-.tk-list-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.tk-list-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
 .tk-list-chips:empty { display: none; }
 .tk-list-att {
     display: inline-flex; align-items: center; gap: 5px; flex: none;
     color: var(--mud-palette-text-secondary); font-size: var(--fs-caption);
 }
-.tk-list-att .material-icons { font-size: 15px; }
+.tk-list-att .material-icons { font-size: var(--icon-sm); }
 .tk-list-att .mono { color: var(--mud-palette-text-primary); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 /* The archived label is the only text stating the state, and an ancestor's opacity rasterizes the
    subtree — a descendant opacity:1 can't escape it — so raise the ink instead of fighting the dim. */
@@ -118,14 +118,14 @@
 /* ── Cycling status control (unchanged; it moved from the row head into the rail) ── */
 .tk-status-btn {
     display: inline-flex; align-items: center; justify-content: center; flex: none;
-    appearance: none; background: none; border: none; padding: 4px; cursor: pointer; border-radius: 50%;
+    appearance: none; background: none; border: none; padding: var(--space-1); cursor: pointer; border-radius: 50%;
     color: var(--mud-palette-text-primary);
     transition: background-color var(--duration-fast) var(--ease-standard);
 }
 .tk-status-btn:hover:not(:disabled) { background: var(--mud-palette-action-default-hover); }
 .tk-status-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
 .tk-status-btn:disabled { cursor: default; opacity: 0.75; }
-.tk-status-btn .material-icons { font-size: 22px; }
+.tk-status-btn .material-icons { font-size: var(--icon-xl); }
 /* --info-text is theme-scoped (sea-700 in light for ≥4.5:1, sea-400 in dark) — WCAG 1.4.3. */
 .tk-status-btn[data-s="Doing"] .material-icons { color: var(--info-text); }
 .tk-status-btn[data-s="Done"] .material-icons { color: var(--finance-income); }
