@@ -24,38 +24,26 @@ input:-webkit-autofill:active {
    :root holds light-mode defaults; [data-theme='dark'] overrides for dark mode. */
 :root {
   --finance-income:        #15803D;          /* --mint-700 — WCAG contrast on white */
-  --finance-income-soft:   rgba(21,128,61,0.12);
   --finance-expense:       #B23B3B;          /* --coral-700 */
-  --finance-expense-soft:  rgba(178,59,59,0.10);
-  --finance-pending:       #F59E0B;          /* --amber-500 — acceptable on white */
-  --finance-pending-soft:  rgba(245,158,11,0.12);
+  --finance-pending:       #D97706;          /* --amber-600 — amber-500 is ~2.2:1 on white, fails 3:1 */
   --finance-tag:           #8B5CF6;          /* --violet-500 */
 
   /* Account status — lifecycle of an account record. Borrows mint/amber from the
      finance palette and slate from the ink ramp; no new brand colors. */
   --status-active:         #15803D;          /* --mint-700 */
-  --status-active-soft:    rgba(21,128,61,0.12);
   --status-closed:         #D97706;          /* --amber-600 — graphics-safe (≥3:1) on white */
-  --status-closed-soft:    rgba(245,158,11,0.12);
   --status-archived:       #4A5670;          /* --ink-500 */
-  --status-archived-soft:  rgba(74,86,112,0.10);
 }
 
 [data-theme='dark'] {
   --finance-income:        #4ADE80;          /* --mint-500 */
-  --finance-income-soft:   rgba(74,222,128,0.14);
   --finance-expense:       #FF6B6B;          /* --coral-500 */
-  --finance-expense-soft:  rgba(255,107,107,0.14);
   --finance-pending:       #F59E0B;          /* --amber-500 */
-  --finance-pending-soft:  rgba(245,158,11,0.14);
   --finance-tag:           #8B5CF6;          /* --violet-500 */
 
   --status-active:         #4ADE80;          /* --mint-500 */
-  --status-active-soft:    rgba(74,222,128,0.14);
   --status-closed:         #F59E0B;          /* --amber-500 */
-  --status-closed-soft:    rgba(245,158,11,0.14);
   --status-archived:       #98A4BC;          /* --ink-300 */
-  --status-archived-soft:  rgba(152,164,188,0.14);
 }
 
 /* Categorical chart palette — same light-default / dark-override convention. */
@@ -121,6 +109,9 @@ input:-webkit-autofill:active {
   --amber-300: #FCD34D; --amber-500: #F59E0B; --amber-600: #D97706; --amber-700: #B45309; --amber-800: #92400E;
   --violet-400: #A78BFA; --violet-500: #8B5CF6; --violet-700: #6D28D9;
 
+  /* Logomark neutrals — the compass rose's south/east/west points. Brand-only; never use for UI. */
+  --brand-mark-gray: #707070; --brand-mark-dark: #404040;
+
   /* Type families */
   --font-sans: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -130,6 +121,13 @@ input:-webkit-autofill:active {
   --fs-display: 3.5rem; --fs-h1: 2.5rem; --fs-h2: 2rem; --fs-h3: 1.5rem; --fs-h4: 1.25rem;
   --fs-h5: 1.125rem; --fs-h6: 1rem; --fs-body1: 1rem; --fs-body2: 0.875rem;
   --fs-caption: 0.75rem; --fs-overline: 0.6875rem;
+  --fs-micro: 0.625rem;   /* 10px — chart axes, tiny mono stamps */
+  --fs-label: 0.8125rem;  /* 13px — dense mono labels between caption and body2 */
+  --fs-figure: 1.375rem;  /* 22px — record headline figure, modal lead glyph */
+  --fs-amount: 1.875rem;  /* 30px — large amount / money inputs */
+
+  /* Icon scale — Material Icons glyph sizes. Use these, not raw px. */
+  --icon-xs: 14px; --icon-sm: 16px; --icon-md: 18px; --icon-lg: 20px; --icon-xl: 24px; --icon-2xl: 28px;
 
   --fw-light: 300; --fw-regular: 400; --fw-medium: 500; --fw-bold: 700;
   --lh-tight: 1.15; --lh-snug: 1.3; --lh-normal: 1.5; --lh-loose: 1.7;
@@ -141,6 +139,9 @@ input:-webkit-autofill:active {
 
   /* Density — row + control heights */
   --row-h: 48px; --row-h-dense: 36px; --control-h: 40px; --control-h-dense: 32px;
+  --control-pad-y: 9px;  /* vertical padding of buttons, inputs, select triggers */
+  --iconbtn-size: 36px;  /* IconButton box */
+  --cell-pad-y: 12px;    /* table cell vertical padding */
 
   /* Radii + border weights */
   --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 999px;
@@ -201,14 +202,15 @@ input:-webkit-autofill:active {
   /* Placeholder hint text — AA-contrast (text-secondary level), NOT the 0.38
      disabled alpha, which fails 4.5:1 when a placeholder carries a format hint. */
   --mud-palette-placeholder: var(--mud-palette-text-secondary);
-  --info-soft: rgba(14, 165, 233, 0.12); --info-border: rgba(14, 165, 233, 0.30); --info-text: var(--sea-700);
-  --tag-soft: rgba(139, 92, 246, 0.12);  --tag-border: rgba(139, 92, 246, 0.32);  --tag-text: var(--violet-text);  --violet-text: var(--violet-700);
+  /* Tint strengths for the derived *-soft / *-border tokens (see the DERIVED TINTS block below). */
+  --tint-soft: 12%; --tint-border: 30%;
+  --info-text: var(--sea-700);
+  --tag-text: var(--violet-text);  --violet-text: var(--violet-700);
   --pending-text: var(--amber-700);
   /* Text-weight warning colour — the raw --mud-palette-warning (#B57820) is only ~3:1 as small text
      on a warning tint. Warning *text* uses amber-800 on light (amber-700 dips to ~4.2:1 once it sits
      on its own 16% tint; amber-800 clears 4.5:1) and amber-500 on dark (~6:1 on the dark tint). */
   --warning-text: var(--amber-800);
-  --brand-soft: rgba(20, 184, 166, 0.12); --brand-border: rgba(20, 184, 166, 0.30); /* tide-600 tint for brand-toned chips/actions */
   /* Navigation active-state graphic (rail/switcher/palette active icons + left bar). Must clear 3:1
      as a non-text graphic (WCAG 1.4.11); tide-400 (#4FD7CB) is only ~1.5:1 on the light rail, so
      light steps to tide-700. Active *text* uses --brand-text (tide-ink light / tide-400 dark). */
@@ -224,11 +226,46 @@ input:-webkit-autofill:active {
   --nav-active: var(--tide-400);
   --nav-active-tint: rgba(79, 215, 203, 0.12);
   --mud-palette-placeholder: var(--mud-palette-text-secondary);
-  --info-soft: rgba(56, 189, 248, 0.14); --info-border: rgba(56, 189, 248, 0.28); --info-text: var(--sea-400);
-  --tag-soft: rgba(139, 92, 246, 0.14);  --tag-border: rgba(139, 92, 246, 0.30);  --tag-text: var(--violet-text);  --violet-text: var(--violet-400);
+  --tint-soft: 14%; --tint-border: 30%;
+  --info-text: var(--sea-400);
+  --tag-text: var(--violet-text);  --violet-text: var(--violet-400);
   --pending-text: var(--amber-500);
   --warning-text: var(--amber-500);
-  --brand-soft: rgba(79, 215, 203, 0.14); --brand-border: rgba(79, 215, 203, 0.30); /* tide tint for brand-toned chips/actions */
+}
+
+/* ── Derived tints ─────────────────────────────────────────────────────────
+   Every *-soft / *-border is its base colour mixed toward transparent at the
+   theme's --tint-soft / --tint-border strength, so a tint can never drift from
+   its hue (Odyssey Design System · colors_and_type.css §2c). Declared on :root
+   AND every [data-theme] element so a nested theme recomputes against its own
+   base colours. The --mud-palette-* bases are written by MudThemeProvider. */
+:root, [data-theme] {
+  --finance-income-soft:    color-mix(in srgb, var(--finance-income) var(--tint-soft), transparent);
+  --finance-income-border:  color-mix(in srgb, var(--finance-income) var(--tint-border), transparent);
+  --finance-expense-soft:   color-mix(in srgb, var(--finance-expense) var(--tint-soft), transparent);
+  --finance-expense-border: color-mix(in srgb, var(--finance-expense) var(--tint-border), transparent);
+  --finance-pending-soft:   color-mix(in srgb, var(--finance-pending) var(--tint-soft), transparent);
+  --finance-pending-border: color-mix(in srgb, var(--finance-pending) var(--tint-border), transparent);
+  --info-soft:              color-mix(in srgb, var(--mud-palette-info) var(--tint-soft), transparent);
+  --info-border:            color-mix(in srgb, var(--mud-palette-info) var(--tint-border), transparent);
+  --tag-soft:               color-mix(in srgb, var(--mud-palette-tertiary) var(--tint-soft), transparent);
+  --brand-soft:             color-mix(in srgb, var(--mud-palette-primary) var(--tint-soft), transparent);
+  --brand-border:           color-mix(in srgb, var(--mud-palette-primary) var(--tint-border), transparent);
+  --status-active-soft:     color-mix(in srgb, var(--status-active) var(--tint-soft), transparent);
+  --status-closed-soft:     color-mix(in srgb, var(--status-closed) var(--tint-soft), transparent);
+  --status-archived-soft:   color-mix(in srgb, var(--status-archived) var(--tint-soft), transparent);
+}
+
+/* ── Density ───────────────────────────────────────────────────────────────
+   Set data-density="compact" on any container (or <html>) to switch every
+   control, icon button and table row inside it to the dense step. Matches
+   MudBlazor's Dense. Comfortable is the default; no attribute needed. */
+[data-density='compact'] {
+  --row-h:         var(--row-h-dense);
+  --control-h:     var(--control-h-dense);
+  --control-pad-y: 5px;
+  --iconbtn-size:  32px;
+  --cell-pad-y:    7px;
 }
 
 /* ---------- Accessibility utilities ---------- */
@@ -362,7 +399,7 @@ html:not([data-theme='dark']) .mud-elevation-16{ box-shadow: 0 24px 60px rgba(14
   background: var(--finance-pending-soft);
   /* Text-safe token, as for .alert.info: the raw pending fill is ~1.96:1 on this tint in light. */
   color: var(--warning-text);
-  border-color: color-mix(in srgb, var(--finance-pending) 32%, transparent);
+  border-color: var(--finance-pending-border);
 }
 
 .alert.error {
