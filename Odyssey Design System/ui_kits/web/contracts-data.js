@@ -915,13 +915,31 @@
 
   D.CONTRACT_MAX_TERMS_PER_CONTRACT = 500;
   /* ContractMaxSmartTagsPerContract — a system setting (default 20, range
-     1–50). The ceiling is ListDefaults.MaxFilterArrayLength: past it the
-     feature's own resolution query (GET /api/transactions?tagIds=…) refuses
-     the array the section builds. */
+     1–50). The ceiling is ListDefaults.MaxFilterArrayLength. Resolution is
+     server-side now (GET /api/contracts/{id}/smart-tag-transactions, a
+     correlated sub-query), so the client never builds a tagIds array. */
   D.CONTRACT_MAX_SMART_TAGS_PER_CONTRACT = 20;
   D.CONTRACT_SMART_TAGS_CEILING = 50;
   /* Seed associations by contractId (GET /api/contracts/{id}/smart-tags in the
      real app), ordered as AddedAt ascending. */
+  /* The ledger the scoped endpoint reads: the main seed stops in 2024, so these
+     2025–26 rows stand in for the statement history the lease and fiber terms
+     cover. Each exercises one rule — before / after the term, a merchant that
+     is not a party, no merchant, two watched tags on one row. */
+  const scopeRow = (id, date, desc, contact, tags, amount, icon, status = 'Approved') =>
+    ({ id, date, desc, account: '1', tags, contact, currency: 'USD', amount, status, icon, dir: amount < 0 ? 'expense' : 'income' });
+  const rentMonths = ['2025-08','2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09'];
+  D.contractScopeExtra = [
+    ...rentMonths.map((m, i) => scopeRow(`xs-rent-${i}`, `${m}-01`, 'Michael Chen · Rent', 'c9', ['t4'], m >= '2026-03' ? -2250 : -2150, 'home')),
+    scopeRow('xs-water-1', '2026-01-15', 'Michael Chen · Water share', 'c9', ['t7'], -48.30, 'water_drop'),
+    scopeRow('xs-final', '2026-08-31', 'Michael Chen · Final rent + utilities', 'c9', ['t4', 't7'], -312.40, 'home', 'New'),
+    scopeRow('xs-pge-1', '2025-11-14', 'PG&E · Electric', 'c5', ['t7'], -118.60, 'bolt'),
+    scopeRow('xs-pge-2', '2026-02-14', 'PG&E · Electric', 'c5', ['t7'], -131.05, 'bolt'),
+    scopeRow('xs-lake', '2025-09-03', 'Lakeside Property Mgmt · Rent', null, ['t4'], -2400, 'home'),
+    ...['2025-01','2025-04','2025-07','2025-10','2026-01','2026-04','2026-07','2026-09'].map((m, i) => scopeRow(`xs-fiber-${i}`, `${m}-22`, 'Spotify · Monthly', 'c3', ['t2'], -9.99, 'subscriptions')),
+  ];
+  D.contractScopeLedger = () => D.transactions.concat(D.contractScopeExtra);
+
   D.contractSmartTagSeed = {
     'ct-lease': ['t4', 't7'],     // Maple St lease — Rent, Utilities
     'ct-fiber': ['t2'],           // Fiber service — Subscriptions
@@ -1295,6 +1313,54 @@
       const t = today || H.conToday();
       const status = H.conStatus(contract, t);
       return status === 'Expired' || (!!contract.completionDate && H.conDateOnly(contract.completionDate) <= t);
+    },
+
+    /* ---- GET /api/contracts/{id}/smart-tag-transactions (mock) ----
+       + `summary` (spec follow-up): the net total over EVERY matched row —
+       the same filtered set as page.totalCount, search included — one entry
+       per currency, since a sum never mixes currencies.
+       The scoped match of the *Contract Smart Tags — Scoped Transaction Match
+       — Backend (Draft v3)* spec. R1 tag ∩ R2 term ∩ R3 merchant is a contact
+       party. Returns the envelope verbatim: { scope, page }. The page reads
+       `scope` and `emptyReason` — it never re-derives the rule. */
+    conSmartTagTransactions(contract, tagIds, q = {}) {
+      const offset = q.offset || 0;
+      const limit = q.limit != null ? q.limit : 25;
+      const addDay = (d) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); };
+      const s = H.conDateOnly(contract.startDate), e = H.conDateOnly(contract.endDate);
+      const oneOff = !!contract.completionDate;
+      const from = oneOff ? null : s;
+      const toExclusive = oneOff ? null : (e ? addDay(e) : null);
+      const contactIds = [...new Set((contract.parties || []).map(p => p.contactId).filter(Boolean))];
+      const scope = {
+        from: from ? from + 'T00:00:00Z' : null,
+        toExclusive: toExclusive ? toExclusive + 'T00:00:00Z' : null,
+        smartTagCount: tagIds.length,
+        partyContactCount: contactIds.length,
+        emptyReason: tagIds.length === 0 ? 1 : contactIds.length === 0 ? 2 : (!oneOff && s && e && e < s) ? 3 : 0,
+      };
+      const empty = { scope, page: { items: [], offset, limit, totalCount: 0 }, summary: { totals: [] } };
+      if (scope.emptyReason !== 0) return empty;
+      const tags = new Set(tagIds), parties = new Set(contactIds);
+      const acctName = (id) => ((D.accounts || []).find(a => String(a.id) === String(id)) || {}).name || '';
+      const contactName = (id) => ((D.contacts || []).find(c => c.id === id) || {}).name || '';
+      const needle = (q.search || '').trim().toLowerCase();
+      let rows = D.contractScopeLedger().filter(t => {
+        const day = H.conDateOnly(t.date);
+        return D.txnTagIds(t).some(id => tags.has(id))
+          && (!from || day >= from) && (!toExclusive || day < toExclusive)
+          && !!t.contact && parties.has(t.contact);
+      });
+      if (needle) rows = rows.filter(t => [t.desc, acctName(t.account), contactName(t.contact), ...D.txnTags(t).map(x => x.name)]
+        .some(v => String(v || '').toLowerCase().includes(needle)));
+      const key = q.sortBy || 'Date';
+      const dir = (q.sortDir || (key === 'Date' || key === 'Amount' ? 'Desc' : 'Asc')) === 'Asc' ? 1 : -1;
+      const val = { Date: t => t.date, Amount: t => t.amount, Desc: t => t.desc, Contact: t => contactName(t.contact), Account: t => acctName(t.account), Status: t => t.status }[key] || (t => t.date);
+      rows = rows.slice().sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * dir || (a.date < b.date ? 1 : -1); });
+      const byCur = {};
+      rows.forEach(t => { const k = t.currency || 'USD'; byCur[k] = Math.round(((byCur[k] || 0) + t.amount) * 100) / 100; });
+      const summary = { totals: Object.keys(byCur).sort().map(k => ({ currency: k, netAmount: byCur[k] })) };
+      return { scope, page: { items: limit === 0 ? rows.slice(offset) : rows.slice(offset, offset + limit), offset, limit, totalCount: rows.length }, summary };
     },
 
     /* The only thing that refuses a term write is the per-contract CAP.

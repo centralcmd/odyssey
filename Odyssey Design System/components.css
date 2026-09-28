@@ -2500,6 +2500,19 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-smarttags-refused > .material-icons { font-size: var(--icon-sm); line-height: 1.35; color: var(--finance-expense); flex: none; }
 .odc-smarttags-refused-txt { flex: 1 1 auto; }
 
+/* Scope line — the rules the server applied, restated from its response */
+.odc-smarttags-scope {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px var(--space-4);
+  padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--mud-palette-divider);
+  font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary);
+}
+.odc-smarttags-scope-it { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.odc-smarttags-scope-it > .material-icons { font-size: var(--icon-sm); opacity: 0.8; }
+.odc-smarttags-scope-lab { color: var(--mud-palette-text-secondary); }
+.odc-smarttags-scope-val { color: var(--mud-palette-text-primary); font-variant-numeric: tabular-nums; }
+.odc-smarttags-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-3) var(--space-4) 0; }
+.odc-smarttags-toolbar > * { min-width: 0; }
+
 /* States */
 .odc-smarttags-table {}
 .odc-smarttags .odc-empty { padding: var(--space-8) var(--space-6); }

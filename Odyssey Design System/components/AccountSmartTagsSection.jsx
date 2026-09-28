@@ -202,6 +202,26 @@ export function AccountSmartTagsSection({
    *  409 already linked). Rendered on the bar; `onDismissAddError` clears it. */
   addError = null,
   onDismissAddError,
+  /** The rules the server applied, as a quiet line under the bar:
+   *  [{icon, label, value}]. The host formats it from the response; this
+   *  component never derives a rule. */
+  scope = null,
+  /** A STRUCTURAL empty result named by the server (the tags exist, but the
+   *  record cannot match anything yet): {icon, title, desc, actionLabel,
+   *  actionIcon, onAction}. Replaces the body; no table, no toolbar. */
+  blocked = null,
+  /** Server-paged hosts: the full match count (the page holds a slice). */
+  totalCount,
+  /** false = no net total on the bar — required when `transactions` is one
+   *  page of a server-paged set, since a page sum is not the total. */
+  showNetTotal = true,
+  /** Server-computed net total over ALL matches (not just the page held in
+   *  `transactions`). When a number, it replaces the client-side sum. */
+  netTotal,
+  /** Rendered above the table (search / page-size controls). Kept while
+   *  loading and on a no-match, so a search that emptied the table can be
+   *  cleared from where it was typed. */
+  toolbar = null,
   title = 'Smart tags',
   icon = 'sell',
   open,
@@ -235,7 +255,7 @@ export function AccountSmartTagsSection({
     .filter((o) => o.value != null);
 
   const hasTags = cfg.length > 0;
-  const matchCount = transactions.length;
+  const matchCount = typeof totalCount === 'number' ? totalCount : transactions.length;
   // Blocking needs a number. A degraded limits read has none, so the adder
   // stays open and the server is left to refuse — never a guessed ceiling.
   const capKnown = !limitsDegraded && typeof maxTags === 'number' && maxTags > 0;
@@ -244,18 +264,18 @@ export function AccountSmartTagsSection({
     ? `Watching the maximum of ${maxTags} tag${maxTags === 1 ? '' : 's'} — remove one to add another.`
     : (limitsDegraded ? 'The tag limit is unavailable right now, so an add may be refused.' : null);
   // The header pill: matching-transaction count once tags exist and we're settled.
-  const showCount = hasTags && !loading && !error;
+  const showCount = hasTags && !loading && !error && !blocked;
 
   // Net total of the watched transactions (income positive, expense negative).
   // `amountOf(t)` extracts the signed number (default: t.amount); `formatAmount(n)`
   // renders it (default: a signed "$ x.xx"). The total shows on the bar once
   // there are matches — a per-account at-a-glance figure for the watched tags.
   const getAmount = typeof amountOf === 'function' ? amountOf : (t) => (t && typeof t.amount === 'number' ? t.amount : 0);
-  const total = transactions.reduce((s, t) => s + (getAmount(t) || 0), 0);
+  const total = typeof netTotal === 'number' ? netTotal : transactions.reduce((s, t) => s + (getAmount(t) || 0), 0);
   const fmtAmount = typeof formatAmount === 'function'
     ? formatAmount
     : (n) => `${n < 0 ? '− ' : '+ '}${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
-  const showTotal = hasTags && !loading && !error && matchCount > 0;
+  const showTotal = hasTags && !loading && !error && !blocked && matchCount > 0;
 
   // ---- Body, by state (mirrors the spec's NoSmartTags / Loading /
   //      NoTransactions / HasTransactions / error matrix). ----
@@ -297,6 +317,22 @@ export function AccountSmartTagsSection({
         ) : null}
       </div>
     );
+  } else if (blocked) {
+    body = (
+      <div className="odc-empty odc-smarttags-empty odc-smarttags-blocked">
+        <div className="odc-empty-ic muted"><span className="material-icons" aria-hidden="true">{blocked.icon || 'block'}</span></div>
+        <div className="odc-empty-ttl">{blocked.title}</div>
+        {blocked.desc ? <div className="odc-empty-desc">{blocked.desc}</div> : null}
+        {blocked.actionLabel && blocked.onAction ? (
+          <div className="odc-empty-actions">
+            <button type="button" className="odc-btn outlined sm" onClick={blocked.onAction}>
+              {blocked.actionIcon ? <span className="material-icons" aria-hidden="true">{blocked.actionIcon}</span> : null}
+              <span>{blocked.actionLabel}</span>
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
   } else if (loading) {
     body = (
       <div className="odc-smarttags-loading" role="status" aria-live="polite">
@@ -320,10 +356,14 @@ export function AccountSmartTagsSection({
     );
   }
 
+  const showToolbar = !!toolbar && hasTags && !error && !blocked;
+  if (showToolbar) body = <React.Fragment><div className="odc-smarttags-toolbar">{toolbar}</div>{body}</React.Fragment>;
+  const scopeItems = hasTags && Array.isArray(scope) ? scope.filter(Boolean) : [];
+
   const inner = (
-    <SmartTagsInner hasTags={hasTags} cfg={cfg} cfgIds={cfgIds} canWrite={canWrite} opts={opts} atCap={atCap}
+    <SmartTagsInner scopeItems={scopeItems} hasTags={hasTags} cfg={cfg} cfgIds={cfgIds} canWrite={canWrite} opts={opts} atCap={atCap}
       onAddTag={onAddTag} onRemoveTag={onRemoveTag} showTotal={showTotal} total={total}
-      matchCount={matchCount} fmtAmount={fmtAmount} body={body}
+      matchCount={matchCount} fmtAmount={fmtAmount} showNetTotal={showNetTotal} body={body}
       capNote={capNote} addError={addError} onDismissAddError={onDismissAddError} />
   );
 
@@ -364,7 +404,7 @@ export function AccountSmartTagsSection({
   );
 }
 
-function SmartTagsInner({ hasTags, cfg, cfgIds, canWrite, opts, atCap, onAddTag, onRemoveTag, showTotal, total, matchCount, fmtAmount, body, capNote, addError, onDismissAddError }) {
+function SmartTagsInner({ showNetTotal = true, scopeItems = [], hasTags, cfg, cfgIds, canWrite, opts, atCap, onAddTag, onRemoveTag, showTotal, total, matchCount, fmtAmount, body, capNote, addError, onDismissAddError }) {
   return (
     <React.Fragment>
           {/* Tag-management bar — shown whenever tags exist (or a writer can add
@@ -404,9 +444,9 @@ function SmartTagsInner({ hasTags, cfg, cfgIds, canWrite, opts, atCap, onAddTag,
                 </div>
               </div>
               {showTotal ? (
-                <div className={`odc-smarttags-total ${total < 0 ? 'expense' : 'income'}`}>
+                <div className={`odc-smarttags-total ${!showNetTotal ? '' : total < 0 ? 'expense' : 'income'}`}>
                   <span className="odc-smarttags-total-lab">{matchCount} {matchCount === 1 ? 'transaction' : 'transactions'}</span>
-                  <span className="odc-smarttags-total-val mono">{fmtAmount(total)}</span>
+                  {showNetTotal ? <span className="odc-smarttags-total-val mono">{fmtAmount(total)}</span> : null}
                 </div>
               ) : null}
             </div>
@@ -430,6 +470,21 @@ function SmartTagsInner({ hasTags, cfg, cfgIds, canWrite, opts, atCap, onAddTag,
               add another" is answerable without opening the control. */}
           {hasTags && !addError && canWrite && capNote ? (
             <div className="odc-smarttags-advisory">{capNote}</div>
+          ) : null}
+
+          {/* The scope the server applied — read from the response, so the
+              client restates the rule rather than re-deriving it. */}
+          {scopeItems.length ? (
+            <div className="odc-smarttags-scope">
+              <span className="odc-smarttags-bar-label">Scope</span>
+              {scopeItems.map((it, i) => (
+                <span className="odc-smarttags-scope-it" key={i}>
+                  {it.icon ? <span className="material-icons" aria-hidden="true">{it.icon}</span> : null}
+                  {it.label ? <span className="odc-smarttags-scope-lab">{it.label}</span> : null}
+                  <span className="odc-smarttags-scope-val">{it.value}</span>
+                </span>
+              ))}
+            </div>
           ) : null}
 
           {body}

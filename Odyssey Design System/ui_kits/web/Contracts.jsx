@@ -164,16 +164,25 @@ const PartyTile = ({ party, today, onEdit, onDetach, onNavigate }) => {
 };
 
 /* ====================== Contract smart tags ======================
-   The saved transaction filter a contract carries: a curated set of existing
-   TransactionTags, resolved to the transactions that carry any of them. The
-   DS section is shared with the account record — this wrapper only supplies
-   the contract's watched set, the matches, and the contract-side cap.
-
-   The match is BY TAG, not by contract: the backend adds no Transaction →
-   Contract link, so resolution is the two existing endpoints composed
-   (GET …/smart-tags then GET /api/transactions?tagIds=…). Nothing here scopes
-   the result to the contract. */
-const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite = true, cap, limitsDegraded = false, bare = true }) => {
+   The saved transaction filter a contract carries, resolved SERVER-SIDE and
+   scoped to the agreement (*Contract Smart Tags — Scoped Transaction Match*):
+   a transaction reads here only if it carries a watched tag, is dated inside
+   the term, and names a contact party as its merchant. One read —
+   GET /api/contracts/{id}/smart-tag-transactions — paged, searched and sorted
+   on the server with the transactions list's keys. The page restates the
+   response's `scope` and maps its `emptyReason` ordinal; it never composes
+   the rule itself. Gated on contracts.read AND transactions.read. */
+const CON_EMPTY = { None: 0, NoSmartTags: 1, NoContactParties: 2, InvalidTerm: 3 };
+/* TxnTable header key → the endpoint's TransactionSortBy. Tag has no server
+   key, so its header is inert here (the click keeps the current sort). */
+const CON_SORT_KEY = { date: 'Date', amount: 'Amount', desc: 'Desc', contact: 'Contact', account: 'Account', status: 'Status' };
+const conScopeDay = (iso) => (iso ? CON_H.conDate(String(iso).slice(0, 10)) : null);
+const conScopeLastDay = (iso) => {
+  if (!iso) return null;
+  const d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);
+  return CON_H.conDate(d.toISOString().slice(0, 10));
+};
+const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite = true, cap, limitsDegraded = false, canReadTxns = true, onAddParty, onEditContract, bare = true }) => {
   const { useState, useEffect, useRef } = React;
   const DSSection = (window.OdysseyDesignSystem_d5aa51 || {}).AccountSmartTagsSection;
   const allTags = CON_D.tags.filter(t => !t.archived);
@@ -181,39 +190,82 @@ const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite =
 
   const [loading, setLoading] = useState(false);
   const [addError, setAddError] = useState(null);
-  const timer = useRef(null);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState({ key: 'date', dir: 'desc' });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [res, setRes] = useState(null);
+
+  /* Any input to the read — tags, parties, dates, search, sort, page — re-issues
+     it. Search is debounced; the table shows the loading state meanwhile. */
+  const partyKey = (contract.parties || []).map(p => p.contactId || '').join(',');
+  const reqKey = [tagIds.join(','), partyKey, contract.startDate, contract.endDate, contract.completionDate, search, sort.key, sort.dir, page, pageSize].join('|');
   const first = useRef(true);
-  // Every add/remove re-reads the resolution query, so the table flashes its
-  // loading state rather than mutating in place.
   useEffect(() => {
-    if (first.current) { first.current = false; return; }
+    if (!canReadTxns) return undefined;
+    const run = () => setRes(CON_H.conSmartTagTransactions(contract, tagIds, {
+      search, sortBy: CON_SORT_KEY[sort.key], sortDir: sort.dir === 'asc' ? 'Asc' : 'Desc',
+      offset: pageSize === 'all' ? 0 : (page - 1) * pageSize, limit: pageSize === 'all' ? 0 : pageSize,
+    }));
+    if (first.current) { first.current = false; run(); return undefined; }
     setLoading(true);
-    timer.current = setTimeout(() => setLoading(false), 420);
-    return () => clearTimeout(timer.current);
-  }, [tagIds.join(',')]);
+    const h = setTimeout(() => { run(); setLoading(false); }, 380);
+    return () => clearTimeout(h);
+  }, [reqKey, canReadTxns]);
+  useEffect(() => { setPage(1); }, [tagIds.join(','), search, sort.key, sort.dir, pageSize]);
 
   if (!DSSection) return null;
 
-  const matches = CON_D.transactions.filter(t => CON_D.txnTagIds(t).some(id => tagIds.includes(id)));
   const configured = tagIds.map(id => tagById[id]).filter(Boolean).map(t => ({ id: t.id, label: t.name }));
   const options = allTags.map(t => ({ value: t.id, label: t.name }));
-  // The term currency in force is the contract's own; USD is the fallback for a
-  // contract with no priced term.
-  const inForce = window.trmCurrentFromList ? window.trmCurrentFromList(contract.terms || []) : [];
-  const currency = (inForce.find(t => t.currency) || {}).currency || 'USD';
-
-  /* The cap is enforced server-side and only pre-checked here. Past it the POST
-     answers 422 with the effective number interpolated — which is what the bar
-     shows, rather than a number this page holds as a constant. */
   const add = (id) => {
-    if (cap != null && tagIds.length >= cap) {
-      setAddError(`A contract may have at most ${cap} smart tags.`);
-      return;
-    }
+    if (cap != null && tagIds.length >= cap) { setAddError(`A contract may have at most ${cap} smart tags.`); return; }
     setAddError(null);
     setTagIds(prev => (prev.includes(id) ? prev : [...prev, id]));
   };
   const remove = (id) => { setAddError(null); setTagIds(prev => prev.filter(x => x !== id)); };
+
+  const scope = res ? res.scope : null;
+  const items = res ? res.page.items : [];
+  const total = res ? res.page.totalCount : 0;
+  const reason = scope ? scope.emptyReason : CON_EMPTY.None;
+  /* The net total is the server's (summary.totals) — every match, not the page.
+     One currency → one figure; mixed currencies have no single sum, so the bar
+     shows the count only rather than adding USD to EUR. */
+  const totals = (res && res.summary && res.summary.totals) || [];
+  const net = totals.length === 1 ? totals[0] : null;
+
+  /* The scope line — the window and the party count straight off the response.
+     toExclusive is the next midnight, so the last covered day is one before. */
+  let windowText = null;
+  if (scope) {
+    const f = conScopeDay(scope.from), l = conScopeLastDay(scope.toExclusive);
+    windowText = f && l ? `${f} – ${l}` : f ? `from ${f}, no end` : l ? `until ${l}` : (contract.completionDate ? 'any date — one-off contract' : 'any date — no term set');
+  }
+  const scopeItems = scope && reason !== CON_EMPTY.InvalidTerm ? [
+    { icon: 'date_range', label: 'Dated', value: windowText },
+    { icon: 'group', label: 'Merchant', value: scope.partyContactCount === 0 ? 'no contact party' : `one of ${scope.partyContactCount} contact part${scope.partyContactCount === 1 ? 'y' : 'ies'}` },
+  ] : null;
+
+  let blocked = null;
+  if (!canReadTxns) {
+    blocked = { icon: 'lock', title: 'Transactions are not visible to you',
+      desc: 'The watched tags stay listed. Showing what matches them needs transactions.read as well as contracts.read.' };
+  } else if (reason === CON_EMPTY.NoContactParties) {
+    blocked = { icon: 'person_off', title: 'No contact is a party yet',
+      desc: 'A transaction counts here only when its merchant is a contact that is a party to this contract. Account and property parties are not merchants.',
+      actionLabel: canWrite && onAddParty ? 'Add a party' : undefined, actionIcon: 'group_add', onAction: onAddParty };
+  } else if (reason === CON_EMPTY.InvalidTerm) {
+    blocked = { icon: 'event_busy', title: 'The term ends before it starts',
+      desc: `Start date ${conScopeDay(scope.from)} is after end date ${conScopeLastDay(scope.toExclusive)}, so no date can fall inside the term. Correct the dates to see matching transactions.`,
+      actionLabel: canWrite && onEditContract ? 'Edit dates' : undefined, actionIcon: 'edit_calendar', onAction: onEditContract };
+  }
+
+  const toolbar = (
+    <div style={{ flex: 1, minWidth: 240 }}>
+      <SearchField placeholder="Search description, account, merchant, tag…" value={search} onChange={setSearch} />
+    </div>
+  );
 
   return (
     <DSSection
@@ -221,7 +273,14 @@ const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite =
       subject="contract"
       tags={configured}
       tagOptions={options}
-      transactions={matches}
+      transactions={items}
+      totalCount={total}
+      showNetTotal={!!net}
+      netTotal={net ? net.netAmount : undefined}
+      formatAmount={(n) => CON_H.signedMoney(n, net ? net.currency : 'USD')}
+      scope={canReadTxns ? scopeItems : null}
+      blocked={blocked}
+      toolbar={total > 0 || search ? toolbar : null}
       onAddTag={add}
       onRemoveTag={remove}
       canWrite={canWrite}
@@ -231,15 +290,17 @@ const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite =
       addError={addError}
       onDismissAddError={() => setAddError(null)}
       emptyDesc={canWrite
-        ? 'Pin the tags this agreement settles against, and what it actually costs reads here — no filter to rebuild on the Transactions page.'
+        ? 'Pin the tags this agreement settles against. Transactions carrying them, dated inside the term and paid to a contact party, read here.'
         : 'No tags are being watched on this contract.'}
-      noMatchDesc="No transactions carry the watched tags yet."
-      formatAmount={(n) => CON_H.signedMoney(n, currency)}
+      noMatchDesc={search
+        ? `No matching transaction mentions “${search}”.`
+        : 'No transaction inside the term, paid to a contact party, carries the watched tags yet.'}
       renderTable={(rows) => (
         <div className="acct-txn-table">
-          <InlinePager items={rows}>
-            {(pageRows) => <TxnTable txns={pageRows} onNavigate={onNavigate} />}
-          </InlinePager>
+          <TxnTable txns={rows} onNavigate={onNavigate}
+            sort={sort} onSortChange={(next) => { if (CON_SORT_KEY[next.key]) setSort(next); }} />
+          <Pager page={page} pageSize={pageSize} totalCount={total}
+            onPageChange={setPage} onPageSizeChange={(sz) => { setPageSize(sz); setPage(1); }} />
         </div>
       )}
     />
@@ -253,7 +314,7 @@ const RefNum = (props) => {
   const C = (window.OdysseyDesignSystem_d5aa51 || {}).ReferenceNumber;
   return C ? <C {...props} /> : <span className="con-ref-inline">{props.value}</span>;
 };
-const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, smartTagIds, setSmartTagIds, smartTagCap, smartTagsDegraded, canWriteSmartTags, onNavigate, onNewTerm, onEditTerm, onDeleteTerm, events, onEditEvent, onDeleteEvent, onAnnounceEvent }) => {
+const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, smartTagIds, setSmartTagIds, smartTagCap, smartTagsDegraded, canWriteSmartTags, canReadTxns, onEditContract, onNavigate, onNewTerm, onEditTerm, onDeleteTerm, events, onEditEvent, onDeleteEvent, onAnnounceEvent }) => {
   const typeInfo = CON_H.contractTypeInfo(contract.type);
   const parties = contract.parties || [];
   const files = contract.files || [];
@@ -376,7 +437,8 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
           meta={smartTagIds.length ? `${smartTagIds.length} watched` : 'none watched'} />
         <ContractSmartTags contract={contract} tagIds={smartTagIds} setTagIds={setSmartTagIds}
           onNavigate={onNavigate} canWrite={canWriteSmartTags} cap={smartTagCap}
-          limitsDegraded={smartTagsDegraded} />
+          limitsDegraded={smartTagsDegraded} canReadTxns={canReadTxns}
+          onAddParty={onAddParty} onEditContract={onEditContract} />
       </div>
 
       {/* DOCUMENTS — last section ("Upload document" is in the row menu too).
@@ -411,7 +473,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
 };
 
 /* ====================== One contract list item ====================== */
-const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smartTagsDegraded, canWriteSmartTags = true, onNavigate, open: openProp, onToggle, highlight, onDelete, searchTerm }) => {
+const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smartTagsDegraded, canWriteSmartTags = true, canReadTxns = true, onNavigate, open: openProp, onToggle, highlight, onDelete, searchTerm }) => {
   const { useState, useRef, useEffect } = React;
   // Terms hang off the record like parties and files do — seeded from the
   // contract-scoped history (GET /api/contracts/{id}/terms).
@@ -701,7 +763,8 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
           onAddParty={() => setModal('party')} onEditParty={(p) => setEditParty(p)} onAttach={() => setModal('file')}
           termCap={termCap}
           smartTagIds={smartTagIds} setSmartTagIds={setSmartTagIds} smartTagCap={smartTagCap}
-          smartTagsDegraded={smartTagsDegraded} canWriteSmartTags={canWriteSmartTags} onNavigate={onNavigate}
+          smartTagsDegraded={smartTagsDegraded} canWriteSmartTags={canWriteSmartTags} canReadTxns={canReadTxns}
+          onEditContract={() => setShowEdit(true)} onNavigate={onNavigate}
           onNewTerm={() => setModal('term')} onEditTerm={(t) => setEditTerm(t)} onDeleteTerm={deleteTerm}
           events={events} onEditEvent={(ev) => setEditEvent(ev)} onDeleteEvent={deleteEvent} onAnnounceEvent={say} />
       </RecordCard>
@@ -857,6 +920,9 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
     : (tweaks.conSmartTagCap != null ? tweaks.conSmartTagCap : CON_D.CONTRACT_MAX_SMART_TAGS_PER_CONTRACT);
   // contracts.update — read-only viewers keep the chips and the table.
   const canWriteSmartTags = tweaks.conCanUpdate !== false;
+  // transactions.read — the scoped read is refused without it (403), so the
+  // section keeps the chips and says why there is no table.
+  const canReadTxns = tweaks.conCanReadTxns !== false;
 
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState([]);
@@ -1125,7 +1191,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
             renderItem={(c) => (
               <ContractListItem row={c} today={today} endingWindow={endingWindow} termCap={termCap}
                 smartTagCap={smartTagCap} smartTagsDegraded={smartTagsDegraded}
-                canWriteSmartTags={canWriteSmartTags} onNavigate={onNavigate}
+                canWriteSmartTags={canWriteSmartTags} canReadTxns={canReadTxns} onNavigate={onNavigate}
                 open={openId === c.id}
                 onToggle={(o) => setOpenId(o ? c.id : null)}
                 highlight={jumpId === c.id}

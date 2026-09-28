@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Components" name="Components · Smart tags (contract host)" subtitle="The same AccountSmartTagsSection on a contract record — subject=&quot;contract&quot;, the ContractMaxSmartTagsPerContract cap, and the at-cap / refused / degraded-limits states. Live off the DS namespace." viewport="1120x1700" -->
+<!-- @dsCard group="Components" name="Components · Smart tags (contract host)" subtitle="The same AccountSmartTagsSection on a contract record, fed by the scoped GET /api/contracts/{id}/smart-tag-transactions — scope line, server paging, the three empty reasons, the missing-claim state, and the cap states." viewport="1120x2600" -->
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8" />
@@ -25,9 +25,9 @@ body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:
 </style>
 </head>
 <body>
-<div class="cap">Smart tags · contract host <code>&lt;AccountSmartTagsSection subject="contract" maxTags limitsDegraded addError /&gt;</code></div>
+<div class="cap">Smart tags · contract host <code>&lt;AccountSmartTagsSection subject="contract" scope blocked totalCount netTotal toolbar /&gt;</code></div>
 <div class="stack" id="root"></div>
-<p class="note">One component, two hosts. On a contract the watchlist answers <b>what this agreement actually cost</b>, beside the Terms section that says what it is contracted to cost — the tags resolve through the transactions endpoint, so the match is by tag and carries no contract scope. The cap is <b>ContractMaxSmartTagsPerContract</b> (default 20, ceiling 50 — the filter-array length the resolution query accepts); it is served by the claim-free <b>/api/contract-limits</b> and interpolated, never held here as a constant. At the cap the adder blocks and the bar says the number; a refused write shows the server's own sentence; a <b>degraded (503)</b> limits read leaves the number unknown, so the client stops pre-checking and the server's conservative bound does the refusing.</p>
+<p class="note">On a contract the match is <b>scoped by the server</b>: a transaction reads here only if it carries a watched tag, is dated inside the term, and names a contact party as its merchant. The section restates the response's <b>scope</b> (the date window and the party-contact count) under the bar and maps <b>emptyReason</b> to a state — <b>NoSmartTags</b> is the existing first-tag empty state; <b>NoContactParties</b> and <b>InvalidTerm</b> use <code>blocked</code>, each with the one action that fixes it. Paging, search and sort go to the server, so the table uses a footer Pager over <code>page.totalCount</code>, and the bar's net total is the server's <code>summary.totals</code> passed as <code>netTotal</code> — every match, never a page sum. Mixed currencies have no single sum, so the host passes none and the bar shows the count only. Without <b>transactions.read</b> the read is never issued: the chips stay, the table is replaced by a sentence naming the claim.</p>
 <script type="text/babel" data-presets="env,react">
 const { AccountSmartTagsSection, TxnTable } = window.OdysseyDesignSystem_d5aa51;
 
@@ -40,11 +40,11 @@ const TAGS = [
 const LABEL = Object.fromEntries(TAGS.map(t => [t.value, t.label]));
 
 const TXNS = [
-  { id: 'c1', desc: 'Northgate Lettings · Rent', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Approved', amount: -2250.00, date: '2026-09-01', dir: 'expense', icon: 'home', tags: ['t4'] },
+  { id: 'c1', desc: 'Northgate Lettings · Rent', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Approved', amount: -2250.00, date: '2026-07-01', dir: 'expense', icon: 'home', tags: ['t4'] },
   { id: 'c2', desc: 'Northgate Lettings · Rent', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Approved', amount: -2250.00, date: '2026-08-01', dir: 'expense', icon: 'home', tags: ['t4'] },
   { id: 'c3', desc: 'Northgate Lettings · Parking space', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Approved', amount: -85.00, date: '2026-08-01', dir: 'expense', icon: 'local_parking', tags: ['t4'] },
-  { id: 'c4', desc: 'PG&E · Electric', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Approved', amount: -104.20, date: '2026-08-14', dir: 'expense', icon: 'bolt', tags: ['t7'] },
-  { id: 'c5', desc: 'City Water · Quarterly', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Flagged', amount: -61.18, date: '2026-08-09', dir: 'expense', icon: 'water_drop', tags: ['t7'] },
+  { id: 'c4', desc: 'Northgate Lettings · Electric recharge', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Approved', amount: -104.20, date: '2026-08-14', dir: 'expense', icon: 'bolt', tags: ['t7'] },
+  { id: 'c5', desc: 'Northgate Lettings · Water recharge', accountLabel: 'Chase Checking', accountNumber: '·1234', currency: 'USD', status: 'Flagged', amount: -61.18, date: '2026-08-09', dir: 'expense', icon: 'water_drop', tags: ['t7'] },
   { id: 'c6', desc: 'Spotify · Monthly', accountLabel: 'Amex Platinum', accountNumber: '·5512', currency: 'USD', status: 'Approved', amount: -11.99, date: '2026-08-03', dir: 'expense', icon: 'music_note', tags: ['t2'] },
 ];
 const money = (n) => `${n < 0 ? '− ' : '+ '}${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
@@ -55,88 +55,124 @@ const renderTable = (rows) => (
 );
 const CONTRACT_COPY = {
   subject: 'contract',
-  emptyDesc: 'Pin the tags this agreement settles against, and what it actually costs reads here — no filter to rebuild on the Transactions page.',
-  noMatchDesc: 'No transactions carry the watched tags yet.',
+  emptyDesc: 'Pin the tags this agreement settles against. Transactions carrying them, dated inside the term and paid to a contact party, read here.',
+  noMatchDesc: 'No transaction inside the term, paid to a contact party, carries the watched tags yet.',
 };
+const SCOPE_TERM = [
+  { icon: 'date_range', label: 'Dated', value: '1 Sep 2025 – 31 Aug 2026' },
+  { icon: 'group', label: 'Merchant', value: 'one of 1 contact party' },
+];
+const WATCHED = [{ id: 't4', label: 'Rent' }, { id: 't7', label: 'Utilities' }];
+const MATCHES = TXNS.filter(t => t.tags.some(id => ['t4', 't7'].includes(id)));
 
-/* The live instance — the Maple St lease, watching Rent + Utilities, against a
-   cap of 3 so the at-cap block is reachable by clicking. */
+/* Live — the lease, scoped. The mock stands in for the server: search, sort and
+   paging are request parameters; only one page is ever held. */
 function Live() {
   const [ids, setIds] = React.useState(['t4', 't7']);
+  const [q, setQ] = React.useState('');
+  const [page, setPage] = React.useState(1);
+  const [size, setSize] = React.useState(3);
   const [loading, setLoading] = React.useState(false);
-  const [err, setErr] = React.useState(null);
-  const cap = 3;
   const first = React.useRef(true);
   React.useEffect(() => {
     if (first.current) { first.current = false; return; }
     setLoading(true);
-    const h = setTimeout(() => setLoading(false), 440);
+    const h = setTimeout(() => setLoading(false), 380);
     return () => clearTimeout(h);
-  }, [ids.join(',')]);
-  const matches = TXNS.filter(t => t.tags.some(id => ids.includes(id)));
+  }, [ids.join(','), q, page, size]);
+  React.useEffect(() => setPage(1), [ids.join(','), q, size]);
+  const all = MATCHES.filter(t => t.tags.some(id => ids.includes(id)) && (!q || t.desc.toLowerCase().includes(q.toLowerCase())));
+  const items = all.slice((page - 1) * size, page * size);
+  const { Pager, SearchField } = window.OdysseyDesignSystem_d5aa51;
   return (
     <div>
-      <div className="cap">Live — cap 3, so the block and its sentence are reachable</div>
-      <AccountSmartTagsSection
-        {...CONTRACT_COPY}
-        tags={ids.map(id => ({ id, label: LABEL[id] }))}
-        tagOptions={TAGS}
-        transactions={matches}
-        loading={loading}
-        maxTags={cap}
-        addError={err}
-        onDismissAddError={() => setErr(null)}
-        onAddTag={(id) => { if (ids.length >= cap) { setErr(`A contract may have at most ${cap} smart tags.`); return; } setErr(null); setIds(p => p.includes(id) ? p : [...p, id]); }}
-        onRemoveTag={(id) => { setErr(null); setIds(p => p.filter(x => x !== id)); }}
-        formatAmount={money}
-        renderTable={renderTable}
-        defaultOpen
-      />
+      <div className="cap">Live — emptyReason None, server-paged (3 per page)</div>
+      <AccountSmartTagsSection {...CONTRACT_COPY}
+        tags={ids.map(id => ({ id, label: LABEL[id] }))} tagOptions={TAGS}
+        transactions={items} totalCount={all.length} netTotal={all.reduce((n, t) => n + t.amount, 0)} formatAmount={money} loading={loading} scope={SCOPE_TERM}
+        noMatchDesc={q ? `No matching transaction mentions “${q}”.` : CONTRACT_COPY.noMatchDesc}
+        toolbar={<div style={{ flex: 1, minWidth: 240 }}>{SearchField
+          ? <SearchField placeholder="Search description, account, merchant, tag…" value={q} onChange={setQ} />
+          : <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search…" />}</div>}
+        onAddTag={(id) => setIds(p => p.includes(id) ? p : [...p, id])}
+        onRemoveTag={(id) => setIds(p => p.filter(x => x !== id))}
+        renderTable={(rows) => (
+          <React.Fragment>
+            {renderTable(rows)}
+            {Pager ? <Pager page={page} pageSize={size} totalCount={all.length} onPageChange={setPage} onPageSizeChange={setSize} /> : null}
+          </React.Fragment>
+        )}
+        defaultOpen />
     </div>
   );
 }
-
-const WATCHED = [{ id: 't4', label: 'Rent' }, { id: 't7', label: 'Utilities' }];
-const MATCHES = TXNS.filter(t => t.tags.some(id => ['t4', 't7'].includes(id)));
 
 function Demo() {
   return (
     <React.Fragment>
       <Live />
-      {/* The two table-less states sit side by side; every state that carries the
-          ledger takes a full row — the Account column is the point on the
-          contract host (the match is cross-account), so it never gets squeezed. */}
       <div className="pair">
         <div>
-          <div className="cap">No smart tags — the only place the first one is added</div>
+          <div className="cap">NoContactParties (2) — tags, but no contact party</div>
+          <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={[]}
+            blocked={{ icon: 'person_off', title: 'No contact is a party yet',
+              desc: 'A transaction counts here only when its merchant is a contact that is a party to this contract. Account and property parties are not merchants.',
+              actionLabel: 'Add a party', actionIcon: 'group_add', onAction: () => {} }}
+            renderTable={renderTable} defaultOpen />
+        </div>
+        <div>
+          <div className="cap">InvalidTerm (3) — legacy row, start after end</div>
+          <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={[]}
+            blocked={{ icon: 'event_busy', title: 'The term ends before it starts',
+              desc: 'Start date 1 Sep 2026 is after end date 31 Aug 2026, so no date can fall inside the term. Correct the dates to see matching transactions.',
+              actionLabel: 'Edit dates', actionIcon: 'edit_calendar', onAction: () => {} }}
+            renderTable={renderTable} defaultOpen />
+        </div>
+      </div>
+      <div className="pair">
+        <div>
+          <div className="cap">NoSmartTags (1) — the only place the first one is added</div>
           <AccountSmartTagsSection {...CONTRACT_COPY} tags={[]} tagOptions={TAGS} transactions={[]} renderTable={renderTable} defaultOpen />
         </div>
         <div>
-          <div className="cap">Watched, nothing matching yet</div>
+          <div className="cap">None, zero matches — one-off contract, no date bound</div>
           <AccountSmartTagsSection {...CONTRACT_COPY} tags={[{ id: 't13', label: 'Home maintenance' }]} tagOptions={TAGS}
-            transactions={[]} formatAmount={money} renderTable={renderTable} defaultOpen />
+            transactions={[]} totalCount={0}
+            scope={[{ icon: 'date_range', label: 'Dated', value: 'any date — one-off contract' }, { icon: 'group', label: 'Merchant', value: 'one of 2 contact parties' }]}
+            renderTable={renderTable} defaultOpen />
+        </div>
+      </div>
+      <div className="pair">
+        <div>
+          <div className="cap">Open-ended term — no upper bound</div>
+          <AccountSmartTagsSection {...CONTRACT_COPY} tags={[{ id: 't2', label: 'Subscriptions' }]} tagOptions={TAGS}
+            transactions={[]} totalCount={0}
+            scope={[{ icon: 'date_range', label: 'Dated', value: 'from 1 Mar 2024, no end' }, { icon: 'group', label: 'Merchant', value: 'one of 1 contact party' }]}
+            renderTable={renderTable} defaultOpen />
+        </div>
+        <div>
+          <div className="cap">Holds contracts.read, not transactions.read — no read issued</div>
+          <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={[]} canWrite={false}
+            blocked={{ icon: 'lock', title: 'Transactions are not visible to you',
+              desc: 'The watched tags stay listed. Showing what matches them needs transactions.read as well as contracts.read.' }}
+            renderTable={renderTable} defaultOpen />
         </div>
       </div>
       <div>
         <div className="cap">At the cap — the number comes from /api/contract-limits</div>
-        <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={MATCHES}
-          maxTags={2} formatAmount={money} renderTable={renderTable} defaultOpen />
+        <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={MATCHES} totalCount={MATCHES.length} netTotal={MATCHES.reduce((n, t) => n + t.amount, 0)} formatAmount={money}
+          scope={SCOPE_TERM} maxTags={2} renderTable={renderTable} defaultOpen />
       </div>
       <div>
         <div className="cap">Refused add — 422, the server's own sentence</div>
-        <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={MATCHES}
-          addError="Tag ‘Groceries’ is archived and cannot be added as a smart tag." onDismissAddError={() => {}}
-          formatAmount={money} renderTable={renderTable} defaultOpen />
+        <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={MATCHES} totalCount={MATCHES.length} netTotal={MATCHES.reduce((n, t) => n + t.amount, 0)} formatAmount={money}
+          scope={SCOPE_TERM} addError="Tag ‘Groceries’ is archived and cannot be added as a smart tag." onDismissAddError={() => {}}
+          renderTable={renderTable} defaultOpen />
       </div>
       <div>
         <div className="cap">Limits degraded — 503, no number to pre-check against</div>
-        <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={MATCHES}
-          limitsDegraded maxTags={null} formatAmount={money} renderTable={renderTable} defaultOpen />
-      </div>
-      <div>
-        <div className="cap">Read-only — holds contracts.read, not contracts.update</div>
-        <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={MATCHES}
-          canWrite={false} formatAmount={money} renderTable={renderTable} defaultOpen />
+        <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={MATCHES} totalCount={MATCHES.length} netTotal={MATCHES.reduce((n, t) => n + t.amount, 0)} formatAmount={money}
+          scope={SCOPE_TERM} limitsDegraded maxTags={null} renderTable={renderTable} defaultOpen />
       </div>
     </React.Fragment>
   );

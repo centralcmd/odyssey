@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AllocationDonuts","sourcePath":"components/AllocationDonuts.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileTypeMultiSelect","sourcePath":"components/FileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"PROPERTY_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FILE_TYPE_REGISTRIES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileTypeSelect","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"HomeownerAssociationSelect","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"PROPERTY_EVENT_TYPES","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_SYSTEM_ONLY","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_TYPE_MATRIX","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyEventTypeSelect","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountSmartTagsSection.jsx":"bbdc8d625fff","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"71a8e6f1f26b","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AllocationDonuts.jsx":"044b0391cba9","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"c39daff274ff","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"ace06e34d445","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"a44940f2426c","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileTypeMultiSelect.jsx":"fbaef310b135","components/FileTypeSelect.jsx":"602105962a04","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"e78979830d2b","components/FormRow.jsx":"760803e7e9a9","components/HomeownerAssociationSelect.jsx":"4b0af1f20e4a","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"b664702fd083","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/PropertyEventTypeSelect.jsx":"e9232a5f7149","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"d54e41a6f196","components/RegistrySelect.jsx":"cfdb93825f1e","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d8b4b57a7ba3","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"ae4664340137","ui_kits/web/AccountEstimates.jsx":"eff790136b25","ui_kits/web/AccountTerms.jsx":"268973cd5272","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"53971d37b9e8","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"5671cc00067f","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"496d5f963e1a","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddPropertyEventModal.jsx":"7bd99a614e1c","ui_kits/web/AddPropertyFileModal.jsx":"71fc7170d954","ui_kits/web/AddPropertyModal.jsx":"2b9baf5ac130","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"8829e073f771","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/Budgets.jsx":"77c8b3b8b457","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"e05a368b0bb4","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"672a3e086f82","ui_kits/web/ContractEvents.jsx":"5e6987305ced","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"69a038d4ce99","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"2357237a2a86","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"7bfc14bbad44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"132b02ce0397","ui_kits/web/PropertyEstimates.jsx":"19fbc1ab18df","ui_kits/web/PropertyEvents.jsx":"661071ddeedc","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3b260ae177cb","ui_kits/web/TaxStatements.jsx":"df9be16a340d","ui_kits/web/TransactionTags.jsx":"f3bf3f5cb39e","ui_kits/web/Transactions.jsx":"bf5f2c238911","ui_kits/web/Users.jsx":"4ddab8478138","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"b6b90dc34d06","ui_kits/web/contracts-data.js":"77678f2f0b03","ui_kits/web/data.js":"526050ea49e9","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"64839a67d3d5","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"ec78251314db","ui_kits/web/property-events-data.js":"2c6c4672c3ac","ui_kits/web/system-settings-data.js":"c05e455acb51","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"homeownerAssociationState","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"propertyEventTypeLegality","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"propertyEventTypesFor","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AllocationDonuts","sourcePath":"components/AllocationDonuts.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileTypeMultiSelect","sourcePath":"components/FileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"PROPERTY_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FILE_TYPE_REGISTRIES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileTypeSelect","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"HomeownerAssociationSelect","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"PROPERTY_EVENT_TYPES","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_SYSTEM_ONLY","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_TYPE_MATRIX","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyEventTypeSelect","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountSmartTagsSection.jsx":"eb82b5c6a04b","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"71a8e6f1f26b","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AllocationDonuts.jsx":"044b0391cba9","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"c39daff274ff","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"ace06e34d445","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"a44940f2426c","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"38d44167c33b","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileTypeMultiSelect.jsx":"fbaef310b135","components/FileTypeSelect.jsx":"602105962a04","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"e78979830d2b","components/FormRow.jsx":"760803e7e9a9","components/HomeownerAssociationSelect.jsx":"4b0af1f20e4a","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"b664702fd083","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/PropertyEventTypeSelect.jsx":"e9232a5f7149","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"d54e41a6f196","components/RegistrySelect.jsx":"cfdb93825f1e","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d8b4b57a7ba3","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"ae4664340137","ui_kits/web/AccountEstimates.jsx":"eff790136b25","ui_kits/web/AccountTerms.jsx":"268973cd5272","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"53971d37b9e8","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"5671cc00067f","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"496d5f963e1a","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddPropertyEventModal.jsx":"7bd99a614e1c","ui_kits/web/AddPropertyFileModal.jsx":"71fc7170d954","ui_kits/web/AddPropertyModal.jsx":"2b9baf5ac130","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"8829e073f771","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/Budgets.jsx":"77c8b3b8b457","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"e05a368b0bb4","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"672a3e086f82","ui_kits/web/ContractEvents.jsx":"5e6987305ced","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"12d3f4d7f758","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"2357237a2a86","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"7bfc14bbad44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"132b02ce0397","ui_kits/web/PropertyEstimates.jsx":"19fbc1ab18df","ui_kits/web/PropertyEvents.jsx":"661071ddeedc","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3b260ae177cb","ui_kits/web/TaxStatements.jsx":"df9be16a340d","ui_kits/web/TransactionTags.jsx":"f3bf3f5cb39e","ui_kits/web/Transactions.jsx":"bf5f2c238911","ui_kits/web/Users.jsx":"4ddab8478138","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"b6b90dc34d06","ui_kits/web/contracts-data.js":"708a55091a39","ui_kits/web/data.js":"526050ea49e9","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"64839a67d3d5","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"ec78251314db","ui_kits/web/property-events-data.js":"2c6c4672c3ac","ui_kits/web/system-settings-data.js":"c05e455acb51","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"homeownerAssociationState","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"propertyEventTypeLegality","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"propertyEventTypesFor","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -271,6 +271,26 @@ function AccountSmartTagsSection({
    *  409 already linked). Rendered on the bar; `onDismissAddError` clears it. */
   addError = null,
   onDismissAddError,
+  /** The rules the server applied, as a quiet line under the bar:
+   *  [{icon, label, value}]. The host formats it from the response; this
+   *  component never derives a rule. */
+  scope = null,
+  /** A STRUCTURAL empty result named by the server (the tags exist, but the
+   *  record cannot match anything yet): {icon, title, desc, actionLabel,
+   *  actionIcon, onAction}. Replaces the body; no table, no toolbar. */
+  blocked = null,
+  /** Server-paged hosts: the full match count (the page holds a slice). */
+  totalCount,
+  /** false = no net total on the bar — required when `transactions` is one
+   *  page of a server-paged set, since a page sum is not the total. */
+  showNetTotal = true,
+  /** Server-computed net total over ALL matches (not just the page held in
+   *  `transactions`). When a number, it replaces the client-side sum. */
+  netTotal,
+  /** Rendered above the table (search / page-size controls). Kept while
+   *  loading and on a no-match, so a search that emptied the table can be
+   *  cleared from where it was typed. */
+  toolbar = null,
   title = 'Smart tags',
   icon = 'sell',
   open,
@@ -312,26 +332,26 @@ function AccountSmartTagsSection({
     label: o.label != null ? o.label : o.name
   }).filter(o => o.value != null);
   const hasTags = cfg.length > 0;
-  const matchCount = transactions.length;
+  const matchCount = typeof totalCount === 'number' ? totalCount : transactions.length;
   // Blocking needs a number. A degraded limits read has none, so the adder
   // stays open and the server is left to refuse — never a guessed ceiling.
   const capKnown = !limitsDegraded && typeof maxTags === 'number' && maxTags > 0;
   const atCap = capKnown && cfg.length >= maxTags;
   const capNote = atCap ? `Watching the maximum of ${maxTags} tag${maxTags === 1 ? '' : 's'} — remove one to add another.` : limitsDegraded ? 'The tag limit is unavailable right now, so an add may be refused.' : null;
   // The header pill: matching-transaction count once tags exist and we're settled.
-  const showCount = hasTags && !loading && !error;
+  const showCount = hasTags && !loading && !error && !blocked;
 
   // Net total of the watched transactions (income positive, expense negative).
   // `amountOf(t)` extracts the signed number (default: t.amount); `formatAmount(n)`
   // renders it (default: a signed "$ x.xx"). The total shows on the bar once
   // there are matches — a per-account at-a-glance figure for the watched tags.
   const getAmount = typeof amountOf === 'function' ? amountOf : t => t && typeof t.amount === 'number' ? t.amount : 0;
-  const total = transactions.reduce((s, t) => s + (getAmount(t) || 0), 0);
+  const total = typeof netTotal === 'number' ? netTotal : transactions.reduce((s, t) => s + (getAmount(t) || 0), 0);
   const fmtAmount = typeof formatAmount === 'function' ? formatAmount : n => `${n < 0 ? '− ' : '+ '}${Math.abs(n).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })} USD`;
-  const showTotal = hasTags && !loading && !error && matchCount > 0;
+  const showTotal = hasTags && !loading && !error && !blocked && matchCount > 0;
 
   // ---- Body, by state (mirrors the spec's NoSmartTags / Loading /
   //      NoTransactions / HasTransactions / error matrix). ----
@@ -376,6 +396,28 @@ function AccountSmartTagsSection({
       footNote: capNote,
       label: "Add a tag"
     })) : null);
+  } else if (blocked) {
+    body = /*#__PURE__*/React.createElement("div", {
+      className: "odc-empty odc-smarttags-empty odc-smarttags-blocked"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "odc-empty-ic muted"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, blocked.icon || 'block')), /*#__PURE__*/React.createElement("div", {
+      className: "odc-empty-ttl"
+    }, blocked.title), blocked.desc ? /*#__PURE__*/React.createElement("div", {
+      className: "odc-empty-desc"
+    }, blocked.desc) : null, blocked.actionLabel && blocked.onAction ? /*#__PURE__*/React.createElement("div", {
+      className: "odc-empty-actions"
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "odc-btn outlined sm",
+      onClick: blocked.onAction
+    }, blocked.actionIcon ? /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, blocked.actionIcon) : null, /*#__PURE__*/React.createElement("span", null, blocked.actionLabel))) : null);
   } else if (loading) {
     body = /*#__PURE__*/React.createElement("div", {
       className: "odc-smarttags-loading",
@@ -406,7 +448,13 @@ function AccountSmartTagsSection({
       className: "odc-smarttags-table"
     }, typeof renderTable === 'function' ? renderTable(transactions) : null);
   }
+  const showToolbar = !!toolbar && hasTags && !error && !blocked;
+  if (showToolbar) body = /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "odc-smarttags-toolbar"
+  }, toolbar), body);
+  const scopeItems = hasTags && Array.isArray(scope) ? scope.filter(Boolean) : [];
   const inner = /*#__PURE__*/React.createElement(SmartTagsInner, {
+    scopeItems: scopeItems,
     hasTags: hasTags,
     cfg: cfg,
     cfgIds: cfgIds,
@@ -419,6 +467,7 @@ function AccountSmartTagsSection({
     total: total,
     matchCount: matchCount,
     fmtAmount: fmtAmount,
+    showNetTotal: showNetTotal,
     body: body,
     capNote: capNote,
     addError: addError,
@@ -460,6 +509,8 @@ function AccountSmartTagsSection({
   }, inner) : null);
 }
 function SmartTagsInner({
+  showNetTotal = true,
+  scopeItems = [],
   hasTags,
   cfg,
   cfgIds,
@@ -507,12 +558,12 @@ function SmartTagsInner({
     atCap: atCap,
     footNote: capNote
   }) : null)), showTotal ? /*#__PURE__*/React.createElement("div", {
-    className: `odc-smarttags-total ${total < 0 ? 'expense' : 'income'}`
+    className: `odc-smarttags-total ${!showNetTotal ? '' : total < 0 ? 'expense' : 'income'}`
   }, /*#__PURE__*/React.createElement("span", {
     className: "odc-smarttags-total-lab"
-  }, matchCount, " ", matchCount === 1 ? 'transaction' : 'transactions'), /*#__PURE__*/React.createElement("span", {
+  }, matchCount, " ", matchCount === 1 ? 'transaction' : 'transactions'), showNetTotal ? /*#__PURE__*/React.createElement("span", {
     className: "odc-smarttags-total-val mono"
-  }, fmtAmount(total))) : null) : null, hasTags && addError ? /*#__PURE__*/React.createElement("div", {
+  }, fmtAmount(total)) : null) : null) : null, hasTags && addError ? /*#__PURE__*/React.createElement("div", {
     className: "odc-smarttags-refused",
     role: "alert"
   }, /*#__PURE__*/React.createElement("span", {
@@ -530,7 +581,21 @@ function SmartTagsInner({
     "aria-hidden": "true"
   }, "close")) : null) : null, hasTags && !addError && canWrite && capNote ? /*#__PURE__*/React.createElement("div", {
     className: "odc-smarttags-advisory"
-  }, capNote) : null, body);
+  }, capNote) : null, scopeItems.length ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-smarttags-scope"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-smarttags-bar-label"
+  }, "Scope"), scopeItems.map((it, i) => /*#__PURE__*/React.createElement("span", {
+    className: "odc-smarttags-scope-it",
+    key: i
+  }, it.icon ? /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true"
+  }, it.icon) : null, it.label ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-smarttags-scope-lab"
+  }, it.label) : null, /*#__PURE__*/React.createElement("span", {
+    className: "odc-smarttags-scope-val"
+  }, it.value)))) : null, body);
 }
 Object.assign(__ds_scope, { AccountSmartTagsSection });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/AccountSmartTagsSection.jsx", error: String((e && e.message) || e) }); }
@@ -39863,15 +39928,37 @@ const PartyTile = ({
 };
 
 /* ====================== Contract smart tags ======================
-   The saved transaction filter a contract carries: a curated set of existing
-   TransactionTags, resolved to the transactions that carry any of them. The
-   DS section is shared with the account record — this wrapper only supplies
-   the contract's watched set, the matches, and the contract-side cap.
-
-   The match is BY TAG, not by contract: the backend adds no Transaction →
-   Contract link, so resolution is the two existing endpoints composed
-   (GET …/smart-tags then GET /api/transactions?tagIds=…). Nothing here scopes
-   the result to the contract. */
+   The saved transaction filter a contract carries, resolved SERVER-SIDE and
+   scoped to the agreement (*Contract Smart Tags — Scoped Transaction Match*):
+   a transaction reads here only if it carries a watched tag, is dated inside
+   the term, and names a contact party as its merchant. One read —
+   GET /api/contracts/{id}/smart-tag-transactions — paged, searched and sorted
+   on the server with the transactions list's keys. The page restates the
+   response's `scope` and maps its `emptyReason` ordinal; it never composes
+   the rule itself. Gated on contracts.read AND transactions.read. */
+const CON_EMPTY = {
+  None: 0,
+  NoSmartTags: 1,
+  NoContactParties: 2,
+  InvalidTerm: 3
+};
+/* TxnTable header key → the endpoint's TransactionSortBy. Tag has no server
+   key, so its header is inert here (the click keeps the current sort). */
+const CON_SORT_KEY = {
+  date: 'Date',
+  amount: 'Amount',
+  desc: 'Desc',
+  contact: 'Contact',
+  account: 'Account',
+  status: 'Status'
+};
+const conScopeDay = iso => iso ? CON_H.conDate(String(iso).slice(0, 10)) : null;
+const conScopeLastDay = iso => {
+  if (!iso) return null;
+  const d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return CON_H.conDate(d.toISOString().slice(0, 10));
+};
 const ContractSmartTags = ({
   contract,
   tagIds,
@@ -39880,6 +39967,9 @@ const ContractSmartTags = ({
   canWrite = true,
   cap,
   limitsDegraded = false,
+  canReadTxns = true,
+  onAddParty,
+  onEditContract,
   bare = true
 }) => {
   const {
@@ -39892,21 +39982,45 @@ const ContractSmartTags = ({
   const tagById = CON_D.tagById;
   const [loading, setLoading] = useState(false);
   const [addError, setAddError] = useState(null);
-  const timer = useRef(null);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState({
+    key: 'date',
+    dir: 'desc'
+  });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [res, setRes] = useState(null);
+
+  /* Any input to the read — tags, parties, dates, search, sort, page — re-issues
+     it. Search is debounced; the table shows the loading state meanwhile. */
+  const partyKey = (contract.parties || []).map(p => p.contactId || '').join(',');
+  const reqKey = [tagIds.join(','), partyKey, contract.startDate, contract.endDate, contract.completionDate, search, sort.key, sort.dir, page, pageSize].join('|');
   const first = useRef(true);
-  // Every add/remove re-reads the resolution query, so the table flashes its
-  // loading state rather than mutating in place.
   useEffect(() => {
+    if (!canReadTxns) return undefined;
+    const run = () => setRes(CON_H.conSmartTagTransactions(contract, tagIds, {
+      search,
+      sortBy: CON_SORT_KEY[sort.key],
+      sortDir: sort.dir === 'asc' ? 'Asc' : 'Desc',
+      offset: pageSize === 'all' ? 0 : (page - 1) * pageSize,
+      limit: pageSize === 'all' ? 0 : pageSize
+    }));
     if (first.current) {
       first.current = false;
-      return;
+      run();
+      return undefined;
     }
     setLoading(true);
-    timer.current = setTimeout(() => setLoading(false), 420);
-    return () => clearTimeout(timer.current);
-  }, [tagIds.join(',')]);
+    const h = setTimeout(() => {
+      run();
+      setLoading(false);
+    }, 380);
+    return () => clearTimeout(h);
+  }, [reqKey, canReadTxns]);
+  useEffect(() => {
+    setPage(1);
+  }, [tagIds.join(','), search, sort.key, sort.dir, pageSize]);
   if (!DSSection) return null;
-  const matches = CON_D.transactions.filter(t => CON_D.txnTagIds(t).some(id => tagIds.includes(id)));
   const configured = tagIds.map(id => tagById[id]).filter(Boolean).map(t => ({
     id: t.id,
     label: t.name
@@ -39915,14 +40029,6 @@ const ContractSmartTags = ({
     value: t.id,
     label: t.name
   }));
-  // The term currency in force is the contract's own; USD is the fallback for a
-  // contract with no priced term.
-  const inForce = window.trmCurrentFromList ? window.trmCurrentFromList(contract.terms || []) : [];
-  const currency = (inForce.find(t => t.currency) || {}).currency || 'USD';
-
-  /* The cap is enforced server-side and only pre-checked here. Past it the POST
-     answers 422 with the effective number interpolated — which is what the bar
-     shows, rather than a number this page holds as a constant. */
   const add = id => {
     if (cap != null && tagIds.length >= cap) {
       setAddError(`A contract may have at most ${cap} smart tags.`);
@@ -39935,12 +40041,82 @@ const ContractSmartTags = ({
     setAddError(null);
     setTagIds(prev => prev.filter(x => x !== id));
   };
+  const scope = res ? res.scope : null;
+  const items = res ? res.page.items : [];
+  const total = res ? res.page.totalCount : 0;
+  const reason = scope ? scope.emptyReason : CON_EMPTY.None;
+  /* The net total is the server's (summary.totals) — every match, not the page.
+     One currency → one figure; mixed currencies have no single sum, so the bar
+     shows the count only rather than adding USD to EUR. */
+  const totals = res && res.summary && res.summary.totals || [];
+  const net = totals.length === 1 ? totals[0] : null;
+
+  /* The scope line — the window and the party count straight off the response.
+     toExclusive is the next midnight, so the last covered day is one before. */
+  let windowText = null;
+  if (scope) {
+    const f = conScopeDay(scope.from),
+      l = conScopeLastDay(scope.toExclusive);
+    windowText = f && l ? `${f} – ${l}` : f ? `from ${f}, no end` : l ? `until ${l}` : contract.completionDate ? 'any date — one-off contract' : 'any date — no term set';
+  }
+  const scopeItems = scope && reason !== CON_EMPTY.InvalidTerm ? [{
+    icon: 'date_range',
+    label: 'Dated',
+    value: windowText
+  }, {
+    icon: 'group',
+    label: 'Merchant',
+    value: scope.partyContactCount === 0 ? 'no contact party' : `one of ${scope.partyContactCount} contact part${scope.partyContactCount === 1 ? 'y' : 'ies'}`
+  }] : null;
+  let blocked = null;
+  if (!canReadTxns) {
+    blocked = {
+      icon: 'lock',
+      title: 'Transactions are not visible to you',
+      desc: 'The watched tags stay listed. Showing what matches them needs transactions.read as well as contracts.read.'
+    };
+  } else if (reason === CON_EMPTY.NoContactParties) {
+    blocked = {
+      icon: 'person_off',
+      title: 'No contact is a party yet',
+      desc: 'A transaction counts here only when its merchant is a contact that is a party to this contract. Account and property parties are not merchants.',
+      actionLabel: canWrite && onAddParty ? 'Add a party' : undefined,
+      actionIcon: 'group_add',
+      onAction: onAddParty
+    };
+  } else if (reason === CON_EMPTY.InvalidTerm) {
+    blocked = {
+      icon: 'event_busy',
+      title: 'The term ends before it starts',
+      desc: `Start date ${conScopeDay(scope.from)} is after end date ${conScopeLastDay(scope.toExclusive)}, so no date can fall inside the term. Correct the dates to see matching transactions.`,
+      actionLabel: canWrite && onEditContract ? 'Edit dates' : undefined,
+      actionIcon: 'edit_calendar',
+      onAction: onEditContract
+    };
+  }
+  const toolbar = /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 240
+    }
+  }, /*#__PURE__*/React.createElement(SearchField, {
+    placeholder: "Search description, account, merchant, tag\u2026",
+    value: search,
+    onChange: setSearch
+  }));
   return /*#__PURE__*/React.createElement(DSSection, {
     chrome: !bare,
     subject: "contract",
     tags: configured,
     tagOptions: options,
-    transactions: matches,
+    transactions: items,
+    totalCount: total,
+    showNetTotal: !!net,
+    netTotal: net ? net.netAmount : undefined,
+    formatAmount: n => CON_H.signedMoney(n, net ? net.currency : 'USD'),
+    scope: canReadTxns ? scopeItems : null,
+    blocked: blocked,
+    toolbar: total > 0 || search ? toolbar : null,
     onAddTag: add,
     onRemoveTag: remove,
     canWrite: canWrite,
@@ -39949,17 +40125,27 @@ const ContractSmartTags = ({
     limitsDegraded: limitsDegraded,
     addError: addError,
     onDismissAddError: () => setAddError(null),
-    emptyDesc: canWrite ? 'Pin the tags this agreement settles against, and what it actually costs reads here — no filter to rebuild on the Transactions page.' : 'No tags are being watched on this contract.',
-    noMatchDesc: "No transactions carry the watched tags yet.",
-    formatAmount: n => CON_H.signedMoney(n, currency),
+    emptyDesc: canWrite ? 'Pin the tags this agreement settles against. Transactions carrying them, dated inside the term and paid to a contact party, read here.' : 'No tags are being watched on this contract.',
+    noMatchDesc: search ? `No matching transaction mentions “${search}”.` : 'No transaction inside the term, paid to a contact party, carries the watched tags yet.',
     renderTable: rows => /*#__PURE__*/React.createElement("div", {
       className: "acct-txn-table"
-    }, /*#__PURE__*/React.createElement(InlinePager, {
-      items: rows
-    }, pageRows => /*#__PURE__*/React.createElement(TxnTable, {
-      txns: pageRows,
-      onNavigate: onNavigate
-    })))
+    }, /*#__PURE__*/React.createElement(TxnTable, {
+      txns: rows,
+      onNavigate: onNavigate,
+      sort: sort,
+      onSortChange: next => {
+        if (CON_SORT_KEY[next.key]) setSort(next);
+      }
+    }), /*#__PURE__*/React.createElement(Pager, {
+      page: page,
+      pageSize: pageSize,
+      totalCount: total,
+      onPageChange: setPage,
+      onPageSizeChange: sz => {
+        setPageSize(sz);
+        setPage(1);
+      }
+    }))
   });
 };
 
@@ -39986,6 +40172,8 @@ const ContractDetail = ({
   smartTagCap,
   smartTagsDegraded,
   canWriteSmartTags,
+  canReadTxns,
+  onEditContract,
   onNavigate,
   onNewTerm,
   onEditTerm,
@@ -40138,7 +40326,10 @@ const ContractDetail = ({
     onNavigate: onNavigate,
     canWrite: canWriteSmartTags,
     cap: smartTagCap,
-    limitsDegraded: smartTagsDegraded
+    limitsDegraded: smartTagsDegraded,
+    canReadTxns: canReadTxns,
+    onAddParty: onAddParty,
+    onEditContract: onEditContract
   })), /*#__PURE__*/React.createElement("div", {
     className: "con-section"
   }, /*#__PURE__*/React.createElement(SectionDivider, {
@@ -40168,6 +40359,7 @@ const ContractListItem = ({
   smartTagCap,
   smartTagsDegraded,
   canWriteSmartTags = true,
+  canReadTxns = true,
   onNavigate,
   open: openProp,
   onToggle,
@@ -40637,6 +40829,8 @@ const ContractListItem = ({
     smartTagCap: smartTagCap,
     smartTagsDegraded: smartTagsDegraded,
     canWriteSmartTags: canWriteSmartTags,
+    canReadTxns: canReadTxns,
+    onEditContract: () => setShowEdit(true),
     onNavigate: onNavigate,
     onNewTerm: () => setModal('term'),
     onEditTerm: t => setEditTerm(t),
@@ -40872,6 +41066,9 @@ const Contracts = ({
   const smartTagCap = smartTagsDegraded ? null : tweaks.conSmartTagCap != null ? tweaks.conSmartTagCap : CON_D.CONTRACT_MAX_SMART_TAGS_PER_CONTRACT;
   // contracts.update — read-only viewers keep the chips and the table.
   const canWriteSmartTags = tweaks.conCanUpdate !== false;
+  // transactions.read — the scoped read is refused without it (403), so the
+  // section keeps the chips and says why there is no table.
+  const canReadTxns = tweaks.conCanReadTxns !== false;
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState([]);
   const [statusFilter, setStatusFilter] = useState([]);
@@ -41338,6 +41535,7 @@ const Contracts = ({
       smartTagCap: smartTagCap,
       smartTagsDegraded: smartTagsDegraded,
       canWriteSmartTags: canWriteSmartTags,
+      canReadTxns: canReadTxns,
       onNavigate: onNavigate,
       open: openId === c.id,
       onToggle: o => setOpenId(o ? c.id : null),
@@ -60585,13 +60783,33 @@ try { (() => {
   D.CONTRACTS_CHARGE_WINDOW_DAYS = 45;
   D.CONTRACT_MAX_TERMS_PER_CONTRACT = 500;
   /* ContractMaxSmartTagsPerContract — a system setting (default 20, range
-     1–50). The ceiling is ListDefaults.MaxFilterArrayLength: past it the
-     feature's own resolution query (GET /api/transactions?tagIds=…) refuses
-     the array the section builds. */
+     1–50). The ceiling is ListDefaults.MaxFilterArrayLength. Resolution is
+     server-side now (GET /api/contracts/{id}/smart-tag-transactions, a
+     correlated sub-query), so the client never builds a tagIds array. */
   D.CONTRACT_MAX_SMART_TAGS_PER_CONTRACT = 20;
   D.CONTRACT_SMART_TAGS_CEILING = 50;
   /* Seed associations by contractId (GET /api/contracts/{id}/smart-tags in the
      real app), ordered as AddedAt ascending. */
+  /* The ledger the scoped endpoint reads: the main seed stops in 2024, so these
+     2025–26 rows stand in for the statement history the lease and fiber terms
+     cover. Each exercises one rule — before / after the term, a merchant that
+     is not a party, no merchant, two watched tags on one row. */
+  const scopeRow = (id, date, desc, contact, tags, amount, icon, status = 'Approved') => ({
+    id,
+    date,
+    desc,
+    account: '1',
+    tags,
+    contact,
+    currency: 'USD',
+    amount,
+    status,
+    icon,
+    dir: amount < 0 ? 'expense' : 'income'
+  });
+  const rentMonths = ['2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09'];
+  D.contractScopeExtra = [...rentMonths.map((m, i) => scopeRow(`xs-rent-${i}`, `${m}-01`, 'Michael Chen · Rent', 'c9', ['t4'], m >= '2026-03' ? -2250 : -2150, 'home')), scopeRow('xs-water-1', '2026-01-15', 'Michael Chen · Water share', 'c9', ['t7'], -48.30, 'water_drop'), scopeRow('xs-final', '2026-08-31', 'Michael Chen · Final rent + utilities', 'c9', ['t4', 't7'], -312.40, 'home', 'New'), scopeRow('xs-pge-1', '2025-11-14', 'PG&E · Electric', 'c5', ['t7'], -118.60, 'bolt'), scopeRow('xs-pge-2', '2026-02-14', 'PG&E · Electric', 'c5', ['t7'], -131.05, 'bolt'), scopeRow('xs-lake', '2025-09-03', 'Lakeside Property Mgmt · Rent', null, ['t4'], -2400, 'home'), ...['2025-01', '2025-04', '2025-07', '2025-10', '2026-01', '2026-04', '2026-07', '2026-09'].map((m, i) => scopeRow(`xs-fiber-${i}`, `${m}-22`, 'Spotify · Monthly', 'c3', ['t2'], -9.99, 'subscriptions'))];
+  D.contractScopeLedger = () => D.transactions.concat(D.contractScopeExtra);
   D.contractSmartTagSeed = {
     'ct-lease': ['t4', 't7'],
     // Maple St lease — Rent, Utilities
@@ -61815,6 +62033,95 @@ try { (() => {
       const t = today || H.conToday();
       const status = H.conStatus(contract, t);
       return status === 'Expired' || !!contract.completionDate && H.conDateOnly(contract.completionDate) <= t;
+    },
+    /* ---- GET /api/contracts/{id}/smart-tag-transactions (mock) ----
+       + `summary` (spec follow-up): the net total over EVERY matched row —
+       the same filtered set as page.totalCount, search included — one entry
+       per currency, since a sum never mixes currencies.
+       The scoped match of the *Contract Smart Tags — Scoped Transaction Match
+       — Backend (Draft v3)* spec. R1 tag ∩ R2 term ∩ R3 merchant is a contact
+       party. Returns the envelope verbatim: { scope, page }. The page reads
+       `scope` and `emptyReason` — it never re-derives the rule. */
+    conSmartTagTransactions(contract, tagIds, q = {}) {
+      const offset = q.offset || 0;
+      const limit = q.limit != null ? q.limit : 25;
+      const addDay = d => {
+        const x = new Date(d + 'T00:00:00Z');
+        x.setUTCDate(x.getUTCDate() + 1);
+        return x.toISOString().slice(0, 10);
+      };
+      const s = H.conDateOnly(contract.startDate),
+        e = H.conDateOnly(contract.endDate);
+      const oneOff = !!contract.completionDate;
+      const from = oneOff ? null : s;
+      const toExclusive = oneOff ? null : e ? addDay(e) : null;
+      const contactIds = [...new Set((contract.parties || []).map(p => p.contactId).filter(Boolean))];
+      const scope = {
+        from: from ? from + 'T00:00:00Z' : null,
+        toExclusive: toExclusive ? toExclusive + 'T00:00:00Z' : null,
+        smartTagCount: tagIds.length,
+        partyContactCount: contactIds.length,
+        emptyReason: tagIds.length === 0 ? 1 : contactIds.length === 0 ? 2 : !oneOff && s && e && e < s ? 3 : 0
+      };
+      const empty = {
+        scope,
+        page: {
+          items: [],
+          offset,
+          limit,
+          totalCount: 0
+        },
+        summary: {
+          totals: []
+        }
+      };
+      if (scope.emptyReason !== 0) return empty;
+      const tags = new Set(tagIds),
+        parties = new Set(contactIds);
+      const acctName = id => ((D.accounts || []).find(a => String(a.id) === String(id)) || {}).name || '';
+      const contactName = id => ((D.contacts || []).find(c => c.id === id) || {}).name || '';
+      const needle = (q.search || '').trim().toLowerCase();
+      let rows = D.contractScopeLedger().filter(t => {
+        const day = H.conDateOnly(t.date);
+        return D.txnTagIds(t).some(id => tags.has(id)) && (!from || day >= from) && (!toExclusive || day < toExclusive) && !!t.contact && parties.has(t.contact);
+      });
+      if (needle) rows = rows.filter(t => [t.desc, acctName(t.account), contactName(t.contact), ...D.txnTags(t).map(x => x.name)].some(v => String(v || '').toLowerCase().includes(needle)));
+      const key = q.sortBy || 'Date';
+      const dir = (q.sortDir || (key === 'Date' || key === 'Amount' ? 'Desc' : 'Asc')) === 'Asc' ? 1 : -1;
+      const val = {
+        Date: t => t.date,
+        Amount: t => t.amount,
+        Desc: t => t.desc,
+        Contact: t => contactName(t.contact),
+        Account: t => acctName(t.account),
+        Status: t => t.status
+      }[key] || (t => t.date);
+      rows = rows.slice().sort((a, b) => {
+        const x = val(a),
+          y = val(b);
+        return (x < y ? -1 : x > y ? 1 : 0) * dir || (a.date < b.date ? 1 : -1);
+      });
+      const byCur = {};
+      rows.forEach(t => {
+        const k = t.currency || 'USD';
+        byCur[k] = Math.round(((byCur[k] || 0) + t.amount) * 100) / 100;
+      });
+      const summary = {
+        totals: Object.keys(byCur).sort().map(k => ({
+          currency: k,
+          netAmount: byCur[k]
+        }))
+      };
+      return {
+        scope,
+        page: {
+          items: limit === 0 ? rows.slice(offset) : rows.slice(offset, offset + limit),
+          offset,
+          limit,
+          totalCount: rows.length
+        },
+        summary
+      };
     },
     /* The only thing that refuses a term write is the per-contract CAP.
        Archiving hides a contract from the default list; it never blocks

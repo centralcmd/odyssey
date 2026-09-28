@@ -319,6 +319,8 @@
                            unit=" tags" onChange={(v) => setTweak('conSmartTagCap', v)} />
               <TweakToggle label="Holds contracts.update (can add / remove)" value={tweaks.conCanUpdate !== false}
                            onChange={(v) => setTweak('conCanUpdate', v)} />
+              <TweakToggle label="Holds transactions.read (scoped matches)" value={tweaks.conCanReadTxns !== false}
+                           onChange={(v) => setTweak('conCanReadTxns', v)} />
               <TweakToggle label="/api/contract-limits degraded (503)" value={!!tweaks.conSmartTagLimitsDegraded}
                            onChange={(v) => setTweak('conSmartTagLimitsDegraded', v)} />
             </React.Fragment>

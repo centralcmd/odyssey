@@ -68,6 +68,23 @@ export interface AccountSmartTagsSectionProps {
    *  bar, not in the popover, which closes on the click that caused it. */
   addError?: string | null;
   onDismissAddError?: () => void;
+  /** The scope the server applied, shown as a quiet line under the bar. The
+   *  contract host formats `scope.from`/`toExclusive` and the party-contact
+   *  count from GET /api/contracts/{id}/smart-tag-transactions. */
+  scope?: Array<{ icon?: string; label?: React.ReactNode; value: React.ReactNode }> | null;
+  /** A structural empty result named by the server (`emptyReason` ≠ None):
+   *  replaces the body with its own title, sentence and one fixing action. */
+  blocked?: { icon?: string; title: React.ReactNode; desc?: React.ReactNode; actionLabel?: string; actionIcon?: string; onAction?: () => void } | null;
+  /** Server-paged hosts: the full match count (`page.totalCount`). */
+  totalCount?: number;
+  /** Net total figure on the bar (the match count still shows). Pass false
+   *  when no single sum exists — e.g. matches in more than one currency. */
+  showNetTotal?: boolean;
+  /** Server-computed net total over every match (`summary.totals[0].netAmount`
+   *  on the contract host). Overrides the client-side sum of `transactions`. */
+  netTotal?: number;
+  /** Controls above the table (search, pager size). Kept on loading and no-match. */
+  toolbar?: React.ReactNode;
   /** Section title. Default "Smart tags". */
   title?: string;
   /** Leading Material Icons ligature. Default "sell". */
