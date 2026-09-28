@@ -189,17 +189,86 @@ public class ContractSmartTagSurfaceTests
     // ── Copy ─────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// The empty copy states the three rules the server applies (issue #226), so a reader knows what
-    /// will read here before adding a first tag.
+    /// The contract host's copy states each of the three rules the server applies (issue #226) —
+    /// watched tag, inside the term, contact-party merchant — so a reader knows what will and will not
+    /// read here. The old copy's "no filter to rebuild" framing described the tag-only match.
+    /// </summary>
+    [Theory]
+    [InlineData(ContractDetailView.SmartTagsWritableEmptyDesc)]
+    [InlineData(ContractDetailView.SmartTagsNoMatchDesc)]
+    public void The_contract_copy_names_the_term_and_party_rules(string copy)
+    {
+        Assert.Contains("inside the term", copy, StringComparison.Ordinal);
+        Assert.Contains("contact party", copy, StringComparison.Ordinal);
+        Assert.DoesNotContain("no filter to rebuild", copy, StringComparison.Ordinal);
+    }
+
+    /// <summary>The host's no-match sentence is what the section shows for an empty, unsearched match.</summary>
+    [Fact]
+    public void An_empty_match_shows_the_hosts_no_match_sentence()
+    {
+        var harness = Render(noMatchDesc: ContractDetailView.SmartTagsNoMatchDesc);
+
+        Assert.Contains(ContractDetailView.SmartTagsNoMatchDesc, harness.Cut.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A header sort goes to the server with its key and direction and restarts at page one; the Tag
+    /// column has no server key, so clicking it keeps the current order and issues no read.
     /// </summary>
     [Fact]
-    public void The_empty_copy_is_the_hosts()
+    public async Task A_header_sort_reaches_the_server_and_the_tag_column_is_inert()
     {
-        const string Copy =
-            "Pin the tags this agreement settles against. Transactions carrying them, dated inside the term and paid to a contact party, read here.";
-        var harness = Render(watched: [], emptyDesc: Copy);
+        var harness = Render(scoped: Envelope(items: [Transaction("Power", -10m)], totalCount: 60));
+        var view = harness.Cut.FindComponent<TransactionListView>();
+        await harness.Cut.InvokeAsync(() => view.Instance.PageChanged.InvokeAsync(3));
+        harness.Contracts.Invocations.Clear();
 
-        Assert.Contains(Copy, harness.Cut.Markup, StringComparison.Ordinal);
+        await harness.Cut.InvokeAsync(() => view.Instance.SortChanged.InvokeAsync(
+            new Odyssey.Client.Components.OdsTableSort("amount", Odyssey.Client.Components.OdsSortDirection.Asc)));
+        harness.Contracts.Verify(c => c.ListSmartTagTransactionsAsync(ContractId, 1, It.IsAny<int>(),
+            It.IsAny<string?>(), "Amount", "Asc", It.IsAny<CancellationToken>()), Times.Once);
+
+        harness.Contracts.Invocations.Clear();
+        await harness.Cut.InvokeAsync(() => view.Instance.SortChanged.InvokeAsync(
+            new Odyssey.Client.Components.OdsTableSort("tag", Odyssey.Client.Components.OdsSortDirection.Asc)));
+        Assert.Empty(harness.Contracts.Invocations);
+        Assert.Equal("amount", harness.Cut.FindComponent<TransactionListView>().Instance.Sort?.Key);
+    }
+
+    /// <summary>A page and a page size are sent as the window; a new size restarts at page one.</summary>
+    [Fact]
+    public async Task Paging_and_page_size_reach_the_server()
+    {
+        var harness = Render(scoped: Envelope(items: [Transaction("Power", -10m)], totalCount: 300));
+        var view = harness.Cut.FindComponent<TransactionListView>();
+
+        await harness.Cut.InvokeAsync(() => view.Instance.PageChanged.InvokeAsync(2));
+        harness.Contracts.Verify(c => c.ListSmartTagTransactionsAsync(ContractId, 2, 25,
+            It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+
+        await harness.Cut.InvokeAsync(() => view.Instance.PageSizeChanged.InvokeAsync(100));
+        harness.Contracts.Verify(c => c.ListSmartTagTransactionsAsync(ContractId, 1, 100,
+            It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>A failed read clears the previous scope and totals rather than showing them as current.</summary>
+    [Fact]
+    public void A_failed_read_drops_the_previous_scope_and_totals()
+    {
+        var harness = Render(scoped: Envelope(items: [Transaction("Power", -10m)],
+            byCurrency: [new ContractSmartTagCurrencyTotal { CurrencyCode = "NOK", TransactionCount = 1, TotalOut = 10m, Net = -10m }]));
+        harness.Contracts
+            .Setup(c => c.ListSmartTagTransactionsAsync(ContractId, It.IsAny<int>(), It.IsAny<int>(),
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ContractSmartTagTransactionsResult>.Failure(
+                HttpStatusCode.InternalServerError, new ApiProblem { Detail = "boom" }));
+
+        harness.Cut.Render(p => p.Add(s => s.ScopeKey, "changed"));
+
+        Assert.Contains("Could not load matching transactions", harness.Cut.Markup, StringComparison.Ordinal);
+        Assert.Empty(harness.Cut.FindAll(".odc-smarttags-scope"));
+        Assert.Empty(harness.Cut.FindAll(".odc-smarttags-total"));
     }
 
     /// <summary>
@@ -455,6 +524,112 @@ public class ContractSmartTagSurfaceTests
             It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // ── Accessibility and read ordering (raised by the PR review agents) ─────
+
+    private void SetupScoped(Harness harness, ContractSmartTagTransactionsResult envelope, string? search = null) =>
+        harness.Contracts
+            .Setup(c => c.ListSmartTagTransactionsAsync(ContractId, It.IsAny<int>(), It.IsAny<int>(),
+                search ?? It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ContractSmartTagTransactionsResult>.Success(envelope, HttpStatusCode.OK));
+
+    private static string StatusRegion(Harness harness) =>
+        harness.Cut.Find(".odc-sr-only[role='status']").TextContent;
+
+    /// <summary>
+    /// A server-paged read swaps rows and counts in place, so its outcome is announced through a polite
+    /// status region (WCAG 4.1.3) — the count on a match, the no-match sentence otherwise.
+    /// </summary>
+    [Fact]
+    public async Task Each_scoped_read_announces_its_outcome()
+    {
+        var harness = Render(scoped: Envelope(items: [Transaction("Power", -10m)]));
+        Assert.Equal("1 matching transaction.", StatusRegion(harness));
+
+        SetupScoped(harness, Envelope(), search: "grid");
+        var field = harness.Cut.FindComponent<Odyssey.Client.Components.OdsSearchField>();
+        await harness.Cut.InvokeAsync(() => field.Instance.ValueChanged.InvokeAsync("grid"));
+
+        Assert.Equal("No matching transaction mentions “grid”.", StatusRegion(harness));
+    }
+
+    /// <summary>
+    /// The fixing action of a blocked state unmounts with it, so when the state clears focus lands on
+    /// the scope line rather than falling to the page (WCAG 2.4.3).
+    /// </summary>
+    [Fact]
+    public void Clearing_a_blocked_state_moves_focus_to_the_scope_line()
+    {
+        var harness = Render(scoped: Envelope(ContractSmartTagEmptyReason.NoContactParties, partyContacts: 0));
+        SetupScoped(harness, Envelope(items: [Transaction("Power", -10m)]));
+
+        harness.Cut.Render(p => p.Add(s => s.ScopeKey, "party-added"));
+
+        var scopeLine = harness.Cut.Find(".odc-smarttags-scope");
+        Assert.Equal("-1", scopeLine.GetAttribute("tabindex"));
+        Assert.Contains(harness.Context.JSInterop.Invocations,
+            i => i.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>A failed read followed by a successful one shows the result, not the old error.</summary>
+    [Fact]
+    public void A_successful_re_read_clears_an_earlier_failure()
+    {
+        var harness = Render();
+        harness.Contracts
+            .Setup(c => c.ListSmartTagTransactionsAsync(ContractId, It.IsAny<int>(), It.IsAny<int>(),
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ContractSmartTagTransactionsResult>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Detail = "boom" }));
+        harness.Cut.Render(p => p.Add(s => s.ScopeKey, "first"));
+        Assert.NotEmpty(harness.Cut.FindAll(".odc-smarttags-state.error"));
+
+        SetupScoped(harness, Envelope(items: [Transaction("Power", -10m)]));
+        harness.Cut.Render(p => p.Add(s => s.ScopeKey, "second"));
+
+        Assert.Empty(harness.Cut.FindAll(".odc-smarttags-state.error"));
+        Assert.Contains("Power", harness.Cut.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Overlapping reads land newest-wins: a slow response to an earlier search must not overwrite the
+    /// rows of the search that replaced it.
+    /// </summary>
+    [Fact]
+    public async Task An_older_response_arriving_last_is_discarded()
+    {
+        var harness = Render(scoped: Envelope(items: [Transaction("Initial", -1m)]));
+        var slow = new TaskCompletionSource<ApiResult<ContractSmartTagTransactionsResult>>();
+        harness.Contracts
+            .Setup(c => c.ListSmartTagTransactionsAsync(ContractId, It.IsAny<int>(), It.IsAny<int>(),
+                "older", It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Returns(slow.Task);
+        SetupScoped(harness, Envelope(items: [Transaction("Newest match", -2m)]), search: "newer");
+
+        var field = harness.Cut.FindComponent<Odyssey.Client.Components.OdsSearchField>();
+        var older = harness.Cut.InvokeAsync(() => field.Instance.ValueChanged.InvokeAsync("older"));
+        await harness.Cut.InvokeAsync(() => field.Instance.ValueChanged.InvokeAsync("newer"));
+        slow.SetResult(ApiResult<ContractSmartTagTransactionsResult>.Success(
+            Envelope(items: [Transaction("Stale match", -3m)]), HttpStatusCode.OK));
+        await older;
+
+        Assert.Contains("Newest match", harness.Cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Stale match", harness.Cut.Markup, StringComparison.Ordinal);
+    }
+
+    /// <summary>A changed scope can shrink the match, so the re-read starts at page one.</summary>
+    [Fact]
+    public async Task A_changed_scope_restarts_at_page_one()
+    {
+        var harness = Render(scoped: Envelope(items: [Transaction("Power", -10m)], totalCount: 60));
+        var view = harness.Cut.FindComponent<TransactionListView>();
+        await harness.Cut.InvokeAsync(() => view.Instance.PageChanged.InvokeAsync(2));
+        harness.Contracts.Invocations.Clear();
+
+        harness.Cut.Render(p => p.Add(s => s.ScopeKey, "date-changed"));
+
+        harness.Contracts.Verify(c => c.ListSmartTagTransactionsAsync(ContractId, 1, It.IsAny<int>(),
+            It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private static string ScopeDay(DateTime date) =>
         date.ToString("MMM dd, yyyy", System.Globalization.CultureInfo.CurrentCulture);
 
@@ -466,7 +641,8 @@ public class ContractSmartTagSurfaceTests
         Mock<IAccountsApiClient> Accounts,
         Mock<IContractLimitsCache> ContractLimits,
         Mock<IAccountLimitsCache> AccountLimits,
-        Mock<ITransactionsApiClient> Transactions)
+        Mock<ITransactionsApiClient> Transactions,
+        BunitContext Context)
     {
         /// <summary>
         /// Checks a row in the adder. Driven through the child's own callback rather than through the
@@ -488,6 +664,7 @@ public class ContractSmartTagSurfaceTests
         ApiResult? addResult = null,
         bool canWrite = true,
         string? emptyDesc = null,
+        string? noMatchDesc = null,
         ContractSmartTagTransactionsResult? scoped = null,
         bool canReadTransactions = true,
         bool isOneOff = false,
@@ -568,6 +745,7 @@ public class ContractSmartTagSurfaceTests
             .Add(s => s.Icon, "local_offer")
             .Add(s => s.CanWrite, canWrite)
             .Add(s => s.EmptyDesc, emptyDesc)
+            .Add(s => s.NoMatchDesc, noMatchDesc)
             .Add(s => s.CanReadTransactions, canReadTransactions)
             .Add(s => s.IsOneOff, isOneOff)
             .Add(s => s.OnAddParty, onAddParty ?? (() => { }))
@@ -578,7 +756,7 @@ public class ContractSmartTagSurfaceTests
         // section's own public reload — the same entry point its retry button uses.
         cut.InvokeAsync(() => cut.Instance.ReloadAsync()).GetAwaiter().GetResult();
 
-        return new Harness(cut, contracts, accounts, contractLimits, accountLimits, transactions);
+        return new Harness(cut, contracts, accounts, contractLimits, accountLimits, transactions, ctx);
     }
 
     private sealed class SignedOut : Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider

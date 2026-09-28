@@ -155,6 +155,21 @@ public partial class AccountSmartTagsSection
     private ContractSmartTagSummary? _summary;
     private string? _loadedScopeKey;
 
+    /// <summary>The outcome of the last scoped read, for the polite status region.</summary>
+    private string? _liveMessage;
+
+    private ElementReference _scopeLine;
+
+    /// <summary>Set when a blocked state cleared on the last read; focus then moves to the scope line.</summary>
+    private bool _focusScopeLine;
+
+    /// <summary>
+    /// The latest scoped read issued. A search keystroke, a sort and a page change can overlap, and
+    /// only the newest may land — an older response arriving last would show rows for a query the
+    /// reader has already replaced.
+    /// </summary>
+    private int _readSequence;
+
     private bool IsScoped => Host == SmartTagHost.Contract;
 
     private int MatchCount => IsScoped ? _totalCount : _transactions.Count;
@@ -238,22 +253,6 @@ public partial class AccountSmartTagsSection
         }
     }
 
-    private static RenderFragment Text(string text) => builder => builder.AddContent(0, text);
-
-    private RenderFragment? BlockedAction(BlockedState blocked) => blocked.ActionLabel is not { } label
-        ? null
-        : builder =>
-        {
-            builder.OpenComponent<OdsButton>(0);
-            builder.AddAttribute(1, nameof(OdsButton.Variant), OdsButtonVariant.Outlined);
-            builder.AddAttribute(2, nameof(OdsButton.Icon), blocked.ActionIcon);
-            builder.AddAttribute(3, nameof(OdsButton.OnClick),
-                EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(
-                    this, () => blocked.OnAction.InvokeAsync()));
-            builder.AddAttribute(4, nameof(OdsButton.ChildContent), Text(label));
-            builder.CloseComponent();
-        };
-
     private bool _capKnown => !_limitsDegraded && _maxTags > 0;
     private bool _atCap => _capKnown && _smartTags.Count >= _maxTags;
     private decimal _total => _transactions.Sum(t => t.Amount);
@@ -299,6 +298,8 @@ public partial class AccountSmartTagsSection
         if (IsScoped && _isLoaded && _loadedScopeKey != ScopeKey)
         {
             _loadedScopeKey = ScopeKey;
+            // The match may have shrunk: a page past its end would show nothing.
+            _page = 1;
             await LoadTransactionsAsync();
         }
     }
@@ -444,6 +445,8 @@ public partial class AccountSmartTagsSection
             return;
         }
 
+        var sequence = ++_readSequence;
+        _error = null;
         _isLoadingTxns = true;
         StateHasChanged();
 
@@ -454,22 +457,54 @@ public partial class AccountSmartTagsSection
             sortBy: sortBy,
             sortDir: sortBy is null ? null : _sort.Dir == OdsSortDirection.Asc ? "Asc" : "Desc");
 
+        if (sequence != _readSequence)
+            return;
+
         if (result is { IsSuccess: true, Value: { } value })
         {
+            var wasBlocked = Blocked is not null;
             _scope = value.Scope;
             _summary = value.Summary;
             _transactions = [.. value.Page.Items];
             _totalCount = value.Page.TotalCount;
+
+            // The fixing action (Add a party / Edit dates) unmounted with the blocked state, so focus
+            // would fall to the page; land it on the scope line, which now states the working scope.
+            _focusScopeLine = wasBlocked && Blocked is null;
+            _liveMessage = Blocked is { } blocked
+                ? blocked.Title
+                : _totalCount == 0
+                    ? NoMatchDescription
+                    : $"{_totalCount} matching transaction{(_totalCount == 1 ? "" : "s")}.";
         }
         else
         {
             _error = "Could not load matching transactions. Try again.";
             _transactions = [];
             _totalCount = 0;
+            _scope = null;
+            _summary = null;
+            _liveMessage = null;
         }
 
         _isLoadingTxns = false;
         StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusScopeLine)
+            return;
+
+        _focusScopeLine = false;
+        try
+        {
+            await _scopeLine.FocusAsync();
+        }
+        catch (InvalidOperationException)
+        {
+            // Not rendered after all (a read that ended in an error) — nothing to land on.
+        }
     }
 
     private async Task OnSearchChanged(string? value)

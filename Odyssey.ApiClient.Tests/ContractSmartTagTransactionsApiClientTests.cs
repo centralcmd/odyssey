@@ -15,16 +15,16 @@ public class ContractSmartTagTransactionsApiClientTests
 {
     private static readonly Guid ContractId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
-    private sealed class RecordingHandler(string body) : HttpMessageHandler
+    private sealed class RecordingHandler(string body, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
     {
         public HttpRequestMessage? LastRequest { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             LastRequest = request;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return Task.FromResult(new HttpResponseMessage(status)
             {
-                Content = new StringContent(body, Encoding.UTF8, "application/json"),
+                Content = new StringContent(body, Encoding.UTF8, status == HttpStatusCode.OK ? "application/json" : "application/problem+json"),
             });
         }
     }
@@ -85,5 +85,22 @@ public class ContractSmartTagTransactionsApiClientTests
         Assert.Null(value.Scope.ToExclusive);
         Assert.Equal(12.345678m, Assert.Single(value.Summary.ByCurrency).TotalOut);
         Assert.Equal(3, value.Page.TotalCount);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task A_refusal_is_a_failed_result_carrying_the_status_and_the_problem(HttpStatusCode status)
+    {
+        var handler = new RecordingHandler("""{"title":"Not Found","status":404,"detail":"Contract ID x not found."}""", status);
+        var client = new ContractsApiClient(new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }));
+
+        var result = await client.ListSmartTagTransactionsAsync(ContractId, page: 1, pageSize: 10);
+
+        Assert.False(result.IsSuccess);
+        Assert.Null(result.Value);
+        Assert.Equal(status, result.Status);
+        if (status == HttpStatusCode.NotFound)
+            Assert.Equal("Contract ID x not found.", result.Problem?.Detail);
     }
 }

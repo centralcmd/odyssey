@@ -105,9 +105,16 @@ public partial class ContractDetailView : IAsyncDisposable
     /// (issue #226) — watched tag, inside the term, paid to a contact party — so a reader knows what
     /// will and will not read here before adding a first tag.
     /// </summary>
-    private string ContractSmartTagsEmptyDesc => CanWrite
-        ? "Pin the tags this agreement settles against. Transactions carrying them, dated inside the term and paid to a contact party, read here."
-        : "No tags are being watched on this contract.";
+    private string ContractSmartTagsEmptyDesc => CanWrite ? SmartTagsWritableEmptyDesc : SmartTagsReadOnlyEmptyDesc;
+
+    internal const string SmartTagsWritableEmptyDesc =
+        "Pin the tags this agreement settles against. Transactions carrying them, dated inside the term and paid to a contact party, read here.";
+
+    internal const string SmartTagsReadOnlyEmptyDesc = "No tags are being watched on this contract.";
+
+    /// <summary>The contract host's no-match sentence — the three rules, restated.</summary>
+    internal const string SmartTagsNoMatchDesc =
+        "No transaction inside the term, paid to a contact party, carries the watched tags yet.";
 
     /// <summary>
     /// Every contract input the smart-tag match depends on besides its tags: the contact parties and

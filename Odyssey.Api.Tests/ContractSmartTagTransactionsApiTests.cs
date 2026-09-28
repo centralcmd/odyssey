@@ -62,19 +62,19 @@ public partial class ContractSmartTagTransactionsApiTests
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(Path(seeded.ContractId))).StatusCode);
     }
 
-    public static TheoryData<string> Roles() =>
-        [nameof(RolePermissions.AdminClaims), nameof(RolePermissions.OwnerClaims),
-         nameof(RolePermissions.UserClaims), nameof(RolePermissions.GuestClaims)];
-
-    /// <summary>Every seeded role gets exactly what its claim set licenses — 200 iff it holds both.</summary>
+    /// <summary>
+    /// Every seeded role, with its outcome PINNED rather than derived from the claims it is fed — a
+    /// role-map change that granted Guest contracts.read, or took transactions.read from User, must
+    /// fail here rather than move the expectation along with it.
+    /// </summary>
     [Theory]
-    [MemberData(nameof(Roles))]
-    public async Task EverySeededRole_IsAdmittedIffItHoldsBothClaims(string role)
+    [InlineData(nameof(RolePermissions.AdminClaims), HttpStatusCode.OK)]
+    [InlineData(nameof(RolePermissions.OwnerClaims), HttpStatusCode.OK)]
+    [InlineData(nameof(RolePermissions.UserClaims), HttpStatusCode.OK)]
+    [InlineData(nameof(RolePermissions.GuestClaims), HttpStatusCode.Forbidden)]
+    public async Task EverySeededRole_GetsItsPinnedOutcome(string role, HttpStatusCode expected)
     {
         var claims = (string[])typeof(RolePermissions).GetField(role)!.GetValue(null)!;
-        var expected = claims.Contains(PermissionClaims.ContractsRead) && claims.Contains(PermissionClaims.TransactionsRead)
-            ? HttpStatusCode.OK
-            : HttpStatusCode.Forbidden;
 
         await using var factory = new OdysseyApiFactory(claims);
         var seeded = await SeedAsync(factory);

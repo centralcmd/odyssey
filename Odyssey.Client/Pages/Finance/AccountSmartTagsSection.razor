@@ -127,7 +127,9 @@
            count — so the reader can see WHY a transaction is or is not here. *@
         @if (_hasTags && ScopeItems is { Count: > 0 } scopeItems)
         {
-            <div class="odc-smarttags-scope">
+            @* tabindex="-1": the landing point for focus when a blocked state clears — the button that
+               fixed it (Add a party / Edit dates) unmounts with that state (WCAG 2.4.3). *@
+            <div class="odc-smarttags-scope" role="group" aria-label="Scope applied" tabindex="-1" @ref="_scopeLine">
                 <span class="odc-smarttags-bar-label">Scope</span>
                 @foreach (var item in scopeItems)
                 {
@@ -140,8 +142,22 @@
             </div>
         }
 
+        @* Server-paged reads swap the rows, the count and the no-match state in place, so their
+           outcome is announced here rather than left to be discovered (WCAG 4.1.3). Rendered
+           unconditionally on the contract host so the region exists before its text changes. *@
+        @if (IsScoped)
+        {
+            <div class="odc-sr-only" role="status" aria-live="polite">@_liveMessage</div>
+        }
+
         @if (_error is not null)
         {
+            @* A search that failed keeps its field, so the term that caused it can be changed or cleared
+               from where it was typed. *@
+            @if (IsScoped && _hasTags && _search.Length > 0)
+            {
+                @SearchToolbar
+            }
             <div class="odc-smarttags-state error" role="alert">
                 <span class="material-icons odc-smarttags-state-ic" aria-hidden="true">error_outline</span>
                 <div class="odc-smarttags-state-txt">@_error</div>
@@ -174,10 +190,24 @@
         {
             @* A STRUCTURAL empty result the server named (or a read that was never issued): the tags
                exist, but nothing can match yet. One sentence, and the one action that fixes it. *@
-            <OdsEmptyState Icon="@blocked.Icon" MutedIcon="true" Class="odc-smarttags-empty odc-smarttags-blocked"
-                           Title="@Text(blocked.Title)"
-                           Description="@Text(blocked.Description)"
-                           Action="@BlockedAction(blocked)" />
+            @if (blocked.ActionLabel is { } actionLabel)
+            {
+                <OdsEmptyState Icon="@blocked.Icon" MutedIcon="true" Class="odc-smarttags-empty odc-smarttags-blocked">
+                    <Title>@blocked.Title</Title>
+                    <Description>@blocked.Description</Description>
+                    <Action>
+                        <OdsButton Variant="OdsButtonVariant.Outlined" Icon="@blocked.ActionIcon"
+                                   OnClick="@(() => blocked.OnAction.InvokeAsync())">@actionLabel</OdsButton>
+                    </Action>
+                </OdsEmptyState>
+            }
+            else
+            {
+                <OdsEmptyState Icon="@blocked.Icon" MutedIcon="true" Class="odc-smarttags-empty odc-smarttags-blocked">
+                    <Title>@blocked.Title</Title>
+                    <Description>@blocked.Description</Description>
+                </OdsEmptyState>
+            }
         }
         else if (_isLoadingTxns && !IsScoped)
         {
@@ -190,13 +220,7 @@
         {
             @if (ShowToolbar)
             {
-                <div class="odc-smarttags-toolbar">
-                    <OdsSearchField Value="@_search"
-                                    ValueChanged="OnSearchChanged"
-                                    DebounceInterval="300"
-                                    Placeholder="Search description, account, merchant, tag…"
-                                    AriaLabel="Search matching transactions" />
-                </div>
+                @SearchToolbar
             }
 
             @if (_isLoadingTxns && _transactions.Count == 0)
@@ -243,3 +267,13 @@
         }
     </ChildContent>
 </OdsCollapsible>
+
+@code {
+    private RenderFragment SearchToolbar => @<div class="odc-smarttags-toolbar">
+        <OdsSearchField Value="@_search"
+                        ValueChanged="OnSearchChanged"
+                        DebounceInterval="300"
+                        Placeholder="Search description, account, merchant, tag…"
+                        AriaLabel="Search matching transactions" />
+    </div>;
+}
