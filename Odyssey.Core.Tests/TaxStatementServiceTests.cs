@@ -283,6 +283,189 @@ public class TaxStatementServiceTests
         Assert.Equal(Context.TaxStatementFileType.Other, result.FileType);
     }
 
+    // ── Settlement role + range ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task SettlementRange_DefaultsToPeriodPlusOneYear()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+
+        var created = await service.Create(NewStatement());
+
+        Assert.False(created.SettlementRangeCustom);
+        Assert.Equal(new DateTime(2025, 1, 1), created.SettlementStartDate.Date);
+        Assert.Equal(new DateTime(2025, 12, 31), created.SettlementEndDate.Date);
+    }
+
+    [Fact]
+    public async Task SettlementRange_Default_FollowsAPeriodChange()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var created = await service.Create(NewStatement());
+
+        var updated = await service.Update(created.TaxStatementId, new UpdateTaxStatement
+        {
+            Name = created.Name,
+            FiscalYear = 2023,
+            StartDate = new DateTime(2023, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2023, 12, 31, 0, 0, 0, DateTimeKind.Utc),
+            BaseCurrencyCode = "USD",
+        });
+
+        Assert.False(updated!.SettlementRangeCustom);
+        Assert.Equal(new DateTime(2024, 1, 1), updated.SettlementStartDate.Date);
+    }
+
+    [Fact]
+    public void SettlementRange_Default_ClampsLeapDay()
+    {
+        var (start, _) = TaxSettlementRange.Default(new DateTime(2024, 2, 29), new DateTime(2024, 12, 31));
+
+        Assert.Equal(new DateTime(2025, 2, 28), start);
+    }
+
+    [Fact]
+    public async Task SettlementRange_Custom_IsStoredAndReported()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var request = NewStatement();
+        request.SettlementStartDate = new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(2025, 9, 30, 0, 0, 0, DateTimeKind.Utc);
+
+        var created = await service.Create(request);
+
+        Assert.True(created.SettlementRangeCustom);
+        Assert.Equal(request.SettlementStartDate, created.SettlementStartDate);
+        Assert.Equal(request.SettlementEndDate, created.SettlementEndDate);
+    }
+
+    [Fact]
+    public async Task SettlementRange_OnlyOneEnd_Rejected()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var request = NewStatement();
+        request.SettlementStartDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(request));
+    }
+
+    [Fact]
+    public async Task SettlementRange_EndBeforeStart_Rejected()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var request = NewStatement();
+        request.SettlementStartDate = new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(request));
+    }
+
+    [Fact]
+    public async Task UpdateTags_SettlementRole_RoundTrips()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var tag = SeedTag(context, "Tax refund");
+        await context.SaveChangesAsync();
+        var created = await service.Create(NewStatement());
+
+        var updated = await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags
+        {
+            SettlementTagIds = [tag.TransactionTagId],
+        });
+
+        Assert.Equal([tag.TransactionTagId], updated!.SettlementTagIds);
+        Assert.Empty(updated.TaxTagIds);
+    }
+
+    [Fact]
+    public async Task UpdateTags_TagInBothTaxPaymentAndSettlement_Rejected()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var tag = SeedTag(context, "Tax");
+        await context.SaveChangesAsync();
+        var created = await service.Create(NewStatement());
+
+        var ex = await Assert.ThrowsAsync<DomainUnprocessableException>(() => service.UpdateTags(created.TaxStatementId,
+            new UpdateTaxStatementTags { TaxTagIds = [tag.TransactionTagId], SettlementTagIds = [tag.TransactionTagId] }));
+
+        Assert.True(ex.Errors!.ContainsKey(nameof(UpdateTaxStatementTags.SettlementTagIds)));
+        Assert.Empty((await service.Get(created.TaxStatementId))!.TaxTagIds);
+    }
+
+    [Fact]
+    public async Task Report_SettlementPaid_SumsSettlementTagsWithinTheSettlementRange()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+
+        var account = SeedAccount(context, ContextAccountType.CheckingAccount, "USD");
+        var taxTag = SeedTag(context, "Advance tax");
+        var settlementTag = SeedTag(context, "Tax settlement");
+        var refundTag = SeedTag(context, "Tax refund");
+        SeedTransaction(context, account, taxTag, 209000m, new DateTime(2024, 9, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        // In the default settlement range (2025): counts, the refund with its sign.
+        SeedTransaction(context, account, settlementTag, 1500m, new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, refundTag, -500m, new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        // Inside the income year, not the settlement range: ignored.
+        SeedTransaction(context, account, settlementTag, 777m, new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        // Off-currency: excluded and tallied.
+        SeedTransaction(context, account, settlementTag, 50m, new DateTime(2025, 8, 1, 0, 0, 0, DateTimeKind.Utc), "EUR");
+        await context.SaveChangesAsync();
+
+        var request = NewStatement();
+        request.AssessedTax = 210000m;
+        request.SettlementAmount = 1000m;
+        var created = await service.Create(request);
+        await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags
+        {
+            TaxTagIds = [taxTag.TransactionTagId],
+            SettlementTagIds = [settlementTag.TransactionTagId, refundTag.TransactionTagId],
+        });
+
+        var report = await service.GetReport(created.TaxStatementId);
+
+        Assert.Equal(1000m, report!.Derived.SettlementPaid);                   // 1500 − 500
+        Assert.Equal(209000m, report.Derived.PaidTax);
+        Assert.Equal(0m, report.Reconciliation.SettlementRecordedVariance);    // 1000 − 1000
+        Assert.Equal(0m, report.Reconciliation.AdvancePaidVariance);           // (210000 − 1000) − 209000
+        Assert.Equal(1, report.ExcludedCurrencies["EUR"]);
+    }
+
+    [Fact]
+    public async Task Report_SettlementPaid_UsesACustomRange()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+
+        var account = SeedAccount(context, ContextAccountType.CheckingAccount, "USD");
+        var settlementTag = SeedTag(context, "Tax settlement");
+        SeedTransaction(context, account, settlementTag, 300m, new DateTime(2025, 2, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, settlementTag, 400m, new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        await context.SaveChangesAsync();
+
+        var request = NewStatement();
+        request.SettlementStartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+        var created = await service.Create(request);
+        await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags
+        {
+            SettlementTagIds = [settlementTag.TransactionTagId],
+        });
+
+        var report = await service.GetReport(created.TaxStatementId);
+
+        Assert.Equal(400m, report!.Derived.SettlementPaid);
+        Assert.Null(report.Reconciliation.SettlementRecordedVariance);        // SettlementAmount absent
+        Assert.Null(report.Reconciliation.AdvancePaidVariance);
+    }
+
     // ── Seed helpers ──────────────────────────────────────────────────────────
 
     private static Account SeedAccount(OdysseyContext context, ContextAccountType type, string currency)

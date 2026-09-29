@@ -41,6 +41,12 @@
 
 .tx-figure { min-width: 0; font-size: 0.875rem; line-height: 1.35; color: var(--mud-palette-text-primary); }
 .tx-recon-row.total .tx-figure { font-weight: 500; }
+/* A second line under a figure's label, explaining what its derived column holds. */
+.tx-figure-sub {
+    display: block; margin-top: 2px;
+    font-size: 0.6875rem; font-weight: 400; line-height: 1.3;
+    color: var(--mud-palette-text-secondary);
+}
 
 .tx-num {
     font-family: var(--font-mono, 'Roboto Mono', monospace);

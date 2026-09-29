@@ -42,6 +42,10 @@ public sealed record TaxStatementDerivedFigures
     // Advance/within-year tax only — not the post-assessment settlement.
     public decimal PaidTax { get; set; }
     public decimal ActualIncome { get; set; }
+
+    // Settlement-role tags summed over the statement's settlement range (additional tax paid
+    // and refunds received after the assessment), so it compares with the declared settlement.
+    public decimal SettlementPaid { get; set; }
 }
 
 public sealed record TaxStatementReconciliation
@@ -50,4 +54,10 @@ public sealed record TaxStatementReconciliation
     public decimal? IncomeVariance { get; set; }
     public decimal? NetWorthVariance { get; set; }
     public decimal? SettlementVariance { get; set; }
+
+    // (assessed tax − declared settlement) − derived advance tax paid.
+    public decimal? AdvancePaidVariance { get; set; }
+
+    // Declared settlement − derived settlement recorded.
+    public decimal? SettlementRecordedVariance { get; set; }
 }

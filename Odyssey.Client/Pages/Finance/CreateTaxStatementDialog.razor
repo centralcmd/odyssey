@@ -44,8 +44,8 @@
     </OdsFormRow>
 
     <OdsFormRow>
-        <OdsDatePicker @bind-Value="_startDate" Label="Period start" Required="true" />
-        <OdsDatePicker @bind-Value="_endDate" Label="Period end" Required="true"
+        <OdsDatePicker @bind-Value="_startDate" @bind-Value:after="FollowPeriod" Label="Period start" Required="true" />
+        <OdsDatePicker @bind-Value="_endDate" @bind-Value:after="FollowPeriod" Label="Period end" Required="true"
                        Error="@_dateError" ErrorText="End date can't be before the start date."
                        HelperText="Defaults to the calendar year." />
     </OdsFormRow>
@@ -113,5 +113,29 @@
                                CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
                                Help="Sum into derived actual income." />
         </OdsFormRow>
+        <OdsFormRow>
+            <OdsTagMultiSelect Id="tax-statement-settlement-tags" Label="Settlement tags"
+                               Value="_settlementTags" ValueChanged="OnSettlementTagsChanged" Options="_tagOpts"
+                               Placeholder="No tags" AddLabel="Add tag"
+                               OnCreate="@(_canCreateTag ? CreateTagOption : null)"
+                               CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
+                               Error="@_settlementTagsError"
+                               Help="@(_settlementTagsError ?? "Additional tax paid or refund received — summed within the settlement range.")" />
+            <div></div>
+        </OdsFormRow>
+        @* The settlement range follows the period (+1 year) until the user sets it; an untouched
+           range is sent as null so the server keeps it following later period edits too. *@
+        <OdsFormRow>
+            <OdsDatePicker @bind-Value="_settlementStartDate" @bind-Value:after="TouchRange" Label="Settlement from"
+                           HelperText="@(_rangeTouched ? "Custom range." : "Follows the period, +1 year.")" />
+            <OdsDatePicker @bind-Value="_settlementEndDate" @bind-Value:after="TouchRange" Label="Settlement to"
+                           Error="@_settlementRangeError" ErrorText="End date can't be before the start date." />
+        </OdsFormRow>
+        @if (_rangeTouched)
+        {
+            <div>
+                <OdsButton Variant="OdsButtonVariant.Text" Icon="restart_alt" OnClick="ResetRange">Reset to period +1 year</OdsButton>
+            </div>
+        }
     }
 </OdsFormDialog>

@@ -16,19 +16,26 @@
 /* ── Year-over-year overview charts ── */
 .tx-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
 
-/* ── Derivation tags — two role wells (tax-payment / income) ──
+/* ── Derivation tags — three role wells (tax-payment / income / settlement) ──
    The wells are OdsInfoTiles now, so the well's own frame, label and figure come from
-   .odc-infotile; what is left here is the two-up grid and the extra row the foot carries. */
+   .odc-infotile; what is left here is the three-up grid and the extra rows the foot carries. */
 .tx-roles {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
     --odc-infotile-accent: var(--rec, var(--brand-text));
     --odc-infotile-accent-soft: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
 }
+@media (max-width: 1000px) { .tx-roles { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 720px) { .tx-roles { grid-template-columns: 1fr; } }
 /* The tile itself is rendered by OdsInfoTile, so it carries no scope id of this page — the
    foot is reached through ::deep from the grid, which is ours. */
 .tx-roles ::deep .tx-role .odc-infotile-foot { display: flex; flex-direction: column; gap: 10px; }
 .tx-role-cap { text-transform: uppercase; letter-spacing: 0.05em; }
+.tx-role-range {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono, 'Roboto Mono', monospace); font-size: 0.75rem; font-weight: 400; line-height: 1.4;
+    color: var(--mud-palette-text-secondary);
+}
+.tx-role-range .material-icons { font-size: 0.875rem; }
 .tx-role-tags { border-top: 1px dashed var(--mud-palette-divider-light, var(--mud-palette-divider)); padding-top: 10px; }
 .tx-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .tx-role-empty { font-size: 0.75rem; line-height: 1.4; color: var(--mud-palette-text-secondary); }

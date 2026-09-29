@@ -233,6 +233,27 @@ public class TaxStatementApiTests
     }
 
     [Fact]
+    public async Task PutTags_TagInBothTaxPaymentAndSettlement_ReturnsUnprocessable()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        await EnsureDatabaseAsync(factory);
+        var (taxTagId, _) = await SeedTaggedTransactionsAsync(factory);
+        var id = await CreateAsync(client);
+
+        var put = await client.PutAsJsonAsync($"{Path}/{id}/tags", new UpdateTaxStatementTags
+        {
+            TaxTagIds = [taxTagId],
+            SettlementTagIds = [taxTagId],
+        });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, put.StatusCode);
+        var problem = await put.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.Contains(nameof(UpdateTaxStatementTags.SettlementTagIds), problem!.Errors.Keys, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Delete_ArchivesAndHidesFromList()
     {
         await using var factory = new ApiFactory(ReadWrite);

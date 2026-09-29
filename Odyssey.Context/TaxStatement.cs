@@ -53,6 +53,13 @@ public class TaxStatement
     // When the settlement was paid/received (often the year after the income year).
     public DateTime? SettledAtUtc { get; set; }
 
+    // The window the Settlement-role tags are summed over. A settlement lands after the income year,
+    // so null on BOTH means "follow the period, shifted +1 year" (TaxSettlementRange.Default); the
+    // two are set together or not at all.
+    public DateTime? SettlementStartDate { get; set; }
+
+    public DateTime? SettlementEndDate { get; set; }
+
     // When the user filed the statement to the tax office.
     public DateTime? FiledAtUtc { get; set; }
 

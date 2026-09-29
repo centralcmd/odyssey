@@ -100,7 +100,7 @@
                     var report = _reports.GetValueOrDefault(s.TaxStatementId);
                     var problems = _problems.GetValueOrDefault(s.TaxStatementId) ?? [];
                     var settle = SettlementFigure(s);
-                    var tagCount = s.TaxTagIds.Count + s.IncomeTagIds.Count;
+                    var tagCount = s.TaxTagIds.Count + s.IncomeTagIds.Count + s.SettlementTagIds.Count;
                     var period = $"{s.StartDate:MMM dd, yyyy} → {s.EndDate:MMM dd, yyyy}";
                     var settled = s.SettledAtUtc is not null;
 
@@ -237,8 +237,8 @@
                     </Content>
 
                     <Sections>
-                        @* Derivation tags — the two role wells, now InfoTiles whose foot carries the
-                           caption and the tag chips. *@
+                        @* Derivation tags — the three role wells, InfoTiles whose foot carries the
+                           caption and the tag chips; the settlement well also names its range. *@
                         <div class="tax-section">
                             <OdsSectionDivider Label="Derivation tags" Meta="@($"{tagCount} tag{(tagCount == 1 ? "" : "s")}")" />
                             <div class="tx-roles">
@@ -284,6 +284,31 @@
                                         </span>
                                     </Foot>
                                 </OdsInfoTile>
+                                <OdsInfoTile Icon="receipt_long" Label="Settlement tags" Class="tx-role">
+                                    <Value>@TaxSignedMoney(report?.Derived.SettlementPaid ?? 0, s.BaseCurrencyCode)</Value>
+                                    <Foot>
+                                        <span class="tx-role-cap">Settlement recorded</span>
+                                        <span class="tx-role-range">
+                                            <span class="material-icons" aria-hidden="true">date_range</span>
+                                            @LongDate(s.SettlementStartDate) → @LongDate(s.SettlementEndDate)
+                                        </span>
+                                        <span class="tx-role-tags">
+                                            @if (s.SettlementTagIds.Count > 0)
+                                            {
+                                                <span class="tx-chips">
+                                                    @foreach (var name in TagNames(s.SettlementTagIds))
+                                                    {
+                                                        <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
+                                                    }
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="tx-role-empty">No settlement tags selected — recorded settlement is @TaxMoney(0, s.BaseCurrencyCode).</span>
+                                            }
+                                        </span>
+                                    </Foot>
+                                </OdsInfoTile>
                             </div>
                         </div>
 
@@ -292,7 +317,8 @@
                         {
                             <div class="tax-section">
                                 <OdsSectionDivider Label="Reconciliation" Meta="@($"declared vs. recorded · {s.BaseCurrencyCode}")" />
-                                <TaxReconciliation Statement="s" Report="report" Money="@(n => TaxMoney(n, s.BaseCurrencyCode))" />
+                                <TaxReconciliation Statement="s" Report="report" Money="@(n => TaxMoney(n, s.BaseCurrencyCode))"
+                                                   SignedMoney="@(n => TaxSignedMoney(n, s.BaseCurrencyCode))" />
                             </div>
                         }
 
