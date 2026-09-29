@@ -145,18 +145,19 @@ public class ContractPartyRoleMatrixApiTests
     }
 
     /// <summary>
-    /// AC 9, re-pinned by issue #169 AC 8 and issue #187 AC 9 — <b>every one of the 200 cells</b> is
-    /// exercised against the live endpoint: the 78 legal ones are accepted and the 122 rejected ones
+    /// AC 9, re-pinned by issue #169 AC 8, issue #187 AC 9 and the <c>Account</c> role — <b>every one of
+    /// the 210 cells</b> is exercised against the live endpoint: the 81 legal ones are accepted and the
+    /// 129 rejected ones
     /// refused. Iterating the
     /// matrix rather than sampling it is what makes a cell unable to disagree silently between the
     /// declaration and the validator.
     /// </summary>
     /// <remarks>
     /// These two figures are a SECOND, independent pin of the count
-    /// <c>ContractPartyRoleGuardTests.LegalCellCount_Is78Of200</c> asserts off the declaration alone.
+    /// <c>ContractPartyRoleGuardTests.LegalCellCount_Is81Of210</c> asserts off the declaration alone.
     /// Nothing links them, so a widening that updates one and not the other is green on one file and
-    /// red on the other. This one drives a real HTTP round trip per cell (200 of them since issue
-    /// #187, up from 162 and 135 before that); if it ever outgrows its time budget, narrow it by type rather than dropping
+    /// red on the other. This one drives a real HTTP round trip per cell (210 of them since the <c>Account</c>
+    /// role, up from 200, 162 and 135 before that); if it ever outgrows its time budget, narrow it by type rather than dropping
     /// the assertion.
     /// </remarks>
     [Fact]
@@ -198,8 +199,8 @@ public class ContractPartyRoleMatrixApiTests
             }
         }
 
-        Assert.Equal(78, legal);
-        Assert.Equal(122, rejected);
+        Assert.Equal(81, legal);
+        Assert.Equal(129, rejected);
     }
 
     // ── The three object roles and the universal Guarantor (issue #169) ──────
@@ -368,13 +369,12 @@ public class ContractPartyRoleMatrixApiTests
     /// <summary>
     /// Issue #169 AC 17 — an ordinal outside the enum is still a <c>400</c> from model validation,
     /// before the service runs. The two retired holes are included: widening the enum must not make
-    /// <c>0</c> or <c>5</c> bindable again. <c>22</c> is the first ordinal past <c>Custodian</c>
-    /// (issue #187 §7.9).
+    /// <c>0</c> or <c>5</c> bindable again. <c>23</c> is the first ordinal past <c>Account</c>.
     /// </summary>
     [Theory]
     [InlineData(0)]
     [InlineData(5)]
-    [InlineData(22)]
+    [InlineData(23)]
     [InlineData(99)]
     public async Task AddParty_WithAnUndefinedRoleOrdinal_Returns400(int ordinal)
     {

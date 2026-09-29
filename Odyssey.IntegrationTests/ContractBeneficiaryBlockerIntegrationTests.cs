@@ -110,7 +110,8 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
     /// <para>
     /// Issue #187 adds <c>Custodian</c> — the bank or landlord holding a deposit — to the same
     /// non-blocking set (its §7.5, AC 18): deleting the bank contact is ordinary cleanup, and the
-    /// deposit contract itself survives. <c>Depositor</c> is pinned beside it.
+    /// deposit contract itself survives. <c>Depositor</c> is pinned beside it, and so is the
+    /// <c>Account</c> object role a loan or deposit is booked in.
     /// </para>
     /// </remarks>
     [SkippableTheory]
@@ -124,6 +125,7 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
     [InlineData(ContextContractPartyRole.Collateral, ContextContractType.Loan)]
     [InlineData(ContextContractPartyRole.Custodian, ContextContractType.Deposit)]
     [InlineData(ContextContractPartyRole.Depositor, ContextContractType.Deposit)]
+    [InlineData(ContextContractPartyRole.Account, ContextContractType.Loan)]
     public async Task A_contact_in_any_other_role_still_deletes_and_its_party_row_cascades(
         ContextContractPartyRole role, ContextContractType type)
     {

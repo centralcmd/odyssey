@@ -226,8 +226,9 @@ contract and writes the shared `ContractPartyAudit` line per row — deliberatel
 references and is reachable from both the API and the WASM client, so the write-path validator and the
 party picker name **one** symbol — the same precedent `SettingItem.Rule` and `SystemSettingsBounds` set.
 A client-side *copy* of a server rule is the defect CLAUDE.md already forbids for caps; a shared
-declaration is what avoids it. **78 of the 200 cells are legal** (issue #169 widened it from 52 of
-135 to 69 of 162; issue #187 added the `Deposit` column and its two roles), and guard tests pin that
+declaration is what avoids it. **81 of the 210 cells are legal** (issue #169 widened it from 52 of
+135 to 69 of 162; issue #187 added the `Deposit` column and its two roles, reaching 78 of 200; the
+`Account` object role added the last three), and guard tests pin that
 count, the per-type legal and suggested sets, and the universality of `Guarantor`, `Broker` and
 `Other`.
 
@@ -238,16 +239,20 @@ Three things about that widening are worth keeping straight:
   `Cell` composes `allowedBeyondUniversal` with `UniversallyAllowed`, a role in **both** lists yields a
   duplicated entry in `LegalFor`, which fails the distinctness guard on the ordinary path. Promoting a
   role means deleting it from every column that named it.
-- **`Object` (17), `Property` (18) and `Collateral` (19) name what a contract is ABOUT**, not who
-  stands on a side of it. `Object` reaches eight types; `Property` is Rental, Purchase and Other;
+- **`Object` (17), `Property` (18), `Collateral` (19) and `Account` (22) name what a contract is
+  ABOUT**, not who stands on a side of it. `Object` reaches eight types; `Property` is Rental, Purchase and Other;
   `Collateral` is Loan, Deposit and Other — **suggested** on Loan and only **allowed** on Deposit, a
   deliberate asymmetry (collateral is central to a loan and incidental to a deposit). The two exclusions are deliberate and stated so they are not "fixed"
   later: Employment's object is the employee's labour, which `Employee` already names, and Insurance's
   is already `Insured` — "the person, account or thing covered" — and a second name for one concept
-  would split where the covered thing is recorded.
+  would split where the covered thing is recorded. `Account` is the ledger account a loan or deposit
+  is booked in — **suggested** on Loan and Deposit, allowed on Other, nowhere else. Like
+  `ContractPartyRole.Property`, it shares a name with a `ContractPartyKind` member and answers a
+  different question: the *role* says what the party is to the agreement, the *kind* says which table
+  the target lives in. No validation links them.
 - **The "exactly two suggested roles" invariant is RETIRED, not loosened** (issue #169 §4.4). The shape
-  is now 4 / 3 / 2 / 1: four for Insurance, three for Rental, Purchase and Loan, two for the remaining
-  named types (`Deposit` included), one for `Other`. The count stays pinned, at a new number.
+  is now 4 / 3 / 2 / 1: four for Insurance and Loan, three for Rental, Purchase and Deposit, two for
+  the remaining named types, one for `Other`. The count stays pinned, at a new number.
 - **`Deposit` is the mirror of `Loan`, with its own roles** (issue #187). `Depositor` (20) and
   `Custodian` (21) are separate members, **not aliases** of `Lender`/`Borrower`, and the two columns
   reject each other's counterparties — so a report never has to guess whether a `Lender` row is a

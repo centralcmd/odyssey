@@ -104,7 +104,7 @@ public class DepositContractApiTests
         }
 
         Assert.Contains(
-            "The roles it can have are: Depositor, Custodian, Object, Collateral, Guarantor, Broker, Other.",
+            "The roles it can have are: Depositor, Custodian, Account, Object, Collateral, Guarantor, Broker, Other.",
             body,
             StringComparison.Ordinal);
         Assert.Equal(2, (await GetAsync(client, id)).Parties.Count);

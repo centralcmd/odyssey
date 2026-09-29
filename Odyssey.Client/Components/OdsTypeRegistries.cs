@@ -43,7 +43,8 @@ public sealed record OdsTypeOption
     /// <summary>
     /// This member names the THING the record is about rather than a party to it — the DS registries'
     /// <c>object: true</c> flag. Set only by <see cref="OdsTypeRegistries.ContractPartyRoles"/>
-    /// today, where it marks <c>Object</c>, <c>Property</c> and <c>Collateral</c> (issue #169).
+    /// today, where it marks <c>Object</c>, <c>Property</c>, <c>Collateral</c> (issue #169) and
+    /// <c>Account</c>.
     /// </summary>
     /// <remarks>
     /// It rides on the registry ROW, exactly as the design system declares it, rather than living in
@@ -309,6 +310,9 @@ public static class OdsTypeRegistries
         // Lender row is a creditor or a depositor. Values mirror the DS registry.
         new() { Key = "Depositor",    Label = "Depositor",    Icon = "account_balance_wallet", Color = "oklch(0.77 0.13 235)", Soft = "oklch(0.77 0.13 235 / 0.16)" },
         new() { Key = "Custodian",    Label = "Custodian",    Icon = "account_balance",    Color = "oklch(0.76 0.13 350)", Soft = "oklch(0.76 0.13 350 / 0.16)" },
+        // The fourth OBJECT role — the ledger account a loan or deposit is booked in. It names the
+        // balance the agreement runs through, not a side of it. Values mirror the DS registry.
+        new() { Key = "Account",      Label = "Account",      Icon = "receipt_long",       Color = "oklch(0.78 0.11 140)", Soft = "oklch(0.78 0.11 140 / 0.16)", IsObject = true },
     ];
 
     /// <summary>
@@ -627,7 +631,7 @@ public static class OdsTypeRegistries
 
     /// <summary>
     /// Whether <paramref name="role"/> names the THING the agreement concerns rather than a side of
-    /// it — <c>Object</c>, <c>Property</c> or <c>Collateral</c> (issue #169). Read off the registry's
+    /// it — <c>Object</c>, <c>Property</c>, <c>Collateral</c> (issue #169) or <c>Account</c>. Read off the registry's
     /// own <see cref="OdsTypeOption.IsObject"/> flag, so the tile class and the tile ORDER cannot
     /// disagree about which roles they mean.
     /// </summary>
