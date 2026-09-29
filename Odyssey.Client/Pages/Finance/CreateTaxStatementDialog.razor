@@ -44,8 +44,10 @@
     </OdsFormRow>
 
     <OdsFormRow>
-        <OdsDatePicker @bind-Value="_startDate" @bind-Value:after="FollowPeriod" Label="Period start" Required="true" />
-        <OdsDatePicker @bind-Value="_endDate" @bind-Value:after="FollowPeriod" Label="Period end" Required="true"
+        <OdsDatePicker @bind-Value="_startDate" @bind-Value:after="FollowPeriod" Label="Period start"
+                           Min="TaxSettlementRange.MinDate" Max="TaxSettlementRange.MaxDate" Required="true" />
+        <OdsDatePicker @bind-Value="_endDate" @bind-Value:after="FollowPeriod" Label="Period end"
+                           Min="TaxSettlementRange.MinDate" Max="TaxSettlementRange.MaxDate" Required="true"
                        Error="@_dateError" ErrorText="End date can't be before the start date."
                        HelperText="Defaults to the calendar year." />
     </OdsFormRow>
@@ -101,7 +103,7 @@
            filter — and it can create, naming the vocabulary it mints: a transaction tag. *@
         <OdsFormRow>
             <OdsTagMultiSelect Id="tax-statement-tax-tags" Label="Tax-payment tags"
-                               Value="_taxTags" ValueChanged="@(v => _taxTags = v)" Options="_tagOpts"
+                               Value="_taxTags" ValueChanged="OnTaxTagsChanged" Options="_tagOpts"
                                Placeholder="No tags" AddLabel="Add tag"
                                OnCreate="@(_canCreateTag ? CreateTagOption : null)"
                                CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
@@ -126,11 +128,16 @@
         @* The settlement range follows the period (+1 year) until the user sets it; an untouched
            range is sent as null so the server keeps it following later period edits too. *@
         <OdsFormRow>
-            <OdsDatePicker @bind-Value="_settlementStartDate" @bind-Value:after="TouchRange" Label="Settlement from"
+            <OdsDatePicker @ref="_settlementStartPicker"
+                           @bind-Value="_settlementStartDate" @bind-Value:after="TouchRange" Label="Settlement from"
+                           Min="TaxSettlementRange.MinDate" Max="TaxSettlementRange.MaxDate"
                            HelperText="@(_rangeTouched ? "Custom range." : "Follows the period, +1 year.")" />
             <OdsDatePicker @bind-Value="_settlementEndDate" @bind-Value:after="TouchRange" Label="Settlement to"
+                           Min="TaxSettlementRange.MinDate" Max="TaxSettlementRange.MaxDate"
                            Error="@_settlementRangeError" ErrorText="End date can't be before the start date." />
         </OdsFormRow>
+        @* The helper line switches silently, so the change is also announced (WCAG 4.1.3). *@
+        <span class="sr-only" role="status">@_rangeAnnouncement</span>
         @if (_rangeTouched)
         {
             <div>

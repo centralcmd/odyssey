@@ -7,7 +7,8 @@
     @bind-Value.
 *@
 
-<MudDatePicker Date="@Value"
+<MudDatePicker @ref="_picker"
+               Date="@Value"
                DateChanged="OnDateChanged"
                Placeholder="@Placeholder"
                MinDate="@Min"
@@ -63,6 +64,12 @@
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private MudDatePicker? _picker;
+
+    /// <summary>Moves keyboard focus to the picker's input — for a host whose focused control just
+    /// disappeared and must hand focus somewhere meaningful (WCAG 2.4.3).</summary>
+    public ValueTask FocusAsync() => _picker?.FocusAsync() ?? ValueTask.CompletedTask;
 
     private Task OnDateChanged(DateTime? date)
     {

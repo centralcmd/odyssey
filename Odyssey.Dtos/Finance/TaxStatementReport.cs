@@ -45,6 +45,9 @@ public sealed record TaxStatementDerivedFigures
 
     // Settlement-role tags summed over the statement's settlement range (additional tax paid
     // and refunds received after the assessment), so it compares with the declared settlement.
+    // Like PaidTax it is the raw signed sum of the matched transaction amounts, and it is compared
+    // with SettlementAmount as-is (positive = owed, negative = refund). A transaction already counted
+    // in PaidTax is not counted again here, which matters only when a custom range overlaps the period.
     public decimal SettlementPaid { get; set; }
 }
 

@@ -224,7 +224,13 @@ public class TaxStatementService
 
         var taxTagIds = request.TaxTagIds.Distinct().ToList();
         var incomeTagIds = request.IncomeTagIds.Distinct().ToList();
-        var settlementTagIds = request.SettlementTagIds.Distinct().ToList();
+        // Null leaves the stored settlement tags as they are (see UpdateTaxStatementTags).
+        var settlementTagIds = request.SettlementTagIds is { } requested
+            ? requested.Distinct().ToList()
+            : statement.TaxStatementTags
+                .Where(t => t.Role == TaxStatementTagRole.Settlement)
+                .Select(t => t.TransactionTagId)
+                .ToList();
 
         var overlap = TaxSettlementRange.Overlap(taxTagIds, settlementTagIds);
         if (overlap.Count > 0)
@@ -337,8 +343,8 @@ public class TaxStatementService
 
         var excluded = new Dictionary<string, int>();
 
-        var paidTax = SumByRole(candidates, taxTagIds, statement.BaseCurrencyCode, excluded);
-        var actualIncome = SumByRole(candidates, incomeTagIds, statement.BaseCurrencyCode, excluded);
+        var paidTax = SumByRole(candidates, taxTagIds, statement.BaseCurrencyCode, excluded, out var paidTaxTransactions);
+        var actualIncome = SumByRole(candidates, incomeTagIds, statement.BaseCurrencyCode, excluded, out _);
 
         // A settlement lands after the income year, so its tags are read over their own window.
         var (settlementStart, settlementEnd) = EffectiveSettlementRange(statement);
@@ -349,7 +355,10 @@ public class TaxStatementService
                 .Where(link => link.Transaction!.TimeStamp >= settlementStart && link.Transaction.TimeStamp <= settlementEnd)
                 .Select(link => new TransactionRow(link.TransactionId, link.TransactionTagId, link.Transaction!.Amount, link.Transaction.CurrencyCode))
                 .ToListAsync(cancellationToken);
-        var settlementPaid = SumByRole(settlementCandidates, settlementTagIds, statement.BaseCurrencyCode, excluded);
+        // A custom range may overlap the period: a transaction already counted as advance tax (via a
+        // different tag) must not be counted a second time as settlement.
+        settlementCandidates.RemoveAll(row => paidTaxTransactions.Contains(row.TransactionId));
+        var settlementPaid = SumByRole(settlementCandidates, settlementTagIds, statement.BaseCurrencyCode, excluded, out _);
 
         var derived = await ComputeDerivedBalances(statement.BaseCurrencyCode, cancellationToken);
         derived.PaidTax = paidTax;
@@ -389,8 +398,10 @@ public class TaxStatementService
         IReadOnlyCollection<TransactionRow> candidates,
         IReadOnlySet<Guid> tagIds,
         string baseCurrency,
-        Dictionary<string, int> excluded)
+        Dictionary<string, int> excluded,
+        out HashSet<Guid> counted)
     {
+        counted = [];
         if (tagIds.Count == 0)
         {
             return 0m;
@@ -399,7 +410,6 @@ public class TaxStatementService
         // De-duplicate by transaction id: a transaction carrying several of this role's tags must
         // still contribute its amount only once to the role total.
         var sum = 0m;
-        var counted = new HashSet<Guid>();
         foreach (var row in candidates.Where(c => tagIds.Contains(c.TagId)))
         {
             if (!counted.Add(row.TransactionId))
@@ -605,6 +615,9 @@ public class TaxStatementService
         decimal? totalIncome,
         decimal? assessedTax)
     {
+        EnsureInBounds(startDate, nameof(TaxStatement.StartDate));
+        EnsureInBounds(endDate, nameof(TaxStatement.EndDate));
+
         if (endDate < startDate)
         {
             throw new DomainValidationException("EndDate must be on or after StartDate.");
@@ -620,12 +633,36 @@ public class TaxStatementService
     {
         if (start is null != end is null)
         {
-            throw new DomainValidationException("SettlementStartDate and SettlementEndDate must be set together, or both left empty.");
+            throw new DomainValidationException(
+                "SettlementStartDate and SettlementEndDate must be set together, or both left empty.",
+                code: null,
+                field: start is null ? nameof(TaxStatement.SettlementStartDate) : nameof(TaxStatement.SettlementEndDate));
         }
 
-        if (end < start)
+        if (start is { } s && end is { } e)
         {
-            throw new DomainValidationException("SettlementEndDate must be on or after SettlementStartDate.");
+            EnsureInBounds(s, nameof(TaxStatement.SettlementStartDate));
+            EnsureInBounds(e, nameof(TaxStatement.SettlementEndDate));
+            if (e < s)
+            {
+                throw new DomainValidationException(
+                    "SettlementEndDate must be on or after SettlementStartDate.",
+                    code: null,
+                    field: nameof(TaxStatement.SettlementEndDate));
+            }
+        }
+    }
+
+    // Bounded so that the derived +1-year default can always be computed (DateTime.AddYears throws
+    // past year 9999, and it runs on every read of the row).
+    private static void EnsureInBounds(DateTime date, string fieldName)
+    {
+        if (!TaxSettlementRange.InBounds(date))
+        {
+            throw new DomainValidationException(
+                $"{fieldName} must be between {TaxSettlementRange.MinDate:yyyy-MM-dd} and {TaxSettlementRange.MaxDate:yyyy-MM-dd}.",
+                code: null,
+                field: fieldName);
         }
     }
 

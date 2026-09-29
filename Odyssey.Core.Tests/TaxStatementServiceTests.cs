@@ -294,8 +294,9 @@ public class TaxStatementServiceTests
         var created = await service.Create(NewStatement());
 
         Assert.False(created.SettlementRangeCustom);
-        Assert.Equal(new DateTime(2025, 1, 1), created.SettlementStartDate.Date);
-        Assert.Equal(new DateTime(2025, 12, 31), created.SettlementEndDate.Date);
+        Assert.Equal(new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), created.SettlementStartDate);
+        Assert.Equal(new DateTime(2025, 12, 31, 0, 0, 0, DateTimeKind.Utc), created.SettlementEndDate);
+        Assert.Equal(DateTimeKind.Utc, created.SettlementStartDate.Kind);
     }
 
     [Fact]
@@ -315,7 +316,8 @@ public class TaxStatementServiceTests
         });
 
         Assert.False(updated!.SettlementRangeCustom);
-        Assert.Equal(new DateTime(2024, 1, 1), updated.SettlementStartDate.Date);
+        Assert.Equal(new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), updated.SettlementStartDate);
+        Assert.Equal(new DateTime(2024, 12, 31, 0, 0, 0, DateTimeKind.Utc), updated.SettlementEndDate);
     }
 
     [Fact]
@@ -464,6 +466,256 @@ public class TaxStatementServiceTests
         Assert.Equal(400m, report!.Derived.SettlementPaid);
         Assert.Null(report.Reconciliation.SettlementRecordedVariance);        // SettlementAmount absent
         Assert.Null(report.Reconciliation.AdvancePaidVariance);
+    }
+
+    private static UpdateTaxStatement UpdateFrom(ExistingTaxStatement s) => new()
+    {
+        Name = s.Name,
+        FiscalYear = s.FiscalYear,
+        StartDate = s.StartDate,
+        EndDate = s.EndDate,
+        BaseCurrencyCode = s.BaseCurrencyCode,
+    };
+
+    [Fact]
+    public async Task Update_SettlementRangeHalfSet_Rejected()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var created = await service.Create(NewStatement());
+        var request = UpdateFrom(created);
+        request.SettlementEndDate = new DateTime(2025, 6, 30, 0, 0, 0, DateTimeKind.Utc);
+
+        var ex = await Assert.ThrowsAsync<DomainValidationException>(() => service.Update(created.TaxStatementId, request));
+
+        Assert.True(ex.Errors!.ContainsKey(nameof(UpdateTaxStatement.SettlementStartDate)));
+    }
+
+    [Fact]
+    public async Task Update_SettlementRangeInverted_Rejected()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var created = await service.Create(NewStatement());
+        var request = UpdateFrom(created);
+        request.SettlementStartDate = new DateTime(2025, 6, 30, 0, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var ex = await Assert.ThrowsAsync<DomainValidationException>(() => service.Update(created.TaxStatementId, request));
+
+        Assert.True(ex.Errors!.ContainsKey(nameof(UpdateTaxStatement.SettlementEndDate)));
+    }
+
+    [Fact]
+    public async Task Update_NullRange_RevertsACustomRangeToTheDefault()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var request = NewStatement();
+        request.SettlementStartDate = new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(2025, 9, 30, 0, 0, 0, DateTimeKind.Utc);
+        var created = await service.Create(request);
+
+        var updated = await service.Update(created.TaxStatementId, UpdateFrom(created));
+
+        Assert.False(updated!.SettlementRangeCustom);
+        Assert.Equal(new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), updated.SettlementStartDate);
+    }
+
+    [Theory]
+    [InlineData(9999)]
+    [InlineData(1899)]
+    public async Task Create_PeriodDateOutOfBounds_Rejected(int year)
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var request = NewStatement();
+        request.StartDate = new DateTime(Math.Min(year, 2024), 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        request.EndDate = new DateTime(year, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+
+        await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(request));
+    }
+
+    [Fact]
+    public async Task Create_SettlementDateOutOfBounds_Rejected()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var request = NewStatement();
+        request.SettlementStartDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(9999, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+
+        var ex = await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(request));
+
+        Assert.True(ex.Errors!.ContainsKey(nameof(NewTaxStatement.SettlementEndDate)));
+    }
+
+    [Fact]
+    public async Task Get_LegacyRowInTheLastCalendarYear_StillProjects()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        // A row written before the date bound existed: the +1-year default must not throw on read.
+        var id = Guid.NewGuid();
+        context.TaxStatements.Add(new TaxStatement
+        {
+            TaxStatementId = id,
+            Name = "Legacy",
+            FiscalYear = 2024,
+            StartDate = YearStart,
+            EndDate = new DateTime(9999, 12, 31, 0, 0, 0, DateTimeKind.Utc),
+            BaseCurrencyCode = "USD",
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        await context.SaveChangesAsync();
+
+        var fetched = await service.Get(id);
+        var report = await service.GetReport(id);
+
+        Assert.Equal(new DateTime(9999, 12, 31, 0, 0, 0, DateTimeKind.Utc), fetched!.SettlementEndDate);
+        Assert.NotNull(report);
+    }
+
+    [Fact]
+    public void Overlap_ReturnsOnlyTagsInBothSets()
+    {
+        Assert.Equal(["b"], TaxSettlementRange.Overlap(["a", "b"], ["b", "c"]));
+        Assert.Empty(TaxSettlementRange.Overlap(["a"], ["c"]));
+    }
+
+    [Fact]
+    public async Task UpdateTags_NullSettlementTagIds_KeepsTheStoredSettlementTags()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var settlementTag = SeedTag(context, "Tax refund");
+        var incomeTag = SeedTag(context, "Salary");
+        await context.SaveChangesAsync();
+        var created = await service.Create(NewStatement());
+        await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags { SettlementTagIds = [settlementTag.TransactionTagId] });
+
+        var updated = await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags { IncomeTagIds = [incomeTag.TransactionTagId] });
+
+        Assert.Equal([settlementTag.TransactionTagId], updated!.SettlementTagIds);
+        Assert.Equal([incomeTag.TransactionTagId], updated.IncomeTagIds);
+    }
+
+    [Fact]
+    public async Task UpdateTags_EmptySettlementTagIds_ClearsThem()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var settlementTag = SeedTag(context, "Tax refund");
+        await context.SaveChangesAsync();
+        var created = await service.Create(NewStatement());
+        await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags { SettlementTagIds = [settlementTag.TransactionTagId] });
+
+        var updated = await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags { SettlementTagIds = [] });
+
+        Assert.Empty(updated!.SettlementTagIds);
+    }
+
+    [Fact]
+    public async Task UpdateTags_NullSettlementTagIds_StillGuardsTheOverlapAgainstStoredTags()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var tag = SeedTag(context, "Tax");
+        await context.SaveChangesAsync();
+        var created = await service.Create(NewStatement());
+        await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags { SettlementTagIds = [tag.TransactionTagId] });
+
+        await Assert.ThrowsAsync<DomainUnprocessableException>(() => service.UpdateTags(created.TaxStatementId,
+            new UpdateTaxStatementTags { TaxTagIds = [tag.TransactionTagId] }));
+    }
+
+    [Fact]
+    public async Task Report_SettlementWindow_IsInclusiveOfBothBoundaryInstants()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var account = SeedAccount(context, ContextAccountType.CheckingAccount, "USD");
+        var tag = SeedTag(context, "Tax settlement");
+        // Default window is 2025-01-01T00:00 → 2025-12-31T00:00 (period bounds carry no time of day).
+        SeedTransaction(context, account, tag, 1m, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, tag, 10m, new DateTime(2025, 12, 31, 0, 0, 0, DateTimeKind.Utc), "USD");
+        // Just outside on either side, and a time of day on the last day: excluded, the same as
+        // the income-year query, whose end bound is also the date at midnight.
+        SeedTransaction(context, account, tag, 100m, new DateTime(2024, 12, 31, 23, 59, 59, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, tag, 1000m, new DateTime(2025, 12, 31, 12, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, tag, 10000m, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        await context.SaveChangesAsync();
+        var created = await service.Create(NewStatement());
+        await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags { SettlementTagIds = [tag.TransactionTagId] });
+
+        var report = await service.GetReport(created.TaxStatementId);
+
+        Assert.Equal(11m, report!.Derived.SettlementPaid);
+    }
+
+    [Fact]
+    public async Task Report_SettlementPaid_CountsATransactionWithTwoSettlementTagsOnce()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var account = SeedAccount(context, ContextAccountType.CheckingAccount, "USD");
+        var settlement = SeedTag(context, "Tax settlement");
+        var refund = SeedTag(context, "Tax refund");
+        context.Transactions.Add(new Transaction
+        {
+            TransactionId = Guid.NewGuid(),
+            Description = "Test",
+            Amount = 700m,
+            TimeStamp = new DateTime(2025, 5, 1, 0, 0, 0, DateTimeKind.Utc),
+            AccountId = account.AccountId,
+            TransactionTags = [settlement, refund],
+            CurrencyCode = "USD",
+        });
+        await context.SaveChangesAsync();
+        var created = await service.Create(NewStatement());
+        await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags
+        {
+            SettlementTagIds = [settlement.TransactionTagId, refund.TransactionTagId],
+        });
+
+        var report = await service.GetReport(created.TaxStatementId);
+
+        Assert.Equal(700m, report!.Derived.SettlementPaid);
+    }
+
+    [Fact]
+    public async Task Report_CustomRangeOverlappingThePeriod_DoesNotCountAnAdvancePaymentTwice()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var account = SeedAccount(context, ContextAccountType.CheckingAccount, "USD");
+        var taxTag = SeedTag(context, "Advance tax");
+        var settlementTag = SeedTag(context, "Tax settlement");
+        context.Transactions.Add(new Transaction
+        {
+            TransactionId = Guid.NewGuid(),
+            Description = "Test",
+            Amount = 500m,
+            TimeStamp = new DateTime(2024, 11, 1, 0, 0, 0, DateTimeKind.Utc),
+            AccountId = account.AccountId,
+            TransactionTags = [taxTag, settlementTag],
+            CurrencyCode = "USD",
+        });
+        await context.SaveChangesAsync();
+        var request = NewStatement();
+        request.SettlementStartDate = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var created = await service.Create(request);
+        await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags
+        {
+            TaxTagIds = [taxTag.TransactionTagId],
+            SettlementTagIds = [settlementTag.TransactionTagId],
+        });
+
+        var report = await service.GetReport(created.TaxStatementId);
+
+        Assert.Equal(500m, report!.Derived.PaidTax);
+        Assert.Equal(0m, report.Derived.SettlementPaid);
     }
 
     // ── Seed helpers ──────────────────────────────────────────────────────────

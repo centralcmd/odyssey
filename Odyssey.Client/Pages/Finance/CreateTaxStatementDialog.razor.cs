@@ -48,6 +48,8 @@ public partial class CreateTaxStatementDialog
     private DateTime? _settlementStartDate;
     private DateTime? _settlementEndDate;
     private bool _rangeTouched;
+    private string? _rangeAnnouncement;
+    private OdsDatePicker? _settlementStartPicker;
     private bool _settlementRangeError;
     private string? _settlementTagsError;
     private IReadOnlyList<OdsOption> _tagOptions = [];
@@ -197,24 +199,42 @@ public partial class CreateTaxStatementDialog
     }
 
     // The picker can raise ValueChanged without a user edit (it normalises the bound value on first
-    // render), so "touched" is whether the range now differs from the default, not whether it fired.
+    // render), so a range becomes custom only when it now differs from the default. It never turns
+    // back into a following one here — only an explicit Reset does that, so a stored custom range
+    // that happens to equal the default keeps its SettlementRangeCustom state.
     private void TouchRange()
     {
         _settlementRangeError = false;
-        if (_startDate is null || _endDate is null)
-        {
-            _rangeTouched = true;
+        if (_rangeTouched)
             return;
+        if (_startDate is { } periodStart && _endDate is { } periodEnd)
+        {
+            var (start, end) = TaxSettlementRange.Default(periodStart, periodEnd);
+            if (_settlementStartDate?.Date == start.Date && _settlementEndDate?.Date == end.Date)
+                return;
         }
-        var (start, end) = TaxSettlementRange.Default(_startDate.Value, _endDate.Value);
-        _rangeTouched = _settlementStartDate?.Date != start.Date || _settlementEndDate?.Date != end.Date;
+        _rangeTouched = true;
+        _rangeAnnouncement = "Settlement range set to a custom range.";
     }
 
-    private void ResetRange()
+    // Reset removes the focused button itself, so focus moves to the range it just reset (WCAG 2.4.3).
+    private async Task ResetRange()
     {
         _rangeTouched = false;
         _settlementRangeError = false;
         FollowPeriod();
+        _rangeAnnouncement = "Settlement range follows the period, +1 year.";
+        if (_settlementStartPicker is not null)
+            await _settlementStartPicker.FocusAsync();
+    }
+
+    // A settlement-overlap error on show is re-checked as the tax-payment tags change, so removing
+    // the conflicting tag there clears it without another save attempt.
+    private void OnTaxTagsChanged(IReadOnlyCollection<string> value)
+    {
+        _taxTags = value;
+        if (_settlementTagsError is not null)
+            _settlementTagsError = SettlementOverlapError();
     }
 
     private void OnSettlementTagsChanged(IReadOnlyCollection<string> value)

@@ -254,6 +254,74 @@ public class TaxStatementApiTests
     }
 
     [Fact]
+    public async Task Post_SettlementRangeHalfSet_ReturnsBadRequestKeyedOnTheMissingEnd()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await EnsureDatabaseAsync(factory);
+
+        var request = NewStatement();
+        request.SettlementStartDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var post = await client.PostAsJsonAsync(Path, request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
+        var problem = await post.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.Contains(nameof(NewTaxStatement.SettlementEndDate), problem!.Errors.Keys, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Post_EndDateBeyondBound_ReturnsBadRequest()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await EnsureDatabaseAsync(factory);
+
+        var request = NewStatement();
+        request.EndDate = new DateTime(9999, 12, 31, 0, 0, 0, DateTimeKind.Utc);
+        var post = await client.PostAsJsonAsync(Path, request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
+        var list = await client.GetAsync(Path);
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+    }
+
+    [Fact]
+    public async Task SettlementTagsAndRange_RoundTripAndFeedTheReport()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await EnsureDatabaseAsync(factory);
+        var (taxTagId, settlementTagId) = await SeedSettlementTransactionsAsync(factory);
+
+        var request = NewStatement();
+        request.AssessedTax = 210000m;
+        request.SettlementAmount = 1000m;
+        request.SettlementStartDate = new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(2025, 9, 30, 0, 0, 0, DateTimeKind.Utc);
+        var post = await client.PostAsJsonAsync(Path, request);
+        var created = (await post.Content.ReadFromJsonAsync<ExistingTaxStatement>())!;
+
+        var put = await client.PutAsJsonAsync($"{Path}/{created.TaxStatementId}/tags", new UpdateTaxStatementTags
+        {
+            TaxTagIds = [taxTagId],
+            SettlementTagIds = [settlementTagId],
+        });
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+
+        var fetched = await client.GetFromJsonAsync<ExistingTaxStatement>($"{Path}/{created.TaxStatementId}");
+        Assert.Equal([settlementTagId], fetched!.SettlementTagIds);
+        Assert.True(fetched.SettlementRangeCustom);
+        Assert.Equal(request.SettlementStartDate, fetched.SettlementStartDate);
+        Assert.Equal(request.SettlementEndDate, fetched.SettlementEndDate);
+
+        var report = await client.GetFromJsonAsync<TaxStatementReport>($"{Path}/{created.TaxStatementId}/report");
+        Assert.Equal(209000m, report!.Derived.PaidTax);
+        Assert.Equal(1000m, report.Derived.SettlementPaid);                      // the out-of-range 999 is ignored
+        Assert.Equal(0m, report.Reconciliation.AdvancePaidVariance);             // (210000 − 1000) − 209000
+        Assert.Equal(0m, report.Reconciliation.SettlementRecordedVariance);      // 1000 − 1000
+    }
+
+    [Fact]
     public async Task Delete_ArchivesAndHidesFromList()
     {
         await using var factory = new ApiFactory(ReadWrite);
@@ -387,6 +455,35 @@ public class TaxStatementApiTests
 
         await context.SaveChangesAsync();
         return (taxTag.TransactionTagId, incomeTag.TransactionTagId);
+    }
+
+    private static async Task<(Guid TaxTagId, Guid SettlementTagId)> SeedSettlementTransactionsAsync(WebApplicationFactory<Program> factory)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        var account = new Account
+        {
+            AccountId = Guid.NewGuid(),
+            Name = "Checking",
+            Description = "Test",
+            Opened = DateTime.UtcNow,
+            AccountType = ContextAccountType.CheckingAccount,
+            CurrencyCode = "USD",
+        };
+        context.Accounts.Add(account);
+
+        var taxTag = new TransactionTag { TransactionTagId = Guid.NewGuid(), Name = "Advance tax" };
+        var settlementTag = new TransactionTag { TransactionTagId = Guid.NewGuid(), Name = "Tax settlement" };
+        context.TransactionTags.AddRange(taxTag, settlementTag);
+
+        context.Transactions.AddRange(
+            Txn(account.AccountId, taxTag.TransactionTagId, 209000m, new DateTime(2024, 11, 1, 0, 0, 0, DateTimeKind.Utc), "USD"),
+            Txn(account.AccountId, settlementTag.TransactionTagId, 1000m, new DateTime(2025, 6, 10, 0, 0, 0, DateTimeKind.Utc), "USD"),
+            Txn(account.AccountId, settlementTag.TransactionTagId, 999m, new DateTime(2025, 11, 1, 0, 0, 0, DateTimeKind.Utc), "USD"));
+
+        await context.SaveChangesAsync();
+        return (taxTag.TransactionTagId, settlementTag.TransactionTagId);
     }
 
     private static Transaction Txn(Guid accountId, Guid tagId, decimal amount, DateTime timestamp, string currency)
