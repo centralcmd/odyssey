@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AllocationDonuts","sourcePath":"components/AllocationDonuts.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileTypeMultiSelect","sourcePath":"components/FileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"PROPERTY_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FILE_TYPE_REGISTRIES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileTypeSelect","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"HomeownerAssociationSelect","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"PROPERTY_EVENT_TYPES","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_SYSTEM_ONLY","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_TYPE_MATRIX","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyEventTypeSelect","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountSmartTagsSection.jsx":"eb82b5c6a04b","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"71a8e6f1f26b","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AllocationDonuts.jsx":"044b0391cba9","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"c39daff274ff","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"ace06e34d445","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"a44940f2426c","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"7707449a38e7","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileTypeMultiSelect.jsx":"fbaef310b135","components/FileTypeSelect.jsx":"602105962a04","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"e78979830d2b","components/FormRow.jsx":"760803e7e9a9","components/HomeownerAssociationSelect.jsx":"4b0af1f20e4a","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"b664702fd083","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/PropertyEventTypeSelect.jsx":"e9232a5f7149","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"d54e41a6f196","components/RegistrySelect.jsx":"cfdb93825f1e","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d8b4b57a7ba3","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"ae4664340137","ui_kits/web/AccountEstimates.jsx":"eff790136b25","ui_kits/web/AccountTerms.jsx":"268973cd5272","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"53971d37b9e8","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c9ec12f0bda7","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"5671cc00067f","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"496d5f963e1a","ui_kits/web/AddFileModal.jsx":"cf6881e0dc93","ui_kits/web/AddPropertyEventModal.jsx":"7bd99a614e1c","ui_kits/web/AddPropertyFileModal.jsx":"71fc7170d954","ui_kits/web/AddPropertyModal.jsx":"2b9baf5ac130","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionModal.jsx":"8829e073f771","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/Budgets.jsx":"77c8b3b8b457","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"e05a368b0bb4","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"672a3e086f82","ui_kits/web/ContractEvents.jsx":"5e6987305ced","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"ae717018bb96","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"2357237a2a86","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"7bfc14bbad44","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"7e51208010f1","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"b557851e8505","ui_kits/web/PropertyEstimates.jsx":"19fbc1ab18df","ui_kits/web/PropertyEvents.jsx":"661071ddeedc","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"3b260ae177cb","ui_kits/web/TaxStatements.jsx":"df9be16a340d","ui_kits/web/TransactionTags.jsx":"f3bf3f5cb39e","ui_kits/web/Transactions.jsx":"bf5f2c238911","ui_kits/web/Users.jsx":"4ddab8478138","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"b6b90dc34d06","ui_kits/web/contracts-data.js":"60703b10009e","ui_kits/web/data.js":"526050ea49e9","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"64839a67d3d5","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"ec78251314db","ui_kits/web/property-events-data.js":"2c6c4672c3ac","ui_kits/web/system-settings-data.js":"c05e455acb51","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"homeownerAssociationState","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"propertyEventTypeLegality","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"propertyEventTypesFor","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AllocationDonuts","sourcePath":"components/AllocationDonuts.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileTypeMultiSelect","sourcePath":"components/FileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"PROPERTY_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FILE_TYPE_REGISTRIES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileTypeSelect","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"HomeownerAssociationSelect","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"PROPERTY_EVENT_TYPES","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_SYSTEM_ONLY","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_TYPE_MATRIX","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyEventTypeSelect","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountSmartTagsSection.jsx":"eb82b5c6a04b","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"0ddb97c4237e","components/AccountTypeSelect.jsx":"71a8e6f1f26b","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AllocationDonuts.jsx":"044b0391cba9","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"c39daff274ff","components/BreakdownTile.jsx":"9173fd042d7d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"ace06e34d445","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"a44940f2426c","components/Combobox.jsx":"c7b9e529d87b","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"595200f6059a","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"7707449a38e7","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"08933b8b51f7","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileTypeMultiSelect.jsx":"fbaef310b135","components/FileTypeSelect.jsx":"602105962a04","components/FileUpload.jsx":"e19cf6fd0ab0","components/FilesTable.jsx":"e78979830d2b","components/FormRow.jsx":"760803e7e9a9","components/HomeownerAssociationSelect.jsx":"4b0af1f20e4a","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"14fb9c7674da","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"b664702fd083","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"6362aee976f0","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/PropertyEventTypeSelect.jsx":"e9232a5f7149","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"045d9a2095ae","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"d54e41a6f196","components/RegistrySelect.jsx":"cfdb93825f1e","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"e3b3b88a8aa0","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"d8b4b57a7ba3","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"a1497c8dd4a4","components/TaskBoard.jsx":"543103259e1e","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"f2706b953ad0","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"ae4664340137","ui_kits/web/AccountEstimates.jsx":"eff790136b25","ui_kits/web/AccountTerms.jsx":"268973cd5272","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"dd65c265c331","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c7cfdaf2bf79","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"5671cc00067f","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"496d5f963e1a","ui_kits/web/AddFileModal.jsx":"9ac67581e94c","ui_kits/web/AddPropertyEventModal.jsx":"7bd99a614e1c","ui_kits/web/AddPropertyFileModal.jsx":"640407cc7d81","ui_kits/web/AddPropertyModal.jsx":"2b9baf5ac130","ui_kits/web/AddTaxStatementModal.jsx":"605adec81614","ui_kits/web/AddTransactionFileModal.jsx":"1ef4e0bab1e3","ui_kits/web/AddTransactionModal.jsx":"c2472cf3923e","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/AttachDocumentsModal.jsx":"468b57a32347","ui_kits/web/AttachPhotosModal.jsx":"0bd96e8b1977","ui_kits/web/Budgets.jsx":"77c8b3b8b457","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"e05a368b0bb4","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"672a3e086f82","ui_kits/web/ContractEvents.jsx":"5e6987305ced","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"a88b62a7449e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"2357237a2a86","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"6ae610a00994","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"4660d6913fee","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"b557851e8505","ui_kits/web/PropertyEstimates.jsx":"19fbc1ab18df","ui_kits/web/PropertyEvents.jsx":"661071ddeedc","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"4052ed3cec78","ui_kits/web/TaxStatements.jsx":"8a24fe1d5f78","ui_kits/web/TransactionTags.jsx":"f3bf3f5cb39e","ui_kits/web/Transactions.jsx":"773c07405c56","ui_kits/web/Users.jsx":"4ddab8478138","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"b6b90dc34d06","ui_kits/web/contracts-data.js":"60703b10009e","ui_kits/web/data.js":"526050ea49e9","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"64839a67d3d5","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"ec78251314db","ui_kits/web/property-events-data.js":"2c6c4672c3ac","ui_kits/web/system-settings-data.js":"c05e455acb51","ui_kits/web/tax-data.js":"c21018c4db71","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"homeownerAssociationState","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"propertyEventTypeLegality","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"propertyEventTypesFor","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -24027,8 +24027,8 @@ const AccountListItem = ({
         label: 'Edit account',
         onClick: startEdit
       }, {
-        icon: 'upload_file',
-        label: 'Upload file',
+        icon: 'attach_file',
+        label: 'Attach documents',
         onClick: () => setAddingFile(true)
       }, {
         icon: 'receipt_long',
@@ -25645,102 +25645,33 @@ const AddContractFileModal = ({
   onClose,
   onAttach
 }) => {
-  const {
-    useState
-  } = React;
   const H = window.OdysseyHelpers;
-  const kinds = window.OdysseyData.contractFileTypes;
-  const issuers = (window.OdysseyData.contacts || []).filter(c => !c.archived);
-  const [files, setFiles] = useState([]); // { uid, name, kind, sizeBytes }
-  const [error, setError] = useState(null);
-  const existing = (contract.files || []).map(H.conFileRow);
-  const submit = () => {
-    if (!files.length) {
-      setError('Add at least one document to upload.');
-      return;
-    }
-    if (files.some(f => !f.name.trim())) {
-      setError('Every document needs a name.');
-      return;
-    }
-    if (files.some(f => f.validFrom && f.validTo && f.validTo < f.validFrom)) {
-      setError('A document’s “Valid to” can’t be before its “Valid from”.');
-      return;
-    }
-    const nowIso = new Date().toISOString();
-    const today = H.conToday();
-    const out = files.map((f, i) => ({
-      id: `cf-up-${Date.now()}-${i}`,
-      fileMetadataId: `fm-up-${Date.now()}-${i}`,
-      // a freshly stored FileMetadata
-      kind: f.kind,
-      name: f.name.trim(),
-      size: window.afmFmtSize ? window.afmFmtSize(f.sizeBytes) : `${Math.round((f.sizeBytes || 0) / 1024)} KB`,
-      uploaded: today,
-      attachedByUserId: 'u-owner',
-      attachedAtUtc: nowIso,
-      // The four validity fields ride on the link row. Untouched → null.
-      validFrom: f.validFrom || null,
-      validTo: f.validTo || null,
-      issuedAt: f.issuedAt || null,
-      issuedBy: f.issuedBy || null
-    }));
-    onAttach && onAttach(out);
-  };
-  return /*#__PURE__*/React.createElement(Modal, {
-    title: "Upload documents",
-    subtitle: "Upload the signed agreement, an amendment, or correspondence and attach it to this contract.",
-    icon: "cloud_upload",
-    className: "afm-dialog",
-    onClose: onClose,
-    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
-      variant: "text",
-      onClick: onClose
-    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
-      variant: "filled",
-      color: "primary",
-      icon: "upload_file",
-      onClick: submit
-    }, files.length > 1 ? `Upload ${files.length} documents` : 'Upload document'))
-  }, /*#__PURE__*/React.createElement(FileUpload, {
-    files: files,
-    onChange: next => {
-      setFiles(next);
-      if (error) setError(null);
-    },
-    error: error,
-    kinds: kinds,
+  return /*#__PURE__*/React.createElement(AttachDocumentsModal, {
+    subtitle: "Keep the signed agreement, an amendment, or correspondence with this contract. Files stay in Files; attaching links them here.",
+    kinds: window.OdysseyData.contractFileTypes,
     guessKind: ACF_GUESS,
-    maxMegabytes: (window.__odysseyImportLimits || {}).upload || 64,
-    renderFileExtra: (file, patch) => /*#__PURE__*/React.createElement(ConFileValidity, {
-      file: file,
-      patch: patch,
-      issuers: issuers
-    })
-  }), existing.length > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "con-existing-files"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "con-existing-head"
-  }, "Already attached"), existing.map(f => {
-    const info = H.contractFileTypeInfo(f.kind);
-    return /*#__PURE__*/React.createElement("div", {
-      className: "con-existing-row",
-      key: f.id
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "con-existing-ic",
-      style: {
-        background: info.soft,
-        color: info.color
-      }
-    }, /*#__PURE__*/React.createElement(MIcon, {
-      name: info.icon,
-      size: 15
-    })), /*#__PURE__*/React.createElement("span", {
-      className: "con-existing-name"
-    }, f.name), /*#__PURE__*/React.createElement("span", {
-      className: "con-existing-kind"
-    }, info.label));
-  })));
+    validity: true,
+    attachedIds: (contract.files || []).map(f => f.fileMetadataId),
+    onClose: onClose,
+    onSubmit: items => {
+      const nowIso = new Date().toISOString();
+      const today = H.conToday();
+      onAttach && onAttach(items.map((f, i) => ({
+        id: `cf-up-${Date.now()}-${i}`,
+        fileMetadataId: f.fileMetadataId,
+        kind: f.kind,
+        name: f.name,
+        size: f.size,
+        uploaded: today,
+        attachedByUserId: 'u-owner',
+        attachedAtUtc: nowIso,
+        validFrom: f.validFrom,
+        validTo: f.validTo,
+        issuedAt: f.issuedAt,
+        issuedBy: f.issuedBy
+      })));
+    }
+  });
 };
 Object.assign(window, {
   AddContractFileModal,
@@ -27051,98 +26982,35 @@ const AfmValidity = ({
 const AddFileModal = ({
   onClose,
   onCreate,
-  defaultAccount = '',
-  accounts
+  defaultAccount = ''
 }) => {
-  const {
-    useState
-  } = React;
   const d = window.OdysseyData;
-  const acctOptions = (accounts || d.accounts).filter(a => !a.closed).map(a => ({
-    value: a.id,
-    label: `${a.name} ${a.number}`
-  }));
-  const issuers = (d.contacts || []).filter(c => !c.archived);
-  const [account, setAccount] = useState(defaultAccount || '');
-  const [files, setFiles] = useState([]); // { uid, name, kind, sizeBytes, validFrom?, validTo?, issuedAt?, issuedBy? }
-  const [errors, setErrors] = useState({});
-
-  // (Esc-to-close, scrim click and focus handling come from the DS Modal shell.)
-
-  const submit = () => {
-    const next = {};
-    if (!account) next.account = 'Choose which account these files belong to.';
-    if (!files.length) next.files = 'Add at least one file.';
-    if (files.some(f => !f.name.trim())) next.files = 'Every file needs a name.';
-    if (files.some(f => f.validFrom && f.validTo && f.validTo < f.validFrom)) next.files = 'A file’s “Valid to” can’t be before its “Valid from”.';
-    if (Object.keys(next).length) {
-      setErrors(next);
-      return;
-    }
-    const uploaded = afmToday();
-    const out = files.map((f, i) => ({
-      id: `nf-${Date.now()}-${i}`,
-      name: f.name.trim(),
-      kind: f.kind,
-      size: afmFmtSize(f.sizeBytes),
-      uploaded,
-      validFrom: f.validFrom || null,
-      validTo: f.validTo || null,
-      issuedAt: f.issuedAt || null,
-      issuedBy: f.issuedBy || null
-    }));
-    onCreate && onCreate(account, out);
-  };
-  return /*#__PURE__*/React.createElement(Modal, {
-    title: "Upload files",
-    subtitle: "Upload statements, receipts, or documents and attach them to an account.",
-    icon: "cloud_upload",
-    className: "afm-dialog",
-    onClose: onClose,
-    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
-      variant: "text",
-      onClick: onClose
-    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
-      variant: "filled",
-      color: "primary",
-      icon: "upload_file",
-      onClick: submit
-    }, files.length > 1 ? `Upload ${files.length} files` : 'Upload'))
-  }, /*#__PURE__*/React.createElement(Select, {
-    label: "Account",
-    value: account,
-    onChange: v => {
-      setAccount(v);
-      if (errors.account) setErrors(e => ({
-        ...e,
-        account: undefined
-      }));
-    },
-    options: acctOptions,
-    placeholder: "Choose an account\u2026"
-  }), errors.account && /*#__PURE__*/React.createElement("div", {
-    className: "helper aam-err",
-    style: {
-      marginTop: -8
-    }
-  }, errors.account), /*#__PURE__*/React.createElement(FileUpload, {
-    files: files,
-    onChange: nextFiles => {
-      setFiles(nextFiles);
-      if (errors.files) setErrors(e => ({
-        ...e,
-        files: undefined
-      }));
-    },
-    error: errors.files,
+  const account = defaultAccount;
+  const acct = d.accountById ? d.accountById[account] : null;
+  const attachedIds = acct && acct.files ? acct.files.map(x => x.fileMetadataId) : [];
+  return /*#__PURE__*/React.createElement(AttachDocumentsModal, {
+    subtitle: `Keep statements, receipts, or documents with ${acct ? acct.name : 'this account'}. Files stay in Files; attaching links them here.`,
     kinds: AFM_KINDS,
     guessKind: name => afmGuessKind(name, 'account'),
-    renderFileExtra: (file, patch) => /*#__PURE__*/React.createElement(AfmValidity, {
-      file: file,
-      patch: patch,
-      issuers: issuers
-    })
-  }));
+    validity: true,
+    attachedIds: attachedIds,
+    onClose: onClose,
+    onSubmit: items => {
+      const uploaded = afmToday();
+      onCreate && onCreate(account, items.map((x, i) => ({
+        id: `nf-${Date.now()}-${i}`,
+        fileMetadataId: x.fileMetadataId,
+        name: x.name,
+        kind: x.kind,
+        size: x.size,
+        uploaded,
+        validFrom: x.validFrom,
+        validTo: x.validTo,
+        issuedAt: x.issuedAt,
+        issuedBy: x.issuedBy
+      })));
+    }
+  });
 };
 Object.assign(window, {
   AddFileModal,
@@ -27329,269 +27197,41 @@ Object.assign(window, {
 // ui_kits/web/AddPropertyFileModal.jsx
 try { (() => {
 /* AddPropertyFileModal — attach documents to a property (*Property Documents —
-   Backend, Draft v2* §3, §5.1). There is no upload endpoint on the property: a
-   document is a FileMetadata in the one Files store, linked here by id. The
-   dialog offers the two ways a file gets that id:
+   Backend, Draft v2* §3, §5.1) through the shared AttachDocumentsModal. A
+   document is a FileMetadata in the one Files store, linked here by id. Every file
+   carries a PropertyFileType and the optional validity fields. */
 
-     • Upload new — the DS FileUpload. Each file goes through the Files API
-       (files.create) and is then attached; the bytes land in Files like any
-       other upload, so the same file can later be attached to the loan
-       contract that financed the property without a second copy.
-     • From Files — pick files already in the store. A file already linked to
-       this property is shown but disabled ("Already attached"), which is the
-       409 the server would answer. A file whose SERVER-RECORDED content type
-       is off the shared document allow-list (DOCUMENT_CONTENT_TYPES — PDF,
-       PNG, JPEG, WebP, the one list contract documents use too) is disabled
-       with the reason in text: the server would answer 400.
-
-   Every picked file carries a PropertyFileType (default guessed from the name;
-   Other is the zero member, so an unset type degrades to Other, never Deed)
-   and, behind the same "Add validity" toggle contract uploads use, the four
-   optional validity fields. ValidTo before ValidFrom is refused on the
-   "Valid to" control, as the service does. */
-
-const APF_TABS = [{
-  value: 'upload',
-  label: 'Upload new',
-  icon: 'upload_file'
-}, {
-  value: 'library',
-  label: 'From Files',
-  icon: 'folder'
-}];
-const apfCtIcon = ct => ct === 'application/pdf' ? 'picture_as_pdf' : /^image\//.test(ct || '') ? 'image' : ct === 'text/html' ? 'code' : 'description';
-
-/* One pickable library row. Disabled rows say why in text, never colour alone. */
-const ApfLibraryRow = ({
-  file,
-  state,
-  picked,
-  onToggle,
-  onPatch,
-  issuers
-}) => {
-  const H = window.OdysseyHelpers;
-  const disabled = state !== 'ok';
-  const reason = state === 'attached' ? 'Already attached' : state === 'type' ? `${H.propContentTypeShort(file.contentType)} not accepted` : null;
-  const Validity = window.ConFileValidity;
-  return /*#__PURE__*/React.createElement("div", {
-    className: `prop-lib-row${picked ? ' on' : ''}${disabled ? ' off' : ''}`
-  }, /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    className: "prop-lib-main",
-    disabled: disabled,
-    "aria-pressed": !!picked,
-    onClick: onToggle
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "prop-lib-check"
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: disabled ? state === 'attached' ? 'link' : 'block' : picked ? 'check_box' : 'check_box_outline_blank',
-    size: 20
-  })), /*#__PURE__*/React.createElement("span", {
-    className: "prop-lib-ic"
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: apfCtIcon(file.contentType),
-    size: 16
-  })), /*#__PURE__*/React.createElement("span", {
-    className: "prop-lib-text"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "prop-lib-name"
-  }, file.name), /*#__PURE__*/React.createElement("span", {
-    className: "prop-lib-meta"
-  }, H.propContentTypeShort(file.contentType), " \xB7 ", file.size, " \xB7 uploaded ", H.conDate ? H.conDate(file.uploaded) : file.uploaded)), reason ? /*#__PURE__*/React.createElement("span", {
-    className: "prop-lib-reason"
-  }, reason) : null), picked ? /*#__PURE__*/React.createElement("div", {
-    className: "prop-lib-extra"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "prop-lib-type"
-  }, /*#__PURE__*/React.createElement(PropertyFileTypeSelect, {
-    label: "Document type",
-    value: picked.kind,
-    onChange: v => onPatch({
-      kind: v
-    })
-  })), Validity ? /*#__PURE__*/React.createElement(Validity, {
-    file: picked,
-    patch: onPatch,
-    issuers: issuers
-  }) : null) : null);
-};
 const AddPropertyFileModal = ({
   property,
   attached = [],
   onClose,
   onAttach
 }) => {
-  const {
-    useState
-  } = React;
   const H = window.OdysseyHelpers;
   const D = window.OdysseyData;
-  const issuers = (D.contacts || []).filter(c => !c.archived);
-  const [tab, setTab] = useState('upload');
-  const [files, setFiles] = useState([]);
-  const [picked, setPicked] = useState({});
-  const [q, setQ] = useState('');
-  const [error, setError] = useState(null);
-  const attachedIds = new Set(attached.map(a => a.fileMetadataId));
-  const pool = D.fileLibraryPool().filter(f => !q || f.name.toLowerCase().includes(q.toLowerCase()));
-  const stateOf = f => attachedIds.has(f.id) ? 'attached' : !H.propContentTypeAllowed(f.contentType) ? 'type' : 'ok';
-  const pickedList = Object.values(picked);
-  const togglePick = f => setPicked(p => {
-    const n = {
-      ...p
-    };
-    if (n[f.id]) delete n[f.id];else n[f.id] = {
-      fileMetadataId: f.id,
-      name: f.name,
-      kind: H.propGuessFileType(f.name)
-    };
-    return n;
-  });
-  const patchPick = id => partial => setPicked(p => ({
-    ...p,
-    [id]: {
-      ...p[id],
-      ...partial
-    }
-  }));
-  const badRange = f => f.validFrom && f.validTo && f.validTo < f.validFrom;
-  const nowIso = () => new Date().toISOString();
-  const link = (f, i, extra) => ({
-    id: `pf-new-${Date.now()}-${i}`,
-    propertyId: property.id,
-    fileMetadataId: f.fileMetadataId,
-    kind: f.kind || 'Other',
-    attachedByUserId: 'u-owner',
-    attachedByName: 'Owner Demo',
-    attachedAtUtc: nowIso(),
-    validFrom: f.validFrom || null,
-    validTo: f.validTo || null,
-    issuedAt: f.issuedAt || null,
-    issuedBy: f.issuedBy || null,
-    ...(extra || {})
-  });
-  const submit = () => {
-    if (tab === 'upload') {
-      if (!files.length) {
-        setError('Add at least one document to upload.');
-        return;
-      }
-      const rejected = files.find(f => !H.propContentTypeAllowed(H.propContentTypeFor(f.name)));
-      if (rejected) {
-        setError(`“${rejected.name}” is ${H.propContentTypeShort(H.propContentTypeFor(rejected.name))}. Property documents accept ${D.DOCUMENT_CONTENT_TYPE_LABEL} only.`);
-        return;
-      }
-      if (files.some(badRange)) {
-        setError('A document’s “Valid to” can’t be before its “Valid from”.');
-        return;
-      }
-      const today = new Date().toISOString().slice(0, 10);
-      const out = files.map((f, i) => {
-        const id = `fm-up-${Date.now()}-${i}`;
-        const size = window.afmFmtSize ? window.afmFmtSize(f.sizeBytes) : `${Math.round((f.sizeBytes || 0) / 1024)} KB`;
-        D.propertyFileLibrary.push({
-          id,
-          name: f.name.trim(),
-          contentType: H.propContentTypeFor(f.name),
-          size,
-          uploaded: today,
-          uploadedByName: 'Owner Demo'
-        });
-        return link({
-          ...f,
-          fileMetadataId: id
-        }, i);
-      });
-      onAttach && onAttach(out);
-      return;
-    }
-    if (!pickedList.length) {
-      setError('Pick at least one file to attach.');
-      return;
-    }
-    if (pickedList.some(badRange)) {
-      setError('A document’s “Valid to” can’t be before its “Valid from”.');
-      return;
-    }
-    onAttach && onAttach(pickedList.map((f, i) => link(f, i)));
-  };
-  const n = tab === 'upload' ? files.length : pickedList.length;
-  const cta = tab === 'upload' ? n > 1 ? `Upload and attach ${n}` : 'Upload and attach' : n > 1 ? `Attach ${n} documents` : 'Attach document';
   const noun = property.type === 'Vehicle' ? 'the registration, an inspection, the insurance certificate or a warranty' : 'the deed, the purchase agreement, a valuation or a warranty';
-  return /*#__PURE__*/React.createElement(Modal, {
-    title: "Attach documents",
+  const nowIso = () => new Date().toISOString();
+  return /*#__PURE__*/React.createElement(AttachDocumentsModal, {
     subtitle: `Keep ${noun} with ${property.name}. Files stay in Files; attaching links them here.`,
-    icon: "attach_file",
-    className: "afm-dialog",
-    onClose: onClose,
-    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
-      variant: "text",
-      onClick: onClose
-    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
-      variant: "filled",
-      color: "primary",
-      icon: tab === 'upload' ? 'upload_file' : 'link',
-      disabled: tab === 'library' && n === 0,
-      onClick: submit
-    }, cta))
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "prop-doc-modal"
-  }, /*#__PURE__*/React.createElement(SegmentedControl, {
-    full: true,
-    ariaLabel: "Where the document comes from",
-    value: tab,
-    onChange: v => {
-      setTab(v);
-      setError(null);
-    },
-    options: APF_TABS
-  }), tab === 'upload' ? /*#__PURE__*/React.createElement(FileUpload, {
-    files: files,
-    onChange: next => {
-      setFiles(next);
-      if (error) setError(null);
-    },
-    error: error,
     kinds: D.propertyFileTypes,
     guessKind: H.propGuessFileType,
-    accept: ".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp",
-    maxMegabytes: (window.__odysseyImportLimits || {}).upload || 64,
-    renderFileExtra: (file, patch) => window.ConFileValidity ? /*#__PURE__*/React.createElement(window.ConFileValidity, {
-      file: file,
-      patch: patch,
-      issuers: issuers
-    }) : null
-  }) : /*#__PURE__*/React.createElement("div", {
-    className: "prop-lib"
-  }, /*#__PURE__*/React.createElement(SearchField, {
-    placeholder: "Search files by name\u2026",
-    value: q,
-    onChange: setQ
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "prop-lib-list odc-scroll",
-    role: "group",
-    "aria-label": "Files"
-  }, pool.length === 0 ? /*#__PURE__*/React.createElement(EmptyLine, null, "No files match \u201C", q, "\u201D.") : pool.map(f => /*#__PURE__*/React.createElement(ApfLibraryRow, {
-    key: f.id,
-    file: f,
-    state: stateOf(f),
-    picked: picked[f.id],
-    issuers: issuers,
-    onToggle: () => {
-      togglePick(f);
-      if (error) setError(null);
-    },
-    onPatch: patchPick(f.id)
-  }))), error ? /*#__PURE__*/React.createElement("div", {
-    className: "helper aam-err",
-    role: "alert"
-  }, error) : null, /*#__PURE__*/React.createElement("div", {
-    className: "prop-lib-foot"
-  }, /*#__PURE__*/React.createElement(MIcon, {
-    name: "info",
-    size: 14
-  }), "Only ", D.DOCUMENT_CONTENT_TYPE_LABEL, " files can be attached \u2014 the same rule as contract documents."))));
+    validity: true,
+    attachedIds: attached.map(a => a.fileMetadataId),
+    onClose: onClose,
+    onSubmit: items => onAttach && onAttach(items.map((f, i) => ({
+      id: `pf-new-${Date.now()}-${i}`,
+      propertyId: property.id,
+      fileMetadataId: f.fileMetadataId,
+      kind: f.kind,
+      attachedByUserId: 'u-owner',
+      attachedByName: 'Owner Demo',
+      attachedAtUtc: nowIso(),
+      validFrom: f.validFrom,
+      validTo: f.validTo,
+      issuedAt: f.issuedAt,
+      issuedBy: f.issuedBy
+    })))
+  });
 };
 Object.assign(window, {
   AddPropertyFileModal
@@ -28356,6 +27996,40 @@ Object.assign(window, {
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddTaxStatementModal.jsx", error: String((e && e.message) || e) }); }
 
+// ui_kits/web/AddTransactionFileModal.jsx
+try { (() => {
+/* AddTransactionFileModal — attach documents to a transaction through the
+   shared AttachDocumentsModal. TransactionFileType per file; no validity.
+   Output rows use the AccountFile shape the transaction's FilesTable reads. */
+
+const AddTransactionFileModal = ({
+  transaction,
+  onClose,
+  onAttach
+}) => {
+  const H = window.OdysseyHelpers;
+  const today = new Date().toISOString().slice(0, 10);
+  return /*#__PURE__*/React.createElement(AttachDocumentsModal, {
+    subtitle: `Keep the receipt, invoice or payment confirmation with ${transaction.desc}. Files stay in Files; attaching links them here.`,
+    kinds: window.OdysseyData.transactionFileTypes,
+    guessKind: name => window.afmGuessKind(name, 'transaction'),
+    attachedIds: H.filesForTransaction(transaction).map(f => f.fileMetadataId),
+    onClose: onClose,
+    onSubmit: items => onAttach && onAttach(items.map((f, i) => ({
+      id: `tf-${Date.now()}-${i}`,
+      fileMetadataId: f.fileMetadataId,
+      name: f.name,
+      kind: f.kind,
+      size: f.size,
+      uploaded: today
+    })))
+  });
+};
+Object.assign(window, {
+  AddTransactionFileModal
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddTransactionFileModal.jsx", error: String((e && e.message) || e) }); }
+
 // ui_kits/web/AddTransactionModal.jsx
 try { (() => {
 /* AddTransactionModal — dialog opened from:
@@ -28747,7 +28421,7 @@ const AddTransactionModal = ({
   };
   return /*#__PURE__*/React.createElement(Modal, {
     title: editing ? 'Edit transaction' : 'New transaction',
-    subtitle: editing ? 'Update this transaction’s details, tags, or attachments.' : 'Record money moving in or out of an account.',
+    subtitle: editing ? 'Update this transaction’s details or tags.' : 'Record money moving in or out of an account.',
     icon: "receipt_long",
     className: "atm-dialog",
     onClose: onClose,
@@ -28870,29 +28544,6 @@ const AddTransactionModal = ({
     value: draft.extraData,
     onChange: set('extraData'),
     placeholder: "Notes or raw metadata to keep with this transaction"
-  })), /*#__PURE__*/React.createElement(FieldShell, {
-    label: "Attachments",
-    optional: true,
-    className: "odc-form-grid-wide"
-  }, editing && existingFiles.length > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement(InlinePager, {
-    items: existingFiles
-  }, pageRows => /*#__PURE__*/React.createElement(FilesTable, {
-    files: pageRows,
-    account: d.accountById[draft.account],
-    onDelete: removeExisting,
-    kinds: window.OdysseyData.transactionFileTypes,
-    showValidity: false
-  }))), /*#__PURE__*/React.createElement(FileUpload, {
-    compact: true,
-    files: files,
-    kinds: window.OdysseyData.transactionFileTypes,
-    guessKind: name => window.afmGuessKind(name, 'transaction'),
-    onChange: setFiles,
-    hint: "Attach a receipt or document \xB7 PDF, JPG, PNG \xB7 drop or browse"
   }))));
 };
 Object.assign(window, {
@@ -30895,6 +30546,515 @@ Object.assign(window, {
   CommandPalette
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AppShell.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/web/AttachDocumentsModal.jsx
+try { (() => {
+/* AttachDocumentsModal — the one "Attach documents" dialog every document
+   surface uses (accounts, transactions, tax statements, contracts, properties).
+   Two ways a file gets attached:
+     • Upload new — the DS FileUpload; the bytes land in the one Files store.
+     • From Files — pick files already in the store. Already-linked files are
+       shown disabled ("Already attached"); files off the surface's content-type
+       allow-list (when it has one) are disabled with the reason in text.
+   Each picked file carries the surface's file type (guessed from the name) and,
+   when `validity` is on, the optional Valid from / to · Issued · Issued by
+   fields behind the "Add validity" toggle.
+
+   The caller maps the normalized items to its own row shape:
+     onSubmit([{ source: 'upload'|'library', fileMetadataId, name, kind, size,
+                 validFrom, validTo, issuedAt, issuedBy }]) */
+
+const ADM_TABS = [{
+  value: 'upload',
+  label: 'Upload new',
+  icon: 'upload_file'
+}, {
+  value: 'library',
+  label: 'From Files',
+  icon: 'folder'
+}];
+const admCtIcon = ct => ct === 'application/pdf' ? 'picture_as_pdf' : /^image\//.test(ct || '') ? 'image' : ct === 'text/html' ? 'code' : 'description';
+const admCtFor = name => {
+  const H = window.OdysseyHelpers;
+  if (H.propContentTypeFor) return H.propContentTypeFor(name);
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  return {
+    pdf: 'application/pdf',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    webp: 'image/webp'
+  }[ext] || 'application/octet-stream';
+};
+const admCtShort = ct => {
+  const H = window.OdysseyHelpers;
+  return H.propContentTypeShort ? H.propContentTypeShort(ct) : ct;
+};
+const AttachDocumentsModal = ({
+  subtitle,
+  kinds,
+  guessKind,
+  validity = false,
+  attachedIds = [],
+  restrictTypes = false,
+  accept,
+  header,
+  validate,
+  onClose,
+  onSubmit,
+  libraryOnly = false
+}) => {
+  const {
+    useState
+  } = React;
+  const H = window.OdysseyHelpers;
+  const D = window.OdysseyData;
+  const issuers = (D.contacts || []).filter(c => !c.archived);
+  const Validity = window.ConFileValidity;
+  const guess = guessKind || (() => 'Other');
+  const allowed = ct => !restrictTypes || !H.propContentTypeAllowed || H.propContentTypeAllowed(ct);
+  const kindOptions = (kinds || []).map(t => ({
+    value: t.key,
+    label: t.label,
+    icon: t.icon,
+    iconColor: t.color
+  }));
+  const [tab, setTab] = useState(libraryOnly ? 'library' : 'upload');
+  const [files, setFiles] = useState([]);
+  const [picked, setPicked] = useState({});
+  const [q, setQ] = useState('');
+  const [error, setError] = useState(null);
+  const linked = new Set(attachedIds.filter(Boolean));
+  const pool = (D.fileLibraryPool ? D.fileLibraryPool() : []).filter(f => !q || f.name.toLowerCase().includes(q.toLowerCase()));
+  const stateOf = f => linked.has(f.id) ? 'attached' : !allowed(f.contentType) ? 'type' : 'ok';
+  const pickedList = Object.values(picked);
+  const togglePick = f => setPicked(p => {
+    const n = {
+      ...p
+    };
+    if (n[f.id]) delete n[f.id];else n[f.id] = {
+      fileMetadataId: f.id,
+      name: f.name,
+      size: f.size,
+      kind: guess(f.name)
+    };
+    return n;
+  });
+  const patchPick = id => partial => setPicked(p => ({
+    ...p,
+    [id]: {
+      ...p[id],
+      ...partial
+    }
+  }));
+  const badRange = f => f.validFrom && f.validTo && f.validTo < f.validFrom;
+  const vfields = f => ({
+    validFrom: f.validFrom || null,
+    validTo: f.validTo || null,
+    issuedAt: f.issuedAt || null,
+    issuedBy: f.issuedBy || null
+  });
+  const today = () => new Date().toISOString().slice(0, 10);
+  const submit = () => {
+    const outer = validate ? validate() : null;
+    if (outer) return;
+    if (tab === 'upload') {
+      if (!files.length) {
+        setError('Add at least one document to upload.');
+        return;
+      }
+      if (files.some(f => !f.name.trim())) {
+        setError('Every document needs a name.');
+        return;
+      }
+      const rejected = restrictTypes && files.find(f => !allowed(admCtFor(f.name)));
+      if (rejected) {
+        setError(`“${rejected.name}” is ${admCtShort(admCtFor(rejected.name))}. Only ${D.DOCUMENT_CONTENT_TYPE_LABEL || 'PDF and image'} files are accepted.`);
+        return;
+      }
+      if (files.some(badRange)) {
+        setError('A document’s “Valid to” can’t be before its “Valid from”.');
+        return;
+      }
+      onSubmit && onSubmit(files.map((f, i) => {
+        const id = `fm-up-${Date.now()}-${i}`;
+        const size = window.afmFmtSize ? window.afmFmtSize(f.sizeBytes) : `${Math.round((f.sizeBytes || 0) / 1024)} KB`;
+        if (D.propertyFileLibrary) D.propertyFileLibrary.push({
+          id,
+          name: f.name.trim(),
+          contentType: admCtFor(f.name),
+          size,
+          uploaded: today(),
+          uploadedByName: 'Owner Demo'
+        });
+        return {
+          source: 'upload',
+          fileMetadataId: id,
+          name: f.name.trim(),
+          kind: f.kind || 'Other',
+          size,
+          ...vfields(f)
+        };
+      }));
+      return;
+    }
+    if (!pickedList.length) {
+      setError('Pick at least one file to attach.');
+      return;
+    }
+    if (pickedList.some(badRange)) {
+      setError('A document’s “Valid to” can’t be before its “Valid from”.');
+      return;
+    }
+    onSubmit && onSubmit(pickedList.map(f => ({
+      source: 'library',
+      fileMetadataId: f.fileMetadataId,
+      name: f.name,
+      kind: f.kind || 'Other',
+      size: f.size,
+      ...vfields(f)
+    })));
+  };
+  const n = tab === 'upload' ? files.length : pickedList.length;
+  const cta = tab === 'upload' ? n > 1 ? `Upload and attach ${n}` : 'Upload and attach' : n > 1 ? `Attach ${n} documents` : 'Attach document';
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: libraryOnly ? 'Choose from Files' : 'Attach documents',
+    subtitle: subtitle,
+    icon: "attach_file",
+    className: "afm-dialog",
+    onClose: onClose,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: onClose
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      color: "primary",
+      icon: tab === 'upload' ? 'upload_file' : 'link',
+      disabled: tab === 'library' && n === 0,
+      onClick: submit
+    }, cta))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "prop-doc-modal"
+  }, header, libraryOnly ? null : /*#__PURE__*/React.createElement(SegmentedControl, {
+    full: true,
+    ariaLabel: "Where the document comes from",
+    value: tab,
+    onChange: v => {
+      setTab(v);
+      setError(null);
+    },
+    options: ADM_TABS
+  }), tab === 'upload' ? /*#__PURE__*/React.createElement(FileUpload, {
+    files: files,
+    onChange: next => {
+      setFiles(next);
+      if (error) setError(null);
+    },
+    error: error,
+    kinds: kinds,
+    guessKind: guess,
+    accept: accept,
+    showKinds: kinds ? undefined : false,
+    maxMegabytes: (window.__odysseyImportLimits || {}).upload || 64,
+    renderFileExtra: validity && Validity ? (file, patch) => /*#__PURE__*/React.createElement(Validity, {
+      file: file,
+      patch: patch,
+      issuers: issuers
+    }) : undefined
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "prop-lib"
+  }, /*#__PURE__*/React.createElement(SearchField, {
+    placeholder: "Search files by name\u2026",
+    value: q,
+    onChange: setQ
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "prop-lib-list odc-scroll",
+    role: "group",
+    "aria-label": "Files"
+  }, pool.length === 0 ? /*#__PURE__*/React.createElement(EmptyLine, null, "No files match \u201C", q, "\u201D.") : pool.map(f => {
+    const st = stateOf(f),
+      pk = picked[f.id],
+      off = st !== 'ok';
+    const reason = st === 'attached' ? 'Already attached' : st === 'type' ? `${admCtShort(f.contentType)} not accepted` : null;
+    return /*#__PURE__*/React.createElement("div", {
+      key: f.id,
+      className: `prop-lib-row${pk ? ' on' : ''}${off ? ' off' : ''}`
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      className: "prop-lib-main",
+      disabled: off,
+      "aria-pressed": !!pk,
+      onClick: () => {
+        togglePick(f);
+        if (error) setError(null);
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "prop-lib-check"
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: off ? st === 'attached' ? 'link' : 'block' : pk ? 'check_box' : 'check_box_outline_blank',
+      size: 20
+    })), /*#__PURE__*/React.createElement("span", {
+      className: "prop-lib-ic"
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: admCtIcon(f.contentType),
+      size: 16
+    })), /*#__PURE__*/React.createElement("span", {
+      className: "prop-lib-text"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "prop-lib-name"
+    }, f.name), /*#__PURE__*/React.createElement("span", {
+      className: "prop-lib-meta"
+    }, admCtShort(f.contentType), " \xB7 ", f.size, " \xB7 uploaded ", H.conDate ? H.conDate(f.uploaded) : f.uploaded)), reason ? /*#__PURE__*/React.createElement("span", {
+      className: "prop-lib-reason"
+    }, reason) : null), pk && (kindOptions.length || validity) ? /*#__PURE__*/React.createElement("div", {
+      className: "prop-lib-extra"
+    }, kindOptions.length ? /*#__PURE__*/React.createElement("div", {
+      className: "prop-lib-type"
+    }, /*#__PURE__*/React.createElement(Select, {
+      label: "Document type",
+      value: pk.kind,
+      onChange: v => patchPick(f.id)({
+        kind: v
+      }),
+      options: kindOptions
+    })) : null, validity && Validity ? /*#__PURE__*/React.createElement(Validity, {
+      file: pk,
+      patch: patchPick(f.id),
+      issuers: issuers
+    }) : null) : null);
+  })), error ? /*#__PURE__*/React.createElement("div", {
+    className: "helper aam-err",
+    role: "alert"
+  }, error) : null, restrictTypes ? /*#__PURE__*/React.createElement("div", {
+    className: "prop-lib-foot"
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "info",
+    size: 14
+  }), "Only ", D.DOCUMENT_CONTENT_TYPE_LABEL, " files can be attached.") : null)));
+};
+Object.assign(window, {
+  AttachDocumentsModal
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AttachDocumentsModal.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/web/AttachPhotosModal.jsx
+try { (() => {
+/* AttachPhotosModal — the photo twin of AttachDocumentsModal. Two ways a photo
+   gets onto an entry:
+     • Upload new — the DS FileUpload (images only); uploads join the library.
+     • From Photos — pick photos already in the library (window.PHOTOS). Photos
+       already on the entry are shown disabled ("Already added").
+   onSubmit([{ source: 'upload'|'library', photoId, name, seed, sizeBytes }]) */
+
+const APM_TABS = [{
+  value: 'upload',
+  label: 'Upload new',
+  icon: 'upload'
+}, {
+  value: 'library',
+  label: 'From Photos',
+  icon: 'photo_library'
+}];
+const apmSeed = id => {
+  let h = 0;
+  const s = String(id || '');
+  for (let i = 0; i < s.length; i++) h = h * 31 + s.charCodeAt(i) >>> 0;
+  return h;
+};
+const apmBg = p => {
+  const v = window.plPhotoBg ? window.plPhotoBg(p.seed != null ? p.seed : apmSeed(p.id)) : null;
+  return v && (typeof v === 'string' ? v : v.background) || 'var(--mud-palette-background-grey)';
+};
+const AttachPhotosModal = ({
+  subtitle,
+  attachedIds = [],
+  photos,
+  onUploadFiles,
+  onClose,
+  onSubmit,
+  uploadOnly = false
+}) => {
+  const {
+    useState
+  } = React;
+  const [tab, setTab] = useState('upload');
+  const [files, setFiles] = useState([]);
+  const [picked, setPicked] = useState([]);
+  const [q, setQ] = useState('');
+  const [error, setError] = useState(null);
+  const linked = new Set(attachedIds.filter(Boolean));
+  const source = photos || window.PHOTOS || [];
+  const pool = source.filter(p => !p.archived && (!q || `${p.title || ''} ${p.name} ${p.location || ''}`.toLowerCase().includes(q.toLowerCase())));
+  const toggle = id => {
+    setPicked(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    if (error) setError(null);
+  };
+  const submit = () => {
+    if (tab === 'upload') {
+      if (!files.length) {
+        setError('Add at least one photo to upload.');
+        return;
+      }
+      if (onUploadFiles) {
+        onSubmit && onSubmit(onUploadFiles(files));
+        return;
+      }
+      const now = new Date().toISOString();
+      onSubmit && onSubmit(files.map((f, i) => {
+        const id = `pl-up-${Date.now()}-${i}`;
+        const seed = apmSeed(id);
+        if (window.PHOTOS) window.PHOTOS.unshift({
+          id,
+          name: f.name,
+          seed,
+          date: now,
+          createdAt: now,
+          tagIds: [],
+          personIds: [],
+          w: 1,
+          h: 1
+        });
+        return {
+          source: 'upload',
+          photoId: id,
+          name: f.name,
+          seed,
+          sizeBytes: f.sizeBytes
+        };
+      }));
+      return;
+    }
+    if (!picked.length) {
+      setError('Pick at least one photo.');
+      return;
+    }
+    const byId = Object.fromEntries(source.map(p => [p.id, p]));
+    onSubmit && onSubmit(picked.map(id => ({
+      source: 'library',
+      photoId: id,
+      name: byId[id].name,
+      seed: byId[id].seed,
+      sizeBytes: null
+    })));
+  };
+  const n = tab === 'upload' ? files.length : picked.length;
+  const cta = uploadOnly ? n > 1 ? `Upload ${n} photos` : 'Upload' : tab === 'upload' ? n > 1 ? `Upload and add ${n}` : 'Upload and add' : n > 1 ? `Add ${n} photos` : 'Add photo';
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: uploadOnly ? 'Upload photos' : 'Add photos',
+    subtitle: subtitle,
+    icon: "add_photo_alternate",
+    className: "afm-dialog",
+    onClose: onClose,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: onClose
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      color: "primary",
+      icon: tab === 'upload' ? 'upload' : 'add',
+      disabled: tab === 'library' && n === 0,
+      onClick: submit
+    }, cta))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "prop-doc-modal"
+  }, uploadOnly ? null : /*#__PURE__*/React.createElement(SegmentedControl, {
+    full: true,
+    ariaLabel: "Where the photo comes from",
+    value: tab,
+    onChange: v => {
+      setTab(v);
+      setError(null);
+    },
+    options: APM_TABS
+  }), tab === 'upload' ? /*#__PURE__*/React.createElement(FileUpload, {
+    accept: "image/*",
+    showKinds: false,
+    files: files,
+    error: error,
+    hint: `JPEG, PNG, GIF, or WebP · up to ${(window.__odysseyImportLimits || {}).photo || (window.__odysseyImportLimits || {}).upload || 64}\u00A0MB each · multiple at once`,
+    onChange: next => {
+      setFiles(next);
+      if (error) setError(null);
+    }
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "prop-lib"
+  }, /*#__PURE__*/React.createElement(SearchField, {
+    placeholder: "Search photos by title, file name or place\u2026",
+    value: q,
+    onChange: setQ
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "odc-scroll",
+    role: "group",
+    "aria-label": "Photos",
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))',
+      gap: 8,
+      maxHeight: 380,
+      overflowY: 'auto',
+      padding: 2
+    }
+  }, pool.length === 0 ? /*#__PURE__*/React.createElement(EmptyLine, null, "No photos match \u201C", q, "\u201D.") : pool.map(p => {
+    const off = linked.has(p.id),
+      on = picked.includes(p.id);
+    return /*#__PURE__*/React.createElement("button", {
+      key: p.id,
+      type: "button",
+      disabled: off,
+      "aria-pressed": on,
+      title: p.title || p.name,
+      onClick: () => toggle(p.id),
+      style: {
+        position: 'relative',
+        aspectRatio: '1',
+        border: 0,
+        padding: 0,
+        borderRadius: 8,
+        cursor: off ? 'not-allowed' : 'pointer',
+        background: apmBg(p),
+        opacity: off ? 0.45 : 1,
+        outline: on ? '2px solid var(--mud-palette-primary)' : 'none',
+        outlineOffset: 2
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        position: 'absolute',
+        top: 6,
+        left: 6,
+        display: 'grid',
+        placeItems: 'center',
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        background: 'rgba(8,12,24,0.55)',
+        color: '#fff'
+      }
+    }, /*#__PURE__*/React.createElement(MIcon, {
+      name: off ? 'link' : on ? 'check_box' : 'check_box_outline_blank',
+      size: 18
+    })), off ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        position: 'absolute',
+        left: 6,
+        right: 6,
+        bottom: 6,
+        padding: '3px 6px',
+        borderRadius: 4,
+        background: 'rgba(8,12,24,0.7)',
+        color: '#fff',
+        font: '500 11px/1.2 var(--font-sans)'
+      }
+    }, "Already added") : null);
+  })), error ? /*#__PURE__*/React.createElement("div", {
+    className: "helper aam-err",
+    role: "alert"
+  }, error) : null)));
+};
+Object.assign(window, {
+  AttachPhotosModal,
+  apmBg
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AttachPhotosModal.jsx", error: String((e && e.message) || e) }); }
 
 // ui_kits/web/Budgets.jsx
 try { (() => {
@@ -40769,7 +40929,7 @@ const ContractListItem = ({
         }
       }, {
         icon: 'attach_file',
-        label: 'Upload document',
+        label: 'Attach documents',
         onClick: () => {
           setOpen(true);
           setModal('file');
@@ -45492,7 +45652,8 @@ const jecUploaded = iso => {
 const JournalFileRow = ({
   f,
   onPreview,
-  onRemove
+  onRemove,
+  removeLabel = 'Remove from entry'
 }) => {
   const fi = J_D.fileTypeByKey[f.kind] || JEC_FILE_FALLBACK;
   return /*#__PURE__*/React.createElement("div", {
@@ -45541,7 +45702,7 @@ const JournalFileRow = ({
       divider: true
     }, {
       icon: 'link_off',
-      label: 'Remove from entry',
+      label: removeLabel,
       danger: true,
       onClick: () => onRemove(f)
     }] : [])]
@@ -45873,6 +46034,26 @@ const AddJournalEntryModal = ({
     attachments: []
   });
   const [errors, setErrors] = useState({});
+  const [picking, setPicking] = useState(false);
+  const [pickingPhotos, setPickingPhotos] = useState(false);
+  const PhotoModal = window.AttachPhotosModal;
+  const addPhotos = items => {
+    setDraft(d => ({
+      ...d,
+      photos: [...d.photos, ...items.map(p => ({
+        uid: p.photoId,
+        photoId: p.photoId,
+        name: p.name,
+        kind: 'Image',
+        seed: p.seed,
+        sizeBytes: p.sizeBytes
+      }))]
+    }));
+    setPickingPhotos(false);
+  };
+  const [previewFile, setPreviewFile] = useState(null);
+  const FileViewer = window.FileViewerModal;
+  const AttachModal = window.AttachDocumentsModal;
   const set = k => v => {
     setDraft(d => ({
       ...d,
@@ -45882,6 +46063,19 @@ const AddJournalEntryModal = ({
       ...x,
       [k]: undefined
     }));
+  };
+  const addExisting = items => {
+    setDraft(d => ({
+      ...d,
+      attachments: [...d.attachments, ...items.map(f => ({
+        uid: f.fileMetadataId,
+        fileMetadataId: f.fileMetadataId,
+        name: f.name,
+        kind: 'Other',
+        sizeBytes: J_H.parseSize ? J_H.parseSize(f.size) : null
+      }))]
+    }));
+    setPicking(false);
   };
   const submit = () => {
     const next = {};
@@ -45900,7 +46094,10 @@ const AddJournalEntryModal = ({
       tagIds: draft.tagIds,
       contactIds: draft.contactIds,
       photos: fromUploadPhotos(draft.photos),
-      attachments: fromUploadFiles(draft.attachments, draft.entryDate)
+      attachments: fromUploadFiles(draft.attachments, draft.entryDate).map(a => ({
+        ...a,
+        kind: 'Other'
+      }))
     };
     if (editing) {
       // Archived is managed from the row's action menu; parent merge preserves it.
@@ -45987,23 +46184,95 @@ const AddJournalEntryModal = ({
     placeholder: "What happened?"
   })), /*#__PURE__*/React.createElement(FieldShell, {
     label: "Photos",
-    optional: true,
-    helper: "JPEG, PNG, GIF, or WebP."
-  }, /*#__PURE__*/React.createElement(FileUpload, {
-    accept: "image/*",
-    showKinds: false,
-    files: draft.photos,
-    onChange: set('photos'),
-    compact: true
-  })), /*#__PURE__*/React.createElement(FieldShell, {
+    optional: true
+  }, draft.photos.length ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))',
+      gap: 6,
+      marginBottom: 8
+    }
+  }, draft.photos.map(p => /*#__PURE__*/React.createElement("div", {
+    key: p.uid,
+    title: p.name,
+    style: {
+      position: 'relative',
+      aspectRatio: '1',
+      borderRadius: 6,
+      background: window.apmBg ? window.apmBg({
+        id: p.uid,
+        seed: p.seed
+      }) : 'var(--mud-palette-background-grey)'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    "aria-label": `Remove ${p.name}`,
+    onClick: () => setDraft(d => ({
+      ...d,
+      photos: d.photos.filter(x => x.uid !== p.uid)
+    })),
+    style: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      display: 'grid',
+      placeItems: 'center',
+      width: 22,
+      height: 22,
+      border: 0,
+      borderRadius: 999,
+      background: 'rgba(8,12,24,0.6)',
+      color: '#fff',
+      cursor: 'pointer',
+      padding: 0
+    }
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "close",
+    size: 14
+  }))))) : null, PhotoModal ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Button, {
+    variant: "outlined",
+    icon: "add_photo_alternate",
+    onClick: () => setPickingPhotos(true)
+  }, "Add photos")) : null), /*#__PURE__*/React.createElement(FieldShell, {
     label: "Attachments",
-    optional: true,
-    helper: "PDFs and documents."
-  }, /*#__PURE__*/React.createElement(FileUpload, {
-    files: draft.attachments,
-    onChange: set('attachments'),
-    compact: true
-  }))));
+    optional: true
+  }, draft.attachments.length ? /*#__PURE__*/React.createElement("div", {
+    className: "jec-files",
+    style: {
+      gridTemplateColumns: '1fr',
+      marginBottom: 8
+    }
+  }, draft.attachments.map(f => /*#__PURE__*/React.createElement(JournalFileRow, {
+    key: f.uid,
+    f: {
+      id: f.uid,
+      name: f.name,
+      kind: 'Other',
+      size: J_H.humanSize ? J_H.humanSize(f.sizeBytes) : ''
+    },
+    onPreview: setPreviewFile,
+    onRemove: () => setDraft(d => ({
+      ...d,
+      attachments: d.attachments.filter(x => x.uid !== f.uid)
+    }))
+  }))) : null, AttachModal ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Button, {
+    variant: "outlined",
+    icon: "attach_file",
+    onClick: () => setPicking(true)
+  }, "Attach documents")) : null)), picking && AttachModal && /*#__PURE__*/React.createElement(AttachModal, {
+    subtitle: "Keep documents with this entry. Files stay in Files; attaching links them here.",
+    attachedIds: draft.attachments.map(f => f.fileMetadataId || f.uid),
+    onClose: () => setPicking(false),
+    onSubmit: addExisting
+  }), previewFile && FileViewer && /*#__PURE__*/React.createElement(FileViewer, {
+    file: previewFile,
+    onClose: () => setPreviewFile(null)
+  }), pickingPhotos && PhotoModal && /*#__PURE__*/React.createElement(PhotoModal, {
+    subtitle: "Add photos to this entry. Photos stay in your library; adding links them here.",
+    attachedIds: draft.photos.map(p => p.photoId || p.uid),
+    onClose: () => setPickingPhotos(false),
+    onSubmit: addPhotos
+  }));
 };
 
 /* ---------- Page ---------- */
@@ -46352,7 +46621,8 @@ const Journal = ({
 Object.assign(window, {
   Journal,
   JournalListItem,
-  AddJournalEntryModal
+  AddJournalEntryModal,
+  JournalFileRow
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/Journal.jsx", error: String((e && e.message) || e) }); }
 
@@ -47648,6 +47918,10 @@ try { (() => {
   const plTagName = window.plTagName,
     plPersonName = window.plPersonName;
   const PAGE_SIZES = [24, 48, 96];
+  const plEffectiveCap = function () {
+    const L = window.__odysseyImportLimits || {};
+    return L.photo || L.upload || 64;
+  };
   const titleOf = function (p) {
     return p.title && p.title.trim() || p.name;
   };
@@ -48563,6 +48837,18 @@ try { (() => {
     const members = editId ? lib.albumPhotos(editId) : [];
     const coverId = editId ? lib.coverId(existing || {}) : null;
     const existingCount = editId ? members.length : 0;
+    const [picking, setPicking] = useState(false);
+    const PhotoModal = window.AttachPhotosModal;
+    const addIds = function (ids) {
+      setAdded(function (a) {
+        return a + ids.length;
+      });
+      if (editId) lib.addToAlbums(ids, [editId]);else setNewIds(function (prev) {
+        return prev.concat(ids.filter(function (id) {
+          return prev.indexOf(id) === -1;
+        }));
+      });
+    };
     useEffect(function () {
       const onKey = function (e) {
         if (e.key === 'Escape') props.onClose();
@@ -48716,14 +49002,98 @@ try { (() => {
       className: 'odc-field'
     }, React.createElement('label', {
       className: 'odc-field-label'
-    }, 'Upload new photos to this album'), React.createElement(UploadDrop, {
-      added: added,
-      onReceive: receive,
+    }, 'Photos'), !editId && newIds.length ? React.createElement('div', {
       style: {
-        minHeight: 160
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))',
+        gap: 6,
+        marginBottom: 8
+      }
+    }, newIds.map(function (id) {
+      const ph = lib.byId[id];
+      return React.createElement('div', {
+        key: id,
+        title: ph ? titleOf(ph) : id,
+        style: Object.assign({
+          position: 'relative',
+          aspectRatio: '1',
+          borderRadius: 6
+        }, ph ? plPhotoBg(ph.seed) : {})
+      }, React.createElement('button', {
+        type: 'button',
+        'aria-label': 'Remove ' + (ph ? titleOf(ph) : 'photo'),
+        onClick: function () {
+          setNewIds(function (prev) {
+            return prev.filter(function (x) {
+              return x !== id;
+            });
+          });
+          setAdded(function (a) {
+            return Math.max(0, a - 1);
+          });
+        },
+        style: {
+          position: 'absolute',
+          top: 4,
+          right: 4,
+          display: 'grid',
+          placeItems: 'center',
+          width: 22,
+          height: 22,
+          border: 0,
+          borderRadius: 999,
+          background: 'rgba(8,12,24,0.6)',
+          color: '#fff',
+          cursor: 'pointer',
+          padding: 0
+        }
+      }, React.createElement(MI, {
+        name: 'close',
+        size: 14
+      })));
+    })) : null, React.createElement('div', {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12
+      }
+    }, PhotoModal ? React.createElement(Button, {
+      variant: 'outlined',
+      icon: 'add_photo_alternate',
+      onClick: function () {
+        setPicking(true);
+      }
+    }, 'Add photos') : null, added || existingCount ? React.createElement('span', {
+      className: 'pl-drop-hint',
+      style: {
+        margin: 0
+      }
+    }, (editId ? existingCount : newIds.length) + ' photo' + ((editId ? existingCount : newIds.length) === 1 ? '' : 's') + ' in this album') : null)), picking && PhotoModal ? React.createElement(PhotoModal, {
+      subtitle: 'Add photos to ' + (editId ? existing.name : 'this album') + '. Photos stay in your library; adding links them here.',
+      photos: lib.decorate.filter(function (x) {
+        return !x.archived;
+      }),
+      attachedIds: editId ? members.map(function (x) {
+        return x.id;
+      }) : newIds,
+      onUploadFiles: function (files) {
+        return lib.upload(files.length).map(function (id) {
+          return {
+            source: 'upload',
+            photoId: id
+          };
+        });
       },
-      hint: added || existingCount ? added + existingCount + ' photo' + (added + existingCount === 1 ? '' : 's') + ' in this album' : null
-    }))), React.createElement('div', {
+      onClose: function () {
+        setPicking(false);
+      },
+      onSubmit: function (items) {
+        addIds(items.map(function (x) {
+          return x.photoId;
+        }));
+        setPicking(false);
+      }
+    }) : null), React.createElement('div', {
       className: 'odc-modal-foot'
     }, editId ? React.createElement('button', {
       type: 'button',
@@ -49452,7 +49822,24 @@ try { (() => {
         setAddToAlbum(null);
         selc.done();
       }
-    }) : null, uploadOpen ? React.createElement(UploadDialog, {
+    }) : null, uploadOpen ? window.AttachPhotosModal ? React.createElement(window.AttachPhotosModal, {
+      uploadOnly: true,
+      subtitle: 'Add new photos to your library. Photos you attach to journal entries show up here too.',
+      onUploadFiles: function (files) {
+        return lib.upload(files.length).map(function (id) {
+          return {
+            source: 'upload',
+            photoId: id
+          };
+        });
+      },
+      onClose: function () {
+        setUploadOpen(false);
+      },
+      onSubmit: function () {
+        setUploadOpen(false);
+      }
+    }) : React.createElement(UploadDialog, {
       lib: lib,
       onClose: function () {
         setUploadOpen(false);
@@ -53592,7 +53979,8 @@ const TaskCardBody = ({
   onEdit,
   onArchive,
   onDelete,
-  onExport
+  onExport,
+  onAttach
 }) => /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
   className: "tk-card-head"
 }, /*#__PURE__*/React.createElement("span", {
@@ -53604,7 +53992,11 @@ const TaskCardBody = ({
     icon: 'edit',
     label: 'Edit task',
     onClick: () => onEdit(t)
-  }, {
+  }, ...(onAttach ? [{
+    icon: 'attach_file',
+    label: 'Attach documents',
+    onClick: () => onAttach(t)
+  }] : []), {
     icon: 'event_note',
     label: 'Export as iCalendar',
     onClick: () => onExport && onExport(t)
@@ -53783,10 +54175,21 @@ const TaskListRow = ({
   onEdit,
   onArchive,
   onDelete,
-  onExport
+  onExport,
+  onRemoveFile,
+  onAttach
 }) => {
+  const {
+    useState
+  } = React;
   const status = T_H.taskStatus(t);
-  const atts = (t.attachments || []).length;
+  const files = t.attachments || [];
+  const atts = files.length;
+  const [filesOpen, setFilesOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
+  const FileRow = window.JournalFileRow;
+  const FileViewer = window.FileViewerModal;
+  const listId = `tk-files-${t.id}`;
   const tags = T_H.jTaskTags(t);
   return /*#__PURE__*/React.createElement("article", {
     className: `tk-list${t.archived ? ' archived' : ''}`,
@@ -53809,7 +54212,11 @@ const TaskListRow = ({
       icon: 'edit',
       label: 'Edit task',
       onClick: () => onEdit(t)
-    }, {
+    }, ...(onAttach ? [{
+      icon: 'attach_file',
+      label: 'Attach documents',
+      onClick: () => onAttach(t)
+    }] : []), {
       icon: 'event_note',
       label: 'Export as iCalendar',
       onClick: () => onExport && onExport(t)
@@ -53840,14 +54247,34 @@ const TaskListRow = ({
   }, /*#__PURE__*/React.createElement(MIcon, {
     name: "label",
     size: 13
-  }), x.name))), atts ? /*#__PURE__*/React.createElement("span", {
-    className: "tk-list-att"
+  }), x.name))), atts ? /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "jec-filecount",
+    "aria-expanded": filesOpen,
+    "aria-controls": listId,
+    onClick: () => setFilesOpen(v => !v)
   }, /*#__PURE__*/React.createElement(MIcon, {
     name: "attach_file",
     size: 15
   }), /*#__PURE__*/React.createElement("span", {
-    className: "mono"
-  }, atts)) : null) : null));
+    className: "jec-fcount"
+  }, atts), " ", atts === 1 ? 'file' : 'files', /*#__PURE__*/React.createElement(MIcon, {
+    name: "expand_more",
+    size: 15,
+    className: "chev"
+  })) : null) : null, filesOpen && atts && FileRow ? /*#__PURE__*/React.createElement("div", {
+    className: "jec-files",
+    id: listId
+  }, files.map(f => /*#__PURE__*/React.createElement(FileRow, {
+    key: f.id,
+    f: f,
+    onPreview: setPreviewFile,
+    removeLabel: "Remove from task",
+    onRemove: onRemoveFile ? file => onRemoveFile(t, file.id) : null
+  }))) : null, previewFile && FileViewer && /*#__PURE__*/React.createElement(FileViewer, {
+    file: previewFile,
+    onClose: () => setPreviewFile(null)
+  })));
 };
 
 /* ---------- Create / edit dialog ---------- */
@@ -53963,17 +54390,7 @@ const AddTaskModal = ({
     maxLength: 4096,
     rows: 4,
     placeholder: "Details, links, next steps\u2026"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "edit-wide"
-  }, /*#__PURE__*/React.createElement(FieldShell, {
-    label: "Attachments",
-    optional: true,
-    helper: "PDFs and documents."
-  }, /*#__PURE__*/React.createElement(FileUpload, {
-    files: draft.attachments,
-    onChange: set('attachments'),
-    compact: true
-  })))));
+  }))));
 };
 
 /* ---------- Page ---------- */
@@ -53985,7 +54402,7 @@ const Tasks = ({
     useEffect,
     useMemo
   } = React;
-  const [view, setView] = useState('board'); // board | list
+  const [view, setView] = useState('list'); // board | list
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [tagFilter, setTagFilter] = useState([]);
@@ -54194,6 +54611,8 @@ const Tasks = ({
     mode: 'edit',
     task: t
   });
+  const [attachFor, setAttachFor] = useState(null);
+  const AttachModal = window.AttachDocumentsModal;
   // Per-task export (action-row menu) — a single-VTODO .ics download.
   const exportTask = t => {
     const slug = (t.title || 'task').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'task';
@@ -54322,6 +54741,26 @@ const Tasks = ({
   }), dialog && dialog.mode === 'new' && /*#__PURE__*/React.createElement(AddTaskModal, {
     onClose: () => setDialog(null),
     onSubmit: createTask
+  }), attachFor && AttachModal && /*#__PURE__*/React.createElement(AttachModal, {
+    subtitle: `Keep supporting documents with ${attachFor.title}. Files stay in Files; attaching links them here.`,
+    attachedIds: (attachFor.attachments || []).map(f => f.fileMetadataId),
+    onClose: () => setAttachFor(null),
+    onSubmit: items => {
+      const today = new Date().toISOString().slice(0, 10);
+      const add = items.map((f, i) => ({
+        id: `ka-${Date.now()}-${i}`,
+        fileMetadataId: f.fileMetadataId,
+        name: f.name,
+        kind: 'Other',
+        size: f.size,
+        uploaded: today
+      }));
+      setRows(prev => prev.map(x => x.id === attachFor.id ? {
+        ...x,
+        attachments: [...(x.attachments || []), ...add]
+      } : x));
+      setAttachFor(null);
+    }
   }), dialog && dialog.mode === 'edit' && /*#__PURE__*/React.createElement(AddTaskModal, {
     task: dialog.task,
     onClose: () => setDialog(null),
@@ -54356,7 +54795,8 @@ const Tasks = ({
       onEdit: openEdit,
       onArchive: archiveTask,
       onDelete: onDelete,
-      onExport: exportTask
+      onExport: exportTask,
+      onAttach: setAttachFor
     })
   }), showArchived && archivedTasks.length ? /*#__PURE__*/React.createElement("div", {
     className: "tk-archived"
@@ -54381,7 +54821,12 @@ const Tasks = ({
     onEdit: openEdit,
     onArchive: archiveTask,
     onDelete: onDelete,
-    onExport: exportTask
+    onExport: exportTask,
+    onAttach: setAttachFor,
+    onRemoveFile: (task, fid) => setRows(prev => prev.map(x => x.id === task.id ? {
+      ...x,
+      attachments: (x.attachments || []).filter(f => f.id !== fid)
+    } : x))
   })))) : null) : listTasks.length === 0 ? /*#__PURE__*/React.createElement(EmptyLine, {
     align: "center",
     pad: "lg"
@@ -54394,7 +54839,12 @@ const Tasks = ({
     onEdit: openEdit,
     onArchive: archiveTask,
     onDelete: onDelete,
-    onExport: exportTask
+    onExport: exportTask,
+    onAttach: setAttachFor,
+    onRemoveFile: (task, fid) => setRows(prev => prev.map(x => x.id === task.id ? {
+      ...x,
+      attachments: (x.attachments || []).filter(f => f.id !== fid)
+    } : x))
   })), /*#__PURE__*/React.createElement(AddRow, {
     title: "New task",
     sub: "Title, optional details, a deadline, tags, and attachments.",
@@ -55166,62 +55616,33 @@ const TaxDetail = ({
    picker), exactly like the Accounts page — but scoped to a tax statement via a
    tax `guessKind`, so there is no account selector. */
 const TaxUploadModal = ({
+  statement,
   onClose,
   onUpload
 }) => {
-  const {
-    useState
-  } = React;
-  const [files, setFiles] = useState([]);
-  const [error, setError] = useState(null);
   const guessKind = name => {
     const isPdf = /\.pdf$/i.test(name);
     const looksAssessment = /assess|notice|vedtak|skatteoppgj/i.test(name);
     return looksAssessment ? 'TaxAssessment' : isPdf ? 'TaxReturn' : 'SupportingDocument';
   };
-  const submit = () => {
-    if (!files.length) {
-      setError('Add at least one file.');
-      return;
-    }
-    if (files.some(f => !f.name.trim())) {
-      setError('Every file needs a name.');
-      return;
-    }
-    const uploaded = afmToday();
-    onUpload(files.map((f, i) => ({
-      id: `tsf-${Date.now()}-${i}`,
-      name: f.name.trim(),
-      kind: f.kind,
-      size: afmFmtSize(f.sizeBytes),
-      uploaded
-    })));
-  };
-  return /*#__PURE__*/React.createElement(Modal, {
-    title: "Upload files",
-    subtitle: "Attach the tax return, assessment, or supporting documents to this statement.",
-    icon: "cloud_upload",
-    className: "afm-dialog",
-    onClose: onClose,
-    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
-      variant: "text",
-      onClick: onClose
-    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
-      variant: "filled",
-      color: "primary",
-      icon: "upload_file",
-      onClick: submit
-    }, files.length > 1 ? `Upload ${files.length} files` : 'Upload'))
-  }, /*#__PURE__*/React.createElement(FileUpload, {
-    files: files,
-    onChange: next => {
-      setFiles(next);
-      if (error) setError(null);
-    },
-    error: error,
+  return /*#__PURE__*/React.createElement(AttachDocumentsModal, {
+    subtitle: "Keep the tax return, assessment, or supporting documents with this statement. Files stay in Files; attaching links them here.",
     kinds: TS_D.taxStatementFileTypes,
-    guessKind: guessKind
-  }));
+    guessKind: guessKind,
+    attachedIds: (statement && statement.files || []).map(f => f.fileMetadataId),
+    onClose: onClose,
+    onSubmit: items => {
+      const uploaded = afmToday();
+      onUpload(items.map((f, i) => ({
+        id: `tsf-${Date.now()}-${i}`,
+        fileMetadataId: f.fileMetadataId,
+        name: f.name,
+        kind: f.kind,
+        size: f.size,
+        uploaded
+      })));
+    }
+  });
 };
 
 /* ====================== One statement list item ====================== */
@@ -55363,8 +55784,8 @@ const TaxListItem = ({
         label: 'Edit statement',
         onClick: () => setShowEdit(true)
       }, {
-        icon: 'upload_file',
-        label: 'Upload file',
+        icon: 'attach_file',
+        label: 'Attach documents',
         onClick: () => setUploading(true)
       }, {
         icon: 'check_circle',
@@ -55409,6 +55830,7 @@ const TaxListItem = ({
     onClose: () => setShowEdit(false),
     onSave: saveEdit
   }), uploading && /*#__PURE__*/React.createElement(TaxUploadModal, {
+    statement: s,
     onClose: () => setUploading(false),
     onUpload: handleUpload
   }));
@@ -56274,7 +56696,7 @@ const TxnDetail = ({
   }, /*#__PURE__*/React.createElement("div", {
     className: "acct-section"
   }, /*#__PURE__*/React.createElement(SectionDivider, {
-    label: "Files",
+    label: "Documents",
     meta: `${files.length} file${files.length === 1 ? '' : 's'}`
   }), /*#__PURE__*/React.createElement("div", {
     className: "acct-table-frame odc-scroll"
@@ -56316,6 +56738,9 @@ const TxnTable = ({
   const AddTransactionModal = window.AddTransactionModal;
   const [editId, setEditId] = useState(null);
   const editRow = editId ? txns.find(x => x.id === editId) : null;
+  const [attachId, setAttachId] = useState(null);
+  const attachRow = attachId ? txns.find(x => x.id === attachId) : null;
+  const AddTransactionFileModal = window.AddTransactionFileModal;
   const rows = useMemo(() => txns.map(t => {
     const acct = d.accountById[t.account];
     const tags = d.txnTags(t);
@@ -56373,7 +56798,14 @@ const TxnTable = ({
         icon: 'edit',
         label: 'Edit',
         onClick: () => setEditId(t.id)
-      }, ...(statusItems.length ? [{
+      }, ...(onSave ? [{
+        icon: 'attach_file',
+        label: 'Attach documents',
+        onClick: () => {
+          if (!ctx.expanded) ctx.toggle();
+          setAttachId(t.id);
+        }
+      }] : []), ...(statusItems.length ? [{
         divider: true
       }, ...statusItems] : []), {
         divider: true
@@ -56399,6 +56831,15 @@ const TxnTable = ({
     onSave: patch => {
       if (onSave) onSave(editRow.id, patch);
       setEditId(null);
+    }
+  }), attachRow && AddTransactionFileModal && /*#__PURE__*/React.createElement(AddTransactionFileModal, {
+    transaction: attachRow,
+    onClose: () => setAttachId(null),
+    onAttach: added => {
+      onSave(attachRow.id, {
+        files: [...H.filesForTransaction(attachRow), ...added]
+      });
+      setAttachId(null);
     }
   }));
 };

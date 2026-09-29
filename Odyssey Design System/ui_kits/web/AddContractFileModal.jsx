@@ -55,83 +55,25 @@ const ConFileValidity = ({ file, patch, issuers }) => {
 };
 
 const AddContractFileModal = ({ contract, onClose, onAttach }) => {
-  const { useState } = React;
   const H = window.OdysseyHelpers;
-  const kinds = window.OdysseyData.contractFileTypes;
-  const issuers = (window.OdysseyData.contacts || []).filter(c => !c.archived);
-
-  const [files, setFiles] = useState([]); // { uid, name, kind, sizeBytes }
-  const [error, setError] = useState(null);
-
-  const existing = (contract.files || []).map(H.conFileRow);
-
-  const submit = () => {
-    if (!files.length) { setError('Add at least one document to upload.'); return; }
-    if (files.some(f => !f.name.trim())) { setError('Every document needs a name.'); return; }
-    if (files.some(f => f.validFrom && f.validTo && f.validTo < f.validFrom)) { setError('A document’s “Valid to” can’t be before its “Valid from”.'); return; }
-    const nowIso = new Date().toISOString();
-    const today = H.conToday();
-    const out = files.map((f, i) => ({
-      id: `cf-up-${Date.now()}-${i}`,
-      fileMetadataId: `fm-up-${Date.now()}-${i}`, // a freshly stored FileMetadata
-      kind: f.kind,
-      name: f.name.trim(),
-      size: window.afmFmtSize ? window.afmFmtSize(f.sizeBytes) : `${Math.round((f.sizeBytes || 0) / 1024)} KB`,
-      uploaded: today,
-      attachedByUserId: 'u-owner',
-      attachedAtUtc: nowIso,
-      // The four validity fields ride on the link row. Untouched → null.
-      validFrom: f.validFrom || null,
-      validTo: f.validTo || null,
-      issuedAt: f.issuedAt || null,
-      issuedBy: f.issuedBy || null,
-    }));
-    onAttach && onAttach(out);
-  };
-
   return (
-    <Modal
-      title="Upload documents"
-      subtitle="Upload the signed agreement, an amendment, or correspondence and attach it to this contract."
-      icon="cloud_upload"
-      className="afm-dialog"
+    <AttachDocumentsModal
+      subtitle="Keep the signed agreement, an amendment, or correspondence with this contract. Files stay in Files; attaching links them here."
+      kinds={window.OdysseyData.contractFileTypes}
+      guessKind={ACF_GUESS}
+      validity
+      attachedIds={(contract.files || []).map(f => f.fileMetadataId)}
       onClose={onClose}
-      footer={
-        <React.Fragment>
-          <Button variant="text" onClick={onClose}>Cancel</Button>
-          <Button variant="filled" color="primary" icon="upload_file" onClick={submit}>
-            {files.length > 1 ? `Upload ${files.length} documents` : 'Upload document'}
-          </Button>
-        </React.Fragment>
-      }>
-      <FileUpload
-        files={files}
-        onChange={(next) => { setFiles(next); if (error) setError(null); }}
-        error={error}
-        kinds={kinds}
-        guessKind={ACF_GUESS}
-        maxMegabytes={(window.__odysseyImportLimits || {}).upload || 64}
-        renderFileExtra={(file, patch) => <ConFileValidity file={file} patch={patch} issuers={issuers} />}
-      />
-
-      {existing.length > 0 && (
-        <div className="con-existing-files">
-          <div className="con-existing-head">Already attached</div>
-          {existing.map(f => {
-            const info = H.contractFileTypeInfo(f.kind);
-            return (
-              <div className="con-existing-row" key={f.id}>
-                <span className="con-existing-ic" style={{ background: info.soft, color: info.color }}>
-                  <MIcon name={info.icon} size={15} />
-                </span>
-                <span className="con-existing-name">{f.name}</span>
-                <span className="con-existing-kind">{info.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </Modal>
+      onSubmit={(items) => {
+        const nowIso = new Date().toISOString();
+        const today = H.conToday();
+        onAttach && onAttach(items.map((f, i) => ({
+          id: `cf-up-${Date.now()}-${i}`, fileMetadataId: f.fileMetadataId, kind: f.kind, name: f.name, size: f.size,
+          uploaded: today, attachedByUserId: 'u-owner', attachedAtUtc: nowIso,
+          validFrom: f.validFrom, validTo: f.validTo, issuedAt: f.issuedAt, issuedBy: f.issuedBy,
+        })));
+      }}
+    />
   );
 };
 

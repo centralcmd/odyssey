@@ -771,7 +771,7 @@ const AccountListItem = ({ a, problem, highlight, open: openProp, onToggle, onJu
         onToggle={setOpen}
         actions={<ActionMenu items={[
             { icon: 'edit', label: 'Edit account', onClick: startEdit },
-            { icon: 'upload_file', label: 'Upload file', onClick: () => setAddingFile(true) },
+            { icon: 'attach_file', label: 'Attach documents', onClick: () => setAddingFile(true) },
             { icon: 'receipt_long', label: 'New transaction', onClick: () => setAddingTxn(true) },
             { icon: 'monitor', label: 'New estimate', onClick: newEstimate },
             { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(acct.id); } },

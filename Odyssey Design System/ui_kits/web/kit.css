@@ -571,7 +571,7 @@ html, body, #root {
 /* action menu (more_vert dropdown) */
 .acct-menu { position: relative; display: inline-flex; }
 .acct-menu-pop {
-  position: fixed; z-index: 1000;
+  position: fixed; z-index: var(--z-popover, 1300);
   min-width: 200px; padding: 6px;
   background: var(--mud-palette-surface);
   border: 1px solid var(--mud-palette-divider);

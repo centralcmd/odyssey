@@ -490,48 +490,24 @@ const TaxDetail = ({ s, layout, focusDocs, onNavigate, setStatement }) => {
    Uses the DS FileUpload (drag/drop + browse + per-file rename and kind
    picker), exactly like the Accounts page — but scoped to a tax statement via a
    tax `guessKind`, so there is no account selector. */
-const TaxUploadModal = ({ onClose, onUpload }) => {
-  const { useState } = React;
-  const [files, setFiles] = useState([]);
-  const [error, setError] = useState(null);
-
+const TaxUploadModal = ({ statement, onClose, onUpload }) => {
   const guessKind = (name) => {
     const isPdf = /\.pdf$/i.test(name);
     const looksAssessment = /assess|notice|vedtak|skatteoppgj/i.test(name);
     return looksAssessment ? 'TaxAssessment' : (isPdf ? 'TaxReturn' : 'SupportingDocument');
   };
-
-  const submit = () => {
-    if (!files.length) { setError('Add at least one file.'); return; }
-    if (files.some(f => !f.name.trim())) { setError('Every file needs a name.'); return; }
-    const uploaded = afmToday();
-    onUpload(files.map((f, i) => ({
-      id: `tsf-${Date.now()}-${i}`,
-      name: f.name.trim(),
-      kind: f.kind,
-      size: afmFmtSize(f.sizeBytes),
-      uploaded,
-    })));
-  };
-
   return (
-    <Modal
-      title="Upload files"
-      subtitle="Attach the tax return, assessment, or supporting documents to this statement."
-      icon="cloud_upload"
-      className="afm-dialog"
+    <AttachDocumentsModal
+      subtitle="Keep the tax return, assessment, or supporting documents with this statement. Files stay in Files; attaching links them here."
+      kinds={TS_D.taxStatementFileTypes}
+      guessKind={guessKind}
+      attachedIds={((statement && statement.files) || []).map(f => f.fileMetadataId)}
       onClose={onClose}
-      footer={
-        <React.Fragment>
-          <Button variant="text" onClick={onClose}>Cancel</Button>
-          <Button variant="filled" color="primary" icon="upload_file" onClick={submit}>
-            {files.length > 1 ? `Upload ${files.length} files` : 'Upload'}
-          </Button>
-        </React.Fragment>
-      }>
-      <FileUpload files={files} onChange={(next) => { setFiles(next); if (error) setError(null); }} error={error}
-        kinds={TS_D.taxStatementFileTypes} guessKind={guessKind} />
-    </Modal>
+      onSubmit={(items) => {
+        const uploaded = afmToday();
+        onUpload(items.map((f, i) => ({ id: `tsf-${Date.now()}-${i}`, fileMetadataId: f.fileMetadataId, name: f.name, kind: f.kind, size: f.size, uploaded })));
+      }}
+    />
   );
 };
 
@@ -634,7 +610,7 @@ const TaxListItem = ({ st, layout, open: openProp, onToggle, highlight, onNaviga
         onToggle={setOpen}
         actions={<ActionMenu items={[
             { icon: 'edit', label: 'Edit statement', onClick: () => setShowEdit(true) },
-            { icon: 'upload_file', label: 'Upload file', onClick: () => setUploading(true) },
+            { icon: 'attach_file', label: 'Attach documents', onClick: () => setUploading(true) },
             { icon: 'check_circle', label: 'Mark approved', onClick: () => setStatus('Approved', null) },
             { icon: 'flag', label: 'Flag for review', onClick: () => setStatus('Flagged', s.statusComment || 'Flagged for review.') },
             { icon: 'fiber_new', label: 'Mark as new', onClick: () => setStatus('New', null) },
@@ -647,7 +623,7 @@ const TaxListItem = ({ st, layout, open: openProp, onToggle, highlight, onNaviga
         <TaxDetail s={s} layout={layout} focusDocs={focusDocs} onNavigate={onNavigate} setStatement={setS} />
       </RecordCard>
       {showEdit && <AddTaxStatementModal statement={s} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
-      {uploading && <TaxUploadModal onClose={() => setUploading(false)} onUpload={handleUpload} />}
+      {uploading && <TaxUploadModal statement={s} onClose={() => setUploading(false)} onUpload={handleUpload} />}
     </div>
   );
 };

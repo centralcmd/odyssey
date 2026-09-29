@@ -134,7 +134,7 @@ const jecUploaded = (iso) => {
   return isNaN(d) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-const JournalFileRow = ({ f, onPreview, onRemove }) => {
+const JournalFileRow = ({ f, onPreview, onRemove, removeLabel = 'Remove from entry' }) => {
   const fi = J_D.fileTypeByKey[f.kind] || JEC_FILE_FALLBACK;
   return (
     <div className="jec-file">
@@ -150,7 +150,7 @@ const JournalFileRow = ({ f, onPreview, onRemove }) => {
           { icon: 'visibility', label: 'Preview', onClick: () => onPreview(f) },
           { icon: 'download', label: 'Download', onClick: () => J_H.downloadFile(f) },
           { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(f.id); } },
-          ...(onRemove ? [{ divider: true }, { icon: 'link_off', label: 'Remove from entry', danger: true, onClick: () => onRemove(f) }] : []),
+          ...(onRemove ? [{ divider: true }, { icon: 'link_off', label: removeLabel, danger: true, onClick: () => onRemove(f) }] : []),
         ]} />
       </span>
     </div>
@@ -358,7 +358,21 @@ const AddJournalEntryModal = ({ onClose, onCreate, onSave, entry = null }) => {
     tagIds: [], contactIds: [], photos: [], attachments: [],
   });
   const [errors, setErrors] = useState({});
+  const [picking, setPicking] = useState(false);
+  const [pickingPhotos, setPickingPhotos] = useState(false);
+  const PhotoModal = window.AttachPhotosModal;
+  const addPhotos = (items) => {
+    setDraft((d) => ({ ...d, photos: [...d.photos, ...items.map((p) => ({ uid: p.photoId, photoId: p.photoId, name: p.name, kind: 'Image', seed: p.seed, sizeBytes: p.sizeBytes }))] }));
+    setPickingPhotos(false);
+  };
+  const [previewFile, setPreviewFile] = useState(null);
+  const FileViewer = window.FileViewerModal;
+  const AttachModal = window.AttachDocumentsModal;
   const set = (k) => (v) => { setDraft((d) => ({ ...d, [k]: v })); if (errors[k]) setErrors((x) => ({ ...x, [k]: undefined })); };
+  const addExisting = (items) => {
+    setDraft((d) => ({ ...d, attachments: [...d.attachments, ...items.map((f) => ({ uid: f.fileMetadataId, fileMetadataId: f.fileMetadataId, name: f.name, kind: 'Other', sizeBytes: J_H.parseSize ? J_H.parseSize(f.size) : null }))] }));
+    setPicking(false);
+  };
 
   const submit = () => {
     const next = {};
@@ -371,7 +385,7 @@ const AddJournalEntryModal = ({ onClose, onCreate, onSave, entry = null }) => {
       entryDate: draft.entryDate + 'T00:00:00Z', location: draft.location.trim() || null,
       tagIds: draft.tagIds, contactIds: draft.contactIds,
       photos: fromUploadPhotos(draft.photos),
-      attachments: fromUploadFiles(draft.attachments, draft.entryDate),
+      attachments: fromUploadFiles(draft.attachments, draft.entryDate).map((a) => ({ ...a, kind: 'Other' })),
     };
     if (editing) {
       // Archived is managed from the row's action menu; parent merge preserves it.
@@ -403,13 +417,55 @@ const AddJournalEntryModal = ({ onClose, onCreate, onSave, entry = null }) => {
           createLabel="Add" onCreate={(name, kind) => J_D.contactOption(J_D.createContact(name, kind))}
           createKinds={(window.OdysseyDesignSystem_d5aa51 || {}).CONTACT_CREATE_KINDS} />
         <div className="edit-wide"><NoteField label="Content" required value={draft.content} onChange={set('content')} maxLength={4096} rows={6} error={errors.content} placeholder="What happened?" /></div>
-        <FieldShell label="Photos" optional helper="JPEG, PNG, GIF, or WebP.">
-          <FileUpload accept="image/*" showKinds={false} files={draft.photos} onChange={set('photos')} compact />
+        <FieldShell label="Photos" optional>
+          {draft.photos.length ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', gap: 6, marginBottom: 8 }}>
+              {draft.photos.map((p) => (
+                <div key={p.uid} title={p.name} style={{ position: 'relative', aspectRatio: '1', borderRadius: 6, background: window.apmBg ? window.apmBg({ id: p.uid, seed: p.seed }) : 'var(--mud-palette-background-grey)' }}>
+                  <button type="button" aria-label={`Remove ${p.name}`} onClick={() => setDraft((d) => ({ ...d, photos: d.photos.filter((x) => x.uid !== p.uid) }))}
+                    style={{ position: 'absolute', top: 4, right: 4, display: 'grid', placeItems: 'center', width: 22, height: 22, border: 0, borderRadius: 999, background: 'rgba(8,12,24,0.6)', color: '#fff', cursor: 'pointer', padding: 0 }}>
+                    <MIcon name="close" size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {PhotoModal ? (
+            <div>
+              <Button variant="outlined" icon="add_photo_alternate" onClick={() => setPickingPhotos(true)}>Add photos</Button>
+            </div>
+          ) : null}
         </FieldShell>
-        <FieldShell label="Attachments" optional helper="PDFs and documents.">
-          <FileUpload files={draft.attachments} onChange={set('attachments')} compact />
+        <FieldShell label="Attachments" optional>
+          {draft.attachments.length ? (
+            <div className="jec-files" style={{ gridTemplateColumns: '1fr', marginBottom: 8 }}>
+              {draft.attachments.map((f) => (
+                <JournalFileRow key={f.uid} f={{ id: f.uid, name: f.name, kind: 'Other', size: J_H.humanSize ? J_H.humanSize(f.sizeBytes) : '' }}
+                  onPreview={setPreviewFile}
+                  onRemove={() => setDraft((d) => ({ ...d, attachments: d.attachments.filter((x) => x.uid !== f.uid) }))} />
+              ))}
+            </div>
+          ) : null}
+          {AttachModal ? (
+            <div>
+              <Button variant="outlined" icon="attach_file" onClick={() => setPicking(true)}>Attach documents</Button>
+            </div>
+          ) : null}
         </FieldShell>
       </div>
+      {picking && AttachModal && (
+        <AttachModal
+          subtitle="Keep documents with this entry. Files stay in Files; attaching links them here."
+          attachedIds={draft.attachments.map((f) => f.fileMetadataId || f.uid)}
+          onClose={() => setPicking(false)}
+          onSubmit={addExisting} />
+      )}
+      {previewFile && FileViewer && <FileViewer file={previewFile} onClose={() => setPreviewFile(null)} />}
+      {pickingPhotos && PhotoModal && (
+        <PhotoModal subtitle="Add photos to this entry. Photos stay in your library; adding links them here."
+          attachedIds={draft.photos.map((p) => p.photoId || p.uid)}
+          onClose={() => setPickingPhotos(false)} onSubmit={addPhotos} />
+      )}
     </Modal>
   );
 };
@@ -615,4 +671,4 @@ const Journal = ({ tweaks = {}, onNavigate }) => {
   );
 };
 
-Object.assign(window, { Journal, JournalListItem, AddJournalEntryModal });
+Object.assign(window, { Journal, JournalListItem, AddJournalEntryModal, JournalFileRow });

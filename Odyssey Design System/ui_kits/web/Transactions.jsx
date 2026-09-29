@@ -50,7 +50,7 @@ const TxnDetail = ({ t, onNavigate }) => {
       }
     >
       <div className="acct-section">
-        <SectionDivider label="Files" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
+        <SectionDivider label="Documents" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
         <div className="acct-table-frame odc-scroll">
           {files.length === 0 ? (
             <EmptyLine>No files attached to this transaction yet.</EmptyLine>
@@ -81,6 +81,9 @@ const TxnTable = ({ txns, onSave, onDelete, onNavigate, hideAccount = false, sor
   const AddTransactionModal = window.AddTransactionModal;
   const [editId, setEditId] = useState(null);
   const editRow = editId ? txns.find(x => x.id === editId) : null;
+  const [attachId, setAttachId] = useState(null);
+  const attachRow = attachId ? txns.find(x => x.id === attachId) : null;
+  const AddTransactionFileModal = window.AddTransactionFileModal;
 
   const rows = useMemo(() => txns.map(t => {
     const acct = d.accountById[t.account];
@@ -121,6 +124,7 @@ const TxnTable = ({ txns, onSave, onDelete, onNavigate, hideAccount = false, sor
         return [
           { icon: ctx.expanded ? 'close' : 'expand_more', label: ctx.expanded ? 'Collapse' : 'View details', onClick: ctx.toggle },
           { icon: 'edit', label: 'Edit', onClick: () => setEditId(t.id) },
+          ...(onSave ? [{ icon: 'attach_file', label: 'Attach documents', onClick: () => { if (!ctx.expanded) ctx.toggle(); setAttachId(t.id); } }] : []),
           ...(statusItems.length ? [{ divider: true }, ...statusItems] : []),
           { divider: true },
           { icon: 'fingerprint', label: 'Copy ID', trailingIcon: 'content_copy', onClick: () => { if (navigator.clipboard) navigator.clipboard.writeText(t.id); } },
@@ -133,6 +137,13 @@ const TxnTable = ({ txns, onSave, onDelete, onNavigate, hideAccount = false, sor
         transaction={editRow}
         onClose={() => setEditId(null)}
         onSave={(patch) => { if (onSave) onSave(editRow.id, patch); setEditId(null); }}
+      />
+    )}
+    {attachRow && AddTransactionFileModal && (
+      <AddTransactionFileModal
+        transaction={attachRow}
+        onClose={() => setAttachId(null)}
+        onAttach={(added) => { onSave(attachRow.id, { files: [...H.filesForTransaction(attachRow), ...added] }); setAttachId(null); }}
       />
     )}
     </React.Fragment>

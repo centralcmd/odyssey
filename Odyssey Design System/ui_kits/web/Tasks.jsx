@@ -118,13 +118,14 @@ const TaskTagChips = ({ t }) => {
 };
 
 /* ---------- A board card body (move buttons are added by TaskBoard) ---------- */
-const TaskCardBody = ({ t, onEdit, onArchive, onDelete, onExport }) => (
+const TaskCardBody = ({ t, onEdit, onArchive, onDelete, onExport, onAttach }) => (
   <React.Fragment>
     <div className="tk-card-head">
       <span className="tk-card-title">{t.title}</span>
       <div onClick={(e) => e.stopPropagation()}>
         <ActionMenu items={[
           { icon: 'edit', label: 'Edit task', onClick: () => onEdit(t) },
+          ...(onAttach ? [{ icon: 'attach_file', label: 'Attach documents', onClick: () => onAttach(t) }] : []),
           { icon: 'event_note', label: 'Export as iCalendar', onClick: () => onExport && onExport(t) },
           { icon: 'inventory_2', label: 'Archive', onClick: () => onArchive(t) },
           { icon: 'delete', label: 'Delete', danger: true, onClick: () => onDelete(t.id) },
@@ -208,9 +209,16 @@ const TaskMeta = ({ t, status }) => (
   </div>
 );
 
-const TaskListRow = ({ t, onStatus, onEdit, onArchive, onDelete, onExport }) => {
+const TaskListRow = ({ t, onStatus, onEdit, onArchive, onDelete, onExport, onRemoveFile, onAttach }) => {
+  const { useState } = React;
   const status = T_H.taskStatus(t);
-  const atts = (t.attachments || []).length;
+  const files = t.attachments || [];
+  const atts = files.length;
+  const [filesOpen, setFilesOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState(null);
+  const FileRow = window.JournalFileRow;
+  const FileViewer = window.FileViewerModal;
+  const listId = `tk-files-${t.id}`;
   const tags = T_H.jTaskTags(t);
   return (
     <article className={`tk-list${t.archived ? ' archived' : ''}`} data-status={status}>
@@ -221,6 +229,7 @@ const TaskListRow = ({ t, onStatus, onEdit, onArchive, onDelete, onExport }) => 
           <div className="je-cardmenu" onClick={(e) => e.stopPropagation()}>
             <ActionMenu items={[
               { icon: 'edit', label: 'Edit task', onClick: () => onEdit(t) },
+              ...(onAttach ? [{ icon: 'attach_file', label: 'Attach documents', onClick: () => onAttach(t) }] : []),
               { icon: 'event_note', label: 'Export as iCalendar', onClick: () => onExport && onExport(t) },
               { divider: true },
               { icon: t.archived ? 'unarchive' : 'inventory_2', label: t.archived ? 'Unarchive' : 'Archive', onClick: () => onArchive(t) },
@@ -236,9 +245,25 @@ const TaskListRow = ({ t, onStatus, onEdit, onArchive, onDelete, onExport }) => 
             <div className="tk-list-chips">{tags.map((x) => (
               <span className="odc-chip tag" key={x.id}><MIcon name="label" size={13} />{x.name}</span>
             ))}</div>
-            {atts ? <span className="tk-list-att"><MIcon name="attach_file" size={15} /><span className="mono">{atts}</span></span> : null}
+            {atts ? (
+              <button type="button" className="jec-filecount" aria-expanded={filesOpen} aria-controls={listId}
+                onClick={() => setFilesOpen((v) => !v)}>
+                <MIcon name="attach_file" size={15} />
+                <span className="jec-fcount">{atts}</span> {atts === 1 ? 'file' : 'files'}
+                <MIcon name="expand_more" size={15} className="chev" />
+              </button>
+            ) : null}
           </div>
         ) : null}
+        {filesOpen && atts && FileRow ? (
+          <div className="jec-files" id={listId}>
+            {files.map((f) => (
+              <FileRow key={f.id} f={f} onPreview={setPreviewFile} removeLabel="Remove from task"
+                onRemove={onRemoveFile ? (file) => onRemoveFile(t, file.id) : null} />
+            ))}
+          </div>
+        ) : null}
+        {previewFile && FileViewer && <FileViewer file={previewFile} onClose={() => setPreviewFile(null)} />}
       </div>
     </article>
   );
@@ -290,11 +315,6 @@ const AddTaskModal = ({ task, onClose, onSubmit }) => {
         <div className="edit-wide"><TagMultiSelect label="Tags" value={draft.tagIds} onChange={set('tagIds')} options={TASK_TAG_OPTIONS()} optional
           onCreate={(name) => T_D.createTag('task', name)} createKinds={T_D.tagCreateKinds('task')} /></div>
         <div className="edit-wide"><NoteField label="Content" value={draft.content} onChange={set('content')} maxLength={4096} rows={4} placeholder="Details, links, next steps…" /></div>
-        <div className="edit-wide">
-          <FieldShell label="Attachments" optional helper="PDFs and documents.">
-            <FileUpload files={draft.attachments} onChange={set('attachments')} compact />
-          </FieldShell>
-        </div>
       </div>
     </Modal>
   );
@@ -304,7 +324,7 @@ const AddTaskModal = ({ task, onClose, onSubmit }) => {
 const Tasks = ({ tweaks = {} }) => {
   const { useState, useEffect, useMemo } = React;
 
-  const [view, setView] = useState('board'); // board | list
+  const [view, setView] = useState('list'); // board | list
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [tagFilter, setTagFilter] = useState([]);
@@ -431,6 +451,8 @@ const Tasks = ({ tweaks = {} }) => {
   const hasFilters = !!(debouncedQ || tagFilter.length || statusFilter.length);
   const clearFilters = () => { setQ(''); setTagFilter([]); setStatusFilter([]); };
   const openEdit = (t) => setDialog({ mode: 'edit', task: t });
+  const [attachFor, setAttachFor] = useState(null);
+  const AttachModal = window.AttachDocumentsModal;
   // Per-task export (action-row menu) — a single-VTODO .ics download.
   const exportTask = (t) => {
     const slug = (t.title || 'task').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'task';
@@ -498,6 +520,19 @@ const Tasks = ({ tweaks = {} }) => {
       {importOpen && <ImportTasksModal onClose={() => setImportOpen(false)} onImport={runImport} />}
 
       {dialog && dialog.mode === 'new' && <AddTaskModal onClose={() => setDialog(null)} onSubmit={createTask} />}
+      {attachFor && AttachModal && (
+        <AttachModal
+          subtitle={`Keep supporting documents with ${attachFor.title}. Files stay in Files; attaching links them here.`}
+          attachedIds={(attachFor.attachments || []).map((f) => f.fileMetadataId)}
+          onClose={() => setAttachFor(null)}
+          onSubmit={(items) => {
+            const today = new Date().toISOString().slice(0, 10);
+            const add = items.map((f, i) => ({ id: `ka-${Date.now()}-${i}`, fileMetadataId: f.fileMetadataId, name: f.name, kind: 'Other', size: f.size, uploaded: today }));
+            setRows((prev) => prev.map((x) => (x.id === attachFor.id ? { ...x, attachments: [...(x.attachments || []), ...add] } : x)));
+            setAttachFor(null);
+          }}
+        />
+      )}
       {dialog && dialog.mode === 'edit' && <AddTaskModal task={dialog.task} onClose={() => setDialog(null)} onSubmit={(dto) => updateTask(dialog.task.id, dto)} />}
 
       {rows.length === 0 ? (
@@ -513,7 +548,7 @@ const Tasks = ({ tweaks = {} }) => {
           ) : (
             <TaskBoard tasks={boardTasks.map((t) => ({ ...t, status: T_H.taskStatus(t) }))} columns={boardColumns} onMove={onMove}
               style={{ gridTemplateColumns: `repeat(${boardColumns.length}, minmax(0, 1fr))` }}
-              renderCard={(t) => <TaskCardBody t={t} onEdit={openEdit} onArchive={archiveTask} onDelete={onDelete} onExport={exportTask} />} />
+              renderCard={(t) => <TaskCardBody t={t} onEdit={openEdit} onArchive={archiveTask} onDelete={onDelete} onExport={exportTask} onAttach={setAttachFor} />} />
           )}
           {showArchived && archivedTasks.length ? (
             <div className="tk-archived">
@@ -524,7 +559,8 @@ const Tasks = ({ tweaks = {} }) => {
               </div>
               <div className="acct-list">
                 {archivedTasks.map((t) => (
-                  <TaskListRow key={t.id} t={t} onStatus={setStatus} onEdit={openEdit} onArchive={archiveTask} onDelete={onDelete} onExport={exportTask} />
+                  <TaskListRow key={t.id} t={t} onStatus={setStatus} onEdit={openEdit} onArchive={archiveTask} onDelete={onDelete} onExport={exportTask} onAttach={setAttachFor}
+                onRemoveFile={(task, fid) => setRows((prev) => prev.map((x) => (x.id === task.id ? { ...x, attachments: (x.attachments || []).filter((f) => f.id !== fid) } : x)))} />
                 ))}
               </div>
             </div>
@@ -538,7 +574,8 @@ const Tasks = ({ tweaks = {} }) => {
         ) : (
           <div className="acct-list">
             {listTasks.map((t) => (
-              <TaskListRow key={t.id} t={t} onStatus={setStatus} onEdit={openEdit} onArchive={archiveTask} onDelete={onDelete} onExport={exportTask} />
+              <TaskListRow key={t.id} t={t} onStatus={setStatus} onEdit={openEdit} onArchive={archiveTask} onDelete={onDelete} onExport={exportTask} onAttach={setAttachFor}
+                onRemoveFile={(task, fid) => setRows((prev) => prev.map((x) => (x.id === task.id ? { ...x, attachments: (x.attachments || []).filter((f) => f.id !== fid) } : x)))} />
             ))}
             <AddRow title="New task" sub="Title, optional details, a deadline, tags, and attachments." onClick={() => setDialog({ mode: 'new' })} />
           </div>

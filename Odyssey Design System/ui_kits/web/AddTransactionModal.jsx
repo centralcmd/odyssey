@@ -294,7 +294,7 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
   return (
     <Modal
       title={editing ? 'Edit transaction' : 'New transaction'}
-      subtitle={editing ? 'Update this transaction’s details, tags, or attachments.' : 'Record money moving in or out of an account.'}
+      subtitle={editing ? 'Update this transaction’s details or tags.' : 'Record money moving in or out of an account.'}
       icon="receipt_long"
       className="atm-dialog"
       onClose={onClose}
@@ -403,25 +403,6 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
               placeholder="Notes or raw metadata to keep with this transaction" />
           </div>
 
-          {/* Attachments — last, since the file list grows downward as files are added. */}
-          <FieldShell label="Attachments" optional className="odc-form-grid-wide">
-            {editing && existingFiles.length > 0 && (
-              <div style={{ marginBottom: 12 }}>
-                <InlinePager items={existingFiles}>
-                  {(pageRows) => <FilesTable files={pageRows} account={d.accountById[draft.account]} onDelete={removeExisting}
-                    kinds={window.OdysseyData.transactionFileTypes} showValidity={false} />}
-                </InlinePager>
-              </div>
-            )}
-            <FileUpload
-              compact
-              files={files}
-              kinds={window.OdysseyData.transactionFileTypes}
-              guessKind={(name) => window.afmGuessKind(name, 'transaction')}
-              onChange={setFiles}
-              hint="Attach a receipt or document · PDF, JPG, PNG · drop or browse"
-            />
-          </FieldShell>
           </div>
     </Modal>
   );

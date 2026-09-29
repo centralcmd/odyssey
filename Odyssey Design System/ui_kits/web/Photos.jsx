@@ -25,6 +25,7 @@
   const plPhotoBg = window.plPhotoBg, plFmtDate = window.plFmtDate, plTime = window.plTime, plDateTime = window.plDateTime;
   const plTagName = window.plTagName, plPersonName = window.plPersonName;
   const PAGE_SIZES = [24, 48, 96];
+  const plEffectiveCap = function () { const L = window.__odysseyImportLimits || {}; return L.photo || L.upload || 64; };
 
   const titleOf = function (p) { return (p.title && p.title.trim()) || p.name; };
 
@@ -355,6 +356,13 @@
     const members = editId ? lib.albumPhotos(editId) : [];
     const coverId = editId ? lib.coverId(existing || {}) : null;
     const existingCount = editId ? members.length : 0;
+    const [picking, setPicking] = useState(false);
+    const PhotoModal = window.AttachPhotosModal;
+    const addIds = function (ids) {
+      setAdded(function (a) { return a + ids.length; });
+      if (editId) lib.addToAlbums(ids, [editId]);
+      else setNewIds(function (prev) { return prev.concat(ids.filter(function (id) { return prev.indexOf(id) === -1; })); });
+    };
     useEffect(function () { const onKey = function (e) { if (e.key === 'Escape') props.onClose(); }; window.addEventListener('keydown', onKey); return function () { window.removeEventListener('keydown', onKey); }; }, []);
 
     const receive = function (n) {
@@ -398,9 +406,27 @@
           Field && React.createElement(Field, { label: 'Description', value: desc, onChange: setDesc, multiline: true, rows: 2, maxLength: 1024, placeholder: 'What\u2019s this album about? (optional)' }),
           memberList,
           React.createElement('div', { className: 'odc-field' },
-            React.createElement('label', { className: 'odc-field-label' }, 'Upload new photos to this album'),
-            React.createElement(UploadDrop, { added: added, onReceive: receive, style: { minHeight: 160 }, hint: (added || existingCount) ? ((added + existingCount) + ' photo' + ((added + existingCount) === 1 ? '' : 's') + ' in this album') : null })
-          )
+            React.createElement('label', { className: 'odc-field-label' }, 'Photos'),
+            (!editId && newIds.length) ? React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: 6, marginBottom: 8 } },
+              newIds.map(function (id) {
+                const ph = lib.byId[id];
+                return React.createElement('div', { key: id, title: ph ? titleOf(ph) : id, style: Object.assign({ position: 'relative', aspectRatio: '1', borderRadius: 6 }, ph ? plPhotoBg(ph.seed) : {}) },
+                  React.createElement('button', { type: 'button', 'aria-label': 'Remove ' + (ph ? titleOf(ph) : 'photo'), onClick: function () { setNewIds(function (prev) { return prev.filter(function (x) { return x !== id; }); }); setAdded(function (a) { return Math.max(0, a - 1); }); },
+                    style: { position: 'absolute', top: 4, right: 4, display: 'grid', placeItems: 'center', width: 22, height: 22, border: 0, borderRadius: 999, background: 'rgba(8,12,24,0.6)', color: '#fff', cursor: 'pointer', padding: 0 } }, React.createElement(MI, { name: 'close', size: 14 })));
+              })) : null,
+            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 12 } },
+              PhotoModal ? React.createElement(Button, { variant: 'outlined', icon: 'add_photo_alternate', onClick: function () { setPicking(true); } }, 'Add photos') : null,
+              (added || existingCount) ? React.createElement('span', { className: 'pl-drop-hint', style: { margin: 0 } }, (editId ? existingCount : newIds.length) + ' photo' + ((editId ? existingCount : newIds.length) === 1 ? '' : 's') + ' in this album') : null
+            )
+          ),
+          picking && PhotoModal ? React.createElement(PhotoModal, {
+            subtitle: 'Add photos to ' + (editId ? existing.name : 'this album') + '. Photos stay in your library; adding links them here.',
+            photos: lib.decorate.filter(function (x) { return !x.archived; }),
+            attachedIds: editId ? members.map(function (x) { return x.id; }) : newIds,
+            onUploadFiles: function (files) { return lib.upload(files.length).map(function (id) { return { source: 'upload', photoId: id }; }); },
+            onClose: function () { setPicking(false); },
+            onSubmit: function (items) { addIds(items.map(function (x) { return x.photoId; })); setPicking(false); },
+          }) : null
         ),
         React.createElement('div', { className: 'odc-modal-foot' },
           editId ? React.createElement('button', { type: 'button', className: 'pl-danger-link', onClick: function () { lib.deleteAlbum(editId); props.onClose(); } }, React.createElement(MI, { name: 'delete', size: 16 }), 'Delete album') : null,
@@ -631,7 +657,13 @@
       editPhoto ? React.createElement(EditDialog, { photo: lib.byId[editPhoto.id] || editPhoto, lib: lib, onClose: function () { setEditPhoto(null); } }) : null,
       albumDialog ? React.createElement(AlbumFormDialog, { lib: lib, editId: albumDialog === 'new' ? null : albumDialog.editId, onClose: function () { setAlbumDialog(null); } }) : null,
       addToAlbum ? React.createElement(AddToAlbumDialog, { lib: lib, photoIds: addToAlbum, onClose: function () { setAddToAlbum(null); selc.done(); } }) : null,
-      uploadOpen ? React.createElement(UploadDialog, { lib: lib, onClose: function () { setUploadOpen(false); } }) : null
+      uploadOpen ? (window.AttachPhotosModal ? React.createElement(window.AttachPhotosModal, {
+        uploadOnly: true,
+        subtitle: 'Add new photos to your library. Photos you attach to journal entries show up here too.',
+        onUploadFiles: function (files) { return lib.upload(files.length).map(function (id) { return { source: 'upload', photoId: id }; }); },
+        onClose: function () { setUploadOpen(false); },
+        onSubmit: function () { setUploadOpen(false); },
+      }) : React.createElement(UploadDialog, { lib: lib, onClose: function () { setUploadOpen(false); } })) : null
     );
   }
 

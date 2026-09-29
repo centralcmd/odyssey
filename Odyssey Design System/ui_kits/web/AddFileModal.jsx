@@ -86,76 +86,27 @@ const AfmValidity = ({ file, patch, issuers }) => {
   );
 };
 
-const AddFileModal = ({ onClose, onCreate, defaultAccount = '', accounts }) => {
-  const { useState } = React;
+const AddFileModal = ({ onClose, onCreate, defaultAccount = '' }) => {
   const d = window.OdysseyData;
-  const acctOptions = (accounts || d.accounts)
-    .filter(a => !a.closed)
-    .map(a => ({ value: a.id, label: `${a.name} ${a.number}` }));
-  const issuers = (d.contacts || []).filter(c => !c.archived);
-
-  const [account, setAccount] = useState(defaultAccount || '');
-  const [files, setFiles] = useState([]); // { uid, name, kind, sizeBytes, validFrom?, validTo?, issuedAt?, issuedBy? }
-  const [errors, setErrors] = useState({});
-
-  // (Esc-to-close, scrim click and focus handling come from the DS Modal shell.)
-
-  const submit = () => {
-    const next = {};
-    if (!account) next.account = 'Choose which account these files belong to.';
-    if (!files.length) next.files = 'Add at least one file.';
-    if (files.some(f => !f.name.trim())) next.files = 'Every file needs a name.';
-    if (files.some(f => f.validFrom && f.validTo && f.validTo < f.validFrom)) next.files = 'A file’s “Valid to” can’t be before its “Valid from”.';
-    if (Object.keys(next).length) { setErrors(next); return; }
-    const uploaded = afmToday();
-    const out = files.map((f, i) => ({
-      id: `nf-${Date.now()}-${i}`,
-      name: f.name.trim(),
-      kind: f.kind,
-      size: afmFmtSize(f.sizeBytes),
-      uploaded,
-      validFrom: f.validFrom || null,
-      validTo: f.validTo || null,
-      issuedAt: f.issuedAt || null,
-      issuedBy: f.issuedBy || null,
-    }));
-    onCreate && onCreate(account, out);
-  };
-
+  const account = defaultAccount;
+  const acct = d.accountById ? d.accountById[account] : null;
+  const attachedIds = acct && acct.files ? acct.files.map(x => x.fileMetadataId) : [];
   return (
-    <Modal
-      title="Upload files"
-      subtitle="Upload statements, receipts, or documents and attach them to an account."
-      icon="cloud_upload"
-      className="afm-dialog"
+    <AttachDocumentsModal
+      subtitle={`Keep statements, receipts, or documents with ${acct ? acct.name : 'this account'}. Files stay in Files; attaching links them here.`}
+      kinds={AFM_KINDS}
+      guessKind={(name) => afmGuessKind(name, 'account')}
+      validity
+      attachedIds={attachedIds}
       onClose={onClose}
-      footer={
-        <React.Fragment>
-          <Button variant="text" onClick={onClose}>Cancel</Button>
-          <Button variant="filled" color="primary" icon="upload_file" onClick={submit}>
-            {files.length > 1 ? `Upload ${files.length} files` : 'Upload'}
-          </Button>
-        </React.Fragment>
-      }>
-      {/* Account — always required, preselected from the launch context */}
-      <Select
-        label="Account"
-        value={account}
-        onChange={(v) => { setAccount(v); if (errors.account) setErrors(e => ({ ...e, account: undefined })); }}
-        options={acctOptions}
-        placeholder="Choose an account…"
-      />
-      {errors.account && <div className="helper aam-err" style={{ marginTop: -8 }}>{errors.account}</div>}
-
-      <FileUpload
-        files={files}
-        onChange={(nextFiles) => { setFiles(nextFiles); if (errors.files) setErrors(e => ({ ...e, files: undefined })); }}
-        error={errors.files}
-        kinds={AFM_KINDS}
-        guessKind={(name) => afmGuessKind(name, 'account')}
-        renderFileExtra={(file, patch) => <AfmValidity file={file} patch={patch} issuers={issuers} />}
-      />
-    </Modal>
+      onSubmit={(items) => {
+        const uploaded = afmToday();
+        onCreate && onCreate(account, items.map((x, i) => ({
+          id: `nf-${Date.now()}-${i}`, fileMetadataId: x.fileMetadataId, name: x.name, kind: x.kind, size: x.size, uploaded,
+          validFrom: x.validFrom, validTo: x.validTo, issuedAt: x.issuedAt, issuedBy: x.issuedBy,
+        })));
+      }}
+    />
   );
 };
 

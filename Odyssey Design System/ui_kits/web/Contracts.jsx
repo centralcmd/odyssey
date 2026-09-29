@@ -738,7 +738,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
           termBlock
             ? { icon: '§', label: 'New term', disabled: true }
             : { icon: '§', label: 'New term', onClick: () => { setOpen(true); setModal('term'); } },
-          { icon: 'attach_file', label: 'Upload document', onClick: () => { setOpen(true); setModal('file'); } },
+          { icon: 'attach_file', label: 'Attach documents', onClick: () => { setOpen(true); setModal('file'); } },
           /* Creating an event lives HERE rather than in the section: it is one
              of the things you do to a contract, and the log below stays a
              read surface. Offered on an archived contract too — §8.6. */
