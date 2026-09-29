@@ -58,7 +58,7 @@ export function BreakdownTile({
           {rows.map((r, i) => (
             <div className="odc-breakdown-row" key={r.key != null ? r.key : i}>
               {r.icon ? (
-                <span className="material-icons" aria-hidden="true" style={r.iconColor ? { color: r.iconColor } : undefined}>{r.icon}</span>
+                <span className="material-icons" aria-hidden="true" style={r.iconColor ? { color: r.iconColor && `oklch(from ${r.iconColor} var(--glyph-l, l) c h)` } : undefined}>{r.icon}</span>
               ) : null}
               <span className="odc-breakdown-label">{r.label}</span>
               <span className="odc-breakdown-n">{r.count}</span>

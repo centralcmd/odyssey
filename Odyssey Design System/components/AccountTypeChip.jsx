@@ -43,7 +43,7 @@ export function AccountTypeChip({ type, accountType, size = 'md', showGroup = tr
     <span className={`odc-typechip${sz}${className ? ' ' + className : ''}`} style={style}>
       <span
         className="material-icons odc-typechip-ic"
-        style={{ color: meta.color }}
+        style={{ color: meta.color && `oklch(from ${meta.color} var(--glyph-l, l) c h)` }}
         aria-hidden="true"
       >
         {meta.icon}

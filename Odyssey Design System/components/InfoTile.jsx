@@ -30,7 +30,7 @@ export function InfoTile({
   style,
 }) {
   const cls = ['odc-infotile', elevated ? 'elevated' : '', wide ? 'wide' : '', className].filter(Boolean).join(' ');
-  const icStyle = iconColor ? { background: iconSoft || undefined, color: iconColor } : undefined;
+  const icStyle = iconColor ? { background: iconSoft || undefined, color: iconColor && `oklch(from ${iconColor} var(--glyph-l, l) c h)` } : undefined;
   return (
     <div className={cls} style={style}>
       <div className="odc-infotile-top">

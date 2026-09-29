@@ -102,7 +102,7 @@ function OdcFileRow({ file, kinds, showKinds, renderFileExtra, onChange, onRemov
   return (
     <div className={`odc-upload-file${extra ? ' has-meta' : ''}`}>
       {showKinds ? (
-        <span className="odc-upload-file-ic" style={{ background: kind.soft, color: kind.color }}>
+        <span className="odc-upload-file-ic" style={{ background: kind.soft, color: kind.color && `oklch(from ${kind.color} var(--glyph-l, l) c h)` }}>
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 20 }}>{kind.icon}</span>
         </span>
       ) : (

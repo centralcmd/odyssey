@@ -223,7 +223,7 @@ const PropertyDetail = ({ property: p, estimates, tagIds, setTagIds, perms, cont
     /* Same treatment as a contact's address tile: location_on in the address
        hue, the one-line summary in that hue, full row. */
     (d.addressLine || d.city) && <InfoTile key="addr" icon="location_on" iconColor="oklch(0.77 0.14 55)" iconSoft="oklch(0.77 0.14 55 / 0.15)"
-      label="Address" value={<span style={{ color: 'oklch(0.77 0.14 55)' }}>{PR_H.propAddressText(d)}</span>} className="prop-addr-tile" wide
+      label="Address" value={<span style={{ color: 'oklch(from oklch(0.77 0.14 55) var(--glyph-text-l, l) c h)' }}>{PR_H.propAddressText(d)}</span>} className="prop-addr-tile" wide
       foot={kind.label} />,
     d.cadastralNumber && <InfoTile key="cad" icon="map" label="Cadastral number" value={d.cadastralNumber} foot="land registry" />,
     /* ExistingProperty.homeownerAssociation — a reference to an Organization

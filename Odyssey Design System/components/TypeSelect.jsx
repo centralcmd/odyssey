@@ -172,7 +172,7 @@ export function TypeSelect({
           className={`odc-select-opt${on ? ' selected' : ''}`}
           onClick={(e) => pick(o, e)}>
           {o.icon ? (
-            <span className="material-icons odc-opt-icon" style={o.color ? { color: o.color } : undefined} aria-hidden="true">{o.icon}</span>
+            <span className="material-icons odc-opt-icon" style={o.color ? { color: o.color && `oklch(from ${o.color} var(--glyph-l, l) c h)` } : undefined} aria-hidden="true">{o.icon}</span>
           ) : null}
           <span className="odc-select-opt-label">{o.label}</span>
           {on ? (
@@ -207,7 +207,7 @@ export function TypeSelect({
         onClick={toggle} onKeyDown={onTriggerKey} {...rest}>
         <span className="odc-select-trigger-main">
           {sel && sel.icon ? (
-            <span className="material-icons odc-opt-icon" style={sel.color ? { color: sel.color } : undefined} aria-hidden="true">{sel.icon}</span>
+            <span className="material-icons odc-opt-icon" style={sel.color ? { color: sel.color && `oklch(from ${sel.color} var(--glyph-l, l) c h)` } : undefined} aria-hidden="true">{sel.icon}</span>
           ) : null}
           <span className="odc-select-val">{sel ? sel.label : placeholder}</span>
         </span>

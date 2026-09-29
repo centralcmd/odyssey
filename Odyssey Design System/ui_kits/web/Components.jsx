@@ -231,7 +231,7 @@ const BreakdownTile = DS.BreakdownTile || (({ label, rows = [], empty = 'Nothing
       <div className="odc-breakdown-rows">
         {rows.map((r, i) => (
           <div className="odc-breakdown-row" key={r.key != null ? r.key : i}>
-            {r.icon ? <MIcon name={r.icon} size={16} style={r.iconColor ? { color: r.iconColor } : undefined} /> : null}
+            {r.icon ? <MIcon name={r.icon} size={16} style={r.iconColor ? { color: r.iconColor && `oklch(from ${r.iconColor} var(--glyph-l, l) c h)` } : undefined} /> : null}
             <span className="odc-breakdown-label">{r.label}</span>
             <span className="odc-breakdown-n">{r.count}</span>
           </div>
@@ -1350,7 +1350,7 @@ const AccountTypeChip = DS.AccountTypeChip || (({ type, accountType, size, showG
   const groupLabel = meta.group === 'asset' ? 'Asset' : meta.group === 'liability' ? 'Liability' : null;
   return (
     <span className={`odc-typechip${size === 'sm' ? ' sm' : ''}`}>
-      <span className="material-icons odc-typechip-ic" style={{ color: meta.color }} aria-hidden="true">{meta.icon}</span>
+      <span className="material-icons odc-typechip-ic" style={{ color: meta.color && `oklch(from ${meta.color} var(--glyph-l, l) c h)` }} aria-hidden="true">{meta.icon}</span>
       <span className="odc-typechip-name">{meta.label}</span>
       {showGroup && groupLabel ? <span className="odc-typechip-group">{groupLabel}</span> : null}
     </span>

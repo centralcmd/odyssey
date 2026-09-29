@@ -186,7 +186,7 @@ export function Select({
           <span className="odc-select-trigger-main">
             {prefix ? <span className="odc-select-prefix">{prefix}</span> : null}
             {sel && sel.icon ? (
-              <span className="material-icons odc-opt-icon" style={sel.iconColor ? { color: sel.iconColor } : undefined} aria-hidden="true">{sel.icon}</span>
+              <span className="material-icons odc-opt-icon" style={sel.iconColor ? { color: sel.iconColor && `oklch(from ${sel.iconColor} var(--glyph-l, l) c h)` } : undefined} aria-hidden="true">{sel.icon}</span>
             ) : null}
             <span className="odc-select-val">{sel ? sel.label : placeholder}</span>
           </span>
@@ -215,7 +215,7 @@ export function Select({
                     onClick={(e) => pick(o, e)}
                   >
                     {o.icon ? (
-                      <span className="material-icons odc-opt-icon" style={o.iconColor ? { color: o.iconColor } : undefined} aria-hidden="true">{o.icon}</span>
+                      <span className="material-icons odc-opt-icon" style={o.iconColor ? { color: o.iconColor && `oklch(from ${o.iconColor} var(--glyph-l, l) c h)` } : undefined} aria-hidden="true">{o.icon}</span>
                     ) : null}
                     <span className="odc-select-opt-label">{o.label}</span>
                     {/* Tick trails the row so the icon + label stay flush left,

@@ -225,7 +225,7 @@ const EstimateHero = ({ estimates, account, chartMode, chartStyle = 'estimate' }
     return (
       <div className="trm-hero">
         <div className="trm-hero-head">
-          <span className="trm-kind-ic lg" style={{ background: ti.soft, color: ti.color }}>
+          <span className="trm-kind-ic lg" style={{ background: ti.soft, color: ti.color && `oklch(from ${ti.color} var(--glyph-l, l) c h)` }}>
             <MIcon name="monitor" size={22} />
           </span>
           <div className="trm-hero-titles">
@@ -235,7 +235,7 @@ const EstimateHero = ({ estimates, account, chartMode, chartStyle = 'estimate' }
             </div>
           </div>
           <div className="trm-hero-figs">
-            <div className="trm-hero-value" style={{ color: ti.color }}>{EST_H.money(current.value, account.currency)}</div>
+            <div className="trm-hero-value" style={{ color: ti.color && `oklch(from ${ti.color} var(--glyph-text-l, l) c h)` }}>{EST_H.money(current.value, account.currency)}</div>
             {prev && (
               <span className="trm-delta flat">
                 <MIcon name={dir === 'up' ? 'arrow_upward' : dir === 'down' ? 'arrow_downward' : 'remove'} size={14} />
@@ -254,7 +254,7 @@ const EstimateHero = ({ estimates, account, chartMode, chartStyle = 'estimate' }
   return (
     <div className="est-hero">
       <div className="est-hero-head">
-        <span className="est-glyph lg" style={{ background: ti.soft, color: ti.color }}>
+        <span className="est-glyph lg" style={{ background: ti.soft, color: ti.color && `oklch(from ${ti.color} var(--glyph-l, l) c h)` }}>
           <MIcon name={ti.icon} size={22} />
         </span>
         <div className="est-hero-titles">
@@ -409,7 +409,7 @@ const EstimateEmpty = ({ account, txns, emptyStyle, onNew }) => {
     return (
       <div className="est-empty-guided">
         <div className="est-eg-head">
-          <span className="est-glyph lg" style={{ background: ti.soft, color: ti.color }}>
+          <span className="est-glyph lg" style={{ background: ti.soft, color: ti.color && `oklch(from ${ti.color} var(--glyph-l, l) c h)` }}>
             <MIcon name={ti.icon} size={22} />
           </span>
           <div>

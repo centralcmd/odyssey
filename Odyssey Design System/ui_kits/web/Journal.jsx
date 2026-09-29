@@ -138,11 +138,11 @@ const JournalFileRow = ({ f, onPreview, onRemove, removeLabel = 'Remove from ent
   const fi = J_D.fileTypeByKey[f.kind] || JEC_FILE_FALLBACK;
   return (
     <div className="jec-file">
-      <span className="odc-avatar" style={{ background: fi.soft, color: fi.color }}>
+      <span className="odc-avatar" style={{ background: fi.soft, color: fi.color && `oklch(from ${fi.color} var(--glyph-l, l) c h)` }}>
         <span className="material-icons" aria-hidden="true">{fi.icon}</span>
       </span>
       <span className="jec-file-name" title={f.name}>{f.name}</span>
-      <span className="odc-chip" style={{ background: fi.soft, color: fi.color }}>{fi.label || f.kind}</span>
+      <span className="odc-chip" style={{ background: fi.soft, color: fi.color && `oklch(from ${fi.color} var(--glyph-l, l) c h)` && `oklch(from ${fi.color} var(--glyph-text-l, l) c h)` }}>{fi.label || f.kind}</span>
       <span className="jec-file-size">{f.size}</span>
       <span className="jec-file-up">{jecUploaded(f.uploaded)}</span>
       <span className="je-cardmenu">
