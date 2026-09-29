@@ -262,8 +262,8 @@ public class SettingAdvisoryTests
         File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "app.css"));
 
     /// <summary>
-    /// The theme block that applies for <paramref name="dark"/>. MudBlazor stamps
-    /// <c>data-theme="dark"</c> in dark mode and removes the attribute in light mode — it never writes
+    /// The theme block that applies for <paramref name="dark"/>. OdysseyThemeProvider stamps
+    /// <c>data-theme="dark"</c> on the root element in dark mode and removes the attribute in light mode — it never writes
     /// <c>data-theme="light"</c> — so the client's convention is <c>:root</c> for light defaults and
     /// <c>[data-theme='dark']</c> for the dark overrides.
     /// </summary>
