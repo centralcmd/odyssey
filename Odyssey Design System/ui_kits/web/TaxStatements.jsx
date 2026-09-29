@@ -280,20 +280,26 @@ const ReconTable = ({ s, recon }) => {
         <div className="tx-figure">Advance tax paid</div>
         {cell(declaredAdvancePaid)}
         <span className="tx-num">{TS_H.taxMoney(v.paidTax, cur)}</span>
-        <span className="ta-r"><VarValue value={recon.settlementVariance} cur={cur} /></span>
+        <span className="ta-r"><VarValue value={recon.advancePaidVariance} cur={cur} /></span>
+      </div>
+      <div className="tx-recon-row">
+        <div className="tx-figure">Settlement recorded</div>
+        <span className={`tx-num ${d.settlementAmount == null ? 'na' : ''}`}>{d.settlementAmount == null ? '—' : TS_H.taxSignedMoney(d.settlementAmount, cur)}</span>
+        <span className="tx-num">{TS_H.taxSignedMoney(v.settlementPaid || 0, cur)}</span>
+        <span className="ta-r"><VarValue value={recon.settlementRecordedVariance} cur={cur} /></span>
       </div>
       <div className="tx-recon-row total">
-        <div className="tx-figure">Settlement</div>
+        <div className="tx-figure">Settlement<span className="tx-figure-sub">Odyssey-derived = expected settlement</span></div>
         <span className={`tx-num ${d.settlementAmount == null ? 'na' : ''}`}>{d.settlementAmount == null ? '—' : TS_H.taxSignedMoney(d.settlementAmount, cur)}</span>
         <span className={`tx-num ${recon.outstandingTax == null ? 'na' : ''}`}>{recon.outstandingTax == null ? '—' : TS_H.taxSignedMoney(recon.outstandingTax, cur)}</span>
-        <span className="ta-r"><VarValue value={recon.settlementVariance} cur={cur} /></span>
+        <span className="ta-r"><span className="tx-var na">—</span></span>
       </div>
     </div>
   );
 };
 
 /* ====================== Reconciliation — TILES ====================== */
-const ReconTile = ({ label, icon, declared, derived, derivedNa, variance, cur, total, signed }) => {
+const ReconTile = ({ label, icon, declared, derived, derivedNa, variance, cur, total, signed, derivedLabel = 'Derived', noVariance }) => {
   const fmt = (n) => (signed ? TS_H.taxSignedMoney(n, cur) : TS_H.taxMoney(n, cur));
   return (
   <div className={`tx-tile ${total ? 'total' : ''}`}>
@@ -304,14 +310,16 @@ const ReconTile = ({ label, icon, declared, derived, derivedNa, variance, cur, t
         <span className={`v ${declared == null ? 'na' : ''}`}>{declared == null ? '—' : fmt(declared)}</span>
       </div>
       <div className="tx-tile-cell">
-        <span className="k derived">Derived</span>
+        <span className="k derived">{derivedLabel}</span>
         <span className={`v ${derivedNa ? 'na' : ''}`}>{derivedNa ? 'Unavailable' : fmt(derived)}</span>
       </div>
     </div>
-    <div className="tx-tile-foot">
-      <span className="lbl">Variance</span>
-      <VarValue value={variance} cur={cur} cls="tx-tile-var" />
-    </div>
+    {!noVariance && (
+      <div className="tx-tile-foot">
+        <span className="lbl">Variance</span>
+        <VarValue value={variance} cur={cur} cls="tx-tile-var" />
+      </div>
+    )}
   </div>
   );
 };
@@ -329,9 +337,11 @@ const ReconTiles = ({ s, recon }) => {
       <ReconTile label="Total income" icon="payments" total
         declared={dd.totalIncome} derived={s.derived.actualIncome} derivedNa={false} variance={recon.incomeVariance} cur={cur} />
       <ReconTile label="Advance tax paid" icon="event_repeat" total
-        declared={declaredAdvancePaid} derived={s.derived.paidTax} derivedNa={false} variance={recon.settlementVariance} cur={cur} />
+        declared={declaredAdvancePaid} derived={s.derived.paidTax} derivedNa={false} variance={recon.advancePaidVariance} cur={cur} />
       <ReconTile label="Settlement" icon="paid" total signed
-        declared={dd.settlementAmount} derived={recon.outstandingTax} derivedNa={false} variance={recon.settlementVariance} cur={cur} />
+        declared={dd.settlementAmount} derived={recon.outstandingTax} derivedNa={false} derivedLabel="Expected" noVariance cur={cur} />
+      <ReconTile label="Settlement recorded" icon="receipt_long" signed
+        declared={dd.settlementAmount} derived={s.derived.settlementPaid || 0} derivedNa={false} variance={recon.settlementRecordedVariance} cur={cur} />
       <ReconTile label="Total assets" icon="savings"
         declared={dd.totalAssets} derived={s.derived.totalAssets} derivedNa={!av} variance={av ? perRowVariance(dd.totalAssets, s.derived.totalAssets) : null} cur={cur} />
       <ReconTile label="Total liabilities" icon="credit_card"
@@ -341,10 +351,11 @@ const ReconTiles = ({ s, recon }) => {
 };
 
 /* ====================== Derivation tags (two roles) ====================== */
-const RoleWell = ({ icon, title, sum, cap, tags, emptyHint }) => (
+const RoleWell = ({ icon, title, sum, cap, range, tags, emptyHint }) => (
   <InfoTile icon={icon} label={title} value={sum} className="tx-role"
     foot={<React.Fragment>
       <span className="tx-role-cap">{cap}</span>
+      {range && <span className="tx-role-range"><MIcon name="date_range" size={14} />{range}</span>}
       <span className="tx-role-tags">
         {tags.length
           ? <span className="tx-chips">{tags.map(t => <Chip key={t} tone="tag">{t}</Chip>)}</span>
@@ -386,6 +397,11 @@ const DerivationTags = ({ s, editing, onChangeTax, onChangeIncome }) => {
           sum={TS_H.taxMoney(s.derived.actualIncome, cur)} cap="Actual income"
           tags={s.incomeTags}
           emptyHint="No income tags selected — derived income is kr 0." />
+        <RoleWell icon="receipt_long" title="Settlement tags"
+          sum={TS_H.taxSignedMoney(s.derived.settlementPaid || 0, cur)} cap="Settlement recorded"
+          range={`${TS_H.dateLong(s.settlementStartDate)} → ${TS_H.dateLong(s.settlementEndDate)}`}
+          tags={s.settlementTags || []}
+          emptyHint="No settlement tags selected — recorded settlement is kr 0." />
       </div>
     </React.Fragment>
   );
@@ -458,7 +474,7 @@ const TaxDetail = ({ s, layout, focusDocs, onNavigate, setStatement }) => {
 
       {/* DERIVATION TAGS */}
       <div className="tax-section">
-        <SectionDivider label="Derivation tags" meta={`${s.taxTags.length + s.incomeTags.length} tag${(s.taxTags.length + s.incomeTags.length) === 1 ? '' : 's'}`} />
+        <SectionDivider label="Derivation tags" meta={(() => { const n = s.taxTags.length + s.incomeTags.length + (s.settlementTags || []).length; return `${n} tag${n === 1 ? '' : 's'}`; })()} />
         <DerivationTags s={s} editing={false} />
       </div>
 
@@ -596,7 +612,7 @@ const TaxListItem = ({ st, layout, open: openProp, onToggle, highlight, onNaviga
           <span className="mono"><MIcon name="payments" size={14} /><span>{cur}</span></span>,
         ]}
         counts={[
-          { icon: 'local_offer', value: s.taxTags.length + s.incomeTags.length, label: 'Derivation tags' },
+          { icon: 'local_offer', value: s.taxTags.length + s.incomeTags.length + (s.settlementTags || []).length, label: 'Derivation tags' },
           { icon: 'description', value: s.files.length, label: 'Documents' },
         ]}
         figure={{

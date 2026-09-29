@@ -12,14 +12,18 @@
 (function () {
   const D = window.OdysseyData;
 
-  /* TransactionTags selected on a statement, in two roles (TaxStatementTagRole):
+  /* TransactionTags selected on a statement, in three roles (TaxStatementTagRole):
        • TaxPayment — sums into derived "advance tax paid" (within the income year)
        • Income     — sums into derived "actual income"
-     A subset of the workspace's TransactionTags. `Tax settlement` is deliberately
-     NOT a tax-payment tag — per §9 the settlement is declared-only. */
+       • Settlement — sums into derived "settlement recorded". Settlements land
+                      after the income year, so these tags use their own
+                      settlement range (default: the period shifted +1 year).
+     A tag should hold one role per statement — a tag in both TaxPayment and
+     Settlement would be counted twice. */
   D.taxTagCatalog = [
     { id: 'tt-ft', name: 'Withholding tax',  role: 'TaxPayment', description: 'Withholding / advance tax deducted through the year.' },
-    { id: 'tt-rt', name: 'Tax settlement',   role: 'TaxPayment', description: 'Post-assessment settlement — NOT selected (declared-only).' },
+    { id: 'tt-rt', name: 'Tax settlement',   role: 'Settlement', description: 'Additional tax paid after the assessment.' },
+    { id: 'tt-rf', name: 'Tax refund',       role: 'Settlement', description: 'Refund received after the assessment.' },
     { id: 'ti-lo', name: 'Salary',           role: 'Income',     description: 'Salary and employment income.' },
     { id: 'ti-re', name: 'Interest income',  role: 'Income',     description: 'Interest income on deposits.' },
     { id: 'ti-ak', name: 'Dividends',        role: 'Income',     description: 'Dividends from share holdings.' },
@@ -50,9 +54,11 @@
       derived: {
         available: false,
         totalAssets: null, totalLiabilities: null, netWorth: null,
-        paidTax: 233500, actualIncome: 905000,
+        paidTax: 233500, actualIncome: 905000, settlementPaid: 0,
       },
       taxTags: ['Withholding tax'],
+      settlementTags: ['Tax settlement', 'Tax refund'],
+      settlementStartDate: '2026-01-01', settlementEndDate: '2026-12-31',
       incomeTags: ['Salary', 'Dividends'],
       files: [
         { id: 'tsf-2025a', name: 'tax_return_2025_draft.pdf', kind: 'TaxReturn', size: '203 KB', uploaded: '2026-03-02' },
@@ -79,9 +85,11 @@
       derived: {
         available: true,
         totalAssets: 2485000, totalLiabilities: 900000, netWorth: 1585000,
-        paidTax: 209000, actualIncome: 842000,
+        paidTax: 209000, actualIncome: 842000, settlementPaid: 1000,
       },
       taxTags: ['Withholding tax'],
+      settlementTags: ['Tax settlement', 'Tax refund'],
+      settlementStartDate: '2025-01-01', settlementEndDate: '2025-12-31',
       incomeTags: ['Salary', 'Interest income'],
       files: [
         { id: 'tsf-2024a', name: 'tax_return_2024.pdf',     kind: 'TaxReturn',     size: '248 KB', uploaded: '2025-04-29' },
@@ -109,9 +117,11 @@
       derived: {
         available: true,
         totalAssets: 2318000, totalLiabilities: 950000, netWorth: 1368000,
-        paidTax: 201200, actualIncome: 815000,
+        paidTax: 201200, actualIncome: 815000, settlementPaid: -3200,
       },
       taxTags: ['Withholding tax'],
+      settlementTags: ['Tax refund'],
+      settlementStartDate: '2024-01-01', settlementEndDate: '2024-12-31',
       incomeTags: ['Salary', 'Interest income'],
       files: [
         { id: 'tsf-2023a', name: 'tax_return_2023.pdf',     kind: 'TaxReturn',     size: '236 KB', uploaded: '2024-04-27' },
@@ -168,7 +178,22 @@
         incomeVariance: sub(num(d.totalIncome), num(v.actualIncome)),
         netWorthVariance: sub(num(d.netWorth), netWorthDerived),
         settlementVariance: sub(num(d.settlementAmount), outstandingTax),
+        advancePaidVariance: sub(sub(num(d.assessedTax), num(d.settlementAmount)), num(v.paidTax)),
+        settlementRecordedVariance: sub(num(d.settlementAmount), num(v.settlementPaid)),
       };
+    },
+
+    // Shift an ISO date by n years, clamping Feb 29 → Feb 28 in non-leap years.
+    taxShiftYear(iso, n = 1) {
+      if (!iso) return iso;
+      const [y, m, day] = iso.split('-').map(Number);
+      const ny = y + n;
+      const last = new Date(ny, m, 0).getDate();
+      return `${ny}-${String(m).padStart(2, '0')}-${String(Math.min(day, last)).padStart(2, '0')}`;
+    },
+    // Default settlement range: the statement period, +1 on the year.
+    taxDefaultSettlementRange(startDate, endDate) {
+      return { start: H.taxShiftYear(startDate, 1), end: H.taxShiftYear(endDate, 1) };
     },
 
     // "kr 1,000 owed" / "kr 3,200 refund" / "settled" — a human gloss on a

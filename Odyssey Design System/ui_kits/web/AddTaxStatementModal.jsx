@@ -50,6 +50,8 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
   const editing = !!statement;
   const thisYear = new Date().getFullYear();
   const defaultYear = thisYear - 1; // most recent completed tax year
+  const H = window.OdysseyHelpers;
+  const defRange = (s, e) => H.taxDefaultSettlementRange(s, e);
   const [draft, setDraft] = useState(editing ? {
     name: statement.name,
     fiscalYear: statement.fiscalYear,
@@ -59,6 +61,9 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
     notes: statement.notes || '',
     taxTags: statement.taxTags || [],
     incomeTags: statement.incomeTags || [],
+    settlementTags: statement.settlementTags || [],
+    settlementStartDate: statement.settlementStartDate || defRange(statement.startDate, statement.endDate).start,
+    settlementEndDate: statement.settlementEndDate || defRange(statement.startDate, statement.endDate).end,
     filedAtUtc: statement.filedAtUtc ? statement.filedAtUtc.slice(0, 10) : '',
     taxOfficeApprovedAtUtc: statement.taxOfficeApprovedAtUtc ? statement.taxOfficeApprovedAtUtc.slice(0, 10) : '',
     declared: { ...statement.declared, settledAtUtc: statement.declared.settledAtUtc ? statement.declared.settledAtUtc.slice(0, 10) : '' },
@@ -71,6 +76,9 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
     notes: '',
     taxTags: [],
     incomeTags: [],
+    settlementTags: [],
+    settlementStartDate: `${defaultYear + 1}-01-01`,
+    settlementEndDate: `${defaultYear + 1}-12-31`,
     filedAtUtc: '',
     taxOfficeApprovedAtUtc: '',
     declared: {
@@ -79,6 +87,30 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
     },
   });
   const [errors, setErrors] = useState({});
+  // The settlement range follows the period (+1 year) until the user sets it.
+  const [rangeTouched, setRangeTouched] = useState(() => {
+    if (!editing) return false;
+    const r = defRange(statement.startDate, statement.endDate);
+    return !!statement.settlementStartDate && (statement.settlementStartDate !== r.start || statement.settlementEndDate !== r.end);
+  });
+  const follow = (d, start, end) => rangeTouched ? {} : { settlementStartDate: H.taxShiftYear(start, 1), settlementEndDate: H.taxShiftYear(end, 1) };
+  const setPeriod = (k) => (v) => {
+    setDraft(d => {
+      const start = k === 'startDate' ? v : d.startDate;
+      const end = k === 'endDate' ? v : d.endDate;
+      return { ...d, [k]: v, ...follow(d, start, end) };
+    });
+    if (errors[k]) setErrors(e => ({ ...e, [k]: undefined }));
+  };
+  const setRange = (k) => (v) => {
+    setRangeTouched(true);
+    setDraft(d => ({ ...d, [k]: v }));
+    if (errors[k]) setErrors(e => ({ ...e, [k]: undefined }));
+  };
+  const resetRange = () => {
+    setRangeTouched(false);
+    setDraft(d => ({ ...d, settlementStartDate: H.taxShiftYear(d.startDate, 1), settlementEndDate: H.taxShiftYear(d.endDate, 1) }));
+  };
 
   const set = (k) => (v) => {
     setDraft(d => ({ ...d, [k]: v }));
@@ -95,6 +127,7 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
       fiscalYear: y,
       startDate: y ? `${y}-01-01` : d.startDate,
       endDate: y ? `${y}-12-31` : d.endDate,
+      ...(y ? follow(d, `${y}-01-01`, `${y}-12-31`) : {}),
       name: d.name === `Tax year ${d.fiscalYear}` ? `Tax year ${y}` : d.name,
     }));
     if (errors.fiscalYear) setErrors(e => ({ ...e, fiscalYear: undefined }));
@@ -104,12 +137,16 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
   const taxCatalog = (window.OdysseyData.taxTagCatalog) || [];
   const taxOpts = taxCatalog.filter(t => t.role === 'TaxPayment').map(t => ({ value: t.name, label: t.name }));
   const incOpts = taxCatalog.filter(t => t.role === 'Income').map(t => ({ value: t.name, label: t.name }));
+  const setOpts = taxCatalog.filter(t => t.role === 'Settlement').map(t => ({ value: t.name, label: t.name }));
+  const overlap = draft.settlementTags.filter(t => draft.taxTags.includes(t));
 
   const submit = () => {
     const next = {};
     if (!draft.name.trim()) next.name = 'Give the statement a name.';
     if (!draft.fiscalYear || draft.fiscalYear < 1900 || draft.fiscalYear > 2200) next.fiscalYear = 'Enter a valid year (1900–2200).';
     if (draft.startDate && draft.endDate && draft.endDate < draft.startDate) next.endDate = 'End date can’t be before the start date.';
+    if (draft.settlementStartDate && draft.settlementEndDate && draft.settlementEndDate < draft.settlementStartDate) next.settlementEndDate = 'End date can’t be before the start date.';
+    if (overlap.length) next.settlementTags = `${overlap.join(', ')} is also a tax-payment tag — it would be counted twice.`;
     if (Object.keys(next).length) { setErrors(next); return; }
 
     if (editing) {
@@ -119,6 +156,8 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
         startDate: draft.startDate, endDate: draft.endDate,
         baseCurrency: draft.baseCurrency, notes: draft.notes,
         taxTags: draft.taxTags, incomeTags: draft.incomeTags,
+        settlementTags: draft.settlementTags,
+        settlementStartDate: draft.settlementStartDate, settlementEndDate: draft.settlementEndDate,
         filedAtUtc: draft.filedAtUtc || null,
         taxOfficeApprovedAtUtc: draft.taxOfficeApprovedAtUtc || null,
         declared: { ...draft.declared, settledAtUtc: draft.declared.settledAtUtc || null },
@@ -139,8 +178,10 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
       notes: draft.notes, archived: null, createdAtUtc: new Date().toISOString(),
       declared: { ...d, settledAtUtc: d.settledAtUtc || null },
       // No account-balance sync yet → derived not available, sums 0.
-      derived: { available: false, totalAssets: null, totalLiabilities: null, netWorth: null, paidTax: 0, actualIncome: 0 },
+      derived: { available: false, totalAssets: null, totalLiabilities: null, netWorth: null, paidTax: 0, actualIncome: 0, settlementPaid: 0 },
       taxTags: draft.taxTags, incomeTags: draft.incomeTags,
+      settlementTags: draft.settlementTags,
+      settlementStartDate: draft.settlementStartDate, settlementEndDate: draft.settlementEndDate,
       files: [],
       excludedTransactionCount: 0, excludedCurrencies: {},
     });
@@ -180,8 +221,8 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
       </FormRow>
 
       <FormRow>
-        <DateField label="Period start" required value={draft.startDate} onChange={set('startDate')} />
-        <DateField label="Period end" required value={draft.endDate} onChange={set('endDate')} help="Defaults to the calendar year." error={errors.endDate} />
+        <DateField label="Period start" required value={draft.startDate} onChange={setPeriod('startDate')} />
+        <DateField label="Period end" required value={draft.endDate} onChange={setPeriod('endDate')} help="Defaults to the calendar year." error={errors.endDate} />
       </FormRow>
 
       <SectionDivider label="Declared figures" meta="from the official statement" />
@@ -224,6 +265,25 @@ const AddTaxStatementModal = ({ onClose, onCreate, onSave, statement = null }) =
           createKinds={window.OdysseyData.tagCreateKinds('transaction')}
           help="Sum into derived actual income." />
       </FormRow>
+      <FormRow>
+        <TagMultiSelect label="Settlement tags" optional
+          value={draft.settlementTags} onChange={(v) => { set('settlementTags')(v); }} options={setOpts}
+          placeholder="No tags" addLabel="Add tag"
+          onCreate={(name) => window.OdysseyData.createTag('transaction', name)}
+          createKinds={window.OdysseyData.tagCreateKinds('transaction')}
+          error={errors.settlementTags}
+          help={errors.settlementTags || 'Additional tax paid or refund received — summed within the settlement range.'} />
+        <div />
+      </FormRow>
+      <FormRow>
+        <DateField label="Settlement from" value={draft.settlementStartDate} onChange={setRange('settlementStartDate')}
+          help={rangeTouched ? 'Custom range.' : 'Follows the period, +1 year.'} />
+        <DateField label="Settlement to" value={draft.settlementEndDate} onChange={setRange('settlementEndDate')}
+          error={errors.settlementEndDate} />
+      </FormRow>
+      {rangeTouched && (
+        <div><Button variant="text" icon="restart_alt" onClick={resetRange}>Reset to period +1 year</Button></div>
+      )}
     </Modal>
   );
 };

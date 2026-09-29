@@ -172,7 +172,7 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
                 colors={INCOME_COLORS} items={incomeSlices} />
             </div>
             <div className="bgt-donuts in">
-              <DonutPanel title="Actual income" centerLabel="Actual in" centerIcon="south_west"
+              <DonutPanel title="Actual income" centerLabel="Actual in" centerIcon="attach_money"
                 sub="from matched transactions"
                 colors={INCOME_COLORS} items={hasActual(incomeActual) ? incomeActual : []} />
             </div>
@@ -184,7 +184,7 @@ const BudgetDetail = ({ budget, setItems, onNavigate, onAddItem, onEditItem, edi
                 colors={EXPENSE_COLORS} items={expenseSlices} />
             </div>
             <div className="bgt-donuts out">
-              <DonutPanel title="Actual expenses" centerLabel="Actual out" centerIcon="north_east"
+              <DonutPanel title="Actual expenses" centerLabel="Actual out" centerIcon="money_off"
                 sub="from matched transactions"
                 colors={EXPENSE_COLORS} items={hasActual(expenseActual) ? expenseActual : []} />
             </div>
