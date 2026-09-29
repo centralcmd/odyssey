@@ -39,7 +39,8 @@ public static class TransactionRowMenu
         bool canDelete,
         Func<ExistingTransaction, Task> onEdit,
         Func<ExistingTransaction, TransactionStatus, Task> onSetStatus,
-        Func<Guid, Task> onCopyId)
+        Func<Guid, Task> onCopyId,
+        Func<ExistingTransaction, Task>? onAttach = null)
     {
         var items = new List<OdsMenuItem>
         {
@@ -59,6 +60,24 @@ public static class TransactionRowMenu
                 Label = "Edit",
                 OnClick = EventCallback.Factory.Create(receiver, () => onEdit(transaction)),
             });
+
+            // Attach documents — the host passes onAttach only when the caller can reach a file at all
+            // (files.create to upload one, files.read to pick one). The row expands first, so the
+            // Documents section the attach lands in is in view (DS Transactions · TxnTable).
+            if (onAttach is not null)
+            {
+                items.Add(new OdsMenuItem
+                {
+                    Icon = "attach_file",
+                    Label = "Attach documents",
+                    OnClick = EventCallback.Factory.Create(receiver, () =>
+                    {
+                        if (!ctx.Expanded)
+                            ctx.Toggle();
+                        return onAttach(transaction);
+                    }),
+                });
+            }
 
             // Status transitions (New · Approved · Flagged) — offered only for the states the row
             // isn't already in, so the menu never carries an item that would be a no-op.

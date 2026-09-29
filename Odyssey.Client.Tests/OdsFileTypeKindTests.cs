@@ -89,7 +89,6 @@ public sealed class OdsFileTypeKindTests
     [InlineData("AccountFilesSection.razor", "Account")]
     [InlineData("TransactionFilesSection.razor", "Transaction")]
     [InlineData("TaxStatementFilesSection.razor", "TaxStatement")]
-    [InlineData("PropertyAttachDialog.razor", "Property")]
     public void Each_attachment_surface_passes_the_kind_it_attaches_to(string file, string kind)
     {
         var markup = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", file));
@@ -97,6 +96,26 @@ public sealed class OdsFileTypeKindTests
 
         Assert.NotEmpty(pickers);
         Assert.All(pickers, m => Assert.Contains($"Kind=\"OdsFileTypeKind.{kind}\"", m.Value, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The shared "Attach documents" dialog takes its vocabulary as a registry rather than a kind, so
+    /// each host is pinned to the registry of the record it attaches to — a property host handing it the
+    /// account vocabulary would compile, render and post a type the server reads as a different member.
+    /// </summary>
+    [Theory]
+    [InlineData("AccountsCard.razor", "AccountFileTypes")]
+    [InlineData("TransactionAttachDialog.razor", "TransactionFileTypes")]
+    [InlineData("TaxStatementsCard.razor", "TaxStatementFileTypes")]
+    [InlineData("PropertyDocumentsSection.razor", "PropertyFileTypes")]
+    [InlineData("ContractsCard.razor", "ContractFileTypes")]
+    public void Each_attach_documents_host_passes_the_vocabulary_it_attaches_to(string file, string registry)
+    {
+        var markup = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", file));
+        var dialogs = Regex.Matches(markup, @"<AttachDocumentsDialog\b.*?/>", RegexOptions.Singleline);
+
+        Assert.Single(dialogs);
+        Assert.Contains($"Kinds=\"OdsTypeRegistries.{registry}\"", dialogs[0].Value, StringComparison.Ordinal);
     }
 
     private static IReadOnlyList<OdsOption> OptionsField(string name) =>

@@ -20,7 +20,7 @@
     has to be the one still mounted. MenuId is what lets it name a row.
 *@
 
-<div class="jec-files" id="@Id">
+<div class="jec-files @(SingleColumn ? "one-col" : null)" id="@Id">
     @foreach (var f in Attachments)
     {
         var kind = KindLabel(f.ContentType);
@@ -55,6 +55,12 @@
 
     /// <summary>The list's DOM id — the card's disclosure button points at it with aria-controls.</summary>
     [Parameter] public string? Id { get; set; }
+
+    /// <summary>One file per line — for a form column rather than a card (the entry dialog).</summary>
+    [Parameter] public bool SingleColumn { get; set; }
+
+    /// <summary>The Remove item's label — "Remove from entry" or "Remove from task" (DS JournalFileRow removeLabel).</summary>
+    [Parameter] public string RemoveLabel { get; set; } = "Remove from entry";
 
     /// <summary>
     /// The DOM id of one row's ⋯ wrapper. Static so the host can name a row's menu as a focus target
@@ -118,7 +124,7 @@
             menu.Add(new OdsMenuItem { Divider = true });
             menu.Add(new OdsMenuItem
             {
-                Icon = "link_off", Label = "Remove from entry", Danger = true,
+                Icon = "link_off", Label = RemoveLabel, Danger = true,
                 OnClick = EventCallback.Factory.Create(this, () => remove.InvokeAsync(f.Id)),
             });
         }

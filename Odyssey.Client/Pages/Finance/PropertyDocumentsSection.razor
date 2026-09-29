@@ -64,7 +64,13 @@
 
 @if (_attachKey != Guid.Empty)
 {
-    <PropertyAttachDialog @key="_attachKey" @bind-Open="_attachOpen" Property="Property"
-                          Attached="_files" CanUpload="CanUpload"
-                          OnAttached="LoadAsync" />
+    <AttachDocumentsDialog @key="_attachKey" @bind-Open="_attachOpen"
+                           Subtitle="@AttachSubtitle"
+                           Kinds="OdsTypeRegistries.PropertyFileTypes"
+                           GuessKind="PropertyFileTypeGuess.GuessKey"
+                           Validity="true"
+                           RestrictToDocumentTypes="true"
+                           AttachedIds="@([.. _files.Select(f => f.FileMetadata.Id)])"
+                           Attach="AttachAsync"
+                           OnAttached="@(_ => LoadAsync())" />
 }

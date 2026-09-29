@@ -11,8 +11,10 @@ using MudBlazor.Services;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
+using Odyssey.Client.Pages.Attachments;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Client.Services;
+using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 using Xunit;
@@ -99,7 +101,6 @@ public class PropertyDocumentsSectionTests
         ExistingProperty? property = null,
         bool canUpdate = true,
         bool canAttach = true,
-        bool canUpload = true,
         Guid? token = null,
         IReadOnlyList<ExistingContact>? contacts = null,
         bool canReadContacts = true,
@@ -125,7 +126,9 @@ public class PropertyDocumentsSectionTests
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         ctx.Services.AddSingleton(Mock.Of<IContactQuickCreate>());
-        ctx.Services.AddSingleton(Mock.Of<IUploadLimitsCache>());
+        var uploadLimits = new Mock<IUploadLimitsCache>();
+        uploadLimits.Setup(u => u.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(UploadLimitsCache.Fallback);
+        ctx.Services.AddSingleton(uploadLimits.Object);
         ctx.Services.AddSingleton(TimeProvider.System);
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedOut());
 
@@ -134,7 +137,6 @@ public class PropertyDocumentsSectionTests
             .Add(h => h.Property, property ?? House())
             .Add(h => h.CanUpdate, canUpdate)
             .Add(h => h.CanAttach, canAttach)
-            .Add(h => h.CanUpload, canUpload)
             .Add(h => h.Token, token)
             .Add(h => h.OnCountChanged, (int n) => counts.Add(n)));
 
@@ -356,7 +358,7 @@ public class PropertyDocumentsSectionTests
     {
         var h = Render([], canAttach: canAttach, token: real ? Guid.NewGuid() : Guid.Empty);
 
-        Assert.Equal(opens, h.Host.FindComponents<PropertyAttachDialog>().Count == 1);
+        Assert.Equal(opens, h.Host.FindComponents<AttachDocumentsDialog>().Count == 1);
     }
 
     [Fact]
@@ -364,7 +366,7 @@ public class PropertyDocumentsSectionTests
     {
         var h = Render([Document("deed.pdf")]);
 
-        Assert.Empty(h.Host.FindComponents<PropertyAttachDialog>());
+        Assert.Empty(h.Host.FindComponents<AttachDocumentsDialog>());
     }
 
     /// <summary>The same token re-sent on a re-render does not re-open a dialog the user closed.</summary>
@@ -374,23 +376,59 @@ public class PropertyDocumentsSectionTests
         var token = Guid.NewGuid();
         var h = Render([], token: token);
 
-        var dialog = h.Host.FindComponent<PropertyAttachDialog>();
+        var dialog = h.Host.FindComponent<AttachDocumentsDialog>();
         await h.Host.InvokeAsync(() => dialog.Instance.OpenChanged.InvokeAsync(false));
         h.Host.Render(p => p.Add(x => x.Token, token));
 
-        Assert.False(h.Host.FindComponent<PropertyAttachDialog>().Instance.Open);
+        Assert.False(h.Host.FindComponent<AttachDocumentsDialog>().Instance.Open);
     }
 
     /// <summary>The dialog receives the section's list, so a linked file reads "Already attached".</summary>
     [Fact]
-    public void The_attach_dialog_is_handed_the_current_documents_and_the_upload_claim()
+    public void The_attach_dialog_is_handed_the_current_documents_and_the_property_rules()
     {
         var doc = Document("deed.pdf");
-        var h = Render([doc], canUpload: false, token: Guid.NewGuid());
+        var h = Render([doc], token: Guid.NewGuid());
 
-        var dialog = h.Host.FindComponent<PropertyAttachDialog>().Instance;
-        Assert.Contains(dialog.Attached, a => a.FileMetadata.Id == doc.FileMetadata.Id);
-        Assert.False(dialog.CanUpload);
+        var dialog = h.Host.FindComponent<AttachDocumentsDialog>().Instance;
+        Assert.Contains(doc.FileMetadata.Id, dialog.AttachedIds);
+        Assert.True(dialog.RestrictToDocumentTypes);
+        Assert.True(dialog.Validity);
+        Assert.Equal(OdsTypeRegistries.PropertyFileTypes, dialog.Kinds);
+        Assert.Contains("the deed, the purchase agreement", dialog.Subtitle, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_vehicle_names_its_own_documents_in_the_attach_subtitle()
+    {
+        var h = Render([], property: Car(), token: Guid.NewGuid());
+
+        Assert.Contains("the registration, an inspection", h.Host.FindComponent<AttachDocumentsDialog>().Instance.Subtitle, StringComparison.Ordinal);
+    }
+
+    /// <summary>The section maps each item the dialog hands it onto one AttachPropertyFileRequest.</summary>
+    [Fact]
+    public async Task An_attached_item_posts_one_property_request_carrying_its_type_and_validity()
+    {
+        AttachPropertyFileRequest? posted = null;
+        var h = Render([], token: Guid.NewGuid());
+        h.Properties.Setup(p => p.AttachFileAsync(PropertyId, It.IsAny<AttachPropertyFileRequest>(), It.IsAny<CancellationToken>()))
+            .Callback((Guid _, AttachPropertyFileRequest r, CancellationToken _) => posted = r)
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.Created));
+        var issuer = Guid.NewGuid();
+        var item = new AttachDocumentItem(AttachDocumentSource.Library, Guid.NewGuid(), "vognkort.jpg",
+            nameof(PropertyFileType.Registration), 10, new DateTime(2026, 1, 1), new DateTime(2027, 1, 1), new DateTime(2025, 12, 1), issuer);
+
+        var ok = await h.Host.InvokeAsync(() => h.Host.FindComponent<AttachDocumentsDialog>().Instance.Attach(item));
+
+        Assert.True(ok);
+        Assert.NotNull(posted);
+        Assert.Equal(item.FileId, posted!.FileMetadataId);
+        Assert.Equal(PropertyFileType.Registration, posted.FileType);
+        Assert.Equal(new DateTime(2026, 1, 1), posted.ValidFrom);
+        Assert.Equal(new DateTime(2027, 1, 1), posted.ValidTo);
+        Assert.Equal(new DateTime(2025, 12, 1), posted.IssuedAt);
+        Assert.Equal(issuer, posted.IssuedBy);
     }
 
     private sealed class SignedOut : AuthenticationStateProvider
@@ -409,7 +447,6 @@ public class PropertyDocumentsSectionTests
         [Parameter] public ExistingProperty Property { get; set; } = default!;
         [Parameter] public bool CanUpdate { get; set; }
         [Parameter] public bool CanAttach { get; set; }
-        [Parameter] public bool CanUpload { get; set; }
         [Parameter] public Guid? Token { get; set; }
         [Parameter] public Action<int>? OnCountChanged { get; set; }
 
@@ -423,7 +460,6 @@ public class PropertyDocumentsSectionTests
             builder.AddComponentParameter(3, nameof(PropertyDocumentsSection.Property), Property);
             builder.AddComponentParameter(4, nameof(PropertyDocumentsSection.CanUpdate), CanUpdate);
             builder.AddComponentParameter(5, nameof(PropertyDocumentsSection.CanAttach), CanAttach);
-            builder.AddComponentParameter(6, nameof(PropertyDocumentsSection.CanUpload), CanUpload);
             builder.AddComponentParameter(7, nameof(PropertyDocumentsSection.AttachRequestToken), Token);
             builder.AddComponentParameter(8, nameof(PropertyDocumentsSection.OnCountChanged),
                 EventCallback.Factory.Create<int>(this, n => OnCountChanged?.Invoke(n)));

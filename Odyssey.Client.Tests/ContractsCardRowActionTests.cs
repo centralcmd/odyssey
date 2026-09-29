@@ -9,7 +9,7 @@ namespace Odyssey.Client.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Archiving never locks a contract.</b> New party, New term, New event and Upload document are
+/// <b>Archiving never locks a contract.</b> New party, New term, New event and Attach documents are
 /// all offered on an archived contract, because the server refuses none of them — archival hides a
 /// contract from the default list, it does not freeze it, and the closing rent, the final invoice
 /// and the handover note are exactly what get recorded after an agreement has ended. This file used
@@ -55,7 +55,7 @@ public class ContractsCardRowActionTests
     [InlineData("New party")]
     [InlineData("New term")]
     [InlineData("New event")]
-    [InlineData("Upload document")]
+    [InlineData("Attach documents")]
     public void No_record_write_action_is_archive_gated(string label)
     {
         var source = CardSource();
@@ -109,7 +109,7 @@ public class ContractsCardRowActionTests
     {
         var source = CardSource();
 
-        var order = new[] { "New party", "New term", "Upload document", "New event" }
+        var order = new[] { "New party", "New term", "Attach documents", "New event" }
             .Select(label => source.IndexOf($"Label = \"{label}\"", StringComparison.Ordinal))
             .ToArray();
 

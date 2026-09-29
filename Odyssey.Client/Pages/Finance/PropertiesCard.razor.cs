@@ -85,7 +85,6 @@ public partial class PropertiesCard
     private bool _canReadTransactions;
     private bool _canReadContracts;
     private bool _canReadFiles;
-    private bool _canUploadFiles;
 
     /// <summary>POST …/files needs properties.update AND files.read (issue #210 §7.2).</summary>
     private bool CanAttachDocuments => _canUpdate && _canReadFiles;
@@ -140,7 +139,6 @@ public partial class PropertiesCard
         _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
         _canReadContracts = user.HasPermission(PermissionClaims.ContractsRead);
         _canReadFiles = user.HasPermission(PermissionClaims.FilesRead);
-        _canUploadFiles = user.HasPermission(PermissionClaims.FilesCreate);
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────

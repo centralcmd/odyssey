@@ -1,0 +1,19 @@
+/* JournalEntryFields — the Photos field's staged thumbnails (DS Journal · AddJournalEntryModal). */
+.jef-photos {
+    list-style: none; margin: 0 0 var(--space-2); padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+    gap: calc(var(--space-2) - var(--space-1) / 2);
+}
+.jef-photo {
+    position: relative; aspect-ratio: 1; border-radius: var(--radius-md);
+    background-color: var(--mud-palette-background-gray);
+    background-position: center; background-size: cover;
+}
+.jef-photo-remove {
+    position: absolute; top: var(--space-1); right: var(--space-1);
+    display: grid; place-items: center; width: var(--icon-xl); height: var(--icon-xl);
+    border: 0; border-radius: var(--radius-pill); padding: 0; cursor: pointer;
+    background: color-mix(in srgb, black 60%, transparent); color: white;
+}
+.jef-photo-remove:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.jef-files { margin-bottom: var(--space-2); }

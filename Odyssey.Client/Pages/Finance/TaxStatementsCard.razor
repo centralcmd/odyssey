@@ -296,8 +296,8 @@
                             </div>
                         }
 
-                        @* Documents — last section. Upload is the row's "Upload file"
-                           action (TaxUploadFileDialog): a section header labels, it does not act. *@
+                        @* Documents — last section. Attaching is the row's "Attach documents"
+                           action (AttachDocumentsDialog): a section header labels, it does not act. *@
                         <div class="tax-section">
                             <OdsSectionDivider Label="Documents"
                                                Meta="@($"{s.Files.Count} file{(s.Files.Count == 1 ? "" : "s")}")" />
@@ -352,11 +352,14 @@
 
 @if (_uploadStatement is not null)
 {
-    <TaxUploadFileDialog @key="_uploadKey"
-                         @bind-Open="_uploadOpen"
-                         StatementId="_uploadStatement.TaxStatementId"
-                         StatementName="@_uploadStatement.Name"
-                         OnSaved="OnFilesChanged" />
+    <AttachDocumentsDialog @key="_uploadKey"
+                           @bind-Open="_uploadOpen"
+                           Subtitle="Keep the tax return, assessment, or supporting documents with this statement. Files stay in Files; attaching links them here."
+                           Kinds="OdsTypeRegistries.TaxStatementFileTypes"
+                           GuessKind="TaxFileGuess"
+                           AttachedIds="@([.. _uploadStatement.Files.Select(f => f.FileMetadata.Id)])"
+                           Attach="AttachTaxFileAsync"
+                           OnAttached="@(_ => OnFilesChanged())" />
 }
 
 @code {

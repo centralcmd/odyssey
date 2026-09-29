@@ -11,9 +11,37 @@ using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 
-namespace Odyssey.Client.Pages.Finance;
+namespace Odyssey.Client.Pages.Attachments;
 
-public partial class PropertyAttachDialog
+/// <summary>Where a file handed to <see cref="AttachDocumentsDialog.Attach"/> came from.</summary>
+public enum AttachDocumentSource
+{
+    Upload,
+    Library,
+}
+
+/// <summary>
+/// One file the dialog hands to its host — the DS <c>onSubmit</c> item. <see cref="IssuedBy"/> is
+/// already resolved: an inline-created contact's temp id maps to the id the server issued, and a
+/// create that failed maps to null, so a host never posts a bogus issuer.
+/// </summary>
+public sealed record AttachDocumentItem(
+    AttachDocumentSource Source,
+    Guid FileId,
+    string Name,
+    string Kind,
+    long? SizeBytes,
+    DateTime? ValidFrom,
+    DateTime? ValidTo,
+    DateTime? IssuedAt,
+    Guid? IssuedBy)
+{
+    /// <summary>The item's kind parsed into a surface's file-type enum, falling back to <paramref name="fallback"/>.</summary>
+    public TEnum KindAs<TEnum>(TEnum fallback) where TEnum : struct, Enum =>
+        Enum.TryParse<TEnum>(Kind, out var value) ? value : fallback;
+}
+
+public partial class AttachDocumentsDialog
 {
     internal const string UploadTab = "upload";
     internal const string LibraryTab = "library";
@@ -32,39 +60,66 @@ public partial class PropertyAttachDialog
         new() { Value = LibraryTab, Label = "From Files", Icon = "folder" },
     ];
 
-    // The PropertyFileType vocabulary, projected to the OdsFileUpload kind shape (per-file picker).
-    private static readonly IReadOnlyList<OdsFileKind> Kinds =
-        [.. OdsTypeRegistries.PropertyFileTypes.Select(t => new OdsFileKind
-        {
-            Key = t.Key, Label = t.Label, Icon = t.Icon, Color = t.Color, Soft = t.Soft,
-        })];
-
-    private static readonly string[] AllowedExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];
+    private static readonly IReadOnlyList<string> DocumentExtensions = [".pdf", ".png", ".jpg", ".jpeg", ".webp"];
 
     [Inject] private IFilesApiClient FilesApi { get; set; } = default!;
-    [Inject] private IPropertiesApiClient Properties { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IUploadLimitsCache UploadLimits { get; set; } = default!;
     [Inject] private IReferenceDataCache ReferenceData { get; set; } = default!;
     [Inject] private IContactQuickCreate ContactCreator { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthenticationState { get; set; } = default!;
 
-    [Parameter, EditorRequired] public ExistingProperty Property { get; set; } = default!;
-
-    /// <summary>The property's current documents — a library file among them reads "Already attached".</summary>
-    [Parameter] public IReadOnlyList<ExistingPropertyFile> Attached { get; set; } = [];
-
-    /// <summary>
-    /// Offers the "Upload new" tab (<c>files.create</c>). Without it the dialog opens straight onto
-    /// "From Files" — the attach itself needs <c>files.read</c>, which that tab reads under.
-    /// </summary>
-    [Parameter] public bool CanUpload { get; set; }
-
     [Parameter] public bool Open { get; set; }
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
 
-    /// <summary>Raised after at least one attach succeeded so the host re-reads its documents.</summary>
-    [Parameter] public EventCallback OnAttached { get; set; }
+    /// <summary>What the documents are kept with — the one line of copy that differs per surface.</summary>
+    [Parameter, EditorRequired] public string Subtitle { get; set; } = string.Empty;
+
+    /// <summary>The surface's file-type vocabulary. Null for a surface that records no type (journal, tasks).</summary>
+    [Parameter] public IReadOnlyList<OdsTypeOption>? Kinds { get; set; }
+
+    /// <summary>Guesses a file's type from its name. Unset → <see cref="DefaultKind"/>.</summary>
+    [Parameter] public Func<string, string>? GuessKind { get; set; }
+
+    /// <summary>The type a file takes when nothing is guessed — every vocabulary's zero-risk member.</summary>
+    [Parameter] public string DefaultKind { get; set; } = "Other";
+
+    /// <summary>Offers the optional Valid from / to · Issued · Issued by fields per file.</summary>
+    [Parameter] public bool Validity { get; set; }
+
+    /// <summary>FileMetadata ids already linked to the record — shown disabled as "Already attached".</summary>
+    [Parameter] public IReadOnlyCollection<Guid> AttachedIds { get; set; } = [];
+
+    /// <summary>
+    /// Reads the linked ids when the host does not hold them (an account row, whose files load with its
+    /// expanded section). Unioned with <see cref="AttachedIds"/>; a failed read leaves the rows enabled
+    /// and the server's own duplicate check answers.
+    /// </summary>
+    [Parameter] public Func<Task<IReadOnlyCollection<Guid>>>? LoadAttachedIds { get; set; }
+
+    /// <summary>
+    /// Applies the server's document allow-list (<see cref="DocumentContentTypes"/>) to both tabs — the
+    /// contract and property attach endpoints refuse anything else with a 400.
+    /// </summary>
+    [Parameter] public bool RestrictToDocumentTypes { get; set; }
+
+    /// <summary>The extensions the upload tab accepts. Ignored under <see cref="RestrictToDocumentTypes"/>.</summary>
+    [Parameter] public IReadOnlyList<string>? UploadExtensions { get; set; }
+
+    /// <summary>
+    /// A surface's own, tighter per-file cap in megabytes. The effective cap is the smaller of it and
+    /// the instance-wide one — a surface may tighten, never loosen.
+    /// </summary>
+    [Parameter] public int? SurfaceMaxMegabytes { get; set; }
+
+    /// <summary>Links one file to the record; returns whether it succeeded. The host reports its own failure.</summary>
+    [Parameter, EditorRequired] public Func<AttachDocumentItem, Task<bool>> Attach { get; set; } = default!;
+
+    /// <summary>Raised with the items that linked, after at least one did, so the host re-reads its documents.</summary>
+    [Parameter] public EventCallback<IReadOnlyList<AttachDocumentItem>> OnAttached { get; set; }
+
+    /// <summary>Announces the attach in a snackbar. Off for a host that only stages the ids until its own save.</summary>
+    [Parameter] public bool Announce { get; set; } = true;
 
     private string _tab = UploadTab;
     private List<OdsUploadFile> _uploads = [];
@@ -81,6 +136,14 @@ public partial class PropertyAttachDialog
     private bool _libraryFailed;
     private string _query = string.Empty;
 
+    private HashSet<Guid> _loadedAttachedIds = [];
+
+    private bool _canUpload;
+    private bool _canBrowse;
+
+    private IReadOnlyList<OdsFileKind>? _fileKinds;
+    private IReadOnlyList<OdsOption>? _kindOptions;
+
     private IReadOnlyList<OdsOption> _issuerOptions = [];
     private bool _canReadContacts;
     private bool _canCreateContact;
@@ -88,9 +151,24 @@ public partial class PropertyAttachDialog
     // Seeded with the shipped fallback so a render that beats the fetch still validates sanely.
     private UploadLimitsDto _uploadLimits = UploadLimitsCache.Fallback;
 
-    private string Noun => Property.Type == PropertyType.Vehicle
-        ? "the registration, an inspection, the insurance certificate or a warranty"
-        : "the deed, the purchase agreement, a valuation or a warranty";
+    private bool ShowTabs => _canUpload && _canBrowse;
+
+    private string Title => _canUpload ? "Attach documents" : "Choose from Files";
+
+    private IReadOnlyList<string> Extensions =>
+        RestrictToDocumentTypes ? DocumentExtensions : UploadExtensions ?? DocumentExtensions;
+
+    private string AcceptAttribute => string.Join(',', Extensions);
+
+    private string UploadHint =>
+        $"{(RestrictToDocumentTypes ? DocumentContentTypes.Label : ExtensionLabel)} · up to {_uploadLimits.MaxUploadMegabytes} MB each · multiple at once";
+
+    private string ExtensionLabel =>
+        string.Join(", ", Extensions.Where(e => e != ".jpeg").Select(e => e.TrimStart('.').ToUpperInvariant()));
+
+    private string EmptyLibraryText => string.IsNullOrWhiteSpace(_query)
+        ? (_canUpload ? "Files is empty — upload a document instead." : "Files is empty.")
+        : $"No files match “{_query}”.";
 
     private string SubmitText => _tab == UploadTab
         ? (_uploads.Count > 1 ? $"Upload and attach {_uploads.Count}" : "Upload and attach")
@@ -100,26 +178,43 @@ public partial class PropertyAttachDialog
         ? _library
         : [.. _library.Where(f => f.FileName.Contains(_query.Trim(), StringComparison.OrdinalIgnoreCase))];
 
+    protected override void OnParametersSet()
+    {
+        _fileKinds = Kinds is null
+            ? null
+            : [.. Kinds.Select(t => new OdsFileKind { Key = t.Key, Label = t.Label, Icon = t.Icon, Color = t.Color, Soft = t.Soft })];
+        _kindOptions = Kinds is null ? null : OdsTypeRegistries.ToOptions(Kinds);
+    }
+
     protected override async Task OnInitializedAsync()
     {
-        if (!CanUpload)
+        var user = await AuthenticationState.GetUserAsync();
+        _canUpload = user.HasPermission(PermissionClaims.FilesCreate);
+        _canBrowse = user.HasPermission(PermissionClaims.FilesRead);
+        if (!_canUpload)
             _tab = LibraryTab;
 
-        if (!OperatingSystem.IsBrowser())
-            return;
-
         _uploadLimits = await UploadLimits.GetAsync();
+        if (SurfaceMaxMegabytes is { } surface)
+            _uploadLimits = _uploadLimits.TightenTo(surface);
 
-        var user = await AuthenticationState.GetUserAsync();
-        _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
-        _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
-        ContactCreator.OnCreateFailed = OnContactCreateFailed;
-        if (_canReadContacts)
-            _issuerOptions = OdsContactOptions.Active(await ReferenceData.ContactsAsync());
+        if (Validity)
+        {
+            _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
+            _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
+            ContactCreator.OnCreateFailed = OnContactCreateFailed;
+            if (_canReadContacts)
+                _issuerOptions = OdsContactOptions.Active(await ReferenceData.ContactsAsync());
+        }
+
+        if (LoadAttachedIds is not null)
+            _loadedAttachedIds = [.. await LoadAttachedIds()];
 
         if (_tab == LibraryTab)
             await LoadLibraryAsync();
     }
+
+    private string GuessKindOrDefault(string fileName) => GuessKind?.Invoke(fileName) ?? DefaultKind;
 
     private async Task OnTabChanged(string? tab)
     {
@@ -132,6 +227,9 @@ public partial class PropertyAttachDialog
     /// <summary>Reads the Files store once. Public as a render-test seam, like the sections' LoadAsync.</summary>
     public async Task LoadLibraryAsync()
     {
+        if (!_canBrowse)
+            return;
+
         _libraryLoading = true;
         _libraryFailed = false;
         var result = await FilesApi.ListAllAsync();
@@ -143,8 +241,8 @@ public partial class PropertyAttachDialog
     }
 
     internal LibraryState StateOf(FileListItem file) =>
-        Attached.Any(a => a.FileMetadata.Id == file.Id) ? LibraryState.AlreadyAttached
-        : !DocumentContentTypes.IsAllowed(file.ContentType) ? LibraryState.TypeNotAllowed
+        AttachedIds.Contains(file.Id) || _loadedAttachedIds.Contains(file.Id) ? LibraryState.AlreadyAttached
+        : RestrictToDocumentTypes && !DocumentContentTypes.IsAllowed(file.ContentType) ? LibraryState.TypeNotAllowed
         : LibraryState.Available;
 
     private static string? ReasonOf(LibraryState state, FileListItem file) => state switch
@@ -191,7 +289,7 @@ public partial class PropertyAttachDialog
             {
                 Uid = file.Id.ToString(),
                 Name = file.FileName,
-                Kind = PropertyFileTypeGuess.GuessKey(file.FileName),
+                Kind = GuessKindOrDefault(file.FileName),
                 SizeBytes = file.SizeBytes,
             };
         }
@@ -206,9 +304,11 @@ public partial class PropertyAttachDialog
         foreach (var f in files)
         {
             var ext = Path.GetExtension(f.Name).ToLowerInvariant();
-            if (f.Source is not null && !AllowedExtensions.Contains(ext))
+            if (f.Source is not null && !Extensions.Contains(ext))
             {
-                Snackbar.Add($"“{f.Name}” can’t be attached. Property documents accept {DocumentContentTypes.Label} only.", Severity.Warning);
+                Snackbar.Add(RestrictToDocumentTypes
+                    ? $"“{f.Name}” can’t be attached. Only {DocumentContentTypes.Label} files are accepted."
+                    : $"“{f.Name}” can’t be attached. Allowed: {ExtensionLabel}.", Severity.Warning);
                 continue;
             }
             if (f.SizeBytes > _uploadLimits.MaxUploadBytes)
@@ -255,20 +355,16 @@ public partial class PropertyAttachDialog
         StateHasChanged();
     }
 
-    private static PropertyFileType TypeOf(OdsUploadFile f) =>
-        Enum.TryParse<PropertyFileType>(f.Kind, out var t) ? t : PropertyFileType.Other;
-
-    private AttachPropertyFileRequest RequestFor(Guid fileId, OdsUploadFile f) => new()
-    {
-        FileMetadataId = fileId,
-        FileType = TypeOf(f),
-        ValidFrom = f.ValidFrom,
-        ValidTo = f.ValidTo,
-        IssuedAt = f.IssuedAt,
-        // A temp id from an inline create maps to the id the server issued; a failed create maps to
-        // null, so a bogus issuer is never posted.
-        IssuedBy = Guid.TryParse(ContactCreator.Resolve(f.IssuedBy), out var id) ? id : null,
-    };
+    private AttachDocumentItem ItemFor(AttachDocumentSource source, Guid fileId, OdsUploadFile f) => new(
+        source,
+        fileId,
+        f.Name.Trim(),
+        string.IsNullOrEmpty(f.Kind) ? DefaultKind : f.Kind,
+        f.SizeBytes,
+        Validity ? f.ValidFrom : null,
+        Validity ? f.ValidTo : null,
+        Validity ? f.IssuedAt : null,
+        Validity && Guid.TryParse(ContactCreator.Resolve(f.IssuedBy), out var id) ? id : null);
 
     private async Task SubmitAsync()
     {
@@ -281,16 +377,22 @@ public partial class PropertyAttachDialog
             _error = _tab == UploadTab ? "Add at least one document to upload." : "Pick at least one file to attach.";
             return;
         }
-        if (batch.Any(RangeBad))
+        if (batch.Any(f => string.IsNullOrWhiteSpace(f.Name)))
+        {
+            _error = "Every document needs a name.";
+            return;
+        }
+        if (Validity && batch.Any(RangeBad))
         {
             _error = "A document’s “Valid to” can’t be before its “Valid from”.";
             return;
         }
 
-        await ContactCreator.WhenSettledAsync();
+        if (Validity)
+            await ContactCreator.WhenSettledAsync();
 
         _busy = true;
-        var attached = 0;
+        var attached = new List<AttachDocumentItem>();
         try
         {
             if (_tab == UploadTab)
@@ -304,11 +406,9 @@ public partial class PropertyAttachDialog
                         if (!string.IsNullOrEmpty(finalName) && finalName != file.Source!.Name)
                             await FilesApi.UpdateMetadataAsync(uploaded.Id, null, finalName);
 
-                        if ((await Properties.AttachFileAsync(Property.PropertyId, RequestFor(uploaded.Id, file)))
-                            .Toast(Snackbar, $"Couldn’t attach “{file.Name}”"))
-                        {
-                            attached++;
-                        }
+                        var item = ItemFor(AttachDocumentSource.Upload, uploaded.Id, file);
+                        if (await Attach(item))
+                            attached.Add(item);
                     }
                     catch (Exception)
                     {
@@ -320,18 +420,17 @@ public partial class PropertyAttachDialog
             {
                 foreach (var (fileId, file) in _picked)
                 {
-                    if ((await Properties.AttachFileAsync(Property.PropertyId, RequestFor(fileId, file)))
-                        .Toast(Snackbar, $"Couldn’t attach “{file.Name}”"))
-                    {
-                        attached++;
-                    }
+                    var item = ItemFor(AttachDocumentSource.Library, fileId, file);
+                    if (await Attach(item))
+                        attached.Add(item);
                 }
             }
 
-            if (attached > 0)
+            if (attached.Count > 0)
             {
-                Snackbar.Add(attached == 1 ? "Document attached." : $"{attached} documents attached.", Severity.Success);
-                await OnAttached.InvokeAsync();
+                if (Announce)
+                    Snackbar.Add(attached.Count == 1 ? "Document attached." : $"{attached.Count} documents attached.", Severity.Success);
+                await OnAttached.InvokeAsync(attached);
                 await OpenChanged.InvokeAsync(false);
             }
         }

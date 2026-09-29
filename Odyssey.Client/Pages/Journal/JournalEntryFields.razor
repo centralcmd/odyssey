@@ -1,9 +1,15 @@
 @using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
 @*
     JournalEntryFields — the shared field grid for a journal entry, bound to a JournalEntryDraft.
     Used by both CreateJournalEntryDialog and the inline edit form so create + edit stay identical.
-    Links are chosen as scalar ids (OdsTagMultiSelect for both tags and contacts, per FE #4/#5);
-    photos + files go through OdsFileUpload (image-only for photos). Content is plain text.
+    Links are chosen as scalar ids (OdsTagMultiSelect for both tags and contacts, per FE #4/#5).
+    Photos and attachments are picked through the shared dialogs — "Add photos" (AttachPhotosDialog:
+    upload new or pick from the library) and "Attach documents" (AttachDocumentsDialog: upload new or
+    pick from Files) — so the draft only ever holds stored ids and nothing uploads at save. Content is
+    plain text.
 
     Both member pickers can create, and their create rows name what they make: Tags mints a journal
     tag (never a transaction one — a field only offers the vocabulary it searches), Contacts mints a
@@ -40,27 +46,63 @@
               Error="@Draft.ContentError" Placeholder="What happened?" />
 
 <OdsFormRow>
-    <OdsFieldShell Label="Photos" Help="JPEG, PNG, GIF, or WebP.">
-        <OdsFileUpload Accept="image/jpeg,image/png,image/gif,image/webp" ShowKinds="false" Compact="true"
-                       MaxMegabytes="@MaxMegabytes"
-                       Files="Draft.Photos" FilesChanged="@(f => Draft.Photos = f)" />
+    <OdsFieldShell Label="Photos">
+        @if (Draft.Photos.Count > 0)
+        {
+            <ul class="jef-photos">
+                @foreach (var p in Draft.Photos)
+                {
+                    <li class="jef-photo" title="@p.Name" @key="p.FileId"
+                        style="background-image: url('@Files.ContentUrl(p.FileId)');">
+                        <button type="button" class="jef-photo-remove" aria-label="@($"Remove {p.Name}")"
+                                @onclick="@(() => Draft.Photos.Remove(p))">
+                            <OdsMIcon Name="close" Size="14" />
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+        <div>
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="add_photo_alternate" OnClick="@(() => _pickingPhotos = true)">Add photos</OdsButton>
+        </div>
     </OdsFieldShell>
-    <OdsFieldShell Label="Attachments" Help="PDFs and documents.">
-        <OdsFileUpload ShowKinds="false" Compact="true"
-                       MaxMegabytes="@MaxMegabytes"
-                       Files="Draft.Attachments" FilesChanged="@(f => Draft.Attachments = f)" />
+    <OdsFieldShell Label="Attachments">
+        @if (Draft.Attachments.Count > 0)
+        {
+            <div class="jef-files">
+                <JournalFileRows Attachments="Draft.Attachments" CanDownload="CanDownload" SingleColumn="true"
+                                 OnRemove="@(EventCallback.Factory.Create<Guid>(this, id => Draft.Attachments.RemoveAll(a => a.Id == id)))" />
+            </div>
+        }
+        <div>
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="attach_file" OnClick="@(() => _pickingFiles = true)">Attach documents</OdsButton>
+        </div>
     </OdsFieldShell>
 </OdsFormRow>
+
+@if (_pickingFiles)
+{
+    <AttachDocumentsDialog @bind-Open="_pickingFiles"
+                           Subtitle="Keep documents with this entry. Files stay in Files; attaching links them here."
+                           Announce="false"
+                           AttachedIds="@([.. Draft.Attachments.Select(a => a.Id)])"
+                           Attach="StageAttachmentAsync" />
+}
+
+@if (_pickingPhotos)
+{
+    <AttachPhotosDialog @bind-Open="_pickingPhotos"
+                        CreateLibraryPhoto="false"
+                        Subtitle="Add photos to this entry. Photos stay in your library; adding links them here."
+                        AttachedIds="@([.. Draft.Photos.Select(p => p.FileId)])"
+                        OnSubmit="StagePhotos" />
+}
 
 @code {
     [Parameter, EditorRequired] public JournalEntryDraft Draft { get; set; } = default!;
 
-    /// <summary>
-    /// The effective per-file upload cap, in megabytes, supplied by the hosting dialog. Forwarded to
-    /// both dropzones so their hint states this deployment's number rather than omitting the size
-    /// clause — the cap is admin-editable, so it can never be a literal here.
-    /// </summary>
-    [Parameter] public int? MaxMegabytes { get; set; }
+    /// <summary>Offers Download on an attachment row (<c>files.read</c>).</summary>
+    [Parameter] public bool CanDownload { get; set; }
 
     /// <summary>Active journal-tag options (id → name).</summary>
     [Parameter] public IReadOnlyList<OdsOption> TagOptions { get; set; } = [];
@@ -81,4 +123,28 @@
 
     /// <summary>Focus the Title field on first render (create dialog / entering edit).</summary>
     [Parameter] public bool AutoFocus { get; set; }
+
+    private bool _pickingFiles;
+    private bool _pickingPhotos;
+
+    // The picker has already uploaded or picked the file; staging reads its metadata so the row shows
+    // the same kind, size and date an attachment on a saved entry does. Nothing is linked until save.
+    private async Task<bool> StageAttachmentAsync(AttachDocumentItem item)
+    {
+        var meta = await Files.GetMetadataAsync(item.FileId);
+        if (meta is null)
+        {
+            Snackbar.Add($"Couldn’t read “{item.Name}”.", Severity.Error);
+            return false;
+        }
+        if (Draft.Attachments.All(a => a.Id != meta.Id))
+            Draft.Attachments.Add(meta);
+        return true;
+    }
+
+    private void StagePhotos(IReadOnlyList<AttachPhotoItem> items)
+    {
+        foreach (var item in items.Where(i => Draft.Photos.All(p => p.FileId != i.FileId)))
+            Draft.Photos.Add(new JournalDraftPhoto(item.FileId, item.Name));
+    }
 }

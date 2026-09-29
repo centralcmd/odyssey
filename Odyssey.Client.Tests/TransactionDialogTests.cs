@@ -19,60 +19,42 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The Edit-transaction dialog's attachments (design system · AddTransactionModal): a removed file and
-/// a new upload are both STAGED, and nothing reaches the server until Save. The same rig also pins the
-/// dialog's required date, the one Save-blocking rule the form adds on top of the DTO.
+/// The Edit-transaction dialog (design system · AddTransactionModal): it edits the transaction's details
+/// and tags only — attaching moved to the row menu's "Attach documents" (TransactionAttachDialog) and
+/// detaching to the Documents section — and it pins the required date, the one Save-blocking rule the
+/// form adds on top of the DTO.
 /// </summary>
-/// <remarks>
-/// <para>
-/// The ordering is the contract. The update goes first and the file writes only follow a successful
-/// one, so a rejected update leaves the attachments exactly as they were, and a Cancel writes nothing
-/// at all. Every assertion here is on the sequence of API calls rather than on the rendered table,
-/// because a regression here does not look wrong on screen — the table re-renders from the server
-/// either way — it silently detaches a user's file, or keeps one they removed.
-/// </para>
-/// <para>
-/// The row menu and the dialog are driven through the real markup, so the staged-removal wiring
-/// between <c>TransactionFilesSection</c> and the dialog is exercised, not assumed.
-/// </para>
-/// </remarks>
 [Collection(TransactionDialogCollection.Name)]
-public sealed class TransactionDialogAttachmentTests : IAsyncLifetime
+public sealed class TransactionDialogTests : IAsyncLifetime
 {
     private static readonly Guid AccountId = Guid.NewGuid();
     private static readonly Guid TransactionId = Guid.NewGuid();
     private static readonly Guid FileId = Guid.NewGuid();
-    private static readonly Guid UploadedId = Guid.NewGuid();
 
     private readonly BunitContext ctx = new();
     private readonly List<string> calls = [];
     private readonly Mock<ITransactionsApiClient> transactions = new();
     private readonly Mock<IFilesApiClient> files = new();
 
-    static TransactionDialogAttachmentTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
+    static TransactionDialogTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
 
-    public TransactionDialogAttachmentTests()
+    public TransactionDialogTests()
     {
-        // A bUnit host is not a browser, so both the dialog's reference-data load (which resolves the
-        // transaction's account — without it Save stops at validation) and the section's file load
-        // would be skipped. Restored on teardown.
+        // A bUnit host is not a browser, so the dialog's reference-data load (which resolves the
+        // transaction's account — without it Save stops at validation) would be skipped. Restored on
+        // teardown.
         CreateTransactionDialog.InteractiveCheck = static () => true;
-        FilesSectionBase<ExistingTransactionFile>.InteractiveCheck = static () => true;
 
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
 
-        transactions.Setup(t => t.ListFilesAsync(TransactionId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<List<ExistingTransactionFile>> { Status = HttpStatusCode.OK, Value = [AttachedFile()] });
+        // Any file call from this dialog is a regression: it no longer uploads, attaches or detaches.
+        files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("upload"))
+            .ThrowsAsync(new InvalidOperationException("The dialog must not upload."));
         transactions.Setup(t => t.DetachFileAsync(TransactionId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .Callback<Guid, Guid, CancellationToken>((_, fileId, _) => calls.Add($"detach:{fileId}"))
             .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
-        files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .Callback(() => calls.Add("upload"))
-            .ReturnsAsync(new FileUploadResponse(UploadedId, "receipt.pdf", "application/pdf", 5, "hash", DateTime.UtcNow, null));
-        files.Setup(f => f.AttachToTransactionAsync(TransactionId, It.IsAny<Guid>(), It.IsAny<TransactionFileType>(), It.IsAny<CancellationToken>()))
-            .Callback<Guid, Guid, TransactionFileType, CancellationToken>((_, fileId, _, _) => calls.Add($"attach:{fileId}"))
-            .Returns(Task.CompletedTask);
 
         var accounts = new Mock<IAccountsApiClient>();
         accounts.Setup(a => a.ListAllAsync(It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
@@ -107,7 +89,6 @@ public sealed class TransactionDialogAttachmentTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         CreateTransactionDialog.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-        FilesSectionBase<ExistingTransactionFile>.InteractiveCheck = static () => OperatingSystem.IsBrowser();
         await ctx.DisposeAsync();
     }
 
@@ -148,112 +129,40 @@ public sealed class TransactionDialogAttachmentTests : IAsyncLifetime
     private IRenderedComponent<DialogHost> RenderEdit()
     {
         var cut = ctx.Render<DialogHost>(p => p.Add(h => h.Transaction, Transaction()));
-        cut.WaitForElement(".atm-dialog .odc-rec tbody tr");
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsDateField>(), f => f.Instance.Label == "Date"));
         return cut;
-    }
-
-    private static IReadOnlyList<AngleSharp.Dom.IElement> FileRows(IRenderedComponent<DialogHost> cut) =>
-        cut.FindAll(".atm-dialog .odc-rec tbody tr");
-
-    /// <summary>Remove the one attached file through its row menu, as a user would.</summary>
-    private static void StageRemoval(IRenderedComponent<DialogHost> cut)
-    {
-        cut.Find(".atm-dialog button[aria-label='Row actions']").Click();
-        cut.WaitForElement("div.mud-menu-item");
-        cut.FindAll("div.mud-menu-item").Single(i => i.TextContent.Contains("Delete", StringComparison.Ordinal)).Click();
-        cut.WaitForAssertion(() => Assert.Empty(FileRows(cut)));
     }
 
     private static void ClickFooter(IRenderedComponent<DialogHost> cut, string label) =>
         cut.FindAll(".atm-dialog button").Single(b => b.TextContent.Contains(label, StringComparison.OrdinalIgnoreCase)).Click();
 
+    // ─────────────────────────────────────────────────────────────────────────
+    //  No attachments (design system · AddTransactionModal, attachments moved to the row)
+    // ─────────────────────────────────────────────────────────────────────────
+
     [Fact]
-    public void A_removed_file_leaves_the_table_without_being_detached()
+    public void The_edit_dialog_has_no_attachments_field_and_no_file_list()
     {
         var cut = RenderEdit();
 
-        StageRemoval(cut);
-
-        Assert.Empty(calls);
+        Assert.DoesNotContain(cut.FindComponents<OdsFieldShell>(), f => f.Instance.Label == "Attachments");
+        Assert.Empty(cut.FindComponents<OdsFileUpload>());
+        Assert.Empty(cut.FindComponents<TransactionFilesSection>());
+        Assert.Contains("Update this transaction's details or tags.", cut.Markup, StringComparison.Ordinal);
     }
 
+    /// <summary>Save writes the transaction and nothing else — the attached files are not the dialog's to touch.</summary>
     [Fact]
-    public void Save_updates_the_transaction_first_then_detaches_the_staged_removal()
+    public void Save_writes_only_the_transaction()
     {
         UpdateReturns(ApiResult.Success(HttpStatusCode.NoContent));
         var cut = RenderEdit();
-        StageRemoval(cut);
-
-        ClickFooter(cut, "Save changes");
-
-        cut.WaitForAssertion(() => Assert.Equal(["update", $"detach:{FileId}"], calls));
-        Assert.True(cut.Instance.Closed);
-    }
-
-    [Fact]
-    public void A_rejected_update_leaves_the_attachments_untouched()
-    {
-        UpdateReturns(ApiResult.Failure(HttpStatusCode.BadRequest, new ApiProblem { Detail = "Rejected" }));
-        var cut = RenderEdit();
-        StageRemoval(cut);
 
         ClickFooter(cut, "Save changes");
 
         cut.WaitForAssertion(() => Assert.Equal(["update"], calls));
-        transactions.Verify(t => t.DetachFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
-        Assert.False(cut.Instance.Closed);
-    }
-
-    [Fact]
-    public void Cancel_after_staging_a_removal_writes_nothing()
-    {
-        UpdateReturns(ApiResult.Success(HttpStatusCode.NoContent));
-        var cut = RenderEdit();
-        StageRemoval(cut);
-
-        ClickFooter(cut, "Cancel");
-
+        files.Verify(f => f.AttachToTransactionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<TransactionFileType>(), It.IsAny<CancellationToken>()), Times.Never);
         cut.WaitForAssertion(() => Assert.True(cut.Instance.Closed));
-        Assert.Empty(calls);
-        transactions.Verify(t => t.DetachFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public void Save_attaches_a_staged_upload_only_after_the_update_and_the_removals()
-    {
-        UpdateReturns(ApiResult.Success(HttpStatusCode.NoContent));
-        var cut = RenderEdit();
-        StageRemoval(cut);
-
-        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("%PDF", "receipt.pdf", contentType: "application/pdf"));
-        cut.WaitForElement(".atm-dialog .odc-upload-file");
-        Assert.Empty(calls);
-
-        ClickFooter(cut, "Save changes");
-
-        cut.WaitForAssertion(() => Assert.Equal(["update", $"detach:{FileId}", "upload", $"attach:{UploadedId}"], calls));
-    }
-
-    /// <summary>
-    /// Without the upload claim and with nothing attached, both of the field's children render nothing,
-    /// so the field says so rather than leaving a bare "Attachments" label.
-    /// </summary>
-    [Fact]
-    public void Without_the_upload_claim_an_empty_attachments_field_says_there_are_no_files()
-    {
-        transactions.Setup(t => t.ListFilesAsync(TransactionId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ApiResult<List<ExistingTransactionFile>> { Status = HttpStatusCode.OK, Value = [] });
-        var transaction = Transaction();
-        transaction.TransactionFiles = [];
-
-        var cut = ctx.Render<DialogHost>(p => p
-            .Add(h => h.Transaction, transaction)
-            .Add(h => h.CanUploadFiles, false));
-
-        cut.WaitForAssertion(() => Assert.Contains(
-            cut.FindAll(".atm-dialog .odc-field-help"),
-            h => h.TextContent.Trim() == "No files attached to this transaction."));
-        Assert.Empty(cut.FindAll(".atm-dialog .odc-upload-drop"));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -321,12 +230,10 @@ public sealed class TransactionDialogAttachmentTests : IAsyncLifetime
             Task.FromResult(new AuthenticationState(new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity())));
     }
 
-    /// <summary>The dialog beside MudBlazor's providers, which host its modal and the row menu.</summary>
+    /// <summary>The dialog beside MudBlazor's providers, which host its modal and its pickers.</summary>
     public sealed class DialogHost : ComponentBase
     {
         [Parameter] public ExistingTransaction Transaction { get; set; } = default!;
-
-        [Parameter] public bool CanUploadFiles { get; set; } = true;
 
         public bool Closed { get; private set; }
 
@@ -341,8 +248,6 @@ public sealed class TransactionDialogAttachmentTests : IAsyncLifetime
             builder.AddComponentParameter(4, nameof(CreateTransactionDialog.Open), !Closed);
             builder.AddComponentParameter(5, nameof(CreateTransactionDialog.OpenChanged),
                 EventCallback.Factory.Create<bool>(this, open => Closed = !open));
-            builder.AddComponentParameter(6, nameof(CreateTransactionDialog.CanDeleteFiles), true);
-            builder.AddComponentParameter(7, nameof(CreateTransactionDialog.CanUploadFiles), CanUploadFiles);
             builder.CloseComponent();
         }
     }

@@ -128,7 +128,22 @@
 <AddToAlbumDialog Open="_addToAlbumIds is not null" OpenChanged="v => { if (!v) _addToAlbumIds = null; }"
                   PhotoIds="@(_addToAlbumIds ?? [])" OnSaved="OnAlbumsChanged" />
 
-<UploadPhotosDialog Open="_uploadOpen" OpenChanged="v => _uploadOpen = v" OnSaved="OnUploaded" />
+@if (_uploadOpen)
+{
+    @* The design dropped the location notice from this dialog; it is kept, as a footnote, because it
+       is the one disclosure that capture GPS and tagged people are stored and shared. *@
+    <AttachPhotosDialog Open="_uploadOpen" OpenChanged="v => _uploadOpen = v"
+                        UploadOnly="true" Announce="true" SurfaceMaxMegabytes="PhotoUploadMaxMegabytes"
+                        Subtitle="Add new photos to your library. Photos you attach to journal entries show up here too."
+                        OnSubmit="@(_ => OnUploaded())">
+        <Footnote>
+            <div class="pl-drop-hint">
+                <OdsMIcon Name="info" Size="14" />
+                Any capture location (GPS) and people you tag are stored with the photo and visible to anyone with photo access.
+            </div>
+        </Footnote>
+    </AttachPhotosDialog>
+}
 
 @code {
     // The Overview panel is the shared PhotoLibraryOverview (identical on /photos and /albums). @ref lets

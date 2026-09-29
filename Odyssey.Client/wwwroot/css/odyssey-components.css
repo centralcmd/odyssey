@@ -3781,7 +3781,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .pl-selact:hover { background: rgba(199,208,224,0.10); color: var(--mud-palette-text-primary); }
 .pl-selact .material-icons { font-size: 17px; }
 
-/* ---- Empty-state hint (PhotosCard, AlbumsPage, AlbumFormDialog, UploadPhotosDialog) ---- */
+/* ---- Empty-state hint (PhotosCard, AlbumsPage, AlbumFormDialog, AttachPhotosDialog) ---- */
 .pl-drop-hint { margin-top: 14px; font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-disabled, #6b7385); }
 
 /* ---- Loading skeleton tile (PhotosCard, AlbumsPage) ---- */

@@ -14,6 +14,14 @@
 .pl-memcover.on { color: var(--gold-400, #E5B463); border-color: var(--gold-400, #E5B463); }
 .pl-membtn:disabled { opacity: 0.35; cursor: not-allowed; }
 
+/* ---- Photos field: create mode's staged picks + the Add photos row ---- */
+.pl-newgrid { list-style: none; margin: 0 0 var(--space-2); padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr)); gap: calc(var(--space-2) - var(--space-1) / 2); }
+.pl-newthumb { position: relative; aspect-ratio: 1; border-radius: var(--radius-md); background-color: var(--mud-palette-background-gray); }
+.pl-newremove { position: absolute; top: var(--space-1); right: var(--space-1); display: grid; place-items: center; width: var(--icon-xl); height: var(--icon-xl); border: 0; border-radius: var(--radius-pill); padding: 0; cursor: pointer; background: color-mix(in srgb, black 60%, transparent); color: white; }
+.pl-newremove:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.pl-addrow { display: flex; align-items: center; gap: var(--space-3); }
+.pl-addrow .pl-addcount { margin: 0; }
+
 /* ---- Delete album ---- */
 .pl-danger-link { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; color: var(--rose-500, #F2557A); font: 500 13px/1 var(--font-sans); padding: 8px 6px; }
 

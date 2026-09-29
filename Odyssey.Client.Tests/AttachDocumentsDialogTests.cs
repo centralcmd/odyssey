@@ -11,28 +11,31 @@ using MudBlazor.Services;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
+using Odyssey.Client.Pages.Attachments;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Client.Services;
+using Odyssey.Dtos.Application;
+using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The property attach dialog (issue #210 §5.1; design system · AddPropertyFileModal.jsx): "Upload new"
-/// and "From Files" tabs over the one Files store, a per-file <see cref="PropertyFileType"/> guessed from
-/// the name, and one <c>AttachPropertyFileRequest</c> per picked file.
+/// The shared "Attach documents" dialog (design system · AttachDocumentsModal.jsx): "Upload new" and
+/// "From Files" tabs over the one Files store, a per-file type guessed from the name, and one
+/// <see cref="AttachDocumentItem"/> handed to the host per picked file. Driven here in its strictest
+/// configuration — the property one (issue #210 §5.1), with the document allow-list and validity on.
 /// </summary>
 /// <remarks>
 /// The library's disabled states are the client half of two server refusals — the <c>409</c> for a file
 /// already linked and the <c>400</c> for a content type off <see cref="DocumentContentTypes"/> — and each
 /// has to say why in text, not colour alone. The allow-list is the server's own symbol, never a copy.
+/// The tabs follow the caller's claims: <c>files.create</c> for Upload new, <c>files.read</c> for From Files.
 /// </remarks>
-public class PropertyAttachDialogTests
+public class AttachDocumentsDialogTests
 {
-    static PropertyAttachDialogTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
-
-    private static readonly Guid PropertyId = Guid.Parse("21021021-0000-0000-0000-000000000002");
+    static AttachDocumentsDialogTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
 
     private static readonly DateTime Base = new(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc);
 
@@ -44,41 +47,17 @@ public class PropertyAttachDialogTests
 
     private static readonly List<FileListItem> Library = [Scan, Html, Linked, Vognkort, Deed];
 
-    private static ExistingProperty House(PropertyType type = PropertyType.RealEstate) => new()
-    {
-        PropertyId = PropertyId,
-        Name = "Storgata 14",
-        Description = "Primary residence",
-        Type = type,
-        CurrencyCode = "NOK",
-    };
-
-    private static ExistingPropertyFile AttachedCopyOf(FileListItem file) => new()
-    {
-        PropertyFileId = Guid.NewGuid(),
-        PropertyId = PropertyId,
-        FileType = PropertyFileType.Deed,
-        AttachedAtUtc = Base,
-        FileMetadata = new ExistingFileMetadata
-        {
-            Id = file.Id,
-            FileName = file.FileName,
-            ContentType = file.ContentType,
-            SizeBytes = file.SizeBytes,
-            FileBlobId = Guid.NewGuid(),
-            UploadedAtUtc = file.UploadedAtUtc,
-        },
-    };
-
     private sealed record Harness(
         IRenderedComponent<DialogHost> Host,
-        Mock<IPropertiesApiClient> Properties,
         Mock<IFilesApiClient> Files,
-        List<AttachPropertyFileRequest> Posted,
+        List<AttachDocumentItem> Posted,
         List<bool> OpenChanges,
         Func<int> AttachedRaised)
     {
-        public IRenderedComponent<PropertyAttachDialog> Dialog => Host.FindComponent<PropertyAttachDialog>();
+        public IRenderedComponent<AttachDocumentsDialog> Dialog => Host.FindComponent<AttachDocumentsDialog>();
+
+        public IReadOnlyList<IRenderedComponent<OdsSelect>> TypePickers =>
+            [.. Host.FindComponents<OdsSelect>().Where(p => p.Instance.Label == "Document type")];
 
         public string Markup => Host.Markup;
 
@@ -95,11 +74,13 @@ public class PropertyAttachDialogTests
 
     private static Harness Render(
         bool canUpload = false,
-        IReadOnlyList<ExistingPropertyFile>? attached = null,
+        bool canBrowse = true,
+        IReadOnlyList<Guid>? attached = null,
         bool libraryFails = false,
         bool attachFails = false,
-        PropertyType type = PropertyType.RealEstate,
-        bool loadLibrary = true)
+        bool restrict = true,
+        bool withKinds = true,
+        Func<Task<IReadOnlyCollection<Guid>>>? loadAttached = null)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -112,38 +93,38 @@ public class PropertyAttachDialogTests
                 : ApiResult<List<FileListItem>>.Success([.. Library], HttpStatusCode.OK));
         ctx.Services.AddSingleton(files.Object);
 
-        var posted = new List<AttachPropertyFileRequest>();
-        var properties = new Mock<IPropertiesApiClient>();
-        properties.Setup(p => p.AttachFileAsync(PropertyId, It.IsAny<AttachPropertyFileRequest>(), It.IsAny<CancellationToken>()))
-            .Callback((Guid _, AttachPropertyFileRequest r, CancellationToken _) => posted.Add(r))
-            .ReturnsAsync(() => attachFails
-                ? ApiResult.Failure(HttpStatusCode.Conflict, new ApiProblem { Detail = "Already attached." })
-                : ApiResult.Success(HttpStatusCode.Created));
-        ctx.Services.AddSingleton(properties.Object);
-
         var creator = new Mock<IContactQuickCreate>();
         creator.Setup(c => c.Resolve(It.IsAny<string?>())).Returns((string? id) => id);
         creator.Setup(c => c.WhenSettledAsync()).Returns(Task.CompletedTask);
         ctx.Services.AddSingleton(creator.Object);
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
-        ctx.Services.AddSingleton(Mock.Of<IUploadLimitsCache>());
-        ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedOut());
+        var limits = new Mock<IUploadLimitsCache>();
+        limits.Setup(l => l.GetAsync()).ReturnsAsync(UploadLimitsCache.Fallback);
+        ctx.Services.AddSingleton(limits.Object);
 
+        var claims = new List<string>();
+        if (canUpload) claims.Add(PermissionClaims.FilesCreate);
+        if (canBrowse) claims.Add(PermissionClaims.FilesRead);
+        ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedIn(claims));
+
+        var posted = new List<AttachDocumentItem>();
         var openChanges = new List<bool>();
         var attachedRaised = 0;
         var cut = ctx.Render<DialogHost>(p => p
-            .Add(h => h.Property, House(type))
-            .Add(h => h.Attached, attached ?? [])
-            .Add(h => h.CanUpload, canUpload)
+            .Add(h => h.AttachedIds, attached ?? [])
+            .Add(h => h.Restrict, restrict)
+            .Add(h => h.WithKinds, withKinds)
+            .Add(h => h.LoadAttached, loadAttached)
+            .Add(h => h.Attach, item =>
+            {
+                posted.Add(item);
+                return Task.FromResult(!attachFails);
+            })
             .Add(h => h.OnOpenChanged, (bool open) => openChanges.Add(open))
             .Add(h => h.OnAttached, () => attachedRaised++));
 
-        var harness = new Harness(cut, properties, files, posted, openChanges, () => attachedRaised);
-
-        // OnInitializedAsync returns before the library read outside the browser; the seam is the way in.
-        if (loadLibrary && !canUpload)
-            cut.InvokeAsync(() => harness.Dialog.Instance.LoadLibraryAsync()).GetAwaiter().GetResult();
-
+        var harness = new Harness(cut, files, posted, openChanges, () => attachedRaised);
+        cut.WaitForState(() => canUpload || !canBrowse || libraryFails || cut.FindAll(".prop-lib-row").Count > 0);
         return harness;
     }
 
@@ -158,7 +139,20 @@ public class PropertyAttachDialogTests
         Assert.Empty(h.Host.FindComponents<OdsSegmentedControl>());
         Assert.Empty(h.Host.FindComponents<OdsFileUpload>());
         Assert.DoesNotContain("Upload new", h.Markup, StringComparison.Ordinal);
+        Assert.Contains("Choose from Files", h.Markup, StringComparison.Ordinal);
         Assert.NotEmpty(h.Host.FindAll(".prop-lib-row"));
+    }
+
+    /// <summary>Without files.read there is no library to browse: upload only, and Files is never listed.</summary>
+    [Fact]
+    public void Without_files_read_it_offers_upload_only()
+    {
+        var h = Render(canUpload: true, canBrowse: false);
+
+        Assert.Empty(h.Host.FindComponents<OdsSegmentedControl>());
+        Assert.Single(h.Host.FindComponents<OdsFileUpload>());
+        Assert.Contains("Attach documents", h.Markup, StringComparison.Ordinal);
+        h.Files.Verify(f => f.ListAllAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -172,7 +166,7 @@ public class PropertyAttachDialogTests
         Assert.Contains("Upload and attach", h.Markup, StringComparison.Ordinal);
         h.Files.Verify(f => f.ListAllAsync(It.IsAny<CancellationToken>()), Times.Never);
 
-        await h.Host.InvokeAsync(() => tabs.Instance.ValueChanged.InvokeAsync(PropertyAttachDialog.LibraryTab));
+        await h.Host.InvokeAsync(() => tabs.Instance.ValueChanged.InvokeAsync(AttachDocumentsDialog.LibraryTab));
 
         h.Files.Verify(f => f.ListAllAsync(It.IsAny<CancellationToken>()), Times.Once);
         Assert.Empty(h.Host.FindComponents<OdsFileUpload>());
@@ -191,14 +185,15 @@ public class PropertyAttachDialogTests
         Assert.Contains(DocumentContentTypes.Label, upload.Hint, StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData(PropertyType.RealEstate, "the deed, the purchase agreement")]
-    [InlineData(PropertyType.Vehicle, "the registration, an inspection")]
-    public void The_subtitle_names_the_documents_a_property_of_that_type_keeps(PropertyType type, string expected)
+    /// <summary>A surface with no file-type vocabulary (journal, tasks) shows no type picker on either tab.</summary>
+    [Fact]
+    public void A_surface_without_kinds_shows_no_type_picker()
     {
-        var h = Render(type: type);
+        var h = Render(withKinds: false);
 
-        Assert.Contains(expected, h.Markup, StringComparison.Ordinal);
+        h.Pick(Deed);
+
+        Assert.Empty(h.TypePickers);
     }
 
     // ── The library ─────────────────────────────────────────────────────────────
@@ -217,12 +212,12 @@ public class PropertyAttachDialogTests
     [Fact]
     public void An_already_attached_file_is_disabled_and_says_so()
     {
-        var h = Render(attached: [AttachedCopyOf(Linked)]);
+        var h = Render(attached: [Linked.Id]);
 
         var row = h.Row(Linked);
         Assert.True(row.QuerySelector("button.prop-lib-main")!.HasAttribute("disabled"));
         Assert.Equal("Already attached", row.QuerySelector(".prop-lib-reason")!.TextContent);
-        Assert.Equal(PropertyAttachDialog.LibraryState.AlreadyAttached, h.Dialog.Instance.StateOf(Linked));
+        Assert.Equal(AttachDocumentsDialog.LibraryState.AlreadyAttached, h.Dialog.Instance.StateOf(Linked));
     }
 
     /// <summary>A server-recorded content type off the shared allow-list is disabled with the reason in text.</summary>
@@ -234,7 +229,28 @@ public class PropertyAttachDialogTests
         var row = h.Row(Html);
         Assert.True(row.QuerySelector("button.prop-lib-main")!.HasAttribute("disabled"));
         Assert.Equal("HTML not accepted", row.QuerySelector(".prop-lib-reason")!.TextContent);
-        Assert.Equal(PropertyAttachDialog.LibraryState.TypeNotAllowed, h.Dialog.Instance.StateOf(Html));
+        Assert.Equal(AttachDocumentsDialog.LibraryState.TypeNotAllowed, h.Dialog.Instance.StateOf(Html));
+    }
+
+    /// <summary>A host that does not hold its linked ids (an account row) reads them, and they disable the same way.</summary>
+    [Fact]
+    public void Loaded_attached_ids_disable_their_rows_too()
+    {
+        var h = Render(loadAttached: () => Task.FromResult<IReadOnlyCollection<Guid>>([Linked.Id]));
+
+        Assert.Equal(AttachDocumentsDialog.LibraryState.AlreadyAttached, h.Dialog.Instance.StateOf(Linked));
+        Assert.Equal("Already attached", h.Row(Linked).QuerySelector(".prop-lib-reason")!.TextContent);
+    }
+
+    /// <summary>Without the allow-list (accounts, transactions, tax, journal, tasks) any stored type is attachable.</summary>
+    [Fact]
+    public void Without_the_allow_list_an_html_file_is_available()
+    {
+        var h = Render(restrict: false);
+
+        Assert.Equal(AttachDocumentsDialog.LibraryState.Available, h.Dialog.Instance.StateOf(Html));
+        Assert.Null(h.Row(Html).QuerySelector(".prop-lib-reason"));
+        Assert.DoesNotContain("files can be attached", h.Markup, StringComparison.Ordinal);
     }
 
     /// <summary>Every allow-listed type is attachable — the state reads the server's symbol, not a copy.</summary>
@@ -246,7 +262,7 @@ public class PropertyAttachDialogTests
         foreach (var type in DocumentContentTypes.Allowed)
         {
             var file = new FileListItem(Guid.NewGuid(), "x", type, 1, Base, null);
-            Assert.Equal(PropertyAttachDialog.LibraryState.Available, h.Dialog.Instance.StateOf(file));
+            Assert.Equal(AttachDocumentsDialog.LibraryState.Available, h.Dialog.Instance.StateOf(file));
         }
 
         Assert.Null(h.Row(Deed).QuerySelector(".prop-lib-reason"));
@@ -264,7 +280,7 @@ public class PropertyAttachDialogTests
     [InlineData(null, "Unknown type")]
     [InlineData("", "Unknown type")]
     public void Content_types_read_as_a_short_name(string? contentType, string expected) =>
-        Assert.Equal(expected, PropertyAttachDialog.ContentTypeShort(contentType));
+        Assert.Equal(expected, AttachDocumentsDialog.ContentTypeShort(contentType));
 
     [Fact]
     public void A_disabled_row_cannot_be_picked()
@@ -273,7 +289,7 @@ public class PropertyAttachDialogTests
 
         h.Pick(Html);
 
-        Assert.Empty(h.Host.FindComponents<OdsFileTypeSelect>());
+        Assert.Empty(h.TypePickers);
         Assert.True(h.SubmitButton.HasAttribute("disabled"));
     }
 
@@ -335,7 +351,7 @@ public class PropertyAttachDialogTests
         h.Pick(Deed);
         h.Pick(Scan);
 
-        var pickers = h.Host.FindComponents<OdsFileTypeSelect>();
+        var pickers = h.TypePickers;
         Assert.Equal(["Deed", "Other"], pickers.Select(p => p.Instance.Value));
         Assert.Equal("true", h.Row(Deed).QuerySelector("button.prop-lib-main")!.GetAttribute("aria-pressed"));
         Assert.Contains("Attach 2 documents", h.SubmitButton.TextContent, StringComparison.Ordinal);
@@ -350,27 +366,27 @@ public class PropertyAttachDialogTests
         h.Pick(Deed);
         h.Pick(Deed);
 
-        Assert.Empty(h.Host.FindComponents<OdsFileTypeSelect>());
+        Assert.Empty(h.TypePickers);
         Assert.Equal("false", h.Row(Deed).QuerySelector("button.prop-lib-main")!.GetAttribute("aria-pressed"));
     }
 
-    /// <summary>One request per picked file, carrying the file's id and the type the reader chose.</summary>
+    /// <summary>One item per picked file, carrying the file's id and the type the reader chose.</summary>
     [Fact]
-    public async Task Submit_posts_one_attach_per_picked_file_then_closes()
+    public async Task Submit_hands_one_item_per_picked_file_then_closes()
     {
         var h = Render();
 
         h.Pick(Deed);
         h.Pick(Vognkort);
-        var vognkortPicker = h.Host.FindComponents<OdsFileTypeSelect>()
-            .Single(p => p.Instance.Value == nameof(PropertyFileType.Registration));
+        var vognkortPicker = h.TypePickers.Single(p => p.Instance.Value == nameof(PropertyFileType.Registration));
         await h.Host.InvokeAsync(() => vognkortPicker.Instance.ValueChanged.InvokeAsync(nameof(PropertyFileType.Insurance)));
 
         h.SubmitButton.Click();
 
         h.Host.WaitForAssertion(() => Assert.Equal(2, h.Posted.Count));
-        Assert.Contains(h.Posted, r => r.FileMetadataId == Deed.Id && r.FileType == PropertyFileType.Deed);
-        Assert.Contains(h.Posted, r => r.FileMetadataId == Vognkort.Id && r.FileType == PropertyFileType.Insurance);
+        Assert.All(h.Posted, r => Assert.Equal(AttachDocumentSource.Library, r.Source));
+        Assert.Contains(h.Posted, r => r.FileId == Deed.Id && r.KindAs(PropertyFileType.Other) == PropertyFileType.Deed);
+        Assert.Contains(h.Posted, r => r.FileId == Vognkort.Id && r.KindAs(PropertyFileType.Other) == PropertyFileType.Insurance);
         Assert.All(h.Posted, r =>
         {
             Assert.Null(r.ValidFrom);
@@ -422,6 +438,16 @@ public class PropertyAttachDialogTests
         Assert.Equal(0, h.AttachedRaised());
     }
 
+    /// <summary>The kind falls back per surface when an item carries a key its enum does not know.</summary>
+    [Fact]
+    public void An_unknown_kind_parses_to_the_callers_fallback()
+    {
+        var item = new AttachDocumentItem(AttachDocumentSource.Upload, Guid.NewGuid(), "x.pdf", "NotAType", 1, null, null, null, null);
+
+        Assert.Equal(ContractFileType.Signed, item.KindAs(ContractFileType.Signed));
+        Assert.Equal(PropertyFileType.Other, item.KindAs(PropertyFileType.Other));
+    }
+
     /// <summary>A refused attach neither reports success upward nor closes the dialog.</summary>
     [Fact]
     public void A_refused_attach_keeps_the_dialog_open()
@@ -442,18 +468,21 @@ public class PropertyAttachDialogTests
         await h.Host.InvokeAsync(() => field.Instance.ValueChanged.InvokeAsync(value));
     }
 
-    private sealed class SignedOut : AuthenticationStateProvider
+    private sealed class SignedIn(IEnumerable<string> permissions) : AuthenticationStateProvider
     {
         public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
-            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
+            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(
+                permissions.Select(p => new Claim(PermissionClaims.Type, p)), "test"))));
     }
 
     /// <summary>The dialog beside its providers, in one render tree so the teleported body is the host's markup.</summary>
     public sealed class DialogHost : ComponentBase
     {
-        [Parameter] public ExistingProperty Property { get; set; } = default!;
-        [Parameter] public IReadOnlyList<ExistingPropertyFile> Attached { get; set; } = [];
-        [Parameter] public bool CanUpload { get; set; }
+        [Parameter] public IReadOnlyList<Guid> AttachedIds { get; set; } = [];
+        [Parameter] public bool Restrict { get; set; }
+        [Parameter] public bool WithKinds { get; set; }
+        [Parameter] public Func<Task<IReadOnlyCollection<Guid>>>? LoadAttached { get; set; }
+        [Parameter] public Func<AttachDocumentItem, Task<bool>> Attach { get; set; } = default!;
         [Parameter] public Action<bool>? OnOpenChanged { get; set; }
         [Parameter] public Action? OnAttached { get; set; }
 
@@ -465,19 +494,24 @@ public class PropertyAttachDialogTests
             builder.CloseComponent();
             builder.OpenComponent<MudPopoverProvider>(1);
             builder.CloseComponent();
-            builder.OpenComponent<PropertyAttachDialog>(2);
-            builder.AddComponentParameter(3, nameof(PropertyAttachDialog.Property), Property);
-            builder.AddComponentParameter(4, nameof(PropertyAttachDialog.Attached), Attached);
-            builder.AddComponentParameter(5, nameof(PropertyAttachDialog.CanUpload), CanUpload);
-            builder.AddComponentParameter(6, nameof(PropertyAttachDialog.Open), _open);
-            builder.AddComponentParameter(7, nameof(PropertyAttachDialog.OpenChanged),
+            builder.OpenComponent<AttachDocumentsDialog>(2);
+            builder.AddComponentParameter(3, nameof(AttachDocumentsDialog.Subtitle), "Keep the deed with Storgata 14.");
+            builder.AddComponentParameter(4, nameof(AttachDocumentsDialog.Kinds), WithKinds ? OdsTypeRegistries.PropertyFileTypes : null);
+            builder.AddComponentParameter(5, nameof(AttachDocumentsDialog.GuessKind), (Func<string, string>)PropertyFileTypeGuess.GuessKey);
+            builder.AddComponentParameter(6, nameof(AttachDocumentsDialog.Validity), true);
+            builder.AddComponentParameter(7, nameof(AttachDocumentsDialog.RestrictToDocumentTypes), Restrict);
+            builder.AddComponentParameter(8, nameof(AttachDocumentsDialog.AttachedIds), AttachedIds);
+            builder.AddComponentParameter(9, nameof(AttachDocumentsDialog.LoadAttachedIds), LoadAttached);
+            builder.AddComponentParameter(10, nameof(AttachDocumentsDialog.Attach), Attach);
+            builder.AddComponentParameter(11, nameof(AttachDocumentsDialog.Open), _open);
+            builder.AddComponentParameter(12, nameof(AttachDocumentsDialog.OpenChanged),
                 EventCallback.Factory.Create<bool>(this, open =>
                 {
                     _open = open;
                     OnOpenChanged?.Invoke(open);
                 }));
-            builder.AddComponentParameter(8, nameof(PropertyAttachDialog.OnAttached),
-                EventCallback.Factory.Create(this, () => OnAttached?.Invoke()));
+            builder.AddComponentParameter(13, nameof(AttachDocumentsDialog.OnAttached),
+                EventCallback.Factory.Create<IReadOnlyList<AttachDocumentItem>>(this, _ => OnAttached?.Invoke()));
             builder.CloseComponent();
         }
     }

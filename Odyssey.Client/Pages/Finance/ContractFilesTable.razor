@@ -13,8 +13,8 @@
     ContractFilesTable — the attachments table for a contract (issue #174 §7, extended by #146).
     Wraps the shared OdsFilesTable; downloads, the metadata update and detach hit the
     CONTRACT-SCOPED routes via IContractsApiClient so the IDOR-free guarantee holds (§7/§10) —
-    never a generic by-file-id route. Attach is owned by the host's "Upload" action
-    (ContractUploadDialog).
+    never a generic by-file-id route. Attach is owned by the host's "Attach documents" action
+    (the shared AttachDocumentsDialog).
 
     Three things differ from the account files table:
       • Renameable=false — a contract document's name lives on the FileMetadata it references, and
