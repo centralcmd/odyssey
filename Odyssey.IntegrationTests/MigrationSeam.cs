@@ -144,8 +144,10 @@ internal static class MigrationSeam
     /// Inserts a contract's scalar columns with raw SQL, for a "before" state seeded below head. The
     /// entity cannot be used there: EF writes every column the CURRENT model maps, so a column a later
     /// migration adds (<c>CreatedByUserId</c> was the first to break this) makes the insert fail
-    /// against the older schema. Only columns every seeded schema has are written; parties go in
-    /// through <c>context.ContractParties</c> as before.
+    /// against the older schema. Only <c>ContractId</c>, <c>Name</c>, <c>Type</c>, <c>StartDate</c>,
+    /// <c>Signed</c> and <c>CreatedAtUtc</c> are written — every other property on
+    /// <paramref name="contract"/>, <c>Parties</c> included, is IGNORED, so a test needing another
+    /// column writes it itself. Parties go in through <c>context.ContractParties</c>.
     /// </summary>
     public static Task InsertContractAsync(OdysseyContext context, Contract contract, CancellationToken ct = default) =>
         context.Database.ExecuteSqlAsync(

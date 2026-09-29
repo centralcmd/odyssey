@@ -541,6 +541,47 @@ public class DataExportApiTests
     }
 
     /// <summary>
+    /// The contract's author is a stored fact, so it is exported — as the raw column, like every other
+    /// attribution column in the document — and as <c>null</c> where none is recorded.
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesContractCreatedByUserId_OrNull()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            context.Contracts.AddRange(
+                new Contract
+                {
+                    Name = "Attributed",
+                    Type = Odyssey.Context.ContractType.Rental,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    CreatedByUserId = "author-user-id",
+                },
+                new Contract
+                {
+                    Name = "Unattributed",
+                    Type = Odyssey.Context.ContractType.Rental,
+                    CreatedAtUtc = DateTime.UtcNow,
+                });
+            await context.SaveChangesAsync();
+        }
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var contracts = document.RootElement.GetProperty("databases").GetProperty("finance")
+            .GetProperty("contracts").EnumerateArray().ToList();
+
+        var attributed = Assert.Single(contracts, c => c.GetProperty("name").GetString() == "Attributed");
+        Assert.Equal("author-user-id", attributed.GetProperty("createdByUserId").GetString());
+
+        var unattributed = Assert.Single(contracts, c => c.GetProperty("name").GetString() == "Unattributed");
+        Assert.True(unattributed.TryGetProperty("createdByUserId", out var absent));
+        Assert.Equal(JsonValueKind.Null, absent.ValueKind);
+    }
+
+    /// <summary>
     /// Issue #138 AC 18's CONTENT half. <c>DataExportTableCoverageTests</c> is a reflection guard that
     /// only proves the table is accounted for somewhere; it passes the moment a collection property
     /// exists and says nothing about what the rows carry. This seeds an event and reads the exported
