@@ -50,7 +50,13 @@ public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
             await MigrationSeam.MigrateToAsync(context, PreviousMigration);
             accountId = await SeedAccountAsync(context);
             contactId = await SeedContactAsync(context);
-            contractId = await SeedContractAsync(context, "Mortgage", ContextContractType.Loan);
+            // Raw SQL, like the parties below: this schema predates columns the model now maps.
+            contractId = Guid.NewGuid();
+            await MigrationSeam.InsertContractAsync(context, new Contract
+            {
+                ContractId = contractId, Name = "Mortgage", Type = ContextContractType.Loan,
+                StartDate = Anchor, Signed = Anchor, CreatedAtUtc = Anchor,
+            });
 
             // Raw SQL: the model now maps PropertyId, a column this schema does not have yet.
             await context.Database.ExecuteSqlRawAsync(
