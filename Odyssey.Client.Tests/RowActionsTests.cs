@@ -33,8 +33,8 @@ public class RowActionsTests
 
     private static IReadOnlyList<OdsRowAction> EditDelete(Action? onEdit = null, Action? onDelete = null) =>
     [
-        new() { Icon = "edit", Label = "Edit term", OnClick = Callback(onEdit) },
-        new() { Icon = "delete", Label = "Delete term", Danger = true, OnClick = Callback(onDelete) },
+        new() { Icon = MudBlazor.Icons.Material.Filled.Edit, Label = "Edit term", OnClick = Callback(onEdit) },
+        new() { Icon = MudBlazor.Icons.Material.Filled.Delete, Label = "Delete term", Danger = true, OnClick = Callback(onDelete) },
     ];
 
     private static EventCallback<MouseEventArgs> Callback(Action? action) =>
@@ -132,5 +132,44 @@ public class RowActionsTests
         var item = cut.Find(".odc-tl-item");
         Assert.Contains("odc-rowactions-host", item.ClassList);
         Assert.NotNull(item.QuerySelector(".odc-rowactions"));
+    }
+
+    // The button is a MudIconButton, which draws an SVG constant and nothing else: a Material ligature
+    // ("edit") compiles, renders a button that still takes clicks, and paints NO glyph — so the reveal
+    // fades in an empty 28px box. The event rail rows shipped exactly that way.
+    [Fact]
+    public void Each_button_draws_its_glyph()
+    {
+        using var ctx = NewContext();
+
+        var cut = ctx.Render<OdsRowActions>(p => p.Add(c => c.Actions, EditDelete()));
+
+        Assert.All(cut.FindAll(".odc-rowactions button"),
+            b => Assert.NotNull(b.QuerySelector("svg path")));
+    }
+
+    // The source half of the same rule, so a new call site cannot reintroduce it: an OdsRowAction's
+    // Icon is an Icons.* constant, never a string literal.
+    [Fact]
+    public void No_row_action_is_given_a_ligature_string()
+    {
+        // Three shapes reach the type: `new OdsRowAction { … }`, an `OdsRowAction[]` initializer of
+        // `new() { … }`, and a member typed `…<OdsRowAction>` built the same way. Each is scanned up to
+        // the statement's end, so an OdsMenuItem elsewhere in the file — which DOES take a ligature —
+        // is never read as one.
+        var shapes = new System.Text.RegularExpressions.Regex(
+            @"(new\s+OdsRowAction\s*\{[^}]*?|OdsRowAction\[\][^;]*?|<OdsRowAction>[^;]*?)\bIcon\s*=\s*""",
+            System.Text.RegularExpressions.RegexOptions.Singleline);
+
+        var offenders = ClientSource.SourceFiles()
+            .SelectMany(file =>
+            {
+                var text = File.ReadAllText(file);
+                return shapes.Matches(text)
+                    .Select(m => $"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, m.Index)}");
+            })
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "Ligature passed to OdsRowAction.Icon: " + string.Join(", ", offenders));
     }
 }

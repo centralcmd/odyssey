@@ -22,7 +22,7 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
 | Trap | Symptom | Fix |
 |---|---|---|
 | **String params passed as literals** | Value renders as the literal source text | Prefix with `@`: `Label="@title"`, not `Label="title"` |
-| `MudButton.StartIcon` / `MudIcon.Icon` given a Material **ligature** | Nothing renders, no error | Pass an SVG constant (`Icons.Material.Filled.Add`), or render a `material-icons` span |
+| `MudButton.StartIcon` / `MudIcon.Icon` / `MudIconButton.Icon` (so `OdsIconButton` and `OdsRowAction.Icon`) given a Material **ligature** | Nothing renders, no error — an icon button stays clickable but blank | Pass an SVG constant (`Icons.Material.Filled.Add`), or render a `material-icons` span |
 | `< N` inside a switch pattern | Razor parse error | Parenthesize or restructure the expression |
 | `MudFileUpload` `ActivatorContent` | Does not exist in v9 | Use `CustomContent` |
 | `MudMenu` with custom `ActivatorContent` | Menu never opens | Add `@onclick="@context.ToggleAsync"` |
