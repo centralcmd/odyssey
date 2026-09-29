@@ -71,7 +71,7 @@
     private OdsOption? SelectedOption => Options.FirstOrDefault(o => o.Value == Value);
 
     private static string? IconStyle(OdsOption option) =>
-        string.IsNullOrEmpty(option.IconColor) ? null : $"color:{option.IconColor};";
+        string.IsNullOrEmpty(option.IconColor) ? null : $"color:{OdsGlyphInk.Glyph(option.IconColor)};";
 
     private Task OnValueChanged(string value)
     {

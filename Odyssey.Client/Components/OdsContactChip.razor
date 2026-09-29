@@ -71,7 +71,7 @@ else if (!string.IsNullOrEmpty(Name))
         Class,
     }.Where(c => !string.IsNullOrEmpty(c)));
 
-    private string? IconStyle => Archived ? null : $"color:{_meta.Color};";
+    private string? IconStyle => Archived ? null : $"color:{OdsGlyphInk.Glyph(_meta.Color)};";
 
     private string AccessibleName
     {

@@ -60,7 +60,7 @@
                 Empty="@Empty">
     <Leading Context="file">
         @{ var kind = ResolveKind(file); }
-        <span class="odc-ft-kind" style="background:@kind.Soft;color:@kind.Color;">
+        <span class="odc-ft-kind" style="background:@kind.Soft;color:@(OdsGlyphInk.Glyph(kind.Color));">
             <span class="material-icons" aria-hidden="true">@kind.Icon</span>
         </span>
     </Leading>
@@ -79,7 +79,7 @@
         var kind = ResolveKind(file);
         // The registry label when the host supplied Kinds ("Purchase agreement"), else the raw key.
         var label = Kinds?.FirstOrDefault(k => k.Value == file.Kind)?.Label ?? file.Kind;
-        return @<span class="odc-ft-type" style="background:@kind.Soft;color:@kind.Color;">@label</span>;
+        return @<span class="odc-ft-type" style="background:@kind.Soft;color:@(OdsGlyphInk.Text(kind.Color));">@label</span>;
     }
 
     private List<OdsRecordColumn<OdsFilesRow>> BuildColumns()

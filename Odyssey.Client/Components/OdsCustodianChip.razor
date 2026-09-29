@@ -78,7 +78,7 @@ else
 
     private string EmptyClass => $"odc-custodian empty{SizeSuffix}{ClassSuffix}";
     private string FilledClass => $"odc-custodian{(_archived ? " archived" : string.Empty)}{SizeSuffix}{ClassSuffix}";
-    private string? IconStyle => _archived ? null : $"color:{_meta.Color};";
+    private string? IconStyle => _archived ? null : $"color:{OdsGlyphInk.Glyph(_meta.Color)};";
 
     private string AccessibleName
     {

@@ -143,5 +143,5 @@
 
     private string? IconStyle =>
         string.IsNullOrEmpty(IconColor) ? null
-            : $"color:{IconColor};{(string.IsNullOrEmpty(IconSoft) ? "" : $"background:{IconSoft};")}";
+            : $"color:{OdsGlyphInk.Glyph(IconColor)};{(string.IsNullOrEmpty(IconSoft) ? "" : $"background:{IconSoft};")}";
 }

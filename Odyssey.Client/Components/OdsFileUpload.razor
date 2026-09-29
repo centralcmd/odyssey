@@ -67,7 +67,7 @@
                     <div class="odc-upload-file @(RenderFileExtra is not null ? "has-meta" : null)" @key="file.Uid">
                         @if (ShowKinds)
                         {
-                            <span class="odc-upload-file-ic" style="background:@kind.Soft;color:@kind.Color;">
+                            <span class="odc-upload-file-ic" style="background:@kind.Soft;color:@(OdsGlyphInk.Glyph(kind.Color));">
                                 <span class="material-icons" aria-hidden="true" style="font-size:20px;">@kind.Icon</span>
                             </span>
                         }

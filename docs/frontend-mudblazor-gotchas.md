@@ -103,10 +103,19 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
   where `Symbol` is a stored field being edited.
 - **Deliberate exception:** the picker `oklch(...)` literals mirror the design system on purpose and
   are **not** tokenized. Don't "fix" them. The exception covers a **glyph on its soft ground** only:
-  those hues sit at L ≈ 0.77 and read ~2:1 on the light theme, so none may become **text or a chart
-  line**. A term's figure and chart line take its direction's finance hue instead
+  those hues sit at L ≈ 0.77 and read ~2:1 on the light theme as authored, so none may become a
+  **chart line**. A term's figure and chart line take its direction's finance hue instead
   (`TermVisuals.ValueColor`); the per-theme term ink tokens that once served account terms (which
   stated no direction) were retired with them in issue #190.
+- **A registry colour is never painted raw — it goes through the light-theme lightness cap** (issue
+  #164; DS `handoff/README.md` → *Registry glyph lightness*). The constants stay as authored; on light
+  `--glyph-l` caps a glyph at L 0.58 (3:1) and `--glyph-text-l` caps a colour used as text at L 0.50
+  (4.5:1), keeping chroma and hue; dark passes `l` through. In markup or code write
+  `OdsGlyphInk.Glyph(color)` / `OdsGlyphInk.Text(color)`; in CSS reading a published colour
+  (`--rec`, `--odc-infotile-accent`, `--odc-er-node-fg`, `--odc-cardsel-accent`) write
+  `color: oklch(from var(--rec, var(--brand-text)) var(--glyph-l, l) c h)`. Soft tints keep the
+  authored colour. `RegistryGlyphContrastTests` measures every registry and
+  `RegistryGlyphInkSourceTests` fails on a raw site; chart series are out of scope.
 - **An unavailable action is ABSENT from a menu, never dimmed.** `OdsMenuItem.Disabled` makes
   `OdsMenu` skip the item entirely, along with any divider or header the omission orphans — there is
   no `Description`/note property any more, and no disabled-item styling to reach for. Where the user

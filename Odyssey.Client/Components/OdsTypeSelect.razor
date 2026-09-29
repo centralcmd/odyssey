@@ -104,7 +104,7 @@
                 <span class="odc-select-trigger-main">
                     @if (Selected is not null && !string.IsNullOrEmpty(Selected.Icon))
                     {
-                        <span class="material-icons odc-opt-icon" style="color:@Selected.Color" aria-hidden="true">@Selected.Icon</span>
+                        <span class="material-icons odc-opt-icon" style="color:@(OdsGlyphInk.Glyph(Selected.Color))" aria-hidden="true">@Selected.Icon</span>
                     }
                     <span class="odc-select-val">@(Selected?.Label ?? Placeholder)</span>
                 </span>
@@ -168,7 +168,7 @@
                 @onclick="@(() => PickAsync(option))"
                 @onkeydown="@(e => OnOptionKeyAsync(e, option))">
             <span class="mud-menu-item-text odc-typesel-item @(on ? "selected" : null)">
-                <span class="material-icons odc-opt-icon" style="color:@option.Color" aria-hidden="true">@option.Icon</span>
+                <span class="material-icons odc-opt-icon" style="color:@(OdsGlyphInk.Glyph(option.Color))" aria-hidden="true">@option.Icon</span>
                 <span class="odc-typesel-lab">@option.Label</span>
                 @if (on)
                 {

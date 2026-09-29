@@ -26,13 +26,13 @@
         var kind = KindLabel(f.ContentType);
         var meta = KindMeta(kind);
         <div class="jec-file" @key="f.Id">
-            <span class="jec-file-ic" style="@($"background:{meta.Soft};color:{meta.Color};")">
+            <span class="jec-file-ic" style="@($"background:{meta.Soft};color:{OdsGlyphInk.Glyph(meta.Color)};")">
                 <span class="material-icons" aria-hidden="true">@meta.Icon</span>
             </span>
             <span class="jec-file-name" title="@f.FileName">@f.FileName</span>
             @* The kind's own colour on the chip as well as the well, the way the design system's file
                row carries it — the kind then reads twice, in the glyph and in the label. *@
-            <OdsChip Bg="@meta.Soft" Fg="@meta.Color">@kind</OdsChip>
+            <OdsChip Bg="@meta.Soft" Fg="@(OdsGlyphInk.Text(meta.Color))">@kind</OdsChip>
             <span class="jec-file-size mono">@FormatSize(f.SizeBytes)</span>
             @* The size carries its unit, and the kind its own word; the date is the one bare value, so
                it says what it is for a reader who cannot see the column it sits in. *@

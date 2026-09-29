@@ -159,7 +159,7 @@ public partial class OdsCombobox
     private string WrapClass => SelectedIcon is null ? "odc-combo-wrap" : "odc-combo-wrap has-lead";
 
     private static string? OptionIconStyle(OdsOption? option) =>
-        string.IsNullOrEmpty(option?.IconColor) ? null : $"color:{option.IconColor};";
+        string.IsNullOrEmpty(option?.IconColor) ? null : $"color:{OdsGlyphInk.Glyph(option.IconColor)};";
 
     private bool IsCreateRow(OdsOption option) =>
         option.Value.StartsWith(CreatePrefix, StringComparison.Ordinal);

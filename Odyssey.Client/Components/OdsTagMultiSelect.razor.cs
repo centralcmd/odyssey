@@ -255,7 +255,7 @@ public partial class OdsTagMultiSelect
     private string LabelOf(OdsOption option) => option.Label;
 
     private static string? IconStyle(OdsOption option) =>
-        string.IsNullOrEmpty(option.IconColor) ? null : $"color:{option.IconColor};";
+        string.IsNullOrEmpty(option.IconColor) ? null : $"color:{OdsGlyphInk.Glyph(option.IconColor)};";
 
     private string RemoveLabel(OdsOption option) => $"Remove {LabelOf(option)}";
 

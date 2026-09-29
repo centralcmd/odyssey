@@ -60,5 +60,5 @@
     private string SizeSuffix => Compact ? " sm" : string.Empty;
     private string ClassSuffix => string.IsNullOrWhiteSpace(Class) ? string.Empty : $" {Class}";
     private string ChipClass => $"odc-typechip{SizeSuffix}{ClassSuffix}";
-    private string IconStyle => $"color:{AccountTypeVisuals.FgColor(Type)};";
+    private string IconStyle => $"color:{OdsGlyphInk.Glyph(AccountTypeVisuals.FgColor(Type))};";
 }
