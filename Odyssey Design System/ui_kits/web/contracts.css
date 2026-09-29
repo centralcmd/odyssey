@@ -31,9 +31,9 @@
 .con-charge-term { font: var(--fw-regular) 12px/1 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .con-charge-amt { font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); color: var(--mud-palette-text-primary); }
 .con-charge-go { font: var(--fw-medium) 12px/1 var(--font-sans); color: var(--brand-text); white-space: nowrap; }
-/* Next receipts sit in the same panel, in rows of the same shape: the GROUP
-   HEADING names the direction, and the amount is the only thing that changes
-   color — mint for money in, coral for money out, per the finance semantics. */
+/* Upcoming transactions: charges and receipts in one date-ordered list. The
+   signed amount names the direction — mint "+" for money in, coral "−" for
+   money out, per the finance semantics. */
 .con-charge-amt.in { color: var(--finance-income); }
 .con-charge-amt.out { color: var(--finance-expense); }
 .con-charge-row.incoming .con-charge-md { color: var(--mud-palette-text-primary); }

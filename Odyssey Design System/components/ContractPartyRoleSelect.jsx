@@ -43,12 +43,14 @@ export const CONTRACT_PARTY_ROLES = [
   // The Deposit pair — the mirror of Lender/Borrower, separate members, not aliases.
   { key: 'Depositor',    label: 'Depositor',    enumValue: 20, icon: 'account_balance_wallet', color: 'oklch(0.77 0.13 235)', soft: 'oklch(0.77 0.13 235 / 0.16)', desc: 'The party placing the money and entitled to have it returned.' },
   { key: 'Custodian',    label: 'Custodian',    enumValue: 21, icon: 'account_balance',    color: 'oklch(0.76 0.13 350)', soft: 'oklch(0.76 0.13 350 / 0.16)', desc: 'The party holding the deposited money and owing it back — typically the bank, or a landlord holding a rental deposit. Independent of an account\u2019s custodian.' },
+  // The ledger account the loan or deposit is booked in — an object role.
+  { key: 'Account',      label: 'Account',      enumValue: 22, icon: 'receipt_long',       color: 'oklch(0.78 0.11 140)', soft: 'oklch(0.78 0.11 140 / 0.16)', object: true, desc: 'The deposit or loan account the agreement is booked in.' },
 ];
 
 /**
  * The type × role matrix. Per contract type: `suggested` (legal, offered first)
  * and `allowed` (legal, offered after). Anything absent from both is rejected
- * server-side with a 422 — 78 of the 200 cells are legal. Every type carries at
+ * server-side with a 422 — 81 of the 220 cells are legal. Every type carries at
  * least one suggested role, so the picker's first group is never empty.
  * `Guarantor`, `Broker`, `Other` are universal: legal everywhere, suggested
  * nowhere. `Object` is deliberately absent from Employment and Insurance.
@@ -60,10 +62,10 @@ export const CONTRACT_PARTY_ROLE_MATRIX = {
   Insurance:    { suggested: ['Insurer', 'Policyholder', 'Insured', 'Beneficiary'], allowed: ['Guarantor', 'Broker', 'Other'] },
   Subscription: { suggested: ['Buyer', 'Seller'],                             allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
   Purchase:     { suggested: ['Buyer', 'Seller', 'Property'],                 allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
-  Loan:         { suggested: ['Lender', 'Borrower', 'Collateral'],            allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
-  Deposit:      { suggested: ['Depositor', 'Custodian'],                      allowed: ['Object', 'Collateral', 'Guarantor', 'Broker', 'Other'] },
+  Loan:         { suggested: ['Lender', 'Borrower', 'Account', 'Collateral'], allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
+  Deposit:      { suggested: ['Depositor', 'Custodian', 'Account'],           allowed: ['Object', 'Collateral', 'Guarantor', 'Broker', 'Other'] },
   Membership:   { suggested: ['Buyer', 'Seller'],                             allowed: ['Object', 'Guarantor', 'Broker', 'Other'] },
-  Other:        { suggested: ['Other'],                                       allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Object', 'Property', 'Collateral', 'Depositor', 'Custodian', 'Guarantor', 'Broker'] },
+  Other:        { suggested: ['Other'],                                       allowed: ['Employee', 'Employer', 'Buyer', 'Seller', 'Landlord', 'Tenant', 'Insurer', 'Policyholder', 'Insured', 'Beneficiary', 'Lender', 'Borrower', 'Object', 'Property', 'Collateral', 'Depositor', 'Custodian', 'Account', 'Guarantor', 'Broker'] },
 };
 
 /** 'suggested' | 'allowed' | 'rejected' for one (contract type, role) cell. */

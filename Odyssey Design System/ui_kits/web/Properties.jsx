@@ -165,7 +165,7 @@ const PropertyDocuments = ({ property, files, perms, onAttach, onSave, onDetach 
       {rows.length === 0 || !DSFilesTable ? (
         <EmptyLine>{canWrite ? emptyText : 'No documents are attached to this property.'}</EmptyLine>
       ) : (
-        <div className="con-files con-tbl-frame">
+        <div className="con-files con-tbl-frame odc-scroll">
           <InlinePager items={rows}>
             {(pageRows) => (
               <DSFilesTable

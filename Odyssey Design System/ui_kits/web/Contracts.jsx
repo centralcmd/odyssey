@@ -449,7 +449,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         {fileRows.length === 0 ? (
           <EmptyLine>No documents yet — upload the signed agreement, an amendment, or correspondence.</EmptyLine>
         ) : (
-          <div className="con-files con-tbl-frame">
+          <div className="con-files con-tbl-frame odc-scroll">
             <ContractFilesTable files={fileRows} onDelete={removeFile} onSave={saveFile} />
           </div>
         )}
@@ -700,7 +700,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
         ]}
         counts={[
           { icon: 'diversity_3', value: parties.length, label: 'Parties' },
-          { icon: 'sell', value: terms.length, label: 'Terms' },
+          { icon: '§', value: terms.length, label: 'Terms' },
           { icon: 'description', value: files.length, label: 'Documents' },
           { icon: 'local_offer', value: smartTagIds.length, label: 'Smart tags' },
           { icon: 'history', value: events.length, label: 'Events' },
@@ -1023,6 +1023,11 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
     .filter(c => CON_H.conStatus(c, today) === 'Paused')
     .sort((a, b) => (a.paused < b.paused ? 1 : -1))
     .slice(0, 6);
+  // Charges and receipts read as one date-ordered list; the sign carries the direction.
+  const upcoming = [
+    ...upcomingCharges.map((r) => ({ ...r, dir: 'out' })),
+    ...upcomingReceipts.map((r) => ({ ...r, dir: 'in' })),
+  ].sort((a, b) => a.days - b.days);
   const signal = (flagged.length || upcomingCharges.length || upcomingReceipts.length || recentlyExpired.length || startingSoon.length || pausedRows.length || awaitingSignature.length) ? {
     // The panel's worst severity wins the button: an expired term reads error,
     // a term running out reads warning, and next charges alone read info.
@@ -1096,11 +1101,12 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
             </div>
           );
         })}
-        {upcomingCharges.length ? <div className="con-signal-group">Next charges</div> : null}
-        {upcomingCharges.map(({ contract: c, term, date, days }) => {
+        {upcoming.length ? <div className="con-signal-group">Upcoming transactions</div> : null}
+        {upcoming.map(({ contract: c, term, date, days, dir }) => {
           const ti = CON_H.contractTypeInfo(c.type);
+          const amt = CON_H.money(Math.abs(term.value), term.currency || 'USD');
           return (
-            <div key={c.id} className="con-charge-row" role="button" tabIndex={0}
+            <div key={`${dir}-${c.id}`} className={`con-charge-row${dir === 'in' ? ' incoming' : ''}`} role="button" tabIndex={0}
               onClick={() => jumpTo(c.id)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpTo(c.id); } }}>
               <span className="con-charge-when">
@@ -1112,28 +1118,7 @@ const Contracts = ({ tweaks = {}, onNavigate }) => {
                 <span className="con-charge-title">{c.name}</span>
                 <span className="con-charge-term">{CON_H.termDisplayName(term, null)}</span>
               </span>
-              <span className="con-charge-amt mono out">{CON_H.money(term.value, term.currency || 'USD')}</span>
-              <span className="con-charge-go">View →</span>
-            </div>
-          );
-        })}
-        {upcomingReceipts.length ? <div className="con-signal-group">Next receipts</div> : null}
-        {upcomingReceipts.map(({ contract: c, term, date, days }) => {
-          const ti = CON_H.contractTypeInfo(c.type);
-          return (
-            <div key={`in-${c.id}`} className="con-charge-row incoming" role="button" tabIndex={0}
-              onClick={() => jumpTo(c.id)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jumpTo(c.id); } }}>
-              <span className="con-charge-when">
-                <span className="con-charge-md mono">{CON_H.conDateMd(date)}</span>
-                <span className="con-charge-rel">{CON_H.conRelDays(days)}</span>
-              </span>
-              <span className="con-charge-name">
-                <MIcon name={ti.icon} size={16} style={{ color: ti.color }} />
-                <span className="con-charge-title">{c.name}</span>
-                <span className="con-charge-term">{CON_H.termDisplayName(term, null)}</span>
-              </span>
-              <span className="con-charge-amt mono in">{CON_H.money(term.value, term.currency || 'USD')}</span>
+              <span className={`con-charge-amt mono ${dir}`} aria-label={`${dir === 'in' ? 'Money in' : 'Money out'} ${amt}`}>{dir === 'in' ? '+' : '−'}{amt}</span>
               <span className="con-charge-go">View →</span>
             </div>
           );
