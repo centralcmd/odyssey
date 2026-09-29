@@ -5,6 +5,35 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.0](https://github.com/centralcmd/odyssey/compare/v0.36.0...v0.37.0) (2026-09-29)
+
+
+### Features
+
+* **client:** sync attach flows to design update a25fdc4 ([#232](https://github.com/centralcmd/odyssey/issues/232)) ([e160f56](https://github.com/centralcmd/odyssey/commit/e160f563073cb8cc627db4d213da9eacdcce0145))
+* **client:** sync the frontend to the design-system cleanup update ([#225](https://github.com/centralcmd/odyssey/issues/225)) ([3921fa5](https://github.com/centralcmd/odyssey/commit/3921fa5a72a0dc45c3cb9bf5cd2b3b4ea0ed2259))
+* **client:** sync the frontend to the tokens and file-type-picker design update ([#227](https://github.com/centralcmd/odyssey/issues/227)) ([a2a47a6](https://github.com/centralcmd/odyssey/commit/a2a47a64022d835b5b3974474c9c99fa0bba3523))
+* scope contract smart-tag transactions to the term and parties ([#229](https://github.com/centralcmd/odyssey/issues/229)) ([c39fdd6](https://github.com/centralcmd/odyssey/commit/c39fdd6caec1068b9ce183c7c9fefd90c3bd1e58))
+* sync contracts to design update dbf78ec and add the account party role ([#231](https://github.com/centralcmd/odyssey/issues/231)) ([61f3209](https://github.com/centralcmd/odyssey/commit/61f3209d2e1f69725444419e44fe705b4ee2888a))
+* sync the frontend to the allocation-donuts design update ([#224](https://github.com/centralcmd/odyssey/issues/224)) ([7496d7c](https://github.com/centralcmd/odyssey/commit/7496d7c061ecb37f57abe24a6bf05e6dd35a0427))
+* sync to design update 580d50e (tax settlement role, budget icons) ([#234](https://github.com/centralcmd/odyssey/issues/234)) ([75916c2](https://github.com/centralcmd/odyssey/commit/75916c2a8ab7030efe6d8c70f087520fc2c007ba))
+
+
+### Bug Fixes
+
+* **client:** align the event surfaces with the design system ([#230](https://github.com/centralcmd/odyssey/issues/230)) ([3d34ace](https://github.com/centralcmd/odyssey/commit/3d34aced019af06c77c704bca73401f99478812d))
+
+
+### Documentation
+
+* update design system ([580d50e](https://github.com/centralcmd/odyssey/commit/580d50ea4a33d15bd4cc7a24469d372ba8e794f0))
+* update design system ([a25fdc4](https://github.com/centralcmd/odyssey/commit/a25fdc454e0b4c99e939bb4982481835da6bf7a5))
+* update design system ([dbf78ec](https://github.com/centralcmd/odyssey/commit/dbf78ecafd763b8b69ecec64a8376f63015f41a2))
+* update design system ([322f90d](https://github.com/centralcmd/odyssey/commit/322f90d8711515aada0b44cf40156de6aa523fa5))
+* update design system ([43bba46](https://github.com/centralcmd/odyssey/commit/43bba467eb5250faa2bb0f2e2b0f921e4f573e65))
+* update design system ([e5c5e87](https://github.com/centralcmd/odyssey/commit/e5c5e877d89ab8de69ccf06e5647eafb5f02b2f9))
+* update design system ([1f75bbc](https://github.com/centralcmd/odyssey/commit/1f75bbc21fe90490cac52ef84cce495f49a189fe))
+
 ## [0.36.0](https://github.com/centralcmd/odyssey/compare/v0.35.0...v0.36.0) (2026-09-27)
 
 
