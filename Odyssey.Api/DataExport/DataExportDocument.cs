@@ -500,6 +500,12 @@ public sealed class ContractExport
     /// </summary>
     public DateTime? Paused { get; init; }
     public DateTime CreatedAtUtc { get; init; }
+
+    /// <summary>
+    /// Who added the contract — the raw column, as for every attribution column here. Null for a
+    /// contract created before the column existed or whose author has since been deleted.
+    /// </summary>
+    public string? CreatedByUserId { get; init; }
 }
 
 /// <summary>

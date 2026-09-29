@@ -44,8 +44,9 @@ public class ContractServiceTests
 
     /// <summary>
     /// Captures the formatted message of every line the service logs. Issue #121 §7.7's line is the
-    /// Contracts module's only audit trail for a party write — there is no <c>CreatedByUserId</c>
-    /// column — so its content is behaviour, not diagnostics.
+    /// Contracts module's only audit trail for a party write — a party row carries no attribution
+    /// column (only the contract itself records who added it) — so its content is behaviour, not
+    /// diagnostics.
     /// </summary>
     private sealed class RecordingLogger : ILogger<ContractService>
     {
@@ -103,6 +104,46 @@ public class ContractServiceTests
         Ready = SignedOn.AddDays(-1),
         Signed = SignedOn,
     };
+
+    // ── Who added the contract ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Create_StampsTheActingUserAsTheAuthor()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+
+        var created = await service.Create(NewContract(FixedToday), userId: "author-user-id");
+
+        Assert.Equal("author-user-id", await service.CreatedByUserIdOf(created.ContractId));
+        Assert.Equal("author-user-id", context.Contracts.Single().CreatedByUserId);
+    }
+
+    /// <summary>
+    /// A blank id is no author, stored as NULL — never as an empty string, which the foreign key would
+    /// refuse on a real engine and the read path would resolve to "Unknown user".
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Create_WithNoActingUser_RecordsNoAuthor(string? userId)
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context);
+
+        var created = await service.Create(NewContract(FixedToday), userId);
+
+        Assert.Null(await service.CreatedByUserIdOf(created.ContractId));
+    }
+
+    [Fact]
+    public async Task CreatedByUserIdOf_AnUnknownContract_IsNull()
+    {
+        await using var context = TestContextFactory.Create();
+
+        Assert.Null(await CreateService(context).CreatedByUserIdOf(Guid.NewGuid()));
+    }
 
     // ── Derived status ordering & boundaries (§6) ───────────────────────────────
 

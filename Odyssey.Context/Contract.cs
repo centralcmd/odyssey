@@ -102,6 +102,15 @@ public class Contract
     [Required]
     public required DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Who added the record — read back as the "Added by …" line on the event log's origin marker.
+    /// <c>SET NULL</c>, per the user-attribution rule (<c>UserAttributionForeignKeyTests</c>): a
+    /// contract is shared household data and must outlive its author. Null on every contract created
+    /// before the column existed, and the read path shows no line at all rather than a name it never
+    /// recorded; a deleted author reads the same way, since the two nulls cannot be told apart.
+    /// </summary>
+    public string? CreatedByUserId { get; set; }
+
     public ICollection<ContractParty> Parties { get; set; } = new List<ContractParty>();
     public ICollection<ContractFile> Files { get; set; } = new List<ContractFile>();
 

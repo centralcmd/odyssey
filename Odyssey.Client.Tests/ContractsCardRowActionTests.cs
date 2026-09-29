@@ -67,6 +67,57 @@ public class ContractsCardRowActionTests
     }
 
     /// <summary>
+    /// A row-menu request ("New event", "New term") must be consumed when the open card changes. The
+    /// section is created afresh on every expand and cannot remember a token it already handled, so a
+    /// request left in place reopened its dialog every time the card was collapsed and re-expanded.
+    /// </summary>
+    /// <remarks>
+    /// A source-lint rather than a render, for the reason this class records: the card's rows arrive
+    /// through <c>OdsInfiniteList</c>, which materialises nothing in bUnit, so there is no card to
+    /// collapse. The property card is pinned the same way, beside it.
+    /// </remarks>
+    [Fact]
+    public void Changing_the_open_card_consumes_the_pending_row_menu_requests()
+    {
+        var contracts = MethodBody(CardSource(), "private async Task ToggleExpand(Guid id)");
+        Assert.Contains("_newEventRequest = null;", contracts, StringComparison.Ordinal);
+        Assert.Contains("_newTermRequest = null;", contracts, StringComparison.Ordinal);
+
+        var properties = MethodBody(
+            File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", "PropertiesCard.razor.cs")),
+            "private void ToggleExpand(Guid id)");
+        Assert.Contains("_newEventTokens.Clear();", properties, StringComparison.Ordinal);
+        Assert.Contains("_newEstimateTokens.Clear();", properties, StringComparison.Ordinal);
+        Assert.Contains("_attachTokens.Clear();", properties, StringComparison.Ordinal);
+    }
+
+    /// <summary>The text from a method's signature to the first closing brace at its own indent.</summary>
+    private static string MethodBody(string source, string signature)
+    {
+        var start = source.IndexOf(signature, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"'{signature}' is still declared");
+        var end = source.IndexOf("\n    }", start, StringComparison.Ordinal);
+        return source[start..end];
+    }
+
+    /// <summary>
+    /// The record write actions run in the design system's order (Contracts.jsx): the three that
+    /// shape the agreement, then the document that evidences it, then the log of what happened to it.
+    /// </summary>
+    [Fact]
+    public void Record_write_actions_follow_the_design_order()
+    {
+        var source = CardSource();
+
+        var order = new[] { "New party", "New term", "Upload document", "New event" }
+            .Select(label => source.IndexOf($"Label = \"{label}\"", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.DoesNotContain(-1, order);
+        Assert.Equal(order.Order(), order);
+    }
+
+    /// <summary>
     /// The reason an unavailable action cannot be taken is never carried as a menu row. The four
     /// write actions above are ungated outright; the two lifecycle items that CAN be unavailable
     /// (Pause on an unsigned contract, Archive before it has ended) are simply absent when they are,

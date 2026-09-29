@@ -287,6 +287,7 @@ public partial class PropertiesCard
         _expandedId = _expandedId == id ? null : id;
         _attachTokens.Clear();
         _newEstimateTokens.Clear();
+        _newEventTokens.Clear();
     }
 
     // ── Row menu ──────────────────────────────────────────────────────────────────

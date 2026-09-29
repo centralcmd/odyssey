@@ -21,7 +21,7 @@
                @attributes="UserAttributes" />
 
 @code {
-    /// <summary>Material Icons ligature name (use @Icons.Material.Filled.* constants).</summary>
+    /// <summary>An @Icons.Material.Filled.* SVG constant — a Material ligature ("edit") renders no glyph.</summary>
     [Parameter, EditorRequired] public string Icon { get; set; } = string.Empty;
 
     /// <summary>Accessible name — REQUIRED, since the button shows no text.</summary>

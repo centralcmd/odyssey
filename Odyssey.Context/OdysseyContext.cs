@@ -1172,6 +1172,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<TransactionFile>(modelBuilder, nameof(TransactionFile.AttachedByUserId));
         DeclareUserAttribution<TaxStatementFile>(modelBuilder, nameof(TaxStatementFile.AttachedByUserId));
         DeclareUserAttribution<OwnedEvent>(modelBuilder, nameof(OwnedEvent.CreatedByUserId));
+        DeclareUserAttribution<Contract>(modelBuilder, nameof(Contract.CreatedByUserId));
 
         DeclareUserAttribution<FileMetadata>(modelBuilder, nameof(Odyssey.Context.FileMetadata.UploadedByUserId));
         DeclareUserAttribution<FileAnalysisJob>(modelBuilder, nameof(FileAnalysisJob.RequestedByUserId));

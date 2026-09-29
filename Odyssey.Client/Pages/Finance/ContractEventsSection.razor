@@ -117,7 +117,8 @@
                            contract can start in 2026 and still carry a Signed event from 2025, so
                            pinning the foot of the rail to the start would put an event below its own
                            origin. The record's creation is when the log became possible. *@
-                        <OdsEventRailMarker @key="@("cap-origin")" Tone="OdsEventRailTone.Filled">
+                        <OdsEventRailMarker @key="@("cap-origin")" Tone="OdsEventRailTone.Filled"
+                                            Meta="@OriginAttribution">
                             Contract added @FormatDate(Contract.CreatedAtUtc)
                         </OdsEventRailMarker>
                     }
@@ -151,6 +152,15 @@
 @code {
     // Razor syntax (@<text>), so these inline render fragments cannot live in the code-behind.
     // Everything else does.
+
+    /// <summary>
+    /// "Added by … at …" on the origin marker, revealed on hover like a row's attribution. Absent —
+    /// not "Unknown user" — when no author is recorded: every contract created before the column
+    /// existed is in that state, and naming an unknown author there would claim a deleted account.
+    /// </summary>
+    private RenderFragment? OriginAttribution => string.IsNullOrWhiteSpace(Contract.CreatedBy)
+        ? null
+        : @<text>Added by <span class="cev-by-who">@Contract.CreatedBy</span> at @FormatDateTime(Contract.CreatedAtUtc)</text>;
 
     private RenderFragment RowTitle(ExistingContractEvent ev) => @<text>@ev.Title</text>;
 
@@ -187,8 +197,8 @@
     private RenderFragment? RowActions(ExistingContractEvent ev) => CanUpdate
         ? @<OdsRowActions Actions="@(new[]
            {
-               new OdsRowAction { Icon = "edit", Label = $"Edit {ev.Title}", OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => OpenEdit(ev)) },
-               new OdsRowAction { Icon = "delete", Label = $"Delete {ev.Title}", Danger = true, OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => DeleteAsync(ev)) },
+               new OdsRowAction { Icon = Icons.Material.Filled.Edit, Label = $"Edit {ev.Title}", OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => OpenEdit(ev)) },
+               new OdsRowAction { Icon = Icons.Material.Filled.Delete, Label = $"Delete {ev.Title}", Danger = true, OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => DeleteAsync(ev)) },
            })" />
         : null;
 }

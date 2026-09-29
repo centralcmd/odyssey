@@ -97,6 +97,7 @@ public class ContractController : ControllerBase
         }
 
         await displayNames.EnrichFileAttributionAsync(User, [contract], cancellationToken);
+        await EnrichCreatorAsync(contract, cancellationToken);
         return Ok(contract);
     }
 
@@ -114,6 +115,7 @@ public class ContractController : ControllerBase
         var created = await service.Create(
             request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
         await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
+        await EnrichCreatorAsync(created, cancellationToken);
         return CreatedAtRoute("GetContract", new { id = created.ContractId }, created);
     }
 
@@ -161,6 +163,7 @@ written — re-role those parties or detach them first.")]
         }
 
         await displayNames.EnrichFileAttributionAsync(User, [updated], cancellationToken);
+        await EnrichCreatorAsync(updated, cancellationToken);
         return Ok(updated);
     }
 
@@ -599,6 +602,19 @@ written — re-role those parties or detach them first.")]
                 ? UserDisplayNameResolver.UnknownUser
                 : names.GetValueOrDefault(authorId, UserDisplayNameResolver.UnknownUser);
         }
+    }
+
+    /// <summary>
+    /// Resolves who added the contract to a display label. No author recorded stays null — the client
+    /// then shows no "Added by" line — rather than becoming "Unknown user", which would claim an author
+    /// existed and was deleted for every contract created before the column did.
+    /// </summary>
+    private async Task EnrichCreatorAsync(ExistingContract contract, CancellationToken cancellationToken)
+    {
+        var authorId = await service.CreatedByUserIdOf(contract.ContractId, cancellationToken);
+        contract.CreatedBy = string.IsNullOrWhiteSpace(authorId)
+            ? null
+            : await displayNames.ResolveAsync(User, authorId, cancellationToken);
     }
 
     /// <summary>The single-event form of <see cref="EnrichAuthorsAsync"/>.</summary>

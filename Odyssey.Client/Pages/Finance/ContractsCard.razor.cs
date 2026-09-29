@@ -471,6 +471,13 @@ public partial class ContractsCard
 
     private async Task ToggleExpand(Guid id)
     {
+        // Any change of the open card consumes the pending row-menu requests. The sections are created
+        // afresh on every expand and cannot remember a token they already handled, so a request left
+        // in place would reopen its dialog each time the card is reopened. AddTerm / AddEvent set
+        // theirs AFTER expanding, so they are not cleared by the expand they trigger.
+        _newTermRequest = null;
+        _newEventRequest = null;
+
         if (_expandedId == id)
         {
             _expandedId = null;
@@ -1015,13 +1022,6 @@ public partial class ContractsCard
                 Label = "New term",
                 OnClick = EventCallback.Factory.Create(this, () => AddTerm(c.ContractId)),
             });
-
-            items.Add(new OdsMenuItem
-            {
-                Icon = "history",
-                Label = "New event",
-                OnClick = EventCallback.Factory.Create(this, () => AddEvent(c.ContractId)),
-            });
         }
 
         if (_canUploadFiles)
@@ -1033,6 +1033,19 @@ public partial class ContractsCard
                 Icon = "upload_file",
                 Label = "Upload document",
                 OnClick = EventCallback.Factory.Create(this, () => AttachDocument(c.ContractId)),
+            });
+        }
+
+        // After Upload document, the design system's order: the three that shape the agreement, then
+        // the document that evidences it, then the log of what has happened to it. Gated on update
+        // like New party and New term, so it sits in a block of its own.
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "history",
+                Label = "New event",
+                OnClick = EventCallback.Factory.Create(this, () => AddEvent(c.ContractId)),
             });
         }
 

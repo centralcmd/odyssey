@@ -1891,6 +1891,10 @@ tr:focus-within > .odc-rowactions.reveal,
    corner case: a caller holding contracts.read without contracts.update — the seeded User role —
    sees every row this way. Where there is no reveal affordance, there is no reveal. */
 .odc-er-item.no-actions .odc-er-meta { opacity: 1; }
+/* The same premise holds for a MARKER: it has no actions and nothing focusable, so a marker's meta
+   line ("Added by … at …" on a contract's origin) could never be revealed from the keyboard. It is
+   shown outright — a deliberate departure from the design system's hover reveal, for WCAG 2.1.1. */
+.odc-er-marker.has-meta .odc-er-meta { opacity: 1; }
 
 /* ---------- Layout utilities ---------- */
 /* Hairline card/panel outline — replaces the inline

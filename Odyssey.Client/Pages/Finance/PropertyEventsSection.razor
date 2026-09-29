@@ -130,8 +130,8 @@
     private RenderFragment? RowActions(ExistingPropertyEvent ev) => CanUpdate
         ? @<OdsRowActions Actions="@(new[]
            {
-               new OdsRowAction { Icon = "edit", Label = $"Edit {ev.Title}", OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => OpenEdit(ev)) },
-               new OdsRowAction { Icon = "delete", Label = $"Delete {ev.Title}", Danger = true, OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => DeleteAsync(ev)) },
+               new OdsRowAction { Icon = Icons.Material.Filled.Edit, Label = $"Edit {ev.Title}", OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => OpenEdit(ev)) },
+               new OdsRowAction { Icon = Icons.Material.Filled.Delete, Label = $"Delete {ev.Title}", Danger = true, OnClick = EventCallback.Factory.Create<MouseEventArgs>(this, _ => DeleteAsync(ev)) },
            })" />
         : null;
 }

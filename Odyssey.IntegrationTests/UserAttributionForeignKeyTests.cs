@@ -50,6 +50,8 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         // happened to an agreement, not the author's personal data, so it must outlive their account
         // with only the name dropped.
         ("Events", "CreatedByUserId"),
+        // Who added a contract — the "Added by" line on its event log's origin marker.
+        ("Contracts", "CreatedByUserId"),
         ("FileMetadata", "UploadedByUserId"),
         ("FileAnalysisJobs", "RequestedByUserId"),
         ("FileAnalysisCandidateTransactions", "ReviewedByUserId"),
@@ -126,6 +128,7 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
             var fileId = Guid.NewGuid();
             var blobId = Guid.NewGuid();
             var entryId = Guid.NewGuid();
+            var contractId = Guid.NewGuid();
 
             await using (var seed = new OdysseyContext(OptionsFor(connectionString)))
             {
@@ -155,6 +158,13 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                 });
+                seed.Contracts.Add(new Contract
+                {
+                    ContractId = contractId,
+                    Name = "A shared lease",
+                    CreatedAtUtc = DateTime.UtcNow,
+                    CreatedByUserId = userId,
+                });
                 await seed.SaveChangesAsync();
             }
 
@@ -169,12 +179,14 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
             // The shared records survive — that is the whole point of SET NULL over CASCADE...
             var file = await verify.FileMetadata.AsNoTracking().SingleAsync(f => f.Id == fileId);
             var entry = await verify.JournalEntries.AsNoTracking().SingleAsync(e => e.JournalEntryId == entryId);
+            var contract = await verify.Contracts.AsNoTracking().SingleAsync(c => c.ContractId == contractId);
             Assert.True(await verify.FileBlob.AsNoTracking().AnyAsync(b => b.Id == blobId));
 
             // ...and only the attribution is gone.
             Assert.Null(file.UploadedByUserId);
             Assert.Null(entry.CreatedByUserId);
             Assert.Null(entry.UpdatedByUserId);
+            Assert.Null(contract.CreatedByUserId);
         }
         finally
         {

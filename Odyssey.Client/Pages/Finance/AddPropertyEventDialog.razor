@@ -41,16 +41,17 @@
             <OdsFieldShell Label="When" Required="true" LabelId="pev-when-label">
                 <div class="cev-when" role="group" aria-labelledby="pev-when-label">
                     <OdsDatePicker Value="_date" ValueChanged="OnDateChanged"
-                                   Label="Date" Required="true" Max="Today"
+                                   aria-label="Date" Required="true" Max="Today"
                                    Placeholder="Pick a date"
                                    Error="@_errors.ContainsKey("occurredAt")"
                                    ErrorText="@_errors.GetValueOrDefault("occurredAt")"
                                    HelperText="@(_errors.ContainsKey("occurredAt") ? null : "Date and time, in the past. A log, not a plan.")" />
-                    <OdsTimeField Label="Time" Value="_time" ValueChanged="OnTimeChanged" />
+                    <OdsTimeField AriaLabel="Time" Placeholder="HH:mm" Value="_time" ValueChanged="OnTimeChanged" />
                 </div>
             </OdsFieldShell>
 
             <OdsField Id="pev-title" Label="Title" Required="true" AutoFocus="true"
+                      name="property-event-title" autocomplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true"
                       Value="@_title" ValueChanged="OnTitleChanged"
                       MaxLength="256" Error="@_errors.GetValueOrDefault("title")"
                       Placeholder="@TitlePlaceholder"

@@ -475,11 +475,15 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
                 FileType = ContextAccountFileType.Registration, AttachedAtUtc = Anchor,
             });
 
+        // The contracts go in as raw SQL: this runs below head, and the entity would write columns
+        // the current model maps that this schema does not have yet.
         var purchase = Contract("House purchase", ContextContractType.Purchase);
-        purchase.Parties.Add(Party(seed.HouseParty, purchase.ContractId, seed.House, ContextContractPartyRole.Property));
         var loan = Contract("Car loan", ContextContractType.Loan);
-        loan.Parties.Add(Party(seed.CarParty, loan.ContractId, seed.Car, ContextContractPartyRole.Collateral));
-        context.Contracts.AddRange(purchase, loan);
+        await MigrationSeam.InsertContractAsync(context, purchase);
+        await MigrationSeam.InsertContractAsync(context, loan);
+        context.ContractParties.AddRange(
+            Party(seed.HouseParty, purchase.ContractId, seed.House, ContextContractPartyRole.Property),
+            Party(seed.CarParty, loan.ContractId, seed.Car, ContextContractPartyRole.Collateral));
 
         await context.SaveChangesAsync();
         return seed;

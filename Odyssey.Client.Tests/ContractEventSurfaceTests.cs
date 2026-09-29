@@ -144,6 +144,111 @@ public class ContractEventSurfaceTests
     }
 
     /// <summary>
+    /// The origin never sits UNDER an older year's marker: this lease was added in June 2025 and its
+    /// oldest entry is from 2024, so the "Contract added" cap goes above the 2024 tick rather than
+    /// between that tick and the row it heads. The design system's own placement rule.
+    /// </summary>
+    [Fact]
+    public void The_origin_marker_sits_above_an_older_years_tick()
+    {
+        var cut = RenderSection(Lease(),
+        [
+            Event(title: "Recent", occurredAt: new DateTime(2025, 9, 1, 10, 0, 0, DateTimeKind.Utc)),
+            Event(title: "Signed", occurredAt: new DateTime(2024, 11, 20, 10, 0, 0, DateTimeKind.Utc)),
+        ]);
+
+        Assert.Equal(["Today", "2025", "Recent", "Contract added", "2024", "Signed"], RailOrder(cut));
+    }
+
+    /// <summary>
+    /// The other half of the same branch: when the first older event is in the SAME year as the
+    /// record's creation, there is no tick between them to hop, so the origin sits directly above it.
+    /// </summary>
+    [Fact]
+    public void The_origin_marker_stays_below_a_same_year_tick()
+    {
+        var cut = RenderSection(Lease(),
+        [
+            Event(title: "Recent", occurredAt: new DateTime(2026, 3, 1, 10, 0, 0, DateTimeKind.Utc)),
+            Event(title: "Viewing", occurredAt: new DateTime(2025, 3, 1, 10, 0, 0, DateTimeKind.Utc)),
+        ]);
+
+        Assert.Equal(["Today", "Recent", "2025", "Contract added", "Viewing"], RailOrder(cut));
+    }
+
+    /// <summary>
+    /// The rail's direct children in order, each reduced to its first word or, for a row, its title:
+    /// markers read "Today", a year, or "Contract added".
+    /// </summary>
+    private static List<string> RailOrder(IRenderedComponent<ContractEventsSection> cut) =>
+        cut.Find(".odc-er").Children
+            .Select(child => child.ClassList.Contains("odc-er-item")
+                ? child.QuerySelector(".odc-er-title")!.TextContent.Trim()
+                : child.QuerySelector("span")!.TextContent.Trim() switch
+                {
+                    var label when label.StartsWith("Contract added", StringComparison.Ordinal) => "Contract added",
+                    var label when label.StartsWith("Today", StringComparison.Ordinal) => "Today",
+                    var label => label,
+                })
+            .ToList();
+
+    /// <summary>
+    /// The origin marker names who added the contract, in the design's "Added by … at …" meta line.
+    /// </summary>
+    [Fact]
+    public void The_origin_marker_names_who_added_the_contract()
+    {
+        var cut = RenderSection(Lease() with { CreatedBy = "Olav Berg" }, [Event()]);
+
+        var origin = cut.FindAll(".odc-er-marker").Single(m => m.TextContent.Contains("Contract added", StringComparison.Ordinal));
+        var meta = origin.QuerySelector(".odc-er-meta");
+        Assert.NotNull(meta);
+        Assert.Equal("Olav Berg", meta!.QuerySelector(".cev-by-who")!.TextContent);
+        Assert.Contains("Added by", meta.TextContent, StringComparison.Ordinal);
+        Assert.Contains("1 Jun 2025 · 09:00", meta.TextContent, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// No recorded author — every contract created before attribution existed — shows NO line, never
+    /// "Unknown user", which would claim a deleted account.
+    /// </summary>
+    [Fact]
+    public void An_origin_with_no_recorded_author_shows_no_attribution()
+    {
+        var cut = RenderSection(Lease(), [Event()]);
+
+        var origin = cut.FindAll(".odc-er-marker").Single(m => m.TextContent.Contains("Contract added", StringComparison.Ordinal));
+        Assert.Null(origin.QuerySelector(".odc-er-meta"));
+        Assert.DoesNotContain("has-meta", origin.ClassName, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// WCAG 2.1.1 — a marker has nothing focusable, so its meta line could never be revealed from the
+    /// keyboard. The stylesheet shows it outright; a source-lint because a computed style is not
+    /// observable in bUnit (the stylesheet is global, never attached to the rendered component).
+    /// </summary>
+    [Fact]
+    public void A_marker_meta_line_is_shown_without_needing_a_reveal()
+    {
+        var css = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css"));
+
+        // The selector also carries a spacing rule, so look for the one that sets the opacity.
+        var rules = Regex.Matches(css, @"\.odc-er-marker\.has-meta \.odc-er-meta \{[^}]*\}");
+        Assert.Contains(rules, rule => rule.Value.Contains("opacity: 1", StringComparison.Ordinal));
+    }
+
+    /// <summary>The edit and delete buttons paint a glyph — they were clickable but blank.</summary>
+    [Fact]
+    public void Each_row_action_draws_its_glyph()
+    {
+        var cut = RenderSection(Lease(), [Event()]);
+
+        var buttons = cut.FindAll(".odc-er-item .odc-rowactions button");
+        Assert.Equal(2, buttons.Count);
+        Assert.All(buttons, b => Assert.NotNull(b.QuerySelector("svg path")));
+    }
+
+    /// <summary>
     /// A year is a marker ON the line between rows, not a heading over a sub-list — which is the whole
     /// reason this is the event rail and not <c>OdsTimeline</c>, whose rail restarts per item.
     /// </summary>
@@ -309,6 +414,40 @@ public class ContractEventSurfaceTests
             node => Assert.False(
                 string.IsNullOrEmpty(node.Id),
                 "a help node with no id is referenced by nothing"));
+    }
+
+    /// <summary>
+    /// The design's "When" pair carries ONE visible label — the shell's. The date and time controls
+    /// under it take no floating or stacked label of their own (they used to render "Date *" inside the
+    /// outline and "Time" above the box, two different label styles out of line with each other), yet
+    /// each input keeps an accessible name so a screen reader can tell them apart.
+    /// </summary>
+    [Fact]
+    public void The_when_pair_shows_one_label_and_each_control_keeps_a_name()
+    {
+        var cut = RenderDialog(Lease());
+
+        var when = cut.Find(".cev-when");
+        Assert.Empty(when.QuerySelectorAll("label"));
+        Assert.Equal(["Date", "Time"], when.QuerySelectorAll("input").Select(i => i.GetAttribute("aria-label")));
+    }
+
+    /// <summary>
+    /// An unnamed text input that autofocuses inside a dialog is exactly what browsers and password
+    /// managers read as a username field. <c>autocomplete="off"</c> alone is widely ignored, so the
+    /// design system pairs it with the vendor opt-outs — and they have to land on the INPUT.
+    /// </summary>
+    [Fact]
+    public void The_title_input_opts_out_of_autofill()
+    {
+        var cut = RenderDialog(Lease());
+
+        var title = cut.Find("input#cev-title");
+        Assert.Equal("contract-event-title", title.GetAttribute("name"));
+        Assert.Equal("off", title.GetAttribute("autocomplete"));
+        Assert.True(title.HasAttribute("data-1p-ignore"));
+        Assert.True(title.HasAttribute("data-lpignore"));
+        Assert.True(title.HasAttribute("data-bwignore"));
     }
 
     // ── Writes (§8.6, AC 7) ──────────────────────────────────────────────────

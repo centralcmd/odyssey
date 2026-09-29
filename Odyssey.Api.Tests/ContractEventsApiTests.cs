@@ -309,6 +309,118 @@ public class ContractEventsApiTests
         Assert.Equal("Unknown user", Assert.Single(items).CreatedBy);
     }
 
+    // ── The origin marker's author: who added the contract ─────────────────
+
+    /// <summary>
+    /// The contract records who added it, and the detail read returns that as a display LABEL — the
+    /// same rule the event rows follow, so the raw id never reaches the response.
+    /// </summary>
+    [Fact]
+    public async Task GetContract_NamesWhoAddedIt_AndNeverTheRawUserId()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        await factory.SeedActorUserAsync(displayName: "Jane Doe");
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+
+        var raw = await client.GetStringAsync($"{Path}/{contractId}");
+        var contract = await client.GetFromJsonAsync<ExistingContract>($"{Path}/{contractId}");
+
+        Assert.Equal("Jane Doe", contract!.CreatedBy);
+        Assert.DoesNotContain(ActorUserId, raw, StringComparison.Ordinal);
+        Assert.DoesNotContain("createdByUserId", raw, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// POST stamps the caller as the author and answers with the label, not the id — the response the
+    /// client renders straight after a create, before any GET.
+    /// </summary>
+    [Fact]
+    public async Task PostContract_ReturnsWhoAddedIt_AndNeverTheRawUserId()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        await factory.SeedActorUserAsync(displayName: "Jane Doe");
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(Path, new NewContract
+        {
+            Name = "Maple St lease",
+            Type = Odyssey.Dtos.Finance.ContractType.Rental,
+        });
+        var raw = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal("Jane Doe", (await response.Content.ReadFromJsonAsync<ExistingContract>())!.CreatedBy);
+        Assert.DoesNotContain(ActorUserId, raw, StringComparison.Ordinal);
+        Assert.DoesNotContain("createdByUserId", raw, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// An edit is not a re-authoring: a PUT by a DIFFERENT user keeps naming whoever added the
+    /// contract, and neither user's id reaches the body.
+    /// </summary>
+    [Fact]
+    public async Task PutContract_ByAnotherUser_KeepsTheOriginalAuthor()
+    {
+        const string EditorUserId = "contract-events-editor-id";
+        await using var authorFactory = await NewFactoryAsync(ReadWrite);
+        await authorFactory.SeedActorUserAsync(displayName: "Jane Doe");
+        using var author = authorFactory.CreateClient();
+        var contractId = await CreateContractAsync(author);
+
+        await using var editorFactory = new ApiFactory(ReadWrite, sharingStoreWith: authorFactory, userId: EditorUserId);
+        await editorFactory.SeedActorUserAsync(userName: "editor@example.com", displayName: "Olav Berg");
+        using var editor = editorFactory.CreateClient();
+
+        var response = await editor.PutAsJsonAsync($"{Path}/{contractId}", ContractWrite());
+        var raw = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Jane Doe", (await response.Content.ReadFromJsonAsync<ExistingContract>())!.CreatedBy);
+        Assert.DoesNotContain(ActorUserId, raw, StringComparison.Ordinal);
+        Assert.DoesNotContain(EditorUserId, raw, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A stored id that names no user — which the SET NULL key prevents on a real engine, but a hand
+    /// edit or a restore can produce — reads as "Unknown user", the resolver's answer for an id it
+    /// cannot resolve. Only a NULL column means "no line".
+    /// </summary>
+    [Fact]
+    public async Task GetContract_WhoseAuthorIdNamesNoUser_ReadsAsUnknownUser()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await SeedContractDirectlyAsync(factory);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            (await context.Contracts.SingleAsync(c => c.ContractId == contractId)).CreatedByUserId = "no-such-user";
+            await context.SaveChangesAsync();
+        }
+
+        var contract = await client.GetFromJsonAsync<ExistingContract>($"{Path}/{contractId}");
+
+        Assert.Equal("Unknown user", contract!.CreatedBy);
+    }
+
+    /// <summary>
+    /// A contract with no recorded author — every one created before the column existed — reads back
+    /// null, NOT "Unknown user": naming an unknown author would claim a deleted account for rows that
+    /// simply predate attribution, so the client shows no "Added by" line at all.
+    /// </summary>
+    [Fact]
+    public async Task GetContract_WithNoRecordedAuthor_ReturnsNullRatherThanUnknownUser()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await SeedContractDirectlyAsync(factory);
+
+        var contract = await client.GetFromJsonAsync<ExistingContract>($"{Path}/{contractId}");
+
+        Assert.Null(contract!.CreatedBy);
+    }
+
     [Fact]
     public async Task Get_OnAMissingContract_Returns404()
     {
@@ -1000,10 +1112,13 @@ public class ContractEventsApiTests
 
     private sealed class ApiFactory : OdysseyApiFactory
     {
-        public ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharingStoreWith = null)
+        public ApiFactory(
+            IReadOnlyCollection<string>? permissions,
+            OdysseyApiFactory? sharingStoreWith = null,
+            string userId = ActorUserId)
             : base(
                 permissions,
-                ActorUserId,
+                userId,
                 configuration: null,
                 configureServices: services =>
                 {

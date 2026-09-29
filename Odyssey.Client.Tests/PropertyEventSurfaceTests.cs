@@ -119,6 +119,17 @@ public class PropertyEventSurfaceTests
         Assert.Contains("1 Jun 2025", cut.Markup, StringComparison.Ordinal);
     }
 
+    /// <summary>The edit and delete buttons paint a glyph — they were clickable but blank.</summary>
+    [Fact]
+    public void Each_row_action_draws_its_glyph()
+    {
+        var cut = RenderSection(Car(), [Event()]);
+
+        var buttons = cut.FindAll(".odc-er-item .odc-rowactions button");
+        Assert.Equal(2, buttons.Count);
+        Assert.All(buttons, b => Assert.NotNull(b.QuerySelector("svg path")));
+    }
+
     /// <summary>
     /// The design system's placement rule: an Acquired event from before the record existed sits
     /// BELOW the "Property added" marker, and the marker never lands under an older year's tick.

@@ -376,7 +376,10 @@ public sealed class OdsMenuItem
 /// </summary>
 public sealed record OdsRowAction
 {
-    /// <summary>Material Icons ligature name (use the <c>Icons.Material.Filled.*</c> constants).</summary>
+    /// <summary>
+    /// An <c>Icons.Material.Filled.*</c> SVG constant. NOT a Material ligature: the button is a
+    /// MudIconButton, which draws nothing for a string like <c>"edit"</c> while staying clickable.
+    /// </summary>
     public required string Icon { get; init; }
 
     /// <summary>Accessible name — REQUIRED, the button has no visible text.</summary>
