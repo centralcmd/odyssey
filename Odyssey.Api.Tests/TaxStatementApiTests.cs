@@ -32,6 +32,9 @@ public class TaxStatementApiTests
     private static readonly string[] ReadWrite =
         [PermissionClaims.TaxesRead, PermissionClaims.TaxesCreate, PermissionClaims.TaxesUpdate, PermissionClaims.TaxesDelete];
 
+    // Attaching by id also requires files.read (issue #233).
+    private static readonly string[] ReadWriteWithFiles = [.. ReadWrite, PermissionClaims.FilesRead];
+
     private static NewTaxStatement NewStatement() => new()
     {
         Name = "2024 assessment",
@@ -370,7 +373,7 @@ public class TaxStatementApiTests
     [Fact]
     public async Task AttachFile_PdfAndJpeg_Retrievable_UnsupportedRejected()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
         var pdfId = await SeedFileAsync(factory, "statement.pdf", "application/pdf");
         var jpegId = await SeedFileAsync(factory, "scan.jpg", "image/jpeg");
         var textId = await SeedFileAsync(factory, "notes.txt", "text/plain");

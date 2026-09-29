@@ -186,10 +186,12 @@ public class TaxStatementController : ControllerBase
 
     [HttpPost("{id}/files", Name = "AttachTaxStatementFile")]
     [Authorize(Policy = PermissionClaims.TaxesUpdate)]
+    [Authorize(Policy = PermissionClaims.FilesRead)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Attach an already-uploaded document to a tax statement.")]
+    [SwaggerOperation(Summary = "Attach an already-uploaded document to a tax statement (requires taxes.update + files.read).")]
     public async Task<IActionResult> AttachFile(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] AttachTaxStatementFileRequest request, CancellationToken cancellationToken = default)
