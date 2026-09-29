@@ -440,7 +440,6 @@ public partial class TasksPage
     private ExistingJournalTask? _attachTask;
     private Guid _attachKey;
     private bool _attachOpen;
-    private readonly List<Guid> _stagedAttachIds = [];
 
     private async Task OpenAttach(JournalTaskSummary t)
     {
@@ -448,28 +447,26 @@ public partial class TasksPage
         var detail = await EnsureDetail(t.JournalTaskId);
         if (detail is null) return;
         _attachTask = detail;
-        _stagedAttachIds.Clear();
         _attachKey = Guid.NewGuid();
         _attachOpen = true;
     }
 
-    private Task<bool> StageAttach(AttachDocumentItem item)
+    // One write per file, each re-reading the task first. The per-file result is what lets the dialog
+    // keep a failed file's row for a retry: staging every id and committing once after the dialog had
+    // closed lost the whole pick on a single failed write, with only a toast to say so.
+    private async Task<bool> AttachOne(AttachDocumentItem item)
     {
-        _stagedAttachIds.Add(item.FileId);
-        return System.Threading.Tasks.Task.FromResult(true);
+        if (_attachTask is not { } task) return false;
+        var (result, _) = await JournalTaskAttachments.AddAsync(Tasks, task.JournalTaskId, [item.FileId]);
+        return result.Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
 
-    private async Task CommitAttach()
+    private async Task OnTaskFilesAttached(IReadOnlyList<AttachDocumentItem> items)
     {
-        if (_attachTask is not { } opened || _stagedAttachIds.Count == 0) return;
-        List<Guid> staged = [.. _stagedAttachIds];
-        _stagedAttachIds.Clear();
-
-        var (result, task) = await JournalTaskAttachments.AddAsync(Tasks, opened.JournalTaskId, staged);
-        var added = staged.Count;
-        if (result.Toast(Snackbar, "Unable to attach documents", added == 1 ? "Document attached." : $"{added} documents attached."))
-            _announce = $"{added} document{(added == 1 ? "" : "s")} attached to {task?.Title ?? opened.Title}.";
-        await ReloadTask(opened.JournalTaskId);
+        if (_attachTask is not { } task) return;
+        Snackbar.Add(items.Count == 1 ? "Document attached." : $"{items.Count} documents attached.", Severity.Success);
+        _announce = $"{items.Count} document{(items.Count == 1 ? "" : "s")} attached to {task.Title}.";
+        await ReloadTask(task.JournalTaskId);
     }
 
     private async Task RemoveFile(JournalTaskSummary t, Guid fileId)

@@ -567,6 +567,36 @@ public class AttachDocumentsDialogTests
         Assert.Equal(2, h.Posted.Count(p => p.FileId == deedId));
     }
 
+    /// <summary>A rename edited between tries is applied on the retry, not lost with the first store.</summary>
+    [Fact]
+    public async Task A_rename_edited_before_a_retry_is_applied()
+    {
+        var failOnce = true;
+        var stored = Guid.NewGuid();
+        var h = Render(canUpload: true, attachWhen: _ =>
+        {
+            if (!failOnce) return true;
+            failOnce = false;
+            return false;
+        });
+        Stores(h, stored);
+        h.Files.Setup(f => f.UpdateMetadataAsync(stored, null, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid id, string? _, string name, CancellationToken _) =>
+                new FileMetadataResponse(id, name, "application/pdf", 10, "hash", Base, null));
+
+        await h.Pick(Upload("scan001.pdf"));
+        h.SubmitButton.Click();
+        h.Host.WaitForAssertion(() => Assert.Contains("One document wasn’t attached.", h.Markup, StringComparison.Ordinal));
+
+        h.Uploads[0].Name = "Deed 2026.pdf";
+        h.SubmitButton.Click();
+
+        h.Host.WaitForAssertion(() => Assert.Contains(false, h.OpenChanges));
+        h.Files.Verify(f => f.UpdateMetadataAsync(stored, null, "Deed 2026.pdf", It.IsAny<CancellationToken>()), Times.Once);
+        h.Files.Verify(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal("Deed 2026.pdf", h.Posted.Last().Name);
+    }
+
     [Fact]
     public async Task An_upload_that_fails_to_store_is_kept_for_a_retry_and_named()
     {

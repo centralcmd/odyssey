@@ -1,4 +1,3 @@
-using System.Net;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Journal;
@@ -100,7 +99,7 @@ public static class JournalTaskWrite
 /// </summary>
 public static class JournalTaskAttachments
 {
-    /// <summary>Appends <paramref name="fileIds"/> (duplicates of linked files dropped). The task is null when it is gone.</summary>
+    /// <summary>Appends <paramref name="fileIds"/> (duplicates of linked files dropped). The task is null when it could not be read.</summary>
     public static Task<(ApiResult Result, ExistingJournalTask? Task)> AddAsync(
         ITaskApiClient tasks, Guid taskId, IReadOnlyCollection<Guid> fileIds) =>
         WriteAsync(tasks, taskId, current => current.Concat(fileIds));
@@ -113,9 +112,11 @@ public static class JournalTaskAttachments
     private static async Task<(ApiResult, ExistingJournalTask?)> WriteAsync(
         ITaskApiClient tasks, Guid taskId, Func<IEnumerable<Guid>, IEnumerable<Guid>> change)
     {
-        var fresh = await tasks.GetAsync(taskId);
-        if (fresh is null)
-            return (ApiResult.Failure(HttpStatusCode.NotFound, new ApiProblem { Detail = "The task no longer exists." }), null);
+        // The read's own outcome travels back unchanged: a 404 is "the task is gone", but a 403 or an
+        // unreachable server is not, and reporting either as a deletion would misdescribe it.
+        var read = await tasks.GetResultAsync(taskId);
+        if (read.Value is not { } fresh)
+            return (new ApiResult { Status = read.Status, Problem = read.Problem ?? new ApiProblem { Detail = "The task could not be read." } }, null);
 
         var update = JournalTaskWrite.WithAttachments(fresh, change(fresh.Attachments.Select(a => a.FileId)));
         return (await tasks.UpdateAsync(taskId, update), fresh);

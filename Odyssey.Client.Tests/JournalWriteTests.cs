@@ -215,11 +215,14 @@ public class JournalWriteTests
 
     // ── The task row's attachment writes re-read the task first ────────────────────────────────────
 
-    private static (Mock<ITaskApiClient> Tasks, List<UpdateJournalTask> Sent) Server(ExistingJournalTask? current)
+    private static (Mock<ITaskApiClient> Tasks, List<UpdateJournalTask> Sent) Server(
+        ExistingJournalTask? current, HttpStatusCode readFailure = HttpStatusCode.NotFound)
     {
         var sent = new List<UpdateJournalTask>();
         var tasks = new Mock<ITaskApiClient>();
-        tasks.Setup(t => t.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(current);
+        tasks.Setup(t => t.GetResultAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(current is null
+            ? ApiResult<ExistingJournalTask>.Failure(readFailure, new ApiProblem { Detail = readFailure.ToString() })
+            : ApiResult<ExistingJournalTask>.Success(current, HttpStatusCode.OK));
         tasks.Setup(t => t.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UpdateJournalTask>(), It.IsAny<CancellationToken>()))
             .Callback((Guid _, UpdateJournalTask u, CancellationToken _) => sent.Add(u))
             .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
@@ -261,16 +264,22 @@ public class JournalWriteTests
         Assert.Equal([keep], Assert.Single(sent).AttachmentFileIds);
     }
 
-    /// <summary>A task deleted meanwhile is a refusal, never a PUT that would recreate or clear it.</summary>
-    [Fact]
-    public async Task A_task_that_is_gone_is_not_written()
+    /// <summary>
+    /// A task that cannot be read is never written, and the read's own outcome is what the caller sees:
+    /// a 404 is a deleted task, but a 403 or a server error is not, and must not be reported as one.
+    /// </summary>
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task A_task_that_cannot_be_read_is_not_written_and_keeps_its_status(HttpStatusCode status)
     {
-        var (tasks, sent) = Server(null);
+        var (tasks, sent) = Server(null, status);
 
         var (result, task) = await JournalTaskAttachments.AddAsync(tasks.Object, Guid.NewGuid(), [Guid.NewGuid()]);
 
         Assert.False(result.IsSuccess);
-        Assert.Equal(HttpStatusCode.NotFound, result.Status);
+        Assert.Equal(status, result.Status);
         Assert.Null(task);
         Assert.Empty(sent);
     }

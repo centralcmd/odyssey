@@ -193,6 +193,6 @@
                            Subtitle="@($"Keep supporting documents with {_attachTask.Title}. Files stay in Files; attaching links them here.")"
                            Announce="false"
                            AttachedIds="@([.. _attachTask.Attachments.Select(a => a.FileId)])"
-                           Attach="StageAttach"
-                           OnAttached="@(_ => CommitAttach())" />
+                           Attach="AttachOne"
+                           OnAttached="OnTaskFilesAttached" />
 }

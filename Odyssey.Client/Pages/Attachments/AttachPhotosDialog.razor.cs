@@ -65,7 +65,11 @@ public partial class AttachPhotosDialog
     /// </summary>
     [Parameter] public int? SurfaceMaxMegabytes { get; set; }
 
-    /// <summary>Raised with the photos picked or uploaded; the dialog then closes.</summary>
+    /// <summary>
+    /// Raised with the photos picked or uploaded. Usually once, after which the dialog closes; after a
+    /// partly failed upload it is raised with what made it and the dialog stays open for the retry, which
+    /// raises it again with only the newly added photos — so a host appends, never replaces.
+    /// </summary>
     [Parameter] public EventCallback<IReadOnlyList<AttachPhotoItem>> OnSubmit { get; set; }
 
     /// <summary>A line under the upload field — the Photos page's location-privacy notice.</summary>
@@ -279,10 +283,10 @@ public partial class AttachPhotosDialog
             if (added.Count > 0)
                 await OnSubmit.InvokeAsync(added);
             _uploads = failed;
+            // role="alert" on the error line announces it; no second copy in the live region.
             _error = failed.Count == 1
                 ? $"“{failed[0].Name}” wasn’t added. Try again, or remove it."
                 : $"{failed.Count} photos weren’t added. Try again, or remove them.";
-            _announce = _error;
         }
         finally
         {

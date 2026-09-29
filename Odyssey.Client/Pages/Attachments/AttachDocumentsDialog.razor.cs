@@ -142,6 +142,10 @@ public partial class AttachDocumentsDialog
     // than storing a second copy of the bytes.
     private readonly Dictionary<string, Guid> _stored = [];
 
+    // The name each stored row carries on the server, so a rename edited between tries is applied on
+    // the retry rather than lost with the first store.
+    private readonly Dictionary<string, string> _storedNames = [];
+
     private string _announce = string.Empty;
 
     private bool _canUpload;
@@ -423,6 +427,7 @@ public partial class AttachDocumentsDialog
                         continue;
                     }
                     _stored[file.Uid] = id;
+                    await ApplyNameAsync(id, file);
 
                     var item = ItemFor(AttachDocumentSource.Upload, id, file);
                     if (await Attach(item))
@@ -462,10 +467,11 @@ public partial class AttachDocumentsDialog
             // that neither re-stores nor re-links what already worked.
             if (_tab == UploadTab)
                 _uploads = failedUploads;
+            // The error line is role="alert", which announces it; a second copy in the live region would
+            // read it twice.
             _error = failed == 1
                 ? "One document wasn’t attached. Try again, or remove it."
                 : $"{failed} documents weren’t attached. Try again, or remove them.";
-            _announce = _error;
         }
         finally
         {
@@ -473,33 +479,39 @@ public partial class AttachDocumentsDialog
         }
     }
 
-    // Stores one upload and applies an in-dropzone rename. Null when the upload failed; a failed rename
-    // still returns the id (the file is stored under its original name) and says so.
+    // Stores one upload under its picked file name. Null when the upload failed; the reason is on screen.
     private async Task<Guid?> StoreAsync(OdsUploadFile file)
     {
-        Guid id;
         try
         {
-            id = (await FilesApi.UploadAsync(file.Source!.ToApiUpload(_uploadLimits.MaxUploadBytes))).Id;
+            var id = (await FilesApi.UploadAsync(file.Source!.ToApiUpload(_uploadLimits.MaxUploadBytes))).Id;
+            _storedNames[file.Uid] = file.Source!.Name;
+            return id;
         }
         catch (Exception)
         {
             Snackbar.Add($"Couldn’t upload “{file.Name}”.", Severity.Error);
             return null;
         }
+    }
 
-        var finalName = file.Name.Trim();
-        if (!string.IsNullOrEmpty(finalName) && finalName != file.Source!.Name)
+    // Applies an in-dropzone rename when the row's name differs from what the server holds — on the first
+    // try and again on a retry after the reader edited it. A failed rename keeps the stored name, says so,
+    // and does not block the attach.
+    private async Task ApplyNameAsync(Guid id, OdsUploadFile file)
+    {
+        var wanted = file.Name.Trim();
+        var current = _storedNames.GetValueOrDefault(file.Uid, file.Source!.Name);
+        if (string.IsNullOrEmpty(wanted) || wanted == current)
+            return;
+
+        if (await FilesApi.UpdateMetadataAsync(id, null, wanted) is null)
         {
-            var renamed = await FilesApi.UpdateMetadataAsync(id, null, finalName);
-            if (renamed is null)
-            {
-                Snackbar.Add($"“{file.Source.Name}” was uploaded but couldn’t be renamed to “{finalName}”.", Severity.Warning);
-                file.Name = file.Source.Name;
-            }
+            Snackbar.Add($"“{current}” was uploaded but couldn’t be renamed to “{wanted}”.", Severity.Warning);
+            file.Name = current;
+            return;
         }
-
-        return id;
+        _storedNames[file.Uid] = wanted;
     }
 
     private Task CloseAsync() => OpenChanged.InvokeAsync(false);
