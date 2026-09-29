@@ -1023,12 +1023,6 @@ public partial class ContractsCard
                 OnClick = EventCallback.Factory.Create(this, () => AddTerm(c.ContractId)),
             });
 
-            items.Add(new OdsMenuItem
-            {
-                Icon = "history",
-                Label = "New event",
-                OnClick = EventCallback.Factory.Create(this, () => AddEvent(c.ContractId)),
-            });
         }
 
         if (_canUploadFiles)
@@ -1040,6 +1034,19 @@ public partial class ContractsCard
                 Icon = "upload_file",
                 Label = "Upload document",
                 OnClick = EventCallback.Factory.Create(this, () => AttachDocument(c.ContractId)),
+            });
+        }
+
+        // After Upload document, the design system's order: the three that shape the agreement, then
+        // the document that evidences it, then the log of what has happened to it. Gated on update
+        // like New party and New term, so it sits in a block of its own.
+        if (_canUpdate)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "history",
+                Label = "New event",
+                OnClick = EventCallback.Factory.Create(this, () => AddEvent(c.ContractId)),
             });
         }
 

@@ -67,6 +67,23 @@ public class ContractsCardRowActionTests
     }
 
     /// <summary>
+    /// The record write actions run in the design system's order (Contracts.jsx): the three that
+    /// shape the agreement, then the document that evidences it, then the log of what happened to it.
+    /// </summary>
+    [Fact]
+    public void Record_write_actions_follow_the_design_order()
+    {
+        var source = CardSource();
+
+        var order = new[] { "New party", "New term", "Upload document", "New event" }
+            .Select(label => source.IndexOf($"Label = \"{label}\"", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.DoesNotContain(-1, order);
+        Assert.Equal(order.Order(), order);
+    }
+
+    /// <summary>
     /// The reason an unavailable action cannot be taken is never carried as a menu row. The four
     /// write actions above are ungated outright; the two lifecycle items that CAN be unavailable
     /// (Pause on an unsigned contract, Archive before it has ended) are simply absent when they are,
