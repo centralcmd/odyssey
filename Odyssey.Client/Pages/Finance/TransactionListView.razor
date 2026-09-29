@@ -36,7 +36,7 @@
                  Actions="BuildActions"
                  OnDelete="HandleDeleteAsync">
         <RenderDetail Context="t">
-            <TransactionDetailPanel Transaction="t" CanDownloadFiles="_canDownloadFiles" />
+            <TransactionDetailPanel Transaction="t" CanDownloadFiles="_canDownloadFiles" CanDeleteFiles="@(_canUpdate && _canDeleteFiles)" />
         </RenderDetail>
     </OdsTxnTable>
     <OdsPager Page="Page" PageChanged="PageChanged"
@@ -51,7 +51,7 @@ else
                      Actions="BuildActions"
                      OnDelete="HandleDeleteAsync">
             <RenderDetail Context="t">
-                <TransactionDetailPanel Transaction="t" CanDownloadFiles="_canDownloadFiles" />
+                <TransactionDetailPanel Transaction="t" CanDownloadFiles="_canDownloadFiles" CanDeleteFiles="@(_canUpdate && _canDeleteFiles)" />
             </RenderDetail>
         </OdsTxnTable>
     </OdsInlinePager>
@@ -62,8 +62,13 @@ else
     <CreateTransactionDialog @key="_editKey"
                              @bind-Open="_editOpen"
                              Transaction="_editTransaction"
-                             CanDownloadFiles="_canDownloadFiles"
-                             CanUploadFiles="_canUploadFiles"
-                             CanDeleteFiles="_canDeleteFiles"
                              OnSaved="ChangedAsync" />
+}
+
+@if (_attachTransaction is not null)
+{
+    <TransactionAttachDialog @key="_attachKey"
+                             @bind-Open="_attachOpen"
+                             Transaction="_attachTransaction"
+                             OnAttached="ChangedAsync" />
 }

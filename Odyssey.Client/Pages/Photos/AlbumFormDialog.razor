@@ -3,13 +3,15 @@
 @inject IPhotosApiClient Photos
 @inject IFilesApiClient Files
 @inject ISnackbar Snackbar
-@inject IUploadLimitsCache UploadLimits
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @*
     AlbumFormDialog — create or edit an album (Odyssey Design System · Photos · album management).
-    Both modes carry an "Upload new photos to this album" dropzone (OdsFileUpload, kind picker off):
-    staged files are uploaded on save, one library Photo per file, then seeded into the new album's
-    PhotoIds (create) or appended to the ordered membership (edit). Edit also exposes a keyboard-operable
+    Both modes carry a Photos field whose "Add photos" opens the shared AttachPhotosDialog: upload new
+    photos (each becomes a library Photo at once) or pick from the library. The picks are staged and
+    seeded into the new album's PhotoIds (create) or appended to the ordered membership (edit) on save.
+    Edit also exposes a keyboard-operable
     member list: move up/down, set-as-cover, and remove — all real buttons with aria-labels (spec §3 #5),
     never pointer-only drag. Save PUTs the ordered PhotoIds + CoverPhotoId (Position = array index); the
     cover is validated against membership server-side (§7).
@@ -19,6 +21,7 @@
           Icon="@(IsEdit ? "edit" : "add_photo_alternate")" Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
         <div class="ods-modal-body pl-albform">
+            <OdsLiveAnnouncer Message="@_announce" />
             <OdsField Label="Album name" @bind-Value="_name" Icon="photo_album" Placeholder="e.g. Summer 2026" Required="true" />
             <OdsField Label="Description" @bind-Value="_desc" Multiline="true" Rows="2" MaxLength="1024"
                       Placeholder="What’s this album about?" />
@@ -29,7 +32,7 @@
                     <label class="odc-field-label">Photos in this album — order &amp; cover</label>
                     @if (_members.Count == 0)
                     {
-                        <div class="pl-drop-hint">No photos yet — upload below or add from the library’s “Add to album”.</div>
+                        <div class="pl-drop-hint">No photos yet — add some below.</div>
                     }
                     else
                     {
@@ -71,12 +74,29 @@
             }
 
             <div class="odc-field">
-                <label class="odc-field-label">Upload new photos to this album</label>
-                <OdsFileUpload Files="_files" FilesChanged="v => _files = [.. v]"
-                               ShowKinds="false"
-                               Accept=".jpg,.jpeg,.png,.gif,.webp"
-                               Hint="@($"JPEG, PNG, GIF or WebP · up to {_uploadLimits.MaxUploadMegabytes} MB each · multiple at once")"
-                               Error="@_uploadError" />
+                <label class="odc-field-label">Photos</label>
+                @if (!IsEdit && _newIds.Count > 0)
+                {
+                    <ul class="pl-newgrid">
+                        @foreach (var id in _newIds)
+                        {
+                            var label = LabelFor(id);
+                            <li class="pl-newthumb" style="@ThumbStyleFor(id)" title="@label" @key="id">
+                                <button type="button" class="pl-newremove" id="@NewRemoveId(id)" aria-label="@($"Remove {label}")"
+                                        @onclick="() => RemoveNew(id)">
+                                    <OdsMIcon Name="close" Size="14" />
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                }
+                <div class="pl-addrow" id="@($"pl-addrow-{_uid}")">
+                    <OdsButton Variant="OdsButtonVariant.Outlined" Icon="add_photo_alternate" OnClick="OpenPicker">Add photos</OdsButton>
+                    @if (PhotoCount > 0)
+                    {
+                        <span class="pl-drop-hint pl-addcount">@PhotoCount photo@(PhotoCount == 1 ? "" : "s") in this album</span>
+                    }
+                </div>
             </div>
         </div>
     </ChildContent>
@@ -95,3 +115,12 @@
         </OdsButton>
     </Footer>
 </OdsModal>
+
+@if (_pickerOpen)
+{
+    <AttachPhotosDialog Open="_pickerOpen" OpenChanged="v => _pickerOpen = v"
+                        SurfaceMaxMegabytes="SurfaceMaxMegabytes"
+                        Subtitle="@($"Add photos to {(IsEdit && !string.IsNullOrWhiteSpace(_name) ? _name : "this album")}. Photos stay in your library; adding links them here.")"
+                        AttachedIds="@(IsEdit ? _members : _newIds)"
+                        OnSubmit="AddPicked" />
+}

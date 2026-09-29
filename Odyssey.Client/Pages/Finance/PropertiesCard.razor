@@ -275,7 +275,6 @@
 
                             <PropertyDocumentsSection @key="@($"docs-{p.PropertyId}")" Property="p"
                                                       CanUpdate="_canUpdate" CanAttach="CanAttachDocuments"
-                                                      CanUpload="_canUploadFiles"
                                                       AttachRequestToken="@AttachTokenFor(p.PropertyId)"
                                                       OnCountChanged="@(count => OnDocumentCountChanged(p.PropertyId, count))" />
 

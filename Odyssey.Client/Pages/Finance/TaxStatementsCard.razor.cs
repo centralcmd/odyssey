@@ -11,6 +11,8 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 
+using Odyssey.Client.Pages.Attachments;
+
 namespace Odyssey.Client.Pages.Finance;
 
 public partial class TaxStatementsCard
@@ -74,6 +76,7 @@ public partial class TaxStatementsCard
     private bool _canDelete;
     private bool _canDownloadFiles;
     private bool _canUploadFiles;
+    private bool _canReadFiles;
 
     // ── Computed ──────────────────────────────────────────────────────────────
     // Header count/latest come from the server rollup (issue #372), so they span the whole set rather
@@ -157,8 +160,8 @@ public partial class TaxStatementsCard
         _canUpdate = user.HasPermission(PermissionClaims.TaxesUpdate);
         _canDelete = user.HasPermission(PermissionClaims.TaxesDelete);
         _canDownloadFiles = user.HasPermission(PermissionClaims.FilesRead);
-        _canUploadFiles = user.HasPermission(PermissionClaims.FilesCreate)
-                       && user.HasPermission(PermissionClaims.TaxesUpdate);
+        _canUploadFiles = user.HasPermission(PermissionClaims.FilesCreate);
+        _canReadFiles = user.HasPermission(PermissionClaims.FilesRead);
     }
 
     // Server-side fetch (issue #277): name search + status filter + sort applied by the API.
@@ -348,13 +351,25 @@ public partial class TaxStatementsCard
     }
 
     // ── Upload ──────────────────────────────────────────────────────────────
+    // The attach needs taxes.update; the dialog then offers "Upload new" on files.create and
+    // "From Files" on files.read, so either one makes the action useful.
+    private bool CanAttachFiles => _canUpdate && (_canUploadFiles || _canReadFiles);
+
+    private async Task<bool> AttachTaxFileAsync(AttachDocumentItem item)
+    {
+        if (_uploadStatement is null)
+            return false;
+        return (await TaxStatements.AttachFileAsync(_uploadStatement.TaxStatementId, AttachDocumentRequests.TaxStatement(item)))
+            .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
+    }
+
     private ExistingTaxStatement? _uploadStatement;
     private Guid _uploadKey;
     private bool _uploadOpen;
 
     private void AddFile(ExistingTaxStatement s)
     {
-        if (!_canUploadFiles) return;
+        if (!CanAttachFiles) return;
         _uploadStatement = s;
         _uploadKey = Guid.NewGuid();
         _uploadOpen = true;
@@ -445,7 +460,7 @@ public partial class TaxStatementsCard
     private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Tax statement ID copied.");
 
     /// <summary>The row action menu. Every section-level action lives here — a section header inside a
-    /// record body labels, it does not act — so "Upload file" is the documents section's only entry
+    /// record body labels, it does not act — so "Attach documents" is the documents section's only entry
     /// point.</summary>
     private IReadOnlyList<OdsMenuItem> RowActions(ExistingTaxStatement s, bool archived)
     {
@@ -461,12 +476,12 @@ public partial class TaxStatementsCard
             });
         }
 
-        if (_canUploadFiles)
+        if (CanAttachFiles)
         {
             items.Add(new OdsMenuItem
             {
-                Icon = "upload_file",
-                Label = "Upload file",
+                Icon = "attach_file",
+                Label = "Attach documents",
                 OnClick = EventCallback.Factory.Create(this, () => AddFile(s)),
             });
         }

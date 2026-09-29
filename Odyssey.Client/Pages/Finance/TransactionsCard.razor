@@ -64,7 +64,7 @@
                      Actions="BuildActions"
                      OnDelete="HandleDelete">
             <RenderDetail Context="t">
-                <TransactionDetailPanel Transaction="t" CanDownloadFiles="_canDownloadFiles" />
+                <TransactionDetailPanel Transaction="t" CanDownloadFiles="_canDownloadFiles" CanDeleteFiles="@(_canUpdate && _canDeleteFiles)" />
             </RenderDetail>
             <CreateAction>
                 @if (_canCreate)
@@ -94,8 +94,13 @@
     <CreateTransactionDialog @key="_editTransactionKey"
                              @bind-Open="_editTransactionOpen"
                              Transaction="_editTransaction"
-                             CanDownloadFiles="_canDownloadFiles"
-                             CanUploadFiles="_canUploadFiles"
-                             CanDeleteFiles="_canDeleteFiles"
                              OnSaved="RefreshAsync" />
+}
+
+@if (_attachTransaction is not null)
+{
+    <TransactionAttachDialog @key="_attachKey"
+                             @bind-Open="_attachOpen"
+                             Transaction="_attachTransaction"
+                             OnAttached="RefreshAsync" />
 }

@@ -1,0 +1,24 @@
+@*
+    JournalFileCount — the attachment count that unfolds a record's file list in place (DS Journal ·
+    .jec-filecount). Shared by the journal entry card and the task list row, so the disclosure reads
+    and behaves identically on both. aria-expanded + aria-controls name the list it opens.
+*@
+
+<button type="button" class="jec-filecount" aria-expanded="@(Expanded ? "true" : "false")" aria-controls="@Controls"
+        @onclick="OnToggle">
+    <span class="material-icons" aria-hidden="true">attach_file</span>
+    <span class="jec-fcount">@Count</span>
+    @(Count == 1 ? "file" : "files")
+    <span class="material-icons chev" aria-hidden="true">expand_more</span>
+</button>
+
+@code {
+    [Parameter] public int Count { get; set; }
+
+    [Parameter] public bool Expanded { get; set; }
+
+    /// <summary>The DOM id of the list this count unfolds.</summary>
+    [Parameter] public string? Controls { get; set; }
+
+    [Parameter] public EventCallback OnToggle { get; set; }
+}

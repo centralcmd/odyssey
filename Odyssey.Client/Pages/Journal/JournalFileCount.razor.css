@@ -1,0 +1,22 @@
+/* JournalFileCount — the attachment disclosure: a count that unfolds the full list in place. Moved from
+   JournalEntryCard.razor.css when the task row took the same control (DS Tasks · TaskListRow). */
+.jec-filecount {
+    display: inline-flex; align-items: center; gap: 5px; margin: 0 -6px 0 0;
+    appearance: none; background: none; border: none; padding: 4px 6px;
+    border-radius: var(--radius-sm); cursor: pointer;
+    color: var(--mud-palette-text-secondary);
+    font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);
+    transition: background-color var(--duration-fast) var(--ease-standard),
+                color var(--duration-fast) var(--ease-standard);
+}
+.jec-filecount:hover,
+.jec-filecount[aria-expanded='true'] { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.jec-filecount:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.jec-filecount .material-icons { font-size: 15px; }
+.jec-filecount .chev { transition: transform var(--duration-base) var(--ease-standard); }
+.jec-filecount[aria-expanded='true'] .chev { transform: rotate(180deg); }
+.jec-fcount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
+
+@media (prefers-reduced-motion: reduce) {
+    .jec-filecount, .jec-filecount .chev { transition: none; }
+}

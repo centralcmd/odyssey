@@ -1,0 +1,103 @@
+@*
+    AttachPhotosDialog — the photo twin of AttachDocumentsDialog (Odyssey Design System ·
+    ui_kits/web/AttachPhotosModal.jsx). Two ways a photo gets onto an entry or an album:
+
+      • Upload new — the shared OdsFileUpload, images only. Each file goes through the Files API; with
+        CreateLibraryPhoto a library Photo is created over it at once (an album needs its photo id),
+        otherwise the file id is handed back and the host's own write links it (a journal entry — the
+        server finds or creates the library photo for it).
+      • From Photos — pick photos already in the library (photos.read). A photo already on the entry or
+        album is shown but disabled ("Already added").
+
+    UploadOnly drops the tabs and the library: the Photos page's own "Upload photos".
+    The dialog stages nothing itself — it hands the picked photos to OnSubmit and the host decides.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="add_photo_alternate" Title="@TitleFragment" Subtitle="@SubtitleFragment">
+    <ChildContent>
+        <div class="ods-modal-body prop-doc-modal">
+            @if (ShowTabs)
+            {
+                <OdsSegmentedControl Full="true" AriaLabel="Where the photo comes from"
+                                     Options="Tabs" Value="@_tab" ValueChanged="OnTabChanged" />
+            }
+
+            <OdsLiveAnnouncer Message="@_announce" />
+            @if (_tab == UploadTab)
+            {
+                <OdsFileUpload Files="_uploads" FilesChanged="OnUploadsChanged"
+                               ShowKinds="false"
+                               Accept=".jpg,.jpeg,.png,.gif,.webp"
+                               Hint="@($"JPEG, PNG, GIF, or WebP · up to {_uploadLimits.MaxUploadMegabytes} MB each · multiple at once")"
+                               Error="@_error" />
+                @Footnote
+            }
+            else
+            {
+                <div class="prop-lib">
+                    <OdsSearchField Value="@_query" ValueChanged="OnQueryChanged" DebounceInterval="300"
+                                    Placeholder="Search photos by title, file name or place…"
+                                    AriaLabel="Search photos by title, file name or place" />
+                    @if (_libraryLoading)
+                    {
+                        <div role="status" aria-live="polite" aria-busy="true">
+                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" aria-hidden="true" />
+                            <span class="sr-only">Loading photos…</span>
+                        </div>
+                    }
+                    else if (_libraryFailed)
+                    {
+                        <OdsEmptyLine>Couldn’t load your photos. <OdsButton Variant="OdsButtonVariant.Text" OnClick="LoadLibraryAsync">Try again</OdsButton></OdsEmptyLine>
+                    }
+                    else if (_library.Count == 0)
+                    {
+                        <OdsEmptyLine>@(string.IsNullOrWhiteSpace(_query) ? "Your photo library is empty." : $"No photos match “{_query}”.")</OdsEmptyLine>
+                    }
+                    else
+                    {
+                        <div class="apd-grid" role="group" aria-label="Photos">
+                            @foreach (var photo in _library)
+                            {
+                                var added = IsAttached(photo);
+                                var picked = IsPicked(photo);
+                                <button type="button" class="apd-tile @(picked ? "on" : null)" @key="photo.PhotoId"
+                                        disabled="@added" aria-pressed="@(picked ? "true" : "false")"
+                                        aria-label="@TileLabel(photo, added)" title="@LabelOf(photo)"
+                                        @onclick="@(() => TogglePick(photo))">
+                                    @* An <img>, not a background: there is no thumbnail endpoint, so a
+                                       96-photo page must at least not fetch what is scrolled out of view. *@
+                                    <img class="apd-img" src="@Files.ContentUrl(photo.FileId)" alt="" loading="lazy" />
+                                    <span class="apd-check" aria-hidden="true">
+                                        <OdsMIcon Name="@(added ? "link" : picked ? "check_box" : "check_box_outline_blank")" Size="18" />
+                                    </span>
+                                    @if (added)
+                                    {
+                                        <span class="apd-added" aria-hidden="true">Already added</span>
+                                    }
+                                </button>
+                            }
+                        </div>
+                    }
+                    @if (_error is not null)
+                    {
+                        <div class="helper aam-err" role="alert">@_error</div>
+                    }
+                </div>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(_tab == UploadTab ? "upload" : "add")"
+                   Disabled="@(_tab == LibraryTab && _picked.Count == 0)"
+                   Loading="_busy" OnClick="SubmitAsync">@SubmitText</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    // Razor syntax (@<text>), so these inline render fragments cannot live in the code-behind.
+    private RenderFragment TitleFragment => @<text>@(UploadOnly ? "Upload photos" : "Add photos")</text>;
+
+    private RenderFragment SubtitleFragment => @<text>@Subtitle</text>;
+}

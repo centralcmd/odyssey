@@ -5,7 +5,6 @@
 
 @attribute [Authorize(Policy = PermissionClaims.AccountsRead)]
 @attribute [Authorize(Policy = PermissionClaims.TransactionTagsRead)]
-@inject IFilesApiClient Files
 @inject ISnackbar Snackbar
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IUserPreferenceService UserPreferences
@@ -14,13 +13,12 @@
 @inject ITransactionsApiClient Transactions
 @inject IReferenceDataCache ReferenceData
 @inject IAccountsApiClient Accounts
-@inject IUploadLimitsCache UploadLimits
 
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelClicked" Icon="receipt_long"
           Wide="true" Class="atm-dialog">
     <Title>@(IsEdit ? "Edit transaction" : "New transaction")</Title>
-    <Subtitle>@(IsEdit ? "Update this transaction's details, tags, or attachments." : "Record money moving in or out of an account.")</Subtitle>
+    <Subtitle>@(IsEdit ? "Update this transaction's details or tags." : "Record money moving in or out of an account.")</Subtitle>
     <ChildContent>
         <div class="ods-modal-body">
           <div class="odc-form-grid">
@@ -201,30 +199,6 @@
                                   Placeholder="Notes or raw metadata to keep with this transaction" />
                 </div>
 
-                <!-- Attachments (wide) — last, since the file list grows downward as files are added.
-                     Edit mode lists the files already attached (only when there are some) above the
-                     drop zone. Nothing is written until Save: a removed file is staged and detached on
-                     save, and new uploads are queued and attached on save — in both modes, so Cancel
-                     leaves the transaction's attachments exactly as they were. -->
-                <OdsFieldShell Label="Attachments" Help="@AttachmentsHelp" Class="odc-form-grid-wide">
-                    @if (IsEdit)
-                    {
-                        <TransactionFilesSection TransactionId="Transaction!.TransactionId"
-                                                 Chrome="false"
-                                                 HideWhenEmpty="true"
-                                                 CanUpload="false"
-                                                 CanDownload="CanDownloadFiles"
-                                                 CanDelete="CanDeleteFiles"
-                                                 @bind-StagedRemovals="_stagedRemovals" />
-                    }
-                    @if (!IsEdit || CanUploadFiles)
-                    {
-                        <OdsFileUpload Files="_pendingFiles" FilesChanged="OnFilesChanged"
-                                       Accept=".pdf,.jpg,.jpeg,.png"
-                                       Kinds="_txnKinds" GuessKind="GuessKind" Compact="true"
-                                       Hint="@($"Attach a receipt or document · PDF, JPG, PNG · up to {_uploadLimits.MaxUploadMegabytes} MB each")" />
-                    }
-                </OdsFieldShell>
 
           </div>
         </div>

@@ -104,6 +104,12 @@ public interface ITaskApiClient
     /// <summary>Loads one task with its full content + link id sets. Null on failure.</summary>
     Task<ExistingJournalTask?> GetAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>
+    /// Loads one task keeping the outcome: a caller that must tell "the task is gone" (404) from "not
+    /// allowed" or "unreachable" reads the status here, which <see cref="GetAsync"/> collapses to null.
+    /// </summary>
+    Task<ApiResult<ExistingJournalTask>> GetResultAsync(Guid id, CancellationToken ct = default);
+
     /// <summary>Exports the tasks matching the given filters as a VTODO <c>.ics</c> file (issue #337).
     /// A non-success status yields a failure result rather than a body that would download as a fake
     /// <c>.ics</c>.</summary>
@@ -158,7 +164,10 @@ public sealed class TaskApiClient(IOdysseyApi api) : ITaskApiClient
             ct);
 
     public async Task<ExistingJournalTask?> GetAsync(Guid id, CancellationToken ct = default) =>
-        (await api.GetAsync<ExistingJournalTask>($"{Base}/{id}", ct)).Value;
+        (await GetResultAsync(id, ct)).Value;
+
+    public Task<ApiResult<ExistingJournalTask>> GetResultAsync(Guid id, CancellationToken ct = default) =>
+        api.GetAsync<ExistingJournalTask>($"{Base}/{id}", ct);
 
     public Task<ApiResult<ApiFile>> ExportIcsAsync(
         string? search = null,

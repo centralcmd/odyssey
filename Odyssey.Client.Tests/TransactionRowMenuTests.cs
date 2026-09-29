@@ -28,7 +28,9 @@ public class TransactionRowMenuTests
         TransactionStatus status = TransactionStatus.New,
         bool canUpdate = true,
         bool canDelete = true,
-        bool expanded = false)
+        bool expanded = false,
+        Func<ExistingTransaction, Task>? onAttach = null,
+        Action? toggle = null)
     {
         var transaction = new ExistingTransaction
         {
@@ -45,14 +47,14 @@ public class TransactionRowMenuTests
         {
             Expanded = expanded,
             Editing = false,
-            Toggle = () => { },
+            Toggle = toggle ?? (() => { }),
             StartEdit = () => { },
             Remove = () => { },
         };
 
         return TransactionRowMenu.Build(
             new object(), transaction, ctx, canUpdate, canDelete,
-            _ => Task.CompletedTask, (_, _) => Task.CompletedTask, _ => Task.CompletedTask);
+            _ => Task.CompletedTask, (_, _) => Task.CompletedTask, _ => Task.CompletedTask, onAttach);
     }
 
     private static IReadOnlyList<string> Labels(IReadOnlyList<OdsMenuItem> items) =>
@@ -65,6 +67,37 @@ public class TransactionRowMenuTests
         Assert.Equal(
             ["View details", "Edit", "Approve", "Flag", "Copy ID", "Delete"],
             Labels(Build()));
+    }
+
+    /// <summary>
+    /// "Attach documents" sits right after Edit (DS Transactions · TxnTable) when the host can reach a
+    /// file at all — it passes the handler only then — and is gated on transactions.update like Edit.
+    /// </summary>
+    [Fact]
+    public void Attach_documents_follows_edit_when_the_host_offers_it()
+    {
+        Assert.Equal(
+            ["View details", "Edit", "Attach documents", "Approve", "Flag", "Copy ID", "Delete"],
+            Labels(Build(onAttach: _ => Task.CompletedTask)));
+        Assert.DoesNotContain("Attach documents", Labels(Build(canUpdate: false, onAttach: _ => Task.CompletedTask)));
+        Assert.DoesNotContain("Attach documents", Labels(Build()));
+    }
+
+    /// <summary>Attaching expands a collapsed row first, so the Documents section it lands in is in view.</summary>
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 0)]
+    public async Task Attach_documents_expands_a_collapsed_row_then_opens_the_dialog(bool expanded, int toggles)
+    {
+        var toggled = 0;
+        var opened = 0;
+        var item = Build(expanded: expanded, toggle: () => toggled++, onAttach: _ => { opened++; return Task.CompletedTask; })
+            .Single(i => i.Label == "Attach documents");
+
+        await item.OnClick.InvokeAsync();
+
+        Assert.Equal(toggles, toggled);
+        Assert.Equal(1, opened);
     }
 
     /// <summary>The disclosure item names the state it moves TO, so the label is never stale.</summary>

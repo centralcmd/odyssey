@@ -46,6 +46,16 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
   `TermChanged` is `§`. It renders because `.material-icons` (`wwwroot/css/fonts.css`) takes
   `var(--font-icons)`, whose text-font fallback draws any character Material Icons lacks. So it works
   only in a `material-icons` span (`OdsMIcon`, the Ods pickers and rails) — never in `MudIcon.Icon`.
+- **Attaching a file or a photo goes through ONE dialog per medium**, never a per-surface upload
+  dialog: `Pages/Attachments/AttachDocumentsDialog` (Upload new · From Files) for accounts,
+  transactions, tax statements, contracts, properties, journal entries and tasks, and
+  `AttachPhotosDialog` (Upload new · From Photos) for journal entries, albums and the Photos page
+  (DS `ui_kits/web/AttachDocumentsModal.jsx` / `AttachPhotosModal.jsx`). They live under `Pages/`,
+  not `Components/`, because they inject API clients — no `Ods*` atom does. The dialog uploads and
+  hands each file to the host's `Attach` callback; the host owns the link, its request shape and
+  its failure toast. A surface's differences are parameters (`Kinds`, `GuessKind`, `Validity`,
+  `RestrictToDocumentTypes` for the server-enforced `DocumentContentTypes`, `SurfaceMaxMegabytes`),
+  and the tabs follow the caller's claims (`files.create` / `files.read`, `photos.read`).
 - **Foundation tokens:** `Odyssey.Client/wwwroot/css/app.css`. Global component CSS:
   `wwwroot/css/odyssey-components.css`. Palette wiring: `Odyssey.Client/Theme/OdysseyTheme.cs`.
 - **Scoped CSS travels with its component.** Moving markup into a child means moving the matching

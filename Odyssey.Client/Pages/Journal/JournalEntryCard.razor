@@ -89,13 +89,8 @@
                 </div>
                 @if (Entry.AttachmentCount > 0)
                 {
-                    <button type="button" class="jec-filecount" aria-expanded="@(_filesOpen ? "true" : "false")" aria-controls="@FilesListId"
-                            @onclick="ToggleFiles">
-                        <span class="material-icons" aria-hidden="true">attach_file</span>
-                        <span class="jec-fcount">@Entry.AttachmentCount</span>
-                        @(Entry.AttachmentCount == 1 ? "file" : "files")
-                        <span class="material-icons chev" aria-hidden="true">expand_more</span>
-                    </button>
+                    <JournalFileCount Count="Entry.AttachmentCount" Expanded="_filesOpen" Controls="@FilesListId"
+                                      OnToggle="ToggleFiles" />
                 }
             </div>
         }

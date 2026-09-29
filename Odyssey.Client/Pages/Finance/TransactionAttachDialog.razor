@@ -1,0 +1,51 @@
+@using Odyssey.Dtos.Finance
+@inject IFilesApiClient Files
+@inject ISnackbar Snackbar
+
+@*
+    TransactionAttachDialog — the transaction binding of the shared AttachDocumentsDialog (DS
+    ui_kits/web/AddTransactionFileModal.jsx), opened from the row menu's "Attach documents". One
+    wrapper so the Transactions page and the embedded ledgers (TransactionListView) open the same
+    dialog: TransactionFileType per file, no validity, and the transaction's own attach route.
+*@
+
+<AttachDocumentsDialog Open="Open" OpenChanged="OpenChanged"
+                       Subtitle="@($"Keep the receipt, invoice or payment confirmation with {Transaction.Description}. Files stay in Files; attaching links them here.")"
+                       Kinds="OdsTypeRegistries.TransactionFileTypes"
+                       GuessKind="AttachDocumentRequests.TransactionGuess"
+                       UploadExtensions="UploadExtensions"
+                       AttachedIds="_attachedIds"
+                       Attach="AttachAsync"
+                       OnAttached="@(_ => OnAttached.InvokeAsync())" />
+
+@code {
+    // The transaction surface applies no server-side allow-list; this is its pre-existing client filter.
+    private static readonly IReadOnlyList<string> UploadExtensions = [".pdf", ".jpg", ".jpeg", ".png"];
+
+    [Parameter, EditorRequired] public ExistingTransaction Transaction { get; set; } = default!;
+
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>Raised after at least one attach succeeded so the host re-reads the row.</summary>
+    [Parameter] public EventCallback OnAttached { get; set; }
+
+    private IReadOnlyCollection<Guid> _attachedIds = [];
+
+    protected override void OnParametersSet() =>
+        _attachedIds = [.. Transaction.TransactionFiles.Select(f => f.FileMetadata.Id)];
+
+    private async Task<bool> AttachAsync(AttachDocumentItem item)
+    {
+        try
+        {
+            await Files.AttachToTransactionAsync(Transaction.TransactionId, item.FileId, AttachDocumentRequests.TransactionType(item));
+            return true;
+        }
+        catch (Exception)
+        {
+            Snackbar.Add($"Couldn’t attach “{item.Name}”.", Severity.Error);
+            return false;
+        }
+    }
+}

@@ -392,6 +392,12 @@ public partial class PhotosCard
     }
 
     private async Task OnPhotoSaved() { _editId = null; await RefreshAsync(); }
+    /// <summary>
+    /// The library upload's own, tighter product limit — kept from the retired UploadPhotosDialog. The
+    /// effective cap is the smaller of it and the instance-wide one; a surface may tighten, never loosen.
+    /// </summary>
+    private const int PhotoUploadMaxMegabytes = 25;
+
     private async Task OnUploaded() => await RefreshAsync();
     private async Task OnAlbumsChanged()
     {

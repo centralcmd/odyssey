@@ -381,12 +381,16 @@
 
 @if (_uploadAccount is not null)
 {
-    <AddFileDialog @key="_uploadKey"
-                   @bind-Open="_uploadOpen"
-                   AccountId="_uploadAccount.AccountId"
-                   AccountName="@_uploadAccount.Name"
-                   AccountNumber="@_uploadAccount.AccountNumber"
-                   OnSaved="OnFilesUploaded" />
+    <AttachDocumentsDialog @key="_uploadKey"
+                           @bind-Open="_uploadOpen"
+                           Subtitle="@($"Keep statements, receipts, or documents with {_uploadAccount.Name}. Files stay in Files; attaching links them here.")"
+                           Kinds="OdsTypeRegistries.AccountFileTypes"
+                           GuessKind="AttachDocumentRequests.AccountGuess"
+                           UploadExtensions="AccountUploadExtensions"
+                           Validity="true"
+                           LoadAttachedIds="LoadAccountFileIds"
+                           Attach="AttachAccountFileAsync"
+                           OnAttached="OnFilesUploaded" />
 }
 
 @if (_estimateAccount is not null)

@@ -1,30 +1,34 @@
-@using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
 
 @*
-    PropertyAttachDialog — attach documents to a property (issue #210 §5.1; design system ·
-    AddPropertyFileModal.jsx). There is no upload endpoint on the property: a document is a
-    FileMetadata in the one Files store, linked here by id. Two ways to get that id:
+    AttachDocumentsDialog — the one "Attach documents" dialog every document surface uses: accounts,
+    transactions, tax statements, contracts, properties, journal entries and tasks (Odyssey Design
+    System · ui_kits/web/AttachDocumentsModal.jsx). A document is a FileMetadata in the one Files
+    store; every surface links it by id. Two ways a file gets that id:
 
-      • Upload new — the shared OdsFileUpload. Each file goes through the Files API (files.create) and
-        is then attached, so the same file can later be attached to the loan contract that financed the
-        property without a second copy. Offered only with files.create.
-      • From Files — pick files already in the store (files.read, which the attach needs anyway). A
-        file already linked to this property is shown but disabled ("Already attached") — the 409 the
-        server would answer. A file whose SERVER-RECORDED content type is off the shared document
-        allow-list is disabled with the reason in text — the 400. Both states read DocumentContentTypes
-        from Odyssey.Dtos, the symbol the server enforces, never a client-side copy.
+      • Upload new — the shared OdsFileUpload. Each file goes through the Files API (files.create)
+        and is then handed to the host's Attach callback. Offered only with files.create.
+      • From Files — pick files already in the store (files.read). A file already linked to this
+        record is shown but disabled ("Already attached"). With RestrictToDocumentTypes, a file whose
+        SERVER-RECORDED content type is off the shared document allow-list is disabled with the reason
+        in text — the 400 the contract and property attach endpoints answer. That state reads
+        DocumentContentTypes from Odyssey.Dtos, the symbol the server enforces, never a client copy.
 
-    Every picked file carries a PropertyFileType (guessed from the name; Other when nothing matches,
-    never Deed) and, behind the "Add validity" toggle contract uploads use, the four optional validity
-    fields. ValidTo before ValidFrom is refused on the dialog, as the service does.
+    Each picked file carries the surface's file type (guessed from the name) when the surface has a
+    vocabulary and, when Validity is on, the four optional validity fields behind the "Add validity"
+    toggle. ValidTo before ValidFrom is refused here, as the services do.
+
+    The dialog uploads; the host links. Attach is called once per file with the normalized item and
+    returns whether the link succeeded, so a host that only stages ids (a draft journal entry) and a
+    host that POSTs per file share one shape.
 *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
-          Icon="attach_file" Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="afm-dialog">
+          Icon="attach_file" Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
         <div class="ods-modal-body prop-doc-modal">
-            @if (CanUpload)
+            <OdsLiveAnnouncer Message="@_announce" />
+            @if (ShowTabs)
             {
                 <OdsSegmentedControl Full="true" AriaLabel="Where the document comes from"
                                      Options="Tabs" Value="@_tab" ValueChanged="OnTabChanged" />
@@ -33,11 +37,12 @@
             @if (_tab == UploadTab)
             {
                 <OdsFileUpload Files="_uploads" FilesChanged="OnUploadsChanged"
-                               Accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
-                               Kinds="Kinds" GuessKind="PropertyFileTypeGuess.GuessKey"
+                               Accept="@AcceptAttribute"
+                               Kinds="_fileKinds" ShowKinds="@(_fileKinds is not null)"
+                               GuessKind="GuessKindOrDefault" DefaultKind="@DefaultKind"
                                Error="@_error"
-                               Hint="@($"{DocumentContentTypes.Label} · up to {_uploadLimits.MaxUploadMegabytes} MB each · multiple at once")"
-                               RenderFileExtra="ValidityEditor" />
+                               Hint="@UploadHint"
+                               RenderFileExtra="@(Validity ? ValidityEditor : null)" />
             }
             else
             {
@@ -60,7 +65,7 @@
                         <div class="prop-lib-list" role="group" aria-label="Files">
                             @if (LibraryRows.Count == 0)
                             {
-                                <OdsEmptyLine>@(string.IsNullOrWhiteSpace(_query) ? "Files is empty — upload a document instead." : $"No files match “{_query}”.")</OdsEmptyLine>
+                                <OdsEmptyLine>@EmptyLibraryText</OdsEmptyLine>
                             }
                             @foreach (var file in LibraryRows)
                             {
@@ -82,14 +87,20 @@
                                             <span class="prop-lib-reason">@reason</span>
                                         }
                                     </button>
-                                    @if (picked is not null)
+                                    @if (picked is not null && (_kindOptions is not null || Validity))
                                     {
                                         <div class="prop-lib-extra">
-                                            <div class="prop-lib-type">
-                                                <OdsFileTypeSelect Kind="OdsFileTypeKind.Property" Label="Document type" Value="@picked.Kind"
-                                                                   ValueChanged="@(v => picked.Kind = v ?? nameof(PropertyFileType.Other))" />
-                                            </div>
-                                            @ValidityEditor(new OdsUploadFileExtraContext(picked, EventCallback.Factory.Create(this, () => { })))
+                                            @if (_kindOptions is not null)
+                                            {
+                                                <div class="prop-lib-type">
+                                                    <OdsSelect Label="Document type" Options="_kindOptions" Value="@picked.Kind"
+                                                               ValueChanged="@(v => picked.Kind = v ?? DefaultKind)" />
+                                                </div>
+                                            }
+                                            @if (Validity)
+                                            {
+                                                @ValidityEditor(new OdsUploadFileExtraContext(picked, EventCallback.Factory.Create(this, () => { })))
+                                            }
                                         </div>
                                     }
                                 </div>
@@ -100,10 +111,13 @@
                             <div class="helper aam-err" role="alert">@_error</div>
                         }
                     }
-                    <div class="prop-lib-foot">
-                        <OdsMIcon Name="info" Size="14" />
-                        Only @DocumentContentTypes.Label files can be attached — the same rule as contract documents.
-                    </div>
+                    @if (RestrictToDocumentTypes)
+                    {
+                        <div class="prop-lib-foot">
+                            <OdsMIcon Name="info" Size="14" />
+                            Only @DocumentContentTypes.Label files can be attached.
+                        </div>
+                    }
                 </div>
             }
         </div>
@@ -119,12 +133,12 @@
 @code {
 
     // Razor syntax (@<text>), so these inline render fragments cannot live in the code-behind.
-    private RenderFragment TitleFragment => @<text>Attach documents</text>;
+    private RenderFragment TitleFragment => @<text>@Title</text>;
 
-    private RenderFragment SubtitleFragment => @<text>Keep @Noun with @Property.Name. Files stay in Files; attaching links them here.</text>;
+    private RenderFragment SubtitleFragment => @<text>@Subtitle</text>;
 
     // One validity editor for both tabs — an upload row and a picked library row are both an
-    // OdsUploadFile — so the two read identically, and identically to the contract upload dialog.
+    // OdsUploadFile — so the two read identically on every surface that records validity.
     private RenderFragment<OdsUploadFileExtraContext> ValidityEditor => ctx =>
     @<div>
         <button type="button" class="afm-meta-toggle @(_metaOpen.Contains(ctx.File.Uid) ? "on" : "")"

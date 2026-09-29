@@ -11,6 +11,8 @@ using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 
+using Odyssey.Client.Pages.Attachments;
+
 namespace Odyssey.Client.Pages.Finance;
 
 public partial class PropertyDocumentsSection
@@ -35,9 +37,6 @@ public partial class PropertyDocumentsSection
     /// </summary>
     [Parameter] public bool CanAttach { get; set; }
 
-    /// <summary>The attach dialog's "Upload new" tab (<c>files.create</c>).</summary>
-    [Parameter] public bool CanUpload { get; set; }
-
     /// <summary>
     /// A fresh token opens the attach dialog — how the row menu's "Attach documents" reaches a section
     /// it does not own, the <see cref="PropertyEstimatesSection.NewEstimateRequestToken"/> shape.
@@ -60,6 +59,18 @@ public partial class PropertyDocumentsSection
 
     private Guid _attachKey = Guid.Empty;
     private bool _attachOpen;
+
+    // The attach dialog decides its own "Upload new" tab from files.create.
+    private string AttachSubtitle =>
+        $"Keep {(Property.Type == PropertyType.Vehicle
+            ? "the registration, an inspection, the insurance certificate or a warranty"
+            : "the deed, the purchase agreement, a valuation or a warranty")} with {Property.Name}. Files stay in Files; attaching links them here.";
+
+    private async Task<bool> AttachAsync(AttachDocumentItem item)
+    {
+        return (await Properties.AttachFileAsync(Property.PropertyId, AttachDocumentRequests.Property(item)))
+            .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
+    }
 
     private string SectionMeta => _isLoading && _files.Count == 0 ? "" : $"{_files.Count} file{(_files.Count == 1 ? "" : "s")}";
 

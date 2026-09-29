@@ -8,7 +8,6 @@
 @inject IFilesApiClient Files
 @inject ISnackbar Snackbar
 @inject IJournalApiClient Journal
-@inject Odyssey.Client.Services.IUploadLimitsCache UploadLimits
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IContactQuickCreate ContactCreator
 @inject ITagQuickCreate<ExistingJournalTag> TagCreator
@@ -16,9 +15,8 @@
 @*
     CreateJournalEntryDialog — the "New / Edit entry" dialog (issue #311; design-system update: edit
     mode reuses this dialog instead of the old inline-edit panel). Fields mirror the NewJournalEntry /
-    UpdateJournalEntry DTOs via the shared JournalEntryFields grid. Newly-attached photos/files are
-    uploaded through the existing Files store first (POST /api/files); the entry write stores only the
-    resulting scalar ids.
+    UpdateJournalEntry DTOs via the shared JournalEntryFields grid. Photos and files are uploaded or
+    picked by the fields' own pickers before save, so the entry write stores only scalar ids.
 *@
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
@@ -36,6 +34,6 @@
         <JournalEntryFields Draft="_draft" TagOptions="_tagOpts" ContactOptions="_contactOpts" AutoFocus="true"
                             OnCreateTag="@(_canCreateTag ? CreateTagOption : null)"
                             OnCreateContact="@(_canCreateContact ? CreateContactOption : null)"
-                            MaxMegabytes="@_maxUploadMb" />
+                            CanDownload="_canDownloadFiles" />
     }
 </OdsFormDialog>

@@ -105,12 +105,6 @@
 }
 .tk-list-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
 .tk-list-chips:empty { display: none; }
-.tk-list-att {
-    display: inline-flex; align-items: center; gap: 5px; flex: none;
-    color: var(--mud-palette-text-secondary); font-size: var(--fs-caption);
-}
-.tk-list-att .material-icons { font-size: var(--icon-sm); }
-.tk-list-att .mono { color: var(--mud-palette-text-primary); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 /* The archived label is the only text stating the state, and an ancestor's opacity rasterizes the
    subtree — a descendant opacity:1 can't escape it — so raise the ink instead of fighting the dim. */
 .tk-list.archived ::deep .odc-chip.archived { color: var(--mud-palette-text-primary); }

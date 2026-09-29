@@ -388,10 +388,17 @@
 
 @if (_uploadContract is not null)
 {
-    <ContractUploadDialog @key="_uploadKey"
-                          @bind-Open="_uploadOpen"
-                          Contract="_uploadContract"
-                          OnSaved="@(() => ReloadContract(_uploadContract.ContractId))" />
+    <AttachDocumentsDialog @key="_uploadKey"
+                           @bind-Open="_uploadOpen"
+                           Subtitle="Keep the signed agreement, an amendment, or correspondence with this contract. Files stay in Files; attaching links them here."
+                           Kinds="OdsTypeRegistries.ContractFileTypes"
+                           DefaultKind="@nameof(ContractFileType.Signed)"
+                           Validity="true"
+                           RestrictToDocumentTypes="true"
+                           SurfaceMaxMegabytes="ContractSurfaceMaxMegabytes"
+                           AttachedIds="@([.. _uploadContract.Files.Select(f => f.FileMetadata.Id)])"
+                           Attach="AttachContractFileAsync"
+                           OnAttached="@(_ => ReloadContract(_uploadContract.ContractId))" />
 }
 
 @code {

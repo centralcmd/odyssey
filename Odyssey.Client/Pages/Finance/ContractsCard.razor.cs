@@ -11,6 +11,8 @@ using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
 
+using Odyssey.Client.Pages.Attachments;
+
 namespace Odyssey.Client.Pages.Finance;
 
 public partial class ContractsCard
@@ -93,7 +95,6 @@ public partial class ContractsCard
     private bool _canReadTransactions;
     private bool _canDelete;
     private bool _canDownloadFiles;
-    private bool _canUploadFiles;
     private bool _canViewAccounts;
     private bool _canViewContacts;
     private bool _canViewProperties;
@@ -191,9 +192,6 @@ public partial class ContractsCard
         _canDelete = user.HasPermission(PermissionClaims.ContractsDelete);
         _canDownloadFiles = user.HasPermission(PermissionClaims.FilesRead);
         _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
-        _canUploadFiles = user.HasPermission(PermissionClaims.FilesCreate)
-                       && user.HasPermission(PermissionClaims.FilesRead)
-                       && user.HasPermission(PermissionClaims.ContractsUpdate);
         _canViewAccounts = user.HasPermission(PermissionClaims.AccountsRead);
         _canViewContacts = user.HasPermission(PermissionClaims.ContactsRead);
         _canViewProperties = user.HasPermission(PermissionClaims.PropertiesRead);
@@ -866,9 +864,27 @@ public partial class ContractsCard
     private Guid _uploadKey;
     private bool _uploadOpen;
 
+    /// <summary>
+    /// This surface's own, tighter product limit — kept from the retired ContractUploadDialog. The
+    /// effective cap is the smaller of it and the instance-wide one; a surface may tighten, never loosen.
+    /// </summary>
+    private const int ContractSurfaceMaxMegabytes = 25;
+
+    // The attach needs contracts.update + files.read (the server's two policies); files.create only
+    // adds the "Upload new" tab, which the dialog decides for itself.
+    private bool CanAttachDocuments => _canUpdate && _canDownloadFiles;
+
+    private async Task<bool> AttachContractFileAsync(AttachDocumentItem item)
+    {
+        if (_uploadContract is null)
+            return false;
+        return (await Contracts.AttachFileAsync(_uploadContract.ContractId, AttachDocumentRequests.Contract(item)))
+            .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
+    }
+
     private async Task AttachDocument(Guid contractId)
     {
-        if (!_canUploadFiles) return;
+        if (!CanAttachDocuments) return;
         await EnsureDetail(contractId);
         if (!_details.TryGetValue(contractId, out var d)) return;
         _expandedId = contractId;
@@ -1028,19 +1044,19 @@ public partial class ContractsCard
             });
         }
 
-        if (_canUploadFiles)
+        if (CanAttachDocuments)
         {
             // Ungated like New party, New term and New event: ContractService.AttachFile carries no
             // archive guard, so an archived contract takes a document exactly as any other does.
             items.Add(new OdsMenuItem
             {
-                Icon = "upload_file",
-                Label = "Upload document",
+                Icon = "attach_file",
+                Label = "Attach documents",
                 OnClick = EventCallback.Factory.Create(this, () => AttachDocument(c.ContractId)),
             });
         }
 
-        // After Upload document, the design system's order: the three that shape the agreement, then
+        // After Attach documents, the design system's order: the three that shape the agreement, then
         // the document that evidences it, then the log of what has happened to it. Gated on update
         // like New party and New term, so it sits in a block of its own.
         if (_canUpdate)

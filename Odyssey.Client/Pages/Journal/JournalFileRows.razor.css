@@ -1,0 +1,37 @@
+/* Attachment rows — FilesTable's field set on one line, since a table's headers and column rhythm
+   don't survive at card width. Never paginated. Moved here from JournalEntryCard.razor.css (where
+   they were ::deep rules) once the entry dialog and the task row rendered the same rows. */
+.jec-files {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 6px; margin-top: 2px;
+}
+.jec-file {
+    display: flex; align-items: center; gap: 9px; min-width: 0;
+    padding: 7px 10px; border: 1px solid var(--mud-palette-divider);
+    border-radius: var(--radius-sm); background: var(--mud-palette-background-gray);
+}
+/* The kind well. The design system reuses its .odc-avatar here; in the client that class is a
+   MudAvatar modifier, so the same 26px square is drawn directly rather than by nesting an avatar
+   component inside a row that needs none of it. */
+.jec-file-ic {
+    display: grid; place-items: center; flex: none;
+    width: 26px; height: 26px; border-radius: var(--radius-sm);
+}
+.jec-file-ic .material-icons { font-size: 16px; }
+.jec-file-name {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: var(--fs-body2);
+}
+.jec-file .odc-chip { order: 1; flex: none; }
+.jec-file-size {
+    order: 2; flex: none; color: var(--mud-palette-text-secondary);
+    font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-caption);
+}
+.jec-file-up { order: 3; flex: none; color: var(--mud-palette-text-secondary); font-size: var(--fs-caption); }
+.jec-file .je-cardmenu { order: 4; flex: none; }
+
+/* One file per line where the host is a form column rather than a card (the entry dialog). */
+.jec-files.one-col { grid-template-columns: minmax(0, 1fr); }
+
+/* The ⋯ wrapper — OdsMenu renders its own trigger, this is just the slot. */
+.je-cardmenu { display: inline-flex; flex: none; }

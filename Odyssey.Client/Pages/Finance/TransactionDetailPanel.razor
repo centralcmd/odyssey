@@ -3,7 +3,7 @@
     OdsRecordTable (DS RecordTable renderDetail · ui_kits/web/Transactions
     TxnDetail). An OdsRecordBody InTable — the same surface an OdsRecordCard
     expands into — whose Details slot is an OdsInfoTileGrid of the transaction's
-    fields, followed by the attached-files section introduced by an
+    fields, followed by the Documents section introduced by an
     OdsSectionDivider.
 
     Status updated is a field the DS mock data does not carry; it keeps its own
@@ -75,13 +75,16 @@
     </Details>
     <Sections>
         <div class="acct-section">
-            <OdsSectionDivider Label="Files" Meta="@FilesMeta" />
+            <OdsSectionDivider Label="Documents" Meta="@FilesMeta" />
             <div class="acct-table-frame odc-scroll">
-                <TransactionFilesSection TransactionId="@Transaction.TransactionId"
+                @* Keyed on the attached ids, so an attach from the row menu (which reloads the row)
+                   re-reads the section rather than leaving its first load in place. *@
+                <TransactionFilesSection @key="FilesKey"
+                                         TransactionId="@Transaction.TransactionId"
                                          Chrome="false"
                                          CanUpload="false"
                                          CanDownload="@CanDownloadFiles"
-                                         CanDelete="false" />
+                                         CanDelete="@CanDeleteFiles" />
             </div>
         </div>
     </Sections>
@@ -91,6 +94,15 @@
     [Parameter, EditorRequired] public ExistingTransaction Transaction { get; set; } = default!;
 
     [Parameter] public bool CanDownloadFiles { get; set; }
+
+    /// <summary>
+    /// Detach from the Documents section. Attachments left the Edit dialog with the design update that
+    /// moved attaching to the row menu, so this section is now where a file is removed from the
+    /// transaction; the host passes the gate the dialog used (<c>transactions.update</c> + <c>files.delete</c>).
+    /// </summary>
+    [Parameter] public bool CanDeleteFiles { get; set; }
+
+    private string FilesKey => $"{Transaction.TransactionId}:{string.Join(',', Transaction.TransactionFiles.Select(f => f.FileMetadata.Id))}";
 
     private bool IsIncome => Transaction.Amount >= 0;
 

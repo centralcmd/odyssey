@@ -305,7 +305,24 @@ public partial class TransactionsCard
     // The row menu is shared with the three embedded ledgers (TransactionRowMenu), so a row offers
     // the same actions wherever it is rendered.
     private IReadOnlyList<OdsMenuItem> BuildActions(ExistingTransaction t, OdsRecordActionContext ctx) =>
-        TransactionRowMenu.Build(this, t, ctx, _canUpdate, _canDelete, EditClickedAsync, SetStatus, CopyId);
+        TransactionRowMenu.Build(this, t, ctx, _canUpdate, _canDelete, EditClickedAsync, SetStatus, CopyId,
+            _canUploadFiles || _canDownloadFiles ? AttachAsync : null);
+
+    // ── Attach documents (row menu) ──────────────────────────────────────────
+    private ExistingTransaction? _attachTransaction;
+    private Guid _attachKey;
+    private bool _attachOpen;
+
+    private Task AttachAsync(ExistingTransaction t)
+    {
+        if (!_canUpdate)
+            return Task.CompletedTask;
+
+        _attachTransaction = t;
+        _attachKey = Guid.NewGuid();
+        _attachOpen = true;
+        return Task.CompletedTask;
+    }
 
     private bool _createOpen;
     private Guid _createKey;

@@ -15,6 +15,8 @@ using Odyssey.Client.Services;
 using Odyssey.Client.Theme;
 using Odyssey.Dtos.Finance;
 
+using Odyssey.Client.Pages.Attachments;
+
 namespace Odyssey.Client.Pages.Finance;
 
 public partial class AccountsCard
@@ -374,9 +376,31 @@ public partial class AccountsCard
     private Guid _uploadKey;
     private bool _uploadOpen;
 
+    // The account surface's upload extensions — it applies no server-side allow-list, so this is the
+    // pre-existing client filter, unchanged (DocumentContentTypes notes the gap).
+    private static readonly IReadOnlyList<string> AccountUploadExtensions = [".pdf", ".jpg", ".jpeg", ".png"];
+
+    private bool CanAttachFiles => _canUpdateAccounts && (_canUploadFiles || _canDownloadFiles);
+
+    private async Task<IReadOnlyCollection<Guid>> LoadAccountFileIds()
+    {
+        if (_uploadAccount is null)
+            return [];
+        var result = await Accounts.ListFilesAsync(_uploadAccount.AccountId);
+        return [.. result.ValueOr([]).Select(f => f.FileMetadata.Id)];
+    }
+
+    private async Task<bool> AttachAccountFileAsync(AttachDocumentItem item)
+    {
+        if (_uploadAccount is null)
+            return false;
+        return (await Accounts.AttachFileAsync(_uploadAccount.AccountId, AttachDocumentRequests.Account(item)))
+            .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
+    }
+
     private void AddFile(ExistingAccount account)
     {
-        if (!_canUploadFiles)
+        if (!CanAttachFiles)
             return;
 
         _uploadAccount = account;
@@ -384,7 +408,7 @@ public partial class AccountsCard
         _uploadOpen = true;
     }
 
-    private async Task OnFilesUploaded()
+    private async Task OnFilesUploaded(IReadOnlyList<AttachDocumentItem> _)
     {
         if (_uploadAccount is null)
             return;
@@ -610,9 +634,9 @@ public partial class AccountsCard
             items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit account", OnClick = EventCallback.Factory.Create(this, () => EditClicked(account)) });
         }
 
-        if (_canUploadFiles)
+        if (CanAttachFiles)
         {
-            items.Add(new OdsMenuItem { Icon = "upload_file", Label = "Upload file", OnClick = EventCallback.Factory.Create(this, () => AddFile(account)) });
+            items.Add(new OdsMenuItem { Icon = "attach_file", Label = "Attach documents", OnClick = EventCallback.Factory.Create(this, () => AddFile(account)) });
         }
 
         if (_canCreateTransactions && account.Closed is null && account.Archived is null)

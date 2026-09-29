@@ -28,10 +28,6 @@ public partial class CreateTransactionDialog
     /// <summary>When set, the dialog edits this transaction. Null = create mode.</summary>
     [Parameter] public ExistingTransaction? Transaction { get; set; }
 
-    [Parameter] public bool CanDownloadFiles { get; set; }
-    [Parameter] public bool CanUploadFiles { get; set; }
-    [Parameter] public bool CanDeleteFiles { get; set; }
-
     private bool IsEdit => Transaction is not null;
 
     // ── Form state ───────────────────────────────────────────────────────────
@@ -84,21 +80,6 @@ public partial class CreateTransactionDialog
         ? "Search an existing contact, or type a new name to add it as a company or a person."
         : "Search an existing contact.";
 
-    // Attachment changes are staged until Save in both modes: new uploads queue here, and in edit mode
-    // a removed existing file is held by id and detached only once the update has succeeded.
-    private List<OdsUploadFile> _pendingFiles = [];
-    private IReadOnlyCollection<Guid> _stagedRemovals = [];
-
-    // The TransactionFileType vocabulary projected to the OdsFileUpload kind shape (per-file picker).
-    private static readonly IReadOnlyList<OdsFileKind> _txnKinds =
-        [.. OdsTypeRegistries.TransactionFileTypes.Select(t => new OdsFileKind
-        {
-            Key = t.Key, Label = t.Label, Icon = t.Icon, Color = t.Color, Soft = t.Soft,
-        })];
-
-    private const int MaxFileCount = 64;
-    private static readonly string[] AllowedExtensions = [".pdf", ".jpg", ".jpeg", ".png"];
-
     // The hero's own helper line, which is where the direction affordance is explained — the sign
     // segment is a button, and typing − / + in the amount flips it too.
     private string DirectionHint => _isExpense
@@ -106,11 +87,6 @@ public partial class CreateTransactionDialog
         : "Income — click the sign, or type − in the amount, for expense.";
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
-    // The cap is admin-editable (issue #421 Wave 4) and OnFilesChanged is a synchronous handler, so it
-    // is prefetched here. Seeded with the shipped fallback so a render that beats the fetch still
-    // validates against a sane number rather than zero.
-    private UploadLimitsDto _uploadLimits = UploadLimitsCache.Fallback;
-
     /// <summary>
     /// Whether the dialog is running interactively; the claim and reference-data load is skipped
     /// off-browser (prerender).
@@ -124,7 +100,6 @@ public partial class CreateTransactionDialog
 
     protected override async Task OnInitializedAsync()
     {
-        _uploadLimits = await UploadLimits.GetAsync();
         if (!InteractiveCheck())
             return;
 
@@ -306,45 +281,6 @@ public partial class CreateTransactionDialog
         return Task.CompletedTask;
     }
 
-    // Files already attached and not staged for removal. The cap is per transaction, not per upload
-    // batch, so in edit mode they count against it (as FilesSectionBase counted them when edit mode
-    // uploaded in place). The DTO's own file list is the count the dialog was opened with.
-    private int RetainedFileCount =>
-        Transaction?.TransactionFiles.Count(f => !_stagedRemovals.Contains(f.FileMetadata.Id)) ?? 0;
-
-    // Edit mode, no upload claim and nothing left attached: the Attachments shell would otherwise be a
-    // bare label with nothing under it.
-    private string? AttachmentsHelp =>
-        IsEdit && !CanUploadFiles && RetainedFileCount == 0 ? "No files attached to this transaction." : null;
-
-    // Controlled list — enforce the allow-list, per-file size cap and file-count cap.
-    private void OnFilesChanged(IReadOnlyList<OdsUploadFile> files)
-    {
-        var capacity = MaxFileCount - RetainedFileCount;
-        var kept = new List<OdsUploadFile>();
-        foreach (var f in files)
-        {
-            var ext = Path.GetExtension(f.Name).ToLowerInvariant();
-            if (f.Source is not null && !AllowedExtensions.Contains(ext))
-            {
-                Snackbar.Add($"{f.Name}: unsupported type. Allowed: .pdf, .jpg, .jpeg, .png", Severity.Warning);
-                continue;
-            }
-            if (f.SizeBytes > _uploadLimits.MaxUploadBytes)
-            {
-                Snackbar.Add($"{f.Name}: exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.", Severity.Warning);
-                continue;
-            }
-            if (kept.Count >= capacity)
-            {
-                Snackbar.Add($"Cannot exceed {MaxFileCount} files per transaction.", Severity.Warning);
-                break;
-            }
-            kept.Add(f);
-        }
-        _pendingFiles = kept;
-    }
-
     // OdsMoneyText.Parse, not a local Replace(",", "") — the money editor accepts a lone comma as a
     // DECIMAL separator, so stripping it here read "1234,56" as 123456.
     private bool TryParseAmount(out decimal magnitude)
@@ -419,12 +355,6 @@ public partial class CreateTransactionDialog
                 if (!(await Transactions.UpdateAsync(Transaction!.TransactionId, update)).Toast(Snackbar, "Update failed"))
                     return;
 
-                // Files follow the update rather than precede it, so a rejected update leaves the
-                // attachments untouched too.
-                await DetachStagedFilesAsync(Transaction.TransactionId);
-                if (_pendingFiles.Count > 0)
-                    await AttachPendingFilesAsync(Transaction.TransactionId);
-
                 Snackbar.Add("Transaction updated.", Severity.Success);
                 await OnSaved.InvokeAsync();
                 await OpenChanged.InvokeAsync(false);
@@ -437,16 +367,6 @@ public partial class CreateTransactionDialog
             {
                 Snackbar.Add($"Unable to add transaction. {created.Error}", Severity.Error);
                 return;
-            }
-
-            // Attachments (two-step): the new transaction's ID comes back only in the
-            // Location header (POST returns 201 with an empty body).
-            if (_pendingFiles.Count > 0)
-            {
-                if (created.CreatedId is { } txnId)
-                    await AttachPendingFilesAsync(txnId);
-                else
-                    Snackbar.Add("Transaction saved, but its files could not be attached (no ID returned).", Severity.Warning);
             }
 
             Snackbar.Add("Transaction added.", Severity.Success);
@@ -463,54 +383,7 @@ public partial class CreateTransactionDialog
         }
     }
 
-    private async Task DetachStagedFilesAsync(Guid transactionId)
-    {
-        var failures = 0;
-        foreach (var fileId in _stagedRemovals)
-        {
-            if (!(await Transactions.DetachFileAsync(transactionId, fileId)).IsSuccess)
-                failures++;
-        }
-
-        if (failures > 0)
-            Snackbar.Add($"Transaction saved, but {failures} file(s) could not be removed.", Severity.Warning);
-    }
-
-    private async Task AttachPendingFilesAsync(Guid transactionId)
-    {
-        var failures = 0;
-        foreach (var item in _pendingFiles)
-        {
-            if (item.Source is null)
-                continue;
-            try
-            {
-                var uploaded = await Files.UploadAsync(item.Source.ToApiUpload(_uploadLimits.MaxUploadBytes));
-                var finalName = item.Name.Trim();
-                if (!string.IsNullOrEmpty(finalName) && finalName != item.Source.Name)
-                    await Files.UpdateMetadataAsync(uploaded.Id, null, finalName);
-                await Files.AttachToTransactionAsync(transactionId, uploaded.Id, TypeOf(item));
-            }
-            catch
-            {
-                failures++;
-            }
-        }
-
-        if (failures > 0)
-            Snackbar.Add($"Transaction saved, but {failures} file(s) could not be attached.", Severity.Warning);
-    }
-
     // ── Display helpers ───────────────────────────────────────────────────────────
-    private static string GuessKind(string fileName)
-    {
-        var ext = Path.GetExtension(fileName).ToLowerInvariant();
-        return ext == ".pdf" ? nameof(TransactionFileType.Invoice) : nameof(TransactionFileType.Receipt);
-    }
-
-    private static TransactionFileType TypeOf(OdsUploadFile f) =>
-        Enum.TryParse<TransactionFileType>(f.Kind, out var t) ? t : TransactionFileType.Other;
-
     private static (string Icon, string Color, string Soft) StatusVisual(TransactionStatus status) => status switch
     {
         TransactionStatus.Approved => ("check_circle", "var(--finance-income)", "var(--finance-income-soft)"),

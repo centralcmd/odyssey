@@ -1,4 +1,5 @@
 @using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
 @*
     TaskListRow — a task as the purpose-built list card (the flat List view + the Archived section).
     Not the shared record row: a task has no headline figure and nothing worth collapsing, so the card
@@ -9,9 +10,13 @@
     on the card's outer edge — the furthest point from the count, so state and urgency never read as
     one signal. Meaning is in text throughout: the rail's visual tokens are decorative and an sr-only
     phrase states the deadline in words, the status control names its state and its next state.
+
+    The attachment count is a disclosure (JournalFileCount, as on a journal entry): it unfolds the
+    task's files in place as JournalFileRows, each with "Remove from task". The rows load on first
+    open through the host, which holds the task detail the summary does not carry.
 *@
 
-<article class="tk-list @(_status == JournalTaskStatus.Archived ? "archived" : "")" data-status="@_status">
+<article id="@RowId" class="tk-list @(_status == JournalTaskStatus.Archived ? "archived" : "")" data-status="@_status">
     <div class="tk-list-rail" data-tone="@_rail.Tone">
         <span class="sr-only">@_rail.AccessibleText</span>
         @if (_rail.Dash)
@@ -98,109 +103,26 @@
                 <div class="tk-list-chips"><JournalTagChips Names="_tagNames" Icon="label" /></div>
                 @if (Task.AttachmentCount > 0)
                 {
-                    <span class="tk-list-att">
-                        <span class="material-icons" aria-hidden="true">attach_file</span>
-                        <span class="mono">@Task.AttachmentCount</span>
-                        <span class="sr-only">@(Task.AttachmentCount == 1 ? "attachment" : "attachments")</span>
-                    </span>
+                    <JournalFileCount Count="Task.AttachmentCount" Expanded="_filesOpen" Controls="@FilesListId"
+                                      OnToggle="ToggleFiles" />
                 }
             </div>
         }
+
+        @if (_filesOpen && Task.AttachmentCount > 0)
+        {
+            @if (_files is null)
+            {
+                <div id="@FilesListId" role="status" aria-live="polite">
+                    <OdsSpinner AriaLabel="Loading files" />
+                </div>
+            }
+            else
+            {
+                <JournalFileRows Id="@FilesListId" Attachments="_files" CanDownload="CanDownload"
+                                 RemoveLabel="Remove from task"
+                                 OnRemove="@(CanUpdate ? EventCallback.Factory.Create<Guid>(this, RemoveFileAsync) : null)" />
+            }
+        }
     </div>
 </article>
-
-@code {
-    [Parameter, EditorRequired] public JournalTaskSummary Task { get; set; } = default!;
-    [Parameter] public IEnumerable<string> TagNames { get; set; } = [];
-    [Parameter] public bool CanUpdate { get; set; }
-    [Parameter] public bool CanDelete { get; set; }
-
-    [Parameter] public EventCallback<JournalTaskStatus> OnStatus { get; set; }
-    [Parameter] public EventCallback<JournalTaskSummary> OnEdit { get; set; }
-    [Parameter] public EventCallback<JournalTaskSummary> OnExport { get; set; }
-    [Parameter] public EventCallback<JournalTaskSummary> OnArchive { get; set; }
-    [Parameter] public EventCallback<Guid> OnDelete { get; set; }
-    [Parameter] public EventCallback<Guid> OnCopyId { get; set; }
-
-    private List<string> _tagNames = [];
-    private TaskRail _rail = TaskRail.Undated;
-
-    protected override void OnParametersSet()
-    {
-        _tagNames = [.. TagNames];
-        _rail = TaskRail.For(Task);
-    }
-
-    private JournalTaskStatus _status => Task.Status;
-
-    private JournalTaskStatus NextStatus => _status switch
-    {
-        JournalTaskStatus.Backlog => JournalTaskStatus.Doing,
-        JournalTaskStatus.Doing => JournalTaskStatus.Done,
-        JournalTaskStatus.Done => JournalTaskStatus.Archived,
-        _ => JournalTaskStatus.Backlog,
-    };
-
-    private string StatusIcon => _status switch
-    {
-        JournalTaskStatus.Doing => "radio_button_checked",
-        JournalTaskStatus.Done => "task_alt",
-        JournalTaskStatus.Archived => "task_alt",
-        _ => "radio_button_unchecked",
-    };
-
-    private string StatusButtonLabel => _status == JournalTaskStatus.Archived
-        ? "Archived"
-        : $"Status: {_status}. Activate to set {NextStatus}.";
-
-    // The card's ⋯ menu, built from the caller's claims. An OdsMenu item list rather than inline
-    // MudMenuItems: the shared menu is what gives the Copy ID row its trailing affordance and a danger
-    // item its tint, and it labels its own trigger.
-    private List<OdsMenuItem> BuildActions()
-    {
-        var archived = _status == JournalTaskStatus.Archived;
-        var items = new List<OdsMenuItem>();
-
-        if (CanUpdate)
-        {
-            items.Add(new OdsMenuItem
-            {
-                Icon = "edit", Label = "Edit task",
-                OnClick = EventCallback.Factory.Create(this, () => OnEdit.InvokeAsync(Task)),
-            });
-        }
-
-        items.Add(new OdsMenuItem
-        {
-            Icon = "event_note", Label = "Export as iCalendar",
-            OnClick = EventCallback.Factory.Create(this, () => OnExport.InvokeAsync(Task)),
-        });
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => OnCopyId.InvokeAsync(Task.JournalTaskId)),
-        });
-
-        if (CanUpdate)
-        {
-            items.Add(new OdsMenuItem { Divider = true });
-            items.Add(new OdsMenuItem
-            {
-                Icon = archived ? "unarchive" : "inventory_2",
-                Label = archived ? "Unarchive" : "Archive",
-                OnClick = EventCallback.Factory.Create(this, () => OnArchive.InvokeAsync(Task)),
-            });
-        }
-
-        if (CanDelete)
-        {
-            items.Add(new OdsMenuItem
-            {
-                Icon = "delete", Label = "Delete", Danger = true,
-                OnClick = EventCallback.Factory.Create(this, () => OnDelete.InvokeAsync(Task.JournalTaskId)),
-            });
-        }
-
-        return items;
-    }
-}

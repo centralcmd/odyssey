@@ -74,67 +74,13 @@
 }
 .jec-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 
-/* The attachment disclosure: a count that unfolds the full list in place. */
-.jec-filecount {
-    display: inline-flex; align-items: center; gap: 5px; margin: 0 -6px 0 0;
-    appearance: none; background: none; border: none; padding: 4px 6px;
-    border-radius: var(--radius-sm); cursor: pointer;
-    color: var(--mud-palette-text-secondary);
-    font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);
-    transition: background-color var(--duration-fast) var(--ease-standard),
-                color var(--duration-fast) var(--ease-standard);
-}
-.jec-filecount:hover,
-.jec-filecount[aria-expanded='true'] { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
-.jec-filecount:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.jec-filecount .material-icons { font-size: 15px; }
-.jec-filecount .chev { transition: transform var(--duration-base) var(--ease-standard); }
-.jec-filecount[aria-expanded='true'] .chev { transform: rotate(180deg); }
-.jec-fcount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
-
 .jec-files-empty {
     font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);
     color: var(--mud-palette-text-secondary);
 }
-
-/* Attachment rows — FilesTable's field set on one line, since a table's headers and column rhythm
-   don't survive at card width. Never paginated. ::deep because the rows are rendered by
-   JournalFileRows, not by this component. */
-::deep .jec-files {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-    gap: 6px; margin-top: 2px;
-}
-::deep .jec-file {
-    display: flex; align-items: center; gap: 9px; min-width: 0;
-    padding: 7px 10px; border: 1px solid var(--mud-palette-divider);
-    border-radius: var(--radius-sm); background: var(--mud-palette-background-gray);
-}
-/* The kind well. The design system reuses its .odc-avatar here; in the client that class is a
-   MudAvatar modifier, so the same 26px square is drawn directly rather than by nesting an avatar
-   component inside a row that needs none of it. */
-::deep .jec-file-ic {
-    display: grid; place-items: center; flex: none;
-    width: 26px; height: 26px; border-radius: var(--radius-sm);
-}
-::deep .jec-file-ic .material-icons { font-size: 16px; }
-::deep .jec-file-name {
-    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    font-size: var(--fs-body2);
-}
-::deep .jec-file .odc-chip { order: 1; flex: none; }
-::deep .jec-file-size {
-    order: 2; flex: none; color: var(--mud-palette-text-secondary);
-    font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-caption);
-}
-::deep .jec-file-up { order: 3; flex: none; color: var(--mud-palette-text-secondary); font-size: var(--fs-caption); }
-::deep .jec-file .je-cardmenu { order: 4; flex: none; }
 
 /* The archived label is the only text stating the state, and an ancestor's opacity rasterizes the
    subtree — a descendant opacity:1 can't escape it — so raise the ink instead of fighting the dim. */
 .jec-card.archived ::deep .odc-chip.archived,
 .jec-card.archived .jec-archived-at { color: var(--mud-palette-text-primary); }
 .jec-archived-at { margin-left: 6px; }
-
-@media (prefers-reduced-motion: reduce) {
-    .jec-filecount, .jec-filecount .chev { transition: none; }
-}

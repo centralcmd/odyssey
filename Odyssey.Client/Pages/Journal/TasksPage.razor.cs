@@ -8,6 +8,7 @@ using Odyssey.Client.Authorization;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Client.Pages.Attachments;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 
@@ -33,6 +34,7 @@ public partial class TasksPage
     private bool _canUpdate;
     private bool _canDelete;
     private bool _canReadFiles;
+    private bool _canUploadFiles;
 
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "tasks-page";
@@ -40,7 +42,8 @@ public partial class TasksPage
     private string _search = string.Empty;
     private IReadOnlyCollection<string> _tagFilter = [];
     private IReadOnlyCollection<string> _statusFilter = [];
-    private string _view = "board";
+    // List first, as the design system opens Tasks; a saved Board choice still wins.
+    private string _view = "list";
     private OdsTableSort _sort = DefaultSort;
 
     private static readonly IReadOnlyList<JournalTaskStatus> BoardKeys =
@@ -130,6 +133,7 @@ public partial class TasksPage
         _canUpdate = user.HasPermission(PermissionClaims.TasksUpdate);
         _canDelete = user.HasPermission(PermissionClaims.TasksDelete);
         _canReadFiles = user.HasPermission(PermissionClaims.FilesRead);
+        _canUploadFiles = user.HasPermission(PermissionClaims.FilesCreate);
     }
 
     private async Task LoadTags()
@@ -195,7 +199,7 @@ public partial class TasksPage
         _search = state.Search ?? string.Empty;
         _tagFilter = state.TagFilter ?? [];
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
-        _view = state.View == "list" ? "list" : "board";
+        _view = state.View == "board" ? "board" : "list";
         _sort = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
     }
 
@@ -216,7 +220,7 @@ public partial class TasksPage
     private void OnSearchChanged(string value) { _search = value ?? string.Empty; PersistPageState(); StateHasChanged(); }
     private void OnTagFilterChanged(IReadOnlyCollection<string> values) { _tagFilter = values ?? []; PersistPageState(); StateHasChanged(); }
     private void OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); StateHasChanged(); }
-    private void OnViewChanged(string value) { _view = value == "list" ? "list" : "board"; PersistPageState(); StateHasChanged(); }
+    private void OnViewChanged(string value) { _view = value == "board" ? "board" : "list"; PersistPageState(); StateHasChanged(); }
     private void OnSortChanged(OdsTableSort sort) { _sort = sort; PersistPageState(); StateHasChanged(); }
 
     private void ClearFilters()
@@ -234,7 +238,7 @@ public partial class TasksPage
         public string Search { get; set; } = string.Empty;
         public List<string> TagFilter { get; set; } = [];
         public List<string> StatusFilter { get; set; } = [];
-        public string View { get; set; } = "board";
+        public string View { get; set; } = "list";
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
     }
@@ -409,13 +413,11 @@ public partial class TasksPage
     private bool _dialogOpen;
     private Guid _dialogKey;
     private ExistingJournalTask? _editTask;
-    private IReadOnlyList<OdsUploadFile> _editUploads = [];
 
     private void AddClicked()
     {
         if (!_canCreate) return;
         _editTask = null;
-        _editUploads = [];
         _dialogKey = Guid.NewGuid();
         _dialogOpen = true;
     }
@@ -426,22 +428,62 @@ public partial class TasksPage
         var detail = await EnsureDetail(t.JournalTaskId);
         if (detail is null) return;
         _editTask = detail;
-        _editUploads =
-        [
-            .. detail.Attachments.Select(a =>
-            {
-                var meta = _fileMeta.GetValueOrDefault(a.FileId);
-                return new OdsUploadFile
-                {
-                    Uid = a.FileId.ToString(),
-                    Name = meta?.FileName ?? a.FileId.ToString(),
-                    Kind = "File",
-                    SizeBytes = meta?.SizeBytes,
-                };
-            }),
-        ];
         _dialogKey = Guid.NewGuid();
         _dialogOpen = true;
+    }
+
+    // ── Attach documents / remove from task (row menus, DS Tasks) ─────────────────
+    // A task's attachment set is written whole through PUT, so both actions re-project the loaded
+    // task with the set changed and everything else untouched.
+    private bool CanAttachFiles => _canUpdate && (_canUploadFiles || _canReadFiles);
+
+    private ExistingJournalTask? _attachTask;
+    private Guid _attachKey;
+    private bool _attachOpen;
+
+    private async Task OpenAttach(JournalTaskSummary t)
+    {
+        if (!CanAttachFiles) return;
+        var detail = await EnsureDetail(t.JournalTaskId);
+        if (detail is null) return;
+        _attachTask = detail;
+        _attachKey = Guid.NewGuid();
+        _attachOpen = true;
+    }
+
+    // One write per file, each re-reading the task first. The per-file result is what lets the dialog
+    // keep a failed file's row for a retry: staging every id and committing once after the dialog had
+    // closed lost the whole pick on a single failed write, with only a toast to say so.
+    private async Task<bool> AttachOne(AttachDocumentItem item)
+    {
+        if (_attachTask is not { } task) return false;
+        var (result, _) = await JournalTaskAttachments.AddAsync(Tasks, task.JournalTaskId, [item.FileId]);
+        return result.Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
+    }
+
+    private async Task OnTaskFilesAttached(IReadOnlyList<AttachDocumentItem> items)
+    {
+        if (_attachTask is not { } task) return;
+        Snackbar.Add(items.Count == 1 ? "Document attached." : $"{items.Count} documents attached.", Severity.Success);
+        _announce = $"{items.Count} document{(items.Count == 1 ? "" : "s")} attached to {task.Title}.";
+        await ReloadTask(task.JournalTaskId);
+    }
+
+    private async Task RemoveFile(JournalTaskSummary t, Guid fileId)
+    {
+        if (!_canUpdate) return;
+        var (result, _) = await JournalTaskAttachments.RemoveAsync(Tasks, t.JournalTaskId, fileId);
+        if (result.Toast(Snackbar, "Unable to remove the file", "File removed from task."))
+            _announce = $"File removed from {t.Title}.";
+        await ReloadTask(t.JournalTaskId);
+    }
+
+    /// <summary>The row's unfolded file list — hydrated metadata, dangling / unreadable ids omitted.</summary>
+    private async Task<IReadOnlyList<FileMetadataResponse>> LoadFiles(Guid taskId)
+    {
+        var detail = await EnsureDetail(taskId);
+        if (detail is null) return [];
+        return [.. detail.Attachments.Select(a => _fileMeta.GetValueOrDefault(a.FileId)).OfType<FileMetadataResponse>()];
     }
 
     private async Task OnTaskSaved()
