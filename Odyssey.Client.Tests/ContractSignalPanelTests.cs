@@ -120,7 +120,7 @@ public class ContractSignalPanelTests
     {
         var panel = RenderPanel(new PageHeaderProblem
         {
-            Group = "Next charges",
+            Group = "Upcoming transactions",
             Message = "Apartment Lease",
             Row = builder => builder.AddMarkupContent(0, "<div class=\"stand-in\">row</div>"),
         });
@@ -208,6 +208,26 @@ public class ContractSignalPanelTests
 
         Assert.Equal(expected, row.Find(".con-charge-rel").TextContent.Trim());
         Assert.Equal(expected, OdsRelativeDay.Ahead(daysUntil));
+    }
+
+    /// <summary>
+    /// Charges and receipts share one date-ordered list, so the SIGNED amount carries the direction:
+    /// "+" for money in, U+2212 for money out, over the magnitude. The accessible name says it in
+    /// words, since a sign character is read inconsistently and colour alone may not carry it.
+    /// </summary>
+    [Theory]
+    [InlineData(false, "\u2212USD 1850.00", "money out USD 1850.00 due")]
+    [InlineData(true, "+USD 1850.00", "money in USD 1850.00 expected")]
+    public void A_charge_rows_amount_is_signed_by_direction(bool incoming, string shown, string spoken)
+    {
+        var ctx = NewContext();
+        var row = ctx.Render<ContractChargeRow>(p => p
+            .Add(r => r.Charge, Charge())
+            .Add(r => r.Money, Money)
+            .Add(r => r.Incoming, incoming));
+
+        Assert.Equal(shown, row.Find(".con-charge-amt").TextContent.Trim());
+        Assert.Contains(spoken, row.Find(".con-charge-row").GetAttribute("aria-label"), StringComparison.Ordinal);
     }
 
     /// <summary>The decorative type glyph and the "View" affordance are named by the row's own label.</summary>

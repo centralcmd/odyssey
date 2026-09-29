@@ -679,9 +679,9 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("contractEndingWindowDays", dto.ContractEndingWindowDays),
                 Write: (p, req) => req.ContractEndingWindowDays = p.IntRequest("contractEndingWindowDays"),
                 Unit: "days"),
-            new("contractChargeWindowDays", "event_repeat", "“Next charges” window",
-                "How many days ahead a contract's next recurring charge is surfaced. The charge is derived "
-                + "from the fee terms in force — nothing is scheduled or stored.",
+            new("contractChargeWindowDays", "event_repeat", "“Upcoming transactions” window",
+                "How many days ahead a contract's next recurring charge or receipt is surfaced. Each is "
+                + "derived from the fee terms in force — nothing is scheduled or stored.",
                 SettingClaim.Count, SettingControl.Number,
                 Min: SystemSettingsBounds.ContractChargeWindowDaysMin,
                 Max: SystemSettingsBounds.ContractChargeWindowDaysMax,

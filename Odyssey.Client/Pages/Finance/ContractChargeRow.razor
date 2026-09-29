@@ -3,8 +3,8 @@
 @using Odyssey.Dtos.Finance
 
 @*
-    ContractChargeRow — one derived "next charge" row in the Contracts page-header panel
-    (Odyssey Design System · contracts.css, .con-charge-row).
+    ContractChargeRow — one derived upcoming charge or receipt in the Contracts page-header panel's
+    "Upcoming transactions" group (Odyssey Design System · contracts.css, .con-charge-row).
 
     It sits in the same PageHeader.Problems collection as the alert rows above it, so it shares their
     count, their severity roll-up and their open/closed state — but it has its own ANATOMY rather than
@@ -18,8 +18,9 @@
 
     Nothing here is scheduled. The date is the contract's in-force fee term read forward from its own
     cadence anchor, computed server-side and carried on ContractSummary.UpcomingCharges — or, for a
-    receipt, on UpcomingReceipts (issue #159). ONE row shape serves both: the list a row belongs to
-    names its direction, so the row itself carries no direction field to drift out of step.
+    receipt, on UpcomingReceipts (issue #159). ONE row shape serves both, in one date-ordered list:
+    the SIGNED amount names the direction — "+" for money in, "−" for money out — so the direction is
+    carried by text and not by colour alone (WCAG 1.4.1).
 *@
 
 <button type="button" class="@RowClass" aria-label="@AriaLabel" @onclick="Activate">
@@ -38,7 +39,7 @@
             <span class="con-charge-term">@Charge.Label</span>
         }
     </span>
-    <span class="@AmountClass">@Money(Charge.Amount, Charge.CurrencyCode)</span>
+    <span class="@AmountClass">@SignedAmount</span>
     <span class="con-charge-go" aria-hidden="true">View →</span>
 </button>
 
@@ -51,10 +52,9 @@
     [Parameter] public EventCallback<Guid> OnView { get; set; }
 
     /// <summary>
-    /// Whether this row is a RECEIPT rather than a charge (issue #159). The row shape is identical
-    /// either way — what names the direction is the GROUP HEADING above it, so the row carries no
-    /// direction field of its own and there is no second copy of the fact to drift. This flag only
-    /// tints the amount and words the accessible sentence.
+    /// Whether this row is a RECEIPT rather than a charge (issue #159). It comes from WHICH summary
+    /// list the row was read from, never from a field on the row, so there is no second copy of the
+    /// fact to drift. It signs and tints the amount and words the accessible sentence.
     /// </summary>
     [Parameter] public bool Incoming { get; set; }
 
@@ -66,6 +66,11 @@
     // that changes colour.
     private string AmountClass => Incoming ? "con-charge-amt in" : "con-charge-amt out";
 
+    // The magnitude, signed by direction: charges and receipts share one list, so the sign is what
+    // tells them apart at a glance. U+2212 MINUS SIGN, not a hyphen, per the design system.
+    private string SignedAmount =>
+        (Incoming ? "+" : "\u2212") + Money(Math.Abs(Charge.Amount), Charge.CurrencyCode);
+
     private OdsTypeOption TypeInfo => OdsTypeRegistries.ContractTypeOf(Charge.Type);
 
     // The shared wording, so this caption and the "Starting soon" alert beside it in the same panel
@@ -74,12 +79,12 @@
 
     // The visual row is a grid of fragments; a screen reader gets the whole thing as one sentence,
     // including the series name the narrow layout drops.
-    // "due" / "expected" is the only wording difference: the colour that carries the direction
-    // visually must not be its only carrier (WCAG 1.4.1), and a screen reader never sees the group
-    // heading's relationship to this row.
+    // The direction is spoken in words ("money in" / "money out", "expected" / "due"), since a sign
+    // character is read inconsistently and the colour must not be the only carrier (WCAG 1.4.1).
     private string AriaLabel =>
         $"{Charge.Name}{(string.IsNullOrWhiteSpace(Charge.Label) ? "" : $", {Charge.Label}")}, "
-        + $"{Money(Charge.Amount, Charge.CurrencyCode)} {(Incoming ? "expected" : "due")} {RelativeDays} "
+        + $"{(Incoming ? "money in" : "money out")} {Money(Math.Abs(Charge.Amount), Charge.CurrencyCode)} "
+        + $"{(Incoming ? "expected" : "due")} {RelativeDays} "
         + $"on {Charge.ChargeDate.ToString("MMMM d, yyyy", Culture)}. View contract.";
 
     private Task Activate() => OnView.InvokeAsync(Charge.ContractId);

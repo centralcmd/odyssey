@@ -2662,7 +2662,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-bd-net.net-pos { color: var(--finance-income); }
 .con-bd-net.net-neg { color: var(--finance-expense); }
 
-/* ── Header signal: the derived "next charge" row ──────────────────────────────────────────────
+/* ── Header signal: the derived upcoming-transaction row ──────────────────────────────────────────────
    Four columns — when · what · how much · go. It shares the panel with the alert rows above it but
    not their anatomy: a dated, money-carrying row reads as a small table rather than a sentence.
    A real <button>, so the element resets rather than the div the design draws (see
@@ -2689,8 +2689,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-charge-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .con-charge-term { font: var(--fw-regular) var(--fs-caption) / 1 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .con-charge-amt { font: var(--fw-medium) var(--fs-body2) / 1 var(--font-mono); color: var(--mud-palette-text-primary); }
-/* Next receipts sit in the same panel, in rows of the same shape: the GROUP HEADING names the
-   direction, and the amount is the only thing that changes colour — mint for money in, coral for money out. */
+/* Upcoming transactions: charges and receipts in one date-ordered list. The signed amount names the
+   direction — mint "+" for money in, coral "−" for money out, per the finance semantics. */
 .con-charge-amt.in { color: var(--finance-income); }
 .con-charge-amt.out { color: var(--finance-expense); }
 .con-charge-row.incoming .con-charge-md { color: var(--mud-palette-text-primary); }
