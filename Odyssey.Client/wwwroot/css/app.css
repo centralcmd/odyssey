@@ -21,8 +21,8 @@ input:-webkit-autofill:active {
 /* Finance semantic tokens — used directly in transaction tables, chips, etc.
    Odyssey owns the data-theme attribute on <html>: MudBlazor (9.10) writes none,
    so OdysseyThemeProvider stamps data-theme="dark" in dark mode and removes it in
-   light mode via window.odysseyTheme (index.html, which also starts it dark
-   pre-boot). It never writes data-theme="light". Convention here:
+   light mode via window.odysseyTheme (index.html, which also restores the last
+   applied theme pre-boot). It never writes data-theme="light". Convention here:
    :root holds light-mode defaults; [data-theme='dark'] overrides for dark mode. */
 :root {
   --finance-income:        #15803D;          /* --mint-700 — WCAG contrast on white */

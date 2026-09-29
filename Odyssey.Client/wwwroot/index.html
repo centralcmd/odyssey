@@ -1,12 +1,21 @@
 <!DOCTYPE html>
 <!-- data-theme="dark" is Odyssey's own switch for every non-MudBlazor dark token (css/app.css).
-     It starts dark because dark is the default preference (UserPreferenceService) and the saved
-     preference lives server-side, so nothing more is known before WASM boots; OdysseyThemeProvider
-     then keeps it in step with MudThemeProvider.IsDarkMode through window.odysseyTheme below. -->
+     It defaults to dark, the default preference (UserPreferenceService); the head script below
+     swaps in the viewer's last applied theme before first paint, and OdysseyThemeProvider then
+     keeps it in step with MudThemeProvider.IsDarkMode through window.odysseyTheme. -->
 <html lang="en" data-theme="dark">
 
 <head>
     <meta charset="utf-8" />
+    <script>
+        // Pre-boot theme (issue #228): restore the theme window.odysseyTheme.set last applied in this
+        // browser so a light-mode user gets no dark-token flash before WASM boots. The saved preference
+        // itself lives server-side; this is only a per-viewer cache, so a missing or unreadable value
+        // (private window, blocked storage) keeps the dark default.
+        try {
+            if (localStorage.getItem('odyssey-theme') === 'light') document.documentElement.removeAttribute('data-theme');
+        } catch (e) { }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Odyssey.Client</title>
     <base href="/" />
@@ -51,9 +60,11 @@
             // Stamp (or clear) Odyssey's dark-mode attribute on the root element. MudBlazor 9.10
             // writes no data-theme itself, so OdysseyThemeProvider calls this whenever IsDarkMode
             // changes (issue #228). Light mode is the attribute's absence, never data-theme="light".
+            // The applied value is also cached for the pre-boot script in <head>.
             set: function (dark) {
                 if (dark) document.documentElement.setAttribute('data-theme', 'dark');
                 else document.documentElement.removeAttribute('data-theme');
+                try { localStorage.setItem('odyssey-theme', dark ? 'dark' : 'light'); } catch (e) { }
             }
         };
         window.downloadFileFromBytes = function (bytes, fileName, contentType) {

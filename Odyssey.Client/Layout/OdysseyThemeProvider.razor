@@ -6,12 +6,18 @@
 <MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@_isDarkMode" Theme="OdysseyTheme.Theme"/>
 
 @code {
-    /// <summary>The JS function that stamps (or clears) <c>data-theme="dark"</c> on the root element.</summary>
+    /// <summary>The JS function (wwwroot/index.html) that stamps or clears <c>data-theme="dark"</c> on the root element.</summary>
     internal const string SetThemeAttributeIdentifier = "odysseyTheme.set";
 
     private MudThemeProvider? _mudThemeProvider;
     private bool _isDarkMode;
     private bool? _appliedDarkMode;
+
+    // In the browser the root attribute already holds the viewer's last applied theme (index.html
+    // restores it pre-boot), while the first render only knows the dark-first default. Writing that
+    // default before the saved preference resolves would flash dark tokens at a light-mode user, so
+    // the attribute is left alone until then. Outside the browser there is no load to wait for.
+    private bool _preferenceResolved = !OperatingSystem.IsBrowser();
 
     // Paint the last-known theme synchronously (after injection, before first render)
     // so there's no flash before the async reload in OnAfterRenderAsync.
@@ -23,21 +29,35 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // MudBlazor only rewrites --mud-palette-*; every other token's dark variant is keyed on
-        // [data-theme='dark'] on the root element, which Odyssey owns (issue #228). Mirror the same
-        // value that drives MudThemeProvider — every path that changes _isDarkMode (preference load,
-        // DarkModeChanged, MudThemeProvider's own IsDarkModeChanged) re-renders and lands here.
-        if (_appliedDarkMode != _isDarkMode)
-        {
-            _appliedDarkMode = _isDarkMode;
-            await JS.InvokeVoidAsync(SetThemeAttributeIdentifier, _isDarkMode);
-        }
+        await ApplyThemeAttributeAsync();
 
         if (!firstRender || !OperatingSystem.IsBrowser())
             return;
 
         _isDarkMode = await UserPreferences.GetDarkModePreferencesAsync();
+        _preferenceResolved = true;
         StateHasChanged();
+    }
+
+    // MudBlazor only rewrites --mud-palette-*; every other token's dark variant is keyed on
+    // [data-theme='dark'] on the root element, which Odyssey owns (issue #228). Mirror the same
+    // value that drives MudThemeProvider — every path that changes _isDarkMode (preference load,
+    // DarkModeChanged, MudThemeProvider's own IsDarkModeChanged) re-renders and lands here.
+    private async Task ApplyThemeAttributeAsync()
+    {
+        if (!_preferenceResolved || _appliedDarkMode == _isDarkMode)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync(SetThemeAttributeIdentifier, _isDarkMode);
+            _appliedDarkMode = _isDarkMode;
+        }
+        catch (JSException)
+        {
+            // A stale cached index.html without the helper must not take the layout down with it;
+            // the MudBlazor palette still switches, and the next render retries.
+        }
     }
 
     private void OnDarkModeChanged(bool isDarkMode)
