@@ -1022,7 +1022,6 @@ public partial class ContractsCard
                 Label = "New term",
                 OnClick = EventCallback.Factory.Create(this, () => AddTerm(c.ContractId)),
             });
-
         }
 
         if (_canUploadFiles)

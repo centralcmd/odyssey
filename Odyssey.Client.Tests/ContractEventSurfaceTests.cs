@@ -157,12 +157,40 @@ public class ContractEventSurfaceTests
             Event(title: "Signed", occurredAt: new DateTime(2024, 11, 20, 10, 0, 0, DateTimeKind.Utc)),
         ]);
 
-        var text = cut.Find(".cev-rail").TextContent;
-        var origin = text.IndexOf("Contract added", StringComparison.Ordinal);
-        var tick = text.IndexOf("2024", StringComparison.Ordinal);
-        var signed = text.IndexOf("Signed", StringComparison.Ordinal);
-        Assert.True(origin < tick && tick < signed, text);
+        Assert.Equal(["Today", "2025", "Recent", "Contract added", "2024", "Signed"], RailOrder(cut));
     }
+
+    /// <summary>
+    /// The other half of the same branch: when the first older event is in the SAME year as the
+    /// record's creation, there is no tick between them to hop, so the origin sits directly above it.
+    /// </summary>
+    [Fact]
+    public void The_origin_marker_stays_below_a_same_year_tick()
+    {
+        var cut = RenderSection(Lease(),
+        [
+            Event(title: "Recent", occurredAt: new DateTime(2026, 3, 1, 10, 0, 0, DateTimeKind.Utc)),
+            Event(title: "Viewing", occurredAt: new DateTime(2025, 3, 1, 10, 0, 0, DateTimeKind.Utc)),
+        ]);
+
+        Assert.Equal(["Today", "Recent", "2025", "Contract added", "Viewing"], RailOrder(cut));
+    }
+
+    /// <summary>
+    /// The rail's direct children in order, each reduced to its first word or, for a row, its title:
+    /// markers read "Today", a year, or "Contract added".
+    /// </summary>
+    private static List<string> RailOrder(IRenderedComponent<ContractEventsSection> cut) =>
+        cut.Find(".odc-er").Children
+            .Select(child => child.ClassList.Contains("odc-er-item")
+                ? child.QuerySelector(".odc-er-title")!.TextContent.Trim()
+                : child.QuerySelector("span")!.TextContent.Trim() switch
+                {
+                    var label when label.StartsWith("Contract added", StringComparison.Ordinal) => "Contract added",
+                    var label when label.StartsWith("Today", StringComparison.Ordinal) => "Today",
+                    var label => label,
+                })
+            .ToList();
 
     /// <summary>
     /// The origin marker names who added the contract, in the design's "Added by … at …" meta line.
@@ -192,6 +220,21 @@ public class ContractEventSurfaceTests
         var origin = cut.FindAll(".odc-er-marker").Single(m => m.TextContent.Contains("Contract added", StringComparison.Ordinal));
         Assert.Null(origin.QuerySelector(".odc-er-meta"));
         Assert.DoesNotContain("has-meta", origin.ClassName, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// WCAG 2.1.1 — a marker has nothing focusable, so its meta line could never be revealed from the
+    /// keyboard. The stylesheet shows it outright; a source-lint because a computed style is not
+    /// observable in bUnit (the stylesheet is global, never attached to the rendered component).
+    /// </summary>
+    [Fact]
+    public void A_marker_meta_line_is_shown_without_needing_a_reveal()
+    {
+        var css = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css"));
+
+        // The selector also carries a spacing rule, so look for the one that sets the opacity.
+        var rules = Regex.Matches(css, @"\.odc-er-marker\.has-meta \.odc-er-meta \{[^}]*\}");
+        Assert.Contains(rules, rule => rule.Value.Contains("opacity: 1", StringComparison.Ordinal));
     }
 
     /// <summary>The edit and delete buttons paint a glyph — they were clickable but blank.</summary>

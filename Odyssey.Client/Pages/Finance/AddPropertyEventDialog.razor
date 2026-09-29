@@ -46,7 +46,7 @@
                                    Error="@_errors.ContainsKey("occurredAt")"
                                    ErrorText="@_errors.GetValueOrDefault("occurredAt")"
                                    HelperText="@(_errors.ContainsKey("occurredAt") ? null : "Date and time, in the past. A log, not a plan.")" />
-                    <OdsTimeField AriaLabel="Time" Value="_time" ValueChanged="OnTimeChanged" />
+                    <OdsTimeField AriaLabel="Time" Placeholder="HH:mm" Value="_time" ValueChanged="OnTimeChanged" />
                 </div>
             </OdsFieldShell>
 
