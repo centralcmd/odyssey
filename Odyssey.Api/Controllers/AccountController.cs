@@ -323,11 +323,13 @@ public class AccountController : ControllerBase
 
     [HttpPost("{accountId}/files", Name = "AttachAccountFile")]
     [Authorize(Policy = PermissionClaims.AccountsUpdate)]
+    [Authorize(Policy = PermissionClaims.FilesRead)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Attach an uploaded file to an account.")]
+    [SwaggerOperation(Summary = "Attach an uploaded file to an account (requires accounts.update + files.read).")]
     public async Task<IActionResult> AttachAccountFile(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromBody] AttachAccountFileRequest request, CancellationToken cancellationToken = default)

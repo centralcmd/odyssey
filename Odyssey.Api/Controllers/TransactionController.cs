@@ -163,13 +163,14 @@ public class TransactionController : ControllerBase
 
     [HttpPost("{transactionId}/files", Name = "AttachTransactionFile")]
     [Authorize(Policy = PermissionClaims.TransactionsUpdate)]
+    [Authorize(Policy = PermissionClaims.FilesRead)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
-        Summary = "Attach an uploaded file to a transaction.",
+        Summary = "Attach an uploaded file to a transaction (requires transactions.update + files.read).",
         Description = @"Attach an already-uploaded file to a transaction.")]
     public async Task<IActionResult> AttachTransactionFile(
         [FromRoute(Name = "transactionId")] [SwaggerParameter("TransactionId", Required = true, 

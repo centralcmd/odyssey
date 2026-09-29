@@ -3,6 +3,9 @@ using Odyssey.Context.Authorization;
 using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -399,6 +402,168 @@ public class AuthorizationPolicyTests
             "RoleClaimSeeder names a per-role claim array directly instead of walking "
             + "RolePermissions.RoleClaimMap, which re-opens the second-copy problem issue #90 G9 closed: "
             + string.Join(", ", rebuilt));
+    }
+
+    /// <summary>
+    /// The attach actions every current link-by-id surface exposes, by route name. A floor for the
+    /// discovery in <see cref="LinkByIdAttachActions"/>: if a refactor changed how routes are declared
+    /// and the scan went quiet, the guards below would pass vacuously without it.
+    /// </summary>
+    private static readonly string[] KnownLinkByIdAttachRoutes =
+    [
+        "AttachAccountFile",
+        "AttachTransactionFile",
+        "AttachTaxStatementFile",
+        "AttachContractFile",
+        "AttachPropertyFile",
+    ];
+
+    private sealed record FilesPostAction(string Name, bool TakesBytes, string[] Policies);
+
+    /// <summary>
+    /// Every <c>POST …/files</c> action in the API, found by reflection over the controllers'
+    /// attribute routes (class <c>[Route]</c> combined with the action template), with the policies
+    /// its <c>[Authorize]</c> attributes demand at class and action level.
+    ///
+    /// <para>
+    /// <c>TakesBytes</c> separates an upload — an <see cref="IFormFile"/> parameter or a
+    /// <c>multipart/form-data</c> <c>[Consumes]</c> — from a link-by-id attach. Anything not
+    /// recognisably an upload counts as link-by-id, so a new surface fails closed.
+    /// </para>
+    /// </summary>
+    private static IReadOnlyList<FilesPostAction> FilesPostActions()
+    {
+        var controllers = typeof(Program).Assembly.GetTypes()
+            .Where(type => type is { IsClass: true, IsAbstract: false } && typeof(ControllerBase).IsAssignableFrom(type));
+
+        var actions = new List<FilesPostAction>();
+        foreach (var controller in controllers)
+        {
+            var classTemplates = controller.GetCustomAttributes<RouteAttribute>(inherit: true)
+                .Select(route => route.Template)
+                .DefaultIfEmpty(string.Empty)
+                .ToArray();
+            var classPolicies = controller.GetCustomAttributes<AuthorizeAttribute>(inherit: true)
+                .Select(authorize => authorize.Policy)
+                .OfType<string>()
+                .ToArray();
+
+            foreach (var method in controller.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                var posts = method.GetCustomAttributes<HttpMethodAttribute>(inherit: true)
+                    .Where(attribute => attribute.HttpMethods.Contains("POST", StringComparer.OrdinalIgnoreCase));
+
+                foreach (var post in posts)
+                {
+                    var routes = classTemplates.Select(classTemplate => post.Template switch
+                    {
+                        null => classTemplate,
+                        var template when template.StartsWith('/') || template.StartsWith("~/", StringComparison.Ordinal) => template,
+                        var template => $"{classTemplate}/{template}",
+                    });
+
+                    if (!routes.Any(route => string.Equals(
+                            route.TrimEnd('/').Split('/')[^1], "files", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
+
+                    var takesBytes =
+                        method.GetParameters().Any(parameter =>
+                            typeof(IFormFile).IsAssignableFrom(parameter.ParameterType)
+                            || typeof(IEnumerable<IFormFile>).IsAssignableFrom(parameter.ParameterType))
+                        || method.GetCustomAttributes<ConsumesAttribute>(inherit: true)
+                            .Any(consumes => consumes.ContentTypes.Contains("multipart/form-data", StringComparer.OrdinalIgnoreCase));
+
+                    var policies = classPolicies
+                        .Concat(method.GetCustomAttributes<AuthorizeAttribute>(inherit: true)
+                            .Select(authorize => authorize.Policy)
+                            .OfType<string>())
+                        .Distinct(StringComparer.Ordinal)
+                        .ToArray();
+
+                    actions.Add(new FilesPostAction(
+                        post.Name ?? $"{controller.Name}.{method.Name}", takesBytes, policies));
+                }
+            }
+        }
+
+        return actions;
+    }
+
+    private static IReadOnlyList<FilesPostAction> LinkByIdAttachActions() =>
+        FilesPostActions().Where(action => !action.TakesBytes).ToList();
+
+    /// <summary>
+    /// Issue #233. Attaching an existing file BY ID to a record makes that file's bytes downloadable
+    /// through the record's own read claim, so the record's <c>*.update</c> claim alone would let a
+    /// caller without <c>files.read</c> name any file id and read it back through the record — a
+    /// confused deputy. Every link-by-id attach therefore stacks <c>files.read</c>, as the contract and
+    /// property surfaces did first. Reflection rather than a list, so a new surface cannot drift.
+    ///
+    /// <para>
+    /// A byte upload is deliberately out of scope: it cannot reach an existing file, which is why the
+    /// contact avatar (bytes, never a <c>fileId</c>) is gated on <c>contacts.update</c> alone.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Every_link_by_id_attach_action_requires_FilesRead()
+    {
+        var discovered = LinkByIdAttachActions();
+
+        var missingFromScan = KnownLinkByIdAttachRoutes
+            .Except(discovered.Select(action => action.Name), StringComparer.Ordinal)
+            .ToList();
+        Assert.True(missingFromScan.Count == 0,
+            "The POST …/files scan no longer discovers known link-by-id attach actions, so the guard would "
+            + "pass vacuously. Fix the discovery: " + string.Join(", ", missingFromScan));
+
+        var ungated = discovered
+            .Where(action => !action.Policies.Contains(PermissionClaims.FilesRead, StringComparer.Ordinal))
+            .Select(action => action.Name)
+            .ToList();
+
+        Assert.True(ungated.Count == 0,
+            "A link-by-id attach makes the file readable through the record's read claim, so it must also "
+            + "require files.read (issue #233). Add [Authorize(Policy = PermissionClaims.FilesRead)] to: "
+            + string.Join(", ", ungated));
+    }
+
+    /// <summary>
+    /// The other half of the classification: the byte-upload endpoint is recognised as one, so the
+    /// guard above is telling the two shapes apart rather than excluding nothing.
+    /// </summary>
+    [Fact]
+    public void Files_post_scan_classifies_the_upload_endpoint_as_taking_bytes()
+    {
+        var upload = Assert.Single(FilesPostActions(), action => action.Name == "PostFile");
+
+        Assert.True(upload.TakesBytes);
+    }
+
+    /// <summary>
+    /// Issue #233 AC 2. Stacking <c>files.read</c> onto the attach actions changes no shipped role's
+    /// behaviour only because every role that already reached an attach action — by holding all its
+    /// other policies — also holds <c>files.read</c>. Derived from the same scan, so a new surface is
+    /// covered without editing this test.
+    /// </summary>
+    [Fact]
+    public void Every_role_that_can_reach_a_link_by_id_attach_action_holds_FilesRead()
+    {
+        var gaps = (from action in LinkByIdAttachActions()
+                    let recordPolicies = action.Policies
+                        .Where(policy => !string.Equals(policy, PermissionClaims.FilesRead, StringComparison.Ordinal))
+                        .ToArray()
+                    where recordPolicies.Length > 0
+                    from role in MappedRoles()
+                    where recordPolicies.All(policy => role.Claims.Contains(policy, StringComparer.Ordinal))
+                    where !role.Claims.Contains(PermissionClaims.FilesRead, StringComparer.Ordinal)
+                    select $"{role.Role} can reach {action.Name} via {string.Join(" + ", recordPolicies)} "
+                           + $"without '{PermissionClaims.FilesRead}'").ToList();
+
+        Assert.True(gaps.Count == 0,
+            "Issue #233 added files.read to the attach-by-id actions on the premise that no shipped role "
+            + "loses access. Roles that would: " + string.Join(", ", gaps));
     }
 
     private static string SeederSourcePath()
