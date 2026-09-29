@@ -44,6 +44,14 @@ public partial class CreateTaxStatementDialog
     private string? _notes;
     private IReadOnlyCollection<string> _taxTags = [];
     private IReadOnlyCollection<string> _incomeTags = [];
+    private IReadOnlyCollection<string> _settlementTags = [];
+    private DateTime? _settlementStartDate;
+    private DateTime? _settlementEndDate;
+    private bool _rangeTouched;
+    private string? _rangeAnnouncement;
+    private OdsDatePicker? _settlementStartPicker;
+    private bool _settlementRangeError;
+    private string? _settlementTagsError;
     private IReadOnlyList<OdsOption> _tagOptions = [];
     private bool _canCreateTag;
 
@@ -68,6 +76,7 @@ public partial class CreateTaxStatementDialog
         _createdTags.RemoveAll(o => o.Value == tempId);
         _taxTags = [.. _taxTags.Where(id => id != tempId)];
         _incomeTags = [.. _incomeTags.Where(id => id != tempId)];
+        _settlementTags = [.. _settlementTags.Where(id => id != tempId)];
         StateHasChanged();
     }
 
@@ -104,6 +113,10 @@ public partial class CreateTaxStatementDialog
             _notes = statement.Notes;
             _taxTags = [.. statement.TaxTagIds.Select(id => id.ToString())];
             _incomeTags = [.. statement.IncomeTagIds.Select(id => id.ToString())];
+            _settlementTags = [.. statement.SettlementTagIds.Select(id => id.ToString())];
+            _settlementStartDate = statement.SettlementStartDate;
+            _settlementEndDate = statement.SettlementEndDate;
+            _rangeTouched = statement.SettlementRangeCustom;
         }
         else
         {
@@ -177,6 +190,68 @@ public partial class CreateTaxStatementDialog
         _fiscalYear = year;
     }
 
+    // An untouched settlement range tracks the period, +1 year — the shared server default.
+    private void FollowPeriod()
+    {
+        if (_rangeTouched || _startDate is null || _endDate is null)
+            return;
+        (_settlementStartDate, _settlementEndDate) = TaxSettlementRange.Default(_startDate.Value, _endDate.Value);
+    }
+
+    // The picker can raise ValueChanged without a user edit (it normalises the bound value on first
+    // render), so a range becomes custom only when it now differs from the default. It never turns
+    // back into a following one here — only an explicit Reset does that, so a stored custom range
+    // that happens to equal the default keeps its SettlementRangeCustom state.
+    private void TouchRange()
+    {
+        _settlementRangeError = false;
+        if (_rangeTouched)
+            return;
+        if (_startDate is { } periodStart && _endDate is { } periodEnd)
+        {
+            var (start, end) = TaxSettlementRange.Default(periodStart, periodEnd);
+            if (_settlementStartDate?.Date == start.Date && _settlementEndDate?.Date == end.Date)
+                return;
+        }
+        _rangeTouched = true;
+        _rangeAnnouncement = "Settlement range set to a custom range.";
+    }
+
+    // Reset removes the focused button itself, so focus moves to the range it just reset (WCAG 2.4.3).
+    private async Task ResetRange()
+    {
+        _rangeTouched = false;
+        _settlementRangeError = false;
+        FollowPeriod();
+        _rangeAnnouncement = "Settlement range follows the period, +1 year.";
+        if (_settlementStartPicker is not null)
+            await _settlementStartPicker.FocusAsync();
+    }
+
+    // A settlement-overlap error on show is re-checked as the tax-payment tags change, so removing
+    // the conflicting tag there clears it without another save attempt.
+    private void OnTaxTagsChanged(IReadOnlyCollection<string> value)
+    {
+        _taxTags = value;
+        if (_settlementTagsError is not null)
+            _settlementTagsError = SettlementOverlapError();
+    }
+
+    private void OnSettlementTagsChanged(IReadOnlyCollection<string> value)
+    {
+        _settlementTags = value;
+        _settlementTagsError = null;
+    }
+
+    private string? SettlementOverlapError()
+    {
+        var overlap = TaxSettlementRange.Overlap(_taxTags, _settlementTags);
+        if (overlap.Count == 0)
+            return null;
+        var names = overlap.Select(id => _tagOpts.FirstOrDefault(o => o.Value == id)?.Label ?? id);
+        return $"{string.Join(", ", names)} {(overlap.Count == 1 ? "is" : "are")} also a tax-payment tag — it would be counted twice.";
+    }
+
     private IEnumerable<Guid> ResolveTagIds(IReadOnlyCollection<string> ids) => ids
         .Select(id => Guid.TryParse(TagCreator.Resolve(id), out var tagId) ? tagId : (Guid?)null)
         .Where(id => id is not null)
@@ -186,8 +261,16 @@ public partial class CreateTaxStatementDialog
     {
         _nameError = string.IsNullOrWhiteSpace(_name);
         _dateError = _startDate is not null && _endDate is not null && _endDate.Value.Date < _startDate.Value.Date;
-        if (_nameError || _dateError)
+        _settlementRangeError = IsEdit && _rangeTouched && _settlementStartDate is not null && _settlementEndDate is not null
+            && _settlementEndDate.Value.Date < _settlementStartDate.Value.Date;
+        _settlementTagsError = IsEdit ? SettlementOverlapError() : null;
+        if (_nameError || _dateError || _settlementRangeError || _settlementTagsError is not null)
             return false;
+        if (IsEdit && _rangeTouched && (_settlementStartDate is null || _settlementEndDate is null))
+        {
+            Snackbar.Add("Set both settlement dates, or reset the range to follow the period.", Severity.Error);
+            return false;
+        }
 
         if (_fiscalYear is < 1900 or > 2200)
         {
@@ -221,6 +304,8 @@ public partial class CreateTaxStatementDialog
                 AssessedTax = ParseMoney(_assessedTaxText),
                 SettlementAmount = ParseMoney(_settlementAmountText),
                 SettledAtUtc = _settledAtUtc,
+                SettlementStartDate = _rangeTouched ? _settlementStartDate : null,
+                SettlementEndDate = _rangeTouched ? _settlementEndDate : null,
                 FiledAtUtc = _filedAtUtc,
                 TaxOfficeApprovedAtUtc = _taxOfficeApprovedAtUtc,
                 Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes!.Trim(),
@@ -238,6 +323,7 @@ public partial class CreateTaxStatementDialog
             {
                 TaxTagIds = [.. ResolveTagIds(_taxTags)],
                 IncomeTagIds = [.. ResolveTagIds(_incomeTags)],
+                SettlementTagIds = [.. ResolveTagIds(_settlementTags)],
             };
             if (!(await TaxStatements.UpdateTagsAsync(Statement.TaxStatementId, tags)).Toast(Snackbar, "Tag update failed"))
                 return false;

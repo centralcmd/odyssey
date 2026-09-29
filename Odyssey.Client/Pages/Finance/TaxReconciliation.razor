@@ -13,7 +13,10 @@
 
     The cross-year settlement is surfaced in the Tax section: advance tax paid within
     the year (declared = assessed − settlement) reconciled against Odyssey's tag-derived
-    figure, then the settlement itself (declared) vs. the estimated outstanding tax.
+    figure; the declared settlement against what the settlement tags recorded over the
+    settlement range; and, as the total, the declared settlement beside the expected one
+    (assessed − derived advance tax), which carries no variance of its own — the two rows
+    above it already split that difference.
 *@
 
 <div class="tx-recon">
@@ -63,13 +66,19 @@
         <div class="tx-figure">Advance tax paid</div>
         @Cell(DeclaredAdvancePaid)
         <span class="tx-num">@Money(v.PaidTax)</span>
-        <span class="ta-r">@Variance(recon.SettlementVariance)</span>
+        <span class="ta-r">@Variance(recon.AdvancePaidVariance)</span>
+    </div>
+    <div class="tx-recon-row">
+        <div class="tx-figure">Settlement recorded</div>
+        <span class="tx-num @(d.SettlementAmount is null ? "na" : null)">@(d.SettlementAmount is null ? "—" : SignedMoney(d.SettlementAmount))</span>
+        <span class="tx-num">@SignedMoney(v.SettlementPaid)</span>
+        <span class="ta-r">@Variance(recon.SettlementRecordedVariance)</span>
     </div>
     <div class="tx-recon-row total">
-        <div class="tx-figure">Settlement</div>
-        <span class="tx-num @(d.SettlementAmount is null ? "na" : null)">@(d.SettlementAmount is null ? "—" : Money(d.SettlementAmount))</span>
-        <span class="tx-num @(recon.OutstandingTax is null ? "na" : null)">@(recon.OutstandingTax is null ? "—" : Money(recon.OutstandingTax))</span>
-        <span class="ta-r">@Variance(recon.SettlementVariance)</span>
+        <div class="tx-figure">Settlement<span class="tx-figure-sub">Odyssey-derived = expected settlement</span></div>
+        <span class="tx-num @(d.SettlementAmount is null ? "na" : null)">@(d.SettlementAmount is null ? "—" : SignedMoney(d.SettlementAmount))</span>
+        <span class="tx-num @(recon.OutstandingTax is null ? "na" : null)">@(recon.OutstandingTax is null ? "—" : SignedMoney(recon.OutstandingTax))</span>
+        <span class="ta-r"><span class="tx-var na">—</span></span>
     </div>
 </div>
 
@@ -82,6 +91,10 @@
 
     /// <summary>Formats an amount in the statement's base currency (the design-system taxMoney).</summary>
     [Parameter, EditorRequired] public Func<decimal?, string> Money { get; set; } = n => n?.ToString() ?? "—";
+
+    /// <summary>Formats a settlement-style balance with an explicit sign (the design-system taxSignedMoney):
+    /// positive = owed, negative = refund.</summary>
+    [Parameter, EditorRequired] public Func<decimal?, string> SignedMoney { get; set; } = n => n?.ToString() ?? "—";
 
     private TaxStatementDeclaredFigures d => Report.Declared;
     private TaxStatementDerivedFigures v => Report.Derived;

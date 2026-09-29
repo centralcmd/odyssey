@@ -29,6 +29,12 @@ public sealed record UpdateTaxStatement
     // Positive = additional tax owed (paid by user); negative = refund returned to user.
     public decimal? SettlementAmount { get; set; }
     public DateTime? SettledAtUtc { get; set; }
+
+    // The window the settlement tags are summed over. Both null = follow the period +1 year;
+    // set both or neither.
+    public DateTime? SettlementStartDate { get; set; }
+    public DateTime? SettlementEndDate { get; set; }
+
     public DateTime? FiledAtUtc { get; set; }
     public DateTime? TaxOfficeApprovedAtUtc { get; set; }
 

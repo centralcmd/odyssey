@@ -465,6 +465,8 @@ public sealed class DataExportService
                 AssessedTax = statement.AssessedTax,
                 SettlementAmount = statement.SettlementAmount,
                 SettledAtUtc = statement.SettledAtUtc,
+                SettlementStartDate = statement.SettlementStartDate,
+                SettlementEndDate = statement.SettlementEndDate,
                 FiledAtUtc = statement.FiledAtUtc,
                 TaxOfficeApprovedAtUtc = statement.TaxOfficeApprovedAtUtc,
                 // No Odyssey.Context copy of this enum exists, so there is nothing to cast across.

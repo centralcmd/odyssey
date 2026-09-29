@@ -448,6 +448,8 @@ public sealed class TaxStatementExport
     public decimal? AssessedTax { get; init; }
     public decimal? SettlementAmount { get; init; }
     public DateTime? SettledAtUtc { get; init; }
+    public DateTime? SettlementStartDate { get; init; }
+    public DateTime? SettlementEndDate { get; init; }
     public DateTime? FiledAtUtc { get; init; }
     public DateTime? TaxOfficeApprovedAtUtc { get; init; }
     public TaxStatementStatus Status { get; init; }

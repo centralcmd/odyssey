@@ -20,6 +20,13 @@ public sealed record ExistingTaxStatement
     public decimal? AssessedTax { get; set; }
     public decimal? SettlementAmount { get; set; }
     public DateTime? SettledAtUtc { get; set; }
+
+    // The EFFECTIVE settlement range — the stored one, or the period +1 year when none is stored.
+    // SettlementRangeCustom says which, so an editor can keep a defaulted range following the period.
+    public DateTime SettlementStartDate { get; set; }
+    public DateTime SettlementEndDate { get; set; }
+    public bool SettlementRangeCustom { get; set; }
+
     public DateTime? FiledAtUtc { get; set; }
     public DateTime? TaxOfficeApprovedAtUtc { get; set; }
 
@@ -33,5 +40,6 @@ public sealed record ExistingTaxStatement
 
     public List<Guid> TaxTagIds { get; set; } = new();
     public List<Guid> IncomeTagIds { get; set; } = new();
+    public List<Guid> SettlementTagIds { get; set; } = new();
     public List<ExistingTaxStatementFile> Files { get; set; } = new();
 }

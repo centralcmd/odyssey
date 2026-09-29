@@ -152,7 +152,8 @@ public class TaxStatementController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingTaxStatement))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Replace the selected tax-payment and income tag sets in one call.")]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Replace the selected tax-payment, income and settlement tag sets in one call.")]
     public async Task<IActionResult> PutTags(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateTaxStatementTags request, CancellationToken cancellationToken = default)

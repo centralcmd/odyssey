@@ -789,6 +789,8 @@ public class DataExportApiTests
         Assert.Equal(1_250_000m, statement.GetProperty("declaredNetWorth").GetDecimal());
         Assert.Equal(96_000m, statement.GetProperty("declaredTotalIncome").GetDecimal());
         Assert.Equal(24_500m, statement.GetProperty("assessedTax").GetDecimal());
+        Assert.Equal(new DateTime(2026, 2, 1), statement.GetProperty("settlementStartDate").GetDateTime().Date);
+        Assert.Equal(new DateTime(2026, 11, 30), statement.GetProperty("settlementEndDate").GetDateTime().Date);
         Assert.Contains(TaxStatementMarker, rawJson, StringComparison.Ordinal);
 
         Assert.Single(finance.GetProperty("taxStatementTags").EnumerateArray());
@@ -1378,6 +1380,8 @@ public class DataExportApiTests
             DeclaredNetWorth = 1_250_000m,
             DeclaredTotalIncome = 96_000m,
             AssessedTax = 24_500m,
+            SettlementStartDate = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc),
+            SettlementEndDate = new DateTime(2026, 11, 30, 0, 0, 0, DateTimeKind.Utc),
             Notes = TaxStatementMarker,
             CreatedAtUtc = DateTime.UtcNow,
         });

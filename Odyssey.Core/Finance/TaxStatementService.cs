@@ -126,6 +126,7 @@ public class TaxStatementService
         await CurrencyValidationService.EnsureSupportedAndActive(context, normalizedCurrency, nameof(request.BaseCurrencyCode));
         Validate(request.StartDate, request.EndDate, request.DeclaredTotalAssets,
             request.DeclaredTotalLiabilities, request.DeclaredTotalIncome, request.AssessedTax);
+        ValidateSettlementRange(request.SettlementStartDate, request.SettlementEndDate);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var statement = new TaxStatement
@@ -142,6 +143,8 @@ public class TaxStatementService
             AssessedTax = request.AssessedTax,
             SettlementAmount = request.SettlementAmount,
             SettledAtUtc = request.SettledAtUtc,
+            SettlementStartDate = request.SettlementStartDate,
+            SettlementEndDate = request.SettlementEndDate,
             FiledAtUtc = request.FiledAtUtc,
             TaxOfficeApprovedAtUtc = request.TaxOfficeApprovedAtUtc,
             Notes = request.Notes,
@@ -168,6 +171,7 @@ public class TaxStatementService
         await CurrencyValidationService.EnsureSupportedAndActive(context, normalizedCurrency, nameof(request.BaseCurrencyCode));
         Validate(request.StartDate, request.EndDate, request.DeclaredTotalAssets,
             request.DeclaredTotalLiabilities, request.DeclaredTotalIncome, request.AssessedTax);
+        ValidateSettlementRange(request.SettlementStartDate, request.SettlementEndDate);
 
         statement.Name = request.Name;
         statement.FiscalYear = request.FiscalYear;
@@ -181,6 +185,8 @@ public class TaxStatementService
         statement.AssessedTax = request.AssessedTax;
         statement.SettlementAmount = request.SettlementAmount;
         statement.SettledAtUtc = request.SettledAtUtc;
+        statement.SettlementStartDate = request.SettlementStartDate;
+        statement.SettlementEndDate = request.SettlementEndDate;
         statement.FiledAtUtc = request.FiledAtUtc;
         statement.TaxOfficeApprovedAtUtc = request.TaxOfficeApprovedAtUtc;
         statement.Notes = request.Notes;
@@ -218,7 +224,23 @@ public class TaxStatementService
 
         var taxTagIds = request.TaxTagIds.Distinct().ToList();
         var incomeTagIds = request.IncomeTagIds.Distinct().ToList();
-        await EnsureTagsExist(taxTagIds.Concat(incomeTagIds).Distinct().ToList(), cancellationToken);
+        // Null leaves the stored settlement tags as they are (see UpdateTaxStatementTags).
+        var settlementTagIds = request.SettlementTagIds is { } requested
+            ? requested.Distinct().ToList()
+            : statement.TaxStatementTags
+                .Where(t => t.Role == TaxStatementTagRole.Settlement)
+                .Select(t => t.TransactionTagId)
+                .ToList();
+
+        var overlap = TaxSettlementRange.Overlap(taxTagIds, settlementTagIds);
+        if (overlap.Count > 0)
+        {
+            throw new DomainUnprocessableException(
+                $"Tag(s) {string.Join(", ", overlap)} are selected for both tax payment and settlement — they would be counted twice.",
+                nameof(UpdateTaxStatementTags.SettlementTagIds));
+        }
+
+        await EnsureTagsExist(taxTagIds.Concat(incomeTagIds).Concat(settlementTagIds).Distinct().ToList(), cancellationToken);
 
         var existing = await context.TaxStatementTags
             .Where(t => t.TaxStatementId == id)
@@ -242,6 +264,16 @@ public class TaxStatementService
                 TaxStatementId = id,
                 TransactionTagId = tagId,
                 Role = TaxStatementTagRole.Income,
+            });
+        }
+
+        foreach (var tagId in settlementTagIds)
+        {
+            context.TaxStatementTags.Add(new TaxStatementTag
+            {
+                TaxStatementId = id,
+                TransactionTagId = tagId,
+                Role = TaxStatementTagRole.Settlement,
             });
         }
 
@@ -291,6 +323,11 @@ public class TaxStatementService
             .Select(t => t.TransactionTagId)
             .ToHashSet();
 
+        var settlementTagIds = statement.TaxStatementTags
+            .Where(t => t.Role == TaxStatementTagRole.Settlement)
+            .Select(t => t.TransactionTagId)
+            .ToHashSet();
+
         var allTagIds = taxTagIds.Concat(incomeTagIds).Distinct().ToList();
 
         // One row per (transaction, matching tag) link within the period. A multi-tagged transaction
@@ -306,12 +343,27 @@ public class TaxStatementService
 
         var excluded = new Dictionary<string, int>();
 
-        var paidTax = SumByRole(candidates, taxTagIds, statement.BaseCurrencyCode, excluded);
-        var actualIncome = SumByRole(candidates, incomeTagIds, statement.BaseCurrencyCode, excluded);
+        var paidTax = SumByRole(candidates, taxTagIds, statement.BaseCurrencyCode, excluded, out var paidTaxTransactions);
+        var actualIncome = SumByRole(candidates, incomeTagIds, statement.BaseCurrencyCode, excluded, out _);
+
+        // A settlement lands after the income year, so its tags are read over their own window.
+        var (settlementStart, settlementEnd) = EffectiveSettlementRange(statement);
+        var settlementCandidates = settlementTagIds.Count == 0
+            ? new List<TransactionRow>()
+            : await context.TransactionTagLinks
+                .Where(link => settlementTagIds.Contains(link.TransactionTagId))
+                .Where(link => link.Transaction!.TimeStamp >= settlementStart && link.Transaction.TimeStamp <= settlementEnd)
+                .Select(link => new TransactionRow(link.TransactionId, link.TransactionTagId, link.Transaction!.Amount, link.Transaction.CurrencyCode))
+                .ToListAsync(cancellationToken);
+        // A custom range may overlap the period: a transaction already counted as advance tax (via a
+        // different tag) must not be counted a second time as settlement.
+        settlementCandidates.RemoveAll(row => paidTaxTransactions.Contains(row.TransactionId));
+        var settlementPaid = SumByRole(settlementCandidates, settlementTagIds, statement.BaseCurrencyCode, excluded, out _);
 
         var derived = await ComputeDerivedBalances(statement.BaseCurrencyCode, cancellationToken);
         derived.PaidTax = paidTax;
         derived.ActualIncome = actualIncome;
+        derived.SettlementPaid = settlementPaid;
 
         var reconciliation = BuildReconciliation(statement, derived);
 
@@ -346,8 +398,10 @@ public class TaxStatementService
         IReadOnlyCollection<TransactionRow> candidates,
         IReadOnlySet<Guid> tagIds,
         string baseCurrency,
-        Dictionary<string, int> excluded)
+        Dictionary<string, int> excluded,
+        out HashSet<Guid> counted)
     {
+        counted = [];
         if (tagIds.Count == 0)
         {
             return 0m;
@@ -356,7 +410,6 @@ public class TaxStatementService
         // De-duplicate by transaction id: a transaction carrying several of this role's tags must
         // still contribute its amount only once to the role total.
         var sum = 0m;
-        var counted = new HashSet<Guid>();
         foreach (var row in candidates.Where(c => tagIds.Contains(c.TagId)))
         {
             if (!counted.Add(row.TransactionId))
@@ -440,12 +493,22 @@ public class TaxStatementService
             ? settlement - outstanding
             : null;
 
+        // The statement implies advance tax paid as assessed − settlement; set against the tag-derived figure.
+        decimal? advancePaidVariance = statement.AssessedTax is { } assessedTax && statement.SettlementAmount is { } declaredSettlement
+            ? assessedTax - declaredSettlement - derived.PaidTax
+            : null;
+        decimal? settlementRecordedVariance = statement.SettlementAmount is { } recorded
+            ? recorded - derived.SettlementPaid
+            : null;
+
         return new TaxStatementReconciliation
         {
             OutstandingTax = outstandingTax,
             IncomeVariance = incomeVariance,
             NetWorthVariance = netWorthVariance,
             SettlementVariance = settlementVariance,
+            AdvancePaidVariance = advancePaidVariance,
+            SettlementRecordedVariance = settlementRecordedVariance,
         };
     }
 
@@ -552,6 +615,9 @@ public class TaxStatementService
         decimal? totalIncome,
         decimal? assessedTax)
     {
+        EnsureInBounds(startDate, nameof(TaxStatement.StartDate));
+        EnsureInBounds(endDate, nameof(TaxStatement.EndDate));
+
         if (endDate < startDate)
         {
             throw new DomainValidationException("EndDate must be on or after StartDate.");
@@ -562,6 +628,48 @@ public class TaxStatementService
         EnsureNonNegative(totalIncome, nameof(TaxStatement.DeclaredTotalIncome));
         EnsureNonNegative(assessedTax, nameof(TaxStatement.AssessedTax));
     }
+
+    private static void ValidateSettlementRange(DateTime? start, DateTime? end)
+    {
+        if (start is null != end is null)
+        {
+            throw new DomainValidationException(
+                "SettlementStartDate and SettlementEndDate must be set together, or both left empty.",
+                code: null,
+                field: start is null ? nameof(TaxStatement.SettlementStartDate) : nameof(TaxStatement.SettlementEndDate));
+        }
+
+        if (start is { } s && end is { } e)
+        {
+            EnsureInBounds(s, nameof(TaxStatement.SettlementStartDate));
+            EnsureInBounds(e, nameof(TaxStatement.SettlementEndDate));
+            if (e < s)
+            {
+                throw new DomainValidationException(
+                    "SettlementEndDate must be on or after SettlementStartDate.",
+                    code: null,
+                    field: nameof(TaxStatement.SettlementEndDate));
+            }
+        }
+    }
+
+    // Bounded so that the derived +1-year default can always be computed (DateTime.AddYears throws
+    // past year 9999, and it runs on every read of the row).
+    private static void EnsureInBounds(DateTime date, string fieldName)
+    {
+        if (!TaxSettlementRange.InBounds(date))
+        {
+            throw new DomainValidationException(
+                $"{fieldName} must be between {TaxSettlementRange.MinDate:yyyy-MM-dd} and {TaxSettlementRange.MaxDate:yyyy-MM-dd}.",
+                code: null,
+                field: fieldName);
+        }
+    }
+
+    private static (DateTime Start, DateTime End) EffectiveSettlementRange(TaxStatement statement) =>
+        statement is { SettlementStartDate: { } start, SettlementEndDate: { } end }
+            ? (start, end)
+            : TaxSettlementRange.Default(statement.StartDate, statement.EndDate);
 
     private static void EnsureNonNegative(decimal? value, string fieldName)
     {
@@ -596,6 +704,12 @@ public class TaxStatementService
             .Where(t => t.Role == TaxStatementTagRole.Income)
             .Select(t => t.TransactionTagId)
             .ToList();
+        dto.SettlementTagIds = statement.TaxStatementTags
+            .Where(t => t.Role == TaxStatementTagRole.Settlement)
+            .Select(t => t.TransactionTagId)
+            .ToList();
+        (dto.SettlementStartDate, dto.SettlementEndDate) = EffectiveSettlementRange(statement);
+        dto.SettlementRangeCustom = statement.SettlementStartDate is not null;
         dto.Files = statement.TaxStatementFiles
             .Where(f => f.FileMetadata is not null)
             .OrderBy(f => f.AttachedAtUtc)

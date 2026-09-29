@@ -587,6 +587,8 @@ public partial class TaxStatementsCard
     // decimals are pinned at zero here rather than read off the currency.
     private static string TaxMoney(decimal? n, string code) => OdsMoney.Format(n, code, minorUnits: 0);
 
+    private static string TaxSignedMoney(decimal? n, string code) => OdsMoney.Signed(n, code, minorUnits: 0);
+
     // Compact y-axis tick: "1.7M NOK" / "232k NOK" / "980 NOK".
     private static string TaxAxis(decimal n, string code) => OdsMoney.Compact(n, code);
 
