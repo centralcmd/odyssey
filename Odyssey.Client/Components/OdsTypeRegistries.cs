@@ -298,10 +298,9 @@ public static class OdsTypeRegistries
         new() { Key = "Borrower",     Label = "Borrower",     Icon = "request_quote",      Color = "oklch(0.78 0.13 165)", Soft = "oklch(0.78 0.13 165 / 0.16)" },
         new() { Key = "Guarantor",    Label = "Guarantor",    Icon = "verified_user",      Color = "oklch(0.76 0.07 330)", Soft = "oklch(0.76 0.07 330 / 0.16)" },
         new() { Key = "Broker",       Label = "Broker",       Icon = "handshake",          Color = "oklch(0.76 0.07 245)", Soft = "oklch(0.76 0.07 245 / 0.16)" },
-        // The three OBJECT roles (issue #169) — what the agreement is ABOUT rather than a side of it.
-        // Values mirror the DS registry. The DS additionally flags them `object: true`, which its
-        // party tile reads to draw them apart; that presentation belongs to the frontend counterpart
-        // and is deliberately not implemented here.
+        // The first three OBJECT roles (issue #169) — what the agreement is ABOUT rather than a side
+        // of it; Account joins them below. Values mirror the DS registry, including its `object: true`
+        // flag, which IsObject carries and the party tile reads to draw them apart.
         new() { Key = "Object",       Label = "Object",       Icon = "category",           Color = "oklch(0.78 0.11 75)",  Soft = "oklch(0.78 0.11 75 / 0.16)",  IsObject = true },
         new() { Key = "Property",     Label = "Property",     Icon = "holiday_village",    Color = "oklch(0.78 0.11 45)",  Soft = "oklch(0.78 0.11 45 / 0.16)",  IsObject = true },
         new() { Key = "Collateral",   Label = "Collateral",   Icon = "lock",               Color = "oklch(0.78 0.11 105)", Soft = "oklch(0.78 0.11 105 / 0.16)", IsObject = true },

@@ -100,11 +100,11 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
     /// undeletable.
     /// </summary>
     /// <remarks>
-    /// The three object roles are the ones a reviewer is most likely to want added to
+    /// The object roles are the ones a reviewer is most likely to want added to
     /// <c>ContactReferenceGuard.BlockingRole</c>, so they are pinned here as NON-blocking: a contact
     /// linked as a contract's object is an ordinary link whose row should die with the contact, unlike
     /// a named beneficiary, where erasing the row silently changes who receives (issue #169 §7.6).
-    /// Nothing in the guard enumerates roles — it tests <c>Role != BlockingRole</c> — so these three
+    /// Nothing in the guard enumerates roles — it tests <c>Role != BlockingRole</c> — so they
     /// fall into the cascade bucket with no code change, and that is exactly what this asserts.
     ///
     /// <para>
@@ -126,6 +126,7 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
     [InlineData(ContextContractPartyRole.Custodian, ContextContractType.Deposit)]
     [InlineData(ContextContractPartyRole.Depositor, ContextContractType.Deposit)]
     [InlineData(ContextContractPartyRole.Account, ContextContractType.Loan)]
+    [InlineData(ContextContractPartyRole.Account, ContextContractType.Deposit)]
     public async Task A_contact_in_any_other_role_still_deletes_and_its_party_row_cascades(
         ContextContractPartyRole role, ContextContractType type)
     {

@@ -318,8 +318,8 @@ public partial class ContractsCard
     //   Recently expired  a term that ran out and was never archived: the decision still outstanding
     //   Ending soon       the cliff itself
     //   Starting soon     its mirror — signed, not yet in force
-    //   Upcoming          what falls due or arrives, derived from the fee terms in force
-    //   transactions      (server-computed), charges and receipts in one date-ordered list
+    //   Upcoming transactions  what falls due or arrives, derived from the fee terms in force
+    //                          (server-computed): charges and receipts in one date-ordered list
     //
     // EVERY group is read against the loaded LIST, which is server-filtered: narrowing the search
     // narrows the panel with it. That is pre-existing behaviour for the ending-soon group and is kept
@@ -401,14 +401,9 @@ public partial class ContractsCard
             // to. Each list keeps its own server-side cap, so a contract heavy with charges still
             // cannot starve the receipts. A contract that pays a salary on the 25th and deducts a fee
             // on the 1st appears twice — the server collapses per (contract, direction), so neither
-            // movement hides the other. Charges sort ahead of receipts on the same day only because
-            // OrderBy is stable; nothing reads that tie-break.
+            // movement hides the other.
             var listed = live.Select(c => c.ContractId).ToHashSet();
-            var upcoming = (_summary?.UpcomingCharges ?? []).Select(charge => (Row: charge, Incoming: false))
-                .Concat((_summary?.UpcomingReceipts ?? []).Select(receipt => (Row: receipt, Incoming: true)))
-                .Where(movement => listed.Contains(movement.Row.ContractId))
-                .OrderBy(movement => movement.Row.DaysUntil);
-            problems.AddRange(upcoming.Select(movement => new PageHeaderProblem
+            problems.AddRange(UpcomingMovements(_summary, listed).Select(movement => new PageHeaderProblem
             {
                 Group = "Upcoming transactions",
                 // Information: money moving as agreed is not a problem, and letting a charge raise the
@@ -421,6 +416,19 @@ public partial class ContractsCard
             return problems;
         }
     }
+
+    /// <summary>
+    /// The summary's upcoming charges and receipts as ONE list, earliest first, keeping only the
+    /// contracts in <paramref name="listed"/>. <c>Incoming</c> comes from which summary list a row was
+    /// read from. On the same day charges come before receipts: the sort is stable over the
+    /// charges-then-receipts concatenation, so the order is deterministic across renders.
+    /// </summary>
+    internal static IEnumerable<(ContractUpcomingCharge Row, bool Incoming)> UpcomingMovements(
+        ContractSummary? summary, IReadOnlySet<Guid> listed) =>
+        (summary?.UpcomingCharges ?? []).Select(charge => (Row: charge, Incoming: false))
+            .Concat((summary?.UpcomingReceipts ?? []).Select(receipt => (Row: receipt, Incoming: true)))
+            .Where(movement => listed.Contains(movement.Row.ContractId))
+            .OrderBy(movement => movement.Row.DaysUntil);
 
     private PageHeaderProblem Dated(
         ContractListItem contract, string group, PageHeaderSeverity severity, string message) => new()

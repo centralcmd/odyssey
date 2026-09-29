@@ -24,7 +24,7 @@ namespace Odyssey.Api.Tests;
 /// <c>409</c> payload (AC 23) and the composed detach gate's <c>403</c> (AC 13).
 ///
 /// <para>
-/// Issue #169 adds the same enforcement for the three object roles and the universal
+/// Issue #169 adds the same enforcement for the three object roles it introduced and the universal
 /// <c>Guarantor</c> (its AC 1–6, 9, 14–17) and for how the pre-existing per-contract party cap
 /// interacts with them (its AC 22–24).
 /// </para>

@@ -143,6 +143,78 @@ public class ContractSignalPanelTests
         Assert.Null(row.GetAttribute("role"));
     }
 
+    // ── The merged "Upcoming transactions" list ──────────────────────────────
+
+    private static readonly Guid OtherContractId = Guid.Parse("77777777-7777-7777-7777-777777777777");
+
+    private static ContractSummary Summary(
+        IEnumerable<ContractUpcomingCharge> charges, IEnumerable<ContractUpcomingCharge> receipts) => new()
+    {
+        CountsByStatus = new ContractStatusCounts(),
+        RunRate = new ContractRunRate { BaseCurrency = "USD" },
+        UpcomingCharges = [.. charges],
+        UpcomingReceipts = [.. receipts],
+    };
+
+    /// <summary>
+    /// Charges and receipts read as ONE list ordered by date, with each row's direction taken from
+    /// the summary list it came from rather than from its position.
+    /// </summary>
+    [Fact]
+    public void Upcoming_movements_interleave_charges_and_receipts_by_date()
+    {
+        var summary = Summary(
+            charges: [Charge(name: "Rent", daysUntil: 9), Charge(name: "Power", daysUntil: 2)],
+            receipts: [Charge(name: "Salary", daysUntil: 5)]);
+
+        var movements = ContractsCard.UpcomingMovements(summary, new HashSet<Guid> { ContractId }).ToList();
+
+        Assert.Equal(["Power", "Salary", "Rent"], movements.Select(m => m.Row.Name));
+        Assert.Equal([false, true, false], movements.Select(m => m.Incoming));
+    }
+
+    /// <summary>
+    /// On the same day a charge precedes a receipt, and rows within one list keep their server order —
+    /// so the panel does not reshuffle between renders.
+    /// </summary>
+    [Fact]
+    public void Same_day_movements_keep_charges_first_and_server_order_within_a_list()
+    {
+        var summary = Summary(
+            charges: [Charge(name: "Fee A", daysUntil: 4), Charge(name: "Fee B", daysUntil: 4)],
+            receipts: [Charge(name: "Interest", daysUntil: 4)]);
+
+        var movements = ContractsCard.UpcomingMovements(summary, new HashSet<Guid> { ContractId }).ToList();
+
+        Assert.Equal(["Fee A", "Fee B", "Interest"], movements.Select(m => m.Row.Name));
+    }
+
+    /// <summary>
+    /// The summary is unfiltered, so a row naming a contract the active list filter excluded is
+    /// dropped — its jump would otherwise scroll to nothing. Both directions are filtered.
+    /// </summary>
+    [Fact]
+    public void Upcoming_movements_drop_contracts_the_list_is_not_showing()
+    {
+        var summary = Summary(
+            charges: [Charge(name: "Shown"), Charge(name: "Hidden charge") with { ContractId = OtherContractId }],
+            receipts: [Charge(name: "Hidden receipt") with { ContractId = OtherContractId }]);
+
+        var movements = ContractsCard.UpcomingMovements(summary, new HashSet<Guid> { ContractId }).ToList();
+
+        Assert.Equal(["Shown"], movements.Select(m => m.Row.Name));
+    }
+
+    /// <summary>No summary yet, or nothing due in the window: the group simply has no rows.</summary>
+    [Fact]
+    public void Upcoming_movements_are_empty_without_a_summary_or_without_rows()
+    {
+        var listed = new HashSet<Guid> { ContractId };
+
+        Assert.Empty(ContractsCard.UpcomingMovements(null, listed));
+        Assert.Empty(ContractsCard.UpcomingMovements(Summary([], []), listed));
+    }
+
     // ── ContractChargeRow ────────────────────────────────────────────────────
 
     private static IRenderedComponent<ContractChargeRow> RenderCharge(ContractUpcomingCharge charge)
@@ -218,11 +290,26 @@ public class ContractSignalPanelTests
     [Theory]
     [InlineData(false, "\u2212USD 1850.00", "money out USD 1850.00 due")]
     [InlineData(true, "+USD 1850.00", "money in USD 1850.00 expected")]
-    public void A_charge_rows_amount_is_signed_by_direction(bool incoming, string shown, string spoken)
+    public void A_charge_rows_amount_is_signed_by_direction(bool incoming, string shown, string spoken) =>
+        AssertSignedAmount(1850m, incoming, shown, spoken);
+
+    /// <summary>
+    /// The sign comes from the DIRECTION alone, over the magnitude: a stored negative amount must not
+    /// double up into "−−" or flip a receipt to a minus. <c>Math.Abs</c> is what guarantees it, in both
+    /// the visible amount and the accessible name.
+    /// </summary>
+    [Theory]
+    [InlineData(false, "\u2212USD 1850.00", "money out USD 1850.00 due")]
+    [InlineData(true, "+USD 1850.00", "money in USD 1850.00 expected")]
+    public void A_negative_stored_amount_is_signed_by_direction_not_by_its_own_sign(
+        bool incoming, string shown, string spoken) =>
+        AssertSignedAmount(-1850m, incoming, shown, spoken);
+
+    private static void AssertSignedAmount(decimal amount, bool incoming, string shown, string spoken)
     {
         var ctx = NewContext();
         var row = ctx.Render<ContractChargeRow>(p => p
-            .Add(r => r.Charge, Charge())
+            .Add(r => r.Charge, Charge() with { Amount = amount })
             .Add(r => r.Money, Money)
             .Add(r => r.Incoming, incoming));
 

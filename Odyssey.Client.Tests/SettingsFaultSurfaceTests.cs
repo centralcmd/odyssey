@@ -101,7 +101,7 @@ public class SettingsFaultSurfaceTests
         Assert.Equal(
             "3 settings aren't using their stored value: “Ending soon” window (couldn't be read), "
             + "Max contracts in summary (is outside its allowed range), "
-            + "Max next charges shown in summary (is outside its allowed range). "
+            + "Max upcoming transactions shown per direction (is outside its allowed range). "
             + "Use Go to first fault to reach them.",
             announcement);
     }

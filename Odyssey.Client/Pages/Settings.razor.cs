@@ -689,7 +689,7 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("contractChargeWindowDays", dto.ContractChargeWindowDays),
                 Write: (p, req) => req.ContractChargeWindowDays = p.IntRequest("contractChargeWindowDays"),
                 Unit: "days"),
-            new("contractMaxSummaryCharges", "format_list_numbered", "Max next charges shown in summary",
+            new("contractMaxSummaryCharges", "format_list_numbered", "Max upcoming transactions shown per direction",
                 "Upper limit on the next-movement rows listed in the page-header panel. It applies to "
                 + "outgoing charges and incoming receipts SEPARATELY, so a file with many charges "
                 + "cannot starve the receipts — the panel can therefore list up to twice this number "

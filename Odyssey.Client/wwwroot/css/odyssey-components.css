@@ -2662,7 +2662,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .con-bd-net.net-pos { color: var(--finance-income); }
 .con-bd-net.net-neg { color: var(--finance-expense); }
 
-/* ── Header signal: the derived upcoming-transaction row ──────────────────────────────────────────────
+/* ── Header signal: the derived upcoming-transaction row ───────────────────────────────────────
    Four columns — when · what · how much · go. It shares the panel with the alert rows above it but
    not their anatomy: a dated, money-carrying row reads as a small table rather than a sentence.
    A real <button>, so the element resets rather than the div the design draws (see
