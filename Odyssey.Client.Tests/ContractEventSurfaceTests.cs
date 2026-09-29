@@ -164,6 +164,36 @@ public class ContractEventSurfaceTests
         Assert.True(origin < tick && tick < signed, text);
     }
 
+    /// <summary>
+    /// The origin marker names who added the contract, in the design's "Added by … at …" meta line.
+    /// </summary>
+    [Fact]
+    public void The_origin_marker_names_who_added_the_contract()
+    {
+        var cut = RenderSection(Lease() with { CreatedBy = "Olav Berg" }, [Event()]);
+
+        var origin = cut.FindAll(".odc-er-marker").Single(m => m.TextContent.Contains("Contract added", StringComparison.Ordinal));
+        var meta = origin.QuerySelector(".odc-er-meta");
+        Assert.NotNull(meta);
+        Assert.Equal("Olav Berg", meta!.QuerySelector(".cev-by-who")!.TextContent);
+        Assert.Contains("Added by", meta.TextContent, StringComparison.Ordinal);
+        Assert.Contains("1 Jun 2025 · 09:00", meta.TextContent, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// No recorded author — every contract created before attribution existed — shows NO line, never
+    /// "Unknown user", which would claim a deleted account.
+    /// </summary>
+    [Fact]
+    public void An_origin_with_no_recorded_author_shows_no_attribution()
+    {
+        var cut = RenderSection(Lease(), [Event()]);
+
+        var origin = cut.FindAll(".odc-er-marker").Single(m => m.TextContent.Contains("Contract added", StringComparison.Ordinal));
+        Assert.Null(origin.QuerySelector(".odc-er-meta"));
+        Assert.DoesNotContain("has-meta", origin.ClassName, StringComparison.Ordinal);
+    }
+
     /// <summary>The edit and delete buttons paint a glyph — they were clickable but blank.</summary>
     [Fact]
     public void Each_row_action_draws_its_glyph()

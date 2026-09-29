@@ -749,6 +749,17 @@ public class ContractService
         ContextInterval Interval, int IntervalCount, DateTime Anchor,
         ContextTermDirection Direction);
 
+    /// <summary>
+    /// The raw id of the user who added the contract, or null when none is recorded. Kept off
+    /// <see cref="ExistingContract"/> on purpose: the API resolves it to a display label with the
+    /// caller's claims, and the response carries the label only.
+    /// </summary>
+    public Task<string?> CreatedByUserIdOf(Guid id, CancellationToken cancellationToken = default) =>
+        context.Contracts.AsNoTracking()
+            .Where(c => c.ContractId == id)
+            .Select(c => c.CreatedByUserId)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task<ExistingContract?> Get(Guid id, CancellationToken cancellationToken = default)
     {
         var contract = await LoadWithDetails(id, cancellationToken);
@@ -785,6 +796,7 @@ public class ContractService
             Ready = ready,
             Signed = signed,
             CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
+            CreatedByUserId = string.IsNullOrWhiteSpace(userId) ? null : userId,
         };
 
         context.Contracts.Add(contract);

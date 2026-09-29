@@ -625,6 +625,7 @@ public sealed class DataExportService
                 Archived = contract.Archived,
                 Paused = contract.Paused,
                 CreatedAtUtc = contract.CreatedAtUtc,
+                CreatedByUserId = contract.CreatedByUserId,
             });
 
     private IQueryable<ContractPartyExport> ContractPartiesQuery() =>

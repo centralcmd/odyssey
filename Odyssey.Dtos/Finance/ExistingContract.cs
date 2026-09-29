@@ -60,4 +60,12 @@ public sealed record ExistingContract
     public DateTime? Signed { get; set; }
 
     public required DateTime CreatedAtUtc { get; set; }
+
+    /// <summary>
+    /// Who added the record, as a display <b>label</b> resolved at the API edge — never the raw user
+    /// id, which the response does not carry, the same rule <see cref="ExistingContractEvent.CreatedBy"/>
+    /// follows. Null when no author is recorded: a contract created before attribution existed, or one
+    /// whose author has been deleted. A null means "show no author", never "Unknown user".
+    /// </summary>
+    public string? CreatedBy { get; set; }
 }

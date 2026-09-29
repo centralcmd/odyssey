@@ -309,6 +309,45 @@ public class ContractEventsApiTests
         Assert.Equal("Unknown user", Assert.Single(items).CreatedBy);
     }
 
+    // ── The origin marker's author: who added the contract ─────────────────
+
+    /// <summary>
+    /// The contract records who added it, and the detail read returns that as a display LABEL — the
+    /// same rule the event rows follow, so the raw id never reaches the response.
+    /// </summary>
+    [Fact]
+    public async Task GetContract_NamesWhoAddedIt_AndNeverTheRawUserId()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        await factory.SeedActorUserAsync(displayName: "Jane Doe");
+        using var client = factory.CreateClient();
+        var contractId = await CreateContractAsync(client);
+
+        var raw = await client.GetStringAsync($"{Path}/{contractId}");
+        var contract = await client.GetFromJsonAsync<ExistingContract>($"{Path}/{contractId}");
+
+        Assert.Equal("Jane Doe", contract!.CreatedBy);
+        Assert.DoesNotContain(ActorUserId, raw, StringComparison.Ordinal);
+        Assert.DoesNotContain("createdByUserId", raw, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// A contract with no recorded author — every one created before the column existed — reads back
+    /// null, NOT "Unknown user": naming an unknown author would claim a deleted account for rows that
+    /// simply predate attribution, so the client shows no "Added by" line at all.
+    /// </summary>
+    [Fact]
+    public async Task GetContract_WithNoRecordedAuthor_ReturnsNullRatherThanUnknownUser()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        using var client = factory.CreateClient();
+        var contractId = await SeedContractDirectlyAsync(factory);
+
+        var contract = await client.GetFromJsonAsync<ExistingContract>($"{Path}/{contractId}");
+
+        Assert.Null(contract!.CreatedBy);
+    }
+
     [Fact]
     public async Task Get_OnAMissingContract_Returns404()
     {
