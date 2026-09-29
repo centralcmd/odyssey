@@ -307,6 +307,11 @@ public partial class ContractEventsSection : IAsyncDisposable
     /// is the anchor this is for. It is appended only on the page that actually holds the end of the
     /// log, since a mid-log page has no end to anchor.
     /// </para>
+    /// <para>
+    /// It never lands UNDER an older year's marker: when the first event older than the record is the
+    /// first of its year, the origin goes above that year's marker, since the record was added in a
+    /// later year. This is the design system's own placement rule (ContractEvents.jsx).
+    /// </para>
     /// </remarks>
     private IReadOnlyList<TrackEntry> Track
     {
@@ -334,6 +339,11 @@ public partial class ContractEventsSection : IAsyncDisposable
             var addedAt = Contract.CreatedAtUtc;
             var origin = new TrackEntry(TrackKind.Origin);
             var at = track.FindIndex(x => x.Event is { } e && e.OccurredAt < addedAt);
+            if (at > 0 && track[at - 1].Kind == TrackKind.Year && track[at - 1].Year != addedAt.Year)
+            {
+                at -= 1;
+            }
+
             if (at != -1)
             {
                 track.Insert(at, origin);

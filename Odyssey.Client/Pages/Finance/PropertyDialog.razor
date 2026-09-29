@@ -67,9 +67,9 @@
 
     <OdsFormRow>
         <OdsDateField Label="Acquired" @bind-Value="_acquired" Placeholder="Unknown"
-                      Help="Leave empty if you don’t know." />
+                      Help="Leave empty if you don’t know. Setting or clearing it records an event." />
         <OdsDateField Label="Disposed" Value="_disposed" ValueChanged="OnDisposedChanged" Placeholder="Still owned"
-                      Help="Sold, written off or scrapped." Error="@Err("disposedDate")" />
+                      Help="Sold, written off or scrapped. Setting or clearing it records an event." Error="@Err("disposedDate")" />
     </OdsFormRow>
 
     <OdsSectionDivider Label="@(IsVehicle ? "Vehicle details" : "Real estate details")" />

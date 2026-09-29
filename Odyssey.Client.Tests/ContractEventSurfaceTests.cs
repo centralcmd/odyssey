@@ -144,6 +144,38 @@ public class ContractEventSurfaceTests
     }
 
     /// <summary>
+    /// The origin never sits UNDER an older year's marker: this lease was added in June 2025 and its
+    /// oldest entry is from 2024, so the "Contract added" cap goes above the 2024 tick rather than
+    /// between that tick and the row it heads. The design system's own placement rule.
+    /// </summary>
+    [Fact]
+    public void The_origin_marker_sits_above_an_older_years_tick()
+    {
+        var cut = RenderSection(Lease(),
+        [
+            Event(title: "Recent", occurredAt: new DateTime(2025, 9, 1, 10, 0, 0, DateTimeKind.Utc)),
+            Event(title: "Signed", occurredAt: new DateTime(2024, 11, 20, 10, 0, 0, DateTimeKind.Utc)),
+        ]);
+
+        var text = cut.Find(".cev-rail").TextContent;
+        var origin = text.IndexOf("Contract added", StringComparison.Ordinal);
+        var tick = text.IndexOf("2024", StringComparison.Ordinal);
+        var signed = text.IndexOf("Signed", StringComparison.Ordinal);
+        Assert.True(origin < tick && tick < signed, text);
+    }
+
+    /// <summary>The edit and delete buttons paint a glyph — they were clickable but blank.</summary>
+    [Fact]
+    public void Each_row_action_draws_its_glyph()
+    {
+        var cut = RenderSection(Lease(), [Event()]);
+
+        var buttons = cut.FindAll(".odc-er-item .odc-rowactions button");
+        Assert.Equal(2, buttons.Count);
+        Assert.All(buttons, b => Assert.NotNull(b.QuerySelector("svg path")));
+    }
+
+    /// <summary>
     /// A year is a marker ON the line between rows, not a heading over a sub-list — which is the whole
     /// reason this is the event rail and not <c>OdsTimeline</c>, whose rail restarts per item.
     /// </summary>
@@ -309,6 +341,40 @@ public class ContractEventSurfaceTests
             node => Assert.False(
                 string.IsNullOrEmpty(node.Id),
                 "a help node with no id is referenced by nothing"));
+    }
+
+    /// <summary>
+    /// The design's "When" pair carries ONE visible label — the shell's. The date and time controls
+    /// under it take no floating or stacked label of their own (they used to render "Date *" inside the
+    /// outline and "Time" above the box, two different label styles out of line with each other), yet
+    /// each input keeps an accessible name so a screen reader can tell them apart.
+    /// </summary>
+    [Fact]
+    public void The_when_pair_shows_one_label_and_each_control_keeps_a_name()
+    {
+        var cut = RenderDialog(Lease());
+
+        var when = cut.Find(".cev-when");
+        Assert.Empty(when.QuerySelectorAll("label"));
+        Assert.Equal(["Date", "Time"], when.QuerySelectorAll("input").Select(i => i.GetAttribute("aria-label")));
+    }
+
+    /// <summary>
+    /// An unnamed text input that autofocuses inside a dialog is exactly what browsers and password
+    /// managers read as a username field. <c>autocomplete="off"</c> alone is widely ignored, so the
+    /// design system pairs it with the vendor opt-outs — and they have to land on the INPUT.
+    /// </summary>
+    [Fact]
+    public void The_title_input_opts_out_of_autofill()
+    {
+        var cut = RenderDialog(Lease());
+
+        var title = cut.Find("input#cev-title");
+        Assert.Equal("contract-event-title", title.GetAttribute("name"));
+        Assert.Equal("off", title.GetAttribute("autocomplete"));
+        Assert.True(title.HasAttribute("data-1p-ignore"));
+        Assert.True(title.HasAttribute("data-lpignore"));
+        Assert.True(title.HasAttribute("data-bwignore"));
     }
 
     // ── Writes (§8.6, AC 7) ──────────────────────────────────────────────────

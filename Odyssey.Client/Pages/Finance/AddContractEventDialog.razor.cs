@@ -88,7 +88,7 @@ public partial class AddContractEventDialog
         ContractEventType.NoticeGiven => "Notice to end the agreement was served, by either side.",
         // Stated on the row that would otherwise mislead: an event is a record, never a mutation of
         // the contract's derived status (§4.2).
-        ContractEventType.Terminated => "The agreement was brought to an end. This does not change the contract's status.",
+        ContractEventType.Terminated => "The agreement was brought to an end. This does not change the contract’s status.",
         ContractEventType.TermChanged => "A term of the agreement — a price, a rate, a notice period, a deadline — was renegotiated or re-set.",
         ContractEventType.EmailSent => "Correspondence you sent about the agreement. Name the recipient in the title or description.",
         // ── The nine automation members (issue #154) ──────────────────────────────
@@ -96,12 +96,12 @@ public partial class AddContractEventDialog
         ContractEventType.Unpaused => "A paused contract was taken off pause.",
         ContractEventType.Ready => "The contract was marked ready.",
         ContractEventType.Unready => "The ready mark was taken off the contract.",
-        ContractEventType.Unsigned => "The contract's signed date was removed.",
+        ContractEventType.Unsigned => "The contract’s signed date was removed.",
         ContractEventType.Archived => "The contract was archived. Archival hides a contract; it does not lock it.",
         ContractEventType.Unarchived => "An archived contract was brought back.",
         ContractEventType.PartyAdded => "Someone joined the agreement.",
         ContractEventType.PartyRemoved => "Someone left the agreement.",
-        _ => "The default — anything the other members do not name. The title carries it.",
+        _ => "The entity default — anything the named members do not cover. The title carries it.",
     };
 
     /// <summary>Whether the row being edited was recorded by the server (issue #154).</summary>

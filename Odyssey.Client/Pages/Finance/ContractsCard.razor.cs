@@ -471,6 +471,13 @@ public partial class ContractsCard
 
     private async Task ToggleExpand(Guid id)
     {
+        // Any change of the open card consumes the pending row-menu requests. The sections are created
+        // afresh on every expand and cannot remember a token they already handled, so a request left
+        // in place would reopen its dialog each time the card is reopened. AddTerm / AddEvent set
+        // theirs AFTER expanding, so they are not cleared by the expand they trigger.
+        _newTermRequest = null;
+        _newEventRequest = null;
+
         if (_expandedId == id)
         {
             _expandedId = null;
