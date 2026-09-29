@@ -246,7 +246,7 @@ export function MultiSelect({
                   <span className="material-icons">check</span>
                 </span>
                 {o.icon ? (
-                  <span className="material-icons odc-opt-icon" style={o.iconColor ? { color: o.iconColor } : undefined} aria-hidden="true">{o.icon}</span>
+                  <span className="material-icons odc-opt-icon" style={o.iconColor ? { color: o.iconColor && `oklch(from ${o.iconColor} var(--glyph-l, l) c h)` } : undefined} aria-hidden="true">{o.icon}</span>
                 ) : null}
                 <span className="odc-check-label">{o.label}</span>
               </label>

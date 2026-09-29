@@ -136,7 +136,7 @@
   display: inline-flex; align-items: center; justify-content: center;
   width: 30px; height: 30px; border-radius: var(--radius-sm);
   background: var(--odc-infotile-accent-soft, var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent)));
-  color: var(--odc-infotile-accent, var(--rec, var(--brand-text))); flex: none;
+  color: oklch(from var(--odc-infotile-accent, var(--rec, var(--brand-text))) var(--glyph-l, l) c h); flex: none;
 }
 .odc-infotile-ic .material-icons { font-size: var(--icon-md); }
 .odc-infotile-k {
@@ -2958,7 +2958,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record-trigger:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; }
 .odc-record-mark {
   flex: none; width: 48px; height: 48px; border-radius: var(--radius-md); display: grid; place-items: center;
-  background: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent)); color: var(--rec, var(--brand-text));
+  background: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent)); color: oklch(from var(--rec, var(--brand-text)) var(--glyph-l, l) c h);
 }
 .odc-record-mark .material-icons { font-size: var(--icon-xl); }
 /* Image mark — the record's own picture in place of its type glyph. The accent
@@ -3167,7 +3167,7 @@ tr:focus-within > .odc-rowactions.reveal,
   display: inline-flex; align-items: center; justify-content: center; flex: none;
   width: 26px; height: 26px; border-radius: 8px;
   background: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
-  color: var(--rec, var(--brand-text));
+  color: oklch(from var(--rec, var(--brand-text)) var(--glyph-l, l) c h);
 }
 .odc-alias-kind { font: var(--fw-medium) var(--fs-caption)/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-alias-value {

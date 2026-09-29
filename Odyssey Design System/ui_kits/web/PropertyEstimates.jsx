@@ -51,7 +51,7 @@ const PropertyEstimates = ({ property: p, estimates, canWrite, onNew, onEdit, on
         {current ? (
           <InfoTileGrid>
             <InfoTile icon="monitor" iconColor={ti.color} iconSoft={ti.soft} label="Estimated value"
-              value={<span style={{ color: ti.color }}>{H.money(current.value, cur)}</span>}
+              value={<span style={{ color: ti.color && `oklch(from ${ti.color} var(--glyph-text-l, l) c h)` }}>{H.money(current.value, cur)}</span>}
               foot={`since ${H.dateLong(current.effectiveFrom)}${current.note ? ` · ${current.note}` : ''}`} />
             {diff != null ? (
               <InfoTile icon={diff > 0 ? 'trending_up' : diff < 0 ? 'trending_down' : 'trending_flat'} iconColor={tone(diff)}
@@ -96,7 +96,7 @@ const PropertyEstimates = ({ property: p, estimates, canWrite, onNew, onEdit, on
                 <tr key={e.id} className={isCur ? 'current' : ''}>
                   <td>
                     <div className="trm-row-kind">
-                      <span className="trm-kind-ic sm" style={{ background: ti.soft, color: ti.color }}><MIcon name="monitor" size={15} /></span>
+                      <span className="trm-kind-ic sm" style={{ background: ti.soft, color: ti.color && `oklch(from ${ti.color} var(--glyph-l, l) c h)` }}><MIcon name="monitor" size={15} /></span>
                       <div>
                         <div className="trm-row-top"><span className="trm-row-kind-name">Estimated value</span></div>
                         {e.note && <div className="trm-row-note">{e.note}</div>}
@@ -104,9 +104,9 @@ const PropertyEstimates = ({ property: p, estimates, canWrite, onNew, onEdit, on
                     </div>
                   </td>
                   <td className="trm-cell-date">{H.dateLong(e.effectiveFrom)}</td>
-                  <td className="trm-cell-value" style={isCur ? { color: ti.color } : undefined}>{H.money(e.value, e.currencyCode || cur)}</td>
+                  <td className="trm-cell-value" style={isCur ? { color: ti.color && `oklch(from ${ti.color} var(--glyph-text-l, l) c h)` } : undefined}>{H.money(e.value, e.currencyCode || cur)}</td>
                   <td>
-                    {isSched ? <span className="trm-superseded" style={{ color: 'oklch(0.80 0.13 85)', opacity: 1 }}>Scheduled</span>
+                    {isSched ? <span className="trm-superseded" style={{ color: 'oklch(from oklch(0.80 0.13 85) var(--glyph-text-l, l) c h)', opacity: 1 }}>Scheduled</span>
                       : isCur ? <span className="trm-inforce"><MIcon name="check_circle" size={12} />In force</span>
                       : <span className="trm-superseded">Superseded</span>}
                   </td>

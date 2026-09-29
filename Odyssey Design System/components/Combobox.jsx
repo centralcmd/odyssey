@@ -248,7 +248,7 @@ export function Combobox({
     <div className="odc-combo" ref={anchorRef}>
       <div className={`odc-input-wrap${showClear ? ' has-clear' : ''}`}>
         {leadingIcon ? (
-          <span className="material-icons odc-input-icon" style={selected.iconColor ? { color: selected.iconColor } : undefined} aria-hidden="true">{leadingIcon}</span>
+          <span className="material-icons odc-input-icon" style={selected.iconColor ? { color: selected.iconColor && `oklch(from ${selected.iconColor} var(--glyph-l, l) c h)` } : undefined} aria-hidden="true">{leadingIcon}</span>
         ) : null}
         <input
           id={fieldId}
@@ -308,7 +308,7 @@ export function Combobox({
                 }}
               >
                 {o.icon ? (
-                  <span className="material-icons odc-opt-icon" style={o.iconColor ? { color: o.iconColor } : undefined} aria-hidden="true">{o.icon}</span>
+                  <span className="material-icons odc-opt-icon" style={o.iconColor ? { color: o.iconColor && `oklch(from ${o.iconColor} var(--glyph-l, l) c h)` } : undefined} aria-hidden="true">{o.icon}</span>
                 ) : null}
                 <span className="odc-combo-opt-label">{o.label}</span>
                 {o.note ? <span className="odc-combo-opt-note">{o.note}</span> : null}

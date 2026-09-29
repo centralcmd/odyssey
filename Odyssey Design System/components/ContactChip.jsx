@@ -78,7 +78,7 @@ export function ContactChip({ contact, name, type, size = 'md', showType = false
       <span className="odc-sr-only">{a11yName}</span>
       <span
         className="material-icons"
-        style={{ color: archived ? undefined : meta.color }}
+        style={{ color: archived ? undefined : meta.color && `oklch(from ${meta.color} var(--glyph-l, l) c h)` }}
         aria-hidden="true"
       >
         {meta.icon}

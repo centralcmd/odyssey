@@ -80,7 +80,7 @@ export function CustodianChip({ custodian, size = 'md', showType = true, classNa
       <span className="odc-custodian-sr">{a11yName}</span>
       <span
         className="material-icons odc-custodian-ic"
-        style={{ color: archived ? undefined : meta.color }}
+        style={{ color: archived ? undefined : meta.color && `oklch(from ${meta.color} var(--glyph-l, l) c h)` }}
         aria-hidden="true"
       >
         {meta.icon}

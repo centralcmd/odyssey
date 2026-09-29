@@ -54,6 +54,21 @@ html:not([data-theme='dark']) .mud-elevation-16 { box-shadow: 0 24px 60px rgba(1
 
 The selector is `html:not([data-theme='dark'])` rather than `[data-theme='light']` so it also covers the pre-hydration default. The matching `--mud-elevation-*` custom properties are already overridden in `colors_and_type.css`; these `app.css` rules are needed only because MudBlazor injects its own `.mud-elevation-*` selectors at higher specificity.
 
+### Registry glyph lightness (WCAG 1.4.11 / 1.4.3 on light)
+
+`OdsTypeRegistries` colours stay single authored constants, tuned for dark (L 0.66–0.80). Two tokens cap their lightness on light only; chroma and hue are kept. Full rationale and measurements: `docs/glyph-contrast-decision.md`, specimen `preview/glyph-contrast.html`.
+
+```css
+:root, [data-theme='dark'] { --glyph-l: l; --glyph-text-l: l; }
+html:not([data-theme='dark']) { --glyph-l: min(l, 0.58); --glyph-text-l: min(l, 0.50); }
+```
+
+Render sites wrap the registry colour; soft tints (`/ 0.16` backgrounds) keep the authored value:
+
+- Glyphs, icon tiles, rail nodes: `color: oklch(from @opt.Color var(--glyph-l, l) c h)`
+- Registry colour used as text (kind chips, value figures): `color: oklch(from @opt.Color var(--glyph-text-l, l) c h)`
+- Where a component takes the colour as `--rec`, the scoped CSS does the wrap: `color: oklch(from var(--rec) var(--glyph-l, l) c h)`.
+
 ## `SettingField` → a MudBlazor wrapper
 
 The System settings page is built on `SettingField`: the label notched into the field's outline, the control inside, and one always-visible helper line carrying the description plus the "last changed" stamp. That shape **is** MudBlazor's `Variant.Outlined`, so the Blazor side is a thin wrapper over the Mud controls rather than new CSS:

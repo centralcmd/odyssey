@@ -100,7 +100,7 @@ const ftYearBad = (iso) => {
 const FT_YEAR_MSG = `Enter a year between ${FT_YEAR_MIN} and ${FT_YEAR_MAX}.`;
 
 const ftKindChip = (f, fi) => (
-  <span className="odc-chip" style={{ background: fi.soft, color: fi.color }}>{fi.label || f.kind}</span>
+  <span className="odc-chip" style={{ background: fi.soft, color: fi.color && `oklch(from ${fi.color} var(--glyph-l, l) c h)` && `oklch(from ${fi.color} var(--glyph-text-l, l) c h)` }}>{fi.label || f.kind}</span>
 );
 
 /* ---- A labeled DatePicker, matching the kit's `.field` shape (the DS
@@ -262,7 +262,7 @@ export function FilesTable({
         // Decorative — the file kind is already in the Type column, so the
         // glyph is aria-hidden and the wrapper carries no img role.
         return (
-          <span className="odc-avatar" style={{ background: fi.soft, color: fi.color }}>
+          <span className="odc-avatar" style={{ background: fi.soft, color: fi.color && `oklch(from ${fi.color} var(--glyph-l, l) c h)` && `oklch(from ${fi.color} var(--glyph-l, l) c h)` }}>
             <span className="material-icons" aria-hidden="true">{fi.icon}</span>
           </span>
         );

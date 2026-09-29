@@ -97,7 +97,7 @@ const AccountPicker = ({ value, onChange, error, locked }) => {
     const ti = atmTypeInfo(a.type);
     return (
       <React.Fragment>
-        <span className="aam-type-ic sm" style={{ background: ti.soft, color: ti.color }}>
+        <span className="aam-type-ic sm" style={{ background: ti.soft, color: ti.color && `oklch(from ${ti.color} var(--glyph-l, l) c h)` }}>
           <MIcon name={ti.icon} size={16} />
         </span>
         <span className="atm-acct-name">{a.name}</span>
@@ -381,7 +381,7 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
                 return (
                   <button key={s.key} type="button"
                     className={`atm-status-chip ${on ? 'on' : ''}`}
-                    style={on ? { background: s.soft, color: s.color, borderColor: 'transparent' } : {}}
+                    style={on ? { background: s.soft, color: s.color && `oklch(from ${s.color} var(--glyph-text-l, l) c h)`, borderColor: 'transparent' } : {}}
                     onClick={() => set('status')(s.key)}>
                     <MIcon name={s.icon} size={15} />{s.label}
                   </button>

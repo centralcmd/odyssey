@@ -349,7 +349,7 @@ export function TagMultiSelect({
                   </span>
                 ) : (
                   <span className="odc-chip entity odc-tagms-chip" key={t.value}>
-                    {t.icon ? <span className="material-icons odc-tagms-chip-ic" style={t.iconColor ? { color: t.iconColor } : undefined} aria-hidden="true">{t.icon}</span> : null}
+                    {t.icon ? <span className="material-icons odc-tagms-chip-ic" style={t.iconColor ? { color: t.iconColor && `oklch(from ${t.iconColor} var(--glyph-l, l) c h)` } : undefined} aria-hidden="true">{t.icon}</span> : null}
                     {t.label}
                     {locked(t.value) ? null : removeBtn(t, i)}
                   </span>
@@ -406,7 +406,7 @@ export function TagMultiSelect({
                           <span className="material-icons">check</span>
                         </span>
                         <span className="odc-check-label">
-                          {o.icon ? <span className="material-icons odc-tagms-opt-ic" style={o.iconColor ? { color: o.iconColor } : undefined} aria-hidden="true">{o.icon}</span> : null}
+                          {o.icon ? <span className="material-icons odc-tagms-opt-ic" style={o.iconColor ? { color: o.iconColor && `oklch(from ${o.iconColor} var(--glyph-l, l) c h)` } : undefined} aria-hidden="true">{o.icon}</span> : null}
                           <span>{o.label}</span>
                           {o.sub ? <span className="odc-tagms-opt-sub">{o.sub}</span> : null}
                         </span>

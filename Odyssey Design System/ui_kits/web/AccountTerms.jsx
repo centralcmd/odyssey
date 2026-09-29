@@ -246,7 +246,7 @@ const CurrentTermsSummary = ({ current, style, account }) => {
           const info = trmKindInfo(t);
           return (
             <div className="trm-srow" key={trmKey(t)}>
-              <span className="trm-kind-ic sm" style={{ background: info.soft, color: info.color }}>
+              <span className="trm-kind-ic sm" style={{ background: info.soft, color: info.color && `oklch(from ${info.color} var(--glyph-l, l) c h)` }}>
                 <MIcon name={info.icon} size={16} />
               </span>
               <TermName t={t} account={account} nameClass="trm-srow-kind" />
@@ -269,7 +269,7 @@ const CurrentTermsSummary = ({ current, style, account }) => {
           const info = trmKindInfo(t);
           return (
             <div className="trm-cchip" key={trmKey(t)}>
-              <span className="trm-kind-ic sm" style={{ width: 26, height: 26, background: info.soft, color: info.color }}>
+              <span className="trm-kind-ic sm" style={{ width: 26, height: 26, background: info.soft, color: info.color && `oklch(from ${info.color} var(--glyph-l, l) c h)` }}>
                 <MIcon name={info.icon} size={15} />
               </span>
               <TermName t={t} account={account} nameClass="trm-cchip-kind" captionClass="trm-kind-caption inline" />
@@ -289,13 +289,13 @@ const CurrentTermsSummary = ({ current, style, account }) => {
         return (
           <div className="trm-tile" key={trmKey(t)}>
             <div className="trm-tile-top">
-              <span className="trm-kind-ic md" style={{ background: info.soft, color: info.color }}>
+              <span className="trm-kind-ic md" style={{ background: info.soft, color: info.color && `oklch(from ${info.color} var(--glyph-l, l) c h)` }}>
                 <MIcon name={info.icon} size={18} />
               </span>
               <TermName t={t} account={account}
                 nameClass="trm-tile-name" />
             </div>
-            <div className="trm-tile-value" style={{ color: info.color }}>{H.fmtTermValueFor(t, account)}</div>
+            <div className="trm-tile-value" style={{ color: info.color && `oklch(from ${info.color} var(--glyph-text-l, l) c h)` }}>{H.fmtTermValueFor(t, account)}</div>
             <div className="trm-tile-foot">
               <span>since {trmMonY(t.effectiveFrom)}</span>
               <CadenceTag term={t} />
@@ -311,7 +311,7 @@ const CurrentTermsSummary = ({ current, style, account }) => {
    History — grouped Rate then Fees, as a table or a timeline
    ============================================================= */
 const TermStatus = ({ t, currentIds }) => {
-  if (t.effectiveFrom > trmToday()) return <span className="trm-superseded" style={{ color: 'oklch(0.80 0.13 85)', opacity: 1 }}>Scheduled</span>;
+  if (t.effectiveFrom > trmToday()) return <span className="trm-superseded" style={{ color: 'oklch(from oklch(0.80 0.13 85) var(--glyph-text-l, l) c h)', opacity: 1 }}>Scheduled</span>;
   if (currentIds.has(t.id)) return <span className="trm-inforce"><MIcon name="check_circle" size={12} />In force</span>;
   return <span className="trm-superseded">Superseded</span>;
 };
@@ -370,8 +370,8 @@ const TermTable = ({ rows, currentIds, onEdit, onDelete, account, editLockFor })
             <td>
               <div className="trm-row-kind">
                 <span className="trm-kind-ic sm" style={H.termDirectionApplies(t, account)
-                  ? { background: H.termDirectionInfo(t).soft || `color-mix(in srgb, ${H.termDirectionInfo(t).color} 16%, transparent)`, color: H.termDirectionInfo(t).color }
-                  : { background: info.soft, color: info.color }}>
+                  ? { background: H.termDirectionInfo(t).soft || `color-mix(in srgb, ${H.termDirectionInfo(t).color} 16%, transparent)`, color: H.termDirectionInfo(t).color && `oklch(from ${H.termDirectionInfo(t).color} var(--glyph-l, l) c h)` }
+                  : { background: info.soft, color: info.color && `oklch(from ${info.color} var(--glyph-l, l) c h)` }}>
                   <MIcon name={info.icon} size={15} />
                 </span>
                 <div>
@@ -412,7 +412,7 @@ const TermTimeline = ({ rows, currentIds, onEdit, onDelete, account, editLockFor
       return (
         <div className="trm-tl-item" key={t.id}>
           <div className="trm-tl-rail">
-            <span className="trm-tl-node" style={{ background: info.color, color: info.color }} />
+            <span className="trm-tl-node" style={{ background: info.color && `oklch(from ${info.color} var(--glyph-l, l) c h)` }} />
           </div>
           <div className="trm-tl-body">
             <div className="trm-tl-top">

@@ -278,6 +278,12 @@
   --violet-text:                    var(--violet-400); /* violet-500 dips under 4.5:1 as small text on dark — step lighter */
   --pending-text:                   var(--amber-500);
 
+  /* Registry glyph lightness. Every OdsTypeRegistries colour is authored once,
+     in the L 0.66–0.80 band tuned for this surface; glyphs render it through
+     oklch(from <colour> var(--glyph-l) c h). Dark passes it through unchanged. */
+  --glyph-l:                        l; /* @kind other */
+  --glyph-text-l:                   l; /* @kind other */
+
   /* Account status — lifecycle of an account record.
      active = live & operational · closed = settled, read-only history ·
      archived = hidden from active lists, retrievable. */
@@ -463,6 +469,14 @@
   --tag-text:                       var(--violet-text);
   --violet-text:                    var(--violet-700); /* text-safe violet on light surfaces */
   --pending-text:                   var(--amber-700);
+
+  /* Registry glyphs: cap lightness at 0.58, keep chroma + hue. Worst case over
+     every hue at C ≤ 0.16 is 3.65:1 on #FFFFFF and 3.28:1 on the glyph's own
+     /0.16 tint (WCAG 1.4.11 needs 3:1). Soft tints stay on the authored colour. */
+  --glyph-l:                        min(l, 0.58); /* @kind other */
+  /* Registry colour used as text (chips, value figures): 1.4.3 needs 4.5:1.
+     Cap 0.50 → worst 5.63:1 on #FFFFFF, 5.09:1 on the /0.16 tint. */
+  --glyph-text-l:                   min(l, 0.50); /* @kind other */
 
   /* Account status — see dark theme for semantics */
   --status-active:                  var(--mint-700);
