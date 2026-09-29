@@ -1,5 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- data-theme="dark" is Odyssey's own switch for every non-MudBlazor dark token (css/app.css).
+     It starts dark because dark is the default preference (UserPreferenceService) and the saved
+     preference lives server-side, so nothing more is known before WASM boots; OdysseyThemeProvider
+     then keeps it in step with MudThemeProvider.IsDarkMode through window.odysseyTheme below. -->
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="utf-8" />
@@ -43,6 +47,15 @@
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
     <script>navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });</script>
     <script>
+        window.odysseyTheme = {
+            // Stamp (or clear) Odyssey's dark-mode attribute on the root element. MudBlazor 9.10
+            // writes no data-theme itself, so OdysseyThemeProvider calls this whenever IsDarkMode
+            // changes (issue #228). Light mode is the attribute's absence, never data-theme="light".
+            set: function (dark) {
+                if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+                else document.documentElement.removeAttribute('data-theme');
+            }
+        };
         window.downloadFileFromBytes = function (bytes, fileName, contentType) {
             const blob = new Blob([new Uint8Array(bytes)], { type: contentType });
             const url = URL.createObjectURL(blob);

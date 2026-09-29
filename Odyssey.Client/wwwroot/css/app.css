@@ -19,8 +19,10 @@ input:-webkit-autofill:active {
 }
 
 /* Finance semantic tokens — used directly in transaction tables, chips, etc.
-   MudBlazor 9.4 sets data-theme="dark" in dark mode and removes the attribute
-   in light mode — it never writes data-theme="light". Convention here:
+   Odyssey owns the data-theme attribute on <html>: MudBlazor (9.10) writes none,
+   so OdysseyThemeProvider stamps data-theme="dark" in dark mode and removes it in
+   light mode via window.odysseyTheme (index.html, which also starts it dark
+   pre-boot). It never writes data-theme="light". Convention here:
    :root holds light-mode defaults; [data-theme='dark'] overrides for dark mode. */
 :root {
   --finance-income:        #15803D;          /* --mint-700 — WCAG contrast on white */
@@ -343,8 +345,8 @@ input:-webkit-autofill:active {
    OdysseyTheme.Shadows is a single array shared by both modes, tuned for dark
    surfaces (deep opacity + 1px inset white highlight). In light mode those
    shadows are too heavy and the inset highlight reads as a faint bright stroke.
-   MudBlazor 9.4 sets data-theme="dark" in dark mode and removes the attribute
-   in light mode — it never writes data-theme="light" — so the selector must be
+   OdysseyThemeProvider sets data-theme="dark" on <html> in dark mode and removes
+   it in light mode — it never writes data-theme="light" — so the selector must be
    anchored to html to correctly match the absence of the dark attribute.
    A bare :not() descendant would always match because body/div ancestors never
    carry data-theme='dark'. */
