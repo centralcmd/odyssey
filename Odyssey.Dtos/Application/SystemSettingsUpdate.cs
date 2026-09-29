@@ -215,7 +215,7 @@ public sealed record SystemSettingsUpdate
     /// </summary>
     [Range(SystemSettingsBounds.ContractMaxSummaryChargesMin,
         SystemSettingsBounds.ContractMaxSummaryChargesMax, ErrorMessage =
-        "Next charges shown in the summary must be between 1 and 50. Each one is a separate rendered "
+        "Upcoming transactions shown per direction must be between 1 and 50. Each one is a separate rendered "
         + "block in the page header, so this is deliberately bounded well below the other summary caps.")]
     public int? ContractMaxSummaryCharges { get; set; }
 

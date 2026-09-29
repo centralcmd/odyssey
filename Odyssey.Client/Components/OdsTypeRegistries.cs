@@ -43,7 +43,8 @@ public sealed record OdsTypeOption
     /// <summary>
     /// This member names the THING the record is about rather than a party to it — the DS registries'
     /// <c>object: true</c> flag. Set only by <see cref="OdsTypeRegistries.ContractPartyRoles"/>
-    /// today, where it marks <c>Object</c>, <c>Property</c> and <c>Collateral</c> (issue #169).
+    /// today, where it marks <c>Object</c>, <c>Property</c>, <c>Collateral</c> (issue #169) and
+    /// <c>Account</c>.
     /// </summary>
     /// <remarks>
     /// It rides on the registry ROW, exactly as the design system declares it, rather than living in
@@ -297,10 +298,9 @@ public static class OdsTypeRegistries
         new() { Key = "Borrower",     Label = "Borrower",     Icon = "request_quote",      Color = "oklch(0.78 0.13 165)", Soft = "oklch(0.78 0.13 165 / 0.16)" },
         new() { Key = "Guarantor",    Label = "Guarantor",    Icon = "verified_user",      Color = "oklch(0.76 0.07 330)", Soft = "oklch(0.76 0.07 330 / 0.16)" },
         new() { Key = "Broker",       Label = "Broker",       Icon = "handshake",          Color = "oklch(0.76 0.07 245)", Soft = "oklch(0.76 0.07 245 / 0.16)" },
-        // The three OBJECT roles (issue #169) — what the agreement is ABOUT rather than a side of it.
-        // Values mirror the DS registry. The DS additionally flags them `object: true`, which its
-        // party tile reads to draw them apart; that presentation belongs to the frontend counterpart
-        // and is deliberately not implemented here.
+        // The first three OBJECT roles (issue #169) — what the agreement is ABOUT rather than a side
+        // of it; Account joins them below. Values mirror the DS registry, including its `object: true`
+        // flag, which IsObject carries and the party tile reads to draw them apart.
         new() { Key = "Object",       Label = "Object",       Icon = "category",           Color = "oklch(0.78 0.11 75)",  Soft = "oklch(0.78 0.11 75 / 0.16)",  IsObject = true },
         new() { Key = "Property",     Label = "Property",     Icon = "holiday_village",    Color = "oklch(0.78 0.11 45)",  Soft = "oklch(0.78 0.11 45 / 0.16)",  IsObject = true },
         new() { Key = "Collateral",   Label = "Collateral",   Icon = "lock",               Color = "oklch(0.78 0.11 105)", Soft = "oklch(0.78 0.11 105 / 0.16)", IsObject = true },
@@ -309,6 +309,9 @@ public static class OdsTypeRegistries
         // Lender row is a creditor or a depositor. Values mirror the DS registry.
         new() { Key = "Depositor",    Label = "Depositor",    Icon = "account_balance_wallet", Color = "oklch(0.77 0.13 235)", Soft = "oklch(0.77 0.13 235 / 0.16)" },
         new() { Key = "Custodian",    Label = "Custodian",    Icon = "account_balance",    Color = "oklch(0.76 0.13 350)", Soft = "oklch(0.76 0.13 350 / 0.16)" },
+        // The fourth OBJECT role — the ledger account a loan or deposit is booked in. It names the
+        // balance the agreement runs through, not a side of it. Values mirror the DS registry.
+        new() { Key = "Account",      Label = "Account",      Icon = "receipt_long",       Color = "oklch(0.78 0.11 140)", Soft = "oklch(0.78 0.11 140 / 0.16)", IsObject = true },
     ];
 
     /// <summary>
@@ -627,7 +630,7 @@ public static class OdsTypeRegistries
 
     /// <summary>
     /// Whether <paramref name="role"/> names the THING the agreement concerns rather than a side of
-    /// it — <c>Object</c>, <c>Property</c> or <c>Collateral</c> (issue #169). Read off the registry's
+    /// it — <c>Object</c>, <c>Property</c>, <c>Collateral</c> (issue #169) or <c>Account</c>. Read off the registry's
     /// own <see cref="OdsTypeOption.IsObject"/> flag, so the tile class and the tile ORDER cannot
     /// disagree about which roles they mean.
     /// </summary>

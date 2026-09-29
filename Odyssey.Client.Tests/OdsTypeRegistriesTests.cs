@@ -568,21 +568,23 @@ public class OdsTypeRegistriesTests
     // ── The object-role flag (issue #169) ────────────────────────────────────
 
     /// <summary>
-    /// Exactly three party roles name what the agreement is ABOUT rather than a side of it. The set
+    /// Exactly four party roles name what the agreement is ABOUT rather than a side of it. The set
     /// is pinned because both the tile's mark and the tile ORDER read it: a role that silently gained
     /// or lost the flag would re-sort the parties section with nothing else changing.
     /// </summary>
     [Fact]
-    public void Exactly_the_three_object_roles_carry_the_object_flag()
+    public void Exactly_the_four_object_roles_carry_the_object_flag()
     {
         Assert.Equal(
-            [nameof(ContractPartyRole.Object), nameof(ContractPartyRole.Property), nameof(ContractPartyRole.Collateral)],
+            [nameof(ContractPartyRole.Object), nameof(ContractPartyRole.Property), nameof(ContractPartyRole.Collateral),
+             nameof(ContractPartyRole.Account)],
             OdsTypeRegistries.ContractPartyRoles.Where(r => r.IsObject).Select(r => r.Key).ToList());
 
         Assert.All(
             Enum.GetValues<ContractPartyRole>(),
             role => Assert.Equal(
-                role is ContractPartyRole.Object or ContractPartyRole.Property or ContractPartyRole.Collateral,
+                role is ContractPartyRole.Object or ContractPartyRole.Property or ContractPartyRole.Collateral
+                    or ContractPartyRole.Account,
                 OdsTypeRegistries.IsObjectRole(role)));
     }
 

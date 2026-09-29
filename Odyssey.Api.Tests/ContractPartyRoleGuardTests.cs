@@ -71,6 +71,7 @@ public class ContractPartyRoleGuardTests
         Assert.Equal(19, (int)DtoRole.Collateral);
         Assert.Equal(20, (int)DtoRole.Depositor);
         Assert.Equal(21, (int)DtoRole.Custodian);
+        Assert.Equal(22, (int)DtoRole.Account);
 
         Assert.Equal(1, (int)ContextRole.Employee);
         Assert.Equal(6, (int)ContextRole.Other);
@@ -80,9 +81,10 @@ public class ContractPartyRoleGuardTests
         Assert.Equal(19, (int)ContextRole.Collateral);
         Assert.Equal(20, (int)ContextRole.Depositor);
         Assert.Equal(21, (int)ContextRole.Custodian);
+        Assert.Equal(22, (int)ContextRole.Account);
 
-        Assert.Equal(20, Enum.GetValues<DtoRole>().Length);
-        Assert.Equal(20, Enum.GetValues<ContextRole>().Length);
+        Assert.Equal(21, Enum.GetValues<DtoRole>().Length);
+        Assert.Equal(21, Enum.GetValues<ContextRole>().Length);
     }
 
     /// <summary>
@@ -196,8 +198,8 @@ public class ContractPartyRoleGuardTests
     }
 
     /// <summary>
-    /// Issue #187 AC 9 — the headline count, pinned: <b>78 of the 200 cells are legal</b>, up from 69
-    /// of 162 (issue #169) and 52 of 135 before that. A single-cell change to the matrix is a deliberate act, and this is what makes it
+    /// The headline count, pinned: <b>81 of the 210 cells are legal</b>, up from 78 of 200 (issue
+    /// #187), 69 of 162 (issue #169) and 52 of 135 before that. A single-cell change to the matrix is a deliberate act, and this is what makes it
     /// visible in a diff.
     /// </summary>
     /// <remarks>
@@ -207,14 +209,14 @@ public class ContractPartyRoleGuardTests
     /// one and not the other is green here and red there.
     /// </remarks>
     [Fact]
-    public void LegalCellCount_Is78Of200()
+    public void LegalCellCount_Is81Of210()
     {
         var types = Enum.GetValues<DtoType>();
         var roles = Enum.GetValues<DtoRole>();
 
         Assert.Equal(10, types.Length);
-        Assert.Equal(20, roles.Length);
-        Assert.Equal(78, types.Sum(type => roles.Count(role => ContractPartyRoleMatrix.IsLegal(type, role))));
+        Assert.Equal(21, roles.Length);
+        Assert.Equal(81, types.Sum(type => roles.Count(role => ContractPartyRoleMatrix.IsLegal(type, role))));
     }
 
     /// <summary>
@@ -228,10 +230,10 @@ public class ContractPartyRoleGuardTests
     [InlineData(DtoType.Insurance, 7)]
     [InlineData(DtoType.Subscription, 6)]
     [InlineData(DtoType.Purchase, 7)]
-    [InlineData(DtoType.Loan, 7)]
-    [InlineData(DtoType.Deposit, 7)]
+    [InlineData(DtoType.Loan, 8)]
+    [InlineData(DtoType.Deposit, 8)]
     [InlineData(DtoType.Membership, 6)]
-    [InlineData(DtoType.Other, 20)]
+    [InlineData(DtoType.Other, 21)]
     public void PerTypeLegalCounts_MatchTheSpecTable(DtoType type, int legal)
     {
         Assert.Equal(legal, ContractPartyRoleMatrix.LegalFor(type).Count);
@@ -301,8 +303,10 @@ public class ContractPartyRoleGuardTests
 
     /// <summary>
     /// Issue #169 AC 10 — the suggested counts, re-pinned to the 4 / 3 / 2 / 1 shape. Insurance carries
-    /// FOUR, mirroring an insurance policy's four link collections; Rental, Purchase and Loan carry
-    /// THREE, their object role being as ordinary as their two counterparties; <c>Other</c>-the-type
+    /// FOUR, mirroring an insurance policy's four link collections, and so does Loan, whose booked
+    /// <c>Account</c> and pledged <c>Collateral</c> are both as ordinary as its two counterparties;
+    /// Rental, Purchase and Deposit carry THREE, their one object role being as ordinary as their two
+    /// counterparties; <c>Other</c>-the-type
     /// carries exactly one; the rest carry two.
     /// </summary>
     /// <remarks>
@@ -314,9 +318,9 @@ public class ContractPartyRoleGuardTests
     [InlineData(DtoType.Insurance, 4)]
     [InlineData(DtoType.Rental, 3)]
     [InlineData(DtoType.Purchase, 3)]
-    [InlineData(DtoType.Loan, 3)]
+    [InlineData(DtoType.Loan, 4)]
+    [InlineData(DtoType.Deposit, 3)]
     [InlineData(DtoType.Employment, 2)]
-    [InlineData(DtoType.Deposit, 2)]
     [InlineData(DtoType.Service, 2)]
     [InlineData(DtoType.Subscription, 2)]
     [InlineData(DtoType.Membership, 2)]
@@ -333,7 +337,7 @@ public class ContractPartyRoleGuardTests
     public void LoanColumn_TakesLenderAndBorrower_NotBuyerAndSeller()
     {
         Assert.Equal(
-            [DtoRole.Lender, DtoRole.Borrower, DtoRole.Collateral],
+            [DtoRole.Lender, DtoRole.Borrower, DtoRole.Account, DtoRole.Collateral],
             ContractPartyRoleMatrix.SuggestedFor(DtoType.Loan));
 
         Assert.False(ContractPartyRoleMatrix.IsLegal(DtoType.Loan, DtoRole.Buyer));
@@ -344,18 +348,19 @@ public class ContractPartyRoleGuardTests
     // ── The Deposit column (issue #187) ──────────────────────────────────────
 
     /// <summary>
-    /// Issue #187 AC 3 and AC 4 — a <c>Deposit</c> suggests its two counterparties, in that order, and
-    /// its legal roles read suggested-then-allowed with the universal trio last.
+    /// Issue #187 AC 3 and AC 4 — a <c>Deposit</c> suggests its two counterparties, in that order, then
+    /// the <c>Account</c> it is booked in; its legal roles read suggested-then-allowed with the
+    /// universal trio last.
     /// </summary>
     [Fact]
     public void DepositColumn_SuggestsDepositorAndCustodian_InTheDeclaredOrder()
     {
         Assert.Equal(
-            [DtoRole.Depositor, DtoRole.Custodian],
+            [DtoRole.Depositor, DtoRole.Custodian, DtoRole.Account],
             ContractPartyRoleMatrix.SuggestedFor(DtoType.Deposit));
 
         Assert.Equal(
-            [DtoRole.Depositor, DtoRole.Custodian, DtoRole.Object, DtoRole.Collateral, DtoRole.Guarantor,
+            [DtoRole.Depositor, DtoRole.Custodian, DtoRole.Account, DtoRole.Object, DtoRole.Collateral, DtoRole.Guarantor,
              DtoRole.Broker, DtoRole.Other],
             ContractPartyRoleMatrix.LegalFor(DtoType.Deposit));
     }
@@ -405,6 +410,26 @@ public class ContractPartyRoleGuardTests
             };
 
             Assert.Equal(expected, ContractPartyRoleMatrix.LegalityOf(type, role));
+        });
+    }
+
+    /// <summary>
+    /// The <c>Account</c> object role names the ledger account a loan or deposit is booked in, so it
+    /// is suggested on exactly those two columns, allowed on <c>Other</c>, and rejected everywhere else.
+    /// </summary>
+    [Fact]
+    public void AccountRole_IsSuggestedOnLoanAndDeposit_AllowedOnOther_RejectedElsewhere()
+    {
+        Assert.All(Enum.GetValues<DtoType>(), type =>
+        {
+            var expected = type switch
+            {
+                DtoType.Loan or DtoType.Deposit => ContractPartyRoleLegality.Suggested,
+                DtoType.Other => ContractPartyRoleLegality.Allowed,
+                _ => ContractPartyRoleLegality.Rejected,
+            };
+
+            Assert.Equal(expected, ContractPartyRoleMatrix.LegalityOf(type, DtoRole.Account));
         });
     }
 

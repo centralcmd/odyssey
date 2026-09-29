@@ -100,17 +100,18 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
     /// undeletable.
     /// </summary>
     /// <remarks>
-    /// The three object roles are the ones a reviewer is most likely to want added to
+    /// The object roles are the ones a reviewer is most likely to want added to
     /// <c>ContactReferenceGuard.BlockingRole</c>, so they are pinned here as NON-blocking: a contact
     /// linked as a contract's object is an ordinary link whose row should die with the contact, unlike
     /// a named beneficiary, where erasing the row silently changes who receives (issue #169 §7.6).
-    /// Nothing in the guard enumerates roles — it tests <c>Role != BlockingRole</c> — so these three
+    /// Nothing in the guard enumerates roles — it tests <c>Role != BlockingRole</c> — so they
     /// fall into the cascade bucket with no code change, and that is exactly what this asserts.
     ///
     /// <para>
     /// Issue #187 adds <c>Custodian</c> — the bank or landlord holding a deposit — to the same
     /// non-blocking set (its §7.5, AC 18): deleting the bank contact is ordinary cleanup, and the
-    /// deposit contract itself survives. <c>Depositor</c> is pinned beside it.
+    /// deposit contract itself survives. <c>Depositor</c> is pinned beside it, and so is the
+    /// <c>Account</c> object role a loan or deposit is booked in.
     /// </para>
     /// </remarks>
     [SkippableTheory]
@@ -124,6 +125,8 @@ public class ContractBeneficiaryBlockerIntegrationTests(MariaDbFixture fixture)
     [InlineData(ContextContractPartyRole.Collateral, ContextContractType.Loan)]
     [InlineData(ContextContractPartyRole.Custodian, ContextContractType.Deposit)]
     [InlineData(ContextContractPartyRole.Depositor, ContextContractType.Deposit)]
+    [InlineData(ContextContractPartyRole.Account, ContextContractType.Loan)]
+    [InlineData(ContextContractPartyRole.Account, ContextContractType.Deposit)]
     public async Task A_contact_in_any_other_role_still_deletes_and_its_party_row_cascades(
         ContextContractPartyRole role, ContextContractType type)
     {

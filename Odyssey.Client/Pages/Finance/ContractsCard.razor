@@ -111,10 +111,10 @@
                         @* Term ROWS, not values in force — the same "count rows, never resolved
                            values" rule the insurance link counts follow, so a busy price history
                            never reads as empty. *@
-                        new OdsRecordCount("sell", c.TermCount.ToString(CultureInfo.CurrentCulture), "Terms"),
-                        @* Watched tags (issue #166). `local_offer`, not `sell`: that glyph already
-                           denotes Terms on a contract, and one glyph meaning two things in a strip
-                           whose whole job is to index the body would be worse than two glyphs. It
+                        new OdsRecordCount("§", c.TermCount.ToString(CultureInfo.CurrentCulture), "Terms"),
+                        @* Watched tags (issue #166), under `local_offer`. Terms carry the typeset
+                           `§` the term dialog already uses, so no glyph in the strip means two
+                           things. It
                            counts LINK ROWS, including a link whose tag has since been archived —
                            the row is the configuration. *@
                         new OdsRecordCount("local_offer", c.SmartTagCount.ToString(CultureInfo.CurrentCulture), "Smart tags"),

@@ -16,9 +16,9 @@ public enum ContractPartyRoleLegality
 }
 
 /// <summary>
-/// The contract-type × party-role matrix (issue #157 §4.7, widened by issues #169 §4.2 and #187): which roles
+/// The contract-type × party-role matrix (issue #157 §4.7, widened by issues #169 §4.2 and #187, and by the <c>Account</c> object role): which roles
 /// are legal on which contract type, and which of those are <em>suggested</em>.
-/// <b>78 of the 200 cells are legal.</b>
+/// <b>81 of the 210 cells are legal.</b>
 /// </summary>
 /// <remarks>
 /// <b>This is the single declaration, not a server rule the client re-implements.</b> It lives in
@@ -43,10 +43,12 @@ public enum ContractPartyRoleLegality
 ///
 /// <para>
 /// The suggested counts are <b>4 / 3 / 2 / 1</b>: four for <see cref="ContractType.Insurance"/>,
-/// mirroring an insurance policy's four link collections; three for
-/// <see cref="ContractType.Rental"/>, <see cref="ContractType.Purchase"/> and
-/// <see cref="ContractType.Loan"/>, whose object role is as ordinary as their two counterparties;
-/// two for the remaining named types, <see cref="ContractType.Deposit"/> included; and one for <see cref="ContractType.Other"/>, since a contract
+/// mirroring an insurance policy's four link collections, and for <see cref="ContractType.Loan"/>,
+/// whose booked <see cref="ContractPartyRole.Account"/> and pledged
+/// <see cref="ContractPartyRole.Collateral"/> are both as ordinary as its two counterparties; three
+/// for <see cref="ContractType.Rental"/>, <see cref="ContractType.Purchase"/> and
+/// <see cref="ContractType.Deposit"/>, whose one object role is as ordinary as their two
+/// counterparties; two for the remaining named types; and one for <see cref="ContractType.Other"/>, since a contract
 /// whose type is "none of the above" has no domain vocabulary to offer, so the only role that can be
 /// <em>suggested</em> is the one that says as much. The earlier "exactly two except Insurance and
 /// Other" invariant is <b>retired</b> by issue #169 §4.4, not loosened — the count is still pinned,
@@ -103,12 +105,12 @@ public static class ContractPartyRoleMatrix
             [ContractPartyRole.Buyer, ContractPartyRole.Seller, ContractPartyRole.Property],
             [ContractPartyRole.Object]),
         [ContractType.Loan] = new(
-            [ContractPartyRole.Lender, ContractPartyRole.Borrower, ContractPartyRole.Collateral],
+            [ContractPartyRole.Lender, ContractPartyRole.Borrower, ContractPartyRole.Account, ContractPartyRole.Collateral],
             [ContractPartyRole.Object]),
         // The mirror of Loan (issue #187). Collateral is allowed rather than suggested — a deposit
         // pledged as security is incidental to a deposit, where collateral is central to a loan.
         [ContractType.Deposit] = new(
-            [ContractPartyRole.Depositor, ContractPartyRole.Custodian],
+            [ContractPartyRole.Depositor, ContractPartyRole.Custodian, ContractPartyRole.Account],
             [ContractPartyRole.Object, ContractPartyRole.Collateral]),
         [ContractType.Membership] = new(
             [ContractPartyRole.Buyer, ContractPartyRole.Seller],
@@ -135,6 +137,7 @@ public static class ContractPartyRoleMatrix
                 ContractPartyRole.Collateral,
                 ContractPartyRole.Depositor,
                 ContractPartyRole.Custodian,
+                ContractPartyRole.Account,
             ]),
     };
 

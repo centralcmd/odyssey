@@ -679,9 +679,9 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("contractEndingWindowDays", dto.ContractEndingWindowDays),
                 Write: (p, req) => req.ContractEndingWindowDays = p.IntRequest("contractEndingWindowDays"),
                 Unit: "days"),
-            new("contractChargeWindowDays", "event_repeat", "“Next charges” window",
-                "How many days ahead a contract's next recurring charge is surfaced. The charge is derived "
-                + "from the fee terms in force — nothing is scheduled or stored.",
+            new("contractChargeWindowDays", "event_repeat", "“Upcoming transactions” window",
+                "How many days ahead a contract's next recurring charge or receipt is surfaced. Each is "
+                + "derived from the fee terms in force — nothing is scheduled or stored.",
                 SettingClaim.Count, SettingControl.Number,
                 Min: SystemSettingsBounds.ContractChargeWindowDaysMin,
                 Max: SystemSettingsBounds.ContractChargeWindowDaysMax,
@@ -689,7 +689,7 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("contractChargeWindowDays", dto.ContractChargeWindowDays),
                 Write: (p, req) => req.ContractChargeWindowDays = p.IntRequest("contractChargeWindowDays"),
                 Unit: "days"),
-            new("contractMaxSummaryCharges", "format_list_numbered", "Max next charges shown in summary",
+            new("contractMaxSummaryCharges", "format_list_numbered", "Max upcoming transactions shown per direction",
                 "Upper limit on the next-movement rows listed in the page-header panel. It applies to "
                 + "outgoing charges and incoming receipts SEPARATELY, so a file with many charges "
                 + "cannot starve the receipts — the panel can therefore list up to twice this number "

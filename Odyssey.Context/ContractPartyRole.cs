@@ -129,4 +129,14 @@ public enum ContractPartyRole
     /// <see cref="Beneficiary"/>, this role does <b>not</b> block deletion of its contact.
     /// </remarks>
     Custodian = 21,
+
+    /// <summary>
+    /// The ledger account the agreement is booked in — the loan account, the savings account. The
+    /// fourth object role alongside <see cref="Object"/>, <see cref="Property"/> and
+    /// <see cref="Collateral"/>: it names the balance the agreement runs through, not a side of it, so
+    /// it is distinct from <see cref="Borrower"/> and <see cref="Depositor"/>. Suggested on
+    /// <c>ContractType.Loan</c> and <c>ContractType.Deposit</c>. Orthogonal to <c>ContractPartyKind</c>, exactly as
+    /// <see cref="Object"/> is.
+    /// </summary>
+    Account = 22,
 }
