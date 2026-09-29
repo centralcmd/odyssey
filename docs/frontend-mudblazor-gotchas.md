@@ -114,8 +114,17 @@ belongs upstream in that pipeline. Until then, treat **v9** as the truth.
   `OdsGlyphInk.Glyph(color)` / `OdsGlyphInk.Text(color)`; in CSS reading a published colour
   (`--rec`, `--odc-infotile-accent`, `--odc-er-node-fg`, `--odc-cardsel-accent`) write
   `color: oklch(from var(--rec, var(--brand-text)) var(--glyph-l, l) c h)`. Soft tints keep the
-  authored colour. `RegistryGlyphContrastTests` measures every registry and
-  `RegistryGlyphInkSourceTests` fails on a raw site; chart series are out of scope.
+  authored colour. Pick the cap by what is painted, not by where: a colour drawn as **text** (a chip
+  label, a value figure, a "Scheduled" tag) takes `Text` — `Glyph`'s 0.58 clears 3:1 but not 4.5:1.
+  The same applies to a pale authored `oklch(...)` literal in CSS (e.g. `--ods-amber`): wrap it as
+  `oklch(from oklch(…) var(--glyph-text-l, l) c h)`, never paint it raw. `OdsGlyphInk` is for trusted
+  colours and shape-checks its input (hex, `oklch`/`rgb`/`hsl`, `var(--…)`), painting `inherit`
+  otherwise. **Fallback:** a browser without relative colour syntax drops the whole declaration, so
+  the glyph or text inherits the surrounding text colour — contrast kept, hue lost. That is the
+  accepted degradation; don't add a raw-colour fallback declaration before the wrap, which would
+  re-open the light-theme failure on exactly those browsers. `RegistryGlyphContrastTests` measures
+  every registry (clipped and CSS gamut-mapped), and `RegistryGlyphInkSourceTests` fails on a raw
+  site, a `Glyph` at a text site, or a pale literal; chart series are out of scope.
 - **An unavailable action is ABSENT from a menu, never dimmed.** `OdsMenuItem.Disabled` makes
   `OdsMenu` skip the item entirely, along with any divider or header the omission orphans — there is
   no `Description`/note property any more, and no disabled-item styling to reach for. Where the user

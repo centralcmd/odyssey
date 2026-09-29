@@ -40,12 +40,50 @@ public sealed class RegistryGlyphContrastTests
     private static readonly Regex OklchTriple = new(
         @"^oklch\(\s*(?<l>[\d.]+)\s+(?<c>[\d.]+)\s+(?<h>[\d.]+)\s*(?:/\s*(?<a>[\d.]+)\s*)?\)$");
 
-    /// <summary>Every registry: each public static <c>IReadOnlyList&lt;OdsTypeOption&gt;</c> field.</summary>
-    private static readonly IReadOnlyList<(string Name, IReadOnlyList<OdsTypeOption> Items)> Registries =
-        [.. typeof(OdsTypeRegistries)
-            .GetFields(BindingFlags.Public | BindingFlags.Static)
-            .Where(f => f.FieldType == typeof(IReadOnlyList<OdsTypeOption>))
-            .Select(f => (f.Name, (IReadOnlyList<OdsTypeOption>)f.GetValue(null)!))];
+    /// <summary>
+    /// The number of registries, pinned EXACTLY. A registry added (or removed) must change this number
+    /// deliberately, which is the moment to check it renders through <see cref="OdsGlyphInk"/>.
+    /// </summary>
+    private const int RegistryCount = 15;
+
+    /// <summary>
+    /// The authored band, as the design system states it (handoff/README.md → "Registry glyph
+    /// lightness": "tuned for dark (L 0.66–0.80)"; docs/glyph-contrast-decision.md measures the caps as
+    /// the worst case "over every hue at C ≤ 0.16"). The caps' measured ratios are only a guarantee
+    /// inside this band, so a member authored outside it is outside the design's warranty.
+    /// </summary>
+    private const double BandMinLightness = 0.66, BandMaxLightness = 0.80, BandMaxChroma = 0.16;
+
+    /// <summary>Every registry: each public static <c>IReadOnlyList&lt;OdsTypeOption&gt;</c> field or property.</summary>
+    private static readonly IReadOnlyList<(string Name, IReadOnlyList<OdsTypeOption> Items)> Registries = FindRegistries();
+
+    private static IReadOnlyList<(string Name, IReadOnlyList<OdsTypeOption> Items)> FindRegistries()
+    {
+        var members = new List<(string Name, Type Type, Func<object?> Get)>();
+        foreach (var f in typeof(OdsTypeRegistries).GetFields(BindingFlags.Public | BindingFlags.Static))
+            members.Add((f.Name, f.FieldType, () => f.GetValue(null)));
+        foreach (var p in typeof(OdsTypeRegistries).GetProperties(BindingFlags.Public | BindingFlags.Static))
+            if (p.GetIndexParameters().Length == 0)
+                members.Add((p.Name, p.PropertyType, () => p.GetValue(null)));
+
+        var registryShaped = members.Where(m => MentionsOption(m.Type)).ToList();
+
+        // Registry-shaped but not the one shape the sweep reads: fail loudly rather than skip it.
+        var unrecognised = registryShaped
+            .Where(m => m.Type != typeof(IReadOnlyList<OdsTypeOption>))
+            .Select(m => $"{m.Name} : {m.Type}")
+            .ToList();
+        Assert.True(unrecognised.Count == 0,
+            "OdsTypeRegistries exposes OdsTypeOption collections this contrast sweep does not read — expose them as "
+            + "IReadOnlyList<OdsTypeOption> or extend the sweep:\n  " + string.Join("\n  ", unrecognised));
+
+        return [.. registryShaped.Select(m => (m.Name, (IReadOnlyList<OdsTypeOption>)m.Get()!))];
+
+        static bool MentionsOption(Type t) =>
+            t == typeof(OdsTypeOption)
+            || (t.IsArray && MentionsOption(t.GetElementType()!))
+            || (t.IsGenericType && t.GetGenericArguments().Any(MentionsOption));
+    }
 
     public static TheoryData<string, string> EveryMember()
     {
@@ -57,14 +95,88 @@ public sealed class RegistryGlyphContrastTests
     }
 
     /// <summary>
-    /// The sweep is by reflection, so a registry added later is covered without touching this file —
-    /// and this pins that the sweep actually found the family, rather than passing over nothing.
+    /// The sweep is by reflection over every public static field and property of
+    /// <see cref="OdsTypeRegistries"/>, and fails loudly on an OdsTypeOption collection of any other
+    /// shape. The count is pinned EXACTLY (<see cref="RegistryCount"/>), so this also proves the sweep
+    /// found the family rather than passing over nothing.
     /// </summary>
     [Fact]
-    public void The_sweep_covers_all_fifteen_registries()
+    public void The_sweep_covers_exactly_the_fifteen_registries()
     {
-        Assert.Equal(15, Registries.Count);
+        Assert.Equal(RegistryCount, Registries.Count);
         Assert.All(Registries, r => Assert.NotEmpty(r.Items));
+    }
+
+    [Theory]
+    [MemberData(nameof(EveryMember))]
+    public void Every_colour_is_authored_in_the_design_systems_band(string registry, string key)
+    {
+        var (l, c, _) = ColourOf(registry, key);
+
+        Assert.InRange(l, BandMinLightness, BandMaxLightness);
+        Assert.True(c <= BandMaxChroma,
+            $"{registry}[{key}] has chroma {c.ToString("0.000", CultureInfo.InvariantCulture)}, outside the C ≤ {BandMaxChroma} band the caps were measured over.");
+    }
+
+    /// <summary>
+    /// Lowering L at constant chroma takes many capped colours OUT of sRGB, so how the out-of-gamut
+    /// colour is brought back decides what is measured. Every foreground ratio here is therefore
+    /// asserted under BOTH renderings (<see cref="Renderings"/>): per-channel clipping, and CSS Color 4
+    /// gamut mapping (chroma reduced at constant L and h). This pins the mapper those assertions lean on.
+    /// </summary>
+    [Fact]
+    public void The_gamut_mapper_leaves_in_gamut_colours_alone_and_brings_the_rest_inside()
+    {
+        var inGamut = Srgb(0.5, 0.05, 250);
+        Assert.Equal(inGamut, GamutMapped(0.5, 0.05, 250));
+
+        Assert.False(InGamut(0.58, 0.16, 150));
+        var (r, g, b) = GamutMapped(0.58, 0.16, 150);
+        Assert.All(new[] { r, g, b }, v => Assert.InRange(v, 0.0, 1.0));
+    }
+
+    public static TheoryData<string, bool, string?, bool> CssForegrounds() => new()
+    {
+        // selector · painted as text? · the rule whose background it sits on (null: none) · that ground over the page background (else the surface)?
+        { ".trm-scheduled", true, null, false },
+        { ".est-scheduled", true, null, false },
+        { ".trm-inforce", true, ".trm-inforce", false },
+        { ".trm-delta.up", true, ".trm-delta.up", false },
+        { ".trm-delta.down", true, ".trm-delta.down", false },
+        { ".odc-recordsection-notice.warning .material-icons", false, ".odc-recordsection-notice.warning", true },
+    };
+
+    /// <summary>
+    /// The authored-colour foregrounds CSS paints outside the registries — the "Scheduled" / "In force"
+    /// labels, the delta pills and the warning notice glyph — measured on light after the cap they
+    /// declare, against the ground they actually sit on.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(CssForegrounds))]
+    public void Every_capped_css_foreground_clears_its_minimum_on_light(string selector, bool isText, string? groundRule, bool overPageBackground)
+    {
+        var css = ComponentsCss();
+        var value = Declaration(RuleBody(css, selector), "color");
+        var wrap = Regex.Match(value,
+            @"^oklch\(from\s+(?<src>oklch\([^)]*\)|var\(--[a-z-]+\))\s+var\((?<token>--glyph(?:-text)?-l), l\)\s+c\s+h\)$");
+        Assert.True(wrap.Success, $"'{selector}' color '{value}' is not a capped relative colour.");
+        Assert.Equal(isText ? "--glyph-text-l" : "--glyph-l", wrap.Groups["token"].Value);
+
+        var source = wrap.Groups["src"].Value;
+        if (source.StartsWith("var(", StringComparison.Ordinal))
+            source = Declaration(css, source[4..^1]);
+        var (l, c, h, _) = Parse(source);
+
+        var ground = overPageBackground ? Background(dark: false) : Surface(dark: false);
+        if (groundRule is not null)
+        {
+            var (tl, tc, th, ta) = Parse(Declaration(RuleBody(css, groundRule), "background"));
+            ground = Composite(Srgb(tl, tc, th), ta ?? 1.0, ground);
+        }
+
+        foreach (var (how, fg) in Renderings(Math.Min(l, LightCap(wrap.Groups["token"].Value)), c, h))
+            AssertRatio("css", selector, $"{(isText ? "text" : "glyph")} (light, capped, {how})",
+                fg, ground, isText ? TextContrastMinimum : NonTextContrastMinimum);
     }
 
     [Theory]
@@ -73,7 +185,8 @@ public sealed class RegistryGlyphContrastTests
     {
         var (l, c, h) = ColourOf(registry, key);
 
-        AssertRatio(registry, key, "glyph (dark, authored)", Srgb(l, c, h), Surface(dark: true), NonTextContrastMinimum);
+        foreach (var (how, glyph) in Renderings(l, c, h))
+            AssertRatio(registry, key, $"glyph (dark, authored, {how})", glyph, Surface(dark: true), NonTextContrastMinimum);
     }
 
     [Theory]
@@ -81,11 +194,14 @@ public sealed class RegistryGlyphContrastTests
     public void Every_glyph_clears_three_to_one_on_light_through_the_glyph_cap(string registry, string key)
     {
         var (l, c, h) = ColourOf(registry, key);
-        var glyph = Srgb(Math.Min(l, LightCap("--glyph-l")), c, h);
         var surface = Surface(dark: false);
+        var tint = TintOver(registry, key, surface);
 
-        AssertRatio(registry, key, "glyph (light, --glyph-l)", glyph, surface, NonTextContrastMinimum);
-        AssertRatio(registry, key, "glyph (light, --glyph-l) on its soft tint", glyph, TintOver(registry, key, surface), NonTextContrastMinimum);
+        foreach (var (how, glyph) in Renderings(Math.Min(l, LightCap("--glyph-l")), c, h))
+        {
+            AssertRatio(registry, key, $"glyph (light, --glyph-l, {how})", glyph, surface, NonTextContrastMinimum);
+            AssertRatio(registry, key, $"glyph (light, --glyph-l, {how}) on its soft tint", glyph, tint, NonTextContrastMinimum);
+        }
     }
 
     [Theory]
@@ -93,11 +209,14 @@ public sealed class RegistryGlyphContrastTests
     public void Every_colour_used_as_text_clears_four_and_a_half_to_one_on_light_through_the_text_cap(string registry, string key)
     {
         var (l, c, h) = ColourOf(registry, key);
-        var text = Srgb(Math.Min(l, LightCap("--glyph-text-l")), c, h);
         var surface = Surface(dark: false);
+        var tint = TintOver(registry, key, surface);
 
-        AssertRatio(registry, key, "text (light, --glyph-text-l)", text, surface, TextContrastMinimum);
-        AssertRatio(registry, key, "text (light, --glyph-text-l) on its soft tint", text, TintOver(registry, key, surface), TextContrastMinimum);
+        foreach (var (how, text) in Renderings(Math.Min(l, LightCap("--glyph-text-l")), c, h))
+        {
+            AssertRatio(registry, key, $"text (light, --glyph-text-l, {how})", text, surface, TextContrastMinimum);
+            AssertRatio(registry, key, $"text (light, --glyph-text-l, {how}) on its soft tint", text, tint, TextContrastMinimum);
+        }
     }
 
     /// <summary>
@@ -150,9 +269,10 @@ public sealed class RegistryGlyphContrastTests
             var name = token.Groups["name"].Value;
             var (l, c, h, _) = Parse(token.Groups["value"].Value);
 
-            AssertRatio("AccountTypeVisuals", name, "glyph (dark, authored)", Srgb(l, c, h), Surface(dark: true), NonTextContrastMinimum);
-            AssertRatio("AccountTypeVisuals", name, "glyph (light, --glyph-l)",
-                Srgb(Math.Min(l, LightCap("--glyph-l")), c, h), Surface(dark: false), NonTextContrastMinimum);
+            foreach (var (how, dark) in Renderings(l, c, h))
+                AssertRatio("AccountTypeVisuals", name, $"glyph (dark, authored, {how})", dark, Surface(dark: true), NonTextContrastMinimum);
+            foreach (var (how, light) in Renderings(Math.Min(l, LightCap("--glyph-l")), c, h))
+                AssertRatio("AccountTypeVisuals", name, $"glyph (light, --glyph-l, {how})", light, Surface(dark: false), NonTextContrastMinimum);
         }
     }
 
@@ -212,22 +332,149 @@ public sealed class RegistryGlyphContrastTests
         return (surface.R / 255.0, surface.G / 255.0, surface.B / 255.0);
     }
 
-    /// <summary>The member's soft tint composited over <paramref name="surface"/>, in gamma-encoded sRGB (how a browser blends).</summary>
+    /// <summary>The member's soft tint composited over <paramref name="surface"/>.</summary>
     private static (double R, double G, double B) TintOver(string registry, string key, (double R, double G, double B) surface)
     {
         var (l, c, h, alpha) = Parse(Option(registry, key).Soft);
-        var a = alpha ?? 1.0;
-        var tint = Srgb(l, c, h);
+        return Composite(Srgb(l, c, h), alpha ?? 1.0, surface);
+    }
 
-        return (tint.R * a + surface.R * (1 - a), tint.G * a + surface.G * (1 - a), tint.B * a + surface.B * (1 - a));
+    /// <summary>Source-over in gamma-encoded sRGB, which is how a browser blends.</summary>
+    private static (double R, double G, double B) Composite(
+        (double R, double G, double B) top, double a, (double R, double G, double B) under) =>
+        (top.R * a + under.R * (1 - a), top.G * a + under.G * (1 - a), top.B * a + under.B * (1 - a));
+
+    private static (double R, double G, double B) Background(bool dark)
+    {
+        var bg = dark ? OdysseyTheme.Theme.PaletteDark.Background : OdysseyTheme.Theme.PaletteLight.Background;
+        return (bg.R / 255.0, bg.G / 255.0, bg.B / 255.0);
+    }
+
+    private static string ComponentsCss() =>
+        File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css"));
+
+    private static string RuleBody(string css, string selector)
+    {
+        var rule = Regex.Match(css, @"(?m)^" + Regex.Escape(selector) + @"\s*\{(?<body>[^}]*)\}");
+        Assert.True(rule.Success, $"No '{selector}' rule in odyssey-components.css.");
+        return rule.Groups["body"].Value;
+    }
+
+    private static string Declaration(string body, string property)
+    {
+        var d = Regex.Match(body, @"(?<![-\w])" + Regex.Escape(property) + @":\s*(?<v>[^;]+);");
+        Assert.True(d.Success, $"No '{property}' declaration found.");
+        return d.Groups["v"].Value.Trim();
+    }
+
+    private static bool InGamut(double l, double c, double hDegrees)
+    {
+        const double Tolerance = 1e-4;
+        var (r, g, b) = LinearSrgb(l, c, hDegrees);
+        return new[] { r, g, b }.All(v => v >= -Tolerance && v <= 1 + Tolerance);
     }
 
     /// <summary>
-    /// <c>oklch(L C H)</c> → gamma-encoded sRGB in [0, 1], through OKLab and linear sRGB. Out-of-gamut
-    /// channels are clamped rather than gamut-mapped — the conservative reading, as in
-    /// <c>ChartAxisContrastTests</c>.
+    /// The two ways an out-of-gamut <c>oklch</c> colour can reach an sRGB screen, both measured, since
+    /// neither is reliably the conservative one: per-channel clipping (what engines commonly do when
+    /// drawing to an sRGB display) and CSS Color 4 gamut mapping (chroma reduced at constant L and h).
+    /// For an in-gamut colour the two are identical.
+    /// </summary>
+    private static IEnumerable<(string How, (double R, double G, double B) Rgb)> Renderings(double l, double c, double h)
+    {
+        yield return ("clipped", Srgb(l, c, h));
+        yield return ("gamut-mapped", GamutMapped(l, c, h));
+    }
+
+    /// <summary>
+    /// <c>oklch(L C H)</c> → gamma-encoded sRGB in [0, 1], an out-of-gamut channel clipped per channel.
+    /// This is one rendering, not a conservative bound — see <see cref="Renderings"/>.
     /// </summary>
     private static (double R, double G, double B) Srgb(double l, double c, double hDegrees)
+    {
+        var (r, g, b) = LinearSrgb(l, c, hDegrees);
+        return (Encode(r), Encode(g), Encode(b));
+    }
+
+    private static double Encode(double linear)
+    {
+        var clamped = Math.Clamp(linear, 0.0, 1.0);
+        return clamped <= 0.0031308 ? 12.92 * clamped : (1.055 * Math.Pow(clamped, 1.0 / 2.4)) - 0.055;
+    }
+
+    /// <summary>
+    /// CSS Color 4 §13.2 "binary search gamut mapping with local MINDE": reduce chroma at constant L
+    /// and h until the clipped candidate is within the just-noticeable ΔE_OK of 0.02 of it.
+    /// </summary>
+    private static (double R, double G, double B) GamutMapped(double l, double c, double h)
+    {
+        const double Jnd = 0.02, Epsilon = 0.0001;
+        if (l >= 1.0) return (1.0, 1.0, 1.0);
+        if (l <= 0.0) return (0.0, 0.0, 0.0);
+        if (InGamut(l, c, h)) return Srgb(l, c, h);
+
+        var clipped = Clip(l, c, h);
+        if (DeltaEOk(clipped, l, c, h) < Jnd) return Encoded(clipped);
+
+        double lo = 0.0, hi = c;
+        var minInGamut = true;
+        while (hi - lo > Epsilon)
+        {
+            var mid = (lo + hi) / 2;
+            if (minInGamut && InGamut(l, mid, h))
+            {
+                lo = mid;
+                continue;
+            }
+
+            clipped = Clip(l, mid, h);
+            var e = DeltaEOk(clipped, l, mid, h);
+            if (e < Jnd)
+            {
+                if (Jnd - e < Epsilon) return Encoded(clipped);
+                minInGamut = false;
+                lo = mid;
+            }
+            else
+            {
+                hi = mid;
+            }
+        }
+
+        return Encoded(Clip(l, lo, h));
+
+        static (double R, double G, double B) Clip(double l, double c, double h)
+        {
+            var (r, g, b) = LinearSrgb(l, c, h);
+            return (Math.Clamp(r, 0, 1), Math.Clamp(g, 0, 1), Math.Clamp(b, 0, 1));
+        }
+
+        static (double R, double G, double B) Encoded((double R, double G, double B) lin) =>
+            (Encode(lin.R), Encode(lin.G), Encode(lin.B));
+
+        static double DeltaEOk((double R, double G, double B) lin, double l, double c, double h)
+        {
+            var (l2, a2, b2) = OkLab(lin);
+            var hr = h * Math.PI / 180.0;
+            var (a1, b1) = (c * Math.Cos(hr), c * Math.Sin(hr));
+            return Math.Sqrt(Math.Pow(l - l2, 2) + Math.Pow(a1 - a2, 2) + Math.Pow(b1 - b2, 2));
+        }
+    }
+
+    /// <summary>Linear sRGB → OKLab.</summary>
+    private static (double L, double A, double B) OkLab((double R, double G, double B) c)
+    {
+        var l = Math.Cbrt(0.4122214708 * c.R + 0.5363325363 * c.G + 0.0514459929 * c.B);
+        var m = Math.Cbrt(0.2119034982 * c.R + 0.6806995451 * c.G + 0.1073969566 * c.B);
+        var s = Math.Cbrt(0.0883024619 * c.R + 0.2817188376 * c.G + 0.6299787005 * c.B);
+        return (
+            0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+            1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+            0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s);
+    }
+
+    /// <summary><c>oklch(L C H)</c> → linear sRGB through OKLab, unclamped.</summary>
+    private static (double R, double G, double B) LinearSrgb(double l, double c, double hDegrees)
     {
         var h = hDegrees * Math.PI / 180.0;
         var a = c * Math.Cos(h);
@@ -238,15 +485,9 @@ public sealed class RegistryGlyphContrastTests
         var sCube = Math.Pow(l - 0.0894841775 * a - 1.2914855480 * b, 3);
 
         return (
-            Encode(4.0767416621 * lCube - 3.3077115913 * mCube + 0.2309699292 * sCube),
-            Encode(-1.2684380046 * lCube + 2.6097574011 * mCube - 0.3413193965 * sCube),
-            Encode(-0.0041960863 * lCube - 0.7034186147 * mCube + 1.7076147010 * sCube));
-
-        static double Encode(double linear)
-        {
-            var clamped = Math.Clamp(linear, 0.0, 1.0);
-            return clamped <= 0.0031308 ? 12.92 * clamped : (1.055 * Math.Pow(clamped, 1.0 / 2.4)) - 0.055;
-        }
+            4.0767416621 * lCube - 3.3077115913 * mCube + 0.2309699292 * sCube,
+            -1.2684380046 * lCube + 2.6097574011 * mCube - 0.3413193965 * sCube,
+            -0.0041960863 * lCube - 0.7034186147 * mCube + 1.7076147010 * sCube);
     }
 
     private static void AssertRatio(

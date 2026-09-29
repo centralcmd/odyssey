@@ -55,29 +55,6 @@ public sealed record OdsTypeOption
     public bool IsObject { get; init; }
 }
 
-/// <summary>
-/// How a registry colour is PAINTED (Odyssey Design System · handoff/README.md → "Registry glyph
-/// lightness", issue #164). The registry constants are authored once, in a lightness band tuned for
-/// the dark surface; on light that band cannot reach contrast, so every render site routes the colour
-/// through a relative-colour wrap that caps its lightness per theme (<c>--glyph-l</c> /
-/// <c>--glyph-text-l</c> in <c>app.css</c>) and keeps chroma and hue. Dark passes <c>l</c> through
-/// unchanged.
-/// </summary>
-/// <remarks>
-/// Only the FOREGROUND goes through here. A soft tint (<see cref="OdsTypeOption.Soft"/>, the
-/// <c>/ 0.16</c> background) keeps the authored colour — the cap is measured against that tint. A
-/// browser without relative colour syntax drops the declaration and the glyph inherits the text
-/// colour: high contrast, no hue.
-/// </remarks>
-public static class OdsGlyphInk
-{
-    /// <summary>A registry colour drawn as a glyph, icon tile or rail node — WCAG 1.4.11, 3:1 (light cap L 0.58).</summary>
-    public static string Glyph(string color) => $"oklch(from {color} var(--glyph-l, l) c h)";
-
-    /// <summary>A registry colour drawn as TEXT — a kind chip's label, a value figure — WCAG 1.4.3, 4.5:1 (light cap L 0.50).</summary>
-    public static string Text(string color) => $"oklch(from {color} var(--glyph-text-l, l) c h)";
-}
-
 /// <summary>A labelled section of <see cref="OdsTypeOption"/>s for a grouped
 /// <c>OdsTypeSelect</c> (e.g. Assets / Liabilities).</summary>
 public sealed record OdsTypeSelectGroup(string Label, IReadOnlyList<OdsTypeOption> Items);

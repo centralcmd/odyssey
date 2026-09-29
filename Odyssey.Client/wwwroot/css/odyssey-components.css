@@ -261,9 +261,13 @@
 }
 .odc-recordsection-notice .material-icons { font-size: var(--icon-md); flex: none; color: var(--mud-palette-text-secondary); }
 /* Mirrors the design system's own literal (components.css) for the warning tint, the same
-   deliberate oklch exception the pickers carry — these are not tokenized upstream either. */
+   deliberate oklch exception the pickers carry — these are not tokenized upstream either.
+   --ods-amber is that one authored amber, named once here because three rules paint it as a
+   foreground (this glyph, .trm-scheduled, .est-scheduled). It is the dark-tuned L 0.80, so every
+   foreground use goes through the registry glyph cap (issue #164); the tints keep it as authored. */
+:root, [data-theme] { --ods-amber: oklch(0.80 0.13 85); }
 .odc-recordsection-notice.warning { border-color: oklch(0.80 0.13 85 / 0.45); background: oklch(0.80 0.13 85 / 0.08); }
-.odc-recordsection-notice.warning .material-icons { color: oklch(0.80 0.13 85); }
+.odc-recordsection-notice.warning .material-icons { color: oklch(from var(--ods-amber) var(--glyph-l, l) c h); }
 
 /* ---------- Progress bar (determinate) ---------- */
 .odc-progress {
@@ -1954,8 +1958,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-hero-value { font: 300 34px/0.95 var(--font-mono); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
 .trm-delta { display: inline-flex; align-items: center; gap: 3px; font: 500 11.5px/1 var(--font-sans); font-variant-numeric: tabular-nums; padding: 3px 8px 3px 5px; border-radius: 999px; }
 .trm-delta .material-icons { font-size: 14px; }
-.trm-delta.up   { color: oklch(0.80 0.15 150); background: oklch(0.80 0.15 150 / 0.13); }
-.trm-delta.down { color: oklch(0.74 0.16 22);  background: oklch(0.74 0.16 22 / 0.13); }
+.trm-delta.up   { color: oklch(from oklch(0.80 0.15 150) var(--glyph-text-l, l) c h); background: oklch(0.80 0.15 150 / 0.13); }
+.trm-delta.down { color: oklch(from oklch(0.74 0.16 22) var(--glyph-text-l, l) c h); background: oklch(0.74 0.16 22 / 0.13); }
 .trm-delta.flat { color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-default-hover); }
 
 .trm-chart-wrap { padding: 2px 12px 14px; }
@@ -2066,9 +2070,9 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-row-note { font: 400 11.5px/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
 .trm-cell-date { font: 400 12.5px/1 var(--font-mono); color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .trm-cell-value { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500; }
-.trm-inforce { display: inline-flex; align-items: center; gap: 4px; font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; color: oklch(0.78 0.13 200); background: oklch(0.78 0.13 200 / 0.13); padding: 3px 8px; border-radius: 999px; }
+.trm-inforce { display: inline-flex; align-items: center; gap: 4px; font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; color: oklch(from oklch(0.78 0.13 200) var(--glyph-text-l, l) c h); background: oklch(0.78 0.13 200 / 0.13); padding: 3px 8px; border-radius: 999px; }
 .trm-inforce .material-icons { font-size: 12px; }
-.trm-scheduled { font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; color: oklch(from oklch(0.80 0.13 85) var(--glyph-text-l, l) c h); }
+.trm-scheduled { font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; color: oklch(from var(--ods-amber) var(--glyph-text-l, l) c h); }
 .trm-superseded { font: 400 10.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); opacity: 0.7; }
 .trm-cell-act { text-align: right; }
 
@@ -2236,7 +2240,7 @@ tr:focus-within > .odc-rowactions.reveal,
   background: oklch(0.80 0.15 150 / 0.13); padding: 3px 8px; border-radius: 999px;
 }
 .est-inforce .material-icons { font-size: 12px; }
-.est-scheduled { font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; color: oklch(from oklch(0.80 0.13 85) var(--glyph-text-l, l) c h); }
+.est-scheduled { font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; color: oklch(from var(--ods-amber) var(--glyph-text-l, l) c h); }
 .est-superseded { font: 400 10.5px/1 var(--font-sans); color: var(--mud-palette-text-secondary); opacity: 0.7; }
 .est-cell-act { text-align: right; }
 
