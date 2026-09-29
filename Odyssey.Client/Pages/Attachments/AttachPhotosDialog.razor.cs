@@ -80,7 +80,22 @@ public partial class AttachPhotosDialog
     private bool _busy;
 
     private List<PhotoSummary> _library = [];
-    private readonly List<Guid> _picked = [];
+    // Picks keep their summary, not just the id: the library is one server-searched page, so a photo
+    // picked before the search changed is no longer in _library, and resolving picks through it would
+    // drop them at submit while the button still counted them.
+    private readonly List<PhotoSummary> _picked = [];
+
+    // Latest-wins: a slow earlier search must not overwrite the result of a newer one.
+    private int _searchVersion;
+
+    // An upload that already produced its item (stored, and its library photo created) is not redone
+    // when a partly failed batch is retried.
+    private readonly Dictionary<string, AttachPhotoItem> _uploaded = [];
+
+    // Stored files by row, so a retry whose library-photo step failed does not store the bytes again.
+    private readonly Dictionary<string, Guid> _stored = [];
+
+    private string _announce = string.Empty;
     private bool _libraryLoaded;
     private bool _libraryLoading;
     private bool _libraryFailed;
@@ -143,16 +158,25 @@ public partial class AttachPhotosDialog
         if (!_canBrowse)
             return;
 
+        var version = ++_searchVersion;
         _libraryLoading = true;
         _libraryFailed = false;
         var result = await Photos.ListAsync(1, LibraryPageSize,
             search: string.IsNullOrWhiteSpace(_query) ? null : _query.Trim());
+        if (version != _searchVersion)
+            return;
+
         _libraryFailed = !result.IsSuccess;
         _library = result.IsSuccess && result.Value is { } page ? [.. page.Items] : [];
         _libraryLoaded = result.IsSuccess;
         _libraryLoading = false;
+        _announce = _libraryFailed ? "Couldn’t load your photos."
+            : _library.Count == 0 ? (string.IsNullOrWhiteSpace(_query) ? "Your photo library is empty." : $"No photos match “{_query}”.")
+            : $"{_library.Count} photo{(_library.Count == 1 ? "" : "s")} shown.";
         StateHasChanged();
     }
+
+    private bool IsPicked(PhotoSummary photo) => _picked.Any(p => p.PhotoId == photo.PhotoId);
 
     private bool IsAttached(PhotoSummary photo) =>
         AttachedIds.Contains(photo.PhotoId) || AttachedIds.Contains(photo.FileId);
@@ -167,8 +191,11 @@ public partial class AttachPhotosDialog
     {
         if (IsAttached(photo))
             return;
-        if (!_picked.Remove(photo.PhotoId))
-            _picked.Add(photo.PhotoId);
+        var existing = _picked.FindIndex(p => p.PhotoId == photo.PhotoId);
+        if (existing >= 0)
+            _picked.RemoveAt(existing);
+        else
+            _picked.Add(photo);
         _error = null;
     }
 
@@ -209,9 +236,8 @@ public partial class AttachPhotosDialog
                 _error = "Pick at least one photo.";
                 return;
             }
-            var byId = _library.ToDictionary(p => p.PhotoId);
-            await FinishAsync([.. _picked.Where(byId.ContainsKey).Select(id =>
-                new AttachPhotoItem(AttachDocumentSource.Library, id, byId[id].FileId, LabelOf(byId[id])))]);
+            await FinishAsync([.. _picked.Select(p =>
+                new AttachPhotoItem(AttachDocumentSource.Library, p.PhotoId, p.FileId, LabelOf(p)))]);
             return;
         }
 
@@ -222,47 +248,79 @@ public partial class AttachPhotosDialog
         }
 
         _busy = true;
+        _error = null;
         var added = new List<AttachPhotoItem>();
+        var failed = new List<OdsUploadFile>();
         try
         {
             foreach (var file in _uploads.Where(f => f.Source is not null))
             {
-                try
+                var item = _uploaded.GetValueOrDefault(file.Uid) ?? await UploadOneAsync(file);
+                if (item is null)
                 {
-                    var stored = await Files.UploadAsync(file.Source!.ToApiUpload(_uploadLimits.MaxUploadBytes), file.Name);
-                    Guid? photoId = null;
-                    if (CreateLibraryPhoto)
-                    {
-                        var created = await Photos.CreateAsync(new NewPhoto { FileId = stored.Id });
-                        // A 409 means the file is already a library photo — benign, but it yields no id.
-                        if (!created.IsSuccess && created.Status != HttpStatusCode.Conflict)
-                        {
-                            Snackbar.Add($"Couldn’t add “{file.Name}”: {created.Error}", Severity.Error);
-                            continue;
-                        }
-                        photoId = created.Value?.PhotoId;
-                        if (photoId is null)
-                            continue;
-                    }
-                    added.Add(new AttachPhotoItem(AttachDocumentSource.Upload, photoId, stored.Id, file.Name));
+                    failed.Add(file);
+                    continue;
                 }
-                catch (Exception)
-                {
-                    Snackbar.Add($"Couldn’t upload “{file.Name}”.", Severity.Error);
-                }
+                _uploaded[file.Uid] = item;
+                added.Add(item);
             }
 
-            if (added.Count > 0)
+            if (Announce && added.Count > 0)
+                Snackbar.Add(added.Count == 1 ? "Photo added." : $"{added.Count} photos added.", Severity.Success);
+
+            if (failed.Count == 0)
             {
-                if (Announce)
-                    Snackbar.Add(added.Count == 1 ? "Photo added." : $"{added.Count} photos added.", Severity.Success);
                 await FinishAsync(added);
+                return;
             }
+
+            // Partly failed: hand over what worked, keep only the failures for a retry, and say so —
+            // closing would discard the failed rows, and staying silent would read as a dead button.
+            if (added.Count > 0)
+                await OnSubmit.InvokeAsync(added);
+            _uploads = failed;
+            _error = failed.Count == 1
+                ? $"“{failed[0].Name}” wasn’t added. Try again, or remove it."
+                : $"{failed.Count} photos weren’t added. Try again, or remove them.";
+            _announce = _error;
         }
         finally
         {
             _busy = false;
         }
+    }
+
+    // One file: store it, then (for a library host) create its library photo. Null when it failed; the
+    // reason is already on screen.
+    private async Task<AttachPhotoItem?> UploadOneAsync(OdsUploadFile file)
+    {
+        if (!_stored.TryGetValue(file.Uid, out var storedId))
+        {
+            try
+            {
+                storedId = (await Files.UploadAsync(file.Source!.ToApiUpload(_uploadLimits.MaxUploadBytes), file.Name)).Id;
+            }
+            catch (Exception)
+            {
+                Snackbar.Add($"Couldn’t upload “{file.Name}”.", Severity.Error);
+                return null;
+            }
+            _stored[file.Uid] = storedId;
+        }
+
+        if (!CreateLibraryPhoto)
+            return new AttachPhotoItem(AttachDocumentSource.Upload, null, storedId, file.Name);
+
+        var created = await Photos.CreateAsync(new NewPhoto { FileId = storedId });
+        if (created.IsSuccess && created.Value is { } photo)
+            return new AttachPhotoItem(AttachDocumentSource.Upload, photo.PhotoId, storedId, file.Name);
+
+        // A 409 means this file is already a library photo, so no new one was made and there is no id
+        // to link. Name the way out rather than dropping the file silently.
+        Snackbar.Add(created.Status == HttpStatusCode.Conflict
+            ? $"“{file.Name}” is already in your library — pick it from From Photos instead."
+            : $"Couldn’t add “{file.Name}”: {created.Error}", Severity.Error);
+        return null;
     }
 
     private async Task FinishAsync(IReadOnlyList<AttachPhotoItem> items)

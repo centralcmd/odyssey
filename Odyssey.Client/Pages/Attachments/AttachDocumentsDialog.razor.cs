@@ -138,6 +138,12 @@ public partial class AttachDocumentsDialog
 
     private HashSet<Guid> _loadedAttachedIds = [];
 
+    // Upload rows already stored, by row Uid. A retry after a partial failure links these again rather
+    // than storing a second copy of the bytes.
+    private readonly Dictionary<string, Guid> _stored = [];
+
+    private string _announce = string.Empty;
+
     private bool _canUpload;
     private bool _canBrowse;
 
@@ -208,7 +214,16 @@ public partial class AttachDocumentsDialog
         }
 
         if (LoadAttachedIds is not null)
-            _loadedAttachedIds = [.. await LoadAttachedIds()];
+        {
+            try
+            {
+                _loadedAttachedIds = [.. await LoadAttachedIds()];
+            }
+            catch (Exception)
+            {
+                // A failed read leaves the rows enabled; the server's own duplicate check answers.
+            }
+        }
 
         if (_tab == LibraryTab)
             await LoadLibraryAsync();
@@ -392,37 +407,40 @@ public partial class AttachDocumentsDialog
             await ContactCreator.WhenSettledAsync();
 
         _busy = true;
+        _error = null;
         var attached = new List<AttachDocumentItem>();
+        var failedUploads = new List<OdsUploadFile>();
         try
         {
             if (_tab == UploadTab)
             {
                 foreach (var file in _uploads.Where(f => f.Source is not null))
                 {
-                    try
+                    var fileId = _stored.TryGetValue(file.Uid, out var stored) ? stored : await StoreAsync(file);
+                    if (fileId is not { } id)
                     {
-                        var uploaded = await FilesApi.UploadAsync(file.Source!.ToApiUpload(_uploadLimits.MaxUploadBytes));
-                        var finalName = file.Name.Trim();
-                        if (!string.IsNullOrEmpty(finalName) && finalName != file.Source!.Name)
-                            await FilesApi.UpdateMetadataAsync(uploaded.Id, null, finalName);
+                        failedUploads.Add(file);
+                        continue;
+                    }
+                    _stored[file.Uid] = id;
 
-                        var item = ItemFor(AttachDocumentSource.Upload, uploaded.Id, file);
-                        if (await Attach(item))
-                            attached.Add(item);
-                    }
-                    catch (Exception)
-                    {
-                        Snackbar.Add($"Couldn’t upload “{file.Name}”.", Severity.Error);
-                    }
+                    var item = ItemFor(AttachDocumentSource.Upload, id, file);
+                    if (await Attach(item))
+                        attached.Add(item);
+                    else
+                        failedUploads.Add(file);
                 }
             }
             else
             {
-                foreach (var (fileId, file) in _picked)
+                foreach (var (fileId, file) in _picked.ToList())
                 {
                     var item = ItemFor(AttachDocumentSource.Library, fileId, file);
                     if (await Attach(item))
+                    {
                         attached.Add(item);
+                        _picked.Remove(fileId);
+                    }
                 }
             }
 
@@ -431,13 +449,57 @@ public partial class AttachDocumentsDialog
                 if (Announce)
                     Snackbar.Add(attached.Count == 1 ? "Document attached." : $"{attached.Count} documents attached.", Severity.Success);
                 await OnAttached.InvokeAsync(attached);
-                await OpenChanged.InvokeAsync(false);
             }
+
+            var failed = _tab == UploadTab ? failedUploads.Count : _picked.Count;
+            if (failed == 0)
+            {
+                await OpenChanged.InvokeAsync(false);
+                return;
+            }
+
+            // Partly failed: what linked is reported to the host; only the failures stay, for a retry
+            // that neither re-stores nor re-links what already worked.
+            if (_tab == UploadTab)
+                _uploads = failedUploads;
+            _error = failed == 1
+                ? "One document wasn’t attached. Try again, or remove it."
+                : $"{failed} documents weren’t attached. Try again, or remove them.";
+            _announce = _error;
         }
         finally
         {
             _busy = false;
         }
+    }
+
+    // Stores one upload and applies an in-dropzone rename. Null when the upload failed; a failed rename
+    // still returns the id (the file is stored under its original name) and says so.
+    private async Task<Guid?> StoreAsync(OdsUploadFile file)
+    {
+        Guid id;
+        try
+        {
+            id = (await FilesApi.UploadAsync(file.Source!.ToApiUpload(_uploadLimits.MaxUploadBytes))).Id;
+        }
+        catch (Exception)
+        {
+            Snackbar.Add($"Couldn’t upload “{file.Name}”.", Severity.Error);
+            return null;
+        }
+
+        var finalName = file.Name.Trim();
+        if (!string.IsNullOrEmpty(finalName) && finalName != file.Source!.Name)
+        {
+            var renamed = await FilesApi.UpdateMetadataAsync(id, null, finalName);
+            if (renamed is null)
+            {
+                Snackbar.Add($"“{file.Source.Name}” was uploaded but couldn’t be renamed to “{finalName}”.", Severity.Warning);
+                file.Name = file.Source.Name;
+            }
+        }
+
+        return id;
     }
 
     private Task CloseAsync() => OpenChanged.InvokeAsync(false);

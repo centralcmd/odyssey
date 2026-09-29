@@ -33,3 +33,11 @@ export function focusFirst(...args) {
 
     return false;
 }
+
+// focusFirst on the next task, for a removal that happens synchronously inside a ⋯ menu's click: the
+// menu restores focus to its own trigger as it closes, AFTER a synchronous focus() would run, and
+// silently overwrites it (section-focus.js records the same trap). A removal that awaits a server
+// write first is already past that point and can call focusFirst directly.
+export function focusFirstLater(...args) {
+    setTimeout(() => focusFirst(...args), 0);
+}

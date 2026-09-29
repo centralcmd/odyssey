@@ -52,8 +52,17 @@ public class AttachDocumentsDialogTests
         Mock<IFilesApiClient> Files,
         List<AttachDocumentItem> Posted,
         List<bool> OpenChanges,
-        Func<int> AttachedRaised)
+        Func<int> AttachedRaised,
+        ISnackbar Snackbar)
     {
+        public IEnumerable<string> Toasts => Snackbar.ShownSnackbars.Select(t => t.Message ?? string.Empty);
+
+        /// <summary>Hands the upload field a picked file, as the browser picker would.</summary>
+        public Task Pick(params OdsUploadFile[] files) =>
+            Host.InvokeAsync(() => Host.FindComponent<OdsFileUpload>().Instance.FilesChanged.InvokeAsync(files));
+
+        public IReadOnlyList<OdsUploadFile> Uploads => Host.FindComponent<OdsFileUpload>().Instance.Files ?? [];
+
         public IRenderedComponent<AttachDocumentsDialog> Dialog => Host.FindComponent<AttachDocumentsDialog>();
 
         public IReadOnlyList<IRenderedComponent<OdsSelect>> TypePickers =>
@@ -66,10 +75,9 @@ public class AttachDocumentsDialogTests
 
         public void Pick(FileListItem file) => Row(file).QuerySelector("button.prop-lib-main")!.Click();
 
-        public AngleSharp.Dom.IElement SubmitButton =>
-            Host.FindAll(".mud-dialog-actions button, button")
-                .Last(b => b.TextContent.Contains("Attach", StringComparison.Ordinal)
-                           && !b.TextContent.Contains("Attach documents", StringComparison.Ordinal));
+        // The footer's primary action — found by position in the dialog's own footer, not by its label,
+        // which changes with the tab and the count.
+        public AngleSharp.Dom.IElement SubmitButton => Host.FindAll(".ods-modal-foot button").Last();
     }
 
     private static Harness Render(
@@ -80,7 +88,11 @@ public class AttachDocumentsDialogTests
         bool attachFails = false,
         bool restrict = true,
         bool withKinds = true,
-        Func<Task<IReadOnlyCollection<Guid>>>? loadAttached = null)
+        Func<Task<IReadOnlyCollection<Guid>>>? loadAttached = null,
+        Func<AttachDocumentItem, bool>? attachWhen = null,
+        UploadLimitsDto? limits = null,
+        int? surfaceMegabytes = null,
+        IReadOnlyList<string>? extensions = null)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -98,9 +110,9 @@ public class AttachDocumentsDialogTests
         creator.Setup(c => c.WhenSettledAsync()).Returns(Task.CompletedTask);
         ctx.Services.AddSingleton(creator.Object);
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
-        var limits = new Mock<IUploadLimitsCache>();
-        limits.Setup(l => l.GetAsync()).ReturnsAsync(UploadLimitsCache.Fallback);
-        ctx.Services.AddSingleton(limits.Object);
+        var uploadLimits = new Mock<IUploadLimitsCache>();
+        uploadLimits.Setup(l => l.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(limits ?? UploadLimitsCache.Fallback);
+        ctx.Services.AddSingleton(uploadLimits.Object);
 
         var claims = new List<string>();
         if (canUpload) claims.Add(PermissionClaims.FilesCreate);
@@ -118,12 +130,14 @@ public class AttachDocumentsDialogTests
             .Add(h => h.Attach, item =>
             {
                 posted.Add(item);
-                return Task.FromResult(!attachFails);
+                return Task.FromResult(!attachFails && (attachWhen?.Invoke(item) ?? true));
             })
             .Add(h => h.OnOpenChanged, (bool open) => openChanges.Add(open))
+            .Add(h => h.SurfaceMaxMegabytes, surfaceMegabytes)
+            .Add(h => h.UploadExtensions, extensions)
             .Add(h => h.OnAttached, () => attachedRaised++));
 
-        var harness = new Harness(cut, files, posted, openChanges, () => attachedRaised);
+        var harness = new Harness(cut, files, posted, openChanges, () => attachedRaised, ctx.Services.GetRequiredService<ISnackbar>());
         cut.WaitForState(() => canUpload || !canBrowse || libraryFails || cut.FindAll(".prop-lib-row").Count > 0);
         return harness;
     }
@@ -462,6 +476,201 @@ public class AttachDocumentsDialogTests
         Assert.DoesNotContain(false, h.OpenChanges);
     }
 
+    // ── Upload new ──────────────────────────────────────────────────────────────
+
+    private static long Megabytes(int n) => n * 1024L * 1024L;
+
+    private static OdsUploadFile Upload(string name, long size = 10_000, string? rename = null) => new()
+    {
+        Uid = Guid.NewGuid().ToString(),
+        Name = rename ?? name,
+        Kind = PropertyFileTypeGuess.GuessKey(name),
+        SizeBytes = size,
+        Source = new FakeBrowserFile(name, size),
+    };
+
+    private static void Stores(Harness h, params Guid[] ids)
+    {
+        var queue = new Queue<Guid>(ids);
+        h.Files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ApiUpload u, string? _, CancellationToken _) =>
+                new FileUploadResponse(queue.Dequeue(), u.FileName, "application/pdf", 10, "hash", Base, null));
+    }
+
+    /// <summary>An upload is stored, then handed to the host as an Upload item carrying the stored id and the guessed type.</summary>
+    [Fact]
+    public async Task An_upload_is_stored_then_handed_to_the_host()
+    {
+        var h = Render(canUpload: true);
+        var stored = Guid.NewGuid();
+        Stores(h, stored);
+
+        await h.Pick(Upload("skjøte.pdf"));
+        h.SubmitButton.Click();
+
+        h.Host.WaitForAssertion(() => Assert.Single(h.Posted));
+        Assert.Equal(AttachDocumentSource.Upload, h.Posted[0].Source);
+        Assert.Equal(stored, h.Posted[0].FileId);
+        Assert.Equal(nameof(PropertyFileType.Deed), h.Posted[0].Kind);
+        h.Files.Verify(f => f.UpdateMetadataAsync(It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Contains(false, h.OpenChanges);
+    }
+
+    /// <summary>A rename in the dropzone is applied; if it fails the file is still attached, under its own name, and the reader is told.</summary>
+    [Fact]
+    public async Task A_failed_rename_still_attaches_and_says_so()
+    {
+        var h = Render(canUpload: true);
+        var stored = Guid.NewGuid();
+        Stores(h, stored);
+        h.Files.Setup(f => f.UpdateMetadataAsync(stored, null, "Deed 2026.pdf", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((FileMetadataResponse?)null);
+
+        await h.Pick(Upload("scan001.pdf", rename: "Deed 2026.pdf"));
+        h.SubmitButton.Click();
+
+        h.Host.WaitForAssertion(() => Assert.Single(h.Posted));
+        Assert.Equal("scan001.pdf", h.Posted[0].Name);
+        Assert.Contains(h.Toasts, t => t.Contains("couldn’t be renamed", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A partly failed batch reports what linked, keeps only the failures, and stays open — and the retry
+    /// links the stored file again rather than storing a second copy.
+    /// </summary>
+    [Fact]
+    public async Task A_retry_after_a_failed_link_does_not_store_the_file_again()
+    {
+        var failOnce = true;
+        var deedId = Guid.NewGuid();
+        var h = Render(canUpload: true, attachWhen: item =>
+        {
+            if (item.FileId != deedId || !failOnce)
+                return true;
+            failOnce = false;
+            return false;
+        });
+        Stores(h, deedId, Guid.NewGuid());
+
+        await h.Pick(Upload("deed.pdf"), Upload("valuation.pdf"));
+        h.SubmitButton.Click();
+
+        h.Host.WaitForAssertion(() => Assert.Equal(1, h.AttachedRaised()));
+        Assert.DoesNotContain(false, h.OpenChanges);
+        Assert.Equal(["deed.pdf"], h.Uploads.Select(u => u.Name));
+        Assert.Contains("One document wasn’t attached.", h.Markup, StringComparison.Ordinal);
+
+        h.SubmitButton.Click();
+
+        h.Host.WaitForAssertion(() => Assert.Contains(false, h.OpenChanges));
+        h.Files.Verify(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        Assert.Equal(2, h.Posted.Count(p => p.FileId == deedId));
+    }
+
+    [Fact]
+    public async Task An_upload_that_fails_to_store_is_kept_for_a_retry_and_named()
+    {
+        var h = Render(canUpload: true);
+        h.Files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("boom"));
+
+        await h.Pick(Upload("deed.pdf"));
+        h.SubmitButton.Click();
+
+        h.Host.WaitForAssertion(() => Assert.Contains(h.Toasts, t => t.Contains("Couldn’t upload “deed.pdf”", StringComparison.Ordinal)));
+        Assert.Empty(h.Posted);
+        Assert.Single(h.Uploads);
+        Assert.DoesNotContain(false, h.OpenChanges);
+    }
+
+    /// <summary>With the allow-list on, a type the server would refuse never lands in the list.</summary>
+    [Fact]
+    public async Task An_upload_off_the_allow_list_is_refused_before_it_lands()
+    {
+        var h = Render(canUpload: true);
+
+        await h.Pick(Upload("listing.html"), Upload("deed.pdf"));
+
+        Assert.Equal(["deed.pdf"], h.Uploads.Select(u => u.Name));
+        Assert.Contains(h.Toasts, t => t.Contains(DocumentContentTypes.Label, StringComparison.Ordinal));
+    }
+
+    /// <summary>A surface without the allow-list filters by its own extensions instead.</summary>
+    [Fact]
+    public async Task A_surface_filters_uploads_by_its_own_extensions()
+    {
+        var h = Render(canUpload: true, restrict: false, extensions: [".pdf", ".jpg", ".jpeg", ".png"]);
+
+        await h.Pick(Upload("receipt.webp"), Upload("receipt.png"));
+
+        Assert.Equal(["receipt.png"], h.Uploads.Select(u => u.Name));
+        Assert.Contains(h.Toasts, t => t.Contains("Allowed: PDF, JPG, PNG", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The cap is min(global, surface): a surface may tighten the admin's cap and must never loosen it,
+    /// or a lowered global cap would not reach it.
+    /// </summary>
+    [Theory]
+    [InlineData(64, 25, 25)]
+    [InlineData(10, 25, 10)]
+    [InlineData(64, null, 64)]
+    public async Task The_upload_cap_is_the_smaller_of_the_global_and_the_surface_cap(int global, int? surface, int effective)
+    {
+        var limits = new UploadLimitsDto { MaxUploadMegabytes = global, MaxUploadBytes = Megabytes(global) };
+        var h = Render(canUpload: true, limits: limits, surfaceMegabytes: surface);
+
+        await h.Pick(Upload("fits.pdf", Megabytes(effective)), Upload("too-big.pdf", Megabytes(effective) + 1));
+
+        Assert.Equal(["fits.pdf"], h.Uploads.Select(u => u.Name));
+        Assert.Contains(h.Toasts, t => t.Contains($"exceeds the {effective} MB limit", StringComparison.Ordinal));
+        Assert.Contains($"up to {effective} MB each", h.Host.FindComponent<OdsFileUpload>().Instance.Hint, StringComparison.Ordinal);
+    }
+
+    /// <summary>A failed read of the linked ids leaves the rows enabled rather than breaking the dialog.</summary>
+    [Fact]
+    public void A_failed_linked_ids_read_leaves_the_rows_enabled()
+    {
+        var h = Render(loadAttached: () => throw new HttpRequestException("down"));
+
+        Assert.Equal(AttachDocumentsDialog.LibraryState.Available, h.Dialog.Instance.StateOf(Linked));
+    }
+
+    /// <summary>The library's "Try again" reads Files again and shows the rows once it succeeds.</summary>
+    [Fact]
+    public async Task Try_again_rereads_a_library_that_failed_to_load()
+    {
+        var fail = true;
+        var h = Render(libraryFails: false, canBrowse: true, attached: null);
+        h.Files.Setup(f => f.ListAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => fail
+                ? ApiResult<List<FileListItem>>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Detail = "boom" })
+                : ApiResult<List<FileListItem>>.Success([.. Library], HttpStatusCode.OK));
+        await h.Host.InvokeAsync(() => h.Dialog.Instance.LoadLibraryAsync());
+        Assert.Contains("Couldn’t load your files.", h.Markup, StringComparison.Ordinal);
+
+        fail = false;
+        h.Host.FindAll("button").Single(b => b.TextContent.Contains("Try again", StringComparison.Ordinal)).Click();
+
+        h.Host.WaitForAssertion(() => Assert.Equal(Library.Count, h.Host.FindAll(".prop-lib-row").Count));
+    }
+
+    /// <summary>A partly failed library batch keeps only the picks that did not link, and stays open.</summary>
+    [Fact]
+    public void A_partly_failed_library_batch_keeps_only_the_failed_picks()
+    {
+        var h = Render(attachWhen: item => item.FileId != Vognkort.Id);
+
+        h.Pick(Deed);
+        h.Pick(Vognkort);
+        h.SubmitButton.Click();
+
+        h.Host.WaitForAssertion(() => Assert.Equal(1, h.AttachedRaised()));
+        Assert.DoesNotContain(false, h.OpenChanges);
+        Assert.Equal("false", h.Row(Deed).QuerySelector("button.prop-lib-main")!.GetAttribute("aria-pressed"));
+        Assert.Equal("true", h.Row(Vognkort).QuerySelector("button.prop-lib-main")!.GetAttribute("aria-pressed"));
+    }
+
     private static async Task SetDate(Harness h, string label, DateTime value)
     {
         var field = h.Host.FindComponents<OdsDateField>().Single(f => f.Instance.Label == label);
@@ -482,6 +691,8 @@ public class AttachDocumentsDialogTests
         [Parameter] public bool Restrict { get; set; }
         [Parameter] public bool WithKinds { get; set; }
         [Parameter] public Func<Task<IReadOnlyCollection<Guid>>>? LoadAttached { get; set; }
+        [Parameter] public int? SurfaceMaxMegabytes { get; set; }
+        [Parameter] public IReadOnlyList<string>? UploadExtensions { get; set; }
         [Parameter] public Func<AttachDocumentItem, Task<bool>> Attach { get; set; } = default!;
         [Parameter] public Action<bool>? OnOpenChanged { get; set; }
         [Parameter] public Action? OnAttached { get; set; }
@@ -512,6 +723,8 @@ public class AttachDocumentsDialogTests
                 }));
             builder.AddComponentParameter(13, nameof(AttachDocumentsDialog.OnAttached),
                 EventCallback.Factory.Create<IReadOnlyList<AttachDocumentItem>>(this, _ => OnAttached?.Invoke()));
+            builder.AddComponentParameter(14, nameof(AttachDocumentsDialog.SurfaceMaxMegabytes), SurfaceMaxMegabytes);
+            builder.AddComponentParameter(15, nameof(AttachDocumentsDialog.UploadExtensions), UploadExtensions);
             builder.CloseComponent();
         }
     }

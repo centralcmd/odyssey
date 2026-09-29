@@ -68,16 +68,7 @@ public partial class PropertyDocumentsSection
 
     private async Task<bool> AttachAsync(AttachDocumentItem item)
     {
-        var request = new AttachPropertyFileRequest
-        {
-            FileMetadataId = item.FileId,
-            FileType = item.KindAs(PropertyFileType.Other),
-            ValidFrom = item.ValidFrom,
-            ValidTo = item.ValidTo,
-            IssuedAt = item.IssuedAt,
-            IssuedBy = item.IssuedBy,
-        };
-        return (await Properties.AttachFileAsync(Property.PropertyId, request))
+        return (await Properties.AttachFileAsync(Property.PropertyId, AttachDocumentRequests.Property(item)))
             .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
 

@@ -1,3 +1,7 @@
+using System.Net;
+using Moq;
+using Odyssey.ApiClient;
+using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Pages.Journal;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
@@ -207,5 +211,67 @@ public class JournalWriteTests
         Assert.Equal(task.TagIds, update.TagIds);
         Assert.Null(update.Status);
         Assert.Null(update.Position);
+    }
+
+    // ── The task row's attachment writes re-read the task first ────────────────────────────────────
+
+    private static (Mock<ITaskApiClient> Tasks, List<UpdateJournalTask> Sent) Server(ExistingJournalTask? current)
+    {
+        var sent = new List<UpdateJournalTask>();
+        var tasks = new Mock<ITaskApiClient>();
+        tasks.Setup(t => t.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(current);
+        tasks.Setup(t => t.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UpdateJournalTask>(), It.IsAny<CancellationToken>()))
+            .Callback((Guid _, UpdateJournalTask u, CancellationToken _) => sent.Add(u))
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        return (tasks, sent);
+    }
+
+    /// <summary>
+    /// Attaching re-projects the task as the server holds it now, so an edit made since the page cached
+    /// its copy (here: a renamed task and a file someone else attached) survives the write.
+    /// </summary>
+    [Fact]
+    public async Task Attaching_writes_over_the_current_task_not_a_cached_copy()
+    {
+        var theirs = Guid.NewGuid();
+        var mine = Guid.NewGuid();
+        var current = LoadedTask(theirs);
+        current.Title = "Renamed by someone else";
+        var (tasks, sent) = Server(current);
+
+        var (result, task) = await JournalTaskAttachments.AddAsync(tasks.Object, current.JournalTaskId, [mine, theirs]);
+
+        Assert.True(result.IsSuccess);
+        Assert.Same(current, task);
+        var update = Assert.Single(sent);
+        Assert.Equal([theirs, mine], update.AttachmentFileIds);
+        Assert.Equal("Renamed by someone else", update.Title);
+    }
+
+    [Fact]
+    public async Task Removing_drops_only_that_file_from_the_current_task()
+    {
+        var keep = Guid.NewGuid();
+        var drop = Guid.NewGuid();
+        var current = LoadedTask(keep, drop);
+        var (tasks, sent) = Server(current);
+
+        await JournalTaskAttachments.RemoveAsync(tasks.Object, current.JournalTaskId, drop);
+
+        Assert.Equal([keep], Assert.Single(sent).AttachmentFileIds);
+    }
+
+    /// <summary>A task deleted meanwhile is a refusal, never a PUT that would recreate or clear it.</summary>
+    [Fact]
+    public async Task A_task_that_is_gone_is_not_written()
+    {
+        var (tasks, sent) = Server(null);
+
+        var (result, task) = await JournalTaskAttachments.AddAsync(tasks.Object, Guid.NewGuid(), [Guid.NewGuid()]);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(HttpStatusCode.NotFound, result.Status);
+        Assert.Null(task);
+        Assert.Empty(sent);
     }
 }

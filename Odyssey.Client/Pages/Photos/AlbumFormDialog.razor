@@ -3,6 +3,8 @@
 @inject IPhotosApiClient Photos
 @inject IFilesApiClient Files
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @*
     AlbumFormDialog — create or edit an album (Odyssey Design System · Photos · album management).
@@ -19,6 +21,7 @@
           Icon="@(IsEdit ? "edit" : "add_photo_alternate")" Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
         <div class="ods-modal-body pl-albform">
+            <OdsLiveAnnouncer Message="@_announce" />
             <OdsField Label="Album name" @bind-Value="_name" Icon="photo_album" Placeholder="e.g. Summer 2026" Required="true" />
             <OdsField Label="Description" @bind-Value="_desc" Multiline="true" Rows="2" MaxLength="1024"
                       Placeholder="What’s this album about?" />
@@ -79,15 +82,15 @@
                         {
                             var label = LabelFor(id);
                             <li class="pl-newthumb" style="@ThumbStyleFor(id)" title="@label" @key="id">
-                                <button type="button" class="pl-newremove" aria-label="@($"Remove {label}")"
-                                        @onclick="() => _newIds.Remove(id)">
+                                <button type="button" class="pl-newremove" id="@NewRemoveId(id)" aria-label="@($"Remove {label}")"
+                                        @onclick="() => RemoveNew(id)">
                                     <OdsMIcon Name="close" Size="14" />
                                 </button>
                             </li>
                         }
                     </ul>
                 }
-                <div class="pl-addrow">
+                <div class="pl-addrow" id="@($"pl-addrow-{_uid}")">
                     <OdsButton Variant="OdsButtonVariant.Outlined" Icon="add_photo_alternate" OnClick="OpenPicker">Add photos</OdsButton>
                     @if (PhotoCount > 0)
                     {

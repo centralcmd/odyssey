@@ -355,22 +355,11 @@ public partial class TaxStatementsCard
     // "From Files" on files.read, so either one makes the action useful.
     private bool CanAttachFiles => _canUpdate && (_canUploadFiles || _canReadFiles);
 
-    private static string TaxFileGuess(string name)
-    {
-        var lower = name.ToLowerInvariant();
-        if (lower.Contains("assess") || lower.Contains("notice") || lower.Contains("vedtak") || lower.Contains("skatteoppgj"))
-            return nameof(TaxStatementFileType.TaxAssessment);
-        return lower.EndsWith(".pdf", StringComparison.Ordinal)
-            ? nameof(TaxStatementFileType.TaxReturn)
-            : nameof(TaxStatementFileType.SupportingDocument);
-    }
-
     private async Task<bool> AttachTaxFileAsync(AttachDocumentItem item)
     {
         if (_uploadStatement is null)
             return false;
-        var request = new AttachTaxStatementFileRequest(item.FileId, item.KindAs(TaxStatementFileType.Other));
-        return (await TaxStatements.AttachFileAsync(_uploadStatement.TaxStatementId, request))
+        return (await TaxStatements.AttachFileAsync(_uploadStatement.TaxStatementId, AttachDocumentRequests.TaxStatement(item)))
             .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
 

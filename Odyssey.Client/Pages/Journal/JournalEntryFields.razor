@@ -1,7 +1,9 @@
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
+@implements IAsyncDisposable
 @inject IFilesApiClient Files
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 @*
     JournalEntryFields — the shared field grid for a journal entry, bound to a JournalEntryDraft.
     Used by both CreateJournalEntryDialog and the inline edit form so create + edit stay identical.
@@ -45,6 +47,8 @@
               ValueChanged="@(v => { Draft.Content = v; Draft.ContentError = null; })"
               Error="@Draft.ContentError" Placeholder="What happened?" />
 
+<OdsLiveAnnouncer Message="@_announce" />
+
 <OdsFormRow>
     <OdsFieldShell Label="Photos">
         @if (Draft.Photos.Count > 0)
@@ -54,15 +58,16 @@
                 {
                     <li class="jef-photo" title="@p.Name" @key="p.FileId"
                         style="background-image: url('@Files.ContentUrl(p.FileId)');">
-                        <button type="button" class="jef-photo-remove" aria-label="@($"Remove {p.Name}")"
-                                @onclick="@(() => Draft.Photos.Remove(p))">
+                        <button type="button" class="jef-photo-remove" id="@PhotoRemoveId(p.FileId)"
+                                aria-label="@($"Remove {p.Name}")"
+                                @onclick="@(() => RemovePhoto(p))">
                             <OdsMIcon Name="close" Size="14" />
                         </button>
                     </li>
                 }
             </ul>
         }
-        <div>
+        <div id="@($"jef-add-photos-{_uid}")">
             <OdsButton Variant="OdsButtonVariant.Outlined" Icon="add_photo_alternate" OnClick="@(() => _pickingPhotos = true)">Add photos</OdsButton>
         </div>
     </OdsFieldShell>
@@ -70,11 +75,11 @@
         @if (Draft.Attachments.Count > 0)
         {
             <div class="jef-files">
-                <JournalFileRows Attachments="Draft.Attachments" CanDownload="CanDownload" SingleColumn="true"
-                                 OnRemove="@(EventCallback.Factory.Create<Guid>(this, id => Draft.Attachments.RemoveAll(a => a.Id == id)))" />
+                <JournalFileRows Id="@FilesListId" Attachments="Draft.Attachments" CanDownload="CanDownload" SingleColumn="true"
+                                 OnRemove="@(EventCallback.Factory.Create<Guid>(this, RemoveAttachment))" />
             </div>
         }
-        <div>
+        <div id="@($"jef-attach-{_uid}")">
             <OdsButton Variant="OdsButtonVariant.Outlined" Icon="attach_file" OnClick="@(() => _pickingFiles = true)">Attach documents</OdsButton>
         </div>
     </OdsFieldShell>
@@ -127,6 +132,18 @@
     private bool _pickingFiles;
     private bool _pickingPhotos;
 
+    // Per-instance, so two forms on one page never share a DOM id.
+    private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
+    private string _announce = string.Empty;
+
+    private string FilesListId => $"jef-files-{_uid}";
+    private string PhotoRemoveId(Guid fileId) => $"jef-rm-{_uid}-{fileId}";
+
+    // Focus return after a removal destroyed the control that had focus (WCAG 2.4.3): a CSS selector
+    // chain, resolved before the removal while the removed item still has a neighbour.
+    private string?[]? _focusAfter;
+    private IJSObjectReference? _focusReturnJs;
+
     // The picker has already uploaded or picked the file; staging reads its metadata so the row shows
     // the same kind, size and date an attachment on a saved entry does. Nothing is linked until save.
     private async Task<bool> StageAttachmentAsync(AttachDocumentItem item)
@@ -138,13 +155,71 @@
             return false;
         }
         if (Draft.Attachments.All(a => a.Id != meta.Id))
+        {
             Draft.Attachments.Add(meta);
+            _announce = $"{meta.FileName} added to the entry’s attachments.";
+        }
         return true;
     }
 
     private void StagePhotos(IReadOnlyList<AttachPhotoItem> items)
     {
+        var added = 0;
         foreach (var item in items.Where(i => Draft.Photos.All(p => p.FileId != i.FileId)))
+        {
             Draft.Photos.Add(new JournalDraftPhoto(item.FileId, item.Name));
+            added++;
+        }
+        if (added > 0)
+            _announce = added == 1 ? "1 photo added to the entry." : $"{added} photos added to the entry.";
+    }
+
+    private void RemovePhoto(JournalDraftPhoto photo)
+    {
+        var index = Draft.Photos.IndexOf(photo);
+        var neighbour = index + 1 < Draft.Photos.Count ? Draft.Photos[index + 1]
+            : index > 0 ? Draft.Photos[index - 1]
+            : null;
+        Draft.Photos.Remove(photo);
+        _announce = $"{photo.Name} removed from the entry.";
+        _focusAfter = [neighbour is null ? null : $"#{PhotoRemoveId(neighbour.FileId)}", $"#jef-add-photos-{_uid} button"];
+    }
+
+    private void RemoveAttachment(Guid fileId)
+    {
+        var index = Draft.Attachments.FindIndex(a => a.Id == fileId);
+        if (index < 0)
+            return;
+        var removed = Draft.Attachments[index];
+        var neighbour = index + 1 < Draft.Attachments.Count ? Draft.Attachments[index + 1]
+            : index > 0 ? Draft.Attachments[index - 1]
+            : null;
+        Draft.Attachments.RemoveAt(index);
+        _announce = $"{removed.FileName} removed from the entry’s attachments.";
+        _focusAfter = [neighbour is null ? null : $"#{JournalFileRows.MenuId(FilesListId, neighbour.Id)} button", $"#jef-attach-{_uid} button"];
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusAfter is not { } candidates)
+            return;
+        _focusAfter = null;
+        try
+        {
+            _focusReturnJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/focus-return.js");
+            await _focusReturnJs.InvokeVoidAsync("focusFirstLater", candidates);
+        }
+        catch (Exception)
+        {
+            // Best-effort: the removal is already announced through the live region.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_focusReturnJs is not null)
+        {
+            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+        }
     }
 }

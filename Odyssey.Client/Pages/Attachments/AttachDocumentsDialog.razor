@@ -24,9 +24,10 @@
 *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
-          Icon="attach_file" Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="afm-dialog">
+          Icon="attach_file" Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
         <div class="ods-modal-body prop-doc-modal">
+            <OdsLiveAnnouncer Message="@_announce" />
             @if (ShowTabs)
             {
                 <OdsSegmentedControl Full="true" AriaLabel="Where the document comes from"

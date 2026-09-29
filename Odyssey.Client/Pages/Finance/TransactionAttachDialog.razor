@@ -12,9 +12,9 @@
 <AttachDocumentsDialog Open="Open" OpenChanged="OpenChanged"
                        Subtitle="@($"Keep the receipt, invoice or payment confirmation with {Transaction.Description}. Files stay in Files; attaching links them here.")"
                        Kinds="OdsTypeRegistries.TransactionFileTypes"
-                       GuessKind="GuessKind"
+                       GuessKind="AttachDocumentRequests.TransactionGuess"
                        UploadExtensions="UploadExtensions"
-                       AttachedIds="@([.. Transaction.TransactionFiles.Select(f => f.FileMetadata.Id)])"
+                       AttachedIds="_attachedIds"
                        Attach="AttachAsync"
                        OnAttached="@(_ => OnAttached.InvokeAsync())" />
 
@@ -30,19 +30,16 @@
     /// <summary>Raised after at least one attach succeeded so the host re-reads the row.</summary>
     [Parameter] public EventCallback OnAttached { get; set; }
 
-    // DS afmGuessKind(name, 'transaction'): an image is a receipt, a PDF an invoice.
-    internal static string GuessKind(string fileName) => Path.GetExtension(fileName).ToLowerInvariant() switch
-    {
-        ".jpg" or ".jpeg" or ".png" or ".heic" or ".webp" or ".gif" or ".tiff" => nameof(TransactionFileType.Receipt),
-        ".pdf" => nameof(TransactionFileType.Invoice),
-        _ => nameof(TransactionFileType.Other),
-    };
+    private IReadOnlyCollection<Guid> _attachedIds = [];
+
+    protected override void OnParametersSet() =>
+        _attachedIds = [.. Transaction.TransactionFiles.Select(f => f.FileMetadata.Id)];
 
     private async Task<bool> AttachAsync(AttachDocumentItem item)
     {
         try
         {
-            await Files.AttachToTransactionAsync(Transaction.TransactionId, item.FileId, item.KindAs(TransactionFileType.Other));
+            await Files.AttachToTransactionAsync(Transaction.TransactionId, item.FileId, AttachDocumentRequests.TransactionType(item));
             return true;
         }
         catch (Exception)

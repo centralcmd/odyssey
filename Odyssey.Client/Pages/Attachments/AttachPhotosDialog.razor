@@ -14,7 +14,7 @@
 *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
-          Icon="add_photo_alternate" Title="@TitleFragment" Subtitle="@SubtitleFragment" Class="afm-dialog">
+          Icon="add_photo_alternate" Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
         <div class="ods-modal-body prop-doc-modal">
             @if (ShowTabs)
@@ -23,6 +23,7 @@
                                      Options="Tabs" Value="@_tab" ValueChanged="OnTabChanged" />
             }
 
+            <OdsLiveAnnouncer Message="@_announce" />
             @if (_tab == UploadTab)
             {
                 <OdsFileUpload Files="_uploads" FilesChanged="OnUploadsChanged"
@@ -59,12 +60,14 @@
                             @foreach (var photo in _library)
                             {
                                 var added = IsAttached(photo);
-                                var picked = _picked.Contains(photo.PhotoId);
+                                var picked = IsPicked(photo);
                                 <button type="button" class="apd-tile @(picked ? "on" : null)" @key="photo.PhotoId"
                                         disabled="@added" aria-pressed="@(picked ? "true" : "false")"
                                         aria-label="@TileLabel(photo, added)" title="@LabelOf(photo)"
-                                        style="background-image: url('@Files.ContentUrl(photo.FileId)');"
                                         @onclick="@(() => TogglePick(photo))">
+                                    @* An <img>, not a background: there is no thumbnail endpoint, so a
+                                       96-photo page must at least not fetch what is scrolled out of view. *@
+                                    <img class="apd-img" src="@Files.ContentUrl(photo.FileId)" alt="" loading="lazy" />
                                     <span class="apd-check" aria-hidden="true">
                                         <OdsMIcon Name="@(added ? "link" : picked ? "check_box" : "check_box_outline_blank")" Size="18" />
                                     </span>
@@ -75,10 +78,10 @@
                                 </button>
                             }
                         </div>
-                        @if (_error is not null)
-                        {
-                            <div class="helper aam-err" role="alert">@_error</div>
-                        }
+                    }
+                    @if (_error is not null)
+                    {
+                        <div class="helper aam-err" role="alert">@_error</div>
                     }
                 </div>
             }

@@ -382,11 +382,6 @@ public partial class AccountsCard
 
     private bool CanAttachFiles => _canUpdateAccounts && (_canUploadFiles || _canDownloadFiles);
 
-    private static string AccountFileGuess(string fileName) =>
-        fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
-            ? nameof(AccountFileType.Statement)
-            : nameof(AccountFileType.Other);
-
     private async Task<IReadOnlyCollection<Guid>> LoadAccountFileIds()
     {
         if (_uploadAccount is null)
@@ -399,9 +394,7 @@ public partial class AccountsCard
     {
         if (_uploadAccount is null)
             return false;
-        var request = new AttachAccountFileRequest(item.FileId, item.KindAs(AccountFileType.Other),
-            item.ValidFrom, item.ValidTo, item.IssuedAt, item.IssuedBy);
-        return (await Accounts.AttachFileAsync(_uploadAccount.AccountId, request))
+        return (await Accounts.AttachFileAsync(_uploadAccount.AccountId, AttachDocumentRequests.Account(item)))
             .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
 

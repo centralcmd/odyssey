@@ -1,3 +1,6 @@
+using System.Net;
+using Odyssey.ApiClient;
+using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages.Journal;
@@ -86,5 +89,35 @@ public static class JournalTaskWrite
         var update = FromDetail(t);
         update.AttachmentFileIds = [.. fileIds.Distinct()];
         return update;
+    }
+}
+
+/// <summary>
+/// The task row's attachment writes — "Attach documents" and "Remove from task". A task's attachment set
+/// is written whole, so each re-reads the task as the server holds it NOW and re-projects from that,
+/// never from a detail the page cached earlier: a stale copy would silently undo a concurrent edit to
+/// the title, tags or the attachments themselves.
+/// </summary>
+public static class JournalTaskAttachments
+{
+    /// <summary>Appends <paramref name="fileIds"/> (duplicates of linked files dropped). The task is null when it is gone.</summary>
+    public static Task<(ApiResult Result, ExistingJournalTask? Task)> AddAsync(
+        ITaskApiClient tasks, Guid taskId, IReadOnlyCollection<Guid> fileIds) =>
+        WriteAsync(tasks, taskId, current => current.Concat(fileIds));
+
+    /// <summary>Drops one file from the task. The file stays in Files.</summary>
+    public static Task<(ApiResult Result, ExistingJournalTask? Task)> RemoveAsync(
+        ITaskApiClient tasks, Guid taskId, Guid fileId) =>
+        WriteAsync(tasks, taskId, current => current.Where(id => id != fileId));
+
+    private static async Task<(ApiResult, ExistingJournalTask?)> WriteAsync(
+        ITaskApiClient tasks, Guid taskId, Func<IEnumerable<Guid>, IEnumerable<Guid>> change)
+    {
+        var fresh = await tasks.GetAsync(taskId);
+        if (fresh is null)
+            return (ApiResult.Failure(HttpStatusCode.NotFound, new ApiProblem { Detail = "The task no longer exists." }), null);
+
+        var update = JournalTaskWrite.WithAttachments(fresh, change(fresh.Attachments.Select(a => a.FileId)));
+        return (await tasks.UpdateAsync(taskId, update), fresh);
     }
 }

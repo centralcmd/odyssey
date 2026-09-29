@@ -878,16 +878,7 @@ public partial class ContractsCard
     {
         if (_uploadContract is null)
             return false;
-        var request = new AttachContractFileRequest
-        {
-            FileMetadataId = item.FileId,
-            FileType = item.KindAs(ContractFileType.Signed),
-            ValidFrom = item.ValidFrom,
-            ValidTo = item.ValidTo,
-            IssuedAt = item.IssuedAt,
-            IssuedBy = item.IssuedBy,
-        };
-        return (await Contracts.AttachFileAsync(_uploadContract.ContractId, request))
+        return (await Contracts.AttachFileAsync(_uploadContract.ContractId, AttachDocumentRequests.Contract(item)))
             .Toast(Snackbar, $"Couldn’t attach “{item.Name}”");
     }
 

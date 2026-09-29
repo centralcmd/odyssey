@@ -356,7 +356,7 @@
                            @bind-Open="_uploadOpen"
                            Subtitle="Keep the tax return, assessment, or supporting documents with this statement. Files stay in Files; attaching links them here."
                            Kinds="OdsTypeRegistries.TaxStatementFileTypes"
-                           GuessKind="TaxFileGuess"
+                           GuessKind="AttachDocumentRequests.TaxGuess"
                            AttachedIds="@([.. _uploadStatement.Files.Select(f => f.FileMetadata.Id)])"
                            Attach="AttachTaxFileAsync"
                            OnAttached="@(_ => OnFilesChanged())" />

@@ -461,29 +461,24 @@ public partial class TasksPage
 
     private async Task CommitAttach()
     {
-        if (_attachTask is not { } task || _stagedAttachIds.Count == 0) return;
-        var ids = task.Attachments.Select(a => a.FileId).Concat(_stagedAttachIds);
-        var added = _stagedAttachIds.Count;
-        if ((await Tasks.UpdateAsync(task.JournalTaskId, JournalTaskWrite.WithAttachments(task, ids)))
-            .Toast(Snackbar, "Unable to attach documents", added == 1 ? "Document attached." : $"{added} documents attached."))
-        {
-            _announce = $"{added} document{(added == 1 ? "" : "s")} attached to {task.Title}.";
-            await ReloadTask(task.JournalTaskId);
-        }
+        if (_attachTask is not { } opened || _stagedAttachIds.Count == 0) return;
+        List<Guid> staged = [.. _stagedAttachIds];
+        _stagedAttachIds.Clear();
+
+        var (result, task) = await JournalTaskAttachments.AddAsync(Tasks, opened.JournalTaskId, staged);
+        var added = staged.Count;
+        if (result.Toast(Snackbar, "Unable to attach documents", added == 1 ? "Document attached." : $"{added} documents attached."))
+            _announce = $"{added} document{(added == 1 ? "" : "s")} attached to {task?.Title ?? opened.Title}.";
+        await ReloadTask(opened.JournalTaskId);
     }
 
     private async Task RemoveFile(JournalTaskSummary t, Guid fileId)
     {
         if (!_canUpdate) return;
-        var detail = await EnsureDetail(t.JournalTaskId);
-        if (detail is null) return;
-        var ids = detail.Attachments.Select(a => a.FileId).Where(id => id != fileId);
-        if ((await Tasks.UpdateAsync(t.JournalTaskId, JournalTaskWrite.WithAttachments(detail, ids)))
-            .Toast(Snackbar, "Unable to remove the file", "File removed from task."))
-        {
+        var (result, _) = await JournalTaskAttachments.RemoveAsync(Tasks, t.JournalTaskId, fileId);
+        if (result.Toast(Snackbar, "Unable to remove the file", "File removed from task."))
             _announce = $"File removed from {t.Title}.";
-            await ReloadTask(t.JournalTaskId);
-        }
+        await ReloadTask(t.JournalTaskId);
     }
 
     /// <summary>The row's unfolded file list — hydrated metadata, dangling / unreadable ids omitted.</summary>

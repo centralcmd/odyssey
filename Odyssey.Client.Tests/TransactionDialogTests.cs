@@ -48,13 +48,11 @@ public sealed class TransactionDialogTests : IAsyncLifetime
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
 
-        // Any file call from this dialog is a regression: it no longer uploads, attaches or detaches.
+        // Any file call from this dialog is a regression: it no longer uploads, attaches or detaches. The
+        // transaction is seeded WITH an attached file so the dialog has one it could wrongly touch.
         files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("upload"))
             .ThrowsAsync(new InvalidOperationException("The dialog must not upload."));
-        transactions.Setup(t => t.DetachFileAsync(TransactionId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .Callback<Guid, Guid, CancellationToken>((_, fileId, _) => calls.Add($"detach:{fileId}"))
-            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
 
         var accounts = new Mock<IAccountsApiClient>();
         accounts.Setup(a => a.ListAllAsync(It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
@@ -162,6 +160,7 @@ public sealed class TransactionDialogTests : IAsyncLifetime
 
         cut.WaitForAssertion(() => Assert.Equal(["update"], calls));
         files.Verify(f => f.AttachToTransactionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<TransactionFileType>(), It.IsAny<CancellationToken>()), Times.Never);
+        transactions.Verify(t => t.DetachFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         cut.WaitForAssertion(() => Assert.True(cut.Instance.Closed));
     }
 

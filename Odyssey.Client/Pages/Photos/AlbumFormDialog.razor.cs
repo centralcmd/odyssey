@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.Client.Components;
@@ -40,6 +41,51 @@ public partial class AlbumFormDialog
     private bool _pickerOpen;
 
     private int PhotoCount => IsEdit ? _members.Count : _newIds.Count;
+
+    // Per-instance DOM ids for focus return, and the dialog's live region (WCAG 4.1.3).
+    private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
+    private string _announce = string.Empty;
+    private string?[]? _focusAfter;
+    private IJSObjectReference? _focusReturnJs;
+
+    private string NewRemoveId(Guid id) => $"pl-newrm-{_uid}-{id}";
+
+    // Removing a staged pick destroys the button that had focus (WCAG 2.4.3): land on the next pick's
+    // remove button, else the previous one's, else "Add photos".
+    private void RemoveNew(Guid id)
+    {
+        var index = _newIds.IndexOf(id);
+        var neighbour = index + 1 < _newIds.Count ? _newIds[index + 1]
+            : index > 0 ? _newIds[index - 1]
+            : (Guid?)null;
+        _newIds.Remove(id);
+        _announce = $"{LabelFor(id)} removed from the album.";
+        _focusAfter = [neighbour is { } n ? $"#{NewRemoveId(n)}" : null, $"#pl-addrow-{_uid} button"];
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusAfter is not { } candidates)
+            return;
+        _focusAfter = null;
+        try
+        {
+            _focusReturnJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/focus-return.js");
+            await _focusReturnJs.InvokeVoidAsync("focusFirstLater", candidates);
+        }
+        catch (Exception)
+        {
+            // Best-effort: the removal is already announced through the live region.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_focusReturnJs is not null)
+        {
+            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+        }
+    }
 
     private RenderFragment TitleFragment => builder => builder.AddContent(0, IsEdit ? "Edit album" : "New album");
     private RenderFragment? SubtitleFragment => IsEdit && _loaded
@@ -128,13 +174,17 @@ public partial class AlbumFormDialog
     private void AddPicked(IReadOnlyList<AttachPhotoItem> items)
     {
         var target = IsEdit ? _members : _newIds;
+        var added = 0;
         foreach (var item in items)
         {
             if (item.PhotoId is not { } id || target.Contains(id))
                 continue;
             _pickedInfo[id] = item;
             target.Add(id);
+            added++;
         }
+        if (added > 0)
+            _announce = added == 1 ? "1 photo added to the album." : $"{added} photos added to the album.";
     }
 
     private void Move(int index, int delta)
