@@ -510,8 +510,10 @@ public class AccountService
             Name = newAccount.Name,
             AccountNumber = newAccount.AccountNumber,
             AccountType = newAccount.AccountType.Adapt<ContextAccountType>(),
-            Opened = newAccount.Opened ?? timeProvider.GetUtcNow().UtcDateTime,
-            Closed = newAccount.Closed,
+            Opened = newAccount.Opened is { } opened
+                ? DateTimeNormalization.NormalizeToUtc(opened)
+                : timeProvider.GetUtcNow().UtcDateTime,
+            Closed = DateTimeNormalization.NormalizeToUtc(newAccount.Closed),
             Archived = null,
             CurrencyCode = CurrencyValidationService.Normalize(newAccount.CurrencyCode),
             CustodianId = newAccount.CustodianId,
@@ -569,8 +571,14 @@ public class AccountService
         account.Name = putAccount.Name;
         account.AccountNumber = putAccount.AccountNumber;
         account.AccountType = putAccount.AccountType.Adapt<ContextAccountType>();
-        account.Opened = putAccount.Opened ?? timeProvider.GetUtcNow().UtcDateTime;
-        account.Closed = putAccount.Closed;
+        // Opened is nullable only so create can default it. On update an omitted value keeps the
+        // stored date — defaulting it to now would rewrite the account's history (issue #242).
+        // Closed is different: null is a real value there ("not closed"), so it is always applied.
+        if (putAccount.Opened is { } opened)
+        {
+            account.Opened = DateTimeNormalization.NormalizeToUtc(opened);
+        }
+        account.Closed = DateTimeNormalization.NormalizeToUtc(putAccount.Closed);
         account.CurrencyCode = normalizedCurrencyCode;
         account.CustodianId = putAccount.CustodianId;
         ApplyArchiveTransition(account, putAccount.Archived);

@@ -271,9 +271,12 @@ public class TransactionService
 
         transaction.Description = putTransaction.Description;
         transaction.Amount = putTransaction.Amount;
-        transaction.TimeStamp = putTransaction.TimeStamp is { } timeStamp
-            ? DateTimeNormalization.NormalizeToUtc(timeStamp)
-            : timeProvider.GetUtcNow().UtcDateTime;
+        // TimeStamp is nullable only so create can default it; an omitted value on update keeps the
+        // stored date rather than moving the transaction to now (issue #242).
+        if (putTransaction.TimeStamp is { } timeStamp)
+        {
+            transaction.TimeStamp = DateTimeNormalization.NormalizeToUtc(timeStamp);
+        }
         transaction.AccountId = putTransaction.AccountId;
         transaction.CurrencyCode = normalizedCurrencyCode;
         await EnsureAccountIsValid(putTransaction.AccountId, normalizedCurrencyCode, cancellationToken);
