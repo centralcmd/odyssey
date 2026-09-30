@@ -6,6 +6,7 @@ public sealed record NewAccountEstimate
 {
     // Must be >= 0 (an estimated value cannot be negative); the service enforces it.
     [Required]
+    [Range(typeof(decimal), MoneyBounds.AmountMin, MoneyBounds.AmountMax, ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal Value { get; set; }
 
     // Must equal the account currency; defaults to it when omitted. A supplied value that differs is

@@ -8,9 +8,9 @@ namespace Odyssey.Dtos.Finance;
 /// </summary>
 public sealed record UpdateExchangeRate
 {
-    /// <summary>1 unit of From = Rate units of To. Must be greater than zero.</summary>
+    /// <summary>1 unit of From = Rate units of To. Bounded by the <c>decimal(18,8)</c> column (<see cref="MoneyBounds"/>).</summary>
     [Required]
-    [Range(typeof(decimal), "0", "79228162514264337593543950335", MinimumIsExclusive = true)]
+    [Range(typeof(decimal), MoneyBounds.ExchangeRateMin, MoneyBounds.ExchangeRateMax, ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public required decimal Rate { get; set; }
 
     [Required]

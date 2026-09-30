@@ -38,6 +38,7 @@ public sealed record NewTerm
     /// required depends on the unit; the permitted range does too (a fraction in [-1, 1] for
     /// percentages, >= 0 for amounts). The service enforces both.
     /// </summary>
+    [Range(typeof(decimal), MoneyBounds.AmountMin, MoneyBounds.AmountMax, ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal? Value { get; set; }
 
     /// <summary>

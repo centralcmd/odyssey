@@ -17,6 +17,7 @@ public sealed record NewBudgetItem
     public required Guid BudgetId { get; set; }
     [EnumDataType(typeof(BudgetCategoryType))]
     public required BudgetCategoryType CategoryType { get; set; }
+    [Range(typeof(decimal), MoneyBounds.AmountMin, MoneyBounds.AmountMax, ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public required decimal PlannedAmount { get; set; }
 
     /// <summary>

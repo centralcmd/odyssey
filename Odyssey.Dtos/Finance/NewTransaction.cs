@@ -6,6 +6,7 @@ public sealed record NewTransaction
 {
     [StringLength(256)]
     public required string Description { get; set; }
+    [Range(typeof(decimal), MoneyBounds.AmountMin, MoneyBounds.AmountMax, ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public required decimal Amount { get; set; }
     public DateTime? TimeStamp { get; set; }
     public required Guid AccountId { get; set; }
