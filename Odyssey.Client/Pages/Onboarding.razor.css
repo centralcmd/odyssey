@@ -29,6 +29,8 @@
 
 .onb-head { text-align: center; margin-bottom: 22px; }
 .onb-title { margin: 0; font: 400 26px/1.15 var(--font-sans); letter-spacing: -0.01em; color: var(--mud-palette-text-primary); }
+/* Programmatically focusable (FocusOnNavigate) but not a control — no ring, as on ChangePasswordRequired. */
+.onb-title:focus { outline: none; }
 .onb-sub { margin: 10px auto 0; max-width: 460px; font: 400 14px/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
 
 /* Slim completeness indicator above the form. */

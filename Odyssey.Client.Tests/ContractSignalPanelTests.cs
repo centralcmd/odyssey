@@ -78,7 +78,7 @@ public class ContractSignalPanelTests
     {
         var panel = RenderPanel(new PageHeaderProblem { Group = "Ending soon", Message = "Term ends soon." });
 
-        var heading = panel.Find("h3.ph-signal-group");
+        var heading = panel.Find("h2.ph-signal-group");
         Assert.Equal("Ending soon", heading.TextContent.Trim());
     }
 
@@ -95,7 +95,7 @@ public class ContractSignalPanelTests
             new PageHeaderProblem { Group = "Ending soon", Message = "Second." },
             new PageHeaderProblem { Group = "Starting soon", Message = "Third." });
 
-        var headings = panel.FindAll("h3.ph-signal-group").Select(h => h.TextContent.Trim()).ToList();
+        var headings = panel.FindAll("h2.ph-signal-group").Select(h => h.TextContent.Trim()).ToList();
 
         Assert.Equal(["Ending soon", "Starting soon"], headings);
         Assert.Equal(3, panel.FindAll(".signal-panel .alert").Count);

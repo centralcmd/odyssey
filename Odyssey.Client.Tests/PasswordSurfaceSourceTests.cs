@@ -91,7 +91,7 @@ public class PasswordSurfaceSourceTests
         // paint announces nothing.
         var text = Read(page);
 
-        Assert.Matches(new Regex(@"<h2\s+@ref=""_headingRef""\s+tabindex=""-1""", RegexOptions.None), text);
+        Assert.Matches(new Regex(@"<h1\s+@ref=""_headingRef""\s+tabindex=""-1""", RegexOptions.None), text);
         Assert.Contains("OnAfterRenderAsync", text, StringComparison.Ordinal);
         Assert.Contains("_headingRef.FocusAsync()", text, StringComparison.Ordinal);
     }

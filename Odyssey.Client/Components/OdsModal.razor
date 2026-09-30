@@ -24,7 +24,8 @@
            ContentClass="@(HideHeader ? null : "ods-modal-content")"
            TitleClass="ods-modal-head"
            ActionsClass="ods-modal-foot"
-           TitleContent="@(HideHeader ? null : HeaderFragment)">
+           TitleContent="@(HideHeader ? null : HeaderFragment)"
+           AriaLabel="@EffectiveAriaLabel">
     <DialogContent>
         @ChildContent
     </DialogContent>

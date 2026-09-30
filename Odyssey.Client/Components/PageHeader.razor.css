@@ -50,6 +50,10 @@
     min-width: 0;
 }
 
+/* The title is a programmatic focus target (FocusOnNavigate), never in the tab order, so a ring
+   would read as a control the user could act on — the .auth-panel-heading / .onb-title precedent. */
+.ph-titles ::deep .ph-title:focus { outline: none; }
+
 /* Status chips row under the title (role · email · 2FA · tenure). The chips
    themselves are supplied by the page (and carry the page's CSS scope); the
    leading avatar styling likewise lives with the page that supplies it. */
@@ -202,7 +206,7 @@
    The heading is the ONLY thing separating one group from the next — no rule, no extra surface — so
    rows keep their own severity reading and the panel stays one list rather than several panels. */
 .ph-signal-group {
-    /* A real h3, so the UA margins have to go — the panel's own gap does the spacing. */
+    /* A real h2, so the UA margins have to go — the panel's own gap does the spacing. */
     margin: 0;
     font: var(--fw-medium) var(--fs-overline) / 1 var(--font-sans);
     letter-spacing: 0.06em;

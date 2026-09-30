@@ -10,7 +10,7 @@
             <!-- Header — file identity + context -->
             <div class="fvm-head">
                 <span class="fvm-head-ic" style="background:@kind.Soft;color:@(OdsGlyphInk.Glyph(kind.Color));">
-                    <span class="material-icons" style="font-size:20px;">@kind.Icon</span>
+                    <span class="material-icons" style="font-size:20px;" aria-hidden="true">@kind.Icon</span>
                 </span>
                 <div class="fvm-head-main">
                     <div class="fvm-head-name" title="@FileName">@FileName</div>
@@ -30,7 +30,7 @@
                     </div>
                 </div>
                 <button type="button" class="aam-x" aria-label="Close" @onclick="CloseAsync">
-                    <span class="material-icons" style="font-size:20px;">close</span>
+                    <span class="material-icons" style="font-size:20px;" aria-hidden="true">close</span>
                 </button>
             </div>
 
@@ -46,7 +46,7 @@
                             <div class="fvm-zoom">
                                 <button type="button" class="fvm-tbtn" aria-label="Zoom out"
                                         disabled="@(_zoom <= ZoomMin)" @onclick="ZoomOut">
-                                    <span class="material-icons" style="font-size:18px;">remove</span>
+                                    <span class="material-icons" style="font-size:18px;" aria-hidden="true">remove</span>
                                 </button>
                                 @* The visible text is the zoom percentage, so the button's accessible
                                    name has to say what pressing it does; the tooltip carries the same
@@ -57,7 +57,7 @@
                                 </OdsTooltip>
                                 <button type="button" class="fvm-tbtn" aria-label="Zoom in"
                                         disabled="@(_zoom >= ZoomMax)" @onclick="ZoomIn">
-                                    <span class="material-icons" style="font-size:18px;">add</span>
+                                    <span class="material-icons" style="font-size:18px;" aria-hidden="true">add</span>
                                 </button>
                             </div>
                         }
@@ -67,12 +67,12 @@
                         @if (IsImage)
                         {
                             <button type="button" class="fvm-tbtn" aria-label="Rotate" @onclick="Rotate">
-                                <span class="material-icons" style="font-size:18px;">rotate_right</span>
+                                <span class="material-icons" style="font-size:18px;" aria-hidden="true">rotate_right</span>
                             </button>
                         }
                         <OdsTooltip Label="Open in new tab">
                             <button type="button" class="fvm-tbtn" aria-label="Open in new tab" @onclick="OpenInNewTab">
-                                <span class="material-icons" style="font-size:18px;">open_in_new</span>
+                                <span class="material-icons" style="font-size:18px;" aria-hidden="true">open_in_new</span>
                             </button>
                         </OdsTooltip>
                     </div>
@@ -94,7 +94,7 @@
                 else
                 {
                     <div class="fvm-empty">
-                        <span class="fvm-empty-ic"><span class="material-icons" style="font-size:34px;">visibility_off</span></span>
+                        <span class="fvm-empty-ic"><span class="material-icons" style="font-size:34px;" aria-hidden="true">visibility_off</span></span>
                         <div class="fvm-empty-ttl">Preview not available</div>
                         <div class="fvm-empty-sub">
                             This file type can't be shown in the browser. Download the file to open it in another app.
@@ -109,7 +109,7 @@
             <!-- Footer -->
             <div class="fvm-foot">
                 <span class="fvm-foot-note fvm-muted">
-                    <span class="material-icons" style="font-size:14px;">lock</span> Read-only preview
+                    <span class="material-icons" style="font-size:14px;" aria-hidden="true">lock</span> Read-only preview
                 </span>
                 <div class="fvm-foot-actions">
                     <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CloseAsync">Close</MudButton>

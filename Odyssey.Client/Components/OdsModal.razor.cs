@@ -49,8 +49,13 @@ public partial class OdsModal
     /// <summary>Extra CSS class(es) forwarded to the underlying dialog — for bespoke width/padding overrides.</summary>
     [Parameter] public string? Class { get; set; }
 
-    /// <summary>Accessible name used when there is no Title.</summary>
+    /// <summary>Accessible name used when there is no Title (or <see cref="HideHeader"/> suppresses it).</summary>
     [Parameter] public string? AriaLabel { get; set; }
+
+    // A visible title names the dialog through aria-labelledby, so the fallback only goes out when
+    // there is none: MudDialog emits aria-label INSTEAD of aria-labelledby whenever one is supplied,
+    // and the on-screen title is the name a sighted user and a voice-control user will both say.
+    private string? EffectiveAriaLabel => HideHeader || Title is null ? AriaLabel : null;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
@@ -112,6 +117,9 @@ public partial class OdsModal
             FullWidth = true,
             CloseOnEscapeKey = OnClose.HasDelegate,
             BackdropClick = OnClose.HasDelegate,
+            // Without it MudDialog still renders an empty title element and points aria-labelledby
+            // at it, so a header-less dialog is named "" and AriaLabel never reaches the reader.
+            NoHeader = HideHeader,
         };
     }
 

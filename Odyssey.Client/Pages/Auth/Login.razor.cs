@@ -21,6 +21,10 @@ public partial class Login
     private bool _rememberDevice;
     private string? _errorMessage;
     private bool _isSubmitting;
+    private ElementReference _headingRef;
+
+    // Nullable so the first render can prime it — see OnAfterRenderAsync.
+    private LoginPhase? _announcedPhase;
 
     [SupplyParameterFromQuery]
     public string? ReturnUrl { get; set; }
@@ -56,6 +60,29 @@ public partial class Login
     /// </remarks>
     internal static string SignInUrlFor(string baseRelativePath) =>
         $"{LoginPath}?returnUrl={Uri.EscapeDataString("/" + baseRelativePath)}";
+
+    /// <summary>
+    /// Moves focus to the new panel's heading whenever the phase changes (password → two-step and
+    /// back). The swap replaces the whole card body, so the control the user just activated is gone
+    /// and focus would otherwise fall to &lt;body&gt; (WCAG 2.4.3). The first render is exempt: arrival
+    /// focus is FocusOnNavigate's job, and priming the sentinel keeps the first real change announced.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _announcedPhase = _phase;
+            return;
+        }
+
+        if (_announcedPhase == _phase)
+        {
+            return;
+        }
+
+        _announcedPhase = _phase;
+        await _headingRef.FocusAsync();
+    }
 
     private async Task SignInAsync()
     {
