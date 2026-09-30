@@ -289,8 +289,12 @@ public partial class AccountFilesSection
 
     private async Task HandleSaveAsync(OdsRecordSaveEventArgs args)
     {
+        // A patch or key of the wrong shape is a wiring defect, not a save: never report it as one.
         if (args.Patch is not OdsFileEdit patch || args.Key is not string key)
+        {
+            args.Fail();
             return;
+        }
 
         var file = items.FirstOrDefault(f => f.FileMetadata.Id.ToString() == key);
         if (file is null)

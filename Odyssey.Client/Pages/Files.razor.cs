@@ -74,9 +74,19 @@ public partial class Files
     private static readonly string[] PreviewableContentTypes =
         { "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "application/pdf" };
 
+    /// <summary>
+    /// Whether the page is running interactively; the load is skipped off-browser (prerender).
+    /// </summary>
+    /// <remarks>
+    /// A swappable seam, as <c>FilesSectionBase.InteractiveCheck</c> is: a bUnit host is not a browser
+    /// either, so a hard <c>OperatingSystem.IsBrowser()</c> would leave the page's save path untestable.
+    /// Process-wide: a test that moves it must restore it.
+    /// </remarks>
+    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+
     protected override async Task OnInitializedAsync()
     {
-        if (!OperatingSystem.IsBrowser())
+        if (!InteractiveCheck())
             return;
 
         var user = await AuthenticationStateProvider.GetUserAsync();
@@ -289,8 +299,12 @@ public partial class Files
 
     private async Task HandleSaveAsync(OdsRecordSaveEventArgs args)
     {
+        // A patch or key of the wrong shape is a wiring defect, not a save: never report it as one.
         if (args.Patch is not FilesMetaEditDialog.Patch patch || args.Key is not string key)
+        {
+            args.Fail();
             return;
+        }
 
         var file = _files.FirstOrDefault(f => f.Id.ToString() == key);
         if (file is null)

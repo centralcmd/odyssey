@@ -65,6 +65,7 @@ public class FilesApiClientTests
     /// <summary>The server's reason survives on the result — the whole point of leaving <c>T?</c>.</summary>
     [Theory]
     [InlineData(HttpStatusCode.BadRequest, "File name is too long.")]
+    [InlineData(HttpStatusCode.Forbidden, "You do not have permission to update files.")]
     [InlineData(HttpStatusCode.Conflict, "A file with that name already exists.")]
     public async Task UpdateMetadataAsync_KeepsTheServersReasonOnFailure(HttpStatusCode status, string detail)
     {
@@ -79,5 +80,25 @@ public class FilesApiClientTests
         Assert.Equal(status, result.Status);
         Assert.Equal(detail, result.Problem!.Detail);
         Assert.Null(result.Value);
+    }
+
+    /// <summary>An unreachable API is a failure result carrying the transport's reason, never a throw.</summary>
+    [Fact]
+    public async Task UpdateMetadataAsync_TurnsANetworkFailureIntoAFailureResult()
+    {
+        var api = new OdysseyApi(new HttpClient(new ThrowingHandler()) { BaseAddress = new Uri("http://localhost/") });
+        var client = new FilesApiClient(api);
+
+        var result = await client.UpdateMetadataAsync(FileId, null, "deed.pdf");
+
+        Assert.False(result.IsSuccess);
+        Assert.Null(result.Value);
+        Assert.Contains("the API is unreachable", result.Error, StringComparison.Ordinal);
+    }
+
+    private sealed class ThrowingHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
+            throw new HttpRequestException("the API is unreachable");
     }
 }

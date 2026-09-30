@@ -431,6 +431,49 @@ public class PropertyDocumentsSectionTests
         Assert.Equal(issuer, posted.IssuedBy);
     }
 
+    // ── A refused save (issue #252) ─────────────────────────────────────────────
+
+    /// <summary>
+    /// A refused PUT must keep the Edit dialog open with no "Saved" chip and carry the server's reason
+    /// into the toast — the host has to call <see cref="OdsRecordSaveEventArgs.Fail"/> for the table to
+    /// know. The commit is raised through the dialog's own OnSave seam (see FileHostSaveOutcomeTests).
+    /// </summary>
+    [Fact]
+    public async Task A_refused_update_keeps_the_dialog_open_says_why_and_does_not_flash()
+    {
+        var document = Document("deed.pdf");
+        var h = Render([document]);
+        h.Properties.Setup(p => p.UpdateFileAsync(PropertyId, document.FileMetadata.Id, It.IsAny<UpdatePropertyFileRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(FileHostSaveHarness.Refused(HttpStatusCode.UnprocessableEntity));
+        h.Properties.Invocations.Clear();
+
+        var labels = OpenRowMenu(h);
+        h.Host.FindAll("div.mud-menu-item")[labels.ToList().IndexOf("Edit")].Click();
+        var dialog = h.Host.WaitForComponent<OdsFilesEditDialog>();
+        var saved = await h.Host.InvokeAsync(() =>
+            dialog.Instance.OnSave!(new OdsFileEdit("deed.pdf", nameof(PropertyFileType.Valuation))));
+
+        Assert.False(saved);
+        Assert.True(h.Host.FindComponent<OdsFilesEditDialog>().Instance.Open);
+        Assert.False(FileHostSaveHarness.ShowsSaved(h.Host));
+        Assert.Contains(FileHostSaveHarness.Toasts(h.Context),
+            t => t.Contains(FileHostSaveHarness.ServerReason, StringComparison.Ordinal));
+        h.Properties.Verify(p => p.ListFilesAsync(PropertyId, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task A_row_no_longer_listed_fails_and_says_so()
+    {
+        var h = Render([Document("deed.pdf")]);
+
+        var args = await FileHostSaveHarness.RaiseSaveAsync(
+            h.Host, Guid.NewGuid().ToString(), new OdsFileEdit("x.pdf", nameof(PropertyFileType.Deed)));
+
+        Assert.True(args.Failed);
+        Assert.Contains(FileHostSaveHarness.Toasts(h.Context), t => t.Contains("no longer listed", StringComparison.Ordinal));
+        h.Properties.Verify(p => p.UpdateFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<UpdatePropertyFileRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private sealed class SignedOut : AuthenticationStateProvider
     {
         public override Task<AuthenticationState> GetAuthenticationStateAsync() =>

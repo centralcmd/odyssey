@@ -185,9 +185,19 @@ public sealed class OdsRecordEditContext
 /// the user why — calls <see cref="Fail"/> so the editor stays open with the user's edits intact
 /// (issue #252). A handler that returns early because nothing changed has succeeded: there is nothing
 /// left to save.
+/// <para>
+/// A class rather than a record: it carries the mutable outcome, which record value equality and
+/// <c>with</c> copies would misrepresent (a copy's <see cref="Fail"/> would never reach the table).
+/// </para>
 /// </remarks>
-public sealed record OdsRecordSaveEventArgs(object Key, object? Patch)
+public sealed class OdsRecordSaveEventArgs(object key, object? patch)
 {
+    /// <summary>The edited row's key.</summary>
+    public object Key { get; } = key;
+
+    /// <summary>The edit patch the dialog or edit template raised.</summary>
+    public object? Patch { get; } = patch;
+
     /// <summary>The host reported the save as not persisted.</summary>
     public bool Failed { get; private set; }
 

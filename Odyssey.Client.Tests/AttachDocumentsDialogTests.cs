@@ -532,7 +532,8 @@ public class AttachDocumentsDialogTests
 
         h.Host.WaitForAssertion(() => Assert.Single(h.Posted));
         Assert.Equal("scan001.pdf", h.Posted[0].Name);
-        Assert.Contains(h.Toasts, t => t.Contains("couldn’t be renamed", StringComparison.Ordinal));
+        Assert.Contains(h.Toasts, t => t.Contains("couldn’t be renamed", StringComparison.Ordinal)
+            && t.Contains("A file with that name already exists.", StringComparison.Ordinal));
     }
 
     /// <summary>

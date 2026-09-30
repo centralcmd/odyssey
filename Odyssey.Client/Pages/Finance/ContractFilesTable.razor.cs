@@ -150,8 +150,12 @@ public partial class ContractFilesTable
     /// </summary>
     private async Task HandleSaveAsync(OdsRecordSaveEventArgs args)
     {
+        // A patch or key of the wrong shape is a wiring defect, not a save: never report it as one.
         if (args.Patch is not OdsFileEdit patch || args.Key is not string key)
+        {
+            args.Fail();
             return;
+        }
 
         var file = Files.FirstOrDefault(f => f.FileId.ToString() == key);
         if (file is null)
