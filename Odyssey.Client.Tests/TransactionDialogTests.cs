@@ -28,6 +28,7 @@ namespace Odyssey.Client.Tests;
 public sealed class TransactionDialogTests : IAsyncLifetime
 {
     private static readonly Guid AccountId = Guid.NewGuid();
+    private static readonly Guid SavingsId = Guid.NewGuid();
     private static readonly Guid TransactionId = Guid.NewGuid();
     private static readonly Guid FileId = Guid.NewGuid();
 
@@ -59,7 +60,11 @@ public sealed class TransactionDialogTests : IAsyncLifetime
             .ReturnsAsync(new ApiResult<List<ExistingAccount>>
             {
                 Status = HttpStatusCode.OK,
-                Value = [new ExistingAccount { AccountId = AccountId, Name = "Everyday Checking", Description = "", Opened = DateTime.UtcNow }],
+                Value =
+                [
+                    new ExistingAccount { AccountId = AccountId, Name = "Everyday Checking", Description = "", Opened = DateTime.UtcNow },
+                    new ExistingAccount { AccountId = SavingsId, Name = "Holiday Savings", Description = "", Opened = DateTime.UtcNow, CurrencyCode = "EUR" },
+                ],
             });
 
         var uploadLimits = new Mock<IUploadLimitsCache>();
@@ -220,6 +225,86 @@ public sealed class TransactionDialogTests : IAsyncLifetime
         transactions.Verify(t => t.UpdateAsync(TransactionId,
             It.Is<NewTransaction>(n => n.TimeStamp != null && n.TimeStamp.Value.Date == new DateTime(2026, 6, 18)),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  The account picker (issue #255 — one control, no nested interactive element)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The account picker's trigger is one real button carrying the popup state itself, not a button
+    /// inside MudMenu's <c>role="button"</c> activator wrapper, and neither the closed dialog nor the
+    /// open picker nests one interactive element in another.
+    /// </summary>
+    [Fact]
+    public void The_account_picker_is_one_trigger_with_no_nested_controls()
+    {
+        var cut = RenderEdit();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("button.aam-type-trigger")));
+
+        var trigger = cut.Find("button.aam-type-trigger");
+        Assert.Equal("menu", trigger.GetAttribute("aria-haspopup"));
+        Assert.Equal("false", trigger.GetAttribute("aria-expanded"));
+        Assert.Empty(cut.FindAll(".mud-menu-activator"));
+        Assert.Empty(NestedInteractiveControlTests.NestedInteractive(cut.FindAll(".aam-field")));
+
+        trigger.Click();
+        cut.Render();
+
+        Assert.Equal("true", cut.Find("button.aam-type-trigger").GetAttribute("aria-expanded"));
+        Assert.Equal(2, cut.FindAll("[role='menuitemradio']").Count);
+        var row = Assert.Single(cut.FindAll("[role='menuitemradio'][aria-checked='true']"));
+        Assert.Contains("Everyday Checking", row.TextContent, StringComparison.Ordinal);
+        Assert.Equal("menu", cut.Find($"#{cut.Find("button.aam-type-trigger").GetAttribute("aria-controls")}").GetAttribute("role"));
+        Assert.Empty(NestedInteractiveControlTests.NestedInteractive(
+            cut.FindAll(".aam-field").Concat(cut.FindAll(".mud-popover-open"))));
+    }
+
+    /// <summary>
+    /// Choosing an account runs the dialog's selection (the trigger now names it and the amount takes
+    /// its currency), closes the picker — the rows are not MudMenuItems any more — and hands focus
+    /// back to the trigger.
+    /// </summary>
+    [Fact]
+    public void Choosing_an_account_selects_it_closes_the_picker_and_returns_focus()
+    {
+        var cut = RenderEdit();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("button.aam-type-trigger")));
+        var triggerId = cut.Find("button.aam-type-trigger").Id;
+
+        cut.Find("button.aam-type-trigger").Click();
+        cut.Render();
+        cut.FindAll("[role='menuitemradio']").Single(r => r.TextContent.Contains("Holiday Savings", StringComparison.Ordinal)).Click();
+        cut.Render();
+
+        Assert.Empty(cut.FindAll("[role='menuitemradio']"));
+        var trigger = cut.Find("button.aam-type-trigger");
+        Assert.Equal("false", trigger.GetAttribute("aria-expanded"));
+        Assert.Contains("Holiday Savings", trigger.TextContent, StringComparison.Ordinal);
+        Assert.Contains(cut.FindComponents<OdsMoneyField>(), f => f.Instance.Currency == "EUR");
+        Assert.Equal(triggerId, ctx.JSInterop.Invocations["odsFocusById"].Last().Arguments[0]);
+    }
+
+    /// <summary>The keyboard opens the picker onto the chosen account, and Esc gives focus back.</summary>
+    [Fact]
+    public void The_account_picker_opens_on_the_chosen_row_and_escape_returns_focus()
+    {
+        var cut = RenderEdit();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("button.aam-type-trigger")));
+        var trigger = cut.Find("button.aam-type-trigger");
+        var triggerId = trigger.Id;
+
+        trigger.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "ArrowDown" });
+        cut.Render();
+
+        var chosen = cut.Find("[role='menuitemradio'][aria-checked='true']");
+        Assert.Equal(chosen.Id, ctx.JSInterop.Invocations["odsFocusInPopover"].Last().Arguments[0]);
+
+        chosen.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
+        cut.Render();
+
+        Assert.Empty(cut.FindAll("[role='menuitemradio']"));
+        Assert.Equal(triggerId, ctx.JSInterop.Invocations["odsFocusById"].Last().Arguments[0]);
     }
 
     /// <summary>A signed-out principal — the dialog's inline-create claims are not under test.</summary>

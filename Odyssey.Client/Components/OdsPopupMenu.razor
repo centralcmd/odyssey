@@ -1,0 +1,99 @@
+@*
+    OdsPopupMenu: ONE real <button> trigger with a popover anchored to it (issue #255). It is the
+    shared host behind every select-style Ods control (OdsMultiSelect, OdsSortSelect, OdsTypeSelect,
+    OdsPageSizeSelect, OdsInlineSelect, OdsTagMultiSelect, OdsMoneyField's currency picker,
+    AccountSmartTagAdder, CreateTransactionDialog's account picker).
+
+    Why it exists: MudMenu wraps a custom ActivatorContent in its own
+    <div tabindex="0" role="button" aria-haspopup="menu" aria-expanded="…">. Every Ods trigger put a
+    real <button> inside that div, which gave each control two tab stops (an unnamed "button", then
+    the real one), announced a button nested in a button, and left aria-expanded on the div rather
+    than on the focused, named control.
+
+    It is built on MudPopover + MudOverlay directly rather than MudMenu, because MudMenu also
+    hard-codes role="menu" on its list — wrong for a checkbox panel or a search-plus-listbox, and
+    impossible to override. Here the panel's role follows what it holds, and the trigger's
+    aria-haspopup always agrees with it:
+      • single-choice mode (RowId/RowCount set): role="menu" of the consumer's
+        role="menuitemradio" rows; aria-haspopup="menu";
+      • panel mode (everything else — a checkbox group, a search box, a listbox): a non-modal
+        role="dialog" named by the trigger; aria-haspopup="dialog".
+
+    MudPopover positions against the parent of its placeholder, which is this component's box, so
+    the popover anchors, flips and portals out of any overflow:hidden ancestor as before; MudOverlay
+    closes it on an outside click, as MudMenu's did.
+
+    Keyboard (APG menu button / disclosure dialog):
+      • Enter/Space (the button's own click), ↓ or ↑ on the trigger open it, and focus moves IN:
+        the selected row (single-choice), FocusOnOpenId, or else the panel's first focusable;
+      • single-choice rows rove with ↑/↓/Home/End (clamped); Tab or Shift+Tab closes the list and
+        returns focus to the trigger;
+      • Esc anywhere in the panel, or on the trigger while open, closes and returns focus to the
+        trigger. While open the trigger stops its keys propagating, so that Esc does not also
+        cancel a wrapping OdsModal; closed, keys bubble as normal;
+      • a close by outside click leaves focus on whatever the user clicked (the overlay is
+        modeless), and hands it back to the trigger only if it was lost to <body>;
+      • in panel mode Tab past the last control, or Shift+Tab before the first, closes the panel
+        and returns focus to the trigger (two focus sentinels catch the browser's own Tab), so
+        focus never leaves the portaled panel for the end of the page (WCAG 2.4.3).
+*@
+
+@inject IJSRuntime Js
+
+<div id="@WrapperId" class="@WrapperClass" @attributes="UserAttributes">
+    @BeforeTrigger
+    <button @ref="_trigger"
+            type="button"
+            id="@EffectiveTriggerId"
+            class="@TriggerClassName"
+            disabled="@Disabled"
+            aria-haspopup="@HasPopup"
+            aria-expanded="@(_open ? "true" : "false")"
+            aria-controls="@(_open ? PanelId : null)"
+            aria-label="@AriaLabel"
+            aria-describedby="@AriaDescribedBy"
+            aria-invalid="@(AriaInvalid ? "true" : null)"
+            @onclick="OnTriggerClickAsync"
+            @onkeydown="OnTriggerKeyDownAsync"
+            @onkeydown:stopPropagation="@_open">
+        @TriggerContent
+    </button>
+    @* The same popover and overlay settings MudMenu 9.10 used, so anchoring, flipping and
+       click-away behave as they did: no Fixed, the provider's default OverflowBehavior
+       (FlipAlways) and Duration, and a MODELESS overlay (PopoverOptions.ModalOverlay defaults to
+       false) — the outside click is tracked rather than swallowed, so it still lands on whatever
+       was clicked. The box's id is excluded from that tracking, as MudMenu excluded its root, so a
+       click on the trigger toggles instead of closing and reopening. *@
+    <MudPopover Open="@_open"
+                Fixed="false"
+                Class="@PopoverClass"
+                AnchorOrigin="@AnchorOrigin"
+                TransformOrigin="@TransformOrigin"
+                RelativeWidth="@RelativeWidth"
+                MaxHeight="@MaxHeight">
+        <div id="@PanelId"
+             class="@PanelClassName"
+             role="@(SingleChoice ? "menu" : "dialog")"
+             aria-labelledby="@(PanelName is null ? EffectiveTriggerId : null)"
+             aria-label="@PanelName"
+             @onkeydown="OnPanelKeyDownAsync">
+            @if (!SingleChoice)
+            {
+                @* Focus sentinels: the browser's own Tab from the panel's last control, or Shift+Tab
+                   from its first, lands here — so the popup closes and focus returns to the trigger
+                   instead of leaving the portaled panel for the end of the page. *@
+                <span class="sr-only odc-popmenu-sentinel" tabindex="0" role="presentation" data-popmenu-sentinel="start"
+                      @onfocus="OnSentinelFocusAsync"></span>
+            }
+            @ChildContent
+            @if (!SingleChoice)
+            {
+                <span class="sr-only odc-popmenu-sentinel" tabindex="0" role="presentation" data-popmenu-sentinel="end"
+                      @onfocus="OnSentinelFocusAsync"></span>
+            }
+        </div>
+    </MudPopover>
+    <MudOverlay Visible="@_open" AutoClose="true" Modal="false" LockScroll="false"
+                data-modeless-ignore-element-id="@WrapperId"
+                OnClosed="OnOverlayClosedAsync" />
+</div>

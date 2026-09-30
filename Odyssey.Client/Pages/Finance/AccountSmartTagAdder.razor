@@ -6,73 +6,72 @@
     A quiet dashed pill that opens a searchable, checkable list of every selectable
     tag. Checking a row adds the tag (OnAdd), unchecking removes it (OnRemove) —
     one call per toggle, mirroring the per-tag POST/DELETE endpoints. Rows past the
-    per-account cap can't be newly checked. Built on MudMenu so the popover is
-    portaled out of the collapsible's overflow and flips above when cramped.
+    per-account cap can't be newly checked. Built on OdsPopupMenu (one real trigger
+    beside a MudPopover, issue #255) so the popover is portaled out of the
+    collapsible's overflow and flips above when cramped.
 *@
 
-<span class="odc-smarttags-adder">
-    <MudMenu @ref="_menu"
-             AnchorOrigin="Origin.BottomLeft"
-             TransformOrigin="Origin.TopLeft"
-             PopoverClass="odc-ms-pop-paper"
-             ListClass="pa-0"
-             OpenChanged="@(open => _open = open)">
-        <ActivatorContent>
-            <button type="button"
-                    class="odc-smarttags-add@(_open ? " open" : "")"
-                    aria-haspopup="listbox"
-                    aria-expanded="@(_open ? "true" : "false")"
-                    @onclick="@context.ToggleAsync">
-                <span class="material-icons" aria-hidden="true">@(_open ? "expand_less" : "add")</span>
-                <span>@Label</span>
-            </button>
-        </ActivatorContent>
-        <ChildContent>
-            @* A labelled GROUP of checkboxes — not a listbox: these are real <input type="checkbox">
-               rows reached by Tab, with no roving tabindex and no arrow-key handling, so
-               role="listbox"/"option" would describe a widget that is not here (WCAG 1.3.1, 4.1.2).
-               The same correction OdsTagMultiSelect already carries over an identical structure. *@
-            <div class="odc-smarttags-pop" role="group" aria-label="@GroupLabel">
-                <div class="odc-smarttags-search">
-                    <span class="material-icons" aria-hidden="true">search</span>
-                    <input value="@_query"
-                           @oninput="@(e => _query = e.Value?.ToString() ?? string.Empty)"
-                           placeholder="Search tags…"
-                           aria-label="Search tags" />
-                </div>
-                <div class="odc-smarttags-list">
-                    @foreach (var option in Filtered)
-                    {
-                        var checked_ = _selected.Contains(option.Value);
-                        var blocked = !checked_ && AtCap;
-                        <label class="odc-smarttags-opt odc-check@(blocked ? " blocked" : "")">
-                            <input type="checkbox"
-                                   checked="@checked_"
-                                   disabled="@blocked"
-                                   @onchange="@(() => Toggle(option, checked_))" />
-                            <span class="odc-check-box" aria-hidden="true">
-                                <span class="material-icons">check</span>
-                            </span>
-                            <span class="odc-check-label">@option.Label</span>
-                        </label>
-                    }
-                    @if (!Filtered.Any())
-                    {
-                        <div class="odc-smarttags-empty-opt">@EmptyText</div>
-                    }
-                </div>
-                @* role="status": the sentence APPEARS in response to an action (the add that reached
-                   the cap), and DOM presence is not announcement — without it a screen-reader user
-                   gets no notification that the reason the next row is disabled has just been
-                   written. Polite rather than alert: it explains a state, it does not refuse. *@
-                @if (FootNote is not null)
+@* OdsPopupMenu's panel mode: the popover is a non-modal role="dialog" (a search box plus a checkbox
+   group, not a listbox or a menu) and the trigger says aria-haspopup="dialog" to match. *@
+<OdsPopupMenu @ref="_popup"
+              Class="odc-smarttags-adder"
+              TriggerClass="@(_open ? "odc-smarttags-add open" : "odc-smarttags-add")"
+              AnchorOrigin="Origin.BottomLeft"
+              TransformOrigin="Origin.TopLeft"
+              PanelLabel="@GroupLabel"
+              PopoverClass="odc-ms-pop-paper"
+              ListClass="pa-0"
+              OpenChanged="@(open => _open = open)">
+    <TriggerContent>
+        <span class="material-icons" aria-hidden="true">@(_open ? "expand_less" : "add")</span>
+        <span>@Label</span>
+    </TriggerContent>
+    <ChildContent>
+        @* Checkboxes in OdsPopupMenu's role="dialog" panel, named by GroupLabel (PanelLabel) — not a
+           listbox: these are real <input type="checkbox"> rows reached by Tab, with no roving
+           tabindex and no arrow-key handling, so role="listbox"/"option" would describe a widget
+           that is not here (WCAG 1.3.1, 4.1.2). No inner labelled role="group": the panel is the one
+           named container. The same structure as OdsTagMultiSelect. *@
+        <div class="odc-smarttags-pop">
+            <div class="odc-smarttags-search">
+                <span class="material-icons" aria-hidden="true">search</span>
+                <input value="@_query"
+                       @oninput="@(e => _query = e.Value?.ToString() ?? string.Empty)"
+                       placeholder="Search tags…"
+                       aria-label="Search tags" />
+            </div>
+            <div class="odc-smarttags-list">
+                @foreach (var option in Filtered)
                 {
-                    <div class="odc-smarttags-cap" role="status">@FootNote</div>
+                    var checked_ = _selected.Contains(option.Value);
+                    var blocked = !checked_ && AtCap;
+                    <label class="odc-smarttags-opt odc-check@(blocked ? " blocked" : "")">
+                        <input type="checkbox"
+                               checked="@checked_"
+                               disabled="@blocked"
+                               @onchange="@(() => Toggle(option, checked_))" />
+                        <span class="odc-check-box" aria-hidden="true">
+                            <span class="material-icons">check</span>
+                        </span>
+                        <span class="odc-check-label">@option.Label</span>
+                    </label>
+                }
+                @if (!Filtered.Any())
+                {
+                    <div class="odc-smarttags-empty-opt">@EmptyText</div>
                 }
             </div>
-        </ChildContent>
-    </MudMenu>
-</span>
+            @* role="status": the sentence APPEARS in response to an action (the add that reached
+               the cap), and DOM presence is not announcement — without it a screen-reader user
+               gets no notification that the reason the next row is disabled has just been
+               written. Polite rather than alert: it explains a state, it does not refuse. *@
+            @if (FootNote is not null)
+            {
+                <div class="odc-smarttags-cap" role="status">@FootNote</div>
+            }
+        </div>
+    </ChildContent>
+</OdsPopupMenu>
 
 @code {
     /// <summary>Every selectable tag (the option pool).</summary>
@@ -111,7 +110,7 @@
 
     [Parameter] public string EmptyText { get; set; } = "No tags match";
 
-    private MudMenu _menu = default!;
+    private OdsPopupMenu _popup = default!;
     private bool _open;
     private string _query = string.Empty;
 

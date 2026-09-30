@@ -88,15 +88,20 @@ public class OdsMoneyFieldTests : IAsyncLifetime
     }
 
     [Fact]
-    public void An_editable_currency_is_a_listbox_trigger_that_names_its_selection()
+    /// <summary>
+    /// The popover is a search box plus a listbox, so it is a non-modal dialog and the trigger says
+    /// <c>aria-haspopup="dialog"</c> (issue #255 — a trigger promising a bare listbox misdescribed
+    /// it). The name starts with the visible code, so a speech user can say "NOK" (WCAG 2.5.3).
+    /// </summary>
+    public void An_editable_currency_is_a_dialog_trigger_that_names_its_selection()
     {
         var cut = Render();
 
         var trigger = cut.Find("button.odc-money-cur");
 
-        Assert.Equal("listbox", trigger.GetAttribute("aria-haspopup"));
+        Assert.Equal("dialog", trigger.GetAttribute("aria-haspopup"));
         Assert.Equal("false", trigger.GetAttribute("aria-expanded"));
-        Assert.Equal("Currency: NOK", trigger.GetAttribute("aria-label"));
+        Assert.Equal("NOK, currency", trigger.GetAttribute("aria-label"));
     }
 
     // ── The popover ───────────────────────────────────────────────────────────

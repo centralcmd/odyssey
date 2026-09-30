@@ -32,29 +32,28 @@
     {
         <div class="odc-sortsel split @Class">
             <div class="odc-sortsel-field">
-                <MudMenu ActivationEvent="@MouseEvent.LeftClick"
-                         AnchorOrigin="Origin.BottomCenter"
-                         TransformOrigin="Origin.TopCenter"
-                         Disabled="@Disabled"
-                         OpenChanged="@(open => _open = open)">
-                    <ActivatorContent>
-                        <button type="button" id="@FieldId"
-                                class="odc-sortsel-trigger @(_open ? "open" : null)"
-                                disabled="@Disabled"
-                                aria-haspopup="menu" aria-expanded="@(_open ? "true" : "false")"
-                                @onclick="@context.ToggleAsync">
-                            <span class="odc-sortsel-prefix">@Label</span>
-                            @Stable(_field.Label, Fields.Select(f => f.Label), "odc-sortsel-val")
-                            <span class="material-icons odc-select-chev" aria-hidden="true">expand_more</span>
-                        </button>
-                    </ActivatorContent>
+                <OdsPopupMenu @ref="_popup"
+                              TriggerId="@FieldId"
+                              TriggerClass="@($"odc-sortsel-trigger {(_open ? "open" : null)}".TrimEnd())"
+                              AnchorOrigin="Origin.BottomCenter"
+                              TransformOrigin="Origin.TopCenter"
+                              Disabled="@Disabled"
+                              RowId="@RowId"
+                              RowCount="@Fields.Count"
+                              SelectedRow="@SelectedIndex"
+                              OpenChanged="@(open => _open = open)">
+                    <TriggerContent>
+                        <span class="odc-sortsel-prefix">@Label</span>
+                        @Stable(_field.Label, Fields.Select(f => f.Label), "odc-sortsel-val")
+                        <span class="material-icons odc-select-chev" aria-hidden="true">expand_more</span>
+                    </TriggerContent>
                     <ChildContent>
-                        @foreach (var option in Fields)
+                        @for (var i = 0; i < Fields.Count; i++)
                         {
-                            @FieldOption(option)
+                            @FieldOption(Fields[i], i)
                         }
                     </ChildContent>
-                </MudMenu>
+                </OdsPopupMenu>
             </div>
             @DirectionToggle
         </div>
@@ -81,6 +80,7 @@
     [Parameter] public string? Id { get; set; }
 
     private string FieldId = default!;
+    private OdsPopupMenu _popup = default!;
     private bool _open;
 
     // Backing copy of the bound Sort so an optimistic emit doesn't write to the [Parameter]
@@ -150,28 +150,41 @@
         </span>;
     };
 
-    // The popup is a MudMenu (role=menu / menuitem), so the rows carry no listbox `option`
-    // role — that would be invalid nested inside a menuitem. Selection is conveyed by the
-    // visible check and the trigger's current value (mirrors the sibling OdsTypeSelect).
-    private RenderFragment FieldOption(OdsSortField<TRow> option) => __builder =>
+    // The popup is OdsPopupMenu's role=menu panel, so each field is a single-choice menu row
+    // (role=menuitemradio + aria-checked), the pattern OdsTypeSelect set — a listbox `option` role
+    // would be invalid inside a menu. The rows are this component's own buttons rather than
+    // MudMenuItems: the trigger is OdsPopupMenu's (issue #255), which supplies the roving focus.
+    private RenderFragment FieldOption(OdsSortField<TRow> option, int index) => __builder =>
     {
         var on = _field is not null && option.Key == _field.Key;
-        <MudMenuItem OnClick="@(() => PickField(option))">
-            <div class="odc-typesel-item @(on ? "selected" : null)">
+        <button type="button"
+                id="@RowId(index)"
+                class="mud-menu-item mud-list-item-clickable odc-typesel-opt"
+                role="menuitemradio"
+                aria-checked="@(on ? "true" : "false")"
+                tabindex="-1"
+                @onclick="@(() => PickField(option))"
+                @onkeydown="@(e => _popup.RowKeyDownAsync(e, index))">
+            <span class="mud-menu-item-text odc-typesel-item @(on ? "selected" : null)">
                 <span class="odc-typesel-lab">@option.Label</span>
                 @if (on)
                 {
                     <span class="odc-typesel-check" aria-hidden="true"><span class="material-icons">check</span></span>
                 }
-            </div>
-        </MudMenuItem>;
+            </span>
+        </button>;
     };
 
-    private Task PickField(OdsSortField<TRow> option)
+    private string RowId(int index) => $"{FieldId}-opt-{index}";
+
+    private int SelectedIndex => _field is { } current ? OdsPopupMenuText.IndexOf(Fields, f => f.Key == current.Key) : -1;
+
+    // The rows are not MudMenuItems, so nothing closes the popover for us.
+    private async Task PickField(OdsSortField<TRow> option)
     {
-        if (_field is not null && option.Key == _field.Key)
-            return Task.CompletedTask;
-        return Emit(new OdsTableSort(option.Key, OdsSortHelpers.DefaultDir(option)));
+        if (_field is null || option.Key != _field.Key)
+            await Emit(new OdsTableSort(option.Key, OdsSortHelpers.DefaultDir(option)));
+        await _popup.CloseAsync();
     }
 
     private Task Flip()

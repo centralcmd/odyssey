@@ -56,7 +56,8 @@ public partial class CreateTransactionDialog
 
     // Disclosure state for the account trigger, so it reports aria-expanded.
     // Driven by MudMenu.OpenChanged (reading MudMenu.Open directly trips MUD0012).
-    private bool _accountMenuOpen;
+    private OdsPopupMenu _accountPopup = default!;
+    private readonly string _accountRowPrefix = $"ctd-account-{Guid.NewGuid():N}";
 
     // ── Data ─────────────────────────────────────────────────────────────────
     private List<ExistingAccount> _accounts = [];
@@ -218,6 +219,19 @@ public partial class CreateTransactionDialog
         if (!string.IsNullOrWhiteSpace(account.CurrencyCode))
             _currencyCode = account.CurrencyCode;
     }
+
+    // The account rows are this dialog's own single-choice buttons (issue #255), so choosing one has
+    // to close the popover itself; it hands focus back to the trigger.
+    private async Task SelectAccountAsync(ExistingAccount account)
+    {
+        SelectAccount(account);
+        await _accountPopup.CloseAsync();
+    }
+
+    private string AccountRowId(int index) => $"{_accountRowPrefix}-{index}";
+
+    private int SelectedAccountIndex =>
+        _selectedAccount is null ? -1 : _accounts.FindIndex(a => a.AccountId == _selectedAccount.AccountId);
 
     // Arrow / Home / End move selection and DOM focus together across the status radio group.
     private async Task OnStatusKeyDown(KeyboardEventArgs e)

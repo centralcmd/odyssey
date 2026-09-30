@@ -128,6 +128,13 @@ public class OdsTypeSelectListboxTests
         cut.Find($"#{id}").Click();
     }
 
+    /// <summary>Where opening sent focus: OdsPopupMenu's odsFocusInPopover, which waits for the
+    /// popover to be placed so focusing into it cannot scroll the page to the top.</summary>
+    private static string? OpenFocusTarget(BunitContext ctx) =>
+        ctx.JSInterop.Invocations["odsFocusInPopover"]
+            .Select(invocation => invocation.Arguments[0] as string)
+            .LastOrDefault();
+
     private static string? LastFocusTarget(BunitContext ctx) =>
         ctx.JSInterop.Invocations["odsFocusById"]
             .Select(invocation => invocation.Arguments[0] as string)
@@ -259,7 +266,7 @@ public class OdsTypeSelectListboxTests
         var cut = RenderOpen(ctx, value: "Switchboard");
 
         var id = cut.Find("[role='menuitemradio'][aria-checked='true']").Id;
-        Assert.Equal(id, LastFocusTarget(ctx));
+        Assert.Equal(id, OpenFocusTarget(ctx));
     }
 
     [Fact]
@@ -268,7 +275,7 @@ public class OdsTypeSelectListboxTests
         var ctx = NewContext();
         var cut = RenderOpen(ctx, value: null);
 
-        Assert.Equal(cut.FindAll("[role='menuitemradio']")[0].Id, LastFocusTarget(ctx));
+        Assert.Equal(cut.FindAll("[role='menuitemradio']")[0].Id, OpenFocusTarget(ctx));
     }
 
     [Theory]
@@ -350,19 +357,21 @@ public class OdsTypeSelectListboxTests
 
     /// <summary>
     /// The options are out of the tab order, so Tab is leaving the list — it must not strand an open
-    /// popover over the form. Focus is left alone: Tab's own default is what moves it on.
+    /// popover over the form. The list is portaled to the end of the document, so the browser's own
+    /// Tab would land wherever the DOM puts it next (a modal's close button; for Shift+Tab, the
+    /// body — seen in a live browser run, issue #255): focus returns to the trigger instead.
     /// </summary>
     [Fact]
-    public void Tab_closes_the_list_behind_itself_without_pulling_focus_back()
+    public void Tab_closes_the_list_and_returns_focus_to_the_trigger()
     {
         var ctx = NewContext();
         var cut = RenderOpen(ctx);
 
-        var before = LastFocusTarget(ctx);
+        var triggerId = cut.Find("button.odc-select-trigger").Id;
         Press(cut, OptionIds(cut)[1], "Tab");
 
         Assert.Empty(OptionIds(cut));
-        Assert.Equal(before, LastFocusTarget(ctx));
+        Assert.Equal(triggerId, LastFocusTarget(ctx));
     }
 
     [Fact]
@@ -449,30 +458,28 @@ public class OdsTypeSelectListboxTests
     }
 
     /// <summary>
-    /// Enter and Space on the trigger reach it twice: MudMenu's activator wrapper toggles on the
-    /// keydown, and the browser then synthesises a click from the same keystroke. Honouring both
-    /// toggled twice and left the popup shut, which is the keyboard-inoperability bug itself.
+    /// Enter and Space on the trigger produce a click with <c>Detail == 0</c>, and that click must
+    /// open the list.
     ///
     /// <para>
-    /// A synthesised click is the one that reports <c>Detail == 0</c>. The earlier fix — a blanket
-    /// <c>@onkeydown:stopPropagation</c> on the trigger — also worked, but Blazor evaluates that
-    /// directive once per render rather than per key, so it swallowed Escape as well and stopped it
-    /// cancelling a wrapping dialog. This pins the narrow guard so that regression cannot come back.
+    /// This used to be the opposite assertion. While the trigger sat inside MudMenu's
+    /// <c>ActivatorContent</c>, MudBlazor's <c>div role="button"</c> wrapper toggled the menu on the
+    /// keydown and the browser's synthesised click toggled it again, so the component ignored
+    /// <c>Detail == 0</c> clicks to keep the pair from cancelling. Issue #255 removed the wrapper —
+    /// the trigger is OdsPopupMenu's own button beside the MudMenu — so the keyboard click is now the
+    /// ONLY activation, and ignoring it would make the field impossible to open from the keyboard.
     /// </para>
     /// </summary>
     [Fact]
-    public void A_keyboard_synthesised_click_on_the_trigger_is_ignored()
+    public void A_keyboard_synthesised_click_on_the_trigger_opens_the_list()
     {
         var ctx = NewContext();
         var cut = ctx.Render<SelectHost>(p => p.Add(h => h.Value, "Work").Add(h => h.Types, Types));
 
-        // Detail == 0 is a click the keyboard produced; the wrapper has already acted on it.
         cut.Find("button.odc-select-trigger").Click(new MouseEventArgs { Detail = 0 });
-        Assert.Empty(OptionIds(cut));
 
-        // Detail == 1 is a real pointer click, and still opens.
-        cut.Find("button.odc-select-trigger").Click(new MouseEventArgs { Detail = 1 });
         Assert.Equal(Types.Count, OptionIds(cut).Count);
+        Assert.Equal("true", cut.Find("button.odc-select-trigger").GetAttribute("aria-expanded"));
     }
 
     /// <summary>

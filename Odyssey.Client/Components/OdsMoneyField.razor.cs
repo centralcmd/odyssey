@@ -107,9 +107,8 @@ public partial class OdsMoneyField
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
-    private MudMenu? _menu;
+    private OdsPopupMenu? _popup;
     private bool _open;
-    private bool _focusPending;
     private string _query = string.Empty;
 
     private string FieldId = default!;
@@ -211,8 +210,9 @@ public partial class OdsMoneyField
 
     private string CurrencyCode => string.IsNullOrEmpty(Currency) ? CurrencyPlaceholder : Currency;
 
+    // Starts with the visible code so the spoken name matches the label (WCAG 2.5.3).
     private string CurrencyAriaLabel =>
-        string.IsNullOrEmpty(Currency) ? "Currency" : $"Currency: {Currency}";
+        string.IsNullOrEmpty(Currency) ? "Currency" : OdsPopupMenuText.AccessibleName("currency", Currency);
 
     private IReadOnlyList<OdsOption> Shown
     {
@@ -339,7 +339,6 @@ public partial class OdsMoneyField
         if (open)
         {
             _query = string.Empty;
-            _focusPending = true;
         }
     }
 
@@ -347,20 +346,20 @@ public partial class OdsMoneyField
     {
         Currency = code;
         await CurrencyChanged.InvokeAsync(code);
-        if (_menu is not null) await _menu.CloseMenuAsync();
-        await FocusAsync(TriggerId);
+        if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
     }
 
     // The popover opens on the search box when there is one, otherwise on the selected code — so a
-    // keyboard user lands where the next keystroke does something useful either way.
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    // keyboard user lands where the next keystroke does something useful either way. OdsPopupMenu
+    // moves the focus; Esc anywhere in the panel is its too.
+    private string CurrencyFocusOnOpenId
     {
-        if (!_focusPending || !_open) return;
-        _focusPending = false;
-
-        if (Searchable) { await FocusAsync(SearchId); return; }
-        var index = Shown.ToList().FindIndex(o => string.Equals(o.Value, Currency, StringComparison.OrdinalIgnoreCase));
-        await FocusAsync(OptionId(Math.Max(index, 0)));
+        get
+        {
+            if (Searchable) return SearchId;
+            var index = OdsPopupMenuText.IndexOf(Shown, o => string.Equals(o.Value, Currency, StringComparison.OrdinalIgnoreCase));
+            return OptionId(Math.Max(index, 0));
+        }
     }
 
     private async Task OnSearchKeyDownAsync(KeyboardEventArgs e)
@@ -375,11 +374,9 @@ public partial class OdsMoneyField
                 if (first is not null) await PickAsync(first.Value);
                 break;
             case "Tab":
-                if (_menu is not null) await _menu.CloseMenuAsync();
-                break;
-            case "Escape":
-                if (_menu is not null) await _menu.CloseMenuAsync();
-                await FocusAsync(TriggerId);
+                // The options are out of the tab order, so Tab leaves the portaled popover: close it
+                // and continue from the trigger rather than wherever the DOM puts focus next.
+                if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
                 break;
         }
     }
@@ -405,13 +402,9 @@ public partial class OdsMoneyField
                 await FocusAsync(OptionId(Shown.Count - 1));
                 break;
             case "Tab":
-                // The options are out of the tab order, so Tab is leaving the list — close behind it
-                // rather than stranding an open popover over the form.
-                if (_menu is not null) await _menu.CloseMenuAsync();
-                break;
-            case "Escape":
-                if (_menu is not null) await _menu.CloseMenuAsync();
-                await FocusAsync(TriggerId);
+                // The options are out of the tab order, so Tab is leaving the portaled list — close it
+                // and continue from the trigger rather than wherever the DOM puts focus next.
+                if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
                 break;
         }
     }

@@ -124,7 +124,9 @@ public class SmartTagCapSourceTests
     }
 
     /// <summary>
-    /// The adder's popover is a labelled GROUP of checkboxes, not a listbox. Its rows are real
+    /// The adder's popover is a labelled set of checkboxes, not a listbox — named once, on
+    /// OdsPopupMenu's role="dialog" panel through <c>PanelLabel</c> (issue #255), with no second
+    /// labelled group inside it to read the name twice. Its rows are real
     /// <c>&lt;input type="checkbox"&gt;</c>s reached by Tab, with no roving tabindex and no arrow-key
     /// handling, so <c>role="listbox"</c> would name a widget that is not there (WCAG 1.3.1, 4.1.2).
     /// <c>OdsTagMultiSelect</c> carries the same correction, and a comment warning against exactly
@@ -138,7 +140,7 @@ public class SmartTagCapSourceTests
     /// </para>
     /// </summary>
     [Fact]
-    public void The_adder_popover_is_a_labelled_checkbox_group_not_a_listbox()
+    public void The_adder_popover_is_a_labelled_checkbox_panel_not_a_listbox()
     {
         // Razor comments stripped first: the markup carries a comment explaining WHY the role is not
         // listbox, and a lint its own rationale can trip is a bad lint — the same reason
@@ -146,8 +148,8 @@ public class SmartTagCapSourceTests
         var adder = WithoutRazorComments(File.ReadAllText(
             Path.Combine(ClientSource.Root, "Pages", "Finance", "AccountSmartTagAdder.razor")));
 
-        Assert.Contains("role=\"group\"", adder, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"@GroupLabel\"", adder, StringComparison.Ordinal);
+        Assert.Contains("PanelLabel=\"@GroupLabel\"", adder, StringComparison.Ordinal);
+        Assert.DoesNotContain("role=\"group\"", adder, StringComparison.Ordinal);
         Assert.DoesNotContain("role=\"listbox\"", adder, StringComparison.Ordinal);
         Assert.DoesNotContain("aria-multiselectable", adder, StringComparison.Ordinal);
     }

@@ -8,56 +8,62 @@
         reads, and the two stay in sync;
       • inside OdsPager's footer (Mirror=false, no prefix), as the canonical rows-per-page control.
 
-    Built on MudMenu so the popover portals out of any overflow:hidden card ancestor, flips to fit,
-    and provides the roving-focus keyboard model. Options are MudMenuItems (role=menuitem, like
-    OdsSortSelect) — an interactive control can't live inside role=option, so this is a menu, not a
-    listbox; selection reads from the trigger value + the row check. Value is an int; OdsPageSizes.All
-    (−1) renders "All". Bind via @bind-Value.
+    Built on OdsPopupMenu (one real trigger button beside a MudPopover, issue #255) so the
+    popover portals out of any overflow:hidden card ancestor and flips to fit; OdsPopupMenu supplies
+    the roving-focus keyboard model. Options are single-choice menu rows (role=menuitemradio +
+    aria-checked, like OdsTypeSelect) inside OdsPopupMenu's role=menu panel. Value is an int;
+    OdsPageSizes.All (−1) renders "All". Bind via @bind-Value.
 *@
 
-<MudMenu AnchorOrigin="Origin.BottomRight"
-         TransformOrigin="Origin.TopRight"
-         Disabled="@Disabled"
-         OpenChanged="@(open => _open = open)"
-         Class="@($"odc-rpp {(Mirror ? "mirror" : null)} {Class}".Trim())"
-         @attributes="UserAttributes">
-    <ActivatorContent>
-        @* MudMenu does not auto-wire a custom activator — forward the click to ToggleAsync. *@
-        <button type="button"
-                class="odc-rpp-trigger"
-                aria-haspopup="menu"
-                aria-expanded="@(_open ? "true" : "false")"
-                aria-label="@($"{Label}: {OdsPageSizes.Format(Value)}")"
-                disabled="@Disabled"
-                @onclick="@context.ToggleAsync">
-            @if (!string.IsNullOrEmpty(Prefix))
-            {
-                <span class="odc-rpp-prefix">@Prefix</span>
-            }
-            <b>@OdsPageSizes.Format(Value)</b>
-            @if (!string.IsNullOrEmpty(Suffix))
-            {
-                <span class="odc-rpp-prefix">@Suffix</span>
-            }
-            <span class="material-icons odc-rpp-chev" aria-hidden="true">@(_open ? "expand_less" : "expand_more")</span>
-        </button>
-    </ActivatorContent>
-    <ChildContent>
-        @foreach (var option in Options)
+<OdsPopupMenu @ref="_popup"
+              Class="@($"odc-rpp {(Mirror ? "mirror" : null)} {Class}".Trim())"
+              TriggerClass="odc-rpp-trigger"
+              AriaLabel="@AccessibleName"
+              AnchorOrigin="Origin.BottomRight"
+              TransformOrigin="Origin.TopRight"
+              Disabled="@Disabled"
+              RowId="@RowId"
+              RowCount="@Options.Count"
+              SelectedRow="@SelectedIndex"
+              OpenChanged="@(open => _open = open)"
+              @attributes="UserAttributes">
+    <TriggerContent>
+        @if (!string.IsNullOrEmpty(Prefix))
         {
+            <span class="odc-rpp-prefix">@Prefix</span>
+        }
+        <b>@OdsPageSizes.Format(Value)</b>
+        @if (!string.IsNullOrEmpty(Suffix))
+        {
+            <span class="odc-rpp-prefix">@Suffix</span>
+        }
+        <span class="material-icons odc-rpp-chev" aria-hidden="true">@(_open ? "expand_less" : "expand_more")</span>
+    </TriggerContent>
+    <ChildContent>
+        @for (var i = 0; i < Options.Count; i++)
+        {
+            var index = i;
+            var option = Options[i];
             var selected = option == Value;
-            <MudMenuItem OnClick="@(() => Pick(option))">
-                <div class="odc-typesel-item @(selected ? "selected" : null)">
+            <button type="button"
+                    id="@RowId(index)"
+                    class="mud-menu-item mud-list-item-clickable odc-typesel-opt"
+                    role="menuitemradio"
+                    aria-checked="@(selected ? "true" : "false")"
+                    tabindex="-1"
+                    @onclick="@(() => Pick(option))"
+                    @onkeydown="@(e => _popup.RowKeyDownAsync(e, index))">
+                <span class="mud-menu-item-text odc-typesel-item @(selected ? "selected" : null)">
                     <span class="odc-typesel-lab">@OdsPageSizes.Format(option)</span>
                     @if (selected)
                     {
                         <span class="odc-typesel-check" aria-hidden="true"><span class="material-icons">check</span></span>
                     }
-                </div>
-            </MudMenuItem>
+                </span>
+            </button>
         }
     </ChildContent>
-</MudMenu>
+</OdsPopupMenu>
 
 @code {
     /// <summary>Current page size. <see cref="OdsPageSizes.All"/> (−1) means "all". Bindable via @bind-Value.</summary>
@@ -74,7 +80,7 @@
     /// <summary>Optional text after the value (e.g. "at a time" for a card-list batch size).</summary>
     [Parameter] public string Suffix { get; set; } = "";
 
-    /// <summary>Accessible name for the control. Default "Rows per page".</summary>
+    /// <summary>What the control is for. Default "Rows per page". Appended to the visible "Show 25" in the accessible name, which always starts with the visible text (WCAG 2.5.3).</summary>
     [Parameter] public string Label { get; set; } = "Rows per page";
 
     /// <summary>Toolbar mirror styling (40px tall). False for the footer pager copy (32px).</summary>
@@ -87,8 +93,24 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
+    private OdsPopupMenu _popup = default!;
     private bool _open;
 
-    // MudMenuItem closes the menu on click; we only emit the new value.
-    private Task Pick(int size) => size == Value ? Task.CompletedTask : ValueChanged.InvokeAsync(size);
+    private readonly string _idPrefix = $"odc-rpp-{Guid.NewGuid():N}";
+
+    private string RowId(int index) => $"{_idPrefix}-opt-{index}";
+
+    // Starts with the visible "Show 25 …" so the spoken name matches the label (WCAG 2.5.3).
+    private string AccessibleName => OdsPopupMenuText.AccessibleName(Label, Prefix, OdsPageSizes.Format(Value), Suffix);
+
+    private int SelectedIndex => OdsPopupMenuText.IndexOf(Options, o => o == Value);
+
+    // The rows are not MudMenuItems, so nothing closes the popover for us: close (restoring focus
+    // to the trigger) whether or not the value changed.
+    private async Task Pick(int size)
+    {
+        if (size != Value)
+            await ValueChanged.InvokeAsync(size);
+        await _popup.CloseAsync();
+    }
 }
