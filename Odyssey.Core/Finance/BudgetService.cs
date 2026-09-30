@@ -238,14 +238,13 @@ public class BudgetService
         return budget.Adapt<ExistingBudget>();
     }
 
-    // Compared by calendar day, the unit the period is read in (PeriodBounds): a one-day budget whose
-    // start time happens to follow its end time still covers that whole day. Keyed on EndDate with the
-    // same 400 shape TaxStatementService uses for its period.
+    // Compared by calendar day (PeriodBounds.IsInverted), the same rule TaxStatementService applies to
+    // its period and settlement window, and refused with the same 400 keyed on EndDate.
     private static (DateTime Start, DateTime End) NormalizePeriod(DateTime startDate, DateTime endDate)
     {
         var start = DateTimeNormalization.NormalizeToUtc(startDate);
         var end = DateTimeNormalization.NormalizeToUtc(endDate);
-        if (end.Date < start.Date)
+        if (PeriodBounds.IsInverted(start, end))
         {
             throw new DomainValidationException(
                 "EndDate must be on or after StartDate.",

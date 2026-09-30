@@ -573,4 +573,16 @@ public class ContractSmartTagTransactionServiceTests
         Assert.Equal((null, null),
             ContractSmartTagTransactionService.ComputeWindow(TermStart, TermEnd, TermStart));
     }
+
+    [Fact]
+    public void ComputeWindow_EndWithATimeOfDay_IsExclusiveAtTheNextMidnight()
+    {
+        // The window is built from PeriodBounds, the helper budgets and tax statements share.
+        var (from, toExclusive) = ContractSmartTagTransactionService.ComputeWindow(
+            TermStart.AddHours(9), new DateTime(2025, 12, 31, 23, 59, 59, DateTimeKind.Unspecified), completionDate: null);
+
+        Assert.Equal(TermStart, from);
+        Assert.Equal(new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), toExclusive);
+        Assert.Equal(DateTimeKind.Utc, toExclusive!.Value.Kind);
+    }
 }

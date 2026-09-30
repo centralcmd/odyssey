@@ -468,6 +468,53 @@ public class TaxStatementServiceTests
         Assert.Null(report.Reconciliation.AdvancePaidVariance);
     }
 
+    [Fact]
+    public async Task Report_CustomSettlementRange_IncludesTheWholeEndDay()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var account = SeedAccount(context, ContextAccountType.CheckingAccount, "USD");
+        var settlementTag = SeedTag(context, "Tax settlement");
+        // Custom window 2026-03-01 → 2026-03-31, both stored at midnight (issue #238).
+        SeedTransaction(context, account, settlementTag, 1m, new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, settlementTag, 10m, new DateTime(2026, 3, 31, 16, 45, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, settlementTag, 100m, new DateTime(2026, 3, 31, 23, 59, 59, DateTimeKind.Utc), "USD");
+        // The first instant after the window, and the last one before it: excluded.
+        SeedTransaction(context, account, settlementTag, 1000m, new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, settlementTag, 10000m, new DateTime(2026, 2, 28, 23, 59, 59, DateTimeKind.Utc), "USD");
+        await context.SaveChangesAsync();
+
+        var request = NewStatement();
+        request.SettlementStartDate = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(2026, 3, 31, 0, 0, 0, DateTimeKind.Utc);
+        var created = await service.Create(request);
+        await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags
+        {
+            SettlementTagIds = [settlementTag.TransactionTagId],
+        });
+
+        var report = await service.GetReport(created.TaxStatementId);
+
+        Assert.Equal(111m, report!.Derived.SettlementPaid);
+    }
+
+    [Fact]
+    public async Task Create_SameDayPeriodAndSettlement_WithStartTimeAfterEndTime_AreAccepted()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        // Periods are read as whole days (PeriodBounds.IsInverted), the same rule budgets apply.
+        var request = NewStatement();
+        request.StartDate = new DateTime(2024, 6, 1, 18, 0, 0, DateTimeKind.Utc);
+        request.EndDate = new DateTime(2024, 6, 1, 9, 0, 0, DateTimeKind.Utc);
+        request.SettlementStartDate = new DateTime(2025, 6, 1, 18, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(2025, 6, 1, 9, 0, 0, DateTimeKind.Utc);
+
+        var created = await service.Create(request);
+
+        Assert.NotEqual(Guid.Empty, created.TaxStatementId);
+    }
+
     private static UpdateTaxStatement UpdateFrom(ExistingTaxStatement s) => new()
     {
         Name = s.Name,

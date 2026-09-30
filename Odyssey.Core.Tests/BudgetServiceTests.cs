@@ -540,4 +540,73 @@ public class BudgetServiceTests
 
         Assert.NotEqual(Guid.Empty, created.BudgetId);
     }
+
+    [Fact]
+    public async Task ListCounts_AcrossTwoBudgets_EachIncludesItsOwnWholeEndDay()
+    {
+        await using var context = TestContextFactory.Create();
+        var tag = new TransactionTag { Name = "Food" };
+        context.TransactionTags.Add(tag);
+        var account = new Account
+        {
+            Name = "Checking",
+            Description = "Daily",
+            AccountType = ContextAccountType.CheckingAccount,
+            CurrencyCode = "USD",
+            Opened = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        };
+        context.Accounts.Add(account);
+        await context.SaveChangesAsync();
+
+        var service = new BudgetService(context, TestContextFactory.EmptyContactLookup());
+        // One query spans both budgets (earliest start → latest exclusive end); each is then narrowed
+        // to its own period in memory, so each budget's end day must survive both filters.
+        var june = await service.Create(new NewBudget
+        {
+            Name = "June",
+            StartDate = new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2025, 6, 30, 0, 0, 0, DateTimeKind.Utc),
+            Archived = false,
+            BaseCurrencyCode = "USD",
+        });
+        var summer = await service.Create(new NewBudget
+        {
+            Name = "Summer",
+            StartDate = new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2025, 8, 31, 0, 0, 0, DateTimeKind.Utc),
+            Archived = false,
+            BaseCurrencyCode = "USD",
+        });
+        context.BudgetItems.AddRange(
+            new BudgetItem { BudgetId = june.BudgetId, PlannedAmount = 100, TransactionTagId = tag.TransactionTagId },
+            new BudgetItem { BudgetId = summer.BudgetId, PlannedAmount = 100, TransactionTagId = tag.TransactionTagId });
+
+        Transaction Tx(string desc, DateTime ts) => new()
+        {
+            Description = desc,
+            Amount = 5,
+            TimeStamp = ts,
+            AccountId = account.AccountId,
+            TransactionTags = { tag },
+            CurrencyCode = "USD",
+            Status = TransactionStatus.New,
+            StatusChangedAt = DateTime.UtcNow,
+        };
+
+        context.Transactions.AddRange(
+            // June's end day: in both budgets.
+            Tx("june end day", new DateTime(2025, 6, 30, 22, 0, 0, DateTimeKind.Utc)),
+            // After June, inside Summer only.
+            Tx("july first", new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc)),
+            // Summer's end day, past the narrower budget's end: Summer only.
+            Tx("summer end day", new DateTime(2025, 8, 31, 23, 59, 0, DateTimeKind.Utc)),
+            // After both.
+            Tx("september", new DateTime(2025, 9, 1, 0, 0, 0, DateTimeKind.Utc)));
+        await context.SaveChangesAsync();
+
+        var listed = (await service.ListAsync(new BudgetsQueryParams())).Items;
+
+        Assert.Equal(1, listed.Single(b => b.BudgetId == june.BudgetId).TransactionCount);
+        Assert.Equal(3, listed.Single(b => b.BudgetId == summer.BudgetId).TransactionCount);
+    }
 }

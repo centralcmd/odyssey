@@ -101,6 +101,75 @@ public class BudgetPeriodApiTests
         Assert.Empty(scope.ServiceProvider.GetRequiredService<OdysseyContext>().Budgets);
     }
 
+    /// <summary>
+    /// The budget section lists its transactions through <c>GET /api/transactions</c>, whose <c>to</c>
+    /// is an inclusive instant. Bounded with <see cref="PeriodBounds"/> as the client does, the list
+    /// holds exactly the rows the budget counts: the whole end day in, the next midnight out.
+    /// </summary>
+    [Fact]
+    public async Task TransactionList_BoundedLikeTheBudgetSection_MatchesTheBudgetCount()
+    {
+        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.TransactionsRead]);
+        await EnsureDatabaseAsync(factory);
+        using var client = factory.CreateClient();
+        var created = await client.PostAsJsonAsync(Path, June());
+        var budgetId = Guid.Parse(created.Headers.Location!.Segments[^1]);
+
+        Guid tagId;
+        var inPeriod = new List<Guid>();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var tag = new TransactionTag { Name = "Food" };
+            var account = new Account
+            {
+                Name = "Checking",
+                Description = "Daily",
+                AccountType = Odyssey.Context.AccountType.CheckingAccount,
+                CurrencyCode = "USD",
+                Opened = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            };
+            context.AddRange(tag, account);
+            await context.SaveChangesAsync();
+            tagId = tag.TransactionTagId;
+            context.BudgetItems.Add(new BudgetItem { BudgetId = budgetId, PlannedAmount = 100, TransactionTagId = tagId });
+
+            Transaction Tx(DateTime ts) => new()
+            {
+                Description = ts.ToString("o"),
+                Amount = 5,
+                TimeStamp = ts,
+                AccountId = account.AccountId,
+                TransactionTags = { tag },
+                CurrencyCode = "USD",
+                Status = TransactionStatus.New,
+                StatusChangedAt = DateTime.UtcNow,
+            };
+
+            var rows = new[]
+            {
+                Tx(new DateTime(2025, 6, 1, 0, 0, 0, DateTimeKind.Utc)),
+                Tx(new DateTime(2025, 6, 30, 14, 0, 0, DateTimeKind.Utc)),
+                Tx(new DateTime(2025, 6, 30, 23, 59, 59, DateTimeKind.Utc)),
+            };
+            context.Transactions.AddRange(rows);
+            context.Transactions.AddRange(
+                Tx(new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc)),
+                Tx(new DateTime(2025, 5, 31, 23, 59, 59, DateTimeKind.Utc)));
+            await context.SaveChangesAsync();
+            inPeriod.AddRange(rows.Select(r => r.TransactionId));
+        }
+
+        var budget = await client.GetFromJsonAsync<ExistingBudget>($"{Path}/{budgetId}");
+        var from = PeriodBounds.InclusiveStart(budget!.StartDate).ToString("o");
+        var to = PeriodBounds.InclusiveEndInstant(budget.EndDate).ToString("o");
+        var listed = await client.GetFromJsonAsync<Odyssey.Dtos.PagedResult<ExistingTransaction>>(
+            $"/api/transactions?tagIds={tagId}&from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}");
+
+        Assert.Equal(3, budget.TransactionCount);
+        Assert.Equal(inPeriod.Order(), listed!.Items.Select(t => t.TransactionId).Order());
+    }
+
     private static async Task AssertKeyedOnEndDate(HttpResponseMessage response)
     {
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

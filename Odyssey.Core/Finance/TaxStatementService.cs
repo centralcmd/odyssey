@@ -652,7 +652,7 @@ public class TaxStatementService
         EnsureInBounds(startDate, nameof(TaxStatement.StartDate));
         EnsureInBounds(endDate, nameof(TaxStatement.EndDate));
 
-        if (endDate < startDate)
+        if (PeriodBounds.IsInverted(startDate, endDate))
         {
             throw new DomainValidationException(
                 "EndDate must be on or after StartDate.",
@@ -680,7 +680,7 @@ public class TaxStatementService
         {
             EnsureInBounds(s, nameof(TaxStatement.SettlementStartDate));
             EnsureInBounds(e, nameof(TaxStatement.SettlementEndDate));
-            if (e < s)
+            if (PeriodBounds.IsInverted(s, e))
             {
                 throw new DomainValidationException(
                     "SettlementEndDate must be on or after SettlementStartDate.",

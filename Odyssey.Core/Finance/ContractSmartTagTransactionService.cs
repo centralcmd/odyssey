@@ -139,7 +139,7 @@ public class ContractSmartTagTransactionService
     // The same comparison as the write-path guard ContractService.NormalizeDates, so a same-day contract
     // whose start TIME is after its end time is a valid one-day window, not an invalid term.
     private static bool IsInvalidTerm(DateTime? startDate, DateTime? endDate) =>
-        startDate is { } start && endDate is { } end && end.Date < start.Date;
+        startDate is { } start && endDate is { } end && PeriodBounds.IsInverted(start, end);
 
     // Grouping on (currency, sign) keeps this to one GROUP BY every provider translates — the shape
     // TransactionService.GetSummary uses — rather than conditional SUMs. The fold and the ordinal sort
