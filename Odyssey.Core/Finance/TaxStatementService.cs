@@ -333,6 +333,7 @@ public class TaxStatementService
             .ToHashSet();
 
         var allTagIds = taxTagIds.Concat(incomeTagIds).Distinct().ToList();
+        var (periodStart, periodEndExclusive) = PeriodBounds.Of(statement.StartDate, statement.EndDate);
 
         // One row per (transaction, matching tag) link within the period. A multi-tagged transaction
         // yields several rows, so SumByRole de-duplicates by transaction id to count its amount once
@@ -341,7 +342,7 @@ public class TaxStatementService
             ? new List<TransactionRow>()
             : await context.TransactionTagLinks
                 .Where(link => allTagIds.Contains(link.TransactionTagId))
-                .Where(link => link.Transaction!.TimeStamp >= statement.StartDate && link.Transaction.TimeStamp <= statement.EndDate)
+                .Where(link => link.Transaction!.TimeStamp >= periodStart && link.Transaction.TimeStamp < periodEndExclusive)
                 .Select(link => new TransactionRow(link.TransactionId, link.TransactionTagId, link.Transaction!.Amount, link.Transaction.CurrencyCode))
                 .ToListAsync(cancellationToken);
 
@@ -351,12 +352,13 @@ public class TaxStatementService
         var actualIncome = SumByRole(candidates, incomeTagIds, statement.BaseCurrencyCode, excluded, out _);
 
         // A settlement lands after the income year, so its tags are read over their own window.
-        var (settlementStart, settlementEnd) = EffectiveSettlementRange(statement);
+        var settlementRange = EffectiveSettlementRange(statement);
+        var (settlementStart, settlementEndExclusive) = PeriodBounds.Of(settlementRange.Start, settlementRange.End);
         var settlementCandidates = settlementTagIds.Count == 0
             ? new List<TransactionRow>()
             : await context.TransactionTagLinks
                 .Where(link => settlementTagIds.Contains(link.TransactionTagId))
-                .Where(link => link.Transaction!.TimeStamp >= settlementStart && link.Transaction.TimeStamp <= settlementEnd)
+                .Where(link => link.Transaction!.TimeStamp >= settlementStart && link.Transaction.TimeStamp < settlementEndExclusive)
                 .Select(link => new TransactionRow(link.TransactionId, link.TransactionTagId, link.Transaction!.Amount, link.Transaction.CurrencyCode))
                 .ToListAsync(cancellationToken);
         // A custom range may overlap the period: a transaction already counted as advance tax (via a
@@ -650,9 +652,12 @@ public class TaxStatementService
         EnsureInBounds(startDate, nameof(TaxStatement.StartDate));
         EnsureInBounds(endDate, nameof(TaxStatement.EndDate));
 
-        if (endDate < startDate)
+        if (PeriodBounds.IsInverted(startDate, endDate))
         {
-            throw new DomainValidationException("EndDate must be on or after StartDate.");
+            throw new DomainValidationException(
+                "EndDate must be on or after StartDate.",
+                code: null,
+                field: nameof(TaxStatement.EndDate));
         }
 
         EnsureNonNegative(totalAssets, nameof(TaxStatement.DeclaredTotalAssets));
@@ -675,7 +680,7 @@ public class TaxStatementService
         {
             EnsureInBounds(s, nameof(TaxStatement.SettlementStartDate));
             EnsureInBounds(e, nameof(TaxStatement.SettlementEndDate));
-            if (e < s)
+            if (PeriodBounds.IsInverted(s, e))
             {
                 throw new DomainValidationException(
                     "SettlementEndDate must be on or after SettlementStartDate.",

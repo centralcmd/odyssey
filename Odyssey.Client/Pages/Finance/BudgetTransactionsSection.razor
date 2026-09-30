@@ -96,8 +96,10 @@
 
         var result = await Transactions.ListAllAsync(
             tagIds: [.. TagIds.Select(id => id.ToString())],
-            from: StartDate,
-            to: EndDate);
+            // The budget's count reads the whole end day (PeriodBounds); `to` is an inclusive instant,
+            // so it is the period's last instant rather than the end date's midnight (issue #238).
+            from: PeriodBounds.InclusiveStart(StartDate),
+            to: PeriodBounds.InclusiveEndInstant(EndDate));
 
         _transactions = result.ItemsOrToast(Snackbar, "transactions");
         if (result.IsSuccess)

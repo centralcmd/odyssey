@@ -468,6 +468,53 @@ public class TaxStatementServiceTests
         Assert.Null(report.Reconciliation.AdvancePaidVariance);
     }
 
+    [Fact]
+    public async Task Report_CustomSettlementRange_IncludesTheWholeEndDay()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var account = SeedAccount(context, ContextAccountType.CheckingAccount, "USD");
+        var settlementTag = SeedTag(context, "Tax settlement");
+        // Custom window 2026-03-01 → 2026-03-31, both stored at midnight (issue #238).
+        SeedTransaction(context, account, settlementTag, 1m, new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, settlementTag, 10m, new DateTime(2026, 3, 31, 16, 45, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, settlementTag, 100m, new DateTime(2026, 3, 31, 23, 59, 59, DateTimeKind.Utc), "USD");
+        // The first instant after the window, and the last one before it: excluded.
+        SeedTransaction(context, account, settlementTag, 1000m, new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, settlementTag, 10000m, new DateTime(2026, 2, 28, 23, 59, 59, DateTimeKind.Utc), "USD");
+        await context.SaveChangesAsync();
+
+        var request = NewStatement();
+        request.SettlementStartDate = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(2026, 3, 31, 0, 0, 0, DateTimeKind.Utc);
+        var created = await service.Create(request);
+        await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags
+        {
+            SettlementTagIds = [settlementTag.TransactionTagId],
+        });
+
+        var report = await service.GetReport(created.TaxStatementId);
+
+        Assert.Equal(111m, report!.Derived.SettlementPaid);
+    }
+
+    [Fact]
+    public async Task Create_SameDayPeriodAndSettlement_WithStartTimeAfterEndTime_AreAccepted()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        // Periods are read as whole days (PeriodBounds.IsInverted), the same rule budgets apply.
+        var request = NewStatement();
+        request.StartDate = new DateTime(2024, 6, 1, 18, 0, 0, DateTimeKind.Utc);
+        request.EndDate = new DateTime(2024, 6, 1, 9, 0, 0, DateTimeKind.Utc);
+        request.SettlementStartDate = new DateTime(2025, 6, 1, 18, 0, 0, DateTimeKind.Utc);
+        request.SettlementEndDate = new DateTime(2025, 6, 1, 9, 0, 0, DateTimeKind.Utc);
+
+        var created = await service.Create(request);
+
+        Assert.NotEqual(Guid.Empty, created.TaxStatementId);
+    }
+
     private static UpdateTaxStatement UpdateFrom(ExistingTaxStatement s) => new()
     {
         Name = s.Name,
@@ -630,19 +677,18 @@ public class TaxStatementServiceTests
     }
 
     [Fact]
-    public async Task Report_SettlementWindow_IsInclusiveOfBothBoundaryInstants()
+    public async Task Report_SettlementWindow_IncludesTheWholeLastDay()
     {
         await using var context = TestContextFactory.Create();
         var service = new TaxStatementService(context);
         var account = SeedAccount(context, ContextAccountType.CheckingAccount, "USD");
         var tag = SeedTag(context, "Tax settlement");
-        // Default window is 2025-01-01T00:00 → 2025-12-31T00:00 (period bounds carry no time of day).
+        // Default window is 2025-01-01 → 2025-12-31, stored at midnight but read as whole days (issue #238).
         SeedTransaction(context, account, tag, 1m, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
         SeedTransaction(context, account, tag, 10m, new DateTime(2025, 12, 31, 0, 0, 0, DateTimeKind.Utc), "USD");
-        // Just outside on either side, and a time of day on the last day: excluded, the same as
-        // the income-year query, whose end bound is also the date at midnight.
+        SeedTransaction(context, account, tag, 1000m, new DateTime(2025, 12, 31, 23, 59, 59, DateTimeKind.Utc), "USD");
+        // Just outside on either side: excluded.
         SeedTransaction(context, account, tag, 100m, new DateTime(2024, 12, 31, 23, 59, 59, DateTimeKind.Utc), "USD");
-        SeedTransaction(context, account, tag, 1000m, new DateTime(2025, 12, 31, 12, 0, 0, DateTimeKind.Utc), "USD");
         SeedTransaction(context, account, tag, 10000m, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
         await context.SaveChangesAsync();
         var created = await service.Create(NewStatement());
@@ -650,7 +696,50 @@ public class TaxStatementServiceTests
 
         var report = await service.GetReport(created.TaxStatementId);
 
-        Assert.Equal(11m, report!.Derived.SettlementPaid);
+        Assert.Equal(1011m, report!.Derived.SettlementPaid);
+    }
+
+    [Fact]
+    public async Task Report_Period_IncludesTheWholeEndDay()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var account = SeedAccount(context, ContextAccountType.CheckingAccount, "USD");
+        var taxTag = SeedTag(context, "Tax");
+        var incomeTag = SeedTag(context, "Salary");
+        // YearEnd is 2024-12-31 at midnight; a transaction later that day belongs to the period (issue #238).
+        SeedTransaction(context, account, taxTag, 1m, new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, taxTag, 10m, new DateTime(2024, 12, 31, 14, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, incomeTag, 500m, new DateTime(2024, 12, 31, 23, 59, 0, DateTimeKind.Utc), "USD");
+        // The first instant of the next day, and the last one before the period: excluded.
+        SeedTransaction(context, account, taxTag, 100m, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, incomeTag, 1000m, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), "USD");
+        SeedTransaction(context, account, taxTag, 10000m, new DateTime(2023, 12, 31, 23, 59, 59, DateTimeKind.Utc), "USD");
+        await context.SaveChangesAsync();
+        var created = await service.Create(NewStatement());
+        await service.UpdateTags(created.TaxStatementId, new UpdateTaxStatementTags
+        {
+            TaxTagIds = [taxTag.TransactionTagId],
+            IncomeTagIds = [incomeTag.TransactionTagId],
+        });
+
+        var report = await service.GetReport(created.TaxStatementId);
+
+        Assert.Equal(11m, report!.Derived.PaidTax);
+        Assert.Equal(500m, report.Derived.ActualIncome);
+    }
+
+    [Fact]
+    public async Task Create_EndBeforeStart_IsKeyedOnEndDate()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new TaxStatementService(context);
+        var request = NewStatement();
+        request.EndDate = request.StartDate.AddDays(-1);
+
+        var ex = await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(request));
+
+        Assert.True(ex.Errors!.ContainsKey(nameof(NewTaxStatement.EndDate)));
     }
 
     [Fact]
