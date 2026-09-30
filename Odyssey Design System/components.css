@@ -28,11 +28,11 @@
 .odc-btn.full { width: 100%; justify-content: center; }
 .odc-btn.filled   { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
 .odc-btn.filled:hover   { background: var(--mud-palette-primary-darken); }
-.odc-btn.outlined { background: transparent; color: var(--mud-palette-text-primary); border-color: var(--mud-palette-lines-inputs); }
+.odc-btn.outlined { background: transparent; color: var(--mud-palette-text-primary); border-color: var(--control-border); }
 .odc-btn.outlined:hover { background: var(--mud-palette-action-default-hover); }
 .odc-btn.text     { background: transparent; color: var(--brand-text); padding: 9px 12px; }
 .odc-btn.text:hover     { background: var(--mud-palette-action-default-hover); }
-.odc-btn.danger   { background: var(--mud-palette-error); color: #fff; }
+.odc-btn.danger   { background: var(--mud-palette-error); color: var(--mud-palette-error-text); }
 .odc-btn.danger:hover   { background: var(--coral-700); }
 .odc-btn:disabled {
   background: var(--mud-palette-action-disabled-background);
@@ -494,7 +494,7 @@
 /* ---------- ReferenceNumberField / ReferenceNumber (a counterparty identifier) ---------- */
 .odc-refnum-field { display: flex; flex-direction: column; gap: 8px; }
 .odc-refnum-input { font-family: var(--font-mono); letter-spacing: 0.02em; }
-.odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--mud-palette-lines-inputs); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
+.odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--control-border); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
 .odc-refnum-strip:hover { background: var(--mud-palette-action-default-hover); }
 .odc-refnum-strip .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
 .odc-refnum { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; color: var(--mud-palette-text-primary); }
@@ -685,7 +685,7 @@
   border-radius: var(--radius-pill);
   font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
   font-variant-numeric: tabular-nums;
-  background: var(--mud-palette-error); color: #fff;
+  background: var(--mud-palette-error); color: var(--mud-palette-error-text);
 }
 .odc-badge.primary { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
 .odc-badge.neutral { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
@@ -982,13 +982,13 @@
 .odc-capacity-value { flex: 1; text-align: right; font: var(--fw-regular) var(--fs-body1)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-capacity-pill {
   flex: none; cursor: pointer; white-space: nowrap;
-  border: var(--border-thin, 1px) solid var(--mud-palette-divider);
+  border: var(--border-thin, 1px) solid var(--control-border);
   border-radius: var(--radius-pill); background: transparent; padding: 4px 11px;
   font: var(--fw-medium) var(--fs-overline)/1.2 var(--font-sans);
   color: var(--mud-palette-text-secondary);
   transition: border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
 }
-.odc-capacity-pill:hover:not(:disabled) { border-color: var(--mud-palette-lines-inputs, var(--mud-palette-divider)); color: var(--mud-palette-text-primary); }
+.odc-capacity-pill:hover:not(:disabled) { border-color: var(--mud-palette-text-secondary); color: var(--mud-palette-text-primary); }
 .odc-capacity-pill[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand-border); color: var(--brand-text); }
 .odc-capacity-pill:disabled { cursor: not-allowed; color: var(--mud-palette-text-disabled); }
 .odc-capacity-num { width: 120px; min-width: 120px; }
@@ -1111,7 +1111,7 @@
    tile, label and helper left, control right, matching the field's border. */
 .odc-sfield-tile {
   display: flex; align-items: center; gap: 16px; justify-content: space-between;
-  border: var(--border-thin, 1px) solid var(--mud-palette-lines-inputs, var(--mud-palette-divider));
+  border: var(--border-thin, 1px) solid var(--control-border);
   border-radius: var(--radius-md); background: var(--mud-palette-background);
   padding: 12px 14px;
 }
@@ -1871,9 +1871,7 @@
 }
 .odc-problem-cta .material-icons { font-size: var(--icon-sm); }
 .odc-problem.warning .odc-problem-cta { background: var(--finance-pending); color: var(--ink-900); }
-.odc-problem.error   .odc-problem-cta { background: var(--finance-expense); color: #2A0E0E; } /* on coral-500: 6.48:1 */
-/* Light: coral-700 fill, where #2A0E0E is only 3.07:1 — white is 5.86:1. */
-[data-theme='light'] .odc-problem.error .odc-problem-cta { color: #FFFFFF; }
+.odc-problem.error   .odc-problem-cta { background: var(--finance-expense); color: var(--error-cta-text); }
 .odc-problem.info    .odc-problem-cta { background: var(--sea-400);         color: var(--ink-900); }
 .odc-problem-cta:hover { filter: brightness(1.08); }
 
@@ -2456,7 +2454,7 @@ tr:focus-within > .odc-rowactions.reveal,
   display: inline-flex; align-items: center; gap: 4px;
   appearance: none; cursor: pointer;
   padding: 3px 10px 3px 8px;
-  border: 1px dashed var(--mud-palette-lines-inputs); border-radius: var(--radius-pill);
+  border: 1px dashed var(--control-border); border-radius: var(--radius-pill);
   background: transparent; color: var(--mud-palette-text-secondary);
   font: var(--fw-medium) var(--fs-body2)/1.2 var(--font-sans);
   transition: border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
