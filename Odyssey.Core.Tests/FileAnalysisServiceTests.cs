@@ -434,6 +434,51 @@ public class FileAnalysisServiceTests
         Assert.DoesNotContain(await context.Transactions.ToListAsync(), t => t.CurrencyCode == "XYZ");
     }
 
+    /// <summary>Archived currencies are refused on import, as on every other transaction write path.</summary>
+    [Fact]
+    public async Task ImportCandidatesAsync_AnArchivedCurrency_FailsThatCandidate()
+    {
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var service = CreateService(context, FakeProvider.Returning(
+            Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m)), EnabledOptions());
+
+        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var candidate = await context.FileAnalysisCandidateTransactions.SingleAsync();
+        (await context.Currencies.SingleAsync(c => c.CurrencyCode == "SEK")).Archived = DateTime.UtcNow;
+        await context.SaveChangesAsync();
+
+        var result = await service.ImportCandidatesAsync(
+            response.AnalysisJobId,
+            new ImportRequest([new ImportCandidateRequest(candidate.Id, null, null, null, "SEK")]),
+            "user-1");
+
+        Assert.Equal(0, result.Imported);
+        Assert.Contains("SEK", Assert.Single(result.Failures).Reason, StringComparison.Ordinal);
+        Assert.Empty(await context.Transactions.ToListAsync());
+    }
+
+    /// <summary>A known code in lower case is normalised, not refused.</summary>
+    [Fact]
+    public async Task ImportCandidatesAsync_ALowercaseKnownCurrency_IsImportedUpperCased()
+    {
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var service = CreateService(context, FakeProvider.Returning(
+            Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m)), EnabledOptions());
+
+        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var candidate = await context.FileAnalysisCandidateTransactions.SingleAsync();
+
+        var result = await service.ImportCandidatesAsync(
+            response.AnalysisJobId,
+            new ImportRequest([new ImportCandidateRequest(candidate.Id, null, null, null, " eur ")]),
+            "user-1");
+
+        Assert.Equal(1, result.Imported);
+        Assert.Equal("EUR", (await context.Transactions.SingleAsync()).CurrencyCode);
+    }
+
     [Fact]
     public async Task GetAuditLogAsync_ReflectsImportedCount_AfterImport()
     {

@@ -359,6 +359,14 @@ public class FileAnalysisService
         var imported = 0;
         var failures = new List<ImportFailure>();
 
+        // Loaded once for the batch rather than probed per candidate; the table is small reference data.
+        var activeCurrencies = (await context.Currencies
+                .AsNoTracking()
+                .Where(c => c.Archived == null)
+                .Select(c => c.CurrencyCode)
+                .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         foreach (var req in request.Candidates)
         {
             if (!candidateMap.TryGetValue(req.CandidateId, out var candidate))
@@ -387,9 +395,10 @@ public class FileAnalysisService
                 continue;
             }
 
-            // Transactions.CurrencyCode is a foreign key to Currencies (issue #241). An extracted code
+            // Transactions.CurrencyCode is a foreign key to Currencies (issue #241): an extracted code
             // the store does not hold would otherwise fail the whole batch's save, not just this row.
-            if (!await context.Currencies.AnyAsync(c => c.CurrencyCode == normalizedCurrency, cancellationToken))
+            // Active-only, the same rule EnsureSupportedAndActive applies on every other write path.
+            if (!activeCurrencies.Contains(normalizedCurrency))
             {
                 failures.Add(new ImportFailure(req.CandidateId, $"Currency '{normalizedCurrency}' is not supported."));
                 continue;
