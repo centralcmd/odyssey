@@ -38,17 +38,23 @@ public sealed class ListLoader : IDisposable
         if (disposed)
             return Latest<T>.Superseded;
 
-        current?.Cancel();
+        // Take the ticket BEFORE cancelling the previous request: Cancel runs that request's
+        // continuations inline, and it must already see itself superseded when it resumes.
+        var ticket = ++sequence;
+        var previous = current;
         var mine = new CancellationTokenSource();
         current = mine;
-        var ticket = ++sequence;
+        previous?.Cancel();
 
         try
         {
             var value = await fetch(mine.Token);
             return IsCurrent(ticket) ? Latest<T>.Current(value) : Latest<T>.Superseded;
         }
-        catch (OperationCanceledException) when (!IsCurrent(ticket))
+        // Whatever a superseded request throws — the cancellation it was asked for, or a failure it
+        // hit on the way — belongs to a question nobody is asking any more, so it touches nothing.
+        // The newest request's own exceptions still surface.
+        catch (Exception) when (!IsCurrent(ticket))
         {
             return Latest<T>.Superseded;
         }

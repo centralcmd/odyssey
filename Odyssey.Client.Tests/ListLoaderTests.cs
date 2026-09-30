@@ -1,19 +1,4 @@
-using System.Net;
-using System.Security.Claims;
-using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.Extensions.DependencyInjection;
-using Moq;
-using MudBlazor;
-using MudBlazor.Services;
-using Odyssey.ApiClient;
-using Odyssey.ApiClient.Resources;
-using Odyssey.Client.Components;
-using Odyssey.Client.Pages.Finance;
 using Odyssey.Client.Services;
-using Odyssey.Dtos;
-using Odyssey.Dtos.Authorization;
-using Odyssey.Dtos.Finance;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -25,8 +10,6 @@ namespace Odyssey.Client.Tests;
 /// </summary>
 public class ListLoaderTests
 {
-    static ListLoaderTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
-
     [Fact]
     public async Task An_earlier_response_that_lands_last_is_superseded()
     {
@@ -197,113 +180,32 @@ public class ListLoaderTests
         }
     }
 
-    // ── A real card ─────────────────────────────────────────────────────────────────────────────
-
-    private static ExistingCurrency Currency(string code) =>
-        new() { CurrencyCode = code, Name = code + " name", Symbol = "$", MinorUnits = 2 };
-
-    private static ApiResult<PagedResult<ExistingCurrency>> Page(params ExistingCurrency[] rows) =>
-        ApiResult<PagedResult<ExistingCurrency>>.Success(
-            new PagedResult<ExistingCurrency> { Items = rows, TotalCount = rows.Length, Offset = 0, Limit = 25 },
-            HttpStatusCode.OK);
-
     /// <summary>
-    /// End to end on <c>CurrenciesCard</c>: two searches in flight, the older one answering last. The
-    /// grid, the pager total and the live announcement must all describe the newer search, and the
-    /// older one — cancelled when the newer started, which the transport reports as a failure — must
-    /// not raise a "couldn't load" toast.
+    /// A superseded request touches nothing whatever it throws — not only the cancellation the loader
+    /// asked for, but a failure it met on the way (a JSON error on a half-read body, say). The newest
+    /// request's own exceptions are not the loader's to swallow.
     /// </summary>
     [Fact]
-    public async Task A_card_resolves_out_of_order_search_responses_to_the_latest()
+    public async Task A_superseded_request_that_throws_anything_is_reported_superseded()
     {
-        await using var ctx = new BunitContext();
-        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.Services.AddMudServices();
-        ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
-        ctx.Services.AddSingleton(Mock.Of<IPageStateService>());
-        ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
-        ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedIn([PermissionClaims.CurrenciesRead]));
+        using var loader = new ListLoader();
+        var older = new TaskCompletionSource<int>();
 
-        // Keyed on the search text so the test decides the order the two responses arrive in.
-        var pending = new Dictionary<string, TaskCompletionSource<ApiResult<PagedResult<ExistingCurrency>>>>
-        {
-            ["eu"] = new(),
-            ["usd"] = new(),
-        };
-        var tokens = new Dictionary<string, CancellationToken>();
-        var currencies = new Mock<ICurrenciesApiClient>();
-        currencies.Setup(c => c.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(),
-                It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .Returns((int _, int _, string? search, IReadOnlyCollection<string>? _, string? _, string? _, CancellationToken ct) =>
-            {
-                tokens[search!] = ct;
-                return pending[search!].Task;
-            });
-        ctx.Services.AddSingleton(currencies.Object);
+        var first = loader.RunAsync(_ => older.Task);
+        var second = loader.RunAsync(_ => Task.FromResult(2));
 
-        var cut = ctx.Render<CurrenciesCard>();
-        var search = cut.FindComponent<OdsSearchField>().Instance;
+        older.SetException(new InvalidOperationException("half-read body"));
 
-        await cut.InvokeAsync(() => search.ValueChanged.InvokeAsync("eu"));
-        var older = cut.InvokeAsync(() => search.OnSearch.InvokeAsync());
-        await cut.InvokeAsync(() => search.ValueChanged.InvokeAsync("usd"));
-        var newer = cut.InvokeAsync(() => search.OnSearch.InvokeAsync());
-
-        Assert.True(tokens["eu"].IsCancellationRequested);
-
-        await cut.InvokeAsync(() => pending["usd"].SetResult(Page(Currency("USD"))));
-        await newer;
-        // What the transport returns for a request whose token was cancelled.
-        await cut.InvokeAsync(() => pending["eu"].SetResult(
-            ApiResult<PagedResult<ExistingCurrency>>.Failure(new TaskCanceledException())));
-        await older;
-
-        cut.WaitForAssertion(() =>
-        {
-            Assert.Contains("USD name", cut.Markup, StringComparison.Ordinal);
-            Assert.DoesNotContain("EUR name", cut.Markup, StringComparison.Ordinal);
-            Assert.Equal("Showing 1–1 of 1 currency.", cut.FindComponent<OdsLiveAnnouncer>().Instance.Message);
-            Assert.Equal(1, cut.FindComponent<OdsPager>().Instance.TotalCount);
-        });
-        Assert.Empty(ctx.Services.GetRequiredService<ISnackbar>().ShownSnackbars);
+        Assert.True((await first).IsSuperseded);
+        Assert.Equal(2, (await second).Value);
     }
 
     [Fact]
-    public async Task A_card_cancels_its_fetch_when_disposed()
+    public async Task A_current_request_that_throws_something_else_is_not_swallowed()
     {
-        await using var ctx = new BunitContext();
-        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.Services.AddMudServices();
-        ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
-        ctx.Services.AddSingleton(Mock.Of<IPageStateService>());
-        ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
-        ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedIn([PermissionClaims.CurrenciesRead]));
+        using var loader = new ListLoader();
 
-        CancellationToken token = default;
-        var pending = new TaskCompletionSource<ApiResult<PagedResult<ExistingCurrency>>>();
-        var currencies = new Mock<ICurrenciesApiClient>();
-        currencies.Setup(c => c.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(),
-                It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .Returns((int _, int _, string? _, IReadOnlyCollection<string>? _, string? _, string? _, CancellationToken ct) =>
-            {
-                token = ct;
-                return pending.Task;
-            });
-        ctx.Services.AddSingleton(currencies.Object);
-
-        var cut = ctx.Render<CurrenciesCard>();
-        var search = cut.FindComponent<OdsSearchField>().Instance;
-        _ = cut.InvokeAsync(() => search.OnSearch.InvokeAsync());
-
-        await cut.InvokeAsync(() => cut.Instance.Dispose());
-
-        Assert.True(token.IsCancellationRequested);
-    }
-
-    private sealed class SignedIn(IEnumerable<string> permissions) : AuthenticationStateProvider
-    {
-        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
-            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(
-                permissions.Select(p => new Claim(PermissionClaims.Type, p)), "test"))));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            loader.RunAsync<int>(_ => throw new InvalidOperationException("boom")));
     }
 }

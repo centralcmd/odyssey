@@ -19,6 +19,8 @@ public partial class CalendarPage
     private List<CalendarEventVm> _viewModels = [];
     private bool _isLoading = true;
     private bool _loadError;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
 
     // Reference date for the active view: the shown month (month/agenda), the week containing it
     // (week), or the shown day (day). A real date, not forced to the 1st, so week/day keep their day.
@@ -152,9 +154,6 @@ public partial class CalendarPage
     {
         _calendars = (await CalendarApi.ListCalendarsAsync()).ItemsOrToast(Snackbar, "calendars");
     }
-
-    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
-    private readonly ListLoader _listLoader = new();
 
     private async Task LoadEventsAsync()
     {
