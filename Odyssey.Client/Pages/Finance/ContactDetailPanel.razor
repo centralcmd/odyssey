@@ -32,12 +32,12 @@
                         <OdsMenu Items="TileMenu(t)" AriaLabel="@($"Actions for {t.KindTitle}: {t.Value}")" />
                     </span>
                     <div class="cp-tile-top">
-                        <span class="cp-tile-ic" style="background:@t.Soft;color:@t.Fg;">
+                        <span class="cp-tile-ic" style="background:@t.Soft;color:@(OdsGlyphInk.Glyph(t.Fg));">
                             <span class="material-icons" aria-hidden="true" style="font-size:16px;">@t.Icon</span>
                         </span>
                         <span class="cp-tile-kind">@t.KindTitle</span>
                     </div>
-                    <div class="cp-tile-value" style="color:@t.Fg;">@t.Value</div>
+                    <div class="cp-tile-value" style="color:@(OdsGlyphInk.Text(t.Fg));">@t.Value</div>
                     <div class="cp-tile-foot">
                         <span>@t.Label</span>
                         @if (t.IsPrimary)

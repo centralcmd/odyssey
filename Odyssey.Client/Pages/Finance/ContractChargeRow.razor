@@ -29,7 +29,7 @@
         <span class="con-charge-rel">@RelativeDays</span>
     </span>
     <span class="con-charge-name">
-        <span class="material-icons" aria-hidden="true" style="@($"color:{TypeInfo.Color}")">@TypeInfo.Icon</span>
+        <span class="material-icons" aria-hidden="true" style="@($"color:{OdsGlyphInk.Glyph(TypeInfo.Color)}")">@TypeInfo.Icon</span>
         <span class="con-charge-title">@Charge.Name</span>
         @if (!string.IsNullOrWhiteSpace(Charge.Label))
         {

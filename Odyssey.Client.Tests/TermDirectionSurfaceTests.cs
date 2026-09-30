@@ -139,7 +139,8 @@ public class TermDirectionSurfaceTests
         Assert.Equal("Base salary", top.QuerySelector(".trm-row-kind-name")!.TextContent.Trim());
         Assert.Equal("true", top.QuerySelector(".trm-row-dot")!.GetAttribute("aria-hidden"));
         Assert.Equal("Outgoing", top.QuerySelector(".trm-dir")!.TextContent.Trim());
-        Assert.Contains("color:var(--finance-expense)", contractRow.Find(".trm-kind-ic").GetAttribute("style"), StringComparison.Ordinal);
+        // The direction's hue, painted through the registry glyph cap (issue #164) like every term glyph.
+        Assert.Contains("color:oklch(from var(--finance-expense) var(--glyph-l, l) c h)", contractRow.Find(".trm-kind-ic").GetAttribute("style"), StringComparison.Ordinal);
     }
 
     // ── The field lead ───────────────────────────────────────────────────────

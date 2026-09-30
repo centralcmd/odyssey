@@ -38,7 +38,7 @@
                     @if (!string.IsNullOrEmpty(row.Icon))
                     {
                         <span class="material-icons" aria-hidden="true"
-                              style="@(string.IsNullOrEmpty(row.IconColor) ? null : $"color:{row.IconColor};")">@row.Icon</span>
+                              style="@(string.IsNullOrEmpty(row.IconColor) ? null : $"color:{OdsGlyphInk.Glyph(row.IconColor)};")">@row.Icon</span>
                     }
                     <span class="odc-breakdown-label">@row.Label</span>
                     <span class="odc-breakdown-n">@Figure(row.Count)</span>

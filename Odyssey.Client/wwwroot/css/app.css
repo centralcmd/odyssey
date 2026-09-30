@@ -356,6 +356,17 @@ html:not([data-theme='dark']) .mud-elevation-4 { box-shadow: 0 6px 18px rgba(14,
 html:not([data-theme='dark']) .mud-elevation-8 { box-shadow: 0 14px 36px rgba(14,21,37,0.14) !important; }
 html:not([data-theme='dark']) .mud-elevation-16{ box-shadow: 0 24px 60px rgba(14,21,37,0.18) !important; }
 
+/* Registry glyph lightness (DS handoff/README.md → "Registry glyph lightness", issue #164).
+   Every OdsTypeRegistries colour stays one authored constant in the L 0.66–0.80 band tuned for
+   dark. Render sites paint it through oklch(from <colour> var(--glyph-l, l) c h): dark passes
+   `l` through, light caps it — chroma and hue kept, so the family keeps its hue relationships.
+   --glyph-l (0.58) is for glyphs, icon tiles and rail nodes (WCAG 1.4.11, 3:1);
+   --glyph-text-l (0.50) is for a registry colour used as TEXT (1.4.3, 4.5:1). Soft tints
+   (/ 0.16 backgrounds) keep the authored colour. Anchored to html for the same reason as the
+   shadow corrections above. OdsGlyphInk (Components/OdsTypeRegistries.cs) writes the wrap. */
+:root, [data-theme='dark'] { --glyph-l: l; --glyph-text-l: l; }
+html:not([data-theme='dark']) { --glyph-l: min(l, 0.58); --glyph-text-l: min(l, 0.50); }
+
 /* Tabular monospace utility (design-system .mono) — ledger figures, IDs, sizes. */
 .mono {
   font-family: 'Roboto Mono', monospace;
