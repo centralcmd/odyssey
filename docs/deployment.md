@@ -691,6 +691,29 @@ decision it takes is staged once and reused. An interruption *during* the final 
 covered by the start-up drift check; repair it by hand per
 [`migration-history-drift.md`](migration-history-drift.md).
 
+### Release note: currencies in use can no longer be deleted (issue #241)
+
+**Take a database backup before upgrading.** `AddCurrencyForeignKeys` writes data, and its `Down`
+restores the schema only.
+
+**What the migration does.** It adds a `RESTRICT` foreign key to `Currencies` from every
+currency-code column: accounts, transactions, budgets, tax statements, properties, account and property
+estimates, and contract terms. Before this release a currency could be deleted while those rows still
+named it, and rows like that would make adding the keys fail. So first, every code that rows use but
+`Currencies` no longer holds is **restored** as an active currency named
+`Restored currency XYZ (review)` with two minor units. No referencing row is changed or removed.
+Every orphaned code is restored, including a blank or malformed one a hand edit may have left, because
+skipping it would stop the upgrade at the key it violates.
+
+**What to review afterwards.** On the Currencies page, search for `Restored currency`. For each row,
+either correct its name, symbol and minor units, or change the records that use it to another
+currency and then delete it. From now on, deleting a currency that is still in use is refused with a
+`409` naming how many of each kind of record use it.
+
+**Plan for write downtime.** MariaDB can add a foreign key only by copying the whole table
+(`ALGORITHM=COPY`), which blocks writes to it while the copy runs. All eight tables are rebuilt,
+`Transactions` among them. On a large database, upgrade during a quiet window.
+
 ## Backups
 
 The only stateful pieces are two named volumes — back both up:

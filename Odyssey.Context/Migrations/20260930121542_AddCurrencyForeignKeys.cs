@@ -13,19 +13,34 @@ namespace Odyssey.Context.Migrations
     /// <b>This migration writes data.</b> Until now nothing stopped a currency being deleted while rows
     /// still named it, so a production database may hold codes with no <c>Currencies</c> row, and
     /// adding a key over them fails. Before any key is added, every such orphaned code is restored as
-    /// an <em>active</em> currency named <c>Restored currency XYZ</c> with two minor units — the
+    /// an <em>active</em> currency named <c>Restored currency XYZ (review)</c> with two minor units — the
     /// non-destructive repair: no referencing row is changed or removed, and referential integrity is
     /// re-established by putting back the one row that went missing. Active rather than archived,
     /// because every write path validates its currency with <c>EnsureSupportedAndActive</c>, and an
     /// archived restoration would leave those rows exactly as un-editable as the bug left them. An
-    /// administrator can then correct the name and minor units, or move the rows and delete it.
+    /// administrator should review every <c>Restored currency%</c> row after upgrading: correct the
+    /// name and minor units, or move the rows and delete it.
+    /// </para>
+    /// <para>
+    /// Every orphaned code is restored, a blank or non-ISO-shaped one included. Skipping such a code
+    /// would not remove it from the referencing row, so the key's own addition would fail on it and the
+    /// upgrade would stop there; restoring it keeps the upgrade going and puts the oddity on the
+    /// currencies page, flagged by its name, where an administrator can see and resolve it. No write
+    /// path produces such a code — they all normalise and validate — so only a hand edit could.
     /// </para>
     /// <para>
     /// The repair is idempotent (<c>NOT EXISTS</c>), so a replay after an interrupted run is safe.
     /// <c>UNION</c> de-duplicates under the columns' own collation — the same comparison the keys use —
-    /// so two spellings the key would treat as one code cannot yield two inserts.
+    /// so two spellings the key would treat as one code (<c>nok</c>/<c>NOK</c> under the default
+    /// case-insensitive collation) yield one insert, not a duplicate-key failure.
     /// <c>Down()</c> drops the keys and indexes only; the restored currencies stay, as they are what
     /// the referencing rows needed all along.
+    /// </para>
+    /// <para>
+    /// <b>Adding a foreign key rebuilds the table.</b> With <c>foreign_key_checks</c> on, MariaDB can only
+    /// add one with <c>ALGORITHM=COPY</c>, which copies the table and blocks writes to it for the
+    /// duration. All eight tables are rebuilt, <c>Transactions</c> — the largest — among them, so
+    /// schedule the upgrade for a quiet window on a large database.
     /// </para>
     /// </remarks>
     public partial class AddCurrencyForeignKeys : Migration
@@ -35,7 +50,7 @@ namespace Odyssey.Context.Migrations
         {
             migrationBuilder.Sql("""
                 INSERT INTO `Currencies` (`CurrencyCode`, `Name`, `MinorUnits`, `Symbol`, `Archived`)
-                SELECT orphan.`Code`, CONCAT('Restored currency ', orphan.`Code`), 2, NULL, NULL
+                SELECT orphan.`Code`, CONCAT('Restored currency ', orphan.`Code`, ' (review)'), 2, NULL, NULL
                 FROM (
                     SELECT `CurrencyCode` AS `Code` FROM `Accounts`
                     UNION SELECT `CurrencyCode` FROM `Transactions`

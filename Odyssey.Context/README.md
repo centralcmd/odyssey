@@ -143,8 +143,9 @@ Every currency-code column is a navigation-less **`RESTRICT`** key to `Currencie
 Only the exchange-rate pair existed before issue #241, so a currency could be deleted out from under
 the records kept in it, leaving accounts that could not be edited and budgets and statements that
 refused updates. `AddCurrencyForeignKeys` added the rest, first **restoring** any code already orphaned
-that way as an active `Restored currency XYZ` row — the one data write, which changes no referencing
-row.
+that way as an active `Restored currency XYZ (review)` row — the one data write, which changes no
+referencing row. Adding each key rebuilds its table (`ALGORITHM=COPY`, writes blocked meanwhile); the
+upgrade note is in [`docs/deployment.md`](../docs/deployment.md).
 
 `CurrencyService.CountDeleteBlockers` is the explaining pre-check: one clause per key, counts only, a
 `409`. A new currency column needs its key **and** its clause. `FileAnalysisCandidateTransactions.Currency`
