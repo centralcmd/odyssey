@@ -462,7 +462,10 @@ public class ContractPartyTileTests
 
         Assert.Equal("View", MenuLabels(cut)[0]);
         cut.FindAll(".mud-menu-item").First(i => i.TextContent.Contains("View", StringComparison.Ordinal)).Click();
-        Assert.EndsWith("/contacts", cut.Services.GetRequiredService<NavigationManager>().Uri, StringComparison.Ordinal);
+        // bUnit's synchronous Click() dispatches without awaiting, so the handler can still be
+        // queued behind a MudMenu render when Click() returns; wait for the navigation.
+        var navigation = cut.Services.GetRequiredService<NavigationManager>();
+        cut.WaitForAssertion(() => Assert.EndsWith("/contacts", navigation.Uri, StringComparison.Ordinal));
     }
 
     /// <summary>A property party (issue #208): the minimal reference is all the tile has to draw from.</summary>
@@ -511,7 +514,10 @@ public class ContractPartyTileTests
         Assert.Equal("View", labels[0]);
         Assert.Contains("Edit party", labels);
         cut.FindAll(".mud-menu-item").First(i => i.TextContent.Contains("View", StringComparison.Ordinal)).Click();
-        Assert.EndsWith("/properties", cut.Services.GetRequiredService<NavigationManager>().Uri, StringComparison.Ordinal);
+        // bUnit's synchronous Click() dispatches without awaiting, so the handler can still be
+        // queued behind a MudMenu render when Click() returns; wait for the navigation.
+        var navigation = cut.Services.GetRequiredService<NavigationManager>();
+        cut.WaitForAssertion(() => Assert.EndsWith("/properties", navigation.Uri, StringComparison.Ordinal));
     }
 
     /// <summary>
