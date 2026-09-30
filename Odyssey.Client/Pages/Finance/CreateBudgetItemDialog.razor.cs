@@ -204,11 +204,6 @@ public partial class CreateBudgetItemDialog
             return false;
         }
 
-        // ITagQuickCreate does not invalidate the cache itself, so a tag created inline would not
-        // appear on any other surface until a reload.
-        if (resolvedTagId != _tagId!.Value)
-            ReferenceData.InvalidateTransactionTags();
-
         return true;
     }
 }

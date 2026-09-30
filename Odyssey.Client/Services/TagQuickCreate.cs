@@ -1,6 +1,7 @@
 using MudBlazor;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
+using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Services;
 
@@ -47,7 +48,10 @@ public interface ITagQuickCreate<TTag>
     Action<string>? OnCreateFailed { get; set; }
 }
 
-public sealed class TagQuickCreate<TTag>(ITagsApiClient<TTag> tags, ISnackbar snackbar) : ITagQuickCreate<TTag>
+public sealed class TagQuickCreate<TTag>(
+    ITagsApiClient<TTag> tags,
+    IReferenceDataCache referenceData,
+    ISnackbar snackbar) : ITagQuickCreate<TTag>
 {
     private readonly List<Task> _pending = [];
     private readonly Dictionary<string, string> _resolved = new(StringComparer.Ordinal);
@@ -88,6 +92,7 @@ public sealed class TagQuickCreate<TTag>(ITagsApiClient<TTag> tags, ISnackbar sn
             if (result.IsSuccess && result.CreatedId is { } id)
             {
                 _resolved[tempId] = id.ToString();
+                InvalidateCachedTags();
                 return;
             }
 
@@ -106,5 +111,15 @@ public sealed class TagQuickCreate<TTag>(ITagsApiClient<TTag> tags, ISnackbar sn
             snackbar.Add($"Couldn’t create “{name}”: {ex.Message}", Severity.Error);
             OnCreateFailed?.Invoke(tempId);
         }
+    }
+
+    // Transaction tags are cached for the whole session (issue #372), so a tag minted here would be
+    // missing from every later picker and the Transactions filter until a reload — and the picker
+    // would offer to create it again (issue #251). The other tag resources aren't cached; this is the
+    // same type test OdsTagAdmin makes, so the two write paths into the vocabulary agree.
+    private void InvalidateCachedTags()
+    {
+        if (typeof(TTag) == typeof(ExistingTransactionTag))
+            referenceData.InvalidateTransactionTags();
     }
 }

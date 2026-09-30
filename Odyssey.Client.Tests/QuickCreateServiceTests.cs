@@ -207,10 +207,70 @@ public class QuickCreateServiceTests
     private static (TagQuickCreate<ExistingTransactionTag> Creator, Mock<ITagsApiClient<ExistingTransactionTag>> Api)
         TagCreator(Func<TagWrite, ApiResult> respond)
     {
-        var api = new Mock<ITagsApiClient<ExistingTransactionTag>>();
+        var (creator, api, _) = TagCreator<ExistingTransactionTag>(respond);
+        return (creator, api);
+    }
+
+    private static (TagQuickCreate<TTag> Creator, Mock<ITagsApiClient<TTag>> Api, Mock<IReferenceDataCache> Cache)
+        TagCreator<TTag>(Func<TagWrite, ApiResult> respond)
+    {
+        var api = new Mock<ITagsApiClient<TTag>>();
         api.Setup(a => a.CreateAsync(It.IsAny<TagWrite>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((TagWrite t, CancellationToken _) => respond(t));
-        return (new TagQuickCreate<ExistingTransactionTag>(api.Object, Snackbar()), api);
+        var cache = new Mock<IReferenceDataCache>();
+        return (new TagQuickCreate<TTag>(api.Object, cache.Object, Snackbar()), api, cache);
+    }
+
+    /// <summary>
+    /// Transaction tags are cached for the session, so an inline create has to drop that cache or the
+    /// new tag stays missing from every later picker and the picker offers to create it again (#251).
+    /// </summary>
+    [Fact]
+    public async Task A_created_transaction_tag_invalidates_the_cached_tags()
+    {
+        var (creator, _, cache) = TagCreator<ExistingTransactionTag>(_ => Ok());
+
+        creator.Begin("Groceries");
+        await creator.WhenSettledAsync();
+
+        cache.Verify(c => c.InvalidateTransactionTags(), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Conflict)]
+    [InlineData(HttpStatusCode.BadRequest)]
+    public async Task A_failed_transaction_tag_create_leaves_the_cache_alone(HttpStatusCode status)
+    {
+        var (creator, _, cache) = TagCreator<ExistingTransactionTag>(_ => Fail(status, "no"));
+
+        creator.Begin("Groceries");
+        await creator.WhenSettledAsync();
+
+        cache.Verify(c => c.InvalidateTransactionTags(), Times.Never);
+    }
+
+    [Fact]
+    public async Task A_throwing_transaction_tag_create_leaves_the_cache_alone()
+    {
+        var (creator, _, cache) = TagCreator<ExistingTransactionTag>(_ => throw new HttpRequestException("offline"));
+
+        creator.Begin("Groceries");
+        await creator.WhenSettledAsync();
+
+        cache.Verify(c => c.InvalidateTransactionTags(), Times.Never);
+    }
+
+    /// <summary>The other tag vocabularies aren't cached, so their creates touch nothing.</summary>
+    [Fact]
+    public async Task A_created_journal_tag_does_not_touch_the_cache()
+    {
+        var (creator, _, cache) = TagCreator<ExistingJournalTag>(_ => Ok());
+
+        var option = creator.Begin("Travel")!;
+        await creator.WhenSettledAsync();
+
+        Assert.Equal(CreatedId.ToString(), creator.Resolve(option.Value));
+        cache.VerifyNoOtherCalls();
     }
 
     [Fact]
