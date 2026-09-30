@@ -40,6 +40,13 @@ public partial class OdsPopupMenu
 
     [Parameter] public string? AriaDescribedBy { get; set; }
 
+    /// <summary>
+    /// The panel's own name, when it should say what the list is FOR rather than repeat the trigger
+    /// (e.g. "Tags to watch" behind an "Add tag" button). The panel is the one named container: a
+    /// consumer must not add a second labelled role="group" inside it, or the name is read twice.
+    /// </summary>
+    [Parameter] public string? PanelLabel { get; set; }
+
     [Parameter] public bool AriaInvalid { get; set; }
 
     [Parameter] public bool Disabled { get; set; }
@@ -98,6 +105,15 @@ public partial class OdsPopupMenu
 
     private string PanelId => $"{EffectiveTriggerId}-panel";
 
+    // The panel's name: its own label, else the trigger's explicit aria-label, else (null) the
+    // trigger itself via aria-labelledby.
+    private string? PanelName =>
+        !string.IsNullOrWhiteSpace(PanelLabel) ? PanelLabel
+        : !string.IsNullOrWhiteSpace(AriaLabel) ? AriaLabel
+        : null;
+
+    private string WrapperId => $"{EffectiveTriggerId}-box";
+
     private bool SingleChoice => RowId is not null && RowCount > 0;
 
     private string HasPopup => SingleChoice ? "menu" : "dialog";
@@ -112,30 +128,6 @@ public partial class OdsPopupMenu
         string.IsNullOrWhiteSpace(ListClass)
             ? "mud-list mud-menu-list odc-popmenu-panel"
             : $"mud-list mud-menu-list odc-popmenu-panel {ListClass.Trim()}";
-
-    /// <summary>The index of the first item matching <paramref name="match"/>, or -1 — without allocating.</summary>
-    public static int IndexOf<T>(IReadOnlyList<T> items, Func<T, bool> match)
-    {
-        for (var i = 0; i < items.Count; i++)
-        {
-            if (match(items[i]))
-                return i;
-        }
-        return -1;
-    }
-
-    /// <summary>
-    /// An accessible name that STARTS with the trigger's visible text (WCAG 2.5.3 Label in Name), so a
-    /// speech-input user can say what they see: the visible parts joined by spaces, then the extra
-    /// <paramref name="label"/> after a comma unless the visible text already contains it.
-    /// </summary>
-    public static string AccessibleName(string? label, params string?[] visibleParts)
-    {
-        var visible = string.Join(' ', visibleParts.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!.Trim()));
-        return string.IsNullOrWhiteSpace(label) || visible.Contains(label.Trim(), StringComparison.CurrentCultureIgnoreCase)
-            ? visible
-            : $"{visible}, {label.Trim()}";
-    }
 
     /// <summary>Opens the popover and moves focus into it. No-op when disabled or already open.</summary>
     public async Task OpenAsync()
@@ -152,7 +144,7 @@ public partial class OdsPopupMenu
 
     /// <summary>
     /// Closes the popover. <paramref name="restoreFocus"/> sends focus back to the trigger — pass
-    /// false only when the keystroke that closed it (Tab) is itself moving focus on. Closing a closed
+    /// false only when the caller already has focus where it belongs (a click on the trigger). Closing a closed
     /// popover changes nothing, but still restores focus when asked.
     /// </summary>
     public async Task CloseAsync(bool restoreFocus = true)
@@ -175,7 +167,7 @@ public partial class OdsPopupMenu
 
     /// <summary>
     /// The single-choice rows' keydown: ↑/↓/Home/End rove (clamping at the ends rather than
-    /// wrapping) and Tab closes behind itself. Enter and Space are the row button's own activation;
+    /// wrapping) and Tab closes it, returning focus to the trigger. Enter and Space are the row button's own activation;
     /// Esc is the panel's. Returns whether the key was handled.
     /// </summary>
     public async Task<bool> RowKeyDownAsync(KeyboardEventArgs e, int index)
@@ -195,9 +187,12 @@ public partial class OdsPopupMenu
                 await FocusRowAsync(RowCount - 1);
                 return true;
             case "Tab":
-                // The rows are out of the tab order, so Tab is leaving the list — close behind it
-                // rather than stranding an open popover over the form.
-                await CloseAsync(restoreFocus: false);
+                // The rows are out of the tab order, so Tab (or Shift+Tab) is leaving the list. The
+                // popover is portaled to the end of the document, so the browser's own Tab from here
+                // lands wherever the DOM puts it next (in a modal, its close button; Shift+Tab,
+                // <body>). Close and continue from the trigger's place in the page order instead
+                // (WCAG 2.4.3).
+                await CloseAsync(restoreFocus: true);
                 return true;
             case "Escape":
                 // Handled by the panel this row bubbles to; claimed here so a consumer's own
@@ -250,6 +245,12 @@ public partial class OdsPopupMenu
         e.Key == "Escape" ? CloseAsync(restoreFocus: true) : Task.CompletedTask;
 
     /// <summary>
+    /// Panel mode: Tab went past the last control or Shift+Tab before the first — the browser moved
+    /// focus onto a sentinel. Close, and continue from the trigger's place in the page order.
+    /// </summary>
+    private Task OnSentinelFocusAsync(FocusEventArgs e) => CloseAsync(restoreFocus: true);
+
+    /// <summary>
     /// MudOverlay's click-away. Whatever had focus inside the popover is about to unmount, so hand it
     /// back to the trigger rather than letting it fall to &lt;body&gt;.
     /// </summary>
@@ -265,29 +266,31 @@ public partial class OdsPopupMenu
         }
         _focusInOnRender = false;
 
-        if (SingleChoice)
+        // All three go through odsFocusInPopover, which waits for MudBlazor to place the popover:
+        // focusing into it while it still sits at top:-9999px scrolls the whole page to the top.
+        if (SingleChoice && RowId is not null)
         {
             // Open onto the current choice, not the top of the list — the same place the check
             // glyph puts a sighted user's eye.
-            await FocusRowAsync(SelectedRow >= 0 ? SelectedRow : 0);
+            await InvokeJsAsync("odsFocusInPopover", RowId(Math.Clamp(SelectedRow >= 0 ? SelectedRow : 0, 0, RowCount - 1)), false);
         }
         else if (!string.IsNullOrEmpty(FocusOnOpenId))
         {
-            await FocusByIdAsync(FocusOnOpenId);
+            await InvokeJsAsync("odsFocusInPopover", FocusOnOpenId, false);
         }
         else
         {
-            await InvokeJsAsync("odsFocusFirstIn", PanelId);
+            await InvokeJsAsync("odsFocusInPopover", PanelId, true);
         }
     }
 
     private Task FocusByIdAsync(string id) => InvokeJsAsync("odsFocusById", id);
 
-    private async Task InvokeJsAsync(string identifier, string id)
+    private async Task InvokeJsAsync(string identifier, params object[] args)
     {
         try
         {
-            await Js.InvokeVoidAsync(identifier, id);
+            await Js.InvokeVoidAsync(identifier, args);
         }
         catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or TaskCanceledException)
         {

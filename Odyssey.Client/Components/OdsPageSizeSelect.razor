@@ -101,9 +101,9 @@
     private string RowId(int index) => $"{_idPrefix}-opt-{index}";
 
     // Starts with the visible "Show 25 …" so the spoken name matches the label (WCAG 2.5.3).
-    private string AccessibleName => OdsPopupMenu.AccessibleName(Label, Prefix, OdsPageSizes.Format(Value), Suffix);
+    private string AccessibleName => OdsPopupMenuText.AccessibleName(Label, Prefix, OdsPageSizes.Format(Value), Suffix);
 
-    private int SelectedIndex => OdsPopupMenu.IndexOf(Options, o => o == Value);
+    private int SelectedIndex => OdsPopupMenuText.IndexOf(Options, o => o == Value);
 
     // The rows are not MudMenuItems, so nothing closes the popover for us: close (restoring focus
     // to the trigger) whether or not the value changed.

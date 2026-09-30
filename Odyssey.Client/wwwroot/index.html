@@ -108,16 +108,27 @@
             const el = document.getElementById(elementId);
             if (el) el.focus();
         };
-        window.odsFocusFirstIn = function (elementId) {
-            // Move focus to the first focusable control inside an element — OdsPopupMenu's panel on
-            // open (issue #255), so a portaled checkbox or search popover is reachable from the
-            // keyboard. Falls back to the element itself when it holds nothing focusable.
-            const host = document.getElementById(elementId);
-            if (!host) return;
-            const el = host.querySelector('a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])');
-            if (el) { el.focus(); return; }
-            if (!host.hasAttribute('tabindex')) host.setAttribute('tabindex', '-1');
-            host.focus();
+        window.odsFocusInPopover = function (elementId, first) {
+            // Move focus into a freshly opened OdsPopupMenu panel (issue #255): the element with this
+            // id, or — when `first` — the first focusable control inside it (the Tab sentinels are
+            // skipped: focusable, but not controls). A MudPopover renders at top:-9999px until its
+            // JS places it, and focusing anything in it before then scrolls the page to the top, so
+            // this waits (up to ~30 frames) for the popover to be placed first.
+            const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]):not([data-popmenu-sentinel])';
+            let frames = 0;
+            const attempt = () => {
+                const host = document.getElementById(elementId);
+                if (!host) return;
+                const popover = host.closest('.mud-popover');
+                const placed = !popover || popover.getBoundingClientRect().top > -1000;
+                if (!placed && frames++ < 30) { requestAnimationFrame(attempt); return; }
+                if (!first) { host.focus(); return; }
+                const el = host.querySelector(FOCUSABLE);
+                if (el) { el.focus(); return; }
+                if (!host.hasAttribute('tabindex')) host.setAttribute('tabindex', '-1');
+                host.focus();
+            };
+            requestAnimationFrame(attempt);
         };
         window.odsSetAttr = function (id, name, value) {
             // Set/remove an attribute on an element by id — used to associate a control (e.g. a

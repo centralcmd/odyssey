@@ -20,13 +20,13 @@ namespace Odyssey.Client.Tests;
 /// it AND moves focus in; a second click closes it; Esc inside, or on the trigger while open, closes
 /// it and returns focus to the trigger; a click outside closes it and returns focus. Single-choice
 /// hosts additionally rove their rows. Focus is observed through the JS interop that moves it
-/// (<c>odsFocusById</c> / <c>odsFocusFirstIn</c>), which is the only thing bUnit can see — a browser
+/// (<c>odsFocusById</c> / <c>odsFocusInPopover</c>), which is the only thing bUnit can see — a browser
 /// run is what observes <c>document.activeElement</c>.
 /// </para>
 /// </summary>
 public class OdsPopupMenuKeyboardTests
 {
-    private static readonly string[] FocusCalls = ["odsFocusById", "odsFocusFirstIn"];
+    private static readonly string[] FocusCalls = ["odsFocusById", "odsFocusInPopover"];
 
     /// <summary>Every select-style host — OdsMenu is MudMenu's own activator and is covered by MudBlazor.</summary>
     public static TheoryData<string> Hosts =>
@@ -87,15 +87,18 @@ public class OdsPopupMenuKeyboardTests
     private static void AssertFocusMovedIn(BunitContext ctx, IRenderedComponent<IComponent> cut, string host)
     {
         var panel = Panel(cut, host);
-        var (identifier, target) = LastFocus(ctx);
-        if (identifier == "odsFocusFirstIn")
+        var call = ctx.JSInterop.Invocations.Last(i => FocusCalls.Contains(i.Identifier));
+        // Opening focuses through odsFocusInPopover, which waits for the popover to be placed.
+        Assert.Equal("odsFocusInPopover", call.Identifier);
+        var target = call.Arguments[0] as string;
+        if (call.Arguments[1] is true)
         {
+            // "The panel's first focusable control".
             Assert.Equal(panel.Id, target);
             Assert.NotNull(panel.QuerySelector("button:not([disabled]), input:not([disabled])"));
         }
         else
         {
-            Assert.Equal("odsFocusById", identifier);
             Assert.NotNull(panel.QuerySelector($"#{target}"));
         }
     }
@@ -227,7 +230,7 @@ public class OdsPopupMenuKeyboardTests
         var rows = Panel(cut, host).QuerySelectorAll("[role='menuitemradio']");
         Assert.NotEmpty(rows);
         var selected = rows.Single(r => r.GetAttribute("aria-checked") == "true");
-        Assert.Equal(("odsFocusById", selected.Id), LastFocus(ctx));
+        Assert.Equal(("odsFocusInPopover", selected.Id), LastFocus(ctx));
     }
 
     [Theory]
@@ -253,19 +256,42 @@ public class OdsPopupMenuKeyboardTests
         Assert.Equal(ids[0], LastFocus(ctx).Target);
     }
 
-    /// <summary>Tab leaves the list: it closes behind itself and does not pull focus back.</summary>
+    /// <summary>
+    /// Tab or Shift+Tab leaves the list: it closes and focus continues from the trigger. Left to the
+    /// browser, Tab from a portaled row lands on whatever the DOM puts next (a modal's close button)
+    /// and Shift+Tab on the body — both seen in a live Chromium run.
+    /// </summary>
     [Theory]
     [MemberData(nameof(SingleChoiceHosts))]
-    public void Tab_from_a_row_closes_without_pulling_focus_back(string host)
+    public void Tab_or_shift_tab_from_a_row_closes_and_returns_focus(string host)
     {
-        var (ctx, cut) = Render(host);
-        Trigger(cut, host).Click();
-        var before = FocusCount(ctx);
+        foreach (var shift in new[] { false, true })
+        {
+            var (ctx, cut) = Render(host);
+            Trigger(cut, host).Click();
 
-        Panel(cut, host).QuerySelector("[role='menuitemradio']")!.KeyDown(new KeyboardEventArgs { Key = "Tab" });
+            Panel(cut, host).QuerySelector("[role='menuitemradio']")!
+                .KeyDown(new KeyboardEventArgs { Key = "Tab", ShiftKey = shift });
 
-        Assert.False(IsOpen(cut, host));
-        Assert.Equal(before, FocusCount(ctx));
+            Assert.False(IsOpen(cut, host));
+            AssertFocusReturnedToTrigger(ctx, cut, host);
+        }
+    }
+
+    /// <summary>OdsMoneyField's currency list keeps its own roving handler; Tab there does the same.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Tab_from_a_currency_option_closes_and_returns_focus(bool shift)
+    {
+        var (ctx, cut) = Render(nameof(OdsMoneyField));
+        Trigger(cut, nameof(OdsMoneyField)).Click();
+
+        Panel(cut, nameof(OdsMoneyField)).QuerySelector("[role='option']")!
+            .KeyDown(new KeyboardEventArgs { Key = "Tab", ShiftKey = shift });
+
+        Assert.False(IsOpen(cut, nameof(OdsMoneyField)));
+        AssertFocusReturnedToTrigger(ctx, cut, nameof(OdsMoneyField));
     }
 
     [Theory]
@@ -295,6 +321,72 @@ public class OdsPopupMenuKeyboardTests
         Panel(cut, host).KeyDown(new KeyboardEventArgs { Key = "Tab" });
 
         Assert.True(IsOpen(cut, host));
+    }
+
+    private const string Tabbable =
+        "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+
+    /// <summary>
+    /// The panel's tab order is bracketed by the two sentinels, with the real controls between: the
+    /// browser's own Tab from the last control (Done, Clear, a checkbox) lands on the end sentinel,
+    /// and Shift+Tab from the first lands on the start one.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PanelHosts))]
+    public void A_panel_tab_order_is_bracketed_by_the_sentinels(string host)
+    {
+        var (_, cut) = Render(host);
+        Trigger(cut, host).Click();
+
+        var stops = Panel(cut, host).QuerySelectorAll(Tabbable).ToList();
+
+        Assert.True(stops.Count >= 3, "a real control between the sentinels");
+        Assert.Equal("start", stops[0].GetAttribute("data-popmenu-sentinel"));
+        Assert.Equal("end", stops[^1].GetAttribute("data-popmenu-sentinel"));
+        Assert.All(stops.Skip(1).SkipLast(1), c => Assert.False(c.HasAttribute("data-popmenu-sentinel")));
+    }
+
+    /// <summary>
+    /// Tab past the last control must not leave the portaled panel for the end of the page with the
+    /// popup still open (WCAG 2.4.3): it closes and focus continues from the trigger.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PanelHosts))]
+    public void Tab_past_the_last_control_closes_the_panel_and_returns_focus(string host)
+    {
+        var (ctx, cut) = Render(host);
+        Trigger(cut, host).Click();
+
+        Panel(cut, host).QuerySelector("[data-popmenu-sentinel='end']")!.Focus();
+
+        Assert.False(IsOpen(cut, host));
+        Assert.Empty(cut.FindAll(".mud-popover-open"));
+        AssertFocusReturnedToTrigger(ctx, cut, host);
+    }
+
+    [Theory]
+    [MemberData(nameof(PanelHosts))]
+    public void Shift_tab_before_the_first_control_closes_the_panel_and_returns_focus(string host)
+    {
+        var (ctx, cut) = Render(host);
+        Trigger(cut, host).Click();
+
+        Panel(cut, host).QuerySelector("[data-popmenu-sentinel='start']")!.Focus();
+
+        Assert.False(IsOpen(cut, host));
+        AssertFocusReturnedToTrigger(ctx, cut, host);
+    }
+
+    /// <summary>A single-choice list has no sentinels: its rows are out of the tab order and Tab from
+    /// a row already closes it behind itself.</summary>
+    [Theory]
+    [MemberData(nameof(SingleChoiceHosts))]
+    public void A_single_choice_list_has_no_tab_sentinels(string host)
+    {
+        var (_, cut) = Render(host);
+        Trigger(cut, host).Click();
+
+        Assert.Empty(Panel(cut, host).QuerySelectorAll("[data-popmenu-sentinel]"));
     }
 
     // ── OdsPopupMenu's own API ──────────────────────────────────────────────────────────────
@@ -401,7 +493,8 @@ public class OdsPopupMenuKeyboardTests
 
         cut.Find("#probe").Click();
 
-        Assert.Equal(("odsFocusFirstIn", "probe-panel"), LastFocus(ctx));
+        Assert.Equal(("odsFocusInPopover", "probe-panel"), LastFocus(ctx));
+        Assert.Equal(true, ctx.JSInterop.Invocations["odsFocusInPopover"].Last().Arguments[1]);
         Assert.Equal("dialog", cut.Find("#probe-panel").GetAttribute("role"));
         Assert.Equal("dialog", cut.Find("#probe").GetAttribute("aria-haspopup"));
     }
@@ -412,5 +505,5 @@ public class OdsPopupMenuKeyboardTests
     [InlineData("View", new[] { "View", "Board" }, "View Board")]
     [InlineData("currency", new[] { "NOK" }, "NOK, currency")]
     public void The_accessible_name_starts_with_the_visible_text(string? label, string[] visible, string expected) =>
-        Assert.Equal(expected, OdsPopupMenu.AccessibleName(label, visible));
+        Assert.Equal(expected, OdsPopupMenuText.AccessibleName(label, visible));
 }

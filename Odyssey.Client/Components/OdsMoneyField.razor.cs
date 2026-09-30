@@ -212,7 +212,7 @@ public partial class OdsMoneyField
 
     // Starts with the visible code so the spoken name matches the label (WCAG 2.5.3).
     private string CurrencyAriaLabel =>
-        string.IsNullOrEmpty(Currency) ? "Currency" : OdsPopupMenu.AccessibleName("currency", Currency);
+        string.IsNullOrEmpty(Currency) ? "Currency" : OdsPopupMenuText.AccessibleName("currency", Currency);
 
     private IReadOnlyList<OdsOption> Shown
     {
@@ -357,7 +357,7 @@ public partial class OdsMoneyField
         get
         {
             if (Searchable) return SearchId;
-            var index = OdsPopupMenu.IndexOf(Shown, o => string.Equals(o.Value, Currency, StringComparison.OrdinalIgnoreCase));
+            var index = OdsPopupMenuText.IndexOf(Shown, o => string.Equals(o.Value, Currency, StringComparison.OrdinalIgnoreCase));
             return OptionId(Math.Max(index, 0));
         }
     }
@@ -374,7 +374,9 @@ public partial class OdsMoneyField
                 if (first is not null) await PickAsync(first.Value);
                 break;
             case "Tab":
-                if (_popup is not null) await _popup.CloseAsync(restoreFocus: false);
+                // The options are out of the tab order, so Tab leaves the portaled popover: close it
+                // and continue from the trigger rather than wherever the DOM puts focus next.
+                if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
                 break;
         }
     }
@@ -400,9 +402,9 @@ public partial class OdsMoneyField
                 await FocusAsync(OptionId(Shown.Count - 1));
                 break;
             case "Tab":
-                // The options are out of the tab order, so Tab is leaving the list — close behind it
-                // rather than stranding an open popover over the form.
-                if (_popup is not null) await _popup.CloseAsync(restoreFocus: false);
+                // The options are out of the tab order, so Tab is leaving the portaled list — close it
+                // and continue from the trigger rather than wherever the DOM puts focus next.
+                if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
                 break;
         }
     }

@@ -128,6 +128,13 @@ public class OdsTypeSelectListboxTests
         cut.Find($"#{id}").Click();
     }
 
+    /// <summary>Where opening sent focus: OdsPopupMenu's odsFocusInPopover, which waits for the
+    /// popover to be placed so focusing into it cannot scroll the page to the top.</summary>
+    private static string? OpenFocusTarget(BunitContext ctx) =>
+        ctx.JSInterop.Invocations["odsFocusInPopover"]
+            .Select(invocation => invocation.Arguments[0] as string)
+            .LastOrDefault();
+
     private static string? LastFocusTarget(BunitContext ctx) =>
         ctx.JSInterop.Invocations["odsFocusById"]
             .Select(invocation => invocation.Arguments[0] as string)
@@ -259,7 +266,7 @@ public class OdsTypeSelectListboxTests
         var cut = RenderOpen(ctx, value: "Switchboard");
 
         var id = cut.Find("[role='menuitemradio'][aria-checked='true']").Id;
-        Assert.Equal(id, LastFocusTarget(ctx));
+        Assert.Equal(id, OpenFocusTarget(ctx));
     }
 
     [Fact]
@@ -268,7 +275,7 @@ public class OdsTypeSelectListboxTests
         var ctx = NewContext();
         var cut = RenderOpen(ctx, value: null);
 
-        Assert.Equal(cut.FindAll("[role='menuitemradio']")[0].Id, LastFocusTarget(ctx));
+        Assert.Equal(cut.FindAll("[role='menuitemradio']")[0].Id, OpenFocusTarget(ctx));
     }
 
     [Theory]
@@ -350,19 +357,21 @@ public class OdsTypeSelectListboxTests
 
     /// <summary>
     /// The options are out of the tab order, so Tab is leaving the list — it must not strand an open
-    /// popover over the form. Focus is left alone: Tab's own default is what moves it on.
+    /// popover over the form. The list is portaled to the end of the document, so the browser's own
+    /// Tab would land wherever the DOM puts it next (a modal's close button; for Shift+Tab, the
+    /// body — seen in a live browser run, issue #255): focus returns to the trigger instead.
     /// </summary>
     [Fact]
-    public void Tab_closes_the_list_behind_itself_without_pulling_focus_back()
+    public void Tab_closes_the_list_and_returns_focus_to_the_trigger()
     {
         var ctx = NewContext();
         var cut = RenderOpen(ctx);
 
-        var before = LastFocusTarget(ctx);
+        var triggerId = cut.Find("button.odc-select-trigger").Id;
         Press(cut, OptionIds(cut)[1], "Tab");
 
         Assert.Empty(OptionIds(cut));
-        Assert.Equal(before, LastFocusTarget(ctx));
+        Assert.Equal(triggerId, LastFocusTarget(ctx));
     }
 
     [Fact]

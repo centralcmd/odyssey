@@ -319,8 +319,10 @@ public class NestedInteractiveControlTests
         }
         else
         {
-            // A dialog is named — by the trigger, or its own label.
+            // A dialog is named — by the trigger, or its own label — exactly once: no second
+            // labelled group inside it repeating the name.
             Assert.True(popup.HasAttribute("aria-labelledby") || popup.HasAttribute("aria-label"));
+            Assert.Empty(popup.QuerySelectorAll("[role='group'][aria-label], [role='group'][aria-labelledby]"));
         }
         Assert.Empty(cut.FindAll("[role='menu'] [role='dialog'], [role='menu'] input"));
     }

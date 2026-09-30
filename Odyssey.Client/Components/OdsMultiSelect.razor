@@ -25,6 +25,7 @@
               AriaDescribedBy="@DescribedBy"
               AnchorOrigin="@Anchor"
               TransformOrigin="@Transform"
+              PanelLabel="@Label"
               PopoverClass="odc-ms-pop-paper"
               ListClass="pa-0"
               @attributes="UserAttributes">
@@ -45,7 +46,7 @@
         <span class="material-icons odc-ms-chevron" aria-hidden="true">expand_more</span>
     </TriggerContent>
     <ChildContent>
-        <div class="odc-ms-pop @AlignClass" role="group" aria-label="@Label">
+        <div class="odc-ms-pop @AlignClass">
             @foreach (var option in Options)
             {
                 <label class="odc-ms-opt odc-check">

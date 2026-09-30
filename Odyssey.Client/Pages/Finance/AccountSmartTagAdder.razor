@@ -18,6 +18,7 @@
               TriggerClass="@(_open ? "odc-smarttags-add open" : "odc-smarttags-add")"
               AnchorOrigin="Origin.BottomLeft"
               TransformOrigin="Origin.TopLeft"
+              PanelLabel="@GroupLabel"
               PopoverClass="odc-ms-pop-paper"
               ListClass="pa-0"
               OpenChanged="@(open => _open = open)">
@@ -26,11 +27,12 @@
         <span>@Label</span>
     </TriggerContent>
     <ChildContent>
-        @* A labelled GROUP of checkboxes — not a listbox: these are real <input type="checkbox">
-           rows reached by Tab, with no roving tabindex and no arrow-key handling, so
-           role="listbox"/"option" would describe a widget that is not here (WCAG 1.3.1, 4.1.2).
-           The same correction OdsTagMultiSelect already carries over an identical structure. *@
-        <div class="odc-smarttags-pop" role="group" aria-label="@GroupLabel">
+        @* Checkboxes in OdsPopupMenu's role="dialog" panel, named by GroupLabel (PanelLabel) — not a
+           listbox: these are real <input type="checkbox"> rows reached by Tab, with no roving
+           tabindex and no arrow-key handling, so role="listbox"/"option" would describe a widget
+           that is not here (WCAG 1.3.1, 4.1.2). No inner labelled role="group": the panel is the one
+           named container. The same structure as OdsTagMultiSelect. *@
+        <div class="odc-smarttags-pop">
             <div class="odc-smarttags-search">
                 <span class="material-icons" aria-hidden="true">search</span>
                 <input value="@_query"

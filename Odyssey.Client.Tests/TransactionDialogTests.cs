@@ -298,7 +298,7 @@ public sealed class TransactionDialogTests : IAsyncLifetime
         cut.Render();
 
         var chosen = cut.Find("[role='menuitemradio'][aria-checked='true']");
-        Assert.Equal(chosen.Id, ctx.JSInterop.Invocations["odsFocusById"].Last().Arguments[0]);
+        Assert.Equal(chosen.Id, ctx.JSInterop.Invocations["odsFocusInPopover"].Last().Arguments[0]);
 
         chosen.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
         cut.Render();

@@ -177,7 +177,7 @@
 
     private string RowId(int index) => $"{FieldId}-opt-{index}";
 
-    private int SelectedIndex => _field is { } current ? OdsPopupMenu.IndexOf(Fields, f => f.Key == current.Key) : -1;
+    private int SelectedIndex => _field is { } current ? OdsPopupMenuText.IndexOf(Fields, f => f.Key == current.Key) : -1;
 
     // The rows are not MudMenuItems, so nothing closes the popover for us.
     private async Task PickField(OdsSortField<TRow> option)
