@@ -28,6 +28,7 @@ public class AccountController : ControllerBase
     private readonly TimeProvider timeProvider;
     private readonly IUserDisplayNameResolver displayNames;
     private readonly ContractService contractService;
+    private readonly IAuthorizationService authorizationService;
 
     public AccountController(
         ILogger<AccountController> logger,
@@ -38,7 +39,8 @@ public class AccountController : ControllerBase
         NetWorthHistoryService netWorthHistoryService,
         TimeProvider timeProvider,
         IUserDisplayNameResolver displayNames,
-        ContractService contractService)
+        ContractService contractService,
+        IAuthorizationService authorizationService)
     {
         this.logger = logger;
         this.accountService = accountService;
@@ -49,6 +51,7 @@ public class AccountController : ControllerBase
         this.timeProvider = timeProvider;
         this.displayNames = displayNames;
         this.contractService = contractService;
+        this.authorizationService = authorizationService;
     }
 
     /// <summary>
@@ -231,24 +234,42 @@ public class AccountController : ControllerBase
     [Authorize(Policy = PermissionClaims.AccountsUpdate)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Update the details for an account.",
-        Description = @"Update the details for an account. If the account ID does not exist, a new account is 
-                        created based on the provided details and the url for the new account is returned in the 
-                        location header.")]
+        Description = @"Update the details for an account. If the account ID does not exist, the account is
+                        created UNDER THAT ID and 201 is returned with its url in the location header, so a
+                        retried PUT updates the same row rather than creating a second one. Creating needs
+                        accounts.create in addition to accounts.update; without it an unknown ID is a 403.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true, 
             Description = @"The ID for the account to update.")] Guid id, 
         [FromBody] [SwaggerParameter("NewAccount", Required = true, 
             Description = @"The account with the updated values.")] NewAccount newAccount, CancellationToken cancellationToken = default)
     {
-        // Documented upsert: an unknown id creates the account via Post, so this returns 201 with a
-        // Location pointing at the newly-generated id (not the route id). Post and Put therefore share
-        // the same NewAccount body contract and must keep their validation in lockstep.
+        // Documented upsert (issue #239). The create half is authorized HERE, explicitly: the action's
+        // [Authorize] names accounts.update only, and calling Post as a method would never run Post's
+        // accounts.create policy — the filter pipeline does not see a direct call. The row is created
+        // under the route id, so a retry after a lost 201 is an update, not a duplicate. Post and Put
+        // share the NewAccount body contract and must keep their validation in lockstep.
         var account = await accountService.Update(id, newAccount, cancellationToken);
-        return account is null ? await Post(newAccount, cancellationToken) : NoContent();
+        if (account is not null)
+        {
+            return NoContent();
+        }
+
+        var mayCreate = await authorizationService.AuthorizeAsync(User, PermissionClaims.AccountsCreate);
+        if (!mayCreate.Succeeded)
+        {
+            return this.ForbiddenProblem(
+                $"Account ID {id} not found, and creating it requires the {PermissionClaims.AccountsCreate} permission.");
+        }
+
+        var created = await accountService.Create(newAccount, id, cancellationToken);
+        return CreatedAtRoute("GetAccount", new { id = created.AccountId }, "");
     }
     
     [HttpDelete("{id}", Name = "DeleteAccount")]

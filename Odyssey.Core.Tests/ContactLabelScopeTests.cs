@@ -198,9 +198,10 @@ public class ContactLabelScopeTests
     /// <c>contacts.read</c>. No shipped role is in that position — and this pins it, so a future role
     /// edit that creates one fails here rather than quietly widening the disclosure (§10.5).
     ///
-    /// <para>The same test pins §10.10: <c>PUT /api/contacts/{id}</c> upserts by invoking <c>Post</c> as
-    /// a direct method call, so its <c>contacts.create</c> policy never re-runs — a role holding update
-    /// without create would hold an ungated creation primitive.</para>
+    /// <para>The same test pins §10.10, which is now defence in depth: <c>PUT /api/contacts/{id}</c> used
+    /// to upsert by invoking <c>Post</c> as a direct method call, so its <c>contacts.create</c> policy never
+    /// ran and a role holding update without create held an ungated creation primitive. Issue #239 made
+    /// that <c>PUT</c> a <c>404</c> on an unknown id; the pin keeps the roles consistent regardless.</para>
     /// </summary>
     [Theory]
     [InlineData(nameof(RolePermissions.AdminClaims))]

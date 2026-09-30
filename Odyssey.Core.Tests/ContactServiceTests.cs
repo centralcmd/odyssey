@@ -350,7 +350,7 @@ public class ContactServiceTests
         Assert.True(after > before, $"expected UpdatedAt to advance past {before:o}, got {after:o}");
     }
 
-    // ── PUT-as-upsert cross-field validation (architect finding #6) ───────────
+    // ── PUT cross-field validation (architect finding #6) ───────────
 
     [Fact]
     public async Task Update_WithMismatchedTypeAndDetails_Throws()

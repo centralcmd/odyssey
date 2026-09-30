@@ -38,7 +38,7 @@ public sealed record NewContact : IValidatableObject
 
     /// <summary>
     /// Cross-field rule (§9): exactly one details sub-object must be populated, matching
-    /// <see cref="Type"/>. Runs identically on the POST and PUT-as-upsert-create paths via
+    /// <see cref="Type"/>. Runs identically on the POST and PUT paths via
     /// <c>[ApiController]</c> model validation (architect finding #6); the service re-checks it for
     /// direct (non-HTTP) callers.
     /// </summary>

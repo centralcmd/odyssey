@@ -97,15 +97,14 @@ public class BudgetController : ControllerBase
 
     [HttpPut("{id}", Name = "PutBudget")]
     [Authorize(Policy = PermissionClaims.BudgetsUpdate)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Update the details for a budget.",
-        Description = @"Update the details for a budget. If the budget ID does not exist, a new budget is 
-                        created based on the provided details and the url for the new budget is returned in the 
-                        location header.")]
+        Description = @"Update the details for a budget. Not an upsert: an unknown ID is a 404 and
+                        nothing is created. Use POST to create.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the budget to update.")] Guid id,
@@ -113,7 +112,9 @@ public class BudgetController : ControllerBase
             Description = @"The budget with the updated values.")] NewBudget newBudget, CancellationToken cancellationToken = default)
     {
         var budget = await budgetService.Update(id, newBudget, cancellationToken);
-        return budget is null ? await Post(newBudget, cancellationToken) : NoContent();
+        return budget is null
+            ? this.NotFoundProblem($"Budget ID {id} not found.")
+            : NoContent();
     }
 
     [HttpDelete("{id}", Name = "DeleteBudget")]

@@ -126,10 +126,14 @@ public class ContactController : ControllerBase
 
     [HttpPut("{id}", Name = "PutContact")]
     [Authorize(Policy = PermissionClaims.ContactsUpdate)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Update the details for a contact.",
+        Description = @"Update the details for a contact. Not an upsert: an unknown ID is a 404 and
+                        nothing is created. Use POST to create.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the contact to update.")] Guid id,
@@ -144,7 +148,7 @@ public class ContactController : ControllerBase
         var contact = await contactService.Update(id, newContact, cancellationToken);
         if (contact is null)
         {
-            return await Post(newContact, cancellationToken);
+            return this.NotFoundProblem($"Contact ID {id} not found.");
         }
 
         var after = contact.PersonDetails?.DateOfDeath;
