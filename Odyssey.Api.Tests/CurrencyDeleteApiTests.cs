@@ -73,6 +73,19 @@ public class CurrencyDeleteApiTests
         Assert.False(await CurrencyExistsAsync(factory, "NOK"));
     }
 
+    [Fact]
+    public async Task DeletingWithoutTheDeleteClaim_ReturnsForbidden_AndKeepsTheCurrency()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.CurrenciesRead, PermissionClaims.CurrenciesUpdate]);
+        await EnsureCreatedAsync(factory);
+        using var client = factory.CreateClient();
+
+        var response = await client.DeleteAsync("/api/currencies/NOK");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.True(await CurrencyExistsAsync(factory, "NOK"));
+    }
+
     private static async Task SeedAsync(ApiFactory factory, Action<OdysseyContext> seed)
     {
         using var scope = factory.Services.CreateScope();

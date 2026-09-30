@@ -170,6 +170,26 @@ public class CurrencyServiceTests
         Assert.NotNull(await service.Get("NOK"));
     }
 
+    /// <summary>Both ends of a rate pin a currency: the From side counts as much as the To side.</summary>
+    [Fact]
+    public async Task Delete_ACurrencyOnlyOnTheFromSideOfARate_ThrowsConflict()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new CurrencyService(context);
+        await CreateNokAsync(service);
+
+        context.ExchangeRates.Add(new Context.ExchangeRate
+        {
+            FromCurrencyCode = "NOK", ToCurrencyCode = "USD", Rate = 0.1m, AsOf = DateTime.UtcNow,
+        });
+        await context.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<DomainConflictException>(() => service.Delete("NOK"));
+
+        Assert.Contains("1 exchange rate.", ex.Message, StringComparison.Ordinal);
+        Assert.NotNull(await service.Get("NOK"));
+    }
+
     private static Task<ExistingCurrency> CreateNokAsync(CurrencyService service) =>
         service.Create(new NewCurrency
         {
