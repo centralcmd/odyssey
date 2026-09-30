@@ -37,6 +37,7 @@ public class MoneyBoundsTests
         PermissionClaims.TaxesRead, PermissionClaims.TaxesCreate,
         PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesCreate, PermissionClaims.ExchangeRatesUpdate,
         PermissionClaims.CurrenciesRead,
+        PermissionClaims.FileAnalysisRead, PermissionClaims.FileAnalysisImport,
     ];
 
     private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
@@ -101,8 +102,9 @@ public class MoneyBoundsTests
         foreach (var (entity, property) in AmountColumns)
         {
             var column = ModelProperty(context, entity, property);
-            Assert.True(MoneyBounds.AmountPrecision == column.GetPrecision(), $"{entity.Name}.{property} precision");
-            Assert.True(MoneyBounds.AmountScale == column.GetScale(), $"{entity.Name}.{property} scale");
+            Assert.Equal(
+                $"{entity.Name}.{property} decimal({MoneyBounds.AmountPrecision},{MoneyBounds.AmountScale})",
+                $"{entity.Name}.{property} decimal({column.GetPrecision()},{column.GetScale()})");
         }
     }
 
@@ -113,8 +115,9 @@ public class MoneyBoundsTests
         foreach (var (entity, property) in RateColumns)
         {
             var column = ModelProperty(context, entity, property);
-            Assert.True(MoneyBounds.ExchangeRatePrecision == column.GetPrecision(), $"{entity.Name}.{property} precision");
-            Assert.True(MoneyBounds.ExchangeRateScale == column.GetScale(), $"{entity.Name}.{property} scale");
+            Assert.Equal(
+                $"{entity.Name}.{property} decimal({MoneyBounds.ExchangeRatePrecision},{MoneyBounds.ExchangeRateScale})",
+                $"{entity.Name}.{property} decimal({column.GetPrecision()},{column.GetScale()})");
         }
     }
 
@@ -133,8 +136,8 @@ public class MoneyBoundsTests
             .Where(name => !classified.Contains(name))
             .ToList();
 
-        Assert.True(unclassified.Count == 0,
-            "Decimal columns not classified for issue #240's bounds: " + string.Join(", ", unclassified));
+        // Each entry is a decimal column not yet listed as amount, rate or other (issue #240).
+        Assert.Empty(unclassified);
     }
 
     // The largest magnitude decimal(p,s) holds: 10^(p-s) - 10^-s.
@@ -186,69 +189,154 @@ public class MoneyBoundsTests
 
     // ── The [Range] on every write DTO against the constants ──────────────────
 
-    public static TheoryData<Type, string> AmountDtoProperties => new()
+    // Discovered automatically: every decimal a request body can carry, found by walking every write-side
+    // DTO in Odyssey.Dtos (New*/Update*/Put*/*Update/*Request) and every Odyssey.Dtos type nested inside one. A
+    // positional record's attribute sits on its constructor parameter, so that is read too.
+
+    // The only rate members; every other discovered decimal is a money amount unless listed below.
+    private static readonly HashSet<string> RateMembers = new(StringComparer.Ordinal)
     {
-        { typeof(NewTransaction), nameof(NewTransaction.Amount) },
-        { typeof(NewBudgetItem), nameof(NewBudgetItem.PlannedAmount) },
-        { typeof(NewAccountEstimate), nameof(NewAccountEstimate.Value) },
-        { typeof(NewPropertyEstimate), nameof(NewPropertyEstimate.Value) },
-        { typeof(NewTerm), nameof(NewTerm.Value) },
-        { typeof(NewTaxStatement), nameof(NewTaxStatement.DeclaredTotalAssets) },
-        { typeof(NewTaxStatement), nameof(NewTaxStatement.DeclaredTotalLiabilities) },
-        { typeof(NewTaxStatement), nameof(NewTaxStatement.DeclaredNetWorth) },
-        { typeof(NewTaxStatement), nameof(NewTaxStatement.DeclaredTotalIncome) },
-        { typeof(NewTaxStatement), nameof(NewTaxStatement.AssessedTax) },
-        { typeof(NewTaxStatement), nameof(NewTaxStatement.SettlementAmount) },
-        { typeof(UpdateTaxStatement), nameof(UpdateTaxStatement.DeclaredTotalAssets) },
-        { typeof(UpdateTaxStatement), nameof(UpdateTaxStatement.DeclaredTotalLiabilities) },
-        { typeof(UpdateTaxStatement), nameof(UpdateTaxStatement.DeclaredNetWorth) },
-        { typeof(UpdateTaxStatement), nameof(UpdateTaxStatement.DeclaredTotalIncome) },
-        { typeof(UpdateTaxStatement), nameof(UpdateTaxStatement.AssessedTax) },
-        { typeof(UpdateTaxStatement), nameof(UpdateTaxStatement.SettlementAmount) },
+        $"{nameof(NewExchangeRate)}.{nameof(NewExchangeRate.Rate)}",
+        $"{nameof(UpdateExchangeRate)}.{nameof(UpdateExchangeRate.Rate)}",
     };
 
-    public static TheoryData<Type, string> RateDtoProperties => new()
+    // Write-side decimals that are neither a money amount nor a rate, each with its reason. Anything a
+    // request can carry as a decimal that is not here must name the MoneyBounds [Range].
+    private static readonly Dictionary<string, string> DecimalMembersOutsideMoneyBounds = new(StringComparer.Ordinal)
     {
-        { typeof(NewExchangeRate), nameof(NewExchangeRate.Rate) },
-        { typeof(UpdateExchangeRate), nameof(UpdateExchangeRate.Rate) },
+        [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.LivingAreaSqm)}"] =
+            "An area in square metres, decimal(18,2); bounded by its own [Range(0, 1_000_000)].",
+        [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.PlotAreaSqm)}"] =
+            "An area in square metres, decimal(18,2); bounded by its own [Range(0, 1_000_000)].",
+        [$"{nameof(Odyssey.Dtos.Application.SystemSettingsUpdate)}.{nameof(Odyssey.Dtos.Application.SystemSettingsUpdate.FileAnalysisMatchAutoLinkThreshold)}"] =
+            "A confidence threshold in [0, 1], stored as a setting string; bounded by its own [Range].",
     };
 
-    private static void AssertBound(RangeAttribute? range, string min, string max, string where)
+    private sealed record DecimalMember(string Name, RangeAttribute? Range);
+
+    private static bool IsWriteSideDto(Type type) =>
+        type.Name.StartsWith("New", StringComparison.Ordinal)
+        || type.Name.StartsWith("Update", StringComparison.Ordinal)
+        || type.Name.StartsWith("Put", StringComparison.Ordinal)
+        || type.Name.EndsWith("Update", StringComparison.Ordinal)
+        || type.Name.EndsWith("Request", StringComparison.Ordinal);
+
+    // The Odyssey.Dtos classes a property of this type can hold: itself, or the arguments of a
+    // generic collection, or an array's element type.
+    private static IEnumerable<Type> DtoTypesWithin(Type type, Assembly dtos)
     {
-        Assert.True(range is not null, $"{where} carries no [Range].");
-        Assert.Equal(typeof(decimal), range!.OperandType);
-        Assert.Equal(min, range.Minimum);
-        Assert.Equal(max, range.Maximum);
-        Assert.False(range.MinimumIsExclusive, where);
-        Assert.False(range.MaximumIsExclusive, where);
-        Assert.True(range.ParseLimitsInInvariantCulture, $"{where}: limits must parse invariantly.");
-        Assert.True(range.ConvertValueInInvariantCulture, $"{where}: values must convert invariantly.");
+        if (type.IsArray)
+        {
+            return DtoTypesWithin(type.GetElementType()!, dtos);
+        }
+
+        if (type.IsGenericType)
+        {
+            return type.GetGenericArguments().SelectMany(argument => DtoTypesWithin(argument, dtos));
+        }
+
+        return type.IsClass && type.Assembly == dtos ? [type] : [];
     }
 
-    [Theory]
-    [MemberData(nameof(AmountDtoProperties))]
-    public void AmountDtoProperty_IsBoundedByTheAmountColumn(Type dto, string property)
+    private static IReadOnlyList<DecimalMember> WriteSideDecimalMembers()
     {
-        var range = dto.GetProperty(property)!.GetCustomAttribute<RangeAttribute>();
-        AssertBound(range, MoneyBounds.AmountMin, MoneyBounds.AmountMax, $"{dto.Name}.{property}");
+        var dtos = typeof(MoneyBounds).Assembly;
+        var pending = new Queue<Type>(dtos.GetTypes().Where(t => t.IsClass && !t.IsAbstract && IsWriteSideDto(t)));
+        var seen = new HashSet<Type>();
+        var found = new List<DecimalMember>();
+
+        while (pending.TryDequeue(out var type))
+        {
+            if (!seen.Add(type))
+            {
+                continue;
+            }
+
+            var constructorParameters = type.GetConstructors()
+                .SelectMany(constructor => constructor.GetParameters())
+                .Where(parameter => parameter.Name is not null)
+                .GroupBy(parameter => parameter.Name!, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+
+            foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                // A get-only property is computed, never bound from a body.
+                if (property.SetMethod is not { IsPublic: true })
+                {
+                    continue;
+                }
+
+                var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+                if (propertyType == typeof(decimal))
+                {
+                    var range = property.GetCustomAttribute<RangeAttribute>()
+                        ?? (constructorParameters.TryGetValue(property.Name, out var parameter)
+                            ? parameter.GetCustomAttribute<RangeAttribute>()
+                            : null);
+                    found.Add(new DecimalMember($"{type.Name}.{property.Name}", range));
+                    continue;
+                }
+
+                foreach (var nested in DtoTypesWithin(propertyType, dtos))
+                {
+                    pending.Enqueue(nested);
+                }
+            }
+        }
+
+        return found;
+    }
+
+    private static string Describe(RangeAttribute? range) => range is null
+        ? "no [Range]"
+        : $"[Range({range.OperandType?.Name}, {range.Minimum}, {range.Maximum}, "
+          + $"MinimumIsExclusive={range.MinimumIsExclusive}, MaximumIsExclusive={range.MaximumIsExclusive}, "
+          + $"ParseLimitsInInvariantCulture={range.ParseLimitsInInvariantCulture}, "
+          + $"ConvertValueInInvariantCulture={range.ConvertValueInInvariantCulture})]";
+
+    private static string Expected(string min, string max) => Describe(new RangeAttribute(typeof(decimal), min, max)
+    {
+        ParseLimitsInInvariantCulture = true,
+        ConvertValueInInvariantCulture = true,
+    });
+
+    [Fact]
+    public void EveryWriteSideDecimal_IsBoundedByItsColumn()
+    {
+        var amount = Expected(MoneyBounds.AmountMin, MoneyBounds.AmountMax);
+        var rate = Expected(MoneyBounds.ExchangeRateMin, MoneyBounds.ExchangeRateMax);
+
+        // Each entry names the member, what it should carry and what it carries.
+        var violations = WriteSideDecimalMembers()
+            .Where(member => !DecimalMembersOutsideMoneyBounds.ContainsKey(member.Name))
+            .Select(member => (member.Name, Expected: RateMembers.Contains(member.Name) ? rate : amount, Actual: Describe(member.Range)))
+            .Where(member => member.Expected != member.Actual)
+            .Select(member => $"{member.Name}: expected {member.Expected}, found {member.Actual}")
+            .ToList();
+
+        Assert.Empty(violations);
     }
 
     [Fact]
-    public void ImportCandidateAmountOverride_IsBoundedByTheAmountColumn()
+    public void TheWalk_ReachesTopLevelNestedAndPositionalMembers()
     {
-        // A positional record: MVC validates the constructor parameter's attribute.
-        var parameter = typeof(ImportCandidateRequest).GetConstructors().Single()
-            .GetParameters().Single(p => p.Name == nameof(ImportCandidateRequest.Amount));
-        AssertBound(parameter.GetCustomAttribute<RangeAttribute>(), MoneyBounds.AmountMin, MoneyBounds.AmountMax,
-            $"{nameof(ImportCandidateRequest)}.{nameof(ImportCandidateRequest.Amount)}");
+        var found = WriteSideDecimalMembers().Select(member => member.Name).ToHashSet(StringComparer.Ordinal);
+
+        Assert.Contains($"{nameof(NewTransaction)}.{nameof(NewTransaction.Amount)}", found);
+        // Reached through ImportRequest.Candidates, and bound on the positional constructor parameter.
+        Assert.Contains($"{nameof(ImportCandidateRequest)}.{nameof(ImportCandidateRequest.Amount)}", found);
+        // Reached through NewProperty.RealEstate.
+        Assert.Contains($"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.LivingAreaSqm)}", found);
     }
 
-    [Theory]
-    [MemberData(nameof(RateDtoProperties))]
-    public void RateDtoProperty_IsBoundedByTheRateColumn(Type dto, string property)
+    [Fact]
+    public void EveryListedMember_IsStillAWriteSideDecimal()
     {
-        var range = dto.GetProperty(property)!.GetCustomAttribute<RangeAttribute>();
-        AssertBound(range, MoneyBounds.ExchangeRateMin, MoneyBounds.ExchangeRateMax, $"{dto.Name}.{property}");
+        // A list entry that no longer names a discovered member would exempt nothing and hide a rename.
+        var found = WriteSideDecimalMembers().Select(member => member.Name).ToHashSet(StringComparer.Ordinal);
+        var stale = RateMembers.Concat(DecimalMembersOutsideMoneyBounds.Keys).Where(name => !found.Contains(name)).ToList();
+
+        Assert.Empty(stale);
     }
 
     // ── The attribute's behaviour, including under a comma-decimal culture ────
@@ -412,6 +500,36 @@ public class MoneyBoundsTests
         var response = await client.PostAsJsonAsync("/api/exchange-rates", NewRate(Parse(rate)));
 
         await AssertBadRequestOn(response, nameof(NewExchangeRate.Rate));
+    }
+
+    private static ImportRequest Import(decimal amount) =>
+        new([new ImportCandidateRequest(Guid.NewGuid(), null, null, amount, null)]);
+
+    [Fact]
+    public async Task ImportCandidates_AmountOverridePastTheColumn_Returns400()
+    {
+        await using var factory = new ApiFactory(Claims);
+        using var client = factory.CreateClient();
+
+        // The attribute sits on a positional record's constructor parameter; this proves MVC honours it.
+        var response = await client.PostAsJsonAsync($"/api/file-analysis/{Guid.NewGuid()}/import", Import(1_000_000_000_000m));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.Contains(problem!.Errors.Keys, key => key.EndsWith(nameof(ImportCandidateRequest.Amount), StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task ImportCandidates_AmountOverrideAtTheColumnMax_PassesModelValidation()
+    {
+        await using var factory = new ApiFactory(Claims);
+        using var client = factory.CreateClient();
+
+        // The control for the case above: the same body within bounds gets past model validation and
+        // reaches the service, which answers 503 because file analysis is disabled by default.
+        var response = await client.PostAsJsonAsync($"/api/file-analysis/{Guid.NewGuid()}/import", Import(999_999_999_999.999999m));
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
     [Fact]

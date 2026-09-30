@@ -14,6 +14,12 @@ namespace Odyssey.Dtos;
 /// validation turns them into a <c>400</c> before the service runs.
 /// </para>
 /// <para>
+/// <strong>Only magnitude is validated, never scale.</strong> The limits bound how large a value may be
+/// (and, for a rate, how small); a value inside them carrying more decimal places than the column's
+/// scale is accepted and rounded by the column on write. The scale constants below describe the
+/// column; nothing enforces them on a request.
+/// </para>
+/// <para>
 /// The limits are strings because <c>[Range(typeof(decimal), …)]</c> takes its limits that way — a
 /// <c>decimal</c> is not a valid attribute argument. Every <c>[Range]</c> naming them must set
 /// <c>ParseLimitsInInvariantCulture</c> and <c>ConvertValueInInvariantCulture</c>: the limits carry a
@@ -45,8 +51,10 @@ public static class MoneyBounds
     public const int ExchangeRateScale = 8;
 
     /// <summary>
-    /// The smallest positive rate a <c>decimal(18,8)</c> column holds. Anything smaller is stored as
-    /// zero (or rounded up to this), so it is refused rather than accepted as a different number.
+    /// The smallest positive rate a <c>decimal(18,8)</c> column holds — the floor that keeps a rate from
+    /// being stored as zero. A rate below it is refused. This is a floor on magnitude only: a rate at or
+    /// above it with more than eight decimal places is accepted and rounded by the column to the nearest
+    /// step, like every other value these bounds guard.
     /// </summary>
     public const string ExchangeRateMin = "0.00000001";
 
