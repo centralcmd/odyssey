@@ -232,6 +232,12 @@
   --mud-palette-lines-default:     rgba(199, 208, 224, 0.18);
   --mud-palette-lines-inputs:      rgba(199, 208, 224, 0.28);
   --mud-palette-table-lines:       rgba(199, 208, 224, 0.10);
+  /* Resting boundary of a control whose outline is its only edge (checkbox, radio,
+     input, select / multiselect trigger) — WCAG 1.4.11 needs 3:1, which the 0.28
+     lines-inputs hairline (~2.0:1) misses; keep that for decorative dividers.
+     ink-400: 3.91:1 on surface, 4.12:1 on background. Not ink-300, which is the
+     hover colour (text-secondary). */
+  --control-border:                var(--ink-400);
 
   /* Brand colors */
   --mud-palette-primary:           var(--tide-400);
@@ -424,11 +430,12 @@
   --mud-palette-lines-default:     rgba(14, 21, 37, 0.14);
   --mud-palette-lines-inputs:      rgba(14, 21, 37, 0.28);
   --mud-palette-table-lines:       rgba(14, 21, 37, 0.08);
+  --control-border:                var(--ink-400); /* 4.42:1 on white, 4.27:1 on background */
 
   --mud-palette-primary:           var(--tide-600);
   --mud-palette-primary-darken:    var(--tide-700);
   --mud-palette-primary-lighten:   var(--tide-500);
-  --mud-palette-primary-text:      #FFFFFF;
+  --mud-palette-primary-text:      var(--ink-950); /* 7.84:1 on tide-600; white is 2.49:1 */
 
   --mud-palette-secondary:         var(--sea-600);
   --mud-palette-secondary-text:    #FFFFFF;

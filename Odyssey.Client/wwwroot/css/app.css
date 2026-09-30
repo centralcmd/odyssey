@@ -199,7 +199,8 @@ input:-webkit-autofill:active {
   --brand-text-hover: var(--tide-deep);
   /* Focus indicator — must clear 3:1 against its surface (WCAG 1.4.11). tide-600
      (the light primary fill) is only ~2.5:1 on white, so focus rings step to
-     tide-700 (~4.3:1). Fills keep the primary. */
+     tide-700 (~4.3:1). Fills keep the primary; the text ON a primary fill is
+     ink-950 (PrimaryContrastText, 7.84:1), never white (2.49:1) — issue #254. */
   --focus-ring: var(--tide-700);
   /* Placeholder hint text — AA-contrast (text-secondary level), NOT the 0.38
      disabled alpha, which fails 4.5:1 when a placeholder carries a format hint. */
@@ -218,6 +219,16 @@ input:-webkit-autofill:active {
      light steps to tide-700. Active *text* uses --brand-text (tide-ink light / tide-400 dark). */
   --nav-active: var(--tide-700);
   --nav-active-tint: rgba(20, 184, 166, 0.10); /* subtle tide-600 wash behind the active row */
+  /* Resting boundary of an interactive control whose outline is its only visual
+     edge — checkbox box, text input, select / multiselect / money / date-range
+     trigger (WCAG 1.4.11, issue #254). --mud-palette-lines-inputs is a 0.28-alpha
+     hairline (~1.9:1 light, ~2.0:1 dark) and stays for decorative dividers only.
+     ink-400 is 4.42:1 on the light surface and 4.27:1 on the light background.
+     Hover steps to --mud-palette-text-secondary (ink-500), still distinct. */
+  --control-border: var(--ink-400);
+  /* Text on the error call-to-action fill (coral-700 in light): white is 5.86:1,
+     the dark ink the dark theme uses on coral-500 is only 3.07:1 here. */
+  --error-cta-text: #FFFFFF;
 }
 
 [data-theme='dark'] {
@@ -233,6 +244,10 @@ input:-webkit-autofill:active {
   --tag-text: var(--violet-text);  --violet-text: var(--violet-400);
   --pending-text: var(--amber-500);
   --warning-text: var(--amber-500);
+  /* ink-400 is 3.91:1 on the dark surface and 4.12:1 on the dark background. Not
+     ink-300: that is the hover colour (text-secondary), so the hover would vanish. */
+  --control-border: var(--ink-400);
+  --error-cta-text: #2A0E0E; /* on coral-500: 6.48:1 */
 }
 
 /* ── Derived tints ─────────────────────────────────────────────────────────
@@ -517,7 +532,7 @@ html:not([data-theme='dark']) { --glyph-l: min(l, 0.58); --glyph-text-l: min(l, 
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   width: 100%; cursor: pointer;
   background: var(--mud-palette-background); color: var(--mud-palette-text-primary);
-  border: 1px solid var(--mud-palette-lines-inputs);
+  border: 1px solid var(--control-border);
   border-radius: 4px; padding: 9px 12px;
 }
 .aam-type-trigger:hover { border-color: var(--mud-palette-text-secondary); }

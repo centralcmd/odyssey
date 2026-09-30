@@ -81,7 +81,8 @@ public static class OdysseyTheme
             Primary                  = "#14B8A6", // --tide-600 — darker on light for contrast
             PrimaryDarken            = "#0E8A7C", // --tide-700
             PrimaryLighten           = "#2DD4BF", // --tide-500
-            PrimaryContrastText      = "#FFFFFF",
+            // --ink-950, mirroring dark: white on tide-600 is 2.49:1, ink-950 is 7.84:1 (issue #254).
+            PrimaryContrastText      = "#080C18",
 
             Secondary                = "#0284C7",
             SecondaryDarken          = "#0369A1",
