@@ -63,11 +63,16 @@ public static class GlobalExceptionHandler
                 return WriteAsync(context, StatusCodes.Status409Conflict, ConflictMessage);
 
             // Deleting a row still referenced by a RESTRICT foreign key (e.g. an in-use tag under a
-            // service pre-check race). A referential conflict is a 409, not a 500; the driver text is
-            // not leaked. Services should still pre-check for the common case (a clearer message).
+            // service pre-check race), or writing a row whose referenced parent is gone (e.g. a currency
+            // deleted between a service's existence check and the save, issue #241). A referential
+            // conflict is a 409, not a 500; the driver text is not leaked. Services should still
+            // pre-check for the common case (a clearer message).
             case DbUpdateException dbUpdate
                 when dbUpdate.GetBaseException() is MySqlException
-                { ErrorCode: MySqlErrorCode.RowIsReferenced or MySqlErrorCode.RowIsReferenced2 }:
+                {
+                    ErrorCode: MySqlErrorCode.RowIsReferenced or MySqlErrorCode.RowIsReferenced2
+                        or MySqlErrorCode.NoReferencedRow or MySqlErrorCode.NoReferencedRow2,
+                }:
                 logger.LogWarning(dbUpdate,
                     "Referential conflict on {Method} {Path}.",
                     context.Request.Method, context.Request.Path);

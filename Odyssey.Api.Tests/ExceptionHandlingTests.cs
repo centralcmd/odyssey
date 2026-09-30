@@ -153,13 +153,38 @@ public class ExceptionHandlingTests
     }
 
     // MySqlException has no public constructor; the (MySqlErrorCode, string) overload is internal.
-    private static MySqlException DuplicateKey(string message) =>
+    private static MySqlException DuplicateKey(string message) => MySqlError(MySqlErrorCode.DuplicateKeyEntry, message);
+
+    private static MySqlException MySqlError(MySqlErrorCode code, string message) =>
         (MySqlException)Activator.CreateInstance(
             typeof(MySqlException),
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
             binder: null,
-            args: new object[] { MySqlErrorCode.DuplicateKeyEntry, message },
+            args: new object[] { code, message },
             culture: null)!;
+
+    /// <summary>
+    /// A RESTRICT key refusing a delete (1451/1217), or a write naming a parent that is gone
+    /// (1452/1216 — e.g. a currency deleted between a service's check and the save, issue #241), is a
+    /// referential conflict: 409 with the generic message, never the driver text naming the constraint.
+    /// </summary>
+    [Theory]
+    [InlineData(MySqlErrorCode.RowIsReferenced)]
+    [InlineData(MySqlErrorCode.RowIsReferenced2)]
+    [InlineData(MySqlErrorCode.NoReferencedRow)]
+    [InlineData(MySqlErrorCode.NoReferencedRow2)]
+    public async Task ForeignKeyViolation_MapsToConflict_WithoutLeakingDriverMessage(MySqlErrorCode code)
+    {
+        var mySqlException = MySqlError(code, "a foreign key constraint fails (`FK_secret`)");
+        var context = ContextFor(new DbUpdateException("save failed", mySqlException), out var body);
+
+        await GlobalExceptionHandler.HandleAsync(context);
+
+        Assert.Equal(HttpStatusCode.Conflict, (HttpStatusCode)context.Response.StatusCode);
+        var problem = await ReadProblemAsync(body);
+        Assert.Equal("The request conflicts with existing data.", problem.Detail);
+        Assert.DoesNotContain("FK_secret", JsonSerializer.Serialize(problem));
+    }
 
     [Fact]
     public async Task DuplicateKeyDbUpdateException_MapsToConflict_WithoutLeakingDriverMessage()
