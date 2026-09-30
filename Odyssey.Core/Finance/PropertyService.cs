@@ -572,8 +572,8 @@ public class PropertyService
 
     private void ApplyBaseAndDetails(Property property, NewProperty source, DateTime now)
     {
-        var acquired = NormalizeOptional(source.AcquiredDate);
-        var disposed = NormalizeOptional(source.DisposedDate);
+        var acquired = DateTimeNormalization.NormalizeToUtc(source.AcquiredDate);
+        var disposed = DateTimeNormalization.NormalizeToUtc(source.DisposedDate);
         if (acquired is not null && disposed is not null && disposed < acquired)
         {
             throw new DomainValidationException(
@@ -625,7 +625,7 @@ public class PropertyService
             property.VehicleDetails.Make = details.Make;
             property.VehicleDetails.Model = details.Model;
             property.VehicleDetails.ModelYear = details.ModelYear;
-            property.VehicleDetails.FirstRegisteredDate = NormalizeOptional(details.FirstRegisteredDate);
+            property.VehicleDetails.FirstRegisteredDate = DateTimeNormalization.NormalizeToUtc(details.FirstRegisteredDate);
         }
     }
 
@@ -636,9 +636,6 @@ public class PropertyService
         else if (property.Archived is not null && !requestedArchived)
             property.Archived = null;
     }
-
-    private static DateTime? NormalizeOptional(DateTime? value) =>
-        value is { } v ? DateTimeNormalization.NormalizeToUtc(v) : null;
 
     // Uppercased and whitespace-stripped; an all-whitespace value is stored as null rather than "".
     private static string? NormalizeIdentifier(string? value)

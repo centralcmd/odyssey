@@ -14,15 +14,15 @@ namespace Odyssey.Core.Tests;
 /// </summary>
 public class ClientDateHandlingTests
 {
-    private static readonly DateTime Now = new(2026, 9, 30, 12, 0, 0, DateTimeKind.Utc);
+    internal static readonly DateTime Now = new(2026, 9, 30, 12, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime Opened2019 = new(2019, 3, 1, 0, 0, 0, DateTimeKind.Utc);
 
-    private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
+    internal sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(utcNow);
     }
 
-    private sealed class StubJournalLimits : IJournalLimitsLookup
+    internal sealed class StubJournalLimits : IJournalLimitsLookup
     {
         public Task<JournalLimits> GetAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new JournalLimits(
@@ -38,10 +38,10 @@ public class ClientDateHandlingTests
                 IsDegraded: false));
     }
 
-    private static AccountService NewAccountService(Context.OdysseyContext context) =>
+    internal static AccountService NewAccountService(Context.OdysseyContext context) =>
         new(context, TestContextFactory.EmptyContactLookup(), new FixedTimeProvider(Now));
 
-    private static NewAccount AccountRequest(DateTime? opened, DateTime? closed = null) => new()
+    internal static NewAccount AccountRequest(DateTime? opened, DateTime? closed = null) => new()
     {
         Name = "Checking",
         Description = "Primary",
@@ -102,23 +102,25 @@ public class ClientDateHandlingTests
         Assert.Null(updated!.Closed);
     }
 
+    // Unspecified is re-labelled as UTC with the same ticks; the Local (converting) cases live in
+    // LocalTimeZoneDateHandlingTests, which pins a non-UTC zone so the conversion is observable.
     [Fact]
-    public async Task AccountCreateAndUpdate_NormalizeOpenedAndClosedToUtc()
+    public async Task AccountCreateAndUpdate_LabelUnspecifiedOpenedAndClosedAsUtc()
     {
         await using var context = TestContextFactory.Create();
         var service = NewAccountService(context);
-        var unspecified = new DateTime(2019, 3, 1, 8, 30, 0, DateTimeKind.Unspecified);
-        var local = new DateTime(2024, 6, 15, 18, 45, 0, DateTimeKind.Local);
+        var opened = new DateTime(2019, 3, 1, 8, 30, 0, DateTimeKind.Unspecified);
+        var closed = new DateTime(2024, 6, 15, 18, 45, 0, DateTimeKind.Unspecified);
 
-        var created = await service.Create(AccountRequest(unspecified, closed: local));
+        var created = await service.Create(AccountRequest(opened, closed));
 
-        AssertUtc(DateTime.SpecifyKind(unspecified, DateTimeKind.Utc), created.Opened);
-        AssertUtc(local.ToUniversalTime(), created.Closed);
+        AssertUtc(new DateTime(2019, 3, 1, 8, 30, 0, DateTimeKind.Utc), created.Opened);
+        AssertUtc(new DateTime(2024, 6, 15, 18, 45, 0, DateTimeKind.Utc), created.Closed);
 
-        var updated = await service.Update(created.AccountId, AccountRequest(local, closed: unspecified));
+        var updated = await service.Update(created.AccountId, AccountRequest(closed, opened));
 
-        AssertUtc(local.ToUniversalTime(), updated!.Opened);
-        AssertUtc(DateTime.SpecifyKind(unspecified, DateTimeKind.Utc), updated.Closed);
+        AssertUtc(new DateTime(2024, 6, 15, 18, 45, 0, DateTimeKind.Utc), updated!.Opened);
+        AssertUtc(new DateTime(2019, 3, 1, 8, 30, 0, DateTimeKind.Utc), updated.Closed);
     }
 
     [Fact]
@@ -153,16 +155,36 @@ public class ClientDateHandlingTests
     }
 
     [Fact]
-    public async Task TaxStatementCreateAndUpdate_NormalizeEveryDateToUtc()
+    public async Task TransactionUpdate_LabelsUnspecifiedTimeStampAsUtc()
+    {
+        await using var context = TestContextFactory.Create();
+        var (service, accountId) = await NewTransactionServiceAsync(context);
+        var created = await service.Create(new NewTransaction
+        {
+            Description = "Coffee", Amount = 3, AccountId = accountId,
+            TimeStamp = new DateTime(2021, 7, 4, 9, 0, 0, DateTimeKind.Utc),
+        });
+
+        var updated = await service.Update(created.TransactionId, new NewTransaction
+        {
+            Description = "Coffee", Amount = 3, AccountId = accountId,
+            TimeStamp = new DateTime(2022, 1, 2, 3, 4, 5, DateTimeKind.Unspecified),
+        });
+
+        AssertUtc(new DateTime(2022, 1, 2, 3, 4, 5, DateTimeKind.Utc), updated!.TimeStamp);
+    }
+
+    [Fact]
+    public async Task TaxStatementCreateAndUpdate_LabelEveryUnspecifiedDateAsUtc()
     {
         await using var context = TestContextFactory.Create();
         var service = new TaxStatementService(context, new FixedTimeProvider(Now));
         var start = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
-        var end = new DateTime(2024, 12, 31, 0, 0, 0, DateTimeKind.Local);
-        var settled = new DateTime(2025, 8, 1, 10, 0, 0, DateTimeKind.Local);
+        var end = new DateTime(2024, 12, 31, 0, 0, 0, DateTimeKind.Unspecified);
+        var settled = new DateTime(2025, 8, 1, 10, 0, 0, DateTimeKind.Unspecified);
         var settlementStart = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
         var settlementEnd = new DateTime(2025, 12, 31, 0, 0, 0, DateTimeKind.Unspecified);
-        var filed = new DateTime(2025, 3, 15, 14, 0, 0, DateTimeKind.Local);
+        var filed = new DateTime(2025, 3, 15, 14, 0, 0, DateTimeKind.Unspecified);
         var approved = new DateTime(2025, 6, 1, 9, 0, 0, DateTimeKind.Unspecified);
 
         var created = await service.Create(new NewTaxStatement
@@ -200,11 +222,11 @@ public class ClientDateHandlingTests
         void AssertTaxStatementDates(ExistingTaxStatement s)
         {
             AssertUtc(DateTime.SpecifyKind(start, DateTimeKind.Utc), s.StartDate);
-            AssertUtc(end.ToUniversalTime(), s.EndDate);
-            AssertUtc(settled.ToUniversalTime(), s.SettledAtUtc);
+            AssertUtc(DateTime.SpecifyKind(end, DateTimeKind.Utc), s.EndDate);
+            AssertUtc(DateTime.SpecifyKind(settled, DateTimeKind.Utc), s.SettledAtUtc);
             AssertUtc(DateTime.SpecifyKind(settlementStart, DateTimeKind.Utc), s.SettlementStartDate);
             AssertUtc(DateTime.SpecifyKind(settlementEnd, DateTimeKind.Utc), s.SettlementEndDate);
-            AssertUtc(filed.ToUniversalTime(), s.FiledAtUtc);
+            AssertUtc(DateTime.SpecifyKind(filed, DateTimeKind.Utc), s.FiledAtUtc);
             AssertUtc(DateTime.SpecifyKind(approved, DateTimeKind.Utc), s.TaxOfficeApprovedAtUtc);
         }
     }
@@ -262,7 +284,44 @@ public class ClientDateHandlingTests
         AssertUtc(DateTime.SpecifyKind(until, DateTimeKind.Utc), created.RecurrenceEndDate);
     }
 
-    private static async Task<(TransactionService Service, Guid AccountId)> NewTransactionServiceAsync(
+    [Fact]
+    public async Task RecurrencePatternUpdate_LabelsUnspecifiedTimesAsUtc()
+    {
+        await using var context = TestContextFactory.Create();
+        var calendar = new Context.Calendar { Name = "Personal" };
+        context.Calendars.Add(calendar);
+        await context.SaveChangesAsync();
+        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FixedTimeProvider(Now));
+        var created = await service.Create(new NewRecurrencePattern
+        {
+            CalendarId = calendar.CalendarId,
+            Title = "Standup",
+            StartDateTime = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc),
+            EndDateTime = new DateTime(2026, 10, 1, 9, 15, 0, DateTimeKind.Utc),
+            Frequency = RecurrenceFrequency.Daily,
+            RecurrenceEndDate = new DateTime(2026, 10, 10, 0, 0, 0, DateTimeKind.Utc),
+        }, "user-id");
+
+        var updated = await service.Update(created.RecurrencePatternId, new NewRecurrencePattern
+        {
+            CalendarId = calendar.CalendarId,
+            Title = "Standup",
+            StartDateTime = new DateTime(2026, 10, 2, 10, 0, 0, DateTimeKind.Unspecified),
+            EndDateTime = new DateTime(2026, 10, 2, 10, 30, 0, DateTimeKind.Unspecified),
+            Frequency = RecurrenceFrequency.Daily,
+            RecurrenceEndDate = new DateTime(2026, 10, 12, 0, 0, 0, DateTimeKind.Unspecified),
+        }, "user-id");
+
+        Assert.NotNull(updated);
+        AssertUtc(new DateTime(2026, 10, 2, 10, 0, 0, DateTimeKind.Utc), updated!.StartDateTime);
+        AssertUtc(new DateTime(2026, 10, 2, 10, 30, 0, DateTimeKind.Utc), updated.EndDateTime);
+        AssertUtc(new DateTime(2026, 10, 12, 0, 0, 0, DateTimeKind.Utc), updated.RecurrenceEndDate);
+        var stored = (await context.RecurrencePatterns.FindAsync(created.RecurrencePatternId))!;
+        Assert.Equal(DateTimeKind.Utc, stored.StartDateTime.Kind);
+        Assert.Equal(DateTimeKind.Utc, stored.RecurrenceEndDate!.Value.Kind);
+    }
+
+    internal static async Task<(TransactionService Service, Guid AccountId)> NewTransactionServiceAsync(
         Context.OdysseyContext context)
     {
         var account = new Context.Account
@@ -278,7 +337,7 @@ public class ClientDateHandlingTests
             account.AccountId);
     }
 
-    private static void AssertUtc(DateTime expected, DateTime? actual)
+    internal static void AssertUtc(DateTime expected, DateTime? actual)
     {
         Assert.NotNull(actual);
         Assert.Equal(DateTimeKind.Utc, actual!.Value.Kind);

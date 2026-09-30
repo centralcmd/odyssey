@@ -1414,8 +1414,8 @@ public class ContractService
     private static (DateTime? FromDate, DateTime? ToDate) NormalizePartyTerm(
         Contract contract, ContractPartyRequest request)
     {
-        var fromDate = request.FromDate is { } from ? DateTimeNormalization.NormalizeToUtc(from) : (DateTime?)null;
-        var toDate = request.ToDate is { } to ? DateTimeNormalization.NormalizeToUtc(to) : (DateTime?)null;
+        var fromDate = DateTimeNormalization.NormalizeToUtc(request.FromDate);
+        var toDate = DateTimeNormalization.NormalizeToUtc(request.ToDate);
 
         if (fromDate is { } start && toDate is { } end && end.Date < start.Date)
         {
@@ -1820,8 +1820,8 @@ public class ContractService
     {
         // Through the same funnel every client-supplied date on this surface already passes, so a
         // Local or Unspecified kind cannot store a value off by a timezone offset.
-        var readyUtc = ready is { } r ? DateTimeNormalization.NormalizeToUtc(r) : (DateTime?)null;
-        var signedUtc = signed is { } g ? DateTimeNormalization.NormalizeToUtc(g) : (DateTime?)null;
+        var readyUtc = DateTimeNormalization.NormalizeToUtc(ready);
+        var signedUtc = DateTimeNormalization.NormalizeToUtc(signed);
 
         var today = Today;
 
