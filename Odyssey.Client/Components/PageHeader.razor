@@ -46,7 +46,10 @@
                         </div>
                     }
                     <div class="ph-titles">
-                        <MudText Typo="Typo.h2">@Title</MudText>
+                        @* The page's one <h1>: FocusOnNavigate (App.razor) moves focus to "h1" on every
+                           route change, and heading navigation needs a top level. Typo.h2 keeps the look;
+                           tabindex="-1" makes it a programmatic focus target without entering the tab order. *@
+                        <MudText Typo="Typo.h2" HtmlTag="h1" Class="ph-title" tabindex="-1">@Title</MudText>
                         @if (SubLine is not null)
                         {
                             <div class="ph-sub">@SubLine</div>
@@ -140,12 +143,12 @@
 
                                A real <h3>, not a styled div: the grouping has to be navigable by
                                heading, or it is a visual-only relationship (WCAG 1.3.1) and a screen
-                               reader cannot tell "Recently expired" from "Upcoming transactions". h3 because
-                               the header's own title is an h2. *@
+                               reader cannot tell "Recently expired" from "Upcoming transactions". h2 because
+                               the header's own title is the page's h1. *@
                             @if (!string.IsNullOrWhiteSpace(problem.Group) && problem.Group != renderedGroup)
                             {
                                 renderedGroup = problem.Group;
-                                <h3 class="ph-signal-group">@problem.Group</h3>
+                                <h2 class="ph-signal-group">@problem.Group</h2>
                             }
 
                             @if (problem.Row is { } row)

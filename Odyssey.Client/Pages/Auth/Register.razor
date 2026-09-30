@@ -10,14 +10,15 @@
         <OdsBrandMark Size="70" />
         <span style="font-weight: 500; font-size: 14px; letter-spacing: 0.32em; color: var(--mud-palette-primary);">ODYSSEY</span>
     </div>
-    <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Create account</MudText>
+    <MudText Typo="Typo.h5" HtmlTag="h1" tabindex="-1" Align="Align.Center" GutterBottom="true">Create account</MudText>
 
     <MudTextField @bind-Value="email"
                   Label="Email"
                   Variant="Variant.Outlined"
                   Required="true"
                   Immediate="true"
-                  Class="mt-2" />
+                  Class="mt-2"
+                  autocomplete="email" />
     <MudTextField @bind-Value="password"
                   Label="Password"
                   InputType="InputType.Password"

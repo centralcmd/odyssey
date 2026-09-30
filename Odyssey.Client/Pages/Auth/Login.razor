@@ -15,14 +15,15 @@
 
     @if (_phase == LoginPhase.Password)
     {
-        <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Sign in</MudText>
+        <MudText Typo="Typo.h5" HtmlTag="h1" tabindex="-1" Align="Align.Center" GutterBottom="true">Sign in</MudText>
 
         <MudTextField @bind-Value="_request.Email"
                       Label="Username or Email"
                       Variant="Variant.Outlined"
                       Required="true"
                       Immediate="true"
-                      Class="mt-2" />
+                      Class="mt-2"
+                      autocomplete="username" />
         <MudTextField @bind-Value="_request.Password"
                       Label="Password"
                       InputType="InputType.Password"
@@ -30,6 +31,7 @@
                       Required="true"
                       Immediate="true"
                       Class="mt-4"
+                      autocomplete="current-password"
                       OnKeyDown="OnPasswordKeyDown" />
 
         @* The way back in for a user who can't sign in — password phase only; during the 2FA
@@ -60,7 +62,7 @@
     }
     else
     {
-        <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Two-step verification</MudText>
+        <MudText Typo="Typo.h5" HtmlTag="h1" tabindex="-1" Align="Align.Center" GutterBottom="true">Two-step verification</MudText>
         <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-2" Style="color: var(--mud-palette-text-secondary);">
             @(_useRecoveryCode
                 ? "Enter one of the recovery codes you saved when you set up two-factor."
@@ -75,6 +77,7 @@
                       InputMode="@(_useRecoveryCode ? InputMode.text : InputMode.numeric)"
                       MaxLength="@(_useRecoveryCode ? 32 : 6)"
                       Class="mt-2"
+                      autocomplete="one-time-code"
                       OnKeyDown="OnCodeKeyDown" />
 
         @if (!_useRecoveryCode)

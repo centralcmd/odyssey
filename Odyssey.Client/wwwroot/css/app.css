@@ -729,6 +729,10 @@ html:not([data-theme='dark']) { --glyph-l: min(l, 0.58); --glyph-text-l: min(l, 
 }
 .auth-panel-heading:focus { outline: none; }
 
+/* Each auth page's h1 is where FocusOnNavigate lands on arrival. It is a programmatic focus target,
+   never in the tab order, so it gets no ring for the same reason as .auth-panel-heading above. */
+.auth-page h1:focus { outline: none; }
+
 /* ── Blazor framework affordances (do not remove) ───────────────────────── */
 
 #blazor-error-ui {

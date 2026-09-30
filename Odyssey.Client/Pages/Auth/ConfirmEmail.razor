@@ -22,7 +22,7 @@
             break;
 
         case Phase.Confirmed:
-            <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Email confirmed</MudText>
+            <MudText Typo="Typo.h5" HtmlTag="h1" tabindex="-1" Align="Align.Center" GutterBottom="true">Email confirmed</MudText>
             <MudAlert Severity="Severity.Success" Dense="true" Class="mt-2">
                 @(IsEmailChange
                     ? "Your new email address has been confirmed and is now your sign-in identity. You can sign in with it."
@@ -39,7 +39,7 @@
             break;
 
         default:
-            <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Confirmation failed</MudText>
+            <MudText Typo="Typo.h5" HtmlTag="h1" tabindex="-1" Align="Align.Center" GutterBottom="true">Confirmation failed</MudText>
             <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-2" Style="color: var(--mud-palette-text-secondary);">
                 This confirmation link is invalid or has expired. Enter your email to receive a new one.
             </MudText>
@@ -49,7 +49,8 @@
                           Variant="Variant.Outlined"
                           Required="true"
                           Immediate="true"
-                          Class="mt-2" />
+                          Class="mt-2"
+                          autocomplete="email" />
 
             @if (!string.IsNullOrWhiteSpace(resendMessage))
             {
