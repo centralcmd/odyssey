@@ -15,7 +15,9 @@
 
     @if (_phase == LoginPhase.Password)
     {
-        <MudText Typo="Typo.h5" HtmlTag="h1" tabindex="-1" Align="Align.Center" GutterBottom="true">Sign in</MudText>
+        @* A plain <h1>, not a MudText, so it can carry the ElementReference the phase swap focuses
+           (the /forgot-password pattern); .auth-panel-heading matches the theme's H5. *@
+        <h1 @ref="_headingRef" tabindex="-1" class="auth-panel-heading mb-2">Sign in</h1>
 
         <MudTextField @bind-Value="_request.Email"
                       Label="Username or Email"
@@ -62,7 +64,7 @@
     }
     else
     {
-        <MudText Typo="Typo.h5" HtmlTag="h1" tabindex="-1" Align="Align.Center" GutterBottom="true">Two-step verification</MudText>
+        <h1 @ref="_headingRef" tabindex="-1" class="auth-panel-heading mb-2">Two-step verification</h1>
         <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-2" Style="color: var(--mud-palette-text-secondary);">
             @(_useRecoveryCode
                 ? "Enter one of the recovery codes you saved when you set up two-factor."

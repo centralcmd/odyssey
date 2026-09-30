@@ -17,12 +17,14 @@
         case Phase.Verifying:
             <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
                 <OdsSpinner Size="OdsSize.Lg" AriaLabel="Confirming your email" />
-                <MudText Typo="Typo.body1">Confirming your email…</MudText>
+                @* The Verifying phase carries the page's h1 too, so FocusOnNavigate has a target on
+                   arrival; the phase change below then moves focus to the outcome's heading. *@
+                <h1 @ref="_headingRef" tabindex="-1" class="auth-panel-heading">Confirming your email…</h1>
             </div>
             break;
 
         case Phase.Confirmed:
-            <MudText Typo="Typo.h5" HtmlTag="h1" tabindex="-1" Align="Align.Center" GutterBottom="true">Email confirmed</MudText>
+            <h1 @ref="_headingRef" tabindex="-1" class="auth-panel-heading mb-2">Email confirmed</h1>
             <MudAlert Severity="Severity.Success" Dense="true" Class="mt-2">
                 @(IsEmailChange
                     ? "Your new email address has been confirmed and is now your sign-in identity. You can sign in with it."
@@ -39,7 +41,7 @@
             break;
 
         default:
-            <MudText Typo="Typo.h5" HtmlTag="h1" tabindex="-1" Align="Align.Center" GutterBottom="true">Confirmation failed</MudText>
+            <h1 @ref="_headingRef" tabindex="-1" class="auth-panel-heading mb-2">Confirmation failed</h1>
             <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-2" Style="color: var(--mud-palette-text-secondary);">
                 This confirmation link is invalid or has expired. Enter your email to receive a new one.
             </MudText>
@@ -88,6 +90,11 @@
     // on, not a fault — it reads as alarming in red, so it gets Warning rather than Error.
     private bool resendExplained;
     private bool isResending;
+    private ElementReference _headingRef;
+
+    // Nullable so the first render primes it rather than defaulting to Verifying, which would make a
+    // missing-parameter link (Failed before first paint) look like a change and steal arrival focus.
+    private Phase? _announcedPhase;
 
     [SupplyParameterFromQuery(Name = "userId")]
     public string? UserId { get; set; }
@@ -121,6 +128,26 @@
 
         var confirmed = await AuthApiClient.ConfirmEmailAsync(UserId, Code, ChangedEmail);
         phase = confirmed ? Phase.Confirmed : Phase.Failed;
+    }
+
+    // Verifying → Confirmed/Failed replaces the heading FocusOnNavigate focused on arrival, so without
+    // this focus falls to <body> and the outcome is never reached by position (WCAG 2.4.3). The
+    // ForgotPassword/ResetPassword pattern: prime on first render, focus on every later change.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _announcedPhase = phase;
+            return;
+        }
+
+        if (_announcedPhase == phase)
+        {
+            return;
+        }
+
+        _announcedPhase = phase;
+        await _headingRef.FocusAsync();
     }
 
     private async Task ResendAsync()

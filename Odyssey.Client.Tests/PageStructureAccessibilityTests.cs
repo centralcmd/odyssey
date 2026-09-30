@@ -1,10 +1,14 @@
+using System.Net;
+using System.Text;
 using System.Text.RegularExpressions;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using MudBlazor.Services;
 using Odyssey.ApiClient.Auth;
+using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Auth;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Auth;
@@ -112,9 +116,7 @@ public class PageStructureAccessibilityTests
     public async Task Login_CredentialInputs_CarryTheirAutocompleteTokens()
     {
         await using var ctx = NewContext();
-        ctx.Services.AddSingleton(sp => new AuthApiClient(
-            new HttpClient { BaseAddress = new Uri("http://localhost/") }, new AntiforgeryTokenStore(sp)));
-        ctx.Services.AddSingleton<CookieAuthenticationStateProvider>();
+        AddAuthClient(ctx, new StubHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized))));
 
         var login = ctx.Render<Login>();
 
@@ -123,15 +125,104 @@ public class PageStructureAccessibilityTests
         Assert.Contains(inputs, i => i.GetAttribute("autocomplete") == "username");
         Assert.Contains(inputs, i => i.GetAttribute("autocomplete") == "current-password"
                                      && i.GetAttribute("type") == "password");
-        Assert.Single(login.FindAll("h1"));
+        var h1 = Assert.Single(login.FindAll("h1"));
+        Assert.Equal("-1", h1.GetAttribute("tabindex"));
+        // Arrival focus belongs to FocusOnNavigate; the page itself must not take it on first render.
+        Assert.Empty(FocusCalls(ctx));
     }
 
     [Fact]
-    public void Register_EmailField_CarriesTheEmailToken()
+    public async Task Login_TwoStepPhase_FocusesItsHeading_AndOffersTheOneTimeCodeToken()
     {
-        var text = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Auth", "Register.razor"));
+        await using var ctx = NewContext();
+        AddAuthClient(ctx, new StubHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+        {
+            Content = new StringContent("""{"detail":"RequiresTwoFactor"}""", Encoding.UTF8, "application/problem+json"),
+        })));
 
-        Assert.Matches(new Regex(@"Label=""Email""[^/]*autocomplete=""email"""), text);
+        var login = ctx.Render<Login>();
+        login.Find("button.mud-button-filled").Click();
+
+        login.WaitForAssertion(() => Assert.Equal("Two-step verification", login.Find("h1").TextContent.Trim()));
+        var h1 = login.Find("h1");
+        Assert.Equal("-1", h1.GetAttribute("tabindex"));
+        Assert.Equal("one-time-code", login.Find("input").GetAttribute("autocomplete"));
+        // The swap removes the button the user just pressed; focus must land on the new heading, not <body>.
+        login.WaitForAssertion(() =>
+            Assert.Equal(h1.GetAttribute("blazor:elementReference"), Assert.Single(FocusCalls(ctx))));
+    }
+
+    [Fact]
+    public async Task Register_EmailField_CarriesTheEmailToken()
+    {
+        await using var ctx = NewContext();
+        AddAuthClient(ctx, new StubHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))));
+        ctx.Services.AddSingleton(new Mock<ILegalApiClient>().Object);
+
+        var register = ctx.Render<Register>();
+
+        var tokens = register.FindAll("input:not([type=checkbox])").Select(i => i.GetAttribute("autocomplete")).ToList();
+        Assert.Equal(["email", "new-password", "new-password"], tokens);
+        Assert.Single(register.FindAll("h1"));
+    }
+
+    [Fact]
+    public async Task ConfirmEmail_EveryPhaseCarriesAFocusableH1_AndTheOutcomeTakesFocus()
+    {
+        await using var ctx = NewContext();
+        var release = new TaskCompletionSource<HttpResponseMessage>();
+        AddAuthClient(ctx, new StubHandler(_ => release.Task));
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("/confirm-email?userId=u1&code=c1");
+
+        var page = ctx.Render<ConfirmEmail>();
+
+        // Verifying: FocusOnNavigate needs an h1 to land on while the request is in flight.
+        var verifying = Assert.Single(page.FindAll("h1"));
+        Assert.Equal("-1", verifying.GetAttribute("tabindex"));
+        Assert.Empty(FocusCalls(ctx));
+
+        release.SetResult(new HttpResponseMessage(HttpStatusCode.OK));
+
+        page.WaitForAssertion(() => Assert.Equal("Email confirmed", page.Find("h1").TextContent.Trim()));
+        var outcome = page.Find("h1");
+        Assert.Equal("-1", outcome.GetAttribute("tabindex"));
+        page.WaitForAssertion(() =>
+            Assert.Equal(outcome.GetAttribute("blazor:elementReference"), Assert.Single(FocusCalls(ctx))));
+    }
+
+    [Fact]
+    public async Task ConfirmEmail_AnIncompleteLinkOpensOnFailed_WithoutTakingArrivalFocus()
+    {
+        await using var ctx = NewContext();
+        AddAuthClient(ctx, new StubHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK))));
+
+        var page = ctx.Render<ConfirmEmail>();
+
+        var h1 = Assert.Single(page.FindAll("h1"));
+        Assert.Equal("Confirmation failed", h1.TextContent.Trim());
+        Assert.Equal("-1", h1.GetAttribute("tabindex"));
+        Assert.Equal("email", page.Find("input").GetAttribute("autocomplete"));
+        Assert.Empty(FocusCalls(ctx));
+    }
+
+    private static void AddAuthClient(BunitContext ctx, StubHandler handler)
+    {
+        ctx.Services.AddSingleton(sp => new AuthApiClient(
+            new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }, new AntiforgeryTokenStore(sp)));
+        ctx.Services.AddSingleton<CookieAuthenticationStateProvider>();
+    }
+
+    /// <summary>Ids of the elements <c>ElementReference.FocusAsync</c> was called on, in order.</summary>
+    private static List<string> FocusCalls(BunitContext ctx) =>
+        ctx.JSInterop.Invocations
+            .Where(i => i.Identifier.EndsWith("domWrapper.focus", StringComparison.Ordinal))
+            .Select(i => ((ElementReference)i.Arguments[0]!).Id)
+            .ToList();
+
+    private sealed class StubHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> respond) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            respond(request);
     }
 
     // ── §3 — modal name ───────────────────────────────────────────────────────────────────────
