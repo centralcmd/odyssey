@@ -5,6 +5,31 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.1](https://github.com/centralcmd/odyssey/compare/v0.37.0...v0.37.1) (2026-09-30)
+
+
+### Bug Fixes
+
+* **api:** bound money and exchange-rate dtos to column precision ([aec432c](https://github.com/centralcmd/odyssey/commit/aec432cdee3e706857193eaf7e950fb4cb84d3cf)), closes [#240](https://github.com/centralcmd/odyssey/issues/240)
+* **api:** require files.read on account, transaction and tax attach ([#236](https://github.com/centralcmd/odyssey/issues/236)) ([bd61daa](https://github.com/centralcmd/odyssey/commit/bd61daa585bb1d720e9343c2bdbde7a399f55719)), closes [#233](https://github.com/centralcmd/odyssey/issues/233)
+* **api:** return 404 from put on unknown id instead of bypassing create ([#263](https://github.com/centralcmd/odyssey/issues/263)) ([628165d](https://github.com/centralcmd/odyssey/commit/628165db3cd828e17248660c0b140b6f83cc87b4)), closes [#239](https://github.com/centralcmd/odyssey/issues/239)
+* **api:** sanitize renamed file names and encode content-disposition ([#270](https://github.com/centralcmd/odyssey/issues/270)) ([b65ac39](https://github.com/centralcmd/odyssey/commit/b65ac399da974d281e093b90435cb6e74734c223)), closes [#247](https://github.com/centralcmd/odyssey/issues/247)
+* **client:** clear light-theme contrast on primary fills and controls ([#259](https://github.com/centralcmd/odyssey/issues/259)) ([6da3fa4](https://github.com/centralcmd/odyssey/commit/6da3fa48f02c8a959f3ef7458d7bcf6f66c4085a))
+* **client:** give every page a focusable h1, autocomplete and a title ([#261](https://github.com/centralcmd/odyssey/issues/261)) ([46f9d7a](https://github.com/centralcmd/odyssey/commit/46f9d7a030874a27ecb7c9c817f53d6780b9b980))
+* **client:** give menu and select triggers one real button each ([#265](https://github.com/centralcmd/odyssey/issues/265)) ([ec83ad9](https://github.com/centralcmd/odyssey/commit/ec83ad9335779897aeec4ae92a2210796b6f4e20))
+* **client:** ignore superseded list responses on every list page ([#262](https://github.com/centralcmd/odyssey/issues/262)) ([0e6a54c](https://github.com/centralcmd/odyssey/commit/0e6a54c5af629958c7d4c759abd0a282837f3806))
+* **client:** invalidate the tag cache after an inline tag create ([#269](https://github.com/centralcmd/odyssey/issues/269)) ([34182b9](https://github.com/centralcmd/odyssey/commit/34182b98b5ae9114284ff4021d4831dd07a4e902)), closes [#251](https://github.com/centralcmd/odyssey/issues/251)
+* **client:** keep the file editor open when its save fails ([#260](https://github.com/centralcmd/odyssey/issues/260)) ([ba04dde](https://github.com/centralcmd/odyssey/commit/ba04dde8676258051c060bbd165c491558b63a23))
+* **client:** stamp data-theme on the root element in dark mode ([#235](https://github.com/centralcmd/odyssey/issues/235)) ([3641792](https://github.com/centralcmd/odyssey/commit/3641792a4af5222f66872b11fcaca6b87d86c4a3))
+* **core:** include the whole end day in budget and tax periods ([#268](https://github.com/centralcmd/odyssey/issues/268)) ([685c7cc](https://github.com/centralcmd/odyssey/commit/685c7cc998be55768486e8b5297f8c000672031c))
+* **core:** keep stored dates on update and normalize client dates to utc ([#266](https://github.com/centralcmd/odyssey/issues/266)) ([6564a76](https://github.com/centralcmd/odyssey/commit/6564a7666183f7d8e8ca476cedaccd76e7ea28c1))
+* **core:** refuse deleting a currency that is still in use ([#267](https://github.com/centralcmd/odyssey/issues/267)) ([581d9c0](https://github.com/centralcmd/odyssey/commit/581d9c0ee250b887aad2c668717a74801cd85817))
+
+
+### Documentation
+
+* update design system ([6512fa5](https://github.com/centralcmd/odyssey/commit/6512fa51c1b460d72a52db4a4e111a5788c228e2))
+
 ## [0.37.0](https://github.com/centralcmd/odyssey/compare/v0.36.0...v0.37.0) (2026-09-29)
 
 
