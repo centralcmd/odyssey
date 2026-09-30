@@ -481,8 +481,22 @@ public class AccountService
         return dtos;
     }
     
-    public async Task<ExistingAccount> Create(NewAccount newAccount, CancellationToken cancellationToken = default)
+    public Task<ExistingAccount> Create(NewAccount newAccount, CancellationToken cancellationToken = default) =>
+        Create(newAccount, accountId: null, cancellationToken);
+
+    /// <summary>
+    /// Creates an account, under <paramref name="accountId"/> when one is given — the upsert half of
+    /// <c>PUT /api/accounts/{id}</c> creates under the ROUTE id, so a retry after a lost <c>201</c>
+    /// finds the row and updates it instead of inserting a duplicate (issue #239). <see cref="Guid.Empty"/>
+    /// is refused: EF treats it as "unset" and would generate a fresh key, silently breaking that promise.
+    /// </summary>
+    public async Task<ExistingAccount> Create(NewAccount newAccount, Guid? accountId, CancellationToken cancellationToken = default)
     {
+        if (accountId == Guid.Empty)
+        {
+            throw new DomainValidationException("Account ID must not be empty.");
+        }
+
         await CurrencyValidationService.EnsureSupportedAndActive(context, newAccount.CurrencyCode, nameof(newAccount.CurrencyCode));
 
         // On create there is no persisted value, so any non-null custodian is a "set" and is fully
@@ -502,6 +516,10 @@ public class AccountService
             CurrencyCode = CurrencyValidationService.Normalize(newAccount.CurrencyCode),
             CustodianId = newAccount.CustodianId,
         };
+        if (accountId is { } id)
+        {
+            account.AccountId = id;
+        }
 
         context.Accounts.Add(account);
         await context.SaveChangesAsync(cancellationToken);

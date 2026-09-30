@@ -103,16 +103,15 @@ public class TransactionController : ControllerBase
 
     [HttpPut("{id}", Name = "PutTransaction")]
     [Authorize(Policy = PermissionClaims.TransactionsUpdate)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Update the details for a transaction.",
-        Description = @"Update the details for a transaction. If the transaction ID does not exist, a new transaction is 
-                        created based on the provided details and the url for the new transaction is returned in the 
-                        location header.")]
+        Description = @"Update the details for a transaction. Not an upsert: an unknown ID is a 404 and
+                        nothing is created. Use POST to create.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true, 
             Description = @"The ID for the transaction to update.")] Guid id, 
@@ -120,7 +119,9 @@ public class TransactionController : ControllerBase
             Description = @"The transaction with the updated values.")] NewTransaction newTransaction, CancellationToken cancellationToken = default)
     {
         var transaction = await transactionService.Update(id, newTransaction, cancellationToken);
-        return transaction is null ? await Post(newTransaction, cancellationToken) : NoContent();
+        return transaction is null
+            ? this.NotFoundProblem($"Transaction ID {id} not found.")
+            : NoContent();
     }
 
     [HttpDelete("{id}", Name = "DeleteTransaction")]

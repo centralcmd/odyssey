@@ -1,4 +1,5 @@
 using Odyssey.Dtos.Finance;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -10,32 +11,29 @@ namespace Odyssey.Api.Tests;
 public class TransactionTagControllerTests
 {
     [Fact]
-    public async Task Put_WhenTransactionTagIsMissing_ReturnsCreatedAtGetRouteWithCreatedId()
+    public async Task Put_WhenTransactionTagIsMissing_ReturnsNotFoundAndCreatesNothing()
     {
+        // Not an upsert (issue #239): creating through PUT bypassed transaction-tags.create.
         await using var context = TestContextFactory.Create();
         var service = new TransactionTagService(context);
         var controller = new TransactionTagController(NullLogger<TransactionTagController>.Instance, service);
 
-        var missingId = Guid.NewGuid();
-        var result = await controller.Put(missingId, new NewTransactionTag
+        var result = await controller.Put(Guid.NewGuid(), new NewTransactionTag
         {
             Name = "Created from Put",
             Description = "Created",
             Archived = false,
         });
 
-        var createdResult = Assert.IsType<CreatedAtRouteResult>(result);
-        Assert.Equal("GetTransactionTag", createdResult.RouteName);
-
-        var createdId = Assert.IsType<Guid>(createdResult.RouteValues!["id"]);
-        Assert.NotEqual(missingId, createdId);
+        var notFound = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status404NotFound, notFound.StatusCode);
+        Assert.Empty((await service.ListAsync(new TransactionTagsQueryParams())).Items);
     }
 
     [Fact]
     public async Task Put_WhenTransactionTagExists_UpdatesInPlaceAndReturnsNoContent()
     {
-        // The other branch of the upsert PUT: an existing id updates in place (204), it does NOT
-        // create a second tag.
+        // An existing id updates in place (204); it does NOT create a second tag.
         await using var context = TestContextFactory.Create();
         var service = new TransactionTagService(context);
         var controller = new TransactionTagController(NullLogger<TransactionTagController>.Instance, service);
@@ -62,7 +60,7 @@ public class TransactionTagControllerTests
         Assert.Equal("Updated description", reloaded.Description);
         Assert.NotNull(reloaded.Archived); // archiving stamps a timestamp
 
-        // The upsert updated the row rather than inserting a new one.
+        // The PUT updated the row rather than inserting a new one.
         Assert.Single((await service.ListAsync(new TransactionTagsQueryParams())).Items);
     }
 }

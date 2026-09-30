@@ -73,11 +73,15 @@ public class CurrencyController : ControllerBase
 
     [HttpPut("{code}", Name = "PutCurrency")]
     [Authorize(Policy = PermissionClaims.CurrenciesUpdate)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Update the details for a currency.",
+        Description = @"Update the details for a currency. Not an upsert: an unknown code is a 404 and
+                        nothing is created. Use POST to create.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "code")] [SwaggerParameter("Code", Required = true,
             Description = @"The code for the currency to update.")] string code,
@@ -85,7 +89,9 @@ public class CurrencyController : ControllerBase
             Description = @"The currency with the updated values.")] NewCurrency newCurrency, CancellationToken cancellationToken = default)
     {
         var currency = await currencyService.Update(code, newCurrency, cancellationToken);
-        return currency is null ? await Post(newCurrency, cancellationToken) : NoContent();
+        return currency is null
+            ? this.NotFoundProblem($"Currency {code} not found.")
+            : NoContent();
     }
 
     [HttpDelete("{code}", Name = "DeleteCurrency")]

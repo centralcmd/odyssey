@@ -82,15 +82,14 @@ public class TransactionTagController : ControllerBase
 
     [HttpPut("{id}", Name = "PutTransactionTag")]
     [Authorize(Policy = PermissionClaims.TransactionTagsUpdate)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Update the details for a transaction tag.",
-        Description = @"Update the details for a transaction tag. If the transaction tag ID does not exist, a new transaction tag is
-                        created based on the provided details and the url for the new transaction tag is returned in the
-                        location header.")]
+        Description = @"Update the details for a transaction tag. Not an upsert: an unknown ID is a 404 and
+                        nothing is created. Use POST to create.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the transaction tag to update.")] Guid id,
@@ -98,7 +97,9 @@ public class TransactionTagController : ControllerBase
             Description = @"The transaction tag with the updated values.")] NewTransactionTag newTransactionTag, CancellationToken cancellationToken = default)
     {
         var transactionTag = await transactionTagService.Update(id, newTransactionTag, cancellationToken);
-        return transactionTag is null ? await Post(newTransactionTag, cancellationToken) : NoContent();
+        return transactionTag is null
+            ? this.NotFoundProblem($"Transaction tag ID {id} not found.")
+            : NoContent();
     }
 
     [HttpDelete("{id}", Name = "DeleteTransactionTag")]
