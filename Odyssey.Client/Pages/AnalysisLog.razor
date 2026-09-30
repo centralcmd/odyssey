@@ -5,6 +5,7 @@
 @attribute [Authorize(Policy = PermissionClaims.FileAnalysisAudit)]
 @using Odyssey.Dtos.Application
 @using Odyssey.Client.Services
+@implements IDisposable
 @inject IFileAnalysisApiClient FileAnalysis
 @inject IFileAnalysisDisclosureCache Disclosures
 @inject ISnackbar Snackbar
@@ -214,42 +215,6 @@
 
         _disclosure = await Disclosures.GetAsync();
         await LoadAsync();
-    }
-
-    // Server-side (issue #277): outcome filter, search (incl. initiating user) and sort are applied by
-    // the API, which enriches each entry with the user before filtering.
-    private async Task LoadAsync()
-    {
-        if (!_isLoading)
-        {
-            _refetching = true;
-            StateHasChanged();
-        }
-
-        var result = await FileAnalysis.ListAuditAsync(
-            search: _search,
-            statuses: _statusFilter,
-            sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
-
-        if (result.IsSuccess)
-        {
-            _entries = result.ValueOr([]);
-            _loadError = false;
-            _announce = _entries.Count == 0 ? "No log entries match your filters."
-                : $"Showing {_entries.Count} log {(_entries.Count == 1 ? "entry" : "entries")}.";
-        }
-        else
-        {
-            Snackbar.Add($"Unable to load the analysis log: {result.Error}", Severity.Error);
-            _entries = [];
-            _loadError = true;
-            _announce = "Couldn't load the analysis log.";
-        }
-
-        _isLoading = false;
-        _refetching = false;
-        StateHasChanged();
     }
 
     protected override void OnAfterRender(bool firstRender)

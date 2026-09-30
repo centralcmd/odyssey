@@ -5,6 +5,7 @@
 @using Odyssey.Dtos.Finance
 @using Odyssey.Client.Authorization
 @attribute [Authorize(Policy = PermissionClaims.ContactsRead)]
+@implements IDisposable
 @inject ISnackbar Snackbar
 @inject IClipboardService Clipboard
 @inject AuthenticationStateProvider AuthenticationStateProvider

@@ -3,6 +3,7 @@
 @using Odyssey.Client.Authorization
 @using Odyssey.Dtos.Finance
 @attribute [Authorize(Policy = PermissionClaims.AccountsRead)]
+@implements IDisposable
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService

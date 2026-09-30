@@ -4,6 +4,7 @@
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
 @attribute [Authorize(Policy = PermissionClaims.PropertiesRead)]
+@implements IDisposable
 @inject IPropertiesApiClient Properties
 @inject ISnackbar Snackbar
 @inject IClipboardService Clipboard

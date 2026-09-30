@@ -15,6 +15,8 @@ public partial class CurrenciesCard
     private List<ExistingCurrency> _allCurrencies = new();
     private bool _isLoading = true;
     private bool _refetching;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
     private bool _loadError;
     private string _announce = "";
 
@@ -139,14 +141,17 @@ public partial class CurrenciesCard
         }
 
         // The two-value status filter maps to the server active/archived param only when one is selected.
-        var result = await Currencies.ListAsync(
+        var response = await _listLoader.RunAsync(ct => Currencies.ListAsync(
             _page, _pageSize,
             search: _search,
             status: _statusFilter,
             sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct: ct));
+        if (response.IsSuperseded)
+            return;
 
-        var load = result.PagedOrToast(Snackbar, "currencies");
+        var load = response.Value.PagedOrToast(Snackbar, "currencies");
         if (load.IsSuccess)
         {
             _currencies = [.. load.Items];
@@ -318,4 +323,6 @@ public partial class CurrenciesCard
 
     private Task CopyCode(string currencyCode) =>
         Clipboard.CopyAsync(currencyCode, "Currency code copied to clipboard.");
+
+    public void Dispose() => _listLoader.Dispose();
 }

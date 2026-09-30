@@ -1,6 +1,7 @@
 @page "/photos"
 @attribute [Authorize(Policy = PermissionClaims.PhotosRead)]
 @using Odyssey.Dtos.Finance
+@implements IDisposable
 @inject IPhotosApiClient Photos
 @inject IPhotoTagsApiClient PhotoTags
 @inject IAlbumsApiClient Albums

@@ -14,6 +14,8 @@ public partial class PhotosCard
     private int _total;
     private bool _loading = true;
     private bool _loadError;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
 
     // Filters.
     private string _search = string.Empty;
@@ -122,16 +124,19 @@ public partial class PhotosCard
         _personNames = people.ToDictionary(c => c.ContactId, c => c.ResolvedDisplayName);
     }
 
-    private async Task<PagedLoad<PhotoSummary>> FetchAsync(int page, int pageSize)
+    // Null when a newer fetch (a reload, or a load-more) superseded this one: the caller must return
+    // without touching the grid, and no failure toast is raised for a request the user replaced.
+    private async Task<PagedLoad<PhotoSummary>?> FetchAsync(int page, int pageSize)
     {
-        var result = await Photos.ListAsync(
+        var response = await _listLoader.RunAsync(ct => Photos.ListAsync(
             page: page, pageSize: pageSize, search: _search,
             tagIds: _tags, personIds: _people, albumIds: _albums,
             from: _from, to: _to, favouritesOnly: _favouritesOnly,
             status: _archivedView ? "Archived" : null,
-            sortBy: ServerSort(_sort.Key), sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            sortBy: ServerSort(_sort.Key), sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct: ct));
 
-        return result.PagedOrToast(Snackbar, "photos");
+        return response.IsSuperseded ? null : response.Value.PagedOrToast(Snackbar, "photos");
     }
 
     private async Task ReloadAsync()
@@ -139,7 +144,8 @@ public partial class PhotosCard
         _loading = true;
         StateHasChanged();
 
-        var load = await FetchAsync(page: 1, pageSize: _visible);
+        if (await FetchAsync(page: 1, pageSize: _visible) is not { } load)
+            return;
 
         // A failed fetch yields no items; without this the grid would render "No photos yet".
         _loadError = !load.IsSuccess;
@@ -247,7 +253,13 @@ public partial class PhotosCard
     // Append the next page instead of refetching the whole (growing) window.
     private async Task LoadMore()
     {
-        var load = await FetchAsync(page: _photos.Count / _pageSize + 1, pageSize: _pageSize);
+        // A reload in flight owns the grid; appending a page of the old result set onto it would mix
+        // two queries, and superseding it would leave the loading state to nobody.
+        if (_loading)
+            return;
+
+        if (await FetchAsync(page: _photos.Count / _pageSize + 1, pageSize: _pageSize) is not { } load)
+            return;
         _photos.AddRange(load.Items);
         _total = load.TotalCount;
         _visible = _photos.Count; // keep the window size in sync for a later mutation refresh
@@ -410,4 +422,6 @@ public partial class PhotosCard
     // ── Header fragments ──
     private RenderFragment SubFragment => builder =>
         builder.AddContent(0, $"{_libraryTotal} photo{(_libraryTotal == 1 ? "" : "s")} · {_albumSummaries.Count} albums");
+
+    public void Dispose() => _listLoader.Dispose();
 }

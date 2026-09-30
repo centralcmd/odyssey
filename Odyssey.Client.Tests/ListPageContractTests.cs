@@ -306,6 +306,70 @@ public class ListPageContractTests
             string.Join('\n', violations));
     }
 
+    /// <summary>
+    /// Registered pages whose list fetch takes no user-varied input, so no two in-flight requests can
+    /// ask different questions and there is nothing for a stale response to overwrite. Each fetches the
+    /// whole unfiltered set and filters it in the browser. A page that starts sending its search or
+    /// filters to the server leaves this list.
+    /// </summary>
+    private static readonly Dictionary<string, string> FetchesWithoutVaryingInput = new()
+    {
+        ["Pages/Journal/TasksPage.razor"] = "loads every task once; search, tag and status filter client-side",
+        ["Pages/Photos/AlbumsPage.razor"] = "loads every album once; search filters client-side",
+    };
+
+    /// <summary>
+    /// Search (debounced), filters, sort, page and page size all call one fetch, and before issue #249
+    /// nothing cancelled or ignored a superseded request: a slower earlier response that landed last
+    /// overwrote the newer one, leaving rows for a search the user had already replaced, a pager and
+    /// announcement that disagreed with them, and the refetch bar cleared while the newest request was
+    /// still running. <c>ListLoader</c> is the one guard; a page must route its fetch through it, check
+    /// <c>IsSuperseded</c> before unwrapping (the transport reports a cancelled request as a failure,
+    /// so unwrapping first would toast it), forward the token, and dispose the loader.
+    /// </summary>
+    [Fact]
+    public void Every_list_page_ignores_superseded_responses()
+    {
+        var clientRoot = FindClientRoot();
+        var runWithToken = new Regex(@"_listLoader\.RunAsync\(\s*(?:async\s+)?ct\s*=>(?<body>[^;]*);", RegexOptions.Singleline);
+
+        var violations = new List<string>();
+        foreach (var page in ListPages.Where(p => !FetchesWithoutVaryingInput.ContainsKey(p)))
+        {
+            var source = SourceFor(clientRoot, page);
+            var problems = new List<string>();
+
+            if (!source.Contains("private readonly ListLoader _listLoader = new();"))
+                problems.Add("declares no ListLoader");
+
+            var runs = runWithToken.Matches(source);
+            if (runs.Count == 0)
+                problems.Add("never fetches through _listLoader.RunAsync(ct => …)");
+            else if (runs.Any(run => !Regex.IsMatch(run.Groups["body"].Value, @"\bct\)")))
+                problems.Add("does not forward the loader's token to the API call");
+
+            if (!source.Contains(".IsSuperseded"))
+                problems.Add("never checks IsSuperseded before applying a response");
+
+            if (!source.Contains("_listLoader.Dispose()")
+                || !Regex.IsMatch(source, @"@implements\s+I(?:Async)?Disposable\b"))
+                problems.Add("does not dispose the loader with the component");
+
+            if (problems.Count > 0)
+                violations.Add($"{page} — {string.Join("; ", problems)}");
+        }
+
+        Assert.True(violations.Count == 0,
+            "List pages that can apply an out-of-order response:\n" + string.Join('\n', violations));
+    }
+
+    /// <summary>The exemption list above only names pages that are actually registered.</summary>
+    [Fact]
+    public void Every_superseded_response_exemption_names_a_registered_page()
+    {
+        Assert.All(FetchesWithoutVaryingInput.Keys, page => Assert.Contains(page, ListPages));
+    }
+
     /// <summary>A page's markup plus its code-behind, if it has one.</summary>
     private static string SourceFor(string clientRoot, string page)
     {

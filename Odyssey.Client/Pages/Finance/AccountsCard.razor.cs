@@ -45,6 +45,8 @@ public partial class AccountsCard
     // ── UI state ────────────────────────────────────────────────────────────
     private bool _isLoading = true;
     private bool _refetching;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
     private bool _loadError;
     private string _announce = "";
     private Guid? _expandedId;
@@ -311,12 +313,17 @@ public partial class AccountsCard
             StateHasChanged();
         }
 
-        var result = await Accounts.ListAllAsync(
+        var response = await _listLoader.RunAsync(ct => Accounts.ListAllAsync(
             search: _searchString,
             types: _typeFilter,
             statuses: _statusFilter,
             sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct: ct));
+        if (response.IsSuperseded)
+            return;
+
+        var result = response.Value;
 
         if (result.IsSuccess)
         {
@@ -757,4 +764,6 @@ public partial class AccountsCard
         string Title,
         string Summary,
         string Detail);
+
+    public void Dispose() => _listLoader.Dispose();
 }

@@ -18,6 +18,8 @@ public partial class ContactsCard
     private List<ExistingContact> _allContacts = new();
     private bool _isLoading = true;
     private bool _refetching;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
     private bool _loadError;
     private string _announce = "";
 
@@ -174,15 +176,18 @@ public partial class ContactsCard
 
         // One window rather than a page: the card list windows on scroll, so the whole filtered set is
         // fetched and the batch size only governs how much of it is mounted at a time.
-        var result = await Contacts.ListAsync(
+        var response = await _listLoader.RunAsync(ct => Contacts.ListAsync(
             page: 1, pageSize: OdsPageSizes.All,
             search: _search,
             types: _typeFilter,
             status: _statusFilter,
             sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct: ct));
+        if (response.IsSuperseded)
+            return;
 
-        var load = result.PagedOrToast(Snackbar, "contacts");
+        var load = response.Value.PagedOrToast(Snackbar, "contacts");
         if (load.IsSuccess)
         {
             _contacts = [.. load.Items];
@@ -647,4 +652,6 @@ public partial class ContactsCard
     // After an import that created/updated rows, do a full refresh (mirrors RefreshAsync) so both
     // the list and the overview counts reflect the new/changed contacts.
     private Task OnImportedAsync() => RefreshAsync();
+
+    public void Dispose() => _listLoader.Dispose();
 }

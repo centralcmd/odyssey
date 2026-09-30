@@ -23,6 +23,8 @@ public partial class TransactionsCard
 
     private bool _isLoading = true;
     private bool _refetching;
+    // Latest-request-wins for the grid fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
     private bool _loadError;
     private string _announce = "";
 
@@ -244,7 +246,7 @@ public partial class TransactionsCard
         }
 
         // Direction is a two-value toggle (income/expense): filter only when exactly one is selected.
-        var result = await Transactions.ListAsync(
+        var response = await _listLoader.RunAsync(ct => Transactions.ListAsync(
             _page, _pageSize,
             search: _search,
             accountIds: _accountFilter,
@@ -253,9 +255,12 @@ public partial class TransactionsCard
             contactIds: _merchantFilter,
             direction: _directionFilter,
             sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct: ct));
+        if (response.IsSuperseded)
+            return;
 
-        var load = result.PagedOrToast(Snackbar, "transactions");
+        var load = response.Value.PagedOrToast(Snackbar, "transactions");
         if (load.IsSuccess)
         {
             _transactions = [.. load.Items];
@@ -384,4 +389,6 @@ public partial class TransactionsCard
 
     private Task CopyId(Guid transactionId) =>
         Clipboard.CopyAsync(transactionId.ToString(), "Transaction ID copied to clipboard.");
+
+    public void Dispose() => _listLoader.Dispose();
 }

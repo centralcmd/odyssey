@@ -16,6 +16,8 @@ public partial class ExchangeRatesCard
     private HashSet<Guid> _currentIds = new();
     private bool _isLoading = true;
     private bool _refetching;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
     private bool _loadError;
     private string _announce = "";
 
@@ -154,15 +156,18 @@ public partial class ExchangeRatesCard
         }
 
         // current/historical is a two-value toggle: filter only when exactly one is selected.
-        var result = await ExchangeRates.ListAsync(
+        var response = await _listLoader.RunAsync(ct => ExchangeRates.ListAsync(
             _page, _pageSize,
             search: _search,
             toCurrencies: _toFilter,
             status: _statusFilter,
             sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct: ct));
+        if (response.IsSuperseded)
+            return;
 
-        var load = result.PagedOrToast(Snackbar, "exchange rates");
+        var load = response.Value.PagedOrToast(Snackbar, "exchange rates");
         if (load.IsSuccess)
         {
             _rates = [.. load.Items];
@@ -300,4 +305,6 @@ public partial class ExchangeRatesCard
 
     private Task CopyId(Guid exchangeRateId) =>
         Clipboard.CopyAsync(exchangeRateId.ToString(), "Exchange rate ID copied to clipboard.");
+
+    public void Dispose() => _listLoader.Dispose();
 }

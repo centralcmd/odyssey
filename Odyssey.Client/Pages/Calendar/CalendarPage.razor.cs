@@ -153,6 +153,9 @@ public partial class CalendarPage
         _calendars = (await CalendarApi.ListCalendarsAsync()).ItemsOrToast(Snackbar, "calendars");
     }
 
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
+
     private async Task LoadEventsAsync()
     {
         _isLoading = true;
@@ -164,7 +167,12 @@ public partial class CalendarPage
 
         // Track failure explicitly: ItemsOrToast falls back to [], which is indistinguishable from a
         // period that genuinely has no events.
-        var result = await CalendarApi.ListEventsAsync(from, to);
+        // The range changes on every prev/next/view switch, so a slow earlier range must not land last.
+        var response = await _listLoader.RunAsync(ct => CalendarApi.ListEventsAsync(from, to, ct));
+        if (response.IsSuperseded)
+            return;
+
+        var result = response.Value;
         _events = result.ItemsOrToast(Snackbar, "calendar events");
         _loadError = !result.IsSuccess;
         RebuildViewModels();
@@ -556,4 +564,6 @@ public partial class CalendarPage
         public List<Guid> VisibleCalendarIds { get; set; } = [];
         public string Month { get; set; } = string.Empty;
     }
+
+    public void Dispose() => _listLoader.Dispose();
 }

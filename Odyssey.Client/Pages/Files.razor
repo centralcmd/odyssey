@@ -4,6 +4,7 @@
 @using Odyssey.Client.Pages.Finance
 @using Odyssey.Dtos.Finance
 @attribute [Authorize(Policy = PermissionClaims.FilesRead)]
+@implements IDisposable
 @inject IFilesApiClient FilesApi
 @inject Odyssey.ApiClient.Resources.IFileExportApiClient FileExport
 @inject ISnackbar Snackbar
