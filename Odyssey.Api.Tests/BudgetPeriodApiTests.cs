@@ -14,7 +14,7 @@ namespace Odyssey.Api.Tests;
 /// <summary>
 /// A budget's period must not end before it starts (issue #238). The refusal is the same 400 a tax
 /// statement's inverted period gets, keyed on <c>EndDate</c> so the form can mark the field, and it
-/// applies to <c>PUT</c> as well as <c>POST</c> — including the <c>PUT</c>-as-create fallthrough.
+/// applies to <c>PUT</c> as well as <c>POST</c>.
 /// </summary>
 public class BudgetPeriodApiTests
 {
@@ -85,8 +85,10 @@ public class BudgetPeriodApiTests
         Assert.Equal(new DateTime(2025, 6, 30), stored.EndDate);
     }
 
+    // PUT is not an upsert (#263), and the period is a service-side rule, not model validation: the
+    // unknown id is resolved first, so this is a 404 and nothing is created, inverted or otherwise.
     [Fact]
-    public async Task Put_UnknownIdWithEndBeforeStart_ReturnsBadRequest()
+    public async Task Put_UnknownIdWithEndBeforeStart_ReturnsNotFoundAndCreatesNothing()
     {
         await using var factory = new ApiFactory(ReadWrite);
         await EnsureDatabaseAsync(factory);
@@ -94,7 +96,9 @@ public class BudgetPeriodApiTests
 
         var response = await client.PutAsJsonAsync($"{Path}/{Guid.NewGuid()}", Inverted());
 
-        await AssertKeyedOnEndDate(response);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        using var scope = factory.Services.CreateScope();
+        Assert.Empty(scope.ServiceProvider.GetRequiredService<OdysseyContext>().Budgets);
     }
 
     private static async Task AssertKeyedOnEndDate(HttpResponseMessage response)
