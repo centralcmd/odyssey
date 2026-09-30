@@ -150,12 +150,21 @@ public partial class ContractFilesTable
     /// </summary>
     private async Task HandleSaveAsync(OdsRecordSaveEventArgs args)
     {
+        // A patch or key of the wrong shape is a wiring defect, not a save: never report it as one.
         if (args.Patch is not OdsFileEdit patch || args.Key is not string key)
+        {
+            args.Fail();
             return;
+        }
 
         var file = Files.FirstOrDefault(f => f.FileId.ToString() == key);
         if (file is null)
+        {
+            // The row left the list while its dialog was open (a concurrent delete or refresh).
+            Snackbar.Add("That file is no longer listed. Refresh and try again.", Severity.Warning);
+            args.Fail();
             return;
+        }
 
         // Let any in-flight inline issuer create land, then map the staged id to the one the server
         // issued; a create that failed resolves to null and clears the link rather than posting an id
@@ -182,8 +191,12 @@ public partial class ContractFilesTable
             IssuedBy = issuedBy,
         });
 
+        // Fail() keeps the edit dialog open with what the user typed (issue #252).
         if (!result.Toast(Snackbar, "Unable to update document", "Document updated."))
+        {
+            args.Fail();
             return;
+        }
 
         // The targeted refresh. A failed re-read falls back to the whole-contract refetch rather
         // than leaving the table showing what the user typed as though it were what was stored.

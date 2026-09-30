@@ -27,6 +27,8 @@ public partial class OdsFilesTable
     /// <summary>
     /// Persist an edit made in the Edit-file dialog. The default dialog raises an
     /// <see cref="OdsFileEdit"/> patch; a custom <see cref="RenderEdit"/> raises its own shape.
+    /// Call <see cref="OdsRecordSaveEventArgs.Fail"/> when the write did not persist — the dialog then
+    /// stays open with the user's edits and no "Saved" flash is shown.
     /// Enables the Edit menu item. Omit for a read-only surface.
     /// </summary>
     [Parameter] public EventCallback<OdsRecordSaveEventArgs> OnSave { get; set; }
@@ -263,15 +265,24 @@ public partial class OdsFilesTable
     // mounted after the first Edit; the fresh _editKey per open is what re-initialises it.
     private void OnEditOpenChanged(bool open) => _editOpen = open;
 
-    private async Task CommitEditAsync(OdsFilesRow file, object? patch)
+    // Returns whether the host persisted the patch; the dialog closes only on true. A host that
+    // reports Fail() keeps the dialog open with the user's edits (issue #252). An exception from the
+    // host is deliberately not caught: it propagates through the dialog's submit to the renderer's
+    // error handling, before either the close or the flash is reached.
+    private async Task<bool> CommitEditAsync(OdsFilesRow file, object? patch)
     {
+        var args = new OdsRecordSaveEventArgs(file.Id, patch);
         if (OnSave.HasDelegate)
-            await OnSave.InvokeAsync(new OdsRecordSaveEventArgs(file.Id, patch));
+            await OnSave.InvokeAsync(args);
+
+        if (args.Failed)
+            return false;
 
         _editOpen = false;
         // Deliberately not awaited: the flash outlives the save, and awaiting it would hold the
         // dialog's submit button in its busy state for the whole confirm window.
         _ = FlashSavedAsync(file.Id);
+        return true;
     }
 
     /// <summary>Show the transient "Saved" chip on a row, then clear it.</summary>
@@ -289,7 +300,7 @@ public partial class OdsFilesTable
         Key = _editKey,
         Open = _editOpen,
         OpenChanged = EventCallback.Factory.Create<bool>(this, OnEditOpenChanged),
-        OnSave = EventCallback.Factory.Create<object?>(this, patch => CommitEditAsync(_editRow!, patch)),
+        OnSave = patch => CommitEditAsync(_editRow!, patch),
     };
 
     private OdsFileKindMeta ResolveKind(OdsFilesRow file) => TypeFor?.Invoke(file) ?? NeutralKind;

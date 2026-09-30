@@ -28,7 +28,9 @@
     This replaced the in-row OdsFilesEditPanel: editing runs in the standard
     modal every other create/edit surface uses, so the files table no longer
     needs an expandable row to host it. Commits an OdsFileEdit patch through
-    OnSave; the table raises its own OnSave and flashes "Saved" on the row.
+    OnSave, which answers whether the host persisted it: the dialog closes (and the
+    table flashes "Saved" on the row) only on true, and stays open with the user's
+    edits on false.
     Hosts that edit a different field set supply OdsFilesTable.RenderEdit.
 *@
 
@@ -98,8 +100,11 @@
     /// </summary>
     [Parameter] public Func<string, string, OdsOption?>? OnCreateContact { get; set; }
 
-    /// <summary>Commit the edit patch (an <see cref="OdsFileEdit"/>).</summary>
-    [Parameter] public EventCallback<object?> OnSave { get; set; }
+    /// <summary>
+    /// Commit the edit patch (an <see cref="OdsFileEdit"/>) and answer whether it was saved. On
+    /// <see langword="false"/> the dialog stays open with the user's edits intact (issue #252).
+    /// </summary>
+    [Parameter] public Func<object?, Task<bool>>? OnSave { get; set; }
 
     private string _name = string.Empty;
     private string _kind = string.Empty;
@@ -176,7 +181,6 @@
             IssuedAt = _issuedAt,
             IssuedBy = Guid.TryParse(_issuedBy, out var id) ? id : null,
         };
-        await OnSave.InvokeAsync(patch);
-        return true;
+        return OnSave is null || await OnSave(patch);
     }
 }

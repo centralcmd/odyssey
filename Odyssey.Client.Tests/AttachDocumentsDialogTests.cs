@@ -524,14 +524,16 @@ public class AttachDocumentsDialogTests
         var stored = Guid.NewGuid();
         Stores(h, stored);
         h.Files.Setup(f => f.UpdateMetadataAsync(stored, null, "Deed 2026.pdf", It.IsAny<CancellationToken>()))
-            .ReturnsAsync((FileMetadataResponse?)null);
+            .ReturnsAsync(ApiResult<FileMetadataResponse>.Failure(
+                HttpStatusCode.Conflict, new ApiProblem { Detail = "A file with that name already exists." }));
 
         await h.Pick(Upload("scan001.pdf", rename: "Deed 2026.pdf"));
         h.SubmitButton.Click();
 
         h.Host.WaitForAssertion(() => Assert.Single(h.Posted));
         Assert.Equal("scan001.pdf", h.Posted[0].Name);
-        Assert.Contains(h.Toasts, t => t.Contains("couldn’t be renamed", StringComparison.Ordinal));
+        Assert.Contains(h.Toasts, t => t.Contains("couldn’t be renamed", StringComparison.Ordinal)
+            && t.Contains("A file with that name already exists.", StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -582,7 +584,9 @@ public class AttachDocumentsDialogTests
         Stores(h, stored);
         h.Files.Setup(f => f.UpdateMetadataAsync(stored, null, It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid id, string? _, string name, CancellationToken _) =>
-                new FileMetadataResponse(id, name, "application/pdf", 10, "hash", Base, null));
+                ApiResult<FileMetadataResponse>.Success(
+                    new FileMetadataResponse(id, name, "application/pdf", 10, "hash", Base, null),
+                    HttpStatusCode.OK));
 
         await h.Pick(Upload("scan001.pdf"));
         h.SubmitButton.Click();

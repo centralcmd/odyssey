@@ -505,9 +505,10 @@ public partial class AttachDocumentsDialog
         if (string.IsNullOrEmpty(wanted) || wanted == current)
             return;
 
-        if (await FilesApi.UpdateMetadataAsync(id, null, wanted) is null)
+        var renamed = await FilesApi.UpdateMetadataAsync(id, null, wanted);
+        if (!renamed.IsSuccess)
         {
-            Snackbar.Add($"“{current}” was uploaded but couldn’t be renamed to “{wanted}”.", Severity.Warning);
+            Snackbar.Add($"“{current}” was uploaded but couldn’t be renamed to “{wanted}”: {renamed.Error}", Severity.Warning);
             file.Name = current;
             return;
         }

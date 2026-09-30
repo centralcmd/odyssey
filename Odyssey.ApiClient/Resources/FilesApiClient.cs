@@ -7,8 +7,10 @@ namespace Odyssey.ApiClient.Resources;
 /// Typed client for the file endpoints — upload, attach to an account/transaction, fetch
 /// content, update metadata. Centralizes the multipart construction and content-stream
 /// reading every file-touching page used to hand-roll. Upload/attach <b>throw</b> on
-/// failure (callers run per-file loops that count or report failures); the read methods
-/// return <c>null</c> on failure and leave user messaging to the caller.
+/// failure (callers run per-file loops that count or report failures); the metadata/content
+/// reads return <c>null</c> on failure; the list, update and delete methods return an
+/// <see cref="ApiResult"/> so the server's reason reaches the caller. User messaging stays
+/// with the caller.
 /// </summary>
 public interface IFilesApiClient
 {
@@ -36,8 +38,12 @@ public interface IFilesApiClient
     /// <summary>Fetches a file's bytes + content type. Returns <c>null</c> on failure.</summary>
     Task<ApiFile?> GetContentAsync(Guid fileId, CancellationToken ct = default);
 
-    /// <summary>Updates a file's name/description and returns the stored metadata. Returns <c>null</c> on failure.</summary>
-    Task<FileMetadataResponse?> UpdateMetadataAsync(Guid fileId, string? description, string fileName, CancellationToken ct = default);
+    /// <summary>
+    /// Updates a file's name/description. On success the value is the stored metadata; on failure the
+    /// result carries the server's problem (a <c>400</c> naming the bad field, a <c>409</c> name clash),
+    /// so the caller can tell the user why rather than only that it failed.
+    /// </summary>
+    Task<ApiResult<FileMetadataResponse>> UpdateMetadataAsync(Guid fileId, string? description, string fileName, CancellationToken ct = default);
 
     /// <summary>One page of the flat file list (the Files page), with search, kind filter and sort.</summary>
     Task<ApiResult<PagedResult<FileListItem>>> ListAsync(
@@ -96,9 +102,9 @@ public sealed class FilesApiClient(IOdysseyApi api) : IFilesApiClient
     public async Task<ApiFile?> GetContentAsync(Guid fileId, CancellationToken ct = default) =>
         (await api.GetFileAsync($"api/files/{fileId}/content", fileId.ToString(), ct: ct)).Value;
 
-    public async Task<FileMetadataResponse?> UpdateMetadataAsync(Guid fileId, string? description, string fileName, CancellationToken ct = default) =>
-        (await api.SendAsync<FileMetadataResponse>(HttpMethod.Put, $"api/files/{fileId}/metadata",
-            new UpdateFileMetadataRequest(description, fileName), ct)).Value;
+    public Task<ApiResult<FileMetadataResponse>> UpdateMetadataAsync(Guid fileId, string? description, string fileName, CancellationToken ct = default) =>
+        api.SendAsync<FileMetadataResponse>(HttpMethod.Put, $"{Base}/{fileId}/metadata",
+            new UpdateFileMetadataRequest(description, fileName), ct);
 
     public Task<ApiResult<PagedResult<FileListItem>>> ListAsync(
         int page, int pageSize, string? search = null, IReadOnlyCollection<string>? kinds = null,
