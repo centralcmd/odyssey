@@ -10,6 +10,7 @@ public sealed record ImportCandidateRequest(
     [Required] Guid CandidateId,
     DateTime? TransactionDate,
     string? Description,
+    [Range(typeof(decimal), MoneyBounds.AmountMin, MoneyBounds.AmountMax, ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     decimal? Amount,
     string? Currency,
     Guid? ContactId = null,

@@ -258,7 +258,8 @@ public class DtoValidationBoundaryTests
     }
 
     // ── NewExchangeRate ────────────────────────────────────────────────────────
-    // Rate carries an exclusive-minimum [Range], the one place a "0 is invalid" boundary is annotated.
+    // Rate's [Range] starts at the rate column's smallest step (MoneyBounds.ExchangeRateMin), so zero
+    // is invalid; the column-precision cases live in MoneyBoundsTests (issue #240).
 
     [Fact]
     public async Task CreateExchangeRate_BaselineIsAccepted()
@@ -276,7 +277,7 @@ public class DtoValidationBoundaryTests
     public async Task CreateExchangeRate_ZeroRate_Returns400()
     {
         var body = ValidExchangeRate();
-        body.Rate = 0m; // [Range(..., MinimumIsExclusive = true)] — zero is rejected, not accepted.
+        body.Rate = 0m; // [Range(typeof(decimal), MoneyBounds.ExchangeRateMin, …)] — zero is rejected, not accepted.
         await PostExpectingBadRequest("/api/exchange-rates", body);
     }
 
