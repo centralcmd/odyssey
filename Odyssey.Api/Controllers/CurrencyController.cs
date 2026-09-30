@@ -97,7 +97,13 @@ public class CurrencyController : ControllerBase
     [HttpDelete("{code}", Name = "DeleteCurrency")]
     [Authorize(Policy = PermissionClaims.CurrenciesDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(
+        Summary = "Delete a currency based on its code.",
+        Description = @"Delete a currency based on its code. A currency still used by an account, transaction,
+                        budget, tax statement, property, estimate, contract term or exchange rate is refused
+                        with a 409 naming how many of each reference it.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "code")] [SwaggerParameter("Code", Required = true,
             Description = @"The code for the currency to delete.")] string code, CancellationToken cancellationToken = default)

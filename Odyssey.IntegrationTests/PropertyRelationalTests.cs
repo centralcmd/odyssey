@@ -151,6 +151,8 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
 
         Assert.Equal(
         [
+            // Issue #241: every currency-code column is a RESTRICT key to Currencies.
+            new ForeignKeyRule("PropertyEstimates", "CurrencyCode", "Currencies", "RESTRICT"),
             new ForeignKeyRule("PropertyEstimates", "PropertyId", "Properties", "CASCADE"),
             new ForeignKeyRule("PropertySmartTags", "PropertyId", "Properties", "CASCADE"),
             new ForeignKeyRule("PropertySmartTags", "TransactionTagId", "TransactionTags", "RESTRICT"),

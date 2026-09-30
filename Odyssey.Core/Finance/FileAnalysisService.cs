@@ -380,9 +380,18 @@ public class FileAnalysisService
                 continue;
             }
 
-            if (!CurrencyValidationService.IsIsoFormat(NormalizeCurrency(currency, account.CurrencyCode)))
+            var normalizedCurrency = NormalizeCurrency(currency, account.CurrencyCode);
+            if (!CurrencyValidationService.IsIsoFormat(normalizedCurrency))
             {
                 failures.Add(new ImportFailure(req.CandidateId, $"Invalid currency code '{currency}'."));
+                continue;
+            }
+
+            // Transactions.CurrencyCode is a foreign key to Currencies (issue #241). An extracted code
+            // the store does not hold would otherwise fail the whole batch's save, not just this row.
+            if (!await context.Currencies.AnyAsync(c => c.CurrencyCode == normalizedCurrency, cancellationToken))
+            {
+                failures.Add(new ImportFailure(req.CandidateId, $"Currency '{normalizedCurrency}' is not supported."));
                 continue;
             }
 
@@ -396,7 +405,7 @@ public class FileAnalysisService
                     Description = Truncate(description, 256) ?? string.Empty,
                     Amount = amount,
                     TimeStamp = txDate,
-                    CurrencyCode = NormalizeCurrency(currency, account.CurrencyCode),
+                    CurrencyCode = normalizedCurrency,
                     // Optional review overrides: contact, tags, and reference (external id).
                     ContactId = req.ContactId,
                     TransactionTags = tags,

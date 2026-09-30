@@ -402,6 +402,38 @@ public class FileAnalysisServiceTests
         Assert.Equal("user-older", log[1].RequestedByUserId);
     }
 
+    /// <summary>
+    /// Issue #241 — <c>Transactions.CurrencyCode</c> is a foreign key, so a well-formed code the store
+    /// does not hold is refused per candidate rather than failing the whole batch's save on MariaDB.
+    /// </summary>
+    [Fact]
+    public async Task ImportCandidatesAsync_AnUnknownCurrency_FailsThatCandidateOnly()
+    {
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var service = CreateService(context, FakeProvider.Returning(
+            Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
+            Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
+
+        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var candidates = await context.FileAnalysisCandidateTransactions.OrderBy(c => c.Amount).ToListAsync();
+
+        var result = await service.ImportCandidatesAsync(
+            response.AnalysisJobId,
+            new ImportRequest(
+            [
+                new ImportCandidateRequest(candidates[0].Id, null, null, null, "XYZ"),
+                new ImportCandidateRequest(candidates[1].Id, null, null, null, null),
+            ]),
+            "user-1");
+
+        Assert.Equal(1, result.Imported);
+        var failure = Assert.Single(result.Failures);
+        Assert.Equal(candidates[0].Id, failure.CandidateId);
+        Assert.Contains("XYZ", failure.Reason, StringComparison.Ordinal);
+        Assert.DoesNotContain(await context.Transactions.ToListAsync(), t => t.CurrencyCode == "XYZ");
+    }
+
     [Fact]
     public async Task GetAuditLogAsync_ReflectsImportedCount_AfterImport()
     {
