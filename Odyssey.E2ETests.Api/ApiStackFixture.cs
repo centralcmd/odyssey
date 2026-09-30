@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Auth;
 using Odyssey.ApiClient.Contracts;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.E2ETests.Api;
@@ -15,8 +16,10 @@ namespace Odyssey.E2ETests.Api;
 /// tests exercise authentication, permission enforcement, status codes and contracts end to end.
 ///
 /// The stack is expected to be running (<c>docker compose up -d --build</c>, or Aspire); set
-/// <c>E2E_MANAGE_STACK=true</c> to have the fixture bring Compose up/down itself. If the API is
-/// unreachable, <see cref="Available"/> is false and tests skip rather than fail.
+/// <c>E2E_MANAGE_STACK=true</c> to have the fixture bring Compose up/down itself. If nothing is
+/// listening at the API address, <see cref="Available"/> is false and tests skip — unless
+/// <c>ODYSSEY_REQUIRE_TIER</c> names <c>e2e-api</c>, in which case they fail. An API that answers but
+/// never becomes healthy always fails the tier (issue #257; see <see cref="TestTierGate"/>).
 /// </summary>
 public sealed class ApiStackFixture : IAsyncLifetime
 {
@@ -24,11 +27,6 @@ public sealed class ApiStackFixture : IAsyncLifetime
     private const string ManageStackEnvVar = "E2E_MANAGE_STACK";
     private const string DefaultBaseUrl = "http://localhost:5188";
     private const string HealthPath = "/healthz";
-
-    private static readonly TimeSpan HttpProbeTimeout = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan ReadyPollInterval = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan ReadyTimeoutWhenManaged = TimeSpan.FromSeconds(180);
-    private static readonly TimeSpan ReadyTimeoutWhenExisting = TimeSpan.FromSeconds(10);
 
     private bool stackStartedByFixture;
 
@@ -50,24 +48,62 @@ public sealed class ApiStackFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        // Parsed on every path, so a typo in ODYSSEY_REQUIRE_TIER fails even a healthy run.
+        var required = TestTierGate.IsRequired(TestTierGate.E2EApi);
+
         try
         {
-            if (string.Equals(Environment.GetEnvironmentVariable(ManageStackEnvVar), "true", StringComparison.OrdinalIgnoreCase))
-            {
-                await RunComposeAsync("up", "-d", "--build");
-                stackStartedByFixture = true;
-            }
-
-            Available = await WaitForReadyAsync();
-            if (!Available)
-            {
-                SkipReason = $"API not reachable at {BaseUrl}. Start the stack (docker compose up -d --build) or set {ManageStackEnvVar}=true.";
-            }
+            await InitializeCoreAsync(required);
         }
-        catch (Exception ex)
+        catch
         {
-            SkipReason = $"API E2E environment unavailable: {ex.Message}";
+            // A fixture that started the stack and then failed must not leave it running, whether or not
+            // the runner goes on to call DisposeAsync — TearDownStackAsync is idempotent either way.
+            await TearDownStackAsync();
+            throw;
         }
+    }
+
+    private async Task InitializeCoreAsync(bool required)
+    {
+        if (string.Equals(Environment.GetEnvironmentVariable(ManageStackEnvVar), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            stackStartedByFixture = true;
+            var exitCode = await RunComposeAsync("up", "-d", "--build");
+            if (exitCode != 0)
+            {
+                throw TestTierGate.Fault(TestTierGate.E2EApi, $"'docker compose up -d --build' exited {exitCode}.");
+            }
+        }
+
+        // Long when required (a CI stack may still be migrating behind a live port), short otherwise so a
+        // local run with no stack still skips quickly.
+        var timeout = StackProbe.ResolveReadyTimeout(stackStartedByFixture, required);
+        using var client = new HttpClient { Timeout = StackProbe.HttpProbeTimeout };
+        var outcome = await StackProbe.PollAsync(client, new Uri(BaseUrl + HealthPath), timeout, ClassifyHealth);
+
+        SkipReason = TestTierGate.Resolve(
+            TestTierGate.E2EApi,
+            outcome.Probe,
+            outcome.Probe == TierProbe.PrerequisiteMissing
+                ? $"API not reachable at {BaseUrl}: {outcome.Detail}. Start the stack (docker compose up -d --build) or set {ManageStackEnvVar}=true."
+                : $"API at {BaseUrl} is not healthy: {outcome.Detail}.");
+        Available = SkipReason is null;
+    }
+
+    /// <summary>
+    /// <c>/healthz</c> answers JSON. An HTML answer is the Blazor client's SPA fallback — the base URL
+    /// names the client, not the API — and waiting will never change that.
+    /// </summary>
+    internal static Task<(ProbeStep Step, string Detail)> ClassifyHealth(HttpResponseMessage response)
+    {
+        if (StackProbe.IsHtml(response))
+        {
+            return Task.FromResult((ProbeStep.Fatal,
+                $"answered text/html, not JSON — {BaseUrlEnvVar} points at the client (or another HTML server), not the API"));
+        }
+
+        return StackProbe.SuccessStatus(response);
     }
 
     public async Task DisposeAsync()
@@ -77,8 +113,14 @@ public sealed class ApiStackFixture : IAsyncLifetime
             await provider.DisposeAsync();
         }
 
+        await TearDownStackAsync();
+    }
+
+    private async Task TearDownStackAsync()
+    {
         if (stackStartedByFixture)
         {
+            stackStartedByFixture = false;
             await RunComposeAsync("down");
         }
     }
@@ -207,32 +249,7 @@ public sealed class ApiStackFixture : IAsyncLifetime
         HttpClient client, string path, HttpContent content) =>
         client.PostAsync(path, content);
 
-    private async Task<bool> WaitForReadyAsync()
-    {
-        using var client = new HttpClient { BaseAddress = new Uri(BaseUrl), Timeout = HttpProbeTimeout };
-        var deadline = DateTime.UtcNow + (stackStartedByFixture ? ReadyTimeoutWhenManaged : ReadyTimeoutWhenExisting);
-
-        while (DateTime.UtcNow < deadline)
-        {
-            try
-            {
-                if ((await client.GetAsync(HealthPath)).IsSuccessStatusCode)
-                {
-                    return true;
-                }
-            }
-            catch
-            {
-                // Not up yet; keep polling until the deadline.
-            }
-
-            await Task.Delay(ReadyPollInterval);
-        }
-
-        return false;
-    }
-
-    private static async Task RunComposeAsync(params string[] arguments)
+    private static async Task<int> RunComposeAsync(params string[] arguments)
     {
         var startInfo = new ProcessStartInfo("docker") { UseShellExecute = false };
         startInfo.ArgumentList.Add("compose");
@@ -244,6 +261,7 @@ public sealed class ApiStackFixture : IAsyncLifetime
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Failed to start 'docker compose'.");
         await process.WaitForExitAsync();
+        return process.ExitCode;
     }
 }
 

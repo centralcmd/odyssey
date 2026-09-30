@@ -43,9 +43,9 @@ So `dotnet run --project Odyssey.AppHost -c Release` — a reflex after building
 Release` as above — brings up a stack whose API and database are healthy and whose client can reach
 neither: every call hits the SPA fallback, gets `index.html` back, and the WASM app dies parsing HTML
 as JSON behind a red *"An unhandled error has occurred"* bar. It costs the entire `Odyssey.E2ETests`
-tier, and because the fixture probes only whether a stack *answers*, the suite goes red on sign-in
-timeouts rather than skipping. Debug is the default, so this only ever bites when `-c Release` is
-passed explicitly — don't.
+tier: the fixture's browser preflight fails the whole tier naming this cause (issue #257), where it
+used to surface as a suite of sign-in timeouts. Debug is the default, so this only ever bites when
+`-c Release` is passed explicitly — don't.
 
 **A remote session provisions itself.** `.claude/hooks/session-start.sh` runs before a Claude Code
 on the web session starts: it resolves a .NET 10 SDK, derives `DOTNET_ROOT`/`PATH` from it, installs
@@ -939,6 +939,12 @@ Full plan and rationale: `docs/test-environment-and-e2e-spec.md`.
 | `Odyssey.IntegrationTests` | Real-engine checks InMemory can't do — actual migrations, FK cascade, decimal/datetime fidelity | **Docker** (Testcontainers-MariaDB); self-skips otherwise |
 | `Odyssey.E2ETests` | Playwright browser smoke (login → seeded data) | a **running, seeded stack**; self-skips otherwise (see its README) |
 | `Odyssey.E2ETests.Api` | API security/permissions/contracts over real HTTP + real login (permission matrix across the seeded role users) | a **running, seeded stack**; self-skips otherwise |
+
+**Only an ABSENT prerequisite self-skips** (issue #257): no Docker daemon, or nothing listening. A
+prerequisite that is present but broken — image pull, provisioning, a stack that answers but never
+turns healthy — always **fails**. `ODYSSEY_REQUIRE_TIER=integration,e2e,e2e-api` (or `all`) makes the
+absent case fail too; a CI job meant to run a tier must set it, or a green run can mean nothing ran.
+Rule and rationale: `TestShared/TestTierGate.cs` and `docs/test-environment-and-e2e-spec.md` §4.4.
 
 **The browser suite signs in through one shared helper, `E2ESignIn`, and a new test class must use
 it.** The sign-in surface is rate-limited **by network, not by account** (`RateLimiting:Identity`), so
