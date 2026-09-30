@@ -452,6 +452,26 @@ generators where it reduces duplication.
 - Initial smoke flow: login → dashboard → create account → add transaction → budget
   reflects it → file upload.
 
+### 4.4 Skip versus fail for the environment-dependent tiers (issue #257)
+
+`Odyssey.IntegrationTests`, `Odyssey.E2ETests` and `Odyssey.E2ETests.Api` self-skip so that
+`dotnet test Odyssey.sln` is safe on a machine without Docker or a running stack. Their fixtures used to
+catch *every* exception and skip, so a failed image pull, a provisioning error or a slow migration skipped
+a whole tier while CI stayed green having run none of it. The rule now, shared through
+`TestShared/TestTierGate.cs` (linked into all three projects):
+
+| Environment | `ODYSSEY_REQUIRE_TIER` unset | tier named in `ODYSSEY_REQUIRE_TIER` |
+|---|---|---|
+| Prerequisite **absent** — no Docker daemon (`DockerUnavailableException`), nothing listening at the stack URL, Chromium download impossible | skip | **fail** |
+| Prerequisite **present but broken** — image pull, container start, provisioning SQL; a stack that answers but never turns healthy; an API `/healthz` answering HTML; a Release client calling a same-origin `/api/` that returns HTML | **fail** | **fail** |
+| Healthy | run | run |
+
+`ODYSSEY_REQUIRE_TIER` is a comma-separated list of `integration`, `e2e`, `e2e-api` or `all`; an unknown
+name fails the run, so a typo cannot silently un-require a tier. A CI job that is *meant* to exercise a
+tier sets it — the main CI job for `integration`, the E2E workflow for `e2e,e2e-api`. Requiring an E2E
+tier also stretches the readiness wait from 10 s to 120 s (`E2E_READY_TIMEOUT_SECONDS` overrides), so a
+stack whose port is live while migrations still run is waited for rather than failed.
+
 ## 5. Best practices (cross-cutting)
 
 - Deterministic seed → reproducible data and stable assertions/screenshots.

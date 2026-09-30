@@ -32,12 +32,30 @@ E2E_BASE_URL=http://localhost:5199 dotnet test Odyssey.E2ETests
 |---|---|---|
 | `E2E_BASE_URL` | `http://localhost:5199` | Base URL of the client to drive |
 | `E2E_MANAGE_STACK` | unset | When `true`, the fixture runs `docker compose up -d --build` and `down` |
+| `ODYSSEY_REQUIRE_TIER` | unset | Comma-separated tiers that must run: `e2e` here (also `integration`, `e2e-api`, `all`). A required tier **fails** instead of skipping when its stack is absent |
+| `E2E_READY_TIMEOUT_SECONDS` | 10 s, 120 s when required, 180 s when managed | How long to wait for the stack to answer |
 
-If the stack is **unreachable** or Chromium can't be installed, the tests **skip** (they never fail
-for a missing environment), so they're safe to include in a normal `dotnet test` run. Note what that
-does and does not cover: the fixture probes for a stack, not for a *working* one, so a stack that
-answers on `:5199` but is internally broken — the two cases in **Notes** below — produces a suite of
-red timeouts rather than skips.
+### Skip versus fail (issue #257)
+
+Only an **absent** environment is a skip: nothing listening at `E2E_BASE_URL` (connection refused, no
+answer inside the probe), or a Chromium download that cannot reach the network. That keeps the suite
+safe in a normal `dotnet test` run — unless `ODYSSEY_REQUIRE_TIER` names `e2e`, which turns those into
+failures too. CI's E2E job sets it.
+
+A stack that **answers but is broken always fails**, whatever the variable says:
+
+- the client never answers `2xx` inside the window (e.g. `502` throughout);
+- the API behind the client's same-origin `/api/` path (the Compose NGINX proxy) never becomes healthy
+  — the fixture waits for it up to the required-tier window, so a stack still migrating is waited out
+  rather than failed on the first sign-in;
+- **the Release-under-Aspire client** (see **Notes**). When `/api/healthz` on the client origin returns
+  `text/html` — no proxy there, which is normal for a Debug client under Aspire — the fixture loads the
+  app once in Chromium and watches its startup calls. If the *app itself* requests its own origin's
+  `/api/…` and gets HTML back, the tier fails with a message naming the cause. A Debug client calls
+  `http://localhost:5188` directly and never requests that path, so it cannot trip the check.
+
+Other stack-internal breakage (for example the stale dev server below) still surfaces as test
+timeouts; the fixture checks reachability and the API route, not every asset.
 
 ## Notes
 
@@ -54,7 +72,9 @@ red timeouts rather than skips.
   returns `index.html`; the WASM app then dies parsing HTML as JSON. The give-away is in the browser
   console — `JsonException: ExpectedStartOfValueNotFound, <` — and on the page itself, the red
   *"An unhandled error has occurred"* bar over a blank body. Compose is unaffected and should stay
-  Release. Rebuild the stack without `-c Release` and re-run.
+  Release. Rebuild the stack without `-c Release` and re-run. The fixture's browser preflight
+  (above) now catches this before any test runs and fails the tier with that diagnosis, instead of
+  a suite of sign-in timeouts.
 - **Against a `dotnet run` client (Option C), rebuild and re-*start* the dev server, in that order.**
   The Blazor dev server serves an `index.html` naming **fingerprinted** framework assets
   (`_framework/dotnet.<hash>.js`). A `dotnet build`/`dotnet test` of the solution regenerates those

@@ -22,4 +22,10 @@
     <PackageReference Include="coverlet.collector" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Shared skip-or-fail rule for the self-skipping tiers (issue #257); linked, not referenced. -->
+    <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
+    <Compile Include="..\TestShared\StackProbe.cs" Link="TestShared\StackProbe.cs" />
+  </ItemGroup>
+
 </Project>
