@@ -131,8 +131,8 @@ public class ContractSmartTagTransactionService
         if (completionDate is not null)
             return (null, null);
 
-        DateTime? from = startDate is { } s ? DateTime.SpecifyKind(s.Date, DateTimeKind.Utc) : null;
-        DateTime? toExclusive = endDate is { } e ? DateTime.SpecifyKind(e.Date.AddDays(1), DateTimeKind.Utc) : null;
+        DateTime? from = startDate is { } s ? DateTime.SpecifyKind(PeriodBounds.InclusiveStart(s), DateTimeKind.Utc) : null;
+        DateTime? toExclusive = endDate is { } e ? DateTime.SpecifyKind(PeriodBounds.ExclusiveEnd(e), DateTimeKind.Utc) : null;
         return (from, toExclusive);
     }
 

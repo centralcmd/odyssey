@@ -128,6 +128,8 @@ public class TaxStatementApiTests
 
         var post = await client.PostAsJsonAsync(Path, request);
         Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
+        var problem = await post.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.Contains(nameof(NewTaxStatement.EndDate), problem!.Errors.Keys, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]

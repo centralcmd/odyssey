@@ -150,14 +150,14 @@ public class BudgetService
             return counts;
         }
 
-        var minDate = budgets.Min(b => b.StartDate);
-        var maxDate = budgets.Max(b => b.EndDate);
+        var minDate = budgets.Min(b => PeriodBounds.InclusiveStart(b.StartDate));
+        var maxExclusive = budgets.Max(b => PeriodBounds.ExclusiveEnd(b.EndDate));
 
         // One row per (transaction, matching tag) link. A multi-tagged transaction yields several rows,
         // so the per-budget count must de-duplicate by transaction id to avoid double-counting.
         var candidates = await context.TransactionTagLinks
             .Where(link => allTagIds.Contains(link.TransactionTagId))
-            .Where(link => link.Transaction!.TimeStamp >= minDate && link.Transaction.TimeStamp <= maxDate)
+            .Where(link => link.Transaction!.TimeStamp >= minDate && link.Transaction.TimeStamp < maxExclusive)
             .Select(link => new
             {
                 link.TransactionId,
@@ -178,11 +178,12 @@ public class BudgetService
                 continue;
             }
 
+            var (start, endExclusive) = PeriodBounds.Of(budget.StartDate, budget.EndDate);
             counts[budget.BudgetId] = candidates
                 .Where(c =>
                     tagIds.Contains(c.TransactionTagId)
-                    && c.TimeStamp >= budget.StartDate
-                    && c.TimeStamp <= budget.EndDate
+                    && c.TimeStamp >= start
+                    && c.TimeStamp < endExclusive
                     && c.CurrencyCode == budget.BaseCurrencyCode)
                 .Select(c => c.TransactionId)
                 .Distinct()
@@ -195,13 +196,14 @@ public class BudgetService
     public async Task<ExistingBudget> Create(NewBudget newBudget, CancellationToken cancellationToken = default)
     {
         await CurrencyValidationService.EnsureSupportedAndActive(context, newBudget.BaseCurrencyCode, nameof(newBudget.BaseCurrencyCode));
+        var (startDate, endDate) = NormalizePeriod(newBudget.StartDate, newBudget.EndDate);
 
         var budget = new Budget
         {
             Name = newBudget.Name,
             Description = newBudget.Description,
-            StartDate = DateTimeNormalization.NormalizeToUtc(newBudget.StartDate),
-            EndDate = DateTimeNormalization.NormalizeToUtc(newBudget.EndDate),
+            StartDate = startDate,
+            EndDate = endDate,
             Archived = null,
             BaseCurrencyCode = CurrencyValidationService.Normalize(newBudget.BaseCurrencyCode),
         };
@@ -222,17 +224,36 @@ public class BudgetService
 
         var normalizedCurrencyCode = CurrencyValidationService.Normalize(putBudget.BaseCurrencyCode);
         await CurrencyValidationService.EnsureSupportedAndActive(context, normalizedCurrencyCode, nameof(putBudget.BaseCurrencyCode));
+        var (startDate, endDate) = NormalizePeriod(putBudget.StartDate, putBudget.EndDate);
 
         budget.Name = putBudget.Name;
         budget.Description = putBudget.Description;
-        budget.StartDate = DateTimeNormalization.NormalizeToUtc(putBudget.StartDate);
-        budget.EndDate = DateTimeNormalization.NormalizeToUtc(putBudget.EndDate);
+        budget.StartDate = startDate;
+        budget.EndDate = endDate;
         budget.BaseCurrencyCode = normalizedCurrencyCode;
         ApplyArchiveTransition(budget, putBudget.Archived);
 
         await context.SaveChangesAsync(cancellationToken);
 
         return budget.Adapt<ExistingBudget>();
+    }
+
+    // Compared by calendar day, the unit the period is read in (PeriodBounds): a one-day budget whose
+    // start time happens to follow its end time still covers that whole day. Keyed on EndDate with the
+    // same 400 shape TaxStatementService uses for its period.
+    private static (DateTime Start, DateTime End) NormalizePeriod(DateTime startDate, DateTime endDate)
+    {
+        var start = DateTimeNormalization.NormalizeToUtc(startDate);
+        var end = DateTimeNormalization.NormalizeToUtc(endDate);
+        if (end.Date < start.Date)
+        {
+            throw new DomainValidationException(
+                "EndDate must be on or after StartDate.",
+                code: null,
+                field: nameof(Budget.EndDate));
+        }
+
+        return (start, end);
     }
 
     public async Task Delete(Guid id, CancellationToken cancellationToken = default)
@@ -270,12 +291,13 @@ public class BudgetService
         
         // Any-of match through the join: a transaction belongs to the report if it carries at least one
         // of the budget's item tags. Each transaction appears once in the de-duplicated list below.
+        var (periodStart, periodEndExclusive) = PeriodBounds.Of(budget.StartDate, budget.EndDate);
         var allTransactions = await context.Transactions
             .AsNoTracking()
             .Include(t => t.Account)
             .Include(t => t.TransactionTags)
             .Where(t => t.TransactionTags.Any(tag => transactionTagIds.Contains(tag.TransactionTagId)))
-            .Where(t => t.TimeStamp >= budget.StartDate && t.TimeStamp <= budget.EndDate)
+            .Where(t => t.TimeStamp >= periodStart && t.TimeStamp < periodEndExclusive)
             .AsSplitQuery()
             .ToListAsync(cancellationToken);
 
