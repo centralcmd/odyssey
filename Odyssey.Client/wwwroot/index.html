@@ -130,6 +130,21 @@
             };
             requestAnimationFrame(attempt);
         };
+        window.odsFocusIfLost = function (triggerId, panelId) {
+            // OdsPopupMenu's click-away close (issue #255). The overlay is modeless, so the click
+            // also lands on what was clicked; if that was a control, it has focus and must keep it.
+            // Only when focus was LOST — to <body> (empty space, or the focused control unmounting
+            // with the panel) or still inside the closing panel — does it go back to the trigger.
+            // Checked on the next frame, after the click's own mousedown focus change.
+            requestAnimationFrame(() => {
+                const active = document.activeElement;
+                const panel = document.getElementById(panelId);
+                const lost = !active || active === document.body || (panel && panel.contains(active));
+                if (!lost) return;
+                const trigger = document.getElementById(triggerId);
+                if (trigger) trigger.focus();
+            });
+        };
         window.odsSetAttr = function (id, name, value) {
             // Set/remove an attribute on an element by id — used to associate a control (e.g. a
             // MudAutocomplete input) with a helper via aria-describedby, which the component can't

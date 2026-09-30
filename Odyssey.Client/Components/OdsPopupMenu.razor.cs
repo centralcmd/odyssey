@@ -251,10 +251,18 @@ public partial class OdsPopupMenu
     private Task OnSentinelFocusAsync(FocusEventArgs e) => CloseAsync(restoreFocus: true);
 
     /// <summary>
-    /// MudOverlay's click-away. Whatever had focus inside the popover is about to unmount, so hand it
-    /// back to the trigger rather than letting it fall to &lt;body&gt;.
+    /// MudOverlay's click-away. The overlay is modeless, so the click also reaches what was clicked:
+    /// a text field the user clicked into must KEEP its focus, or their typing lands on the trigger.
+    /// So this close restores focus only when it was lost — to &lt;body&gt; (a click on empty space, or
+    /// the focused control unmounting with the panel) or still inside the closing panel — which
+    /// odsFocusIfLost decides after the click's own focus change has happened. Esc and Tab closes
+    /// still restore unconditionally.
     /// </summary>
-    private Task OnOverlayClosedAsync() => CloseAsync(restoreFocus: true);
+    private async Task OnOverlayClosedAsync()
+    {
+        await CloseAsync(restoreFocus: false);
+        await InvokeJsAsync("odsFocusIfLost", EffectiveTriggerId, PanelId);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

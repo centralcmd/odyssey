@@ -31,7 +31,8 @@
       • Esc anywhere in the panel, or on the trigger while open, closes and returns focus to the
         trigger. While open the trigger stops its keys propagating, so that Esc does not also
         cancel a wrapping OdsModal; closed, keys bubble as normal;
-      • a close by outside click also hands focus back to the trigger rather than <body>;
+      • a close by outside click leaves focus on whatever the user clicked (the overlay is
+        modeless), and hands it back to the trigger only if it was lost to <body>;
       • in panel mode Tab past the last control, or Shift+Tab before the first, closes the panel
         and returns focus to the trigger (two focus sentinels catch the browser's own Tab), so
         focus never leaves the portaled panel for the end of the page (WCAG 2.4.3).
@@ -81,13 +82,13 @@
                 @* Focus sentinels: the browser's own Tab from the panel's last control, or Shift+Tab
                    from its first, lands here — so the popup closes and focus returns to the trigger
                    instead of leaving the portaled panel for the end of the page. *@
-                <span class="sr-only odc-popmenu-sentinel" tabindex="0" data-popmenu-sentinel="start"
+                <span class="sr-only odc-popmenu-sentinel" tabindex="0" role="presentation" data-popmenu-sentinel="start"
                       @onfocus="OnSentinelFocusAsync"></span>
             }
             @ChildContent
             @if (!SingleChoice)
             {
-                <span class="sr-only odc-popmenu-sentinel" tabindex="0" data-popmenu-sentinel="end"
+                <span class="sr-only odc-popmenu-sentinel" tabindex="0" role="presentation" data-popmenu-sentinel="end"
                       @onfocus="OnSentinelFocusAsync"></span>
             }
         </div>

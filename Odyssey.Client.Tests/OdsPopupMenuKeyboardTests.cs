@@ -200,23 +200,57 @@ public class OdsPopupMenuKeyboardTests
     }
 
     /// <summary>
-    /// A click outside is MudOverlay's close, not one this component asked for: the element that had
-    /// focus in the popover unmounts, so focus goes back to the trigger — exactly once.
+    /// A click outside is MudOverlay's close. The overlay is modeless, so the click also lands on
+    /// whatever was clicked — a text field the user clicked into must keep its focus, or their
+    /// typing goes to the trigger. So this close never focuses the trigger unconditionally: it asks
+    /// <c>odsFocusIfLost</c>, which refocuses the trigger only when focus fell to the body or is
+    /// still in the closing panel (the live run checks both outcomes in Chromium).
     /// </summary>
     [Theory]
     [MemberData(nameof(Hosts))]
-    public void A_click_outside_closes_it_and_returns_focus_once(string host)
+    public void A_click_outside_closes_it_and_restores_focus_only_if_lost(string host)
     {
         var (ctx, cut) = Render(host);
         Trigger(cut, host).Click();
+        var panelId = Panel(cut, host).Id;
         var before = ctx.JSInterop.Invocations.Count(i => i.Identifier == "odsFocusById");
 
         cut.Find(".mud-overlay").Click();
 
         Assert.False(IsOpen(cut, host));
         Assert.Empty(cut.FindAll(".mud-popover-open"));
+        // No unconditional refocus...
+        Assert.Equal(before, ctx.JSInterop.Invocations.Count(i => i.Identifier == "odsFocusById"));
+        // ...exactly one conditional one, naming this trigger and this panel.
+        var call = Assert.Single(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusIfLost");
+        Assert.Equal(Trigger(cut, host).Id, call.Arguments[0]);
+        Assert.Equal(panelId, call.Arguments[1]);
+    }
+
+    /// <summary>Esc and Tab closes still restore unconditionally — only the click-away is conditional.</summary>
+    [Theory]
+    [MemberData(nameof(Hosts))]
+    public void Escape_never_goes_through_the_conditional_restore(string host)
+    {
+        var (ctx, cut) = Render(host);
+        Trigger(cut, host).Click();
+
+        Panel(cut, host).KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
         AssertFocusReturnedToTrigger(ctx, cut, host);
-        Assert.Equal(before + 1, ctx.JSInterop.Invocations.Count(i => i.Identifier == "odsFocusById"));
+        Assert.DoesNotContain(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusIfLost");
+    }
+
+    /// <summary>The sentinels are presentational: focusable only so the browser's Tab can land there.</summary>
+    [Theory]
+    [MemberData(nameof(PanelHosts))]
+    public void The_tab_sentinels_are_presentational(string host)
+    {
+        var (_, cut) = Render(host);
+        Trigger(cut, host).Click();
+
+        Assert.All(Panel(cut, host).QuerySelectorAll("[data-popmenu-sentinel]"),
+            s => Assert.Equal("presentation", s.GetAttribute("role")));
     }
 
     [Theory]
