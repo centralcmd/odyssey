@@ -113,8 +113,85 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
             return;
         }
 
+        var blockers = await CountDeleteBlockers(normalizedCode, cancellationToken);
+
+        if (blockers.Count > 0)
+        {
+            throw new DomainConflictException(string.Join(" ", blockers));
+        }
+
         context.Currencies.Remove(currency);
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Every reason the currency cannot be hard-deleted, one explaining clause per blocker class
+    /// (issue #241).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Each clause corresponds to one of the <c>RESTRICT</c> foreign keys pointing at
+    /// <c>Currencies</c>. Those keys are the backstop on MariaDB, but their violation reaches
+    /// <c>GlobalExceptionHandler</c> as a generic 409 naming no surface — and the EF InMemory tiers
+    /// enforce no foreign keys at all, so there the delete would simply succeed and strand every
+    /// account, transaction, budget and statement recorded in it. Before the keys existed that was
+    /// also what happened in production. This pre-check is what makes the refusal explain itself,
+    /// and what makes it happen on every tier.
+    /// </para>
+    /// <para>
+    /// Every class is counted before any is reported, so a currency blocked by several names them
+    /// all. Adding a currency-code column to the schema means adding its key AND its clause here.
+    /// <c>FileAnalysisCandidateTransactions.Currency</c> is deliberately absent: it holds unvetted
+    /// extraction output that the import validates before it becomes a transaction, so it carries no
+    /// key and does not pin a currency.
+    /// </para>
+    /// <para>
+    /// Each clause names a COUNT and never the blocking records: naming them would reach past
+    /// <c>currencies.delete</c>'s own boundary.
+    /// </para>
+    /// </remarks>
+    private async Task<List<string>> CountDeleteBlockers(string code, CancellationToken cancellationToken)
+    {
+        var blockers = new List<string>();
+
+        void Add(int count, string singular, string plural, string remedy)
+        {
+            if (count > 0)
+            {
+                blockers.Add($"This currency is used by {count} {(count == 1 ? singular : plural)}. {remedy}");
+            }
+        }
+
+        Add(
+            await context.Accounts.CountAsync(a => a.CurrencyCode == code, cancellationToken),
+            "account", "accounts", "Change or delete those accounts first.");
+        Add(
+            await context.Transactions.CountAsync(t => t.CurrencyCode == code, cancellationToken),
+            "transaction", "transactions", "Change or delete those transactions first.");
+        Add(
+            await context.Budgets.CountAsync(b => b.BaseCurrencyCode == code, cancellationToken),
+            "budget", "budgets", "Change or delete those budgets first.");
+        Add(
+            await context.TaxStatements.CountAsync(s => s.BaseCurrencyCode == code, cancellationToken),
+            "tax statement", "tax statements", "Change or delete those statements first.");
+        Add(
+            await context.Properties.CountAsync(p => p.CurrencyCode == code, cancellationToken),
+            "property", "properties", "Change or delete those properties first.");
+        Add(
+            await context.AccountEstimates.CountAsync(e => e.CurrencyCode == code, cancellationToken),
+            "account estimate", "account estimates", "Delete those estimates first.");
+        Add(
+            await context.PropertyEstimates.CountAsync(e => e.CurrencyCode == code, cancellationToken),
+            "property estimate", "property estimates", "Delete those estimates first.");
+        Add(
+            await context.Terms.CountAsync(t => t.CurrencyCode == code, cancellationToken),
+            "contract term", "contract terms", "Change or delete those terms first.");
+        Add(
+            await context.ExchangeRates.CountAsync(
+                r => r.FromCurrencyCode == code || r.ToCurrencyCode == code, cancellationToken),
+            "exchange rate", "exchange rates", "Delete those rates first.");
+
+        return blockers;
     }
 
     private static string NormalizeCode(string currencyCode)

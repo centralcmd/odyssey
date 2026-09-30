@@ -135,6 +135,23 @@ own.
 `Odyssey.IntegrationTests/UserAttributionForeignKeyTests` pins all of this at the database; EF InMemory
 enforces no foreign keys, so the fast tiers never exercise it.
 
+### Currency foreign keys
+
+Every currency-code column is a navigation-less **`RESTRICT`** key to `Currencies.CurrencyCode`:
+`Accounts`, `Transactions`, `Properties`, `AccountEstimates`, `PropertyEstimates` and `Terms`
+(`CurrencyCode`), `Budgets` and `TaxStatements` (`BaseCurrencyCode`), and both ends of `ExchangeRates`.
+Only the exchange-rate pair existed before issue #241, so a currency could be deleted out from under
+the records kept in it, leaving accounts that could not be edited and budgets and statements that
+refused updates. `AddCurrencyForeignKeys` added the rest, first **restoring** any code already orphaned
+that way as an active `Restored currency XYZ (review)` row — the one data write, which changes no
+referencing row. Adding each key rebuilds its table (`ALGORITHM=COPY`, writes blocked meanwhile); the
+upgrade note is in [`docs/deployment.md`](../docs/deployment.md).
+
+`CurrencyService.CountDeleteBlockers` is the explaining pre-check: one clause per key, counts only, a
+`409`. A new currency column needs its key **and** its clause. `FileAnalysisCandidateTransactions.Currency`
+is the deliberate exception — unvetted extraction output, checked against `Currencies` on import rather
+than keyed. `Odyssey.IntegrationTests/CurrencyForeignKeyTests` pins the set at the database.
+
 ### Permission claims are not seeded here
 
 `AspNetRoleClaims` rows are reconciled at runtime by `RoleClaimSeeder` in `Odyssey.MigrationService`,

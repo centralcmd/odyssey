@@ -359,6 +359,14 @@ public class FileAnalysisService
         var imported = 0;
         var failures = new List<ImportFailure>();
 
+        // Loaded once for the batch rather than probed per candidate; the table is small reference data.
+        var activeCurrencies = (await context.Currencies
+                .AsNoTracking()
+                .Where(c => c.Archived == null)
+                .Select(c => c.CurrencyCode)
+                .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         foreach (var req in request.Candidates)
         {
             if (!candidateMap.TryGetValue(req.CandidateId, out var candidate))
@@ -380,9 +388,19 @@ public class FileAnalysisService
                 continue;
             }
 
-            if (!CurrencyValidationService.IsIsoFormat(NormalizeCurrency(currency, account.CurrencyCode)))
+            var normalizedCurrency = NormalizeCurrency(currency, account.CurrencyCode);
+            if (!CurrencyValidationService.IsIsoFormat(normalizedCurrency))
             {
                 failures.Add(new ImportFailure(req.CandidateId, $"Invalid currency code '{currency}'."));
+                continue;
+            }
+
+            // Transactions.CurrencyCode is a foreign key to Currencies (issue #241): an extracted code
+            // the store does not hold would otherwise fail the whole batch's save, not just this row.
+            // Active-only, the same rule EnsureSupportedAndActive applies on every other write path.
+            if (!activeCurrencies.Contains(normalizedCurrency))
+            {
+                failures.Add(new ImportFailure(req.CandidateId, $"Currency '{normalizedCurrency}' is not supported."));
                 continue;
             }
 
@@ -396,7 +414,7 @@ public class FileAnalysisService
                     Description = Truncate(description, 256) ?? string.Empty,
                     Amount = amount,
                     TimeStamp = txDate,
-                    CurrencyCode = NormalizeCurrency(currency, account.CurrencyCode),
+                    CurrencyCode = normalizedCurrency,
                     // Optional review overrides: contact, tags, and reference (external id).
                     ContactId = req.ContactId,
                     TransactionTags = tags,

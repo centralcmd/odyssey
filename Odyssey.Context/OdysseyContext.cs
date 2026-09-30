@@ -270,6 +270,23 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        // Every other currency-code column (issue #241). Before these keys a currency could be deleted
+        // out from under the rows recorded in it, leaving accounts that could not be edited and
+        // budgets and statements that refused updates. RESTRICT, never CASCADE or SET NULL: a currency
+        // is reference data, and neither destroying a ledger nor blanking its unit is an acceptable
+        // side effect of removing one. CurrencyService.CountDeleteBlockers is the explaining pre-check
+        // (and the only enforcement on the InMemory tiers); it names one clause per key declared here.
+        // FileAnalysisCandidateTransactions.Currency is deliberately left without a key — it holds
+        // unvetted extraction output, validated on import before it becomes a transaction.
+        ConfigureCurrencyReference<Account>(modelBuilder, account => account.CurrencyCode);
+        ConfigureCurrencyReference<Transaction>(modelBuilder, transaction => transaction.CurrencyCode);
+        ConfigureCurrencyReference<Budget>(modelBuilder, budget => budget.BaseCurrencyCode);
+        ConfigureCurrencyReference<TaxStatement>(modelBuilder, statement => statement.BaseCurrencyCode);
+        ConfigureCurrencyReference<Property>(modelBuilder, property => property.CurrencyCode);
+        ConfigureCurrencyReference<AccountEstimate>(modelBuilder, estimate => estimate.CurrencyCode);
+        ConfigureCurrencyReference<PropertyEstimate>(modelBuilder, estimate => estimate.CurrencyCode);
+        ConfigureCurrencyReference<Term>(modelBuilder, term => term.CurrencyCode);
+
         modelBuilder.Entity<TaxStatement>(entity =>
         {
             entity.Property(s => s.Status)
@@ -1369,6 +1386,23 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(column)
                 .OnDelete(DeleteBehavior.SetNull);
         }
+    }
+
+    /// <summary>
+    /// Declares <paramref name="currencyColumn"/> on <typeparamref name="TEntity"/> as a
+    /// navigation-less <c>RESTRICT</c> foreign key to <c>Currencies.CurrencyCode</c> (issue #241).
+    /// </summary>
+    private static void ConfigureCurrencyReference<TEntity>(
+        ModelBuilder modelBuilder,
+        System.Linq.Expressions.Expression<Func<TEntity, object?>> currencyColumn)
+        where TEntity : class
+    {
+        modelBuilder.Entity<TEntity>()
+            .HasOne<Currency>()
+            .WithMany()
+            .HasForeignKey(currencyColumn)
+            .HasPrincipalKey(currency => currency.CurrencyCode)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 
     // ── Finance ───────────────────────────────────────────────────────────────────────────────

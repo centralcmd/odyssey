@@ -47,7 +47,8 @@ public class Property
     public PropertyType Type { get; set; }
 
     /// <summary>
-    /// FK-free and validated against <c>Currencies</c> exactly as <c>Account.CurrencyCode</c> is. A
+    /// Validated against <c>Currencies</c> exactly as <c>Account.CurrencyCode</c> is, and like it a
+    /// <c>RESTRICT</c> foreign key there (issue #241). A
     /// property needs its own currency because its estimates are recorded in it and there is no parent
     /// account to inherit from.
     /// </summary>

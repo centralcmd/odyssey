@@ -402,6 +402,83 @@ public class FileAnalysisServiceTests
         Assert.Equal("user-older", log[1].RequestedByUserId);
     }
 
+    /// <summary>
+    /// Issue #241 — <c>Transactions.CurrencyCode</c> is a foreign key, so a well-formed code the store
+    /// does not hold is refused per candidate rather than failing the whole batch's save on MariaDB.
+    /// </summary>
+    [Fact]
+    public async Task ImportCandidatesAsync_AnUnknownCurrency_FailsThatCandidateOnly()
+    {
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var service = CreateService(context, FakeProvider.Returning(
+            Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
+            Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
+
+        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var candidates = await context.FileAnalysisCandidateTransactions.OrderBy(c => c.Amount).ToListAsync();
+
+        var result = await service.ImportCandidatesAsync(
+            response.AnalysisJobId,
+            new ImportRequest(
+            [
+                new ImportCandidateRequest(candidates[0].Id, null, null, null, "XYZ"),
+                new ImportCandidateRequest(candidates[1].Id, null, null, null, null),
+            ]),
+            "user-1");
+
+        Assert.Equal(1, result.Imported);
+        var failure = Assert.Single(result.Failures);
+        Assert.Equal(candidates[0].Id, failure.CandidateId);
+        Assert.Contains("XYZ", failure.Reason, StringComparison.Ordinal);
+        Assert.DoesNotContain(await context.Transactions.ToListAsync(), t => t.CurrencyCode == "XYZ");
+    }
+
+    /// <summary>Archived currencies are refused on import, as on every other transaction write path.</summary>
+    [Fact]
+    public async Task ImportCandidatesAsync_AnArchivedCurrency_FailsThatCandidate()
+    {
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var service = CreateService(context, FakeProvider.Returning(
+            Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m)), EnabledOptions());
+
+        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var candidate = await context.FileAnalysisCandidateTransactions.SingleAsync();
+        (await context.Currencies.SingleAsync(c => c.CurrencyCode == "SEK")).Archived = DateTime.UtcNow;
+        await context.SaveChangesAsync();
+
+        var result = await service.ImportCandidatesAsync(
+            response.AnalysisJobId,
+            new ImportRequest([new ImportCandidateRequest(candidate.Id, null, null, null, "SEK")]),
+            "user-1");
+
+        Assert.Equal(0, result.Imported);
+        Assert.Contains("SEK", Assert.Single(result.Failures).Reason, StringComparison.Ordinal);
+        Assert.Empty(await context.Transactions.ToListAsync());
+    }
+
+    /// <summary>A known code in lower case is normalised, not refused.</summary>
+    [Fact]
+    public async Task ImportCandidatesAsync_ALowercaseKnownCurrency_IsImportedUpperCased()
+    {
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var service = CreateService(context, FakeProvider.Returning(
+            Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m)), EnabledOptions());
+
+        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var candidate = await context.FileAnalysisCandidateTransactions.SingleAsync();
+
+        var result = await service.ImportCandidatesAsync(
+            response.AnalysisJobId,
+            new ImportRequest([new ImportCandidateRequest(candidate.Id, null, null, null, " eur ")]),
+            "user-1");
+
+        Assert.Equal(1, result.Imported);
+        Assert.Equal("EUR", (await context.Transactions.SingleAsync()).CurrencyCode);
+    }
+
     [Fact]
     public async Task GetAuditLogAsync_ReflectsImportedCount_AfterImport()
     {
