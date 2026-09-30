@@ -1,37 +1,36 @@
 @*
-    OdsPopupMenu: ONE real <button> trigger with a MudMenu popover anchored over it (issue #255).
-    It is the shared host behind every select-style Ods control (OdsMultiSelect, OdsSortSelect,
-    OdsTypeSelect, OdsPageSizeSelect, OdsInlineSelect, OdsTagMultiSelect, OdsMoneyField's currency
-    picker, AccountSmartTagAdder, CreateTransactionDialog's account picker).
+    OdsPopupMenu: ONE real <button> trigger with a popover anchored to it (issue #255). It is the
+    shared host behind every select-style Ods control (OdsMultiSelect, OdsSortSelect, OdsTypeSelect,
+    OdsPageSizeSelect, OdsInlineSelect, OdsTagMultiSelect, OdsMoneyField's currency picker,
+    AccountSmartTagAdder, CreateTransactionDialog's account picker).
 
     Why it exists: MudMenu wraps a custom ActivatorContent in its own
     <div tabindex="0" role="button" aria-haspopup="menu" aria-expanded="…">. Every Ods trigger put a
     real <button> inside that div, which gave each control two tab stops (an unnamed "button", then
     the real one), announced a button nested in a button, and left aria-expanded on the div rather
-    than on the focused, named control. So nothing here uses ActivatorContent.
+    than on the focused, named control.
 
-    Instead the MudMenu is rendered with NO activator at all (no ActivatorContent, Label or Icon),
-    which MudMenu supports: it then draws only its popover and its click-away overlay. The menu's
-    root element is stretched over this component's box (.odc-popmenu-anchor, position:absolute;
-    inset:0; pointer-events:none), because MudBlazor positions a popover against the parent of its
-    placeholder, i.e. that root — so the popover still anchors, flips and sizes against the trigger
-    exactly as before, and still portals out of any overflow:hidden ancestor.
+    It is built on MudPopover + MudOverlay directly rather than MudMenu, because MudMenu also
+    hard-codes role="menu" on its list — wrong for a checkbox panel or a search-plus-listbox, and
+    impossible to override. Here the panel's role follows what it holds, and the trigger's
+    aria-haspopup always agrees with it:
+      • single-choice mode (RowId/RowCount set): role="menu" of the consumer's
+        role="menuitemradio" rows; aria-haspopup="menu";
+      • panel mode (everything else — a checkbox group, a search box, a listbox): a non-modal
+        role="dialog" named by the trigger; aria-haspopup="dialog".
 
-    What this component owns, once, for every consumer:
-      • the trigger's aria-haspopup / aria-expanded, on the button itself;
-      • open / close: a click (pointer or the button's own Enter/Space) toggles; MudMenu's overlay
-        closes on an outside click;
-      • focus return: a close that did not start on the trigger sends focus back to it, so focus is
-        never stranded on <body> when the popover's content unmounts;
-      • the single-choice keyboard contract, when RowId/RowCount are set: ↑/↓ on the closed
-        trigger opens; opening focuses the selected row (else the first); ↑/↓/Home/End rove and
-        clamp; Esc closes and restores focus; Tab closes behind itself. Rows are the consumer's own
-        <button role="menuitemradio" tabindex="-1"> elements, which call RowKeyDownAsync.
+    MudPopover positions against the parent of its placeholder, which is this component's box, so
+    the popover anchors, flips and portals out of any overflow:hidden ancestor as before; MudOverlay
+    closes it on an outside click, as MudMenu's did.
 
-    A MudMenuItem needs MudMenu's own activator to receive keyboard focus (MudMenu tracks the
-    focused item from keydowns on its root, which this trigger is deliberately not inside), so a
-    consumer renders its rows as buttons rather than MudMenuItems — the pattern OdsTypeSelect set.
-    OdsMenu, whose rows ARE MudMenuItems, uses MudMenu's built-in icon-button activator instead.
+    Keyboard (APG menu button / disclosure dialog):
+      • Enter/Space (the button's own click), ↓ or ↑ on the trigger open it, and focus moves IN:
+        the selected row (single-choice), FocusOnOpenId, or else the panel's first focusable;
+      • single-choice rows rove with ↑/↓/Home/End (clamped) and Tab closes behind itself;
+      • Esc anywhere in the panel, or on the trigger while open, closes and returns focus to the
+        trigger. While open the trigger stops its keys propagating, so that Esc does not also
+        cancel a wrapping OdsModal; closed, keys bubble as normal;
+      • a close by outside click also hands focus back to the trigger rather than <body>.
 *@
 
 @inject IJSRuntime Js
@@ -45,23 +44,29 @@
             disabled="@Disabled"
             aria-haspopup="@HasPopup"
             aria-expanded="@(_open ? "true" : "false")"
+            aria-controls="@(_open ? PanelId : null)"
             aria-label="@AriaLabel"
             aria-describedby="@AriaDescribedBy"
             aria-invalid="@(AriaInvalid ? "true" : null)"
             @onclick="OnTriggerClickAsync"
-            @onkeydown="OnTriggerKeyDownAsync">
+            @onkeydown="OnTriggerKeyDownAsync"
+            @onkeydown:stopPropagation="@_open">
         @TriggerContent
     </button>
-    <MudMenu @ref="_menu"
-             Class="odc-popmenu-anchor"
-             AnchorOrigin="@AnchorOrigin"
-             TransformOrigin="@TransformOrigin"
-             PopoverClass="@PopoverClass"
-             ListClass="@ListClass"
-             RelativeWidth="@RelativeWidth"
-             MaxHeight="@MaxHeight"
-             Disabled="@Disabled"
-             OpenChanged="OnMenuOpenChangedAsync">
-        @ChildContent
-    </MudMenu>
+    <MudPopover Open="@_open"
+                Class="@PopoverClass"
+                AnchorOrigin="@AnchorOrigin"
+                TransformOrigin="@TransformOrigin"
+                RelativeWidth="@RelativeWidth"
+                MaxHeight="@MaxHeight">
+        <div id="@PanelId"
+             class="@PanelClassName"
+             role="@(SingleChoice ? "menu" : "dialog")"
+             aria-labelledby="@(string.IsNullOrEmpty(AriaLabel) ? EffectiveTriggerId : null)"
+             aria-label="@AriaLabel"
+             @onkeydown="OnPanelKeyDownAsync">
+            @ChildContent
+        </div>
+    </MudPopover>
+    <MudOverlay Visible="@_open" AutoClose="true" LockScroll="false" OnClosed="OnOverlayClosedAsync" />
 </div>

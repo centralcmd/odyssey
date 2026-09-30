@@ -150,7 +150,7 @@
         </span>;
     };
 
-    // The popup is MudMenu's role=menu list, so each field is a single-choice menu row
+    // The popup is OdsPopupMenu's role=menu panel, so each field is a single-choice menu row
     // (role=menuitemradio + aria-checked), the pattern OdsTypeSelect set — a listbox `option` role
     // would be invalid inside a menu. The rows are this component's own buttons rather than
     // MudMenuItems: the trigger is OdsPopupMenu's (issue #255), which supplies the roving focus.
@@ -177,7 +177,7 @@
 
     private string RowId(int index) => $"{FieldId}-opt-{index}";
 
-    private int SelectedIndex => _field is null ? -1 : Fields.Select(f => f.Key).ToList().IndexOf(_field.Key);
+    private int SelectedIndex => _field is { } current ? OdsPopupMenu.IndexOf(Fields, f => f.Key == current.Key) : -1;
 
     // The rows are not MudMenuItems, so nothing closes the popover for us.
     private async Task PickField(OdsSortField<TRow> option)

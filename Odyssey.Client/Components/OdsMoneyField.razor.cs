@@ -109,7 +109,6 @@ public partial class OdsMoneyField
 
     private OdsPopupMenu? _popup;
     private bool _open;
-    private bool _focusPending;
     private string _query = string.Empty;
 
     private string FieldId = default!;
@@ -211,8 +210,9 @@ public partial class OdsMoneyField
 
     private string CurrencyCode => string.IsNullOrEmpty(Currency) ? CurrencyPlaceholder : Currency;
 
+    // Starts with the visible code so the spoken name matches the label (WCAG 2.5.3).
     private string CurrencyAriaLabel =>
-        string.IsNullOrEmpty(Currency) ? "Currency" : $"Currency: {Currency}";
+        string.IsNullOrEmpty(Currency) ? "Currency" : OdsPopupMenu.AccessibleName("currency", Currency);
 
     private IReadOnlyList<OdsOption> Shown
     {
@@ -339,7 +339,6 @@ public partial class OdsMoneyField
         if (open)
         {
             _query = string.Empty;
-            _focusPending = true;
         }
     }
 
@@ -351,15 +350,16 @@ public partial class OdsMoneyField
     }
 
     // The popover opens on the search box when there is one, otherwise on the selected code — so a
-    // keyboard user lands where the next keystroke does something useful either way.
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    // keyboard user lands where the next keystroke does something useful either way. OdsPopupMenu
+    // moves the focus; Esc anywhere in the panel is its too.
+    private string CurrencyFocusOnOpenId
     {
-        if (!_focusPending || !_open) return;
-        _focusPending = false;
-
-        if (Searchable) { await FocusAsync(SearchId); return; }
-        var index = Shown.ToList().FindIndex(o => string.Equals(o.Value, Currency, StringComparison.OrdinalIgnoreCase));
-        await FocusAsync(OptionId(Math.Max(index, 0)));
+        get
+        {
+            if (Searchable) return SearchId;
+            var index = OdsPopupMenu.IndexOf(Shown, o => string.Equals(o.Value, Currency, StringComparison.OrdinalIgnoreCase));
+            return OptionId(Math.Max(index, 0));
+        }
     }
 
     private async Task OnSearchKeyDownAsync(KeyboardEventArgs e)
@@ -375,9 +375,6 @@ public partial class OdsMoneyField
                 break;
             case "Tab":
                 if (_popup is not null) await _popup.CloseAsync(restoreFocus: false);
-                break;
-            case "Escape":
-                if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
                 break;
         }
     }
@@ -406,9 +403,6 @@ public partial class OdsMoneyField
                 // The options are out of the tab order, so Tab is leaving the list — close behind it
                 // rather than stranding an open popover over the form.
                 if (_popup is not null) await _popup.CloseAsync(restoreFocus: false);
-                break;
-            case "Escape":
-                if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
                 break;
         }
     }

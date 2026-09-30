@@ -6,7 +6,7 @@
     direction on Transactions, type / status elsewhere). A trigger button shows
     the label + a count badge of active selections; the popover is a checkbox
     list with Clear / Done. Built on OdsPopupMenu (one real trigger button beside a
-    MudMenu popover, issue #255) so the popover is portaled out of any
+    MudPopover, issue #255) so the popover is portaled out of any
     overflow:hidden ancestor (the filter card), flips above when there isn't room
     below, and closes on outside-click / Esc. Bind via @bind-Values.
 
@@ -45,7 +45,7 @@
         <span class="material-icons odc-ms-chevron" aria-hidden="true">expand_more</span>
     </TriggerContent>
     <ChildContent>
-        <div class="odc-ms-pop @AlignClass" role="group" aria-label="@Label" @onkeydown="@(e => _popup.PopoverKeyDownAsync(e))">
+        <div class="odc-ms-pop @AlignClass" role="group" aria-label="@Label">
             @foreach (var option in Options)
             {
                 <label class="odc-ms-opt odc-check">

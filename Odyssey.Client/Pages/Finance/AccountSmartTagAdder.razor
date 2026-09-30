@@ -7,16 +7,15 @@
     tag. Checking a row adds the tag (OnAdd), unchecking removes it (OnRemove) —
     one call per toggle, mirroring the per-tag POST/DELETE endpoints. Rows past the
     per-account cap can't be newly checked. Built on OdsPopupMenu (one real trigger
-    beside a MudMenu popover, issue #255) so the popover is portaled out of the
+    beside a MudPopover, issue #255) so the popover is portaled out of the
     collapsible's overflow and flips above when cramped.
 *@
 
-@* aria-haspopup="dialog", as on OdsTagMultiSelect's identical structure: the popover is a search
-   box plus a checkbox group, not a listbox, so promising one would misdescribe it. *@
+@* OdsPopupMenu's panel mode: the popover is a non-modal role="dialog" (a search box plus a checkbox
+   group, not a listbox or a menu) and the trigger says aria-haspopup="dialog" to match. *@
 <OdsPopupMenu @ref="_popup"
               Class="odc-smarttags-adder"
               TriggerClass="@(_open ? "odc-smarttags-add open" : "odc-smarttags-add")"
-              HasPopup="dialog"
               AnchorOrigin="Origin.BottomLeft"
               TransformOrigin="Origin.TopLeft"
               PopoverClass="odc-ms-pop-paper"
@@ -31,7 +30,7 @@
            rows reached by Tab, with no roving tabindex and no arrow-key handling, so
            role="listbox"/"option" would describe a widget that is not here (WCAG 1.3.1, 4.1.2).
            The same correction OdsTagMultiSelect already carries over an identical structure. *@
-        <div class="odc-smarttags-pop" role="group" aria-label="@GroupLabel" @onkeydown="@(e => _popup.PopoverKeyDownAsync(e))">
+        <div class="odc-smarttags-pop" role="group" aria-label="@GroupLabel">
             <div class="odc-smarttags-search">
                 <span class="material-icons" aria-hidden="true">search</span>
                 <input value="@_query"

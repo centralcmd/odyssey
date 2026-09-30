@@ -7,7 +7,7 @@ namespace Odyssey.Client.Components;
 
 /// <summary>
 /// The parameters, open state and keyboard contract behind <c>OdsPopupMenu</c>. See the .razor
-/// file's header for why the trigger sits beside the MudMenu rather than inside it (issue #255).
+/// file's header for why the trigger is a real button beside the popover (issue #255).
 /// </summary>
 public partial class OdsPopupMenu
 {
@@ -32,15 +32,15 @@ public partial class OdsPopupMenu
     /// <summary>The trigger's own class(es), e.g. <c>odc-ms-trigger</c>.</summary>
     [Parameter] public string? TriggerClass { get; set; }
 
-    /// <summary>The trigger's accessible name, when its visible text or a &lt;label for&gt; does not give one.</summary>
+    /// <summary>
+    /// The trigger's accessible name, when its visible text or a &lt;label for&gt; does not give one.
+    /// It must START with the trigger's visible text (WCAG 2.5.3). Also names the panel.
+    /// </summary>
     [Parameter] public string? AriaLabel { get; set; }
 
     [Parameter] public string? AriaDescribedBy { get; set; }
 
     [Parameter] public bool AriaInvalid { get; set; }
-
-    /// <summary>The trigger's <c>aria-haspopup</c>. The popover is MudMenu's <c>role="menu"</c> list, so "menu" by default.</summary>
-    [Parameter] public string HasPopup { get; set; } = "menu";
 
     [Parameter] public bool Disabled { get; set; }
 
@@ -48,8 +48,10 @@ public partial class OdsPopupMenu
 
     [Parameter] public Origin TransformOrigin { get; set; } = Origin.TopLeft;
 
+    /// <summary>Extra class on the portaled popover paper.</summary>
     [Parameter] public string? PopoverClass { get; set; }
 
+    /// <summary>Extra class on the panel (the popover's role="menu" / role="dialog" element).</summary>
     [Parameter] public string? ListClass { get; set; }
 
     [Parameter] public DropdownWidth RelativeWidth { get; set; } = DropdownWidth.Ignore;
@@ -59,16 +61,19 @@ public partial class OdsPopupMenu
     /// <summary>Raised whenever the popover opens or closes.</summary>
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
 
-    /// <summary>
-    /// Raised for every keydown on the trigger, after the built-in handling — for a consumer that
-    /// keeps a keyboard contract of its own.
-    /// </summary>
+    /// <summary>Raised for every keydown on the trigger, after the built-in handling.</summary>
     [Parameter] public EventCallback<KeyboardEventArgs> OnTriggerKeyDown { get; set; }
 
     /// <summary>
-    /// The DOM id of single-choice row <c>i</c>. Setting it (with <see cref="RowCount"/>) turns on the
-    /// single-choice keyboard contract: arrows open the closed trigger, opening focuses
-    /// <see cref="SelectedRow"/>, and rows call <see cref="RowKeyDownAsync"/> to rove.
+    /// Panel mode: the id of the element to focus when the popover opens (a search box, the selected
+    /// option). When omitted, the panel's first focusable element takes focus.
+    /// </summary>
+    [Parameter] public string? FocusOnOpenId { get; set; }
+
+    /// <summary>
+    /// The DOM id of single-choice row <c>i</c>. Setting it (with <see cref="RowCount"/>) makes the
+    /// panel a role="menu": opening focuses <see cref="SelectedRow"/>, and rows call
+    /// <see cref="RowKeyDownAsync"/> to rove.
     /// </summary>
     [Parameter] public Func<int, string>? RowId { get; set; }
 
@@ -82,24 +87,20 @@ public partial class OdsPopupMenu
 
     private readonly string _autoId = $"odc-popmenu-{Guid.NewGuid():N}";
 
-    private MudMenu? _menu;
     private ElementReference _trigger;
     private bool _open;
 
-    // Set when the next render should move focus onto the selected row (single-choice mode).
-    private bool _focusRowOnOpen;
-
-    // Set while a close this component asked for is in flight, so the OpenChanged it produces is not
-    // mistaken for an outside click, and says whether that close should give the trigger focus back.
-    private bool? _closeRestoresFocus;
-
-    /// <summary>Whether the popover is open.</summary>
-    public bool IsOpen => _open;
+    // Set when the next render should move focus into the freshly opened panel.
+    private bool _focusInOnRender;
 
     /// <summary>The trigger's effective DOM id.</summary>
     public string EffectiveTriggerId => string.IsNullOrEmpty(TriggerId) ? _autoId : TriggerId;
 
+    private string PanelId => $"{EffectiveTriggerId}-panel";
+
     private bool SingleChoice => RowId is not null && RowCount > 0;
+
+    private string HasPopup => SingleChoice ? "menu" : "dialog";
 
     private string WrapperClass =>
         string.IsNullOrWhiteSpace(Class) ? "odc-popmenu" : $"odc-popmenu {Class.Trim()}";
@@ -107,42 +108,61 @@ public partial class OdsPopupMenu
     private string TriggerClassName =>
         string.IsNullOrWhiteSpace(TriggerClass) ? "odc-popmenu-trigger" : $"odc-popmenu-trigger {TriggerClass.Trim()}";
 
-    /// <summary>Opens the popover.</summary>
+    private string PanelClassName =>
+        string.IsNullOrWhiteSpace(ListClass)
+            ? "mud-list mud-menu-list odc-popmenu-panel"
+            : $"mud-list mud-menu-list odc-popmenu-panel {ListClass.Trim()}";
+
+    /// <summary>The index of the first item matching <paramref name="match"/>, or -1 — without allocating.</summary>
+    public static int IndexOf<T>(IReadOnlyList<T> items, Func<T, bool> match)
+    {
+        for (var i = 0; i < items.Count; i++)
+        {
+            if (match(items[i]))
+                return i;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// An accessible name that STARTS with the trigger's visible text (WCAG 2.5.3 Label in Name), so a
+    /// speech-input user can say what they see: the visible parts joined by spaces, then the extra
+    /// <paramref name="label"/> after a comma unless the visible text already contains it.
+    /// </summary>
+    public static string AccessibleName(string? label, params string?[] visibleParts)
+    {
+        var visible = string.Join(' ', visibleParts.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p!.Trim()));
+        return string.IsNullOrWhiteSpace(label) || visible.Contains(label.Trim(), StringComparison.CurrentCultureIgnoreCase)
+            ? visible
+            : $"{visible}, {label.Trim()}";
+    }
+
+    /// <summary>Opens the popover and moves focus into it. No-op when disabled or already open.</summary>
     public async Task OpenAsync()
     {
-        if (Disabled || _open || _menu is null)
+        if (Disabled || _open)
         {
             return;
         }
-        await _menu.OpenMenuAsync(EventArgs.Empty);
+        _open = true;
+        _focusInOnRender = true;
+        await OpenChanged.InvokeAsync(true);
+        StateHasChanged();
     }
 
     /// <summary>
     /// Closes the popover. <paramref name="restoreFocus"/> sends focus back to the trigger — pass
-    /// false only when the keystroke that closed it (Tab) is itself moving focus on.
+    /// false only when the keystroke that closed it (Tab) is itself moving focus on. Closing a closed
+    /// popover changes nothing, but still restores focus when asked.
     /// </summary>
     public async Task CloseAsync(bool restoreFocus = true)
     {
-        if (_menu is null)
+        if (_open)
         {
-            return;
-        }
-        if (!_open)
-        {
-            if (restoreFocus)
-            {
-                await FocusByIdAsync(EffectiveTriggerId);
-            }
-            return;
-        }
-        _closeRestoresFocus = restoreFocus;
-        try
-        {
-            await _menu.CloseMenuAsync();
-        }
-        finally
-        {
-            _closeRestoresFocus = null;
+            _open = false;
+            _focusInOnRender = false;
+            await OpenChanged.InvokeAsync(false);
+            StateHasChanged();
         }
         if (restoreFocus)
         {
@@ -155,8 +175,8 @@ public partial class OdsPopupMenu
 
     /// <summary>
     /// The single-choice rows' keydown: ↑/↓/Home/End rove (clamping at the ends rather than
-    /// wrapping), Esc closes and restores focus, Tab closes behind itself. Enter and Space are the
-    /// row button's own activation. Returns whether the key was handled.
+    /// wrapping) and Tab closes behind itself. Enter and Space are the row button's own activation;
+    /// Esc is the panel's. Returns whether the key was handled.
     /// </summary>
     public async Task<bool> RowKeyDownAsync(KeyboardEventArgs e, int index)
     {
@@ -180,19 +200,13 @@ public partial class OdsPopupMenu
                 await CloseAsync(restoreFocus: false);
                 return true;
             case "Escape":
-                await CloseAsync(restoreFocus: true);
+                // Handled by the panel this row bubbles to; claimed here so a consumer's own
+                // fallback (typeahead) does not also act on it.
                 return true;
             default:
                 return false;
         }
     }
-
-    /// <summary>
-    /// Keydown handler for a popover whose content is not single-choice rows (a checkbox list, a
-    /// search box): Esc closes it and gives the trigger its focus back.
-    /// </summary>
-    public Task PopoverKeyDownAsync(KeyboardEventArgs e) =>
-        e.Key == "Escape" ? CloseAsync(restoreFocus: true) : Task.CompletedTask;
 
     /// <summary>Moves focus to single-choice row <paramref name="index"/>, clamped to the list.</summary>
     public Task FocusRowAsync(int index)
@@ -204,69 +218,80 @@ public partial class OdsPopupMenu
         return FocusByIdAsync(RowId(Math.Clamp(index, 0, RowCount - 1)));
     }
 
-    private async Task OnTriggerClickAsync(MouseEventArgs e)
+    private Task OnTriggerClickAsync(MouseEventArgs e)
     {
-        if (Disabled || _menu is null)
+        if (Disabled)
         {
-            return;
+            return Task.CompletedTask;
         }
-        if (_open)
-        {
-            // Focus is already on the trigger that was just clicked.
-            await CloseAsync(restoreFocus: false);
-        }
-        else
-        {
-            await _menu.OpenMenuAsync(e);
-        }
+        // Focus is already on the trigger that was just clicked.
+        return _open ? CloseAsync(restoreFocus: false) : OpenAsync();
     }
 
     private async Task OnTriggerKeyDownAsync(KeyboardEventArgs e)
     {
-        // Escape is deliberately NOT handled here: Blazor cannot stop propagation per key, so it
-        // would also reach a wrapping OdsModal's key interceptor and cancel the dialog behind it.
-        if (!Disabled && _menu is not null && !_open && SingleChoice && e.Key is "ArrowDown" or "ArrowUp")
+        if (!Disabled)
         {
-            await _menu.OpenMenuAsync(EventArgs.Empty);
+            if (!_open && e.Key is "ArrowDown" or "ArrowUp")
+            {
+                await OpenAsync();
+            }
+            else if (_open && e.Key == "Escape")
+            {
+                // Propagation is stopped while open, so this Esc does not also reach a wrapping
+                // OdsModal's key interceptor and cancel the dialog behind the popover.
+                await CloseAsync(restoreFocus: true);
+            }
         }
         await OnTriggerKeyDown.InvokeAsync(e);
     }
 
-    private async Task OnMenuOpenChangedAsync(bool open)
-    {
-        _open = open;
-        if (open)
-        {
-            _focusRowOnOpen = SingleChoice;
-        }
-        await OpenChanged.InvokeAsync(open);
+    private Task OnPanelKeyDownAsync(KeyboardEventArgs e) =>
+        e.Key == "Escape" ? CloseAsync(restoreFocus: true) : Task.CompletedTask;
 
-        // A close this component did not ask for is MudMenu's click-away overlay. Whatever had focus
-        // inside the popover has just unmounted, so hand it back to the trigger rather than <body>.
-        if (!open && _closeRestoresFocus is null)
-        {
-            await FocusByIdAsync(EffectiveTriggerId);
-        }
-    }
+    /// <summary>
+    /// MudOverlay's click-away. Whatever had focus inside the popover is about to unmount, so hand it
+    /// back to the trigger rather than letting it fall to &lt;body&gt;.
+    /// </summary>
+    private Task OnOverlayClosedAsync() => CloseAsync(restoreFocus: true);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
 
-        if (!_focusRowOnOpen || !_open)
+        if (!_focusInOnRender || !_open)
         {
             return;
         }
-        _focusRowOnOpen = false;
+        _focusInOnRender = false;
 
-        // Open onto the current choice, not the top of the list — the same place the check glyph
-        // puts a sighted user's eye.
-        await FocusRowAsync(SelectedRow >= 0 ? SelectedRow : 0);
+        if (SingleChoice)
+        {
+            // Open onto the current choice, not the top of the list — the same place the check
+            // glyph puts a sighted user's eye.
+            await FocusRowAsync(SelectedRow >= 0 ? SelectedRow : 0);
+        }
+        else if (!string.IsNullOrEmpty(FocusOnOpenId))
+        {
+            await FocusByIdAsync(FocusOnOpenId);
+        }
+        else
+        {
+            await InvokeJsAsync("odsFocusFirstIn", PanelId);
+        }
     }
 
-    private async Task FocusByIdAsync(string id)
+    private Task FocusByIdAsync(string id) => InvokeJsAsync("odsFocusById", id);
+
+    private async Task InvokeJsAsync(string identifier, string id)
     {
-        try { await Js.InvokeVoidAsync("odsFocusById", id); }
-        catch { /* JS unavailable (e.g. prerender / teardown) */ }
+        try
+        {
+            await Js.InvokeVoidAsync(identifier, id);
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or TaskCanceledException)
+        {
+            // Focus is best-effort: no JS during prerender, or the circuit/page is tearing down.
+        }
     }
 }

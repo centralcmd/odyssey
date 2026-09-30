@@ -8,7 +8,7 @@
     amounts are rendered read-only across the app.
 
     Currency editing is optional. CurrencyOptions + CurrencyChanged make the code a picker
-    (a MudMenu popover, portaled out of the modal body and flipping when there is no room
+    (a MudPopover via OdsPopupMenu, portaled out of the modal body and flipping when there is no room
     below); CurrencyEditable="false" — or no options / no handler — renders it as static
     text (the account's currency, a locked base currency). The metrics are identical either
     way, so locking never shifts a row.
@@ -92,7 +92,7 @@
                           TriggerId="@TriggerId"
                           TriggerClass="@TriggerClass"
                           AriaLabel="@CurrencyAriaLabel"
-                          HasPopup="listbox"
+                          FocusOnOpenId="@CurrencyFocusOnOpenId"
                           AnchorOrigin="Origin.BottomRight"
                           TransformOrigin="Origin.TopRight"
                           PopoverClass="odc-ms-pop-paper"

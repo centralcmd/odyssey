@@ -14,7 +14,7 @@
     contact types, so the created record still carries a real type.
 
     Controlled: Value is the selected ids; ValueChanged fires the full next set on every add / remove
-    (bind via @@bind-Value). Built on OdsPopupMenu (a MudMenu popover beside one real trigger, issue
+    (bind via @@bind-Value). Built on OdsPopupMenu (a MudPopover beside one real trigger, issue
     #255) so the popover is portaled out of any overflow:hidden ancestor (modal body / card /
     collapsible) and flips above when there isn't room below.
 
@@ -61,7 +61,6 @@
                       Class="@ControlClass"
                       TriggerId="@TriggerId"
                       TriggerClass="odc-tagms-trigger odc-tagms-add"
-                      HasPopup="dialog"
                       AriaLabel="@TriggerAriaLabel"
                       AriaInvalid="@(!string.IsNullOrEmpty(Error))"
                       AriaDescribedBy="@TriggerDescribedBy"
@@ -127,7 +126,7 @@
                 @* A labelled GROUP of checkboxes — not a listbox: these are real
                    <input type="checkbox"> rows, so role="listbox"/"option" would describe a widget
                    that isn't here (WCAG 1.3.1, 4.1.2). *@
-                <div class="odc-tagms-pop" role="group" aria-label="@GroupLabel" @onkeydown="@(e => _popup.PopoverKeyDownAsync(e))">
+                <div class="odc-tagms-pop" role="group" aria-label="@GroupLabel">
                     <div class="odc-tagms-search">
                         <span class="material-icons" aria-hidden="true">search</span>
                         <input value="@_query"

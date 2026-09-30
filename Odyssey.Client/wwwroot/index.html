@@ -108,6 +108,17 @@
             const el = document.getElementById(elementId);
             if (el) el.focus();
         };
+        window.odsFocusFirstIn = function (elementId) {
+            // Move focus to the first focusable control inside an element — OdsPopupMenu's panel on
+            // open (issue #255), so a portaled checkbox or search popover is reachable from the
+            // keyboard. Falls back to the element itself when it holds nothing focusable.
+            const host = document.getElementById(elementId);
+            if (!host) return;
+            const el = host.querySelector('a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])');
+            if (el) { el.focus(); return; }
+            if (!host.hasAttribute('tabindex')) host.setAttribute('tabindex', '-1');
+            host.focus();
+        };
         window.odsSetAttr = function (id, name, value) {
             // Set/remove an attribute on an element by id — used to associate a control (e.g. a
             // MudAutocomplete input) with a helper via aria-describedby, which the component can't

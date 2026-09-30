@@ -42,16 +42,18 @@ public class NestedInteractiveControlTests
 
     public static TheoryData<string> Cases => [.. CaseTable.Keys];
 
-    private sealed record Case(string Trigger, Action<RenderTreeBuilder> Build);
+    /// <summary>A control under test: its trigger, how to render it, and which popup it opens —
+    /// <c>"menu"</c> (single-choice rows, or OdsMenu's actions) or <c>"dialog"</c> (a panel).</summary>
+    internal sealed record Case(string Trigger, Action<RenderTreeBuilder> Build, string Popup);
 
-    private static readonly IReadOnlyList<OdsOption> Options =
+    internal static readonly IReadOnlyList<OdsOption> Options =
     [
         new("a", "Alpha"),
         new("b", "Bravo"),
         new("c", "Charlie"),
     ];
 
-    private static readonly Dictionary<string, Case> CaseTable = new()
+    internal static readonly Dictionary<string, Case> CaseTable = new()
     {
         [nameof(OdsMenu)] = new("button.mud-icon-button", b =>
         {
@@ -64,7 +66,7 @@ public class NestedInteractiveControlTests
             ]);
             b.AddComponentParameter(2, nameof(OdsMenu.AriaLabel), "Row actions");
             b.CloseComponent();
-        }),
+        }, "menu"),
         [nameof(OdsMultiSelect)] = new("button.odc-ms-trigger", b =>
         {
             b.OpenComponent<OdsMultiSelect>(0);
@@ -72,7 +74,7 @@ public class NestedInteractiveControlTests
             b.AddComponentParameter(2, nameof(OdsMultiSelect.Options), Options);
             b.AddComponentParameter(3, nameof(OdsMultiSelect.Values), (IReadOnlyCollection<string>)["a"]);
             b.CloseComponent();
-        }),
+        }, "dialog"),
         [nameof(OdsSortSelect<object>)] = new("button.odc-sortsel-trigger", b =>
         {
             b.OpenComponent<OdsSortSelect<object>>(0);
@@ -82,7 +84,7 @@ public class NestedInteractiveControlTests
                 new OdsSortField<object> { Key = "date", Label = "Date", Type = OdsSortType.Date },
             ]);
             b.CloseComponent();
-        }),
+        }, "menu"),
         [nameof(OdsTypeSelect)] = new("button.odc-select-trigger", b =>
         {
             b.OpenComponent<OdsTypeSelect>(0);
@@ -94,12 +96,12 @@ public class NestedInteractiveControlTests
                 new OdsTypeOption { Key = "b", Label = "Bravo", Icon = "work", Color = "blue", Soft = "azure" },
             ]);
             b.CloseComponent();
-        }),
+        }, "menu"),
         [nameof(OdsPageSizeSelect)] = new("button.odc-rpp-trigger", b =>
         {
             b.OpenComponent<OdsPageSizeSelect>(0);
             b.CloseComponent();
-        }),
+        }, "menu"),
         [nameof(OdsInlineSelect)] = new("button.odc-rpp-trigger", b =>
         {
             b.OpenComponent<OdsInlineSelect>(0);
@@ -107,7 +109,7 @@ public class NestedInteractiveControlTests
             b.AddComponentParameter(2, nameof(OdsInlineSelect.Value), "a");
             b.AddComponentParameter(3, nameof(OdsInlineSelect.Options), Options);
             b.CloseComponent();
-        }),
+        }, "menu"),
         // Two chips, each with its own remove button, sit in the same box as the trigger — the
         // shape where a wrapper would nest the most controls.
         [nameof(OdsTagMultiSelect)] = new("button.odc-tagms-trigger", b =>
@@ -117,7 +119,7 @@ public class NestedInteractiveControlTests
             b.AddComponentParameter(2, nameof(OdsTagMultiSelect.Options), Options);
             b.AddComponentParameter(3, nameof(OdsTagMultiSelect.Value), (IReadOnlyCollection<string>)["a", "b"]);
             b.CloseComponent();
-        }),
+        }, "dialog"),
         [nameof(OdsMoneyField)] = new("button.odc-money-cur", b =>
         {
             b.OpenComponent<OdsMoneyField>(0);
@@ -128,17 +130,17 @@ public class NestedInteractiveControlTests
             b.AddComponentParameter(5, nameof(OdsMoneyField.CurrencyOptions), (IReadOnlyList<OdsOption>)[new("USD", "US dollar"), new("EUR", "Euro")]);
             b.AddComponentParameter(6, nameof(OdsMoneyField.CurrencyChanged), EventCallback.Factory.Create<string>(new object(), _ => { }));
             b.CloseComponent();
-        }),
+        }, "dialog"),
         [nameof(AccountSmartTagAdder)] = new("button.odc-smarttags-add", b =>
         {
             b.OpenComponent<AccountSmartTagAdder>(0);
             b.AddComponentParameter(1, nameof(AccountSmartTagAdder.Options), Options);
             b.AddComponentParameter(2, nameof(AccountSmartTagAdder.SelectedIds), (IReadOnlyCollection<string>)["a"]);
             b.CloseComponent();
-        }),
+        }, "dialog"),
     };
 
-    private static IRenderedComponent<IComponent> Render(BunitContext ctx, string name) =>
+    internal static IRenderedComponent<IComponent> Render(BunitContext ctx, string name) =>
         ctx.Render(builder =>
         {
             // MudBlazor portals an open popover into this provider; without it the open-state
@@ -150,7 +152,7 @@ public class NestedInteractiveControlTests
             builder.CloseRegion();
         });
 
-    private static BunitContext NewContext()
+    internal static BunitContext NewContext()
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -267,20 +269,114 @@ public class NestedInteractiveControlTests
     }
 
     /// <summary>
-    /// The source half: a custom <c>ActivatorContent</c> is how the wrapper gets rendered, so no
-    /// client file may use one. A menu that needs its own trigger goes on OdsPopupMenu; an icon menu
-    /// uses MudMenu's <c>Icon</c> + <c>AriaLabel</c>.
+    /// The positive control: the helper has to FIND the defect this suite guards against, or every
+    /// "no nesting" assertion above could be passing vacuously.
     /// </summary>
     [Fact]
-    public void No_client_markup_uses_a_custom_menu_activator()
+    public void The_nesting_check_flags_the_old_activator_shape()
     {
-        var offenders = ClientSource.RazorFiles()
-            .Where(file => Regex.IsMatch(File.ReadAllText(file), @"<ActivatorContent\b"))
+        var ctx = NewContext();
+        var cut = ctx.Render(builder => builder.AddMarkupContent(0,
+            "<div class=\"mud-menu-activator\" tabindex=\"0\" role=\"button\"><button type=\"button\">Status</button></div>" +
+            "<label><input type=\"checkbox\" /> fine</label>"));
+
+        var nested = NestedInteractive(cut.Nodes.OfType<IElement>());
+
+        Assert.Single(nested);
+        Assert.StartsWith("<button", nested[0], StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The trigger's <c>aria-haspopup</c> must name the role of the popup it controls (WCAG 4.1.2):
+    /// a single-choice list is a <c>menu</c> of <c>menuitem*</c> rows and nothing else; a checkbox
+    /// panel or a search-plus-listbox is a <c>dialog</c>. MudMenu hard-codes <c>role="menu"</c> on its
+    /// list, which is why the select-style controls no longer use it.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Cases))]
+    public void The_popup_role_matches_the_trigger_promise(string name)
+    {
+        var ctx = NewContext();
+        var cut = Render(ctx, name);
+        var expected = CaseTable[name].Popup;
+
+        Assert.Equal(expected, cut.Find(CaseTable[name].Trigger).GetAttribute("aria-haspopup"));
+
+        cut.Find(CaseTable[name].Trigger).Click();
+        cut.Render();
+
+        var controls = cut.Find(CaseTable[name].Trigger).GetAttribute("aria-controls");
+        Assert.False(string.IsNullOrEmpty(controls));
+        var popup = cut.Find($"#{controls}");
+        Assert.Equal(expected, popup.GetAttribute("role"));
+
+        if (expected == "menu")
+        {
+            // A menu owns menu items (optionally in groups) — never a checkbox, a textbox or a listbox.
+            Assert.All(popup.QuerySelectorAll(InteractiveSelector),
+                e => Assert.StartsWith("menuitem", e.GetAttribute("role") ?? "", StringComparison.Ordinal));
+            Assert.Empty(popup.QuerySelectorAll("[role='listbox'], [role='option']"));
+        }
+        else
+        {
+            // A dialog is named — by the trigger, or its own label.
+            Assert.True(popup.HasAttribute("aria-labelledby") || popup.HasAttribute("aria-label"));
+        }
+        Assert.Empty(cut.FindAll("[role='menu'] [role='dialog'], [role='menu'] input"));
+    }
+
+    /// <summary>
+    /// OdsMenu's trigger moved from OdsIconButton (Size Sm) to MudMenu's built-in icon button. Both
+    /// render MudBlazor's small icon button with the default colour, so the target (3px padding
+    /// around a 20px glyph, 26px — above WCAG 2.5.8's 24px) and the ink are unchanged; this pins
+    /// that the two render the same MudBlazor classes apart from the activator marker.
+    /// </summary>
+    [Fact]
+    public void The_row_menu_trigger_renders_like_the_small_icon_button_it_replaced()
+    {
+        var ctx = NewContext();
+        var menu = Render(ctx, nameof(OdsMenu)).Find("button.mud-icon-button");
+        var icon = ctx.Render<OdsIconButton>(p => p
+            .Add(b => b.Icon, Icons.Material.Filled.MoreVert)
+            .Add(b => b.AriaLabel, "Row actions")
+            .Add(b => b.Size, OdsSize.Sm)).Find("button");
+
+        var menuClasses = menu.ClassList.Where(c => c != "mud-menu-icon-button-activator").OrderBy(c => c);
+        Assert.Equal(icon.ClassList.OrderBy(c => c), menuClasses);
+        Assert.Contains("mud-icon-button-size-small", menu.ClassList);
+    }
+
+    /// <summary>
+    /// The source half: a custom <c>ActivatorContent</c> is how the wrapper gets rendered, so no
+    /// client file may use one — in markup, or set from C# through a render-tree builder. There is no
+    /// allow-list: OdsPopupMenu itself is built on MudPopover, not MudMenu. A menu that needs its own
+    /// trigger goes on OdsPopupMenu; an icon menu uses MudMenu's <c>Icon</c> + <c>AriaLabel</c>.
+    /// </summary>
+    [Fact]
+    public void No_client_source_uses_a_custom_menu_activator()
+    {
+        var markup = ClientSource.RazorFiles()
+            .Where(file => Regex.IsMatch(File.ReadAllText(file), @"<ActivatorContent\b"));
+        var code = ClientSource.SourceFiles()
+            .Where(file => file.EndsWith(".cs", StringComparison.Ordinal))
+            .Where(file => File.ReadLines(file)
+                .Select(line => line.TrimStart())
+                .Where(line => !line.StartsWith("//", StringComparison.Ordinal))
+                .Any(line => Regex.IsMatch(line, @"\bActivatorContent\b")));
+        var offenders = markup.Concat(code)
             .Select(file => Path.GetRelativePath(ClientSource.Root, file))
             .ToList();
 
         Assert.True(offenders.Count == 0,
             "MudMenu ActivatorContent wraps its content in a role=\"button\" tab stop (issue #255); use " +
             "OdsPopupMenu or MudMenu's built-in Icon activator instead: " + string.Join(", ", offenders));
+    }
+
+    /// <summary>The lint's scan set is real — a path change must not leave it passing over nothing.</summary>
+    [Fact]
+    public void The_activator_lint_scans_the_popup_host_itself()
+    {
+        Assert.Contains(ClientSource.RazorFiles(), f => f.EndsWith("OdsPopupMenu.razor", StringComparison.Ordinal));
+        Assert.Contains(ClientSource.SourceFiles(), f => f.EndsWith("OdsPopupMenu.razor.cs", StringComparison.Ordinal));
     }
 }

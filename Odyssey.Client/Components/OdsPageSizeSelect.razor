@@ -8,17 +8,17 @@
         reads, and the two stay in sync;
       • inside OdsPager's footer (Mirror=false, no prefix), as the canonical rows-per-page control.
 
-    Built on OdsPopupMenu (one real trigger button beside a MudMenu popover, issue #255) so the
+    Built on OdsPopupMenu (one real trigger button beside a MudPopover, issue #255) so the
     popover portals out of any overflow:hidden card ancestor and flips to fit; OdsPopupMenu supplies
     the roving-focus keyboard model. Options are single-choice menu rows (role=menuitemradio +
-    aria-checked, like OdsTypeSelect) inside MudMenu's role=menu list. Value is an int;
+    aria-checked, like OdsTypeSelect) inside OdsPopupMenu's role=menu panel. Value is an int;
     OdsPageSizes.All (−1) renders "All". Bind via @bind-Value.
 *@
 
 <OdsPopupMenu @ref="_popup"
               Class="@($"odc-rpp {(Mirror ? "mirror" : null)} {Class}".Trim())"
               TriggerClass="odc-rpp-trigger"
-              AriaLabel="@($"{Label}: {OdsPageSizes.Format(Value)}")"
+              AriaLabel="@AccessibleName"
               AnchorOrigin="Origin.BottomRight"
               TransformOrigin="Origin.TopRight"
               Disabled="@Disabled"
@@ -80,7 +80,7 @@
     /// <summary>Optional text after the value (e.g. "at a time" for a card-list batch size).</summary>
     [Parameter] public string Suffix { get; set; } = "";
 
-    /// <summary>Accessible name for the control. Default "Rows per page".</summary>
+    /// <summary>What the control is for. Default "Rows per page". Appended to the visible "Show 25" in the accessible name, which always starts with the visible text (WCAG 2.5.3).</summary>
     [Parameter] public string Label { get; set; } = "Rows per page";
 
     /// <summary>Toolbar mirror styling (40px tall). False for the footer pager copy (32px).</summary>
@@ -100,7 +100,10 @@
 
     private string RowId(int index) => $"{_idPrefix}-opt-{index}";
 
-    private int SelectedIndex => Options.ToList().IndexOf(Value);
+    // Starts with the visible "Show 25 …" so the spoken name matches the label (WCAG 2.5.3).
+    private string AccessibleName => OdsPopupMenu.AccessibleName(Label, Prefix, OdsPageSizes.Format(Value), Suffix);
+
+    private int SelectedIndex => OdsPopupMenu.IndexOf(Options, o => o == Value);
 
     // The rows are not MudMenuItems, so nothing closes the popover for us: close (restoring focus
     // to the trigger) whether or not the value changed.

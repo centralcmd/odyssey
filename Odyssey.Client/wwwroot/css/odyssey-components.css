@@ -795,21 +795,22 @@
 .mud-input > div.mud-input-slot.mud-input-root::placeholder {
   color: var(--mud-palette-placeholder) !important; opacity: 1 !important;
 }
-/* ---------- PopupMenu (OdsPopupMenu — one real trigger + an anchored MudMenu) ----------
+/* ---------- PopupMenu (OdsPopupMenu — one real trigger + an anchored popover) ----------
    The shared host behind every select-style Ods control (issue #255). The trigger
-   is a sibling of the MudMenu, never inside MudMenu's own activator wrapper, so
-   there is one tab stop and aria-expanded sits on the focused button. The box
-   defaults to MudMenu's own root metrics (inline-flex, centred) at zero
-   specificity, so every consumer's layout rule wins whatever the source order. */
+   is a real <button> beside a MudPopover (never inside MudMenu's role="button"
+   activator wrapper), so there is one tab stop and aria-expanded sits on the
+   focused control. The box defaults to MudMenu's old root metrics (inline-flex,
+   centred) at zero specificity, so every consumer's layout rule wins whatever the
+   source order; it is the popover's anchor, hence position: relative. */
 :where(.odc-popmenu) { display: inline-flex; align-self: center; }
 .odc-popmenu { position: relative; }
 .odc-popmenu-trigger:not(:disabled) { cursor: pointer; }
-/* The activator-less MudMenu is stretched over the box: MudBlazor positions the
-   popover against that root, so it still anchors, flips and sizes against the
-   trigger. It must not take the pointer from the trigger (or from the chips'
-   remove buttons in OdsTagMultiSelect), but its click-away overlay must. */
-.mud-menu.odc-popmenu-anchor { position: absolute; inset: 0; display: block; pointer-events: none; }
-.mud-menu.odc-popmenu-anchor > * { pointer-events: auto; }
+/* A baseline focus ring for every trigger, at zero specificity so a consumer's own
+   ring (and its offset) still wins; no trigger can ship without one (WCAG 2.4.7). */
+:where(.odc-popmenu-trigger):focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+  outline-offset: var(--focus-ring-offset);
+}
 
 /* Custom pickers used as a field control (account / type / contact) fill the
    field width — the popup box is inline-flex, so it otherwise collapses to the
@@ -826,7 +827,7 @@
 .odc-btn-icon.end { margin-inline-start: 8px; }
 
 /* ---------- MultiSelect (OdsMultiSelect — DS components/MultiSelect) ----------
-   A trigger button (label + count badge + chevron) over a MudMenu popover whose
+   A trigger button (label + count badge + chevron) over a popover (OdsPopupMenu) whose
    body is a checkbox list with a Clear / Done footer. The trigger fills its slot
    (.ph-select gives it a 170px floor) but collapses to content width when
    unconstrained, so it matches the DS compact pill outside a filter bar. */
@@ -874,7 +875,7 @@
   font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); font-variant-numeric: tabular-nums;
 }
 
-/* The popover surface lives on the inner .odc-ms-pop panel; neutralise MudMenu's
+/* The popover surface lives on the inner .odc-ms-pop panel; neutralise MudBlazor's
    own paper (background / elevation / list padding) so it doesn't double up. */
 .mud-popover.odc-ms-pop-paper { background: transparent; box-shadow: none; border: none; }
 .odc-ms-pop {
@@ -1226,7 +1227,7 @@
 .odc-money-cur.btn:disabled { cursor: not-allowed; }
 .odc-money-chev { font-size: var(--icon-md); line-height: 1; transition: transform var(--duration-base) var(--ease-standard); }
 .odc-money-cur.btn.open .odc-money-chev { transform: rotate(180deg); }
-/* The popover is hosted by MudMenu (portaled, flips when there's no room below),
+/* The popover is hosted by OdsPopupMenu (portaled, flips when there's no room below),
    so the panel below carries the surface and MudBlazor's own paper is neutralised
    by .odc-ms-pop-paper. With a long list a sticky filter box sits above the
    scrolling options; codes stay mono. */
@@ -1414,7 +1415,7 @@
 /* ---------- TypeSelect (shared registry type picker) ----------
    Mirrors the DS .odc-select chrome (components.css). The trigger is a custom
    button (not a MudBlazor input) shared by every registry-backed type picker;
-   the popover is hosted by MudMenu, its rows styled with .odc-typesel-*. */
+   the popover is hosted by OdsPopupMenu, its rows styled with .odc-typesel-*. */
 /* The popup box (OdsPopupMenu) defaults to inline-flex, which collapses the
    full-width trigger to content width (and lets the flex parent center it).
    Stretch it so the trigger fills its form cell like the sibling
@@ -1461,7 +1462,7 @@
   outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px;
   background: var(--mud-palette-action-default-hover);
 }
-/* Option row inside the MudMenu popover: plain colored glyph · label · far-right check. */
+/* Option row inside the popover: plain colored glyph · label · far-right check. */
 .odc-typesel-item { display: flex; align-items: center; gap: 10px; width: 100%; font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 .odc-typesel-item.selected { color: var(--brand-text); font-weight: var(--fw-medium); }
 .odc-typesel-lab { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2351,7 +2352,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-smarttags-add:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .odc-smarttags-add .material-icons { font-size: var(--icon-sm); }
 
-/* Checklist popover (portaled by MudMenu) */
+/* Checklist popover (portaled by OdsPopupMenu) */
 .odc-smarttags-pop {
   z-index: var(--z-popover); box-sizing: border-box; min-width: 248px; max-width: 320px;
   background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
@@ -3033,7 +3034,7 @@ tr:focus-within > .odc-rowactions.reveal,
    Shared trigger + menu used by the footer Pager and by the toolbar
    PageSizeSelect mirror (.mirror — 40px tall to line up with SearchField /
    MultiSelect). MudBlazor portals the menu into a popover, so positioning is
-   MudMenu's job here (unlike the standalone DS component); only the trigger and
+   MudPopover's job here (unlike the standalone DS component); only the trigger and
    the menu box styling live in CSS. */
 .odc-rpp { position: relative; display: inline-flex; }
 .odc-rpp-trigger {
@@ -3052,7 +3053,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-rpp-trigger b { font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }
 .odc-rpp-chev { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-rpp.mirror .odc-rpp-trigger { height: var(--control-h); padding: 0 8px 0 12px; }
-/* The menu options are MudMenuItems styled by the shared .odc-typesel-item (see OdsSortSelect). */
+/* The menu options are menuitemradio rows styled by the shared .odc-typesel-item (see OdsSortSelect). */
 
 /* ---------- Infinite list (card-list server paging) ----------
    The card lists (Accounts, Budgets) page by appending batches as a sentinel
