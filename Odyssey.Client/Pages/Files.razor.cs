@@ -68,6 +68,9 @@ public partial class Files
 
     private readonly HashSet<Guid> _busyFiles = [];
 
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
+
     private static readonly string[] PreviewableContentTypes =
         { "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "application/pdf" };
 
@@ -106,13 +109,16 @@ public partial class Files
     private async Task LoadFilesAsync()
     {
         _page = 1; // a new search / sort resets to the first page
-        var result = await FilesApi.ListAsync(
+        var response = await _listLoader.RunAsync(ct => FilesApi.ListAsync(
             page: 1, pageSize: PagedQuery.SizeAll,
             search: _search,
             sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct: ct));
+        if (response.IsSuperseded)
+            return;
 
-        var load = result.PagedOrToast(Snackbar, "files");
+        var load = response.Value.PagedOrToast(Snackbar, "files");
         if (load.IsSuccess)
         {
             _files = [.. load.Items];
@@ -498,4 +504,6 @@ public partial class Files
         "Image" => new("image", "var(--mud-palette-info)", "color-mix(in srgb, var(--mud-palette-info) 16%, transparent)"),
         _ => new("insert_drive_file", "var(--mud-palette-text-secondary)", "var(--mud-palette-action-disabled-background)"),
     };
+
+    public void Dispose() => _listLoader.Dispose();
 }

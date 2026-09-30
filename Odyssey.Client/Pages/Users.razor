@@ -3,6 +3,7 @@
 @using Odyssey.Client.Authorization
 @using Odyssey.Client.Models
 @attribute [Authorize(Policy = PermissionClaims.UsersRead)]
+@implements IDisposable
 @inject ISnackbar Snackbar
 @inject Odyssey.Client.Services.IClipboardService Clipboard
 @inject Odyssey.Client.Services.IPageStateService PageState

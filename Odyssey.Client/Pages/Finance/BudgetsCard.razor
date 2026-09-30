@@ -3,6 +3,7 @@
 @using Odyssey.Dtos.Finance
 @using Odyssey.Client.Authorization
 @attribute [Authorize(Policy = PermissionClaims.BudgetsRead)]
+@implements IDisposable
 @inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject AuthenticationStateProvider AuthenticationStateProvider

@@ -23,6 +23,8 @@ public partial class PropertiesCard
     // ── UI state ─────────────────────────────────────────────────────────────
     private bool _isLoading = true;
     private bool _refetching;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
     private bool _loadError;
     private string _announce = "";
     private Guid? _expandedId;
@@ -212,12 +214,17 @@ public partial class PropertiesCard
 
         // ItemsOrToast falls back to [], which is indistinguishable from a genuinely empty file and
         // would render the first-run empty state after a 500 — so the failure is tracked explicitly.
-        var result = await Properties.ListAllAsync(
+        var response = await _listLoader.RunAsync(ct => Properties.ListAllAsync(
             _searchString,
             _typeFilter,
             _statusFilter,
             _sort.Key,
-            _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct));
+        if (response.IsSuperseded)
+            return;
+
+        var result = response.Value;
 
         _properties = result.ItemsOrToast(Snackbar, "properties");
         _loadError = !result.IsSuccess;
@@ -569,4 +576,6 @@ public partial class PropertiesCard
     private string FormatMoney(decimal value, string? currencyCode) =>
         OdsMoney.Format(value, currencyCode,
             OdsMoney.MinorUnitsOf(currencyCode is null ? null : _currenciesByCode.GetValueOrDefault(currencyCode)));
+
+    public void Dispose() => _listLoader.Dispose();
 }

@@ -33,6 +33,8 @@ public partial class OdsTagAdmin<TRow>
     private List<TRow> _allTags = [];
     private bool _isLoading = true;
     private bool _refetching;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
     private bool _loadError;
     private string _announce = "";
 
@@ -155,13 +157,17 @@ public partial class OdsTagAdmin<TRow>
             StateHasChanged();
         }
 
-        var load = (await Tags.ListAsync(
+        var response = await _listLoader.RunAsync(ct => Tags.ListAsync(
             _page, _pageSize,
             search: _search,
             status: _statusFilter,
             sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc"))
-            .PagedOrToast(Snackbar, Noun);
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct: ct));
+        if (response.IsSuperseded)
+            return;
+
+        var load = response.Value.PagedOrToast(Snackbar, Noun);
         if (load.IsSuccess)
         {
             _tags = [.. load.Items];
@@ -378,4 +384,6 @@ public partial class OdsTagAdmin<TRow>
     }
 
     private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Tag ID copied to clipboard.");
+
+    public void Dispose() => _listLoader.Dispose();
 }

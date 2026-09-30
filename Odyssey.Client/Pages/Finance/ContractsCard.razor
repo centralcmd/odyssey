@@ -4,6 +4,7 @@
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Finance
 @attribute [Authorize(Policy = PermissionClaims.ContractsRead)]
+@implements IDisposable
 @inject IContractsApiClient Contracts
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService

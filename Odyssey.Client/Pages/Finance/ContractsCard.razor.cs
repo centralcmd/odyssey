@@ -48,6 +48,8 @@ public partial class ContractsCard
     // ── UI state ─────────────────────────────────────────────────────────────
     private bool _isLoading = true;
     private bool _refetching;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
     private bool _loadError;
     private string _announce = "";
     private Guid? _expandedId;
@@ -208,12 +210,17 @@ public partial class ContractsCard
 
         // Track failure explicitly: ItemsOrToast falls back to [], which is indistinguishable from a
         // genuinely empty set and would render the onboarding empty state after a 500.
-        var result = await Contracts.ListAsync(
+        var response = await _listLoader.RunAsync(ct => Contracts.ListAsync(
             _searchString,
             _typeFilter,
             _statusFilter,
             _sort.Key,
-            _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct));
+        if (response.IsSuperseded)
+            return;
+
+        var result = response.Value;
 
         _contracts = result.ItemsOrToast(Snackbar, "contracts");
         _loadError = !result.IsSuccess;
@@ -1210,4 +1217,6 @@ public partial class ContractsCard
                 return (false, "Open-ended", "no end date", "");
         }
     }
+
+    public void Dispose() => _listLoader.Dispose();
 }

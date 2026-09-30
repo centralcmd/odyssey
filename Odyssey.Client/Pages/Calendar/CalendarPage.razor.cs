@@ -19,6 +19,8 @@ public partial class CalendarPage
     private List<CalendarEventVm> _viewModels = [];
     private bool _isLoading = true;
     private bool _loadError;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
 
     // Reference date for the active view: the shown month (month/agenda), the week containing it
     // (week), or the shown day (day). A real date, not forced to the 1st, so week/day keep their day.
@@ -164,7 +166,12 @@ public partial class CalendarPage
 
         // Track failure explicitly: ItemsOrToast falls back to [], which is indistinguishable from a
         // period that genuinely has no events.
-        var result = await CalendarApi.ListEventsAsync(from, to);
+        // The range changes on every prev/next/view switch, so a slow earlier range must not land last.
+        var response = await _listLoader.RunAsync(ct => CalendarApi.ListEventsAsync(from, to, ct));
+        if (response.IsSuperseded)
+            return;
+
+        var result = response.Value;
         _events = result.ItemsOrToast(Snackbar, "calendar events");
         _loadError = !result.IsSuccess;
         RebuildViewModels();
@@ -556,4 +563,6 @@ public partial class CalendarPage
         public List<Guid> VisibleCalendarIds { get; set; } = [];
         public string Month { get; set; } = string.Empty;
     }
+
+    public void Dispose() => _listLoader.Dispose();
 }

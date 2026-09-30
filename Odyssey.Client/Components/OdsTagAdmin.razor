@@ -1,6 +1,7 @@
 @using Odyssey.Dtos.Finance
 @using Odyssey.Client.Authorization
 @typeparam TRow
+@implements IDisposable
 @inject ITagsApiClient<TRow> Tags
 @inject ISnackbar Snackbar
 @inject IReferenceDataCache ReferenceData

@@ -56,6 +56,8 @@ public partial class PropertyEventsSection : IAsyncDisposable
     private int _total;
     private int _page = 1;
     private bool _isLoading;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
 
     private Guid _dialogKey = Guid.Empty;
     private bool _dialogOpen;
@@ -139,8 +141,14 @@ public partial class PropertyEventsSection : IAsyncDisposable
         _isLoading = true;
         StateHasChanged();
 
-        var page = (await Properties.ListEventsAsync(Property.PropertyId, page: _page, pageSize: PageSize))
-            .PagedOrToast(Snackbar, "events");
+        // Paging and a host-driven reload (a different owner, or a write) each start a read; only the
+        // newest may land, or a slow earlier page overwrites the one the pager now names.
+        var response = await _listLoader.RunAsync(ct =>
+            Properties.ListEventsAsync(Property.PropertyId, page: _page, pageSize: PageSize, ct: ct));
+        if (response.IsSuperseded)
+            return;
+
+        var page = response.Value.PagedOrToast(Snackbar, "events");
 
         _events = [.. page.Items];
         _total = page.TotalCount;
@@ -218,6 +226,7 @@ public partial class PropertyEventsSection : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _listLoader.Dispose();
         if (_focusJs is not null)
         {
             try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }

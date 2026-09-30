@@ -33,6 +33,8 @@ public partial class JournalCard
     // ── UI state ─────────────────────────────────────────────────────────────
     private bool _isLoading = true;
     private bool _refetching;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
     private bool _loadError;
     private string _announce = "";
 
@@ -217,16 +219,23 @@ public partial class JournalCard
         // Active + Archived pair is fetched, either leg failing makes the combined list untrustworthy.
         var dir = _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc";
         var requests = StatusRequests();
-        if (requests.Count == 1)
+        // The Active + Archived pair is independent, so both legs are in flight at once rather than
+        // paying two round-trips back to back.
+        var response = await _listLoader.RunAsync(ct => Task.WhenAll(requests.Select(status =>
+            Journal.ListAsync(_searchString, _tagFilter, _contactFilter, status, _sort.Key, dir, _from?.Date, _to?.Date, WantPhotos, WantFiles, ct))));
+        if (response.IsSuperseded)
+            return;
+
+        var results = response.Value;
+        if (results.Length == 1)
         {
-            var result = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[0], _sort.Key, dir, _from?.Date, _to?.Date, WantPhotos, WantFiles);
+            var result = results[0];
             _entries = result.ItemsOrToast(Snackbar, "journal entries");
             _loadError = !result.IsSuccess;
         }
         else
         {
-            var activeResult = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[0], _sort.Key, dir, _from?.Date, _to?.Date, WantPhotos, WantFiles);
-            var archivedResult = await Journal.ListAsync(_searchString, _tagFilter, _contactFilter, requests[1], _sort.Key, dir, _from?.Date, _to?.Date, WantPhotos, WantFiles);
+            var (activeResult, archivedResult) = (results[0], results[1]);
             var active = activeResult.ItemsOrToast(Snackbar, "journal entries");
             var archived = archivedResult.ItemsOrToast(Snackbar, "archived journal entries");
             _entries = [.. active, .. archived];
@@ -842,6 +851,7 @@ public partial class JournalCard
 
     public async ValueTask DisposeAsync()
     {
+        _listLoader.Dispose();
         if (_focusJs is not null)
         {
             try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }

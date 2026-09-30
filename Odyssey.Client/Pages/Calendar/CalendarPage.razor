@@ -1,6 +1,7 @@
 @page "/calendar"
 @using Odyssey.Client.Authorization
 @attribute [Authorize(Policy = PermissionClaims.CalendarRead)]
+@implements IDisposable
 @inject ICalendarApiClient CalendarApi
 @inject IPageStateService PageState
 @inject IJSRuntime JS

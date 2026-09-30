@@ -59,6 +59,8 @@ public partial class Users
     // 1-based, matching OdsPager's contract and every other paged page.
     private int _page = 1;
     private string _announce = "";
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
 
     private string? _expandedId;
     private string? _editingId;
@@ -175,13 +177,16 @@ public partial class Users
     {
         // Server-side (issue #277): search + sort are applied by the API (including the SQL role-join
         // sort). Role/status stay as client-side multi-selects over the fetched set (see FilteredUsers).
-        var result = await UsersApi.ListAsync(
+        var response = await _listLoader.RunAsync(ct => UsersApi.ListAsync(
             page: 1, pageSize: PagedQuery.SizeAll,
             search: _search,
             sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct: ct));
+        if (response.IsSuperseded)
+            return;
 
-        var load = result.PagedOrToast(Snackbar, "users");
+        var load = response.Value.PagedOrToast(Snackbar, "users");
         if (!load.IsSuccess)
         {
             _loadError = true;
@@ -528,4 +533,6 @@ public partial class Users
 
     private IReadOnlyList<string> RolePermissionsFor(string role) =>
         _rolePermissions.TryGetValue(role, out var permissions) ? permissions : [];
+
+    public void Dispose() => _listLoader.Dispose();
 }

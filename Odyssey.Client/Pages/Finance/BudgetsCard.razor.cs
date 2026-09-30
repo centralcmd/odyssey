@@ -34,6 +34,8 @@ public partial class BudgetsCard
 
     private bool _isLoading = true;
     private bool _refetching;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
     private bool _loadError;
     private string _announce = "";
     private Guid? _expandedId;
@@ -160,14 +162,17 @@ public partial class BudgetsCard
             StateHasChanged();
         }
 
-        var result = await Budgets.ListAsync(
+        var response = await _listLoader.RunAsync(ct => Budgets.ListAsync(
             page: 1, pageSize: PagedQuery.SizeAll,
             search: _searchString,
             status: _statusFilter,
             sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct: ct));
+        if (response.IsSuperseded)
+            return;
 
-        var load = result.PagedOrToast(Snackbar, "budgets");
+        var load = response.Value.PagedOrToast(Snackbar, "budgets");
         if (load.IsSuccess)
         {
             _budgets = [.. load.Items];
@@ -564,4 +569,6 @@ public partial class BudgetsCard
         _minorUnitsCache[key] = units;
         return units;
     }
+
+    public void Dispose() => _listLoader.Dispose();
 }

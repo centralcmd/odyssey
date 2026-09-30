@@ -39,6 +39,8 @@ public partial class TaxStatementsCard
     // ── UI state ───────────────────────────────────────────────────────────
     private bool _isLoading = true;
     private bool _refetching;
+    // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
+    private readonly ListLoader _listLoader = new();
     private bool _loadError;
     private string _announce = "";
     private Guid? _expandedId;
@@ -173,14 +175,17 @@ public partial class TaxStatementsCard
             StateHasChanged();
         }
 
-        var result = await TaxStatements.ListAsync(
+        var response = await _listLoader.RunAsync(ct => TaxStatements.ListAsync(
             page: 1, pageSize: PagedQuery.SizeAll,
             search: _searchString,
             statuses: _statusFilter,
             sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc");
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            ct: ct));
+        if (response.IsSuperseded)
+            return;
 
-        var load = result.PagedOrToast(Snackbar, "tax statements");
+        var load = response.Value.PagedOrToast(Snackbar, "tax statements");
         if (load.IsSuccess)
         {
             _statements = [.. load.Items];
@@ -654,4 +659,6 @@ public partial class TaxStatementsCard
         string Detail,
         string FixLabel,
         string FixTarget);
+
+    public void Dispose() => _listLoader.Dispose();
 }
