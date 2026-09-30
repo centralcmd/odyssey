@@ -99,7 +99,7 @@
 .cal-daytoggle { display: flex; gap: 6px; flex-wrap: wrap; }
 .cal-daytoggle-btn {
   appearance: none; cursor: pointer; width: 34px; height: 34px; flex: none; border-radius: var(--radius-pill);
-  border: 1px solid var(--mud-palette-lines-inputs); background: var(--mud-palette-surface);
+  border: 1px solid var(--control-border); background: var(--mud-palette-surface);
   font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-secondary);
 }
 .cal-daytoggle-btn:hover { border-color: var(--mud-palette-text-secondary); }
@@ -107,11 +107,11 @@
 .cal-daytoggle-btn:focus-visible { outline: var(--border-strong) solid var(--focus-ring); outline-offset: 2px; }
 
 .cal-ends { display: flex; flex-direction: column; gap: 8px; }
-.cal-ends-opt { position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 14px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); cursor: pointer; transition: border-color 120ms ease, background-color 120ms ease; }
+.cal-ends-opt { position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 14px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); cursor: pointer; transition: border-color 120ms ease, background-color 120ms ease; }
 .cal-ends-opt:hover { border-color: var(--mud-palette-text-secondary); }
 .cal-ends-opt.on { border-color: var(--mud-palette-primary); background: var(--brand-soft); }
 .cal-ends-input { position: absolute; opacity: 0; width: 0; height: 0; }
-.cal-ends-radio { width: 18px; height: 18px; flex: none; border-radius: 50%; border: 2px solid var(--mud-palette-lines-inputs); display: grid; place-items: center; box-sizing: border-box; }
+.cal-ends-radio { width: 18px; height: 18px; flex: none; border-radius: 50%; border: 2px solid var(--control-border); display: grid; place-items: center; box-sizing: border-box; }
 .cal-ends-opt.on .cal-ends-radio { border-color: var(--mud-palette-primary); }
 .cal-ends-opt.on .cal-ends-radio::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--mud-palette-primary); }
 .cal-ends-input:focus-visible + .cal-ends-radio { outline: var(--border-strong) solid var(--focus-ring); outline-offset: 2px; }

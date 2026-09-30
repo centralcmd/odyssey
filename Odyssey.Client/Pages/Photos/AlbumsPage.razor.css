@@ -59,7 +59,7 @@
 }
 
 .pl-albnew { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 170px; cursor: pointer;
-      border: 1px dashed var(--mud-palette-lines-inputs, rgba(199,208,224,0.28)); border-radius: var(--radius-lg, 12px); background: transparent; color: var(--mud-palette-text-secondary); font: 500 13px/1 var(--font-sans); }
+      border: 1px dashed var(--control-border); border-radius: var(--radius-lg, 12px); background: transparent; color: var(--mud-palette-text-secondary); font: 500 13px/1 var(--font-sans); }
 
 .pl-albnew:hover { color: var(--brand-text); border-color: var(--nav-active); }
 

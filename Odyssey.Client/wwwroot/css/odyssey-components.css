@@ -151,7 +151,7 @@
     min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box;
     border-radius: var(--radius-pill);
     font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); font-variant-numeric: tabular-nums;
-    background: var(--mud-palette-error); color: #fff;
+    background: var(--mud-palette-error); color: var(--mud-palette-error-text);
 }
 .odc-badge.primary { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
 .odc-badge.neutral { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
@@ -421,7 +421,7 @@
 }
 .odc-problem-cta .material-icons { font-size: var(--icon-sm); }
 .odc-problem.warning .odc-problem-cta { background: var(--finance-pending); color: var(--ink-900); }
-.odc-problem.error   .odc-problem-cta { background: var(--finance-expense); color: #2A0E0E; }
+.odc-problem.error   .odc-problem-cta { background: var(--finance-expense); color: var(--error-cta-text); }
 .odc-problem.info    .odc-problem-cta { background: var(--sea-400);         color: var(--ink-900); }
 .odc-problem-cta:hover { filter: brightness(1.08); }
 
@@ -785,7 +785,7 @@
 .mud-input-outlined-border { top: 0; background: transparent; }
 .mud-input-outlined-border legend { display: none; }
 .mud-input.mud-input-outlined .mud-input-outlined-border {
-  border-color: var(--mud-palette-lines-inputs);
+  border-color: var(--control-border);
   border-radius: var(--radius-sm);
 }
 /* The label no longer overlays the box, so show the placeholder as solid DS
@@ -829,7 +829,7 @@
   display: inline-flex; align-items: center; gap: 8px; width: 100%; height: 42px;
   box-sizing: border-box;
   background: var(--mud-palette-surface);
-  border: 1px solid var(--mud-palette-lines-inputs);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm); padding: 8px 12px; cursor: pointer;
   font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans);
   color: var(--mud-palette-text-primary); white-space: nowrap;
@@ -881,7 +881,7 @@
 .odc-check-box {
   position: relative; flex: none; width: 18px; height: 18px;
   border-radius: var(--radius-sm);
-  border: 1.5px solid var(--mud-palette-lines-inputs); background: transparent;
+  border: 1.5px solid var(--control-border); background: transparent;
   display: grid; place-items: center;
   transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
 }
@@ -1078,7 +1078,7 @@
   font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
   color: var(--mud-palette-text-primary);
   background: var(--mud-palette-surface);
-  border: 1px solid var(--mud-palette-lines-inputs);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   padding: var(--control-pad-y) 12px;
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
@@ -1098,7 +1098,7 @@
   display: flex; align-items: center; gap: 8px;
   box-sizing: border-box; height: 44px; padding: 0 12px;
   background: var(--mud-palette-surface);
-  border: 1px solid var(--mud-palette-lines-inputs);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
@@ -1131,7 +1131,7 @@
   display: flex; align-items: stretch;
   box-sizing: border-box; height: 44px;
   background: var(--mud-palette-surface);
-  border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-md);
+  border: 1px solid var(--control-border); border-radius: var(--radius-md);
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
 .odc-money:hover { border-color: var(--mud-palette-text-secondary); }
@@ -1322,7 +1322,7 @@
 .odc-input.has-icon { padding-left: 38px; }
 .odc-refnum-field { display: flex; flex-direction: column; gap: var(--space-2); }
 .odc-refnum-input { font-family: var(--font-mono); letter-spacing: 0.02em; }
-.odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--mud-palette-lines-inputs); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
+.odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--control-border); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
 .odc-refnum-strip:hover { background: var(--mud-palette-action-default-hover); }
 .odc-refnum-strip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .odc-refnum-strip .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
@@ -1414,7 +1414,7 @@
   appearance: none; font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
   color: var(--mud-palette-text-primary);
   background: var(--mud-palette-surface);
-  border: 1px solid var(--mud-palette-lines-inputs);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   /* Match the MudBlazor dense field height (--control-h) so the trigger lines up
      with sibling OdsField / MudNumericField cells in a FormRow / edit grid. */
@@ -1468,7 +1468,7 @@
   font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
   color: var(--mud-palette-text-primary);
   background: var(--mud-palette-surface);
-  border: 1px solid var(--mud-palette-lines-inputs);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
@@ -1506,7 +1506,7 @@
   min-height: var(--control-h);
   padding: 5px 8px 5px 10px;
   background: var(--mud-palette-surface);
-  border: 1px solid var(--mud-palette-lines-inputs);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-sm);
   color: var(--mud-palette-text-primary);
   /* Default cursor, not pointer: the box itself no longer opens the popover (only the trigger
@@ -1565,7 +1565,7 @@
   border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
   padding: var(--space-2);
 }
-.odc-tagms-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
+.odc-tagms-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
 .odc-tagms-search:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); box-shadow: inset 0 0 0 1px var(--focus-ring, var(--mud-palette-primary)); }
 .odc-tagms-search .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-tagms-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
@@ -2331,7 +2331,7 @@ tr:focus-within > .odc-rowactions.reveal,
   display: inline-flex; align-items: center; gap: 4px;
   appearance: none; cursor: pointer;
   padding: 3px 10px 3px 8px;
-  border: 1px dashed var(--mud-palette-lines-inputs); border-radius: var(--radius-pill);
+  border: 1px dashed var(--control-border); border-radius: var(--radius-pill);
   background: transparent; color: var(--mud-palette-text-secondary);
   font: var(--fw-medium) var(--fs-body2)/1.2 var(--font-sans);
   transition: border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
@@ -2347,7 +2347,7 @@ tr:focus-within > .odc-rowactions.reveal,
   background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
   border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8); padding: var(--space-2);
 }
-.odc-smarttags-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
+.odc-smarttags-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
 .odc-smarttags-search:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); box-shadow: inset 0 0 0 1px var(--focus-ring, var(--mud-palette-primary)); }
 .odc-smarttags-search .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-smarttags-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
@@ -3030,7 +3030,7 @@ tr:focus-within > .odc-rowactions.reveal,
   display: inline-flex; align-items: center; gap: 6px; height: 32px; box-sizing: border-box;
   padding: 0 6px 0 10px; cursor: pointer;
   background: var(--mud-palette-background); color: var(--mud-palette-text-primary);
-  border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm);
+  border: 1px solid var(--control-border); border-radius: var(--radius-sm);
   font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans);
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
@@ -3184,7 +3184,7 @@ tr:focus-within > .odc-rowactions.reveal,
 /* DateRangePicker — a pill with two date pickers + dash + clear. The DS styles the inner picker via
    .odc-dp; OdsDatePicker is MudDatePicker here, so the inner overrides target the MudBlazor field
    (borderless, compact) instead — the same adaptation used by the photos .pl-daterange filter. */
-.odc-dpr { display: inline-flex; align-items: center; gap: 8px; height: var(--control-h); box-sizing: border-box; padding: 0 8px 0 12px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-surface); }
+.odc-dpr { display: inline-flex; align-items: center; gap: 8px; height: var(--control-h); box-sizing: border-box; padding: 0 8px 0 12px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--mud-palette-surface); }
 .odc-dpr:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); box-shadow: inset 0 0 0 1px var(--focus-ring, var(--mud-palette-primary)); }
 .odc-dpr-ic { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); flex: none; }
 .odc-dpr-lab { font: 600 var(--fs-overline)/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); flex: none; }
@@ -3464,14 +3464,14 @@ tr:focus-within > .odc-rowactions.reveal,
 .cal-daytoggle { display: flex; gap: 6px; flex-wrap: wrap; }
 .cal-daytoggle-btn {
   appearance: none; cursor: pointer; width: 34px; height: 34px; flex: none; border-radius: var(--radius-pill);
-  border: 1px solid var(--mud-palette-lines-inputs); background: var(--mud-palette-surface);
+  border: 1px solid var(--control-border); background: var(--mud-palette-surface);
   font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-secondary);
 }
 .cal-daytoggle-btn:hover { border-color: var(--mud-palette-text-secondary); }
 .cal-daytoggle-btn.on { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); border-color: var(--mud-palette-primary); }
 .cal-daytoggle-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
 .cal-ends { display: flex; flex-direction: column; gap: 8px; }
-.cal-ends-opt { position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 14px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); cursor: pointer; transition: border-color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard); }
+.cal-ends-opt { position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 14px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); cursor: pointer; transition: border-color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard); }
 .cal-ends-opt:hover { border-color: var(--mud-palette-text-secondary); }
 .cal-ends-opt.on { border-color: var(--mud-palette-primary); background: var(--brand-soft); }
 .cal-ends-lbl { font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary); min-width: 56px; flex: none; }
@@ -3758,11 +3758,11 @@ tr:focus-within > .odc-rowactions.reveal,
 .pl-toolbtn {
   display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px;
   border-radius: var(--radius-sm, 4px); cursor: pointer;
-  border: 1px solid var(--mud-palette-lines-inputs, rgba(199,208,224,0.28));
+  border: 1px solid var(--control-border);
   background: transparent; color: var(--mud-palette-text-secondary, #9aa3b2);
   font: 500 13px/1 var(--font-sans); white-space: nowrap;
 }
-.pl-toolbtn:hover { color: var(--mud-palette-text-primary, #e7ebf3); border-color: var(--mud-palette-lines-inputs); }
+.pl-toolbtn:hover { color: var(--mud-palette-text-primary, #e7ebf3); border-color: var(--mud-palette-text-secondary); }
 .pl-toolbtn.on { color: var(--brand-text); border-color: var(--nav-active); background: rgba(79,215,203,0.10); }
 .pl-toolbtn .material-icons { font-size: 17px; }
 
@@ -3889,13 +3889,13 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-capacity-value { flex: 1; text-align: right; font: var(--fw-regular) var(--fs-body1)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-capacity-pill {
     flex: none; cursor: pointer; white-space: nowrap;
-    border: var(--border-thin) solid var(--mud-palette-divider);
+    border: var(--border-thin) solid var(--control-border);
     border-radius: var(--radius-pill); background: transparent; padding: 4px 11px;
     font: var(--fw-medium) var(--fs-overline)/1.2 var(--font-sans);
     color: var(--mud-palette-text-secondary);
     transition: border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
 }
-.odc-capacity-pill:hover:not(:disabled) { border-color: var(--mud-palette-lines-inputs); color: var(--mud-palette-text-primary); }
+.odc-capacity-pill:hover:not(:disabled) { border-color: var(--mud-palette-text-secondary); color: var(--mud-palette-text-primary); }
 .odc-capacity-pill[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand-border); color: var(--brand-text); }
 .odc-capacity-pill:disabled { cursor: not-allowed; color: var(--mud-palette-text-disabled); }
 .odc-capacity-pill:focus-visible {
@@ -3917,7 +3917,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-sfield { min-width: 0; }
 .odc-sfield-frame {
     margin: 0; min-width: 0;
-    border: var(--border-thin) solid var(--mud-palette-lines-inputs);
+    border: var(--border-thin) solid var(--control-border);
     border-radius: var(--radius-md); padding: 0 12px 11px;
     background: var(--mud-palette-background);
     transition: border-color var(--duration-fast) var(--ease-standard);
@@ -3995,7 +3995,7 @@ tr:focus-within > .odc-rowactions.reveal,
    left, control right, matching the field's border. */
 .odc-sfield-tile {
     display: flex; align-items: center; gap: 16px; justify-content: space-between;
-    border: var(--border-thin) solid var(--mud-palette-lines-inputs);
+    border: var(--border-thin) solid var(--control-border);
     border-radius: var(--radius-md); background: var(--mud-palette-background);
     padding: 12px 14px;
 }

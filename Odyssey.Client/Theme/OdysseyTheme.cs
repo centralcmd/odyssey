@@ -34,12 +34,18 @@ public static class OdysseyTheme
             SecondaryContrastText    = "#080C18",
 
             Tertiary                 = "#8B5CF6", // --violet-500
-            TertiaryContrastText     = "#FFFFFF",
+            // Every *ContrastText is set explicitly: MudBlazor's default is white, which is
+            // 1.7-2.8:1 on these bright fills. ink-950 clears 4.5:1 on each (issue #254).
+            TertiaryContrastText     = "#080C18", // 4.61:1 (white 4.23:1)
 
             Info                     = "#38BDF8", // sea-400
+            InfoContrastText         = "#080C18", // 9.11:1
             Success                  = "#4ADE80", // mint-500 — Approved + income
+            SuccessContrastText      = "#080C18", // 11.20:1
             Warning                  = "#F59E0B", // amber-500
+            WarningContrastText      = "#080C18", // 9.09:1
             Error                    = "#FF6B6B", // coral-500 — Flagged + expense
+            ErrorContrastText        = "#080C18", // 7.03:1 (white 2.78:1)
 
             // Surfaces
             Background               = "#0E1525", // --ink-900
@@ -81,18 +87,22 @@ public static class OdysseyTheme
             Primary                  = "#14B8A6", // --tide-600 — darker on light for contrast
             PrimaryDarken            = "#0E8A7C", // --tide-700
             PrimaryLighten           = "#2DD4BF", // --tide-500
-            PrimaryContrastText      = "#FFFFFF",
+            // --ink-950, mirroring dark: white on tide-600 is 2.49:1, ink-950 is 7.84:1 (issue #254).
+            PrimaryContrastText      = "#080C18",
 
             Secondary                = "#0284C7",
             SecondaryDarken          = "#0369A1",
             SecondaryLighten         = "#38BDF8",
-            SecondaryContrastText    = "#FFFFFF",
+            // Contrast texts are chosen per fill for ≥4.5:1, not defaulted to white (issue #254).
+            SecondaryContrastText    = "#080C18", // 4.77:1 (white 4.10:1)
 
             Tertiary                 = "#8B5CF6",
-            TertiaryContrastText     = "#FFFFFF",
+            TertiaryContrastText     = "#080C18", // 4.61:1 (white 4.23:1)
 
             Info                     = "#0EA5E9",
+            InfoContrastText         = "#080C18", // 7.04:1 (white 2.77:1)
             Success                  = "#15803D", // mint-700
+            SuccessContrastText      = "#FFFFFF", // 5.02:1
             // DS light --mud-palette-warning is amber-600 (#D97706, ~3.2:1 on white — the
             // ≥3:1 graphics floor). This darker amber is ~3.7:1 on white: it clears the 3:1
             // graphics floor but NOT 4.5:1 text. Anything that renders the warning colour as
@@ -100,7 +110,9 @@ public static class OdysseyTheme
             // signal button, issue #216). The value is left alone deliberately: changing it
             // is a design-system decision with churn across every Color.Warning surface.
             Warning                  = "#B57820",
+            WarningContrastText      = "#080C18", // 5.27:1 (white 3.70:1)
             Error                    = "#B23B3B", // coral-700
+            ErrorContrastText        = "#FFFFFF", // 5.86:1
 
             Background               = "#FAFBFD",
             BackgroundGray           = "#F5F7FB",

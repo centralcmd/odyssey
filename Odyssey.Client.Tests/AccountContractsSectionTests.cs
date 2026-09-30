@@ -82,7 +82,10 @@ public class AccountContractsSectionTests
         Assert.Equal(["View", "Copy name", "Copy ID"], labels);
 
         cut.FindAll(".mud-menu-item").First(i => i.TextContent.Contains("View", StringComparison.Ordinal)).Click();
-        Assert.EndsWith("/contracts", cut.Services.GetRequiredService<NavigationManager>().Uri, StringComparison.Ordinal);
+        // bUnit's synchronous Click() dispatches without awaiting, so the handler can still be
+        // queued behind a MudMenu render when Click() returns; wait for the navigation.
+        var navigation = cut.Services.GetRequiredService<NavigationManager>();
+        cut.WaitForAssertion(() => Assert.EndsWith("/contracts", navigation.Uri, StringComparison.Ordinal));
     }
 
     /// <summary>

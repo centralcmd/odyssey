@@ -12,12 +12,12 @@
 
 .pl-albrow-name { flex: 1; text-align: left; font: 500 14px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 
-.pl-albrow-check { width: 22px; height: 22px; border-radius: 999px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--mud-palette-lines-inputs, rgba(199,208,224,0.35)); }
+.pl-albrow-check { width: 22px; height: 22px; border-radius: 999px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--control-border); }
 
 .pl-albrow-check.on { background: var(--tide-400); border-color: var(--tide-400); color: var(--ink-950, #0b0d12); }
 
 .pl-albadd { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; padding: 10px; width: 100%; justify-content: center; cursor: pointer;
-      border: 1px dashed var(--mud-palette-lines-inputs, rgba(199,208,224,0.28)); border-radius: var(--radius-sm, 4px); background: transparent; color: var(--mud-palette-text-secondary); font: 500 13px/1 var(--font-sans); }
+      border: 1px dashed var(--control-border); border-radius: var(--radius-sm, 4px); background: transparent; color: var(--mud-palette-text-secondary); font: 500 13px/1 var(--font-sans); }
 
 .pl-albadd:hover { color: var(--brand-text); border-color: var(--nav-active); }
 
