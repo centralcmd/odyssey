@@ -28,9 +28,9 @@ internal sealed record ProbeOutcome(TierProbe Probe, string Detail);
 /// <remarks>
 /// <para>
 /// The one skippable observation is "nothing is listening": a refused connection, an unresolvable host,
-/// or no response inside the probe's own timeout. Once the stack ANSWERS, anything short of ready is a
-/// fault — a stack that answers <c>502</c> until the deadline is present and broken, and must not turn
-/// into a green job that ran nothing.
+/// or a TCP connect that is never accepted. Once a connection IS accepted, anything short of ready is a
+/// fault — a stack that answers <c>502</c> until the deadline, or accepts connections and never sends an
+/// HTTP response, is present and broken, and must not turn into a green job that ran nothing.
 /// </para>
 /// <para>
 /// The deadline is short (10 s) when nothing asked for the tier, so a local run with no stack still
@@ -42,7 +42,11 @@ internal static class StackProbe
 {
     public const string ReadyTimeoutEnvVar = "E2E_READY_TIMEOUT_SECONDS";
 
-    public static readonly TimeSpan HttpProbeTimeout = TimeSpan.FromSeconds(5);
+    /// <summary>How long a TCP connect may take before the port counts as not listening.</summary>
+    public static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(3);
+
+    /// <summary>How long a connected server may take to answer one HTTP request.</summary>
+    public static readonly TimeSpan HttpProbeTimeout = TimeSpan.FromSeconds(10);
     public static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
 
     /// <summary>An already-running stack should answer fast; nobody asked for the tier, so don't wait.</summary>
@@ -75,10 +79,13 @@ internal static class StackProbe
     /// may become a skip. A reset connection, a malformed response or a TLS failure means something IS
     /// listening, so they are not this.
     /// </summary>
+    /// <remarks>
+    /// A timeout is deliberately NOT here. <see cref="PollAsync"/> connects at the TCP level first, so a
+    /// connect that times out is already classified as absent; an HTTP timeout after that means the port
+    /// accepted the connection and never answered — present and broken.
+    /// </remarks>
     public static bool IsNotListening(Exception exception) => exception switch
     {
-        // HttpClient.Timeout surfaces as TaskCanceledException: no response inside the probe window.
-        TaskCanceledException or TimeoutException => true,
         HttpRequestException { HttpRequestError: HttpRequestError.ConnectionError or HttpRequestError.NameResolutionError } => true,
         HttpRequestException { InnerException: SocketException socket } => socket.SocketErrorCode is
             SocketError.ConnectionRefused or SocketError.HostNotFound or SocketError.HostUnreachable
@@ -96,13 +103,29 @@ internal static class StackProbe
         Uri url,
         TimeSpan timeout,
         Func<HttpResponseMessage, Task<(ProbeStep Step, string Detail)>> classify,
-        TimeSpan? pollInterval = null)
+        TimeSpan? pollInterval = null,
+        Func<Uri, Task<string?>>? connect = null)
     {
+        connect ??= TryConnectAsync;
         var deadline = DateTime.UtcNow + timeout;
         ProbeOutcome last = new(TierProbe.PrerequisiteMissing, $"nothing answered at {url}");
 
         while (true)
         {
+            // TCP first: refused, unresolvable or a connect timeout is the one skippable observation.
+            var connectFailure = await connect(url);
+            if (connectFailure is not null)
+            {
+                last = new ProbeOutcome(TierProbe.PrerequisiteMissing, $"nothing is listening at {url} ({connectFailure})");
+                if (DateTime.UtcNow >= deadline)
+                {
+                    return last;
+                }
+
+                await Task.Delay(pollInterval ?? PollInterval);
+                continue;
+            }
+
             try
             {
                 using var response = await client.GetAsync(url);
@@ -122,6 +145,14 @@ internal static class StackProbe
             {
                 last = new ProbeOutcome(TierProbe.PrerequisiteMissing, $"nothing is listening at {url} ({ex.Message})");
             }
+            catch (Exception ex) when (ex is TaskCanceledException or TimeoutException)
+            {
+                // The TCP connect succeeded a moment ago; no HTTP answer inside the window is a hung
+                // server, not an absent one.
+                last = new ProbeOutcome(
+                    TierProbe.Faulted,
+                    $"{url} accepted the connection but sent no HTTP response within {client.Timeout.TotalSeconds:0} s");
+            }
             catch (HttpRequestException ex)
             {
                 // Something accepted the connection and then misbehaved — present, not absent.
@@ -134,6 +165,30 @@ internal static class StackProbe
             }
 
             await Task.Delay(pollInterval ?? PollInterval);
+        }
+    }
+
+    /// <summary>
+    /// Opens (and closes) a TCP connection to <paramref name="url"/>'s host and port. Returns <c>null</c>
+    /// when something accepted it, otherwise why not — refused, unresolvable, or no accept within
+    /// <see cref="ConnectTimeout"/>.
+    /// </summary>
+    public static async Task<string?> TryConnectAsync(Uri url)
+    {
+        using var socket = new TcpClient();
+        using var cancel = new CancellationTokenSource(ConnectTimeout);
+        try
+        {
+            await socket.ConnectAsync(url.Host, url.Port, cancel.Token);
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            return $"no TCP accept within {ConnectTimeout.TotalSeconds:0} s";
+        }
+        catch (SocketException ex)
+        {
+            return ex.SocketErrorCode.ToString();
         }
     }
 

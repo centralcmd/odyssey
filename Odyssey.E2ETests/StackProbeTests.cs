@@ -16,15 +16,18 @@ public sealed class StackProbeTests
     private static readonly TimeSpan Short = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan Tick = TimeSpan.FromMilliseconds(5);
 
+    // The TCP half of the probe, stubbed so no test touches a real port.
+    private static readonly Func<Uri, Task<string?>> Accepts = _ => Task.FromResult<string?>(null);
+    private static readonly Func<Uri, Task<string?>> Refuses = _ => Task.FromResult<string?>("ConnectionRefused");
+
     [Fact]
-    public void Connection_refused_name_resolution_and_timeouts_mean_not_listening()
+    public void Connection_refused_and_name_resolution_mean_not_listening()
     {
         Assert.True(StackProbe.IsNotListening(new HttpRequestException(
             HttpRequestError.ConnectionError, "refused", new SocketException((int)SocketError.ConnectionRefused))));
         Assert.True(StackProbe.IsNotListening(new HttpRequestException(HttpRequestError.NameResolutionError, "nx")));
         Assert.True(StackProbe.IsNotListening(new HttpRequestException(
             "refused", new SocketException((int)SocketError.ConnectionRefused))));
-        Assert.True(StackProbe.IsNotListening(new TaskCanceledException("HttpClient.Timeout elapsed")));
     }
 
     [Fact]
@@ -33,17 +36,69 @@ public sealed class StackProbeTests
         Assert.False(StackProbe.IsNotListening(new HttpRequestException(HttpRequestError.ResponseEnded, "ended")));
         Assert.False(StackProbe.IsNotListening(new HttpRequestException(HttpRequestError.InvalidResponse, "garbage")));
         Assert.False(StackProbe.IsNotListening(new InvalidOperationException()));
+        // An HTTP timeout happens after the TCP connect was accepted: hung, not absent.
+        Assert.False(StackProbe.IsNotListening(new TaskCanceledException("HttpClient.Timeout elapsed")));
     }
 
     [Fact]
     public async Task Nothing_listening_until_the_deadline_is_a_missing_prerequisite()
     {
+        var httpCalls = 0;
+        using var client = Client(_ =>
+        {
+            httpCalls++;
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        });
+
+        var outcome = await StackProbe.PollAsync(client, Url, Short, StackProbe.SuccessStatus, Tick, Refuses);
+
+        Assert.Equal(TierProbe.PrerequisiteMissing, outcome.Probe);
+        Assert.Contains("ConnectionRefused", outcome.Detail);
+        Assert.Equal(0, httpCalls);
+    }
+
+    [Fact]
+    public async Task A_refused_request_after_a_connect_race_is_still_not_listening()
+    {
         using var client = Client(_ => throw new HttpRequestException(
             HttpRequestError.ConnectionError, "refused", new SocketException((int)SocketError.ConnectionRefused)));
 
-        var outcome = await StackProbe.PollAsync(client, Url, Short, StackProbe.SuccessStatus, Tick);
+        var outcome = await StackProbe.PollAsync(client, Url, Short, StackProbe.SuccessStatus, Tick, Accepts);
 
         Assert.Equal(TierProbe.PrerequisiteMissing, outcome.Probe);
+    }
+
+    [Fact]
+    public async Task Connected_but_no_http_response_is_a_fault_not_a_skip()
+    {
+        using var client = Client(_ => throw new TaskCanceledException("The request was canceled due to HttpClient.Timeout"));
+
+        var outcome = await StackProbe.PollAsync(client, Url, Short, StackProbe.SuccessStatus, Tick, Accepts);
+
+        Assert.Equal(TierProbe.Faulted, outcome.Probe);
+        Assert.Contains("no HTTP response", outcome.Detail);
+    }
+
+    [Fact]
+    public async Task A_real_closed_port_is_not_listening()
+    {
+        using var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        listener.Stop();
+
+        Assert.NotNull(await StackProbe.TryConnectAsync(new Uri($"http://127.0.0.1:{port}/")));
+    }
+
+    [Fact]
+    public async Task A_real_open_port_accepts()
+    {
+        using var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+        Assert.Null(await StackProbe.TryConnectAsync(new Uri($"http://127.0.0.1:{port}/")));
+        listener.Stop();
     }
 
     [Fact]
@@ -51,7 +106,7 @@ public sealed class StackProbeTests
     {
         using var client = Client(_ => new HttpResponseMessage(HttpStatusCode.BadGateway));
 
-        var outcome = await StackProbe.PollAsync(client, Url, Short, StackProbe.SuccessStatus, Tick);
+        var outcome = await StackProbe.PollAsync(client, Url, Short, StackProbe.SuccessStatus, Tick, Accepts);
 
         Assert.Equal(TierProbe.Faulted, outcome.Probe);
         Assert.Contains("502", outcome.Detail);
@@ -65,7 +120,7 @@ public sealed class StackProbeTests
             ? throw new HttpRequestException(HttpRequestError.ConnectionError, "refused")
             : new HttpResponseMessage(HttpStatusCode.OK));
 
-        var outcome = await StackProbe.PollAsync(client, Url, TimeSpan.FromSeconds(5), StackProbe.SuccessStatus, Tick);
+        var outcome = await StackProbe.PollAsync(client, Url, TimeSpan.FromSeconds(5), StackProbe.SuccessStatus, Tick, Accepts);
 
         Assert.Equal(TierProbe.Ready, outcome.Probe);
     }
@@ -81,7 +136,7 @@ public sealed class StackProbeTests
         });
 
         var outcome = await StackProbe.PollAsync(
-            client, Url, TimeSpan.FromSeconds(5), _ => Task.FromResult((ProbeStep.Fatal, "nope")), Tick);
+            client, Url, TimeSpan.FromSeconds(5), _ => Task.FromResult((ProbeStep.Fatal, "nope")), Tick, Accepts);
 
         Assert.Equal(TierProbe.Faulted, outcome.Probe);
         Assert.Equal(1, calls);
@@ -101,23 +156,57 @@ public sealed class StackProbeTests
     [Fact]
     public void Same_origin_api_probe_tells_proxy_from_spa_fallback_and_retries_a_starting_api()
     {
-        Assert.Equal(ProbeStep.Ready, StackFixture.ClassifySameOriginApi(Json(HttpStatusCode.OK), out _));
-        Assert.Equal(ProbeStep.Ready, StackFixture.ClassifySameOriginApi(Html(), out var htmlDetail));
+        Assert.Equal(StackFixture.SameOriginApi.Proxied, StackFixture.ClassifySameOriginApi(Json(HttpStatusCode.OK), out _));
+        Assert.Equal(StackFixture.SameOriginApi.Absent, StackFixture.ClassifySameOriginApi(Html(), out var htmlDetail));
         Assert.Contains("SPA fallback", htmlDetail);
-        Assert.Equal(ProbeStep.Retry, StackFixture.ClassifySameOriginApi(new HttpResponseMessage(HttpStatusCode.BadGateway), out _));
+        Assert.Null(StackFixture.ClassifySameOriginApi(new HttpResponseMessage(HttpStatusCode.BadGateway), out _));
+        // NGINX's own 502 page is text/html too: an API still migrating must be retried, never read as
+        // "no proxy on this origin" (which would send a healthy-but-starting Compose stack to the preflight).
+        Assert.Null(StackFixture.ClassifySameOriginApi(Html(HttpStatusCode.BadGateway), out _));
+        Assert.Null(StackFixture.ClassifySameOriginApi(Html(HttpStatusCode.ServiceUnavailable), out _));
     }
 
     [Theory]
-    [InlineData("http://localhost:5199/api/manage/info", "text/html; charset=utf-8", true)]
-    // A Debug client under Aspire calls the API origin directly — never flagged.
-    [InlineData("http://localhost:5188/manage/info", "text/html", false)]
-    [InlineData("http://localhost:5199/api/manage/info", "application/json", false)]
-    // The SPA's own pages and assets are HTML/JS on the same origin — not API calls.
-    [InlineData("http://localhost:5199/login", "text/html", false)]
-    [InlineData("http://localhost:5199/apiary", "text/html", false)]
-    public void Release_under_aspire_signature_is_an_app_api_call_answered_with_html(string url, string contentType, bool expected)
+    [InlineData(HttpStatusCode.NotFound, "text/plain")]
+    [InlineData(HttpStatusCode.NotFound, null)]
+    [InlineData(HttpStatusCode.NotFound, "text/html")]
+    [InlineData(HttpStatusCode.MethodNotAllowed, "text/plain")]
+    public void A_host_with_no_api_route_is_absent_not_retried(HttpStatusCode status, string? mediaType)
     {
-        Assert.Equal(expected, StackFixture.IsSameOriginApiHtml("http://localhost:5199", url, contentType));
+        var response = new HttpResponseMessage(status);
+        if (mediaType is not null)
+        {
+            response.Content = new StringContent("", Encoding.UTF8, mediaType);
+        }
+
+        Assert.Equal(StackFixture.SameOriginApi.Absent, StackFixture.ClassifySameOriginApi(response, out _));
+    }
+
+    [Fact]
+    public async Task Accepted_then_broken_exchange_is_a_fault()
+    {
+        using var client = Client(_ => throw new HttpRequestException(HttpRequestError.ResponseEnded, "The response ended prematurely."));
+
+        var outcome = await StackProbe.PollAsync(client, Url, Short, StackProbe.SuccessStatus, Tick, Accepts);
+
+        Assert.Equal(TierProbe.Faulted, outcome.Probe);
+        Assert.Contains("exchange failed", outcome.Detail);
+    }
+
+    [Theory]
+    [InlineData("http://localhost:5199/api/manage/info", 200, "text/html; charset=utf-8", true)]
+    // A Debug client under Aspire calls the API origin directly — never flagged.
+    [InlineData("http://localhost:5188/manage/info", 200, "text/html", false)]
+    [InlineData("http://localhost:5199/api/manage/info", 200, "application/json", false)]
+    // NGINX's 502 error page while the API migrates is HTML but not the SPA fallback.
+    [InlineData("http://localhost:5199/api/manage/info", 502, "text/html", false)]
+    // The SPA's own pages and assets are HTML/JS on the same origin — not API calls.
+    [InlineData("http://localhost:5199/login", 200, "text/html", false)]
+    [InlineData("http://localhost:5199/apiary", 200, "text/html", false)]
+    public void Release_under_aspire_signature_is_an_app_api_call_answered_with_html(
+        string url, int status, string contentType, bool expected)
+    {
+        Assert.Equal(expected, StackFixture.IsSameOriginApiHtml("http://localhost:5199", url, status, contentType));
     }
 
     private static HttpClient Client(Func<HttpRequestMessage, HttpResponseMessage> respond) =>
@@ -126,8 +215,8 @@ public sealed class StackProbeTests
     private static HttpResponseMessage Json(HttpStatusCode status) =>
         new(status) { Content = new StringContent("{\"status\":\"ok\"}", Encoding.UTF8, "application/json") };
 
-    private static HttpResponseMessage Html() =>
-        new(HttpStatusCode.OK) { Content = new StringContent("<!DOCTYPE html>", Encoding.UTF8, "text/html") };
+    private static HttpResponseMessage Html(HttpStatusCode status = HttpStatusCode.OK) =>
+        new(status) { Content = new StringContent("<!DOCTYPE html>", Encoding.UTF8, "text/html") };
 
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {

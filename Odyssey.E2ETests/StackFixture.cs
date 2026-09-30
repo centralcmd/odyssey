@@ -44,6 +44,21 @@ public sealed class StackFixture : IAsyncLifetime
         // Parsed on every path, so a typo in ODYSSEY_REQUIRE_TIER fails even a healthy run.
         var required = TestTierGate.IsRequired(TestTierGate.E2E);
 
+        try
+        {
+            await InitializeCoreAsync(required);
+        }
+        catch
+        {
+            // A fixture that started the stack and then failed must not leave it running, whether or not
+            // the runner goes on to call DisposeAsync — TearDownAsync is idempotent either way.
+            await TearDownAsync();
+            throw;
+        }
+    }
+
+    private async Task InitializeCoreAsync(bool required)
+    {
         if (string.Equals(Environment.GetEnvironmentVariable(ManageStackEnvVar), "true", StringComparison.OrdinalIgnoreCase))
         {
             stackStartedByFixture = true;
@@ -71,7 +86,7 @@ public sealed class StackFixture : IAsyncLifetime
 
         // From here the stack is PRESENT, so nothing below may become a skip except a browser install
         // that cannot reach the network — a prerequisite of this machine, not of the stack.
-        var sameOriginApi = await ProbeSameOriginApiAsync(client);
+        var sameOriginApi = await ProbeSameOriginApiAsync(client, timeout);
 
         var installExit = Microsoft.Playwright.Program.Main(["install", BrowserName]);
         if (installExit != 0)
@@ -89,10 +104,13 @@ public sealed class StackFixture : IAsyncLifetime
         Available = true;
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync() => TearDownAsync();
+
+    private async Task TearDownAsync()
     {
         if (stackStartedByFixture)
         {
+            stackStartedByFixture = false;
             await RunComposeAsync("down");
         }
     }
@@ -103,9 +121,10 @@ public sealed class StackFixture : IAsyncLifetime
         Proxied,
 
         /// <summary>
-        /// <c>/api/healthz</c> on the client origin answered <c>text/html</c> — the SPA fallback, so nothing
-        /// proxies the API there. Fine for a Debug client (it calls <c>http://localhost:5188</c>
-        /// directly); fatal for a Release one (it calls this path). Only the browser preflight can tell.
+        /// Nothing proxies the API on the client origin: <c>/api/healthz</c> answered the SPA fallback
+        /// (<c>2xx text/html</c>) or a definitive "no such route" (<c>404</c>/<c>405</c>). Fine for a Debug
+        /// client (it calls <c>http://localhost:5188</c> directly); fatal for a Release one (it calls this
+        /// path). Only the browser preflight can tell which.
         /// </summary>
         Absent,
     }
@@ -113,26 +132,25 @@ public sealed class StackFixture : IAsyncLifetime
     /// <summary>
     /// Waits for the API as the client's own origin exposes it. Under Compose that is NGINX's
     /// <c>/api/</c> proxy, which answers <c>502</c> while the API is still migrating — so this waits it
-    /// out (up to the required-tier window, since the stack is known to be up) rather than letting the
-    /// first sign-in time out, and fails if it never recovers.
+    /// out (for the same window the shell got: 10 s unless the tier is required or managed) rather than
+    /// letting the first sign-in time out, and fails if it never recovers.
     /// </summary>
-    private async Task<SameOriginApi> ProbeSameOriginApiAsync(HttpClient client)
+    private async Task<SameOriginApi> ProbeSameOriginApiAsync(HttpClient client, TimeSpan timeout)
     {
-        var sawHtml = false;
+        SameOriginApi? verdict = null;
         var outcome = await StackProbe.PollAsync(
             client,
             new Uri(BaseUrl + SameOriginApiHealthPath),
-            StackProbe.ResolveReadyTimeout(stackStartedByFixture, required: true),
+            timeout,
             response =>
             {
-                var step = ClassifySameOriginApi(response, out var detail);
-                sawHtml = step == ProbeStep.Ready && StackProbe.IsHtml(response);
-                return Task.FromResult((step, detail));
+                verdict = ClassifySameOriginApi(response, out var detail);
+                return Task.FromResult((verdict is null ? ProbeStep.Retry : ProbeStep.Ready, detail));
             });
 
-        if (outcome.Probe == TierProbe.Ready)
+        if (outcome.Probe == TierProbe.Ready && verdict is { } ready)
         {
-            return sawHtml ? SameOriginApi.Absent : SameOriginApi.Proxied;
+            return ready;
         }
 
         // The shell answered a moment ago, so "not listening" now means it went away — still a fault.
@@ -142,26 +160,41 @@ public sealed class StackFixture : IAsyncLifetime
     }
 
     /// <summary>
-    /// JSON 2xx: the proxy works. <c>text/html</c>: no proxy on this origin (ready, but see
-    /// <see cref="SameOriginApi.Absent"/>). Anything else — typically NGINX's <c>502</c> while the API
-    /// starts — is retried.
+    /// What <c>/api/healthz</c> on the client origin says about that origin, or <c>null</c> to retry.
+    /// <list type="bullet">
+    /// <item><c>2xx</c> JSON — <see cref="SameOriginApi.Proxied"/>.</item>
+    /// <item><c>2xx text/html</c> (the SPA fallback) or <c>404</c>/<c>405</c> of any type (a host that
+    /// simply has no such route) — <see cref="SameOriginApi.Absent"/>; the browser preflight decides.</item>
+    /// <item>Anything else — retried. In particular NGINX's <c>502</c> while the API migrates, which is
+    /// ALSO <c>text/html</c> (nginx.conf sets no <c>error_page</c> on <c>/api/</c>), so the status is
+    /// checked before the content type.</item>
+    /// </list>
     /// </summary>
-    internal static ProbeStep ClassifySameOriginApi(HttpResponseMessage response, out string detail)
+    internal static SameOriginApi? ClassifySameOriginApi(HttpResponseMessage response, out string detail)
     {
-        if (StackProbe.IsHtml(response))
-        {
-            detail = "answered text/html (SPA fallback: no API proxied on this origin)";
-            return ProbeStep.Ready;
-        }
+        var status = (int)response.StatusCode;
+        var mediaType = response.Content.Headers.ContentType?.MediaType ?? "no content type";
 
         if (response.IsSuccessStatusCode && StackProbe.IsJson(response))
         {
-            detail = $"answered {(int)response.StatusCode} JSON";
-            return ProbeStep.Ready;
+            detail = $"answered {status} JSON";
+            return SameOriginApi.Proxied;
         }
 
-        detail = $"answered {(int)response.StatusCode} {response.ReasonPhrase} ({response.Content.Headers.ContentType?.MediaType ?? "no content type"})";
-        return ProbeStep.Retry;
+        if (response.IsSuccessStatusCode && StackProbe.IsHtml(response))
+        {
+            detail = "answered text/html (SPA fallback: no API proxied on this origin)";
+            return SameOriginApi.Absent;
+        }
+
+        if (response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.MethodNotAllowed)
+        {
+            detail = $"answered {status} ({mediaType}): no API route on this origin";
+            return SameOriginApi.Absent;
+        }
+
+        detail = $"answered {status} {response.ReasonPhrase} ({mediaType})";
+        return null;
     }
 
     /// <summary>
@@ -182,7 +215,7 @@ public sealed class StackFixture : IAsyncLifetime
         var page = await browser.NewPageAsync();
         page.Response += (_, response) =>
         {
-            if (IsSameOriginApiHtml(origin, response.Url, response.Headers.GetValueOrDefault("content-type")))
+            if (IsSameOriginApiHtml(origin, response.Url, response.Status, response.Headers.GetValueOrDefault("content-type")))
             {
                 lock (htmlApiResponses)
                 {
@@ -223,16 +256,20 @@ public sealed class StackFixture : IAsyncLifetime
                 $"instead of JSON — e.g. {offending[0]}. This is a RELEASE build of Odyssey.Client served where no NGINX " +
                 "proxies /api/ (typically `dotnet run --project Odyssey.AppHost -c Release`): Release resolves the API " +
                 "to the same-origin /api/ path, which only the Compose stack serves. Run the Aspire stack in Debug (the " +
-                "default — do not pass -c Release). See CLAUDE.md, \"Run the Aspire stack in Debug; only Compose may be Release\".");
+                "default — do not pass -c Release). See CLAUDE.md, \"Run the Aspire stack in Debug; only Compose may be Release\". " +
+                "If this IS the Compose stack, its NGINX is letting /api/ fall through to index.html — check that " +
+                "Odyssey.Client/nginx.conf's `location /api/` proxy block is present in the image being served.");
         }
     }
 
     /// <summary>
-    /// True for a response the APP requested from its own origin under <c>/api/</c> that came back as
-    /// <c>text/html</c> — the SPA fallback answering an API call.
+    /// True for a response the APP requested from its own origin under <c>/api/</c> that came back
+    /// <c>2xx text/html</c> — the SPA fallback answering an API call. A non-2xx HTML body (NGINX's own
+    /// <c>502</c> page while the API starts) is an error page, not the fallback, and is excluded.
     /// </summary>
-    internal static bool IsSameOriginApiHtml(string origin, string url, string? contentType) =>
-        Uri.TryCreate(url, UriKind.Absolute, out var uri)
+    internal static bool IsSameOriginApiHtml(string origin, string url, int status, string? contentType) =>
+        status is >= 200 and < 300
+        && Uri.TryCreate(url, UriKind.Absolute, out var uri)
         && string.Equals(uri.GetLeftPart(UriPartial.Authority), origin, StringComparison.OrdinalIgnoreCase)
         && uri.AbsolutePath.StartsWith("/api/", StringComparison.Ordinal)
         && contentType is not null

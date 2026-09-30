@@ -51,6 +51,21 @@ public sealed class ApiStackFixture : IAsyncLifetime
         // Parsed on every path, so a typo in ODYSSEY_REQUIRE_TIER fails even a healthy run.
         var required = TestTierGate.IsRequired(TestTierGate.E2EApi);
 
+        try
+        {
+            await InitializeCoreAsync(required);
+        }
+        catch
+        {
+            // A fixture that started the stack and then failed must not leave it running, whether or not
+            // the runner goes on to call DisposeAsync — TearDownStackAsync is idempotent either way.
+            await TearDownStackAsync();
+            throw;
+        }
+    }
+
+    private async Task InitializeCoreAsync(bool required)
+    {
         if (string.Equals(Environment.GetEnvironmentVariable(ManageStackEnvVar), "true", StringComparison.OrdinalIgnoreCase))
         {
             stackStartedByFixture = true;
@@ -98,8 +113,14 @@ public sealed class ApiStackFixture : IAsyncLifetime
             await provider.DisposeAsync();
         }
 
+        await TearDownStackAsync();
+    }
+
+    private async Task TearDownStackAsync()
+    {
         if (stackStartedByFixture)
         {
+            stackStartedByFixture = false;
             await RunComposeAsync("down");
         }
     }

@@ -48,8 +48,10 @@ A stack that **answers but is broken always fails**, whatever the variable says:
 - the API behind the client's same-origin `/api/` path (the Compose NGINX proxy) never becomes healthy
   — the fixture waits for it up to the required-tier window, so a stack still migrating is waited out
   rather than failed on the first sign-in;
+- a port that accepts the TCP connection but never sends an HTTP response;
 - **the Release-under-Aspire client** (see **Notes**). When `/api/healthz` on the client origin returns
-  `text/html` — no proxy there, which is normal for a Debug client under Aspire — the fixture loads the
+  the SPA fallback (`2xx text/html`) or a plain `404`/`405` — no proxy there, which is normal for a Debug
+  client under Aspire — the fixture loads the
   app once in Chromium and watches its startup calls. If the *app itself* requests its own origin's
   `/api/…` and gets HTML back, the tier fails with a message naming the cause. A Debug client calls
   `http://localhost:5188` directly and never requests that path, so it cannot trip the check.

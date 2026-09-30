@@ -472,6 +472,19 @@ tier sets it — the main CI job for `integration`, the E2E workflow for `e2e,e2
 tier also stretches the readiness wait from 10 s to 120 s (`E2E_READY_TIMEOUT_SECONDS` overrides), so a
 stack whose port is live while migrations still run is waited for rather than failed.
 
+Three classification details:
+
+- **Absent means the TCP connect failed.** The probes connect at the socket level first: refused,
+  unresolvable, or not accepted within 3 s is "not listening". A port that accepts the connection and then
+  sends no HTTP response within the request timeout is a hung server — present and broken, so it fails.
+- **Any non-zero exit of `playwright install` counts as a missing prerequisite**, not a fault. The fixture
+  cannot tell a download blocked by the network from any other install failure, and the stack itself was
+  already confirmed present; it is therefore a skip unless `e2e` is required.
+- **The client-origin `/api/healthz` probe treats `2xx` JSON as the Compose proxy, and `2xx text/html`
+  (the SPA fallback) or `404`/`405` as "no API on this origin"**, which hands over to the browser
+  preflight rather than failing. Every other answer, including NGINX's `text/html` `502` while the API
+  migrates, is retried — the status is checked before the content type for exactly that reason.
+
 ## 5. Best practices (cross-cutting)
 
 - Deterministic seed → reproducible data and stable assertions/screenshots.
