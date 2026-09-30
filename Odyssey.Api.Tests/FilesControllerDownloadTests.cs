@@ -47,8 +47,11 @@ public class FilesControllerDownloadTests
 
         var result = await controller.DownloadFile(metadata.Id);
 
-        Assert.IsAssignableFrom<FileResult>(result);
+        // The attachment disposition is written by the FileResult when it executes, from its download
+        // name — never hand-built on the response (issue #247) — so the download name is what forces it.
+        var file = Assert.IsAssignableFrom<FileResult>(result);
+        Assert.Equal("logo.svg", file.FileDownloadName);
         Assert.Equal("nosniff", controller.Response.Headers["X-Content-Type-Options"].ToString());
-        Assert.StartsWith("attachment", controller.Response.Headers["Content-Disposition"].ToString());
+        Assert.False(controller.Response.Headers.ContainsKey("Content-Disposition"));
     }
 }

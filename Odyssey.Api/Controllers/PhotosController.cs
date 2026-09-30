@@ -134,15 +134,19 @@ public class PhotosController : ControllerBase
             return this.ForbiddenProblem("Renaming the backing file requires the files.update permission.");
         }
 
+        // Sanitize before the photo update commits, for the same half-commit reason (issue #247): a
+        // name with nothing left after sanitization is refused here rather than after the photo saved.
+        var newFileName = wantsRename ? files.SanitizeRenamedFileName(request.FileName!) : null;
+
         var updated = await service.Update(id, request, userId, cancellationToken);
         if (updated is null)
         {
             return this.NotFoundProblem($"Photo ID {id} not found.");
         }
 
-        if (wantsRename)
+        if (newFileName is not null)
         {
-            await RenameBackingFileAsync(updated.FileId, request.FileName!.Trim(), cancellationToken);
+            await RenameBackingFileAsync(updated.FileId, newFileName, cancellationToken);
         }
 
         await EnrichAsync(updated, cancellationToken);

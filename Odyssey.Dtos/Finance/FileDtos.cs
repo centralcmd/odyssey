@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Odyssey.Dtos.Finance;
 
 public sealed record FileMetadataResponse(
@@ -26,4 +28,10 @@ public sealed record FileListItem(
     DateTime UploadedAtUtc,
     string? Description);
 
-public sealed record UpdateFileMetadataRequest(string? Description, string? FileName = null);
+/// <summary>
+/// Both bounds match the <c>FileMetadata</c> columns (issue #247). A <c>FileName</c> that passes the bound
+/// is still sanitized server-side exactly as an upload's is.
+/// </summary>
+public sealed record UpdateFileMetadataRequest(
+    [StringLength(256)] string? Description,
+    [StringLength(256)] string? FileName = null);

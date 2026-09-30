@@ -1,3 +1,4 @@
+using Odyssey.Core;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -229,6 +230,44 @@ public class FileServiceTests
 
         Assert.NotNull(updated);
         Assert.Equal("note.pdf", updated!.FileName);
+    }
+
+    // Issue #247: a rename runs the upload path's sanitizer, so no stored name can carry a header- or
+    // path-breaking character into a download header, an analysis prompt or an export.
+    [Theory]
+    [InlineData("evil\r\nSet-Cookie: x=1.pdf", "evilSet-Cookie_ x=1.pdf")]
+    [InlineData("quo\"te.pdf", "quo_te.pdf")]
+    [InlineData("../../etc/passwd", ".._.._etc_passwd")]
+    [InlineData("  padded.pdf  ", "padded.pdf")]
+    public async Task UpdateFileMetadataAsync_SanitizesRenamedFileName(string requested, string expected)
+    {
+        await using var context = TestContextFactory.Create();
+        var fileService = new FileService(context, new FileValidationService());
+        var uploaded = await fileService.UploadFileAsync(CreateMockFile("note.pdf", "application/pdf", Pdf(1)), "u", null);
+
+        var updated = await fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest(null, requested));
+
+        Assert.Equal(expected, updated!.FileName);
+        Assert.Equal(expected, context.FileMetadata.Single(fm => fm.Id == uploaded.Id).FileName);
+    }
+
+    [Theory]
+    [InlineData("///")]
+    [InlineData("\u0001\u007F")]
+    [InlineData("\"<>|")]
+    public async Task UpdateFileMetadataAsync_NameWithNothingLeftAfterSanitizing_IsRefusedAndNothingChanges(string requested)
+    {
+        await using var context = TestContextFactory.Create();
+        var fileService = new FileService(context, new FileValidationService());
+        var uploaded = await fileService.UploadFileAsync(CreateMockFile("note.pdf", "application/pdf", Pdf(1)), "u", "old");
+
+        var ex = await Assert.ThrowsAsync<DomainValidationException>(() =>
+            fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest("new", requested)));
+
+        Assert.True(ex.Errors!.ContainsKey("FileName"));
+        var row = context.FileMetadata.Single(fm => fm.Id == uploaded.Id);
+        Assert.Equal("note.pdf", row.FileName);
+        Assert.Equal("old", row.Description);
     }
 
     [Fact]
