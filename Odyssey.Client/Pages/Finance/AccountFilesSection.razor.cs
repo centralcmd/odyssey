@@ -294,7 +294,12 @@ public partial class AccountFilesSection
 
         var file = items.FirstOrDefault(f => f.FileMetadata.Id.ToString() == key);
         if (file is null)
+        {
+            // The row left the list while its dialog was open (a concurrent delete or refresh).
+            Snackbar.Add("That file is no longer listed. Refresh and try again.", Severity.Warning);
+            args.Fail();
             return;
+        }
 
         // Let any in-flight inline issuer create land, then map the staged id to the one the server
         // issued; a create that failed resolves to null and clears the link rather than posting an id
@@ -317,10 +322,13 @@ public partial class AccountFilesSection
 
         // Rename via the file-metadata endpoint — the existing description is sent
         // back unchanged so a rename doesn't wipe it (the service overwrites it).
+        // Every failure below calls Fail(), which keeps the edit dialog open with what the user
+        // typed rather than closing it under a "Saved" flash (issue #252).
         if (nameChanged
-            && await Files.UpdateMetadataAsync(file.FileMetadata.Id, file.FileMetadata.Description, newName) is null)
+            && (await Files.UpdateMetadataAsync(file.FileMetadata.Id, file.FileMetadata.Description, newName))
+                .OrToast(Snackbar, "Unable to rename file") is null)
         {
-            Snackbar.Add("Unable to rename file.", Severity.Error);
+            args.Fail();
             return;
         }
 
@@ -337,7 +345,14 @@ public partial class AccountFilesSection
                     IssuedAt = patch.IssuedAt,
                     IssuedBy = issuedBy,
                 })).Toast(Snackbar, "Unable to update document type"))
+        {
+            args.Fail();
+            // A rename in the same save has already landed; re-read so the row shows it rather than
+            // the stale name while the dialog stays open for the part that did not.
+            if (nameChanged)
+                await LoadFilesAsync();
             return;
+        }
 
         Snackbar.Add("File updated.", Severity.Success);
         await LoadFilesAsync();

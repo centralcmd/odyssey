@@ -97,8 +97,13 @@ public sealed class OdsFileEditContext
     /// <summary>Raised when the dialog closes — bind to its <c>OpenChanged</c>.</summary>
     public required EventCallback<bool> OpenChanged { get; init; }
 
-    /// <summary>Commit the patch — raises the table's <c>OnSave</c> and flashes "Saved" on the row.</summary>
-    public required EventCallback<object?> OnSave { get; init; }
+    /// <summary>
+    /// Commit the patch — raises the table's <c>OnSave</c> and answers whether the host persisted it.
+    /// On <see langword="true"/> the table closes the dialog and flashes "Saved" on the row; the dialog
+    /// must return the answer from its submit so it stays open, edits intact, on
+    /// <see langword="false"/> (issue #252).
+    /// </summary>
+    public required Func<object?, Task<bool>> OnSave { get; init; }
 }
 
 /// <summary>
@@ -157,15 +162,41 @@ public sealed class OdsRecordActionContext
 /// <summary>Commit / cancel callbacks passed to a RecordTable's <c>RenderEdit</c> template.</summary>
 public sealed class OdsRecordEditContext
 {
-    /// <summary>Commit a patch — raises <c>OnSave</c>, exits edit mode, and flashes "Saved".</summary>
-    public required Action<object?> Save { get; init; }
+    /// <summary>
+    /// Commit a patch — raises <c>OnSave</c>; exits edit mode and flashes "Saved" only if the host did
+    /// not report a failure, otherwise the row stays in edit mode. Awaitable so a template can hold its
+    /// submit button busy for the write. An exception from the host is routed to the renderer's error
+    /// handling (never swallowed, and never followed by a "Saved" flash); the returned task itself does
+    /// not fault, so a template that discards it loses nothing.
+    /// </summary>
+    public required Func<object?, Task> Save { get; init; }
 
     /// <summary>Leave edit mode without saving (the row stays expanded on its detail view).</summary>
     public required Action Cancel { get; init; }
 }
 
-/// <summary>Payload for a <see cref="OdsRecordTable{TRow}"/> save — the row's key and the edit patch.</summary>
-public sealed record OdsRecordSaveEventArgs(object Key, object? Patch);
+/// <summary>
+/// Payload for an <see cref="OdsRecordTable{TRow}"/> / <c>OdsFilesTable</c> save — the row's key, the
+/// edit patch, and the outcome the host reports back.
+/// </summary>
+/// <remarks>
+/// The table closes the editor and flashes "Saved" only when the handler returns without calling
+/// <see cref="Fail"/> (and without throwing). A host whose write was refused — or that has already told
+/// the user why — calls <see cref="Fail"/> so the editor stays open with the user's edits intact
+/// (issue #252). A handler that returns early because nothing changed has succeeded: there is nothing
+/// left to save.
+/// </remarks>
+public sealed record OdsRecordSaveEventArgs(object Key, object? Patch)
+{
+    /// <summary>The host reported the save as not persisted.</summary>
+    public bool Failed { get; private set; }
+
+    /// <summary>
+    /// Report that the save did not persist. The table keeps the editor open and shows no "Saved"
+    /// flash; telling the user why (a toast carrying the server's reason) stays the host's job.
+    /// </summary>
+    public void Fail() => Failed = true;
+}
 
 /// <summary>
 /// One column of a <see cref="OdsRecordTable{TRow}"/>. Like <see cref="OdsTableColumn{TRow}"/>

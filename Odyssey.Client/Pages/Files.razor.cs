@@ -294,17 +294,25 @@ public partial class Files
 
         var file = _files.FirstOrDefault(f => f.Id.ToString() == key);
         if (file is null)
+        {
+            // The row left the list while its dialog was open (a concurrent delete or refresh).
+            Snackbar.Add("That file is no longer listed. Refresh and try again.", Severity.Warning);
+            args.Fail();
             return;
+        }
 
         var nameChanged = !string.Equals(patch.Name, file.FileName, StringComparison.Ordinal);
         var descriptionChanged = !string.Equals(patch.Description, file.Description, StringComparison.Ordinal);
         if (!nameChanged && !descriptionChanged)
             return;
 
-        var updated = await FilesApi.UpdateMetadataAsync(file.Id, patch.Description, patch.Name);
+        // Fail() keeps the edit dialog open with what the user typed; OrToast carries the server's
+        // reason (a 400 naming the field, a 409 name clash) into the toast (issue #252).
+        var updated = (await FilesApi.UpdateMetadataAsync(file.Id, patch.Description, patch.Name))
+            .OrToast(Snackbar, "Unable to update file");
         if (updated is null)
         {
-            Snackbar.Add("Unable to update file.", Severity.Error);
+            args.Fail();
             return;
         }
 

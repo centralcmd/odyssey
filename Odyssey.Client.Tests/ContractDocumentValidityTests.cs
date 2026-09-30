@@ -91,7 +91,7 @@ public class ContractDocumentValidityTests
         [Parameter] public OdsFilesRow File { get; set; } = default!;
         [Parameter] public bool Renameable { get; set; }
         [Parameter] public bool RequireType { get; set; }
-        [Parameter] public EventCallback<object?> OnSave { get; set; }
+        [Parameter] public Func<object?, Task<bool>>? OnSave { get; set; }
 
         protected override void BuildRenderTree(RenderTreeBuilder builder)
         {
@@ -122,7 +122,11 @@ public class ContractDocumentValidityTests
             .Add(h => h.File, file ?? Document)
             .Add(h => h.Renameable, renameable)
             .Add(h => h.RequireType, requireType)
-            .Add(h => h.OnSave, EventCallback.Factory.Create<object?>(new object(), saved.Add)));
+            .Add(h => h.OnSave, patch =>
+            {
+                saved.Add(patch);
+                return Task.FromResult(true);
+            }));
 
         return new Harness(host, saved);
     }

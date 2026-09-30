@@ -59,7 +59,11 @@ public partial class OdsRecordTable<TRow>
     /// <summary>Edit panel shown when a row is in edit mode. Omit for read-only tables.</summary>
     [Parameter] public Func<TRow, OdsRecordEditContext, RenderFragment>? RenderEdit { get; set; }
 
-    /// <summary>Persist a row edit — raised with the row key and the edit patch.</summary>
+    /// <summary>
+    /// Persist a row edit — raised with the row key and the edit patch. Call
+    /// <see cref="OdsRecordSaveEventArgs.Fail"/> when the write did not persist: the row then stays in
+    /// edit mode and no "Saved" flash is shown.
+    /// </summary>
     [Parameter] public EventCallback<OdsRecordSaveEventArgs> OnSave { get; set; }
 
     /// <summary>Remove a row — raised with the row key.</summary>
@@ -277,11 +281,36 @@ public partial class OdsRecordTable<TRow>
 
     private void EndEdit(object id) => _editIds.Remove(id);
 
+    // Leaves edit mode and flashes "Saved" only when the host did not report a failure (issue #252).
+    // A throwing OnSave is routed to the renderer's error handling rather than escaping into a task
+    // nobody observes, and never reaches the flash. The returned task completes once the outcome is
+    // applied; the flash runs on detached so an awaiting template is not held for the confirm window.
     private async Task DoSaveAsync(object id, object? patch)
     {
-        if (OnSave.HasDelegate)
-            await OnSave.InvokeAsync(new OdsRecordSaveEventArgs(id, patch));
+        var args = new OdsRecordSaveEventArgs(id, patch);
+        try
+        {
+            if (OnSave.HasDelegate)
+                await OnSave.InvokeAsync(args);
+        }
+        catch (Exception ex)
+        {
+            await DispatchExceptionAsync(ex);
+            return;
+        }
+
+        if (args.Failed)
+        {
+            StateHasChanged();
+            return;
+        }
+
         EndEdit(id);
+        _ = FlashSavedAsync(id);
+    }
+
+    private async Task FlashSavedAsync(object id)
+    {
         _savedIds.Add(id);
         StateHasChanged();
         await Task.Delay(SavedFlashMs);
@@ -307,7 +336,7 @@ public partial class OdsRecordTable<TRow>
 
     private OdsRecordEditContext EditCtx(object id) => new()
     {
-        Save = patch => _ = DoSaveAsync(id, patch),
+        Save = patch => DoSaveAsync(id, patch),
         Cancel = () => EndEdit(id),
     };
 }

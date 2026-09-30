@@ -238,7 +238,12 @@ public partial class PropertyDocumentsSection
 
         var file = _files.FirstOrDefault(f => f.FileMetadata.Id.ToString() == key);
         if (file is null)
+        {
+            // The row left the list while its dialog was open (a concurrent delete or refresh).
+            Snackbar.Add("That file is no longer listed. Refresh and try again.", Severity.Warning);
+            args.Fail();
             return;
+        }
 
         // Let an in-flight inline issuer create land, then map its staged id to the one the server
         // issued; a create that failed resolves to null rather than posting an id no server issued.
@@ -263,8 +268,14 @@ public partial class PropertyDocumentsSection
             IssuedBy = issuedBy,
         });
 
-        if (result.Toast(Snackbar, "Unable to update document", "Document updated."))
-            await LoadAsync();
+        // Fail() keeps the edit dialog open with what the user typed (issue #252).
+        if (!result.Toast(Snackbar, "Unable to update document", "Document updated."))
+        {
+            args.Fail();
+            return;
+        }
+
+        await LoadAsync();
     }
 
     private async Task ConfirmDetachAsync(ExistingPropertyFile file)

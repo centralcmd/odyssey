@@ -28,8 +28,11 @@
 
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
 
-    /// <summary>Commit the edit patch (a <see cref="Patch"/>).</summary>
-    [Parameter] public EventCallback<object?> OnSave { get; set; }
+    /// <summary>
+    /// Commit the edit patch (a <see cref="Patch"/>) and answer whether it was saved. On
+    /// <see langword="false"/> the dialog stays open with the user's edits intact (issue #252).
+    /// </summary>
+    [Parameter] public Func<object?, Task<bool>>? OnSave { get; set; }
 
     private string _name = string.Empty;
     private string _description = string.Empty;
@@ -49,10 +52,10 @@
         if (!_valid)
             return false;
 
-        await OnSave.InvokeAsync(new Patch(
+        var patch = new Patch(
             _name.Trim(),
-            string.IsNullOrWhiteSpace(_description) ? null : _description.Trim()));
-        return true;
+            string.IsNullOrWhiteSpace(_description) ? null : _description.Trim());
+        return OnSave is null || await OnSave(patch);
     }
 
     /// <summary>The flat-file edit payload handed back through the table's OnSave.</summary>
