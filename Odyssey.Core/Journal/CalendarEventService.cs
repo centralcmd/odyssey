@@ -95,6 +95,7 @@ public class CalendarEventService
 
     public async Task<ExistingCalendarEvent> Create(NewCalendarEvent request, string userId, CancellationToken cancellationToken = default)
     {
+        request = NormalizeTimes(request);
         await EnsureCalendarExists(request.CalendarId, cancellationToken);
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         ValidateTimes(request.StartDateTime, request.EndDateTime, request.IsAllDay,
@@ -125,6 +126,7 @@ public class CalendarEventService
     // so there is no request-body path that can set or clear it (structurally enforced, spec §7/§9).
     public async Task<ExistingCalendarEvent?> Update(Guid id, NewCalendarEvent request, string userId, CancellationToken cancellationToken = default)
     {
+        request = NormalizeTimes(request);
         var calendarEvent = await context.CalendarEvents.FirstOrDefaultAsync(e => e.CalendarEventId == id, cancellationToken);
         if (calendarEvent is null)
         {
@@ -163,6 +165,14 @@ public class CalendarEventService
         await context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    // Normalized before validation so the UTC-midnight all-day check and the persisted row read the
+    // same instants.
+    private static NewCalendarEvent NormalizeTimes(NewCalendarEvent request) => request with
+    {
+        StartDateTime = DateTimeNormalization.NormalizeToUtc(request.StartDateTime),
+        EndDateTime = DateTimeNormalization.NormalizeToUtc(request.EndDateTime),
+    };
 
     /// <remarks>
     /// <paramref name="maxEventDurationDays"/> is a parameter rather than something this helper reads

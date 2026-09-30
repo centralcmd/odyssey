@@ -124,17 +124,19 @@ public class TaxStatementService
     {
         var normalizedCurrency = CurrencyValidationService.Normalize(request.BaseCurrencyCode);
         await CurrencyValidationService.EnsureSupportedAndActive(context, normalizedCurrency, nameof(request.BaseCurrencyCode));
-        Validate(request.StartDate, request.EndDate, request.DeclaredTotalAssets,
+        var dates = StatementDates.Normalize(request.StartDate, request.EndDate, request.SettledAtUtc,
+            request.SettlementStartDate, request.SettlementEndDate, request.FiledAtUtc, request.TaxOfficeApprovedAtUtc);
+        Validate(dates.Start, dates.End, request.DeclaredTotalAssets,
             request.DeclaredTotalLiabilities, request.DeclaredTotalIncome, request.AssessedTax);
-        ValidateSettlementRange(request.SettlementStartDate, request.SettlementEndDate);
+        ValidateSettlementRange(dates.SettlementStart, dates.SettlementEnd);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var statement = new TaxStatement
         {
             Name = request.Name,
             FiscalYear = request.FiscalYear,
-            StartDate = request.StartDate,
-            EndDate = request.EndDate,
+            StartDate = dates.Start,
+            EndDate = dates.End,
             BaseCurrencyCode = normalizedCurrency,
             DeclaredTotalAssets = request.DeclaredTotalAssets,
             DeclaredTotalLiabilities = request.DeclaredTotalLiabilities,
@@ -142,11 +144,11 @@ public class TaxStatementService
             DeclaredTotalIncome = request.DeclaredTotalIncome,
             AssessedTax = request.AssessedTax,
             SettlementAmount = request.SettlementAmount,
-            SettledAtUtc = request.SettledAtUtc,
-            SettlementStartDate = request.SettlementStartDate,
-            SettlementEndDate = request.SettlementEndDate,
-            FiledAtUtc = request.FiledAtUtc,
-            TaxOfficeApprovedAtUtc = request.TaxOfficeApprovedAtUtc,
+            SettledAtUtc = dates.SettledAt,
+            SettlementStartDate = dates.SettlementStart,
+            SettlementEndDate = dates.SettlementEnd,
+            FiledAtUtc = dates.FiledAt,
+            TaxOfficeApprovedAtUtc = dates.ApprovedAt,
             Notes = request.Notes,
             Status = TaxStatementStatus.New,
             StatusChangedAt = now,
@@ -169,14 +171,16 @@ public class TaxStatementService
 
         var normalizedCurrency = CurrencyValidationService.Normalize(request.BaseCurrencyCode);
         await CurrencyValidationService.EnsureSupportedAndActive(context, normalizedCurrency, nameof(request.BaseCurrencyCode));
-        Validate(request.StartDate, request.EndDate, request.DeclaredTotalAssets,
+        var dates = StatementDates.Normalize(request.StartDate, request.EndDate, request.SettledAtUtc,
+            request.SettlementStartDate, request.SettlementEndDate, request.FiledAtUtc, request.TaxOfficeApprovedAtUtc);
+        Validate(dates.Start, dates.End, request.DeclaredTotalAssets,
             request.DeclaredTotalLiabilities, request.DeclaredTotalIncome, request.AssessedTax);
-        ValidateSettlementRange(request.SettlementStartDate, request.SettlementEndDate);
+        ValidateSettlementRange(dates.SettlementStart, dates.SettlementEnd);
 
         statement.Name = request.Name;
         statement.FiscalYear = request.FiscalYear;
-        statement.StartDate = request.StartDate;
-        statement.EndDate = request.EndDate;
+        statement.StartDate = dates.Start;
+        statement.EndDate = dates.End;
         statement.BaseCurrencyCode = normalizedCurrency;
         statement.DeclaredTotalAssets = request.DeclaredTotalAssets;
         statement.DeclaredTotalLiabilities = request.DeclaredTotalLiabilities;
@@ -184,11 +188,11 @@ public class TaxStatementService
         statement.DeclaredTotalIncome = request.DeclaredTotalIncome;
         statement.AssessedTax = request.AssessedTax;
         statement.SettlementAmount = request.SettlementAmount;
-        statement.SettledAtUtc = request.SettledAtUtc;
-        statement.SettlementStartDate = request.SettlementStartDate;
-        statement.SettlementEndDate = request.SettlementEndDate;
-        statement.FiledAtUtc = request.FiledAtUtc;
-        statement.TaxOfficeApprovedAtUtc = request.TaxOfficeApprovedAtUtc;
+        statement.SettledAtUtc = dates.SettledAt;
+        statement.SettlementStartDate = dates.SettlementStart;
+        statement.SettlementEndDate = dates.SettlementEnd;
+        statement.FiledAtUtc = dates.FiledAt;
+        statement.TaxOfficeApprovedAtUtc = dates.ApprovedAt;
         statement.Notes = request.Notes;
         ApplyArchiveTransition(statement, request.Archived);
 
@@ -605,6 +609,34 @@ public class TaxStatementService
             throw new DomainValidationException(
                 $"Unknown or archived transaction tag(s): {string.Join(", ", missing)}.");
         }
+    }
+
+    // Every client-supplied date on a statement, normalized to UTC once so that validation and the
+    // persisted row see the same instants.
+    private readonly record struct StatementDates(
+        DateTime Start,
+        DateTime End,
+        DateTime? SettledAt,
+        DateTime? SettlementStart,
+        DateTime? SettlementEnd,
+        DateTime? FiledAt,
+        DateTime? ApprovedAt)
+    {
+        public static StatementDates Normalize(
+            DateTime start,
+            DateTime end,
+            DateTime? settledAt,
+            DateTime? settlementStart,
+            DateTime? settlementEnd,
+            DateTime? filedAt,
+            DateTime? approvedAt) => new(
+            DateTimeNormalization.NormalizeToUtc(start),
+            DateTimeNormalization.NormalizeToUtc(end),
+            DateTimeNormalization.NormalizeToUtc(settledAt),
+            DateTimeNormalization.NormalizeToUtc(settlementStart),
+            DateTimeNormalization.NormalizeToUtc(settlementEnd),
+            DateTimeNormalization.NormalizeToUtc(filedAt),
+            DateTimeNormalization.NormalizeToUtc(approvedAt));
     }
 
     private static void Validate(

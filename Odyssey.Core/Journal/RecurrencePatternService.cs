@@ -96,6 +96,7 @@ public class RecurrencePatternService
 
     public async Task<ExistingRecurrencePattern> Create(NewRecurrencePattern request, string userId, CancellationToken cancellationToken = default)
     {
+        request = NormalizeTimes(request);
         await EnsureCalendarExists(request.CalendarId, cancellationToken);
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         ValidateFields(request, effectiveLimits.CalendarMaxEventDurationDays);
@@ -156,6 +157,7 @@ public class RecurrencePatternService
     // past/current ones are left untouched, even if they no longer match the new rule.
     public async Task<ExistingRecurrencePattern?> Update(Guid id, NewRecurrencePattern request, string userId, CancellationToken cancellationToken = default)
     {
+        request = NormalizeTimes(request);
         var pattern = await context.RecurrencePatterns.FirstOrDefaultAsync(p => p.RecurrencePatternId == id, cancellationToken);
         if (pattern is null)
         {
@@ -249,6 +251,14 @@ public class RecurrencePatternService
         await context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    // Normalized before validation so every check and the persisted pattern read the same instants.
+    private static NewRecurrencePattern NormalizeTimes(NewRecurrencePattern request) => request with
+    {
+        StartDateTime = DateTimeNormalization.NormalizeToUtc(request.StartDateTime),
+        EndDateTime = DateTimeNormalization.NormalizeToUtc(request.EndDateTime),
+        RecurrenceEndDate = DateTimeNormalization.NormalizeToUtc(request.RecurrenceEndDate),
+    };
 
     private static void ValidateFields(NewRecurrencePattern request, int maxEventDurationDays)
     {

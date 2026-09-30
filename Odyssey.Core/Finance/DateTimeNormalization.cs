@@ -15,4 +15,7 @@ public static class DateTimeNormalization
         DateTimeKind.Local => value.ToUniversalTime(),
         _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
     };
+
+    /// <summary>Null-preserving overload: an absent date stays absent.</summary>
+    public static DateTime? NormalizeToUtc(DateTime? value) => value is { } v ? NormalizeToUtc(v) : null;
 }
