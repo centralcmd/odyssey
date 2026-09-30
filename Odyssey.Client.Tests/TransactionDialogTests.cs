@@ -222,6 +222,54 @@ public sealed class TransactionDialogTests : IAsyncLifetime
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    //  The account picker (issue #255 — one control, no nested interactive element)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The account picker's trigger is one real button carrying the popup state itself, not a button
+    /// inside MudMenu's <c>role="button"</c> activator wrapper, and neither the closed dialog nor the
+    /// open picker nests one interactive element in another.
+    /// </summary>
+    [Fact]
+    public void The_account_picker_is_one_trigger_with_no_nested_controls()
+    {
+        var cut = RenderEdit();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("button.aam-type-trigger")));
+
+        var trigger = cut.Find("button.aam-type-trigger");
+        Assert.Equal("menu", trigger.GetAttribute("aria-haspopup"));
+        Assert.Equal("false", trigger.GetAttribute("aria-expanded"));
+        Assert.Empty(cut.FindAll(".mud-menu-activator"));
+        Assert.Empty(NestedInteractiveControlTests.NestedInteractive(cut.FindAll(".aam-field")));
+
+        trigger.Click();
+        cut.Render();
+
+        Assert.Equal("true", cut.Find("button.aam-type-trigger").GetAttribute("aria-expanded"));
+        var row = Assert.Single(cut.FindAll("[role='menuitemradio']"));
+        Assert.Equal("true", row.GetAttribute("aria-checked"));
+        Assert.Empty(NestedInteractiveControlTests.NestedInteractive(
+            cut.FindAll(".aam-field").Concat(cut.FindAll(".mud-popover-open"))));
+    }
+
+    /// <summary>Choosing an account closes the picker: the rows are not MudMenuItems any more.</summary>
+    [Fact]
+    public void Choosing_an_account_closes_the_picker()
+    {
+        var cut = RenderEdit();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("button.aam-type-trigger")));
+
+        cut.Find("button.aam-type-trigger").Click();
+        cut.Render();
+        cut.Find("[role='menuitemradio']").Click();
+        cut.Render();
+
+        Assert.Empty(cut.FindAll("[role='menuitemradio']"));
+        Assert.Equal("false", cut.Find("button.aam-type-trigger").GetAttribute("aria-expanded"));
+        Assert.Contains("Everyday Checking", cut.Find("button.aam-type-trigger").TextContent, StringComparison.Ordinal);
+    }
+
     /// <summary>A signed-out principal — the dialog's inline-create claims are not under test.</summary>
     private sealed class SignedOut : AuthenticationStateProvider
     {

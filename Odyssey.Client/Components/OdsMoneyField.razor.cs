@@ -107,7 +107,7 @@ public partial class OdsMoneyField
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
-    private MudMenu? _menu;
+    private OdsPopupMenu? _popup;
     private bool _open;
     private bool _focusPending;
     private string _query = string.Empty;
@@ -347,8 +347,7 @@ public partial class OdsMoneyField
     {
         Currency = code;
         await CurrencyChanged.InvokeAsync(code);
-        if (_menu is not null) await _menu.CloseMenuAsync();
-        await FocusAsync(TriggerId);
+        if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
     }
 
     // The popover opens on the search box when there is one, otherwise on the selected code — so a
@@ -375,11 +374,10 @@ public partial class OdsMoneyField
                 if (first is not null) await PickAsync(first.Value);
                 break;
             case "Tab":
-                if (_menu is not null) await _menu.CloseMenuAsync();
+                if (_popup is not null) await _popup.CloseAsync(restoreFocus: false);
                 break;
             case "Escape":
-                if (_menu is not null) await _menu.CloseMenuAsync();
-                await FocusAsync(TriggerId);
+                if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
                 break;
         }
     }
@@ -407,11 +405,10 @@ public partial class OdsMoneyField
             case "Tab":
                 // The options are out of the tab order, so Tab is leaving the list — close behind it
                 // rather than stranding an open popover over the form.
-                if (_menu is not null) await _menu.CloseMenuAsync();
+                if (_popup is not null) await _popup.CloseAsync(restoreFocus: false);
                 break;
             case "Escape":
-                if (_menu is not null) await _menu.CloseMenuAsync();
-                await FocusAsync(TriggerId);
+                if (_popup is not null) await _popup.CloseAsync(restoreFocus: true);
                 break;
         }
     }

@@ -795,12 +795,27 @@
 .mud-input > div.mud-input-slot.mud-input-root::placeholder {
   color: var(--mud-palette-placeholder) !important; opacity: 1 !important;
 }
-/* Custom MudMenu pickers used as a field control (account / type / contact)
-   fill the field width — MudMenu's root is inline-flex, so it otherwise collapses
-   to the trigger's content width. Direct-child `>` so nested menus (per-file kind
+/* ---------- PopupMenu (OdsPopupMenu — one real trigger + an anchored MudMenu) ----------
+   The shared host behind every select-style Ods control (issue #255). The trigger
+   is a sibling of the MudMenu, never inside MudMenu's own activator wrapper, so
+   there is one tab stop and aria-expanded sits on the focused button. The box
+   defaults to MudMenu's own root metrics (inline-flex, centred) at zero
+   specificity, so every consumer's layout rule wins whatever the source order. */
+:where(.odc-popmenu) { display: inline-flex; align-self: center; }
+.odc-popmenu { position: relative; }
+.odc-popmenu-trigger:not(:disabled) { cursor: pointer; }
+/* The activator-less MudMenu is stretched over the box: MudBlazor positions the
+   popover against that root, so it still anchors, flips and sizes against the
+   trigger. It must not take the pointer from the trigger (or from the chips'
+   remove buttons in OdsTagMultiSelect), but its click-away overlay must. */
+.mud-menu.odc-popmenu-anchor { position: absolute; inset: 0; display: block; pointer-events: none; }
+.mud-menu.odc-popmenu-anchor > * { pointer-events: auto; }
+
+/* Custom pickers used as a field control (account / type / contact) fill the
+   field width — the popup box is inline-flex, so it otherwise collapses to the
+   trigger's content width. Direct-child `>` so nested menus (per-file kind
    pickers in the attachments list) stay compact. */
-.aam-field > .mud-menu { width: 100%; display: flex; }
-.aam-field > .mud-menu > .mud-menu-activator { width: 100%; }
+.aam-field > .odc-popmenu { width: 100%; display: flex; }
 
 /* ---------- Button icon (OdsButton — leading/trailing Material ligature) ----------
    OdsButton renders Icon/IconRight as material-icons spans (DS uses ligatures,
@@ -1194,11 +1209,10 @@
   font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono);
   letter-spacing: 0.04em; text-transform: uppercase; font-variant-numeric: tabular-nums;
 }
-/* MudMenu (the popover host) and its activator wrapper default to inline-block, which would
-   drop the currency segment out of the box's stretch and shrink it to text height. Make both
-   transparent to the flex layout so the trigger stays a full-height cell of the control. */
-.odc-money > .mud-menu { display: flex; flex: none; align-self: stretch; }
-.odc-money .mud-menu-activator { display: flex; flex: none; align-self: stretch; }
+/* The popup box (OdsPopupMenu) defaults to inline-flex, which would drop the currency segment
+   out of the box's stretch and shrink it to text height. Stretch it so the trigger stays a
+   full-height cell of the control. */
+.odc-money > .odc-popmenu { display: flex; flex: none; align-self: stretch; }
 .odc-money-cur.btn {
   appearance: none; background: none; cursor: pointer;
   border: none; border-left: 1px solid var(--mud-palette-lines-inputs);
@@ -1401,13 +1415,12 @@
    Mirrors the DS .odc-select chrome (components.css). The trigger is a custom
    button (not a MudBlazor input) shared by every registry-backed type picker;
    the popover is hosted by MudMenu, its rows styled with .odc-typesel-*. */
-/* MudMenu (the popover host) and its activator wrapper default to inline-block,
-   which collapses the full-width trigger to content width (and lets the flex
-   parent center it). Stretch both so the trigger fills its form cell like the
-   sibling OdsField/OdsSelect inputs — same fix as .odc-tagms. */
+/* The popup box (OdsPopupMenu) defaults to inline-flex, which collapses the
+   full-width trigger to content width (and lets the flex parent center it).
+   Stretch it so the trigger fills its form cell like the sibling
+   OdsField/OdsSelect inputs — same fix as .odc-tagms. */
 .odc-typesel { width: 100%; }
-.odc-typesel > .mud-menu { display: block; width: 100%; }
-.odc-typesel .mud-menu-activator { display: block; width: 100%; }
+.odc-typesel > .odc-popmenu { display: block; width: 100%; }
 .odc-select-trigger {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   width: 100%; box-sizing: border-box; cursor: pointer; text-align: left;
@@ -1495,11 +1508,8 @@
 .odc-sortsel-static b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
 
 .odc-tagms { position: relative; }
-/* MudMenu (the popover host) and its activator wrapper default to inline-block, which
-   collapses the full-width control to content width. Stretch them so the chips box
-   fills its form cell like the sibling OdsField/OdsSelect inputs. */
-.odc-tagms > .mud-menu { display: block; width: 100%; }
-.odc-tagms .mud-menu-activator { display: block; width: 100%; }
+/* The chips box IS the popup box (OdsPopupMenu) here — .odc-tagms-control below
+   sets its flex layout and full width, so the popover anchors to the whole box. */
 .odc-tagms-control {
   width: 100%; box-sizing: border-box;
   display: flex; align-items: center; gap: 8px;

@@ -3,8 +3,19 @@
 
     The more_vert row-actions menu used on every record row. A MudMenu driven by
     a flat Items list: set Divider for a separator, Header for a group label,
-    Danger for a destructive (error-colored) action. Defaults to a more_vert
-    icon-button trigger; pass Trigger to anchor it to your own element.
+    Danger for a destructive (error-colored) action. The trigger is always a
+    more_vert icon button named by AriaLabel.
+
+    That trigger is MudMenu's OWN icon-button activator (Icon + AriaLabel), not a
+    button placed in ActivatorContent (issue #255). MudMenu wraps a custom
+    ActivatorContent in a <div tabindex="0" role="button" aria-expanded>, so a
+    button inside it was a button nested in a button: two tab stops per menu (25
+    extra on a 25-row table), and aria-expanded on the unnamed div instead of the
+    focused control. The built-in activator is ONE real button carrying
+    aria-haspopup, aria-expanded and the name, and MudMenu returns focus to it on
+    close. The old Trigger parameter (a custom trigger element) had no callers and
+    could only have been built the nested way, so it was removed; a select-style
+    control with its own trigger belongs on OdsPopupMenu instead.
 
     An item marked Disabled is NOT rendered. An action a record cannot take is absent from its menu
     rather than dimmed with an explanation, and any divider or header the omission orphans is
@@ -18,25 +29,12 @@
     anything and is announced where the writing would happen.
 *@
 
-<MudMenu AnchorOrigin="@Anchor"
+<MudMenu Icon="@Icons.Material.Filled.MoreVert"
+         Size="Size.Small"
+         AriaLabel="@AriaLabel"
+         AnchorOrigin="@Anchor"
          TransformOrigin="@Transform"
          Class="@Class">
-    <ActivatorContent>
-        @if (Trigger is not null)
-        {
-            @* Custom trigger must forward the activation click or the menu never opens. *@
-            <span @onclick="@context.ToggleAsync">@Trigger</span>
-        }
-        else
-        {
-            @* The activator must forward the click to ToggleAsync, or the menu never
-               opens (MudMenu does not auto-wire a custom ActivatorContent). *@
-            <OdsIconButton Icon="@Icons.Material.Filled.MoreVert"
-                           Size="OdsSize.Sm"
-                           AriaLabel="@AriaLabel"
-                           OnClick="@context.ToggleAsync" />
-        }
-    </ActivatorContent>
     <ChildContent>
         @foreach (var item in VisibleItems)
         {
@@ -69,10 +67,7 @@
     /// <summary>Which edge the popover anchors to.</summary>
     [Parameter] public OdsAlign Align { get; set; } = OdsAlign.End;
 
-    /// <summary>Custom trigger element. Defaults to a more_vert icon button.</summary>
-    [Parameter] public RenderFragment? Trigger { get; set; }
-
-    /// <summary>Accessible name for the default icon-button trigger.</summary>
+    /// <summary>Accessible name for the icon-button trigger.</summary>
     [Parameter] public string AriaLabel { get; set; } = "Actions";
 
     [Parameter] public string? Class { get; set; }

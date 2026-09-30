@@ -72,41 +72,53 @@
                     }
                     else
                     {
-                        <MudMenu ActivationEvent="@MouseEvent.LeftClick"
-                                 AnchorOrigin="Origin.BottomCenter"
-                                 TransformOrigin="Origin.TopCenter"
-                                 OpenChanged="@(open => _accountMenuOpen = open)"
-                                 FullWidth="true">
-                            <ActivatorContent>
-                                <button type="button" class="aam-type-trigger @(_accountError ? "has-error" : "")"
-                                        aria-haspopup="menu" aria-expanded="@(_accountMenuOpen ? "true" : "false")"
-                                        aria-label="Account, required" @onclick="@context.ToggleAsync">
-                                    <span class="atm-acct-current">
-                                        @if (_selectedAccount is not null)
+                        @* One real trigger beside the popover (OdsPopupMenu, issue #255) — never inside
+                           MudMenu's own role="button" activator wrapper. The rows are single-choice
+                           menu rows (role="menuitemradio" + aria-checked) that OdsPopupMenu roves. *@
+                        <OdsPopupMenu @ref="_accountPopup"
+                                      TriggerClass="@($"aam-type-trigger {(_accountError ? "has-error" : "")}".TrimEnd())"
+                                      AriaLabel="Account, required"
+                                      AnchorOrigin="Origin.BottomCenter"
+                                      TransformOrigin="Origin.TopCenter"
+                                      RowId="@AccountRowId"
+                                      RowCount="@_accounts.Count"
+                                      SelectedRow="@SelectedAccountIndex">
+                            <TriggerContent>
+                                <span class="atm-acct-current">
+                                    @if (_selectedAccount is not null)
+                                    {
+                                        <span class="aam-type-ic sm"
+                                              style="background:@AccountTypeVisuals.BgColor(_selectedAccount.AccountType);color:@(OdsGlyphInk.Glyph(AccountTypeVisuals.FgColor(_selectedAccount.AccountType)));">
+                                            <OdsMIcon Name="@AccountTypeVisuals.MaterialIcon(_selectedAccount.AccountType)" Size="16" />
+                                        </span>
+                                        <span class="atm-acct-name">@_selectedAccount.Name</span>
+                                        @if (!string.IsNullOrWhiteSpace(_selectedAccount.AccountNumber))
                                         {
-                                            <span class="aam-type-ic sm"
-                                                  style="background:@AccountTypeVisuals.BgColor(_selectedAccount.AccountType);color:@(OdsGlyphInk.Glyph(AccountTypeVisuals.FgColor(_selectedAccount.AccountType)));">
-                                                <OdsMIcon Name="@AccountTypeVisuals.MaterialIcon(_selectedAccount.AccountType)" Size="16" />
-                                            </span>
-                                            <span class="atm-acct-name">@_selectedAccount.Name</span>
-                                            @if (!string.IsNullOrWhiteSpace(_selectedAccount.AccountNumber))
-                                            {
-                                                <span class="atm-acct-num mono">@_selectedAccount.AccountNumber</span>
-                                            }
+                                            <span class="atm-acct-num mono">@_selectedAccount.AccountNumber</span>
                                         }
-                                        else
-                                        {
-                                            <span style="color:var(--mud-palette-text-secondary);">Choose an account…</span>
-                                        }
-                                    </span>
-                                    <OdsMIcon Name="expand_more" Size="20" Style="color:var(--mud-palette-text-secondary);" />
-                                </button>
-                            </ActivatorContent>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:var(--mud-palette-text-secondary);">Choose an account…</span>
+                                    }
+                                </span>
+                                <OdsMIcon Name="expand_more" Size="20" Style="color:var(--mud-palette-text-secondary);" />
+                            </TriggerContent>
                             <ChildContent>
-                                @foreach (var account in _accounts)
+                                @for (var i = 0; i < _accounts.Count; i++)
                                 {
-                                    <MudMenuItem OnClick="@(() => SelectAccount(account))">
-                                        <div class="aam-type-item @(account.AccountId == _selectedAccount?.AccountId ? "selected" : "")">
+                                    var index = i;
+                                    var account = _accounts[i];
+                                    var on = account.AccountId == _selectedAccount?.AccountId;
+                                    <button type="button"
+                                            id="@AccountRowId(index)"
+                                            class="mud-menu-item mud-list-item-clickable odc-typesel-opt"
+                                            role="menuitemradio"
+                                            aria-checked="@(on ? "true" : "false")"
+                                            tabindex="-1"
+                                            @onclick="@(() => SelectAccountAsync(account))"
+                                            @onkeydown="@(e => _accountPopup.RowKeyDownAsync(e, index))">
+                                        <span class="mud-menu-item-text aam-type-item @(on ? "selected" : "")">
                                             <span class="aam-type-ic sm"
                                                   style="background:@AccountTypeVisuals.BgColor(account.AccountType);color:@(OdsGlyphInk.Glyph(AccountTypeVisuals.FgColor(account.AccountType)));">
                                                 <OdsMIcon Name="@AccountTypeVisuals.MaterialIcon(account.AccountType)" Size="16" />
@@ -116,15 +128,15 @@
                                             {
                                                 <span class="atm-acct-num mono">@account.AccountNumber</span>
                                             }
-                                            @if (account.AccountId == _selectedAccount?.AccountId)
+                                            @if (on)
                                             {
                                                 <OdsMIcon Class="aam-type-check" Name="check" Size="18" />
                                             }
-                                        </div>
-                                    </MudMenuItem>
+                                        </span>
+                                    </button>
                                 }
                             </ChildContent>
-                        </MudMenu>
+                        </OdsPopupMenu>
                     }
                     @if (_accountError)
                     {

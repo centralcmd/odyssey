@@ -2,48 +2,56 @@
     OdsInlineSelect — a compact toolbar select with an inline prefix, e.g. "View  Board ▾"
     (Odyssey Design System · components/Select with a `prefix`). The lightweight sibling of the
     floating-label OdsSelect: it reads as one line "{Prefix} {value} ▾" and sits in a filter bar next
-    to OdsSearchField / OdsMultiSelect / OdsSortSelect. Built on MudMenu (portals out of overflow,
-    roving-focus keyboard model) and reuses the shared `.odc-rpp` trigger chrome from OdsPageSizeSelect.
+    to OdsSearchField / OdsMultiSelect / OdsSortSelect. Built on OdsPopupMenu (one real trigger
+    beside a MudMenu popover that portals out of overflow, plus the single-choice roving-focus
+    keyboard model — issue #255) and reuses the shared `.odc-rpp` trigger chrome from OdsPageSizeSelect.
     Options are OdsOption records; Value is the selected option's Value string. Bind via @bind-Value.
 *@
 
-<MudMenu AnchorOrigin="Origin.BottomRight"
-         TransformOrigin="Origin.TopRight"
-         Disabled="@Disabled"
-         OpenChanged="@(open => _open = open)"
-         Class="@($"odc-rpp mirror {Class}".Trim())">
-    <ActivatorContent>
-        <button type="button"
-                class="odc-rpp-trigger"
-                aria-haspopup="menu"
-                aria-expanded="@(_open ? "true" : "false")"
-                aria-label="@($"{Label ?? Prefix}: {SelectedLabel}")"
-                disabled="@Disabled"
-                @onclick="@context.ToggleAsync">
-            @if (!string.IsNullOrEmpty(Prefix))
-            {
-                <span class="odc-rpp-prefix">@Prefix</span>
-            }
-            <b>@SelectedLabel</b>
-            <span class="material-icons odc-rpp-chev" aria-hidden="true">@(_open ? "expand_less" : "expand_more")</span>
-        </button>
-    </ActivatorContent>
-    <ChildContent>
-        @foreach (var option in Options)
+<OdsPopupMenu @ref="_popup"
+              Class="@($"odc-rpp mirror {Class}".Trim())"
+              TriggerClass="odc-rpp-trigger"
+              AriaLabel="@($"{Label ?? Prefix}: {SelectedLabel}")"
+              AnchorOrigin="Origin.BottomRight"
+              TransformOrigin="Origin.TopRight"
+              Disabled="@Disabled"
+              RowId="@RowId"
+              RowCount="@Options.Count"
+              SelectedRow="@SelectedIndex"
+              OpenChanged="@(open => _open = open)">
+    <TriggerContent>
+        @if (!string.IsNullOrEmpty(Prefix))
         {
+            <span class="odc-rpp-prefix">@Prefix</span>
+        }
+        <b>@SelectedLabel</b>
+        <span class="material-icons odc-rpp-chev" aria-hidden="true">@(_open ? "expand_less" : "expand_more")</span>
+    </TriggerContent>
+    <ChildContent>
+        @for (var i = 0; i < Options.Count; i++)
+        {
+            var index = i;
+            var option = Options[i];
             var selected = option.Value == Value;
-            <MudMenuItem OnClick="@(() => Pick(option.Value))" role="menuitemradio" aria-checked="@(selected ? "true" : "false")">
-                <div class="odc-typesel-item @(selected ? "selected" : null)">
+            <button type="button"
+                    id="@RowId(index)"
+                    class="mud-menu-item mud-list-item-clickable odc-typesel-opt"
+                    role="menuitemradio"
+                    aria-checked="@(selected ? "true" : "false")"
+                    tabindex="-1"
+                    @onclick="@(() => Pick(option.Value))"
+                    @onkeydown="@(e => _popup.RowKeyDownAsync(e, index))">
+                <span class="mud-menu-item-text odc-typesel-item @(selected ? "selected" : null)">
                     <span class="odc-typesel-lab">@option.Label</span>
                     @if (selected)
                     {
                         <span class="odc-typesel-check" aria-hidden="true"><span class="material-icons">check</span></span>
                     }
-                </div>
-            </MudMenuItem>
+                </span>
+            </button>
         }
     </ChildContent>
-</MudMenu>
+</OdsPopupMenu>
 
 @code {
     /// <summary>Selected option value. Bindable via @bind-Value.</summary>
@@ -63,9 +71,22 @@
 
     [Parameter] public string? Class { get; set; }
 
+    private OdsPopupMenu _popup = default!;
     private bool _open;
+
+    private readonly string _idPrefix = $"odc-inlinesel-{Guid.NewGuid():N}";
+
+    private string RowId(int index) => $"{_idPrefix}-opt-{index}";
+
+    private int SelectedIndex => Value is null ? -1 : Options.Select(o => o.Value).ToList().IndexOf(Value);
 
     private string SelectedLabel => Options.FirstOrDefault(o => o.Value == Value)?.Label ?? Value ?? string.Empty;
 
-    private Task Pick(string value) => value == Value ? Task.CompletedTask : ValueChanged.InvokeAsync(value);
+    // The rows are not MudMenuItems, so nothing closes the popover for us.
+    private async Task Pick(string value)
+    {
+        if (value != Value)
+            await ValueChanged.InvokeAsync(value);
+        await _popup.CloseAsync();
+    }
 }

@@ -1,0 +1,67 @@
+@*
+    OdsPopupMenu: ONE real <button> trigger with a MudMenu popover anchored over it (issue #255).
+    It is the shared host behind every select-style Ods control (OdsMultiSelect, OdsSortSelect,
+    OdsTypeSelect, OdsPageSizeSelect, OdsInlineSelect, OdsTagMultiSelect, OdsMoneyField's currency
+    picker, AccountSmartTagAdder, CreateTransactionDialog's account picker).
+
+    Why it exists: MudMenu wraps a custom ActivatorContent in its own
+    <div tabindex="0" role="button" aria-haspopup="menu" aria-expanded="…">. Every Ods trigger put a
+    real <button> inside that div, which gave each control two tab stops (an unnamed "button", then
+    the real one), announced a button nested in a button, and left aria-expanded on the div rather
+    than on the focused, named control. So nothing here uses ActivatorContent.
+
+    Instead the MudMenu is rendered with NO activator at all (no ActivatorContent, Label or Icon),
+    which MudMenu supports: it then draws only its popover and its click-away overlay. The menu's
+    root element is stretched over this component's box (.odc-popmenu-anchor, position:absolute;
+    inset:0; pointer-events:none), because MudBlazor positions a popover against the parent of its
+    placeholder, i.e. that root — so the popover still anchors, flips and sizes against the trigger
+    exactly as before, and still portals out of any overflow:hidden ancestor.
+
+    What this component owns, once, for every consumer:
+      • the trigger's aria-haspopup / aria-expanded, on the button itself;
+      • open / close: a click (pointer or the button's own Enter/Space) toggles; MudMenu's overlay
+        closes on an outside click;
+      • focus return: a close that did not start on the trigger sends focus back to it, so focus is
+        never stranded on <body> when the popover's content unmounts;
+      • the single-choice keyboard contract, when RowId/RowCount are set: ↑/↓ on the closed
+        trigger opens; opening focuses the selected row (else the first); ↑/↓/Home/End rove and
+        clamp; Esc closes and restores focus; Tab closes behind itself. Rows are the consumer's own
+        <button role="menuitemradio" tabindex="-1"> elements, which call RowKeyDownAsync.
+
+    A MudMenuItem needs MudMenu's own activator to receive keyboard focus (MudMenu tracks the
+    focused item from keydowns on its root, which this trigger is deliberately not inside), so a
+    consumer renders its rows as buttons rather than MudMenuItems — the pattern OdsTypeSelect set.
+    OdsMenu, whose rows ARE MudMenuItems, uses MudMenu's built-in icon-button activator instead.
+*@
+
+@inject IJSRuntime Js
+
+<div class="@WrapperClass" @attributes="UserAttributes">
+    @BeforeTrigger
+    <button @ref="_trigger"
+            type="button"
+            id="@EffectiveTriggerId"
+            class="@TriggerClassName"
+            disabled="@Disabled"
+            aria-haspopup="@HasPopup"
+            aria-expanded="@(_open ? "true" : "false")"
+            aria-label="@AriaLabel"
+            aria-describedby="@AriaDescribedBy"
+            aria-invalid="@(AriaInvalid ? "true" : null)"
+            @onclick="OnTriggerClickAsync"
+            @onkeydown="OnTriggerKeyDownAsync">
+        @TriggerContent
+    </button>
+    <MudMenu @ref="_menu"
+             Class="odc-popmenu-anchor"
+             AnchorOrigin="@AnchorOrigin"
+             TransformOrigin="@TransformOrigin"
+             PopoverClass="@PopoverClass"
+             ListClass="@ListClass"
+             RelativeWidth="@RelativeWidth"
+             MaxHeight="@MaxHeight"
+             Disabled="@Disabled"
+             OpenChanged="OnMenuOpenChangedAsync">
+        @ChildContent
+    </MudMenu>
+</div>

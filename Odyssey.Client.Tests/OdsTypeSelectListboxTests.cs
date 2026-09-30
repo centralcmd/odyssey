@@ -449,30 +449,28 @@ public class OdsTypeSelectListboxTests
     }
 
     /// <summary>
-    /// Enter and Space on the trigger reach it twice: MudMenu's activator wrapper toggles on the
-    /// keydown, and the browser then synthesises a click from the same keystroke. Honouring both
-    /// toggled twice and left the popup shut, which is the keyboard-inoperability bug itself.
+    /// Enter and Space on the trigger produce a click with <c>Detail == 0</c>, and that click must
+    /// open the list.
     ///
     /// <para>
-    /// A synthesised click is the one that reports <c>Detail == 0</c>. The earlier fix — a blanket
-    /// <c>@onkeydown:stopPropagation</c> on the trigger — also worked, but Blazor evaluates that
-    /// directive once per render rather than per key, so it swallowed Escape as well and stopped it
-    /// cancelling a wrapping dialog. This pins the narrow guard so that regression cannot come back.
+    /// This used to be the opposite assertion. While the trigger sat inside MudMenu's
+    /// <c>ActivatorContent</c>, MudBlazor's <c>div role="button"</c> wrapper toggled the menu on the
+    /// keydown and the browser's synthesised click toggled it again, so the component ignored
+    /// <c>Detail == 0</c> clicks to keep the pair from cancelling. Issue #255 removed the wrapper —
+    /// the trigger is OdsPopupMenu's own button beside the MudMenu — so the keyboard click is now the
+    /// ONLY activation, and ignoring it would make the field impossible to open from the keyboard.
     /// </para>
     /// </summary>
     [Fact]
-    public void A_keyboard_synthesised_click_on_the_trigger_is_ignored()
+    public void A_keyboard_synthesised_click_on_the_trigger_opens_the_list()
     {
         var ctx = NewContext();
         var cut = ctx.Render<SelectHost>(p => p.Add(h => h.Value, "Work").Add(h => h.Types, Types));
 
-        // Detail == 0 is a click the keyboard produced; the wrapper has already acted on it.
         cut.Find("button.odc-select-trigger").Click(new MouseEventArgs { Detail = 0 });
-        Assert.Empty(OptionIds(cut));
 
-        // Detail == 1 is a real pointer click, and still opens.
-        cut.Find("button.odc-select-trigger").Click(new MouseEventArgs { Detail = 1 });
         Assert.Equal(Types.Count, OptionIds(cut).Count);
+        Assert.Equal("true", cut.Find("button.odc-select-trigger").GetAttribute("aria-expanded"));
     }
 
     /// <summary>

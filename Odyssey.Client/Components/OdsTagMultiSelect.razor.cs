@@ -120,13 +120,12 @@ public partial class OdsTagMultiSelect
 
     [Parameter] public string? Class { get; set; }
 
-    private MudMenu _menu = default!;
+    private OdsPopupMenu _popup = default!;
     private bool _open;
     private string _query = string.Empty;
     private string _announcement = string.Empty;
     private int _announceNonce;
 
-    private ElementReference _trigger;
     // One slot per rendered chip, so a removal can move focus to the NEXT chip's remove control.
     private ElementReference[] _removeButtons = [];
 
@@ -184,7 +183,7 @@ public partial class OdsTagMultiSelect
             }
             else
             {
-                await _trigger.FocusAsync();
+                await _popup.FocusTriggerAsync();
             }
         }
         catch (Exception)
@@ -197,7 +196,7 @@ public partial class OdsTagMultiSelect
     /// Moves focus to this picker's trigger. The public focus API a host needs in order to send focus
     /// to the first invalid picker after a failed save (WCAG 3.3.1 with the associated message).
     /// </summary>
-    public ValueTask FocusAsync() => _trigger.FocusAsync();
+    public ValueTask FocusAsync() => _popup.FocusTriggerAsync();
 
     private string FieldClass
     {
@@ -369,7 +368,7 @@ public partial class OdsTagMultiSelect
         return Task.CompletedTask;
     }
 
-    private Task Done() => _menu.CloseMenuAsync();
+    private Task Done() => _popup.CloseAsync();
 
     // Emit the next set in the parent's existing order (preserving it) plus any
     // newly-added ids appended, so chip order stays stable across edits.

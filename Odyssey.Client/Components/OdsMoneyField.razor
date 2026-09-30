@@ -88,28 +88,21 @@
 
         @if (CurrencyPickable)
         {
-            <MudMenu @ref="_menu"
-                     AnchorOrigin="Origin.BottomRight"
-                     TransformOrigin="Origin.TopRight"
-                     PopoverClass="odc-ms-pop-paper"
-                     ListClass="pa-0"
-                     Disabled="@(Disabled || CurrencyDisabled)"
-                     OpenChanged="OnMenuOpenChanged">
-                <ActivatorContent>
-                    @* MudMenu does not auto-wire a custom activator — forward the click to
-                       ToggleAsync or the popover never opens. *@
-                    <button type="button"
-                            id="@TriggerId"
-                            class="@TriggerClass"
-                            disabled="@(Disabled || CurrencyDisabled)"
-                            aria-haspopup="listbox"
-                            aria-expanded="@(_open ? "true" : "false")"
-                            aria-label="@CurrencyAriaLabel"
-                            @onclick="@context.ToggleAsync">
-                        <span class="odc-money-code">@CurrencyCode</span>
-                        <span class="material-icons odc-money-chev" aria-hidden="true">expand_more</span>
-                    </button>
-                </ActivatorContent>
+            <OdsPopupMenu @ref="_popup"
+                          TriggerId="@TriggerId"
+                          TriggerClass="@TriggerClass"
+                          AriaLabel="@CurrencyAriaLabel"
+                          HasPopup="listbox"
+                          AnchorOrigin="Origin.BottomRight"
+                          TransformOrigin="Origin.TopRight"
+                          PopoverClass="odc-ms-pop-paper"
+                          ListClass="pa-0"
+                          Disabled="@(Disabled || CurrencyDisabled)"
+                          OpenChanged="OnMenuOpenChanged">
+                <TriggerContent>
+                    <span class="odc-money-code">@CurrencyCode</span>
+                    <span class="material-icons odc-money-chev" aria-hidden="true">expand_more</span>
+                </TriggerContent>
                 <ChildContent>
                     <div class="odc-money-pop">
                         @if (Searchable)
@@ -167,7 +160,7 @@
                         </ul>
                     </div>
                 </ChildContent>
-            </MudMenu>
+            </OdsPopupMenu>
         }
         else
         {
