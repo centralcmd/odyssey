@@ -204,6 +204,14 @@ public class FileService
             cancellationToken);
     }
 
+    /// <summary>
+    /// The name a rename to <paramref name="fileName"/> would store, or a
+    /// <see cref="Odyssey.Core.DomainValidationException"/> when nothing survives sanitization. Exposed so a
+    /// caller that commits other work before the rename (the photo edit) can refuse up front rather
+    /// than half-commit.
+    /// </summary>
+    public string SanitizeRenamedFileName(string fileName) => validationService.SanitizeRenamedFileName(fileName);
+
     public async Task<FileMetadataResponse?> UpdateFileMetadataAsync(Guid fileId, UpdateFileMetadataRequest request, CancellationToken cancellationToken = default)
     {
         var metadata = await context.FileMetadata.FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
@@ -213,14 +221,19 @@ public class FileService
             return null;
         }
 
-        metadata.Description = request.Description?.Length > 256 ? request.Description[..256] : request.Description;
-
         // Optional rename. Only applied when a non-blank name is supplied so existing
-        // description-only callers leave the file name untouched. FileName is MaxLength(256).
-        if (!string.IsNullOrWhiteSpace(request.FileName))
+        // description-only callers leave the file name untouched. The name goes through the same
+        // sanitizer as an upload (issue #247), and is resolved before anything is mutated so a refused
+        // name leaves the tracked row untouched: a stored CR/LF or quote reaches every consumer of the
+        // name, not only the download header.
+        var renamedTo = string.IsNullOrWhiteSpace(request.FileName)
+            ? null
+            : validationService.SanitizeRenamedFileName(request.FileName);
+
+        metadata.Description = request.Description?.Length > 256 ? request.Description[..256] : request.Description;
+        if (renamedTo is not null)
         {
-            var trimmed = request.FileName.Trim();
-            metadata.FileName = trimmed.Length > 256 ? trimmed[..256] : trimmed;
+            metadata.FileName = renamedTo;
         }
 
         await context.SaveChangesAsync(cancellationToken);

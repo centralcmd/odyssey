@@ -268,6 +268,40 @@ public class PhotosApiTests
     }
 
     [Fact]
+    public async Task Put_Rename_SanitizesTheBackingFileName()
+    {
+        // Issue #247: the photo edit renames through the Files store, so it takes the same sanitizer.
+        string[] permissions = [.. ReadWrite, PermissionClaims.FilesUpdate];
+        await using var factory = new ApiFactory(permissions);
+        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId, "original.jpg");
+        using var client = factory.CreateClient();
+        var created = await CreateAsync(client, new NewPhoto { FileId = fileId });
+
+        var put = await client.PutAsJsonAsync($"{Path}/{created.PhotoId}", new UpdatePhoto { FileName = "beach\r\n\"day\".jpg" });
+
+        put.EnsureSuccessStatusCode();
+        Assert.Equal("beach_day_.jpg", (await put.Content.ReadFromJsonAsync<ExistingPhoto>())!.FileName);
+    }
+
+    [Fact]
+    public async Task Put_RenameToNothingAfterSanitizing_Is400_AndThePhotoIsNotHalfUpdated()
+    {
+        string[] permissions = [.. ReadWrite, PermissionClaims.FilesUpdate];
+        await using var factory = new ApiFactory(permissions);
+        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId, "keep.jpg");
+        using var client = factory.CreateClient();
+        var created = await CreateAsync(client, new NewPhoto { FileId = fileId });
+
+        var put = await client.PutAsJsonAsync($"{Path}/{created.PhotoId}",
+            new UpdatePhoto { FileName = "///", Title = "should not land" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+        var fetched = await client.GetFromJsonAsync<ExistingPhoto>($"{Path}/{created.PhotoId}");
+        Assert.Equal("keep.jpg", fetched!.FileName);
+        Assert.NotEqual("should not land", fetched.Title);
+    }
+
+    [Fact]
     public async Task Put_RenameWithoutFilesUpdate_ReturnsForbidden_AndLeavesFileNameUnchanged()
     {
         // ReadWrite carries files.read but NOT files.update, so it cannot rename the backing file.

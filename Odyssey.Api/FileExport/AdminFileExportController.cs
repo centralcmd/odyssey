@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using Odyssey.Dtos.Authorization;
 
 namespace Odyssey.Api.FileExport;
@@ -96,7 +97,9 @@ public sealed class AdminFileExportController : ControllerBase
         var timestamp = timeProvider.GetUtcNow().UtcDateTime.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
         var fileName = $"odyssey-files-export{fileNameSuffix}-{timestamp}Z.zip";
         Response.ContentType = "application/zip";
-        Response.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\"";
+        var contentDisposition = new ContentDispositionHeaderValue("attachment");
+        contentDisposition.SetHttpFileName(fileName);
+        Response.Headers.ContentDisposition = contentDisposition.ToString();
         Response.Headers.CacheControl = "no-store";
 
         var stopwatch = Stopwatch.StartNew();

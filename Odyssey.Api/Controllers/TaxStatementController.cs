@@ -245,8 +245,8 @@ public class TaxStatementController : ControllerBase
 
         // Force a download and forbid content-type sniffing so a mislabeled upload
         // cannot be rendered/executed inline in the app origin (matches the account
-        // and contract download handlers).
-        Response.Headers.ContentDisposition = $"attachment; filename=\"{metadata.FileName}\"";
+        // and contract download handlers). The attachment disposition comes from
+        // File(..., fileDownloadName), which encodes the stored name (issue #247).
         Response.Headers.XContentTypeOptions = "nosniff";
         Response.Headers.ETag = $"\"{metadata.Sha256Hash}\"";
         return File(content, metadata.ContentType, metadata.FileName);

@@ -126,10 +126,12 @@ public class FilesController : ControllerBase
             return this.NotFoundProblem($"File ID {id} not found.");
         }
 
-        // Set appropriate headers for file download. nosniff stops the browser from
-        // re-interpreting a mislabeled upload (e.g. an SVG/HTML body) and rendering it
-        // inline in the app origin — alongside the forced attachment disposition.
-        Response.Headers.ContentDisposition = $"attachment; filename=\"{metadata.FileName}\"";
+        // nosniff stops the browser from re-interpreting a mislabeled upload (e.g. an SVG/HTML body)
+        // and rendering it inline in the app origin — alongside the forced attachment disposition.
+        // That disposition is written by File(..., fileDownloadName), never by hand (issue #247): the
+        // framework emits an escaped `filename` plus an RFC 5987 `filename*`, so a stored name holding a
+        // quote, CR/LF or non-ASCII text cannot break the header — including rows stored before rename
+        // was sanitized.
         Response.Headers.ContentType = metadata.ContentType;
         Response.Headers.XContentTypeOptions = "nosniff";
         Response.Headers.ETag = $"\"{metadata.Sha256Hash}\"";

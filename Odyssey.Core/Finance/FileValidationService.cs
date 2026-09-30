@@ -8,6 +8,9 @@ namespace Odyssey.Core.Finance;
 
 public class FileValidationService
 {
+    /// <summary>The <c>FileMetadata.FileName</c> column length.</summary>
+    public const int MaxFileNameLength = 256;
+
     private readonly IUploadLimitsLookup uploadLimits;
     private readonly IReadOnlySet<string> allowedMimeTypes;
 
@@ -104,6 +107,26 @@ public class FileValidationService
         sanitized = Regex.Replace(sanitized, @"[\x00-\x1F\x7F-\x9F]", "");
 
         return sanitized.Trim();
+    }
+
+    /// <summary>
+    /// The rename counterpart of the upload path's <see cref="SanitizeFileName"/> (issue #247): the same
+    /// sanitizer, so a name reaching the store by either route obeys one rule, plus a refusal when
+    /// nothing survives it. Upload has no such refusal because its name is the browser's own; a rename
+    /// is typed by a caller, and storing an empty name would leave the file unlabelled.
+    /// </summary>
+    public string SanitizeRenamedFileName(string fileName)
+    {
+        var sanitized = SanitizeFileName(fileName);
+        if (string.IsNullOrWhiteSpace(sanitized))
+        {
+            throw new DomainValidationException(
+                "File name must contain at least one character that is not a path separator, reserved character or control character.",
+                code: null,
+                field: "FileName");
+        }
+
+        return sanitized.Length > MaxFileNameLength ? sanitized[..MaxFileNameLength].TrimEnd() : sanitized;
     }
 
     public async Task<string> ComputeSha256HashAsync(Stream stream)
