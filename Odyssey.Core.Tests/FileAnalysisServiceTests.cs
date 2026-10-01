@@ -1,6 +1,7 @@
 using Odyssey.Core;
 using Odyssey.Dtos;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Odyssey.Context;
@@ -472,11 +473,210 @@ public class FileAnalysisServiceTests
 
         var result = await service.ImportCandidatesAsync(
             response.AnalysisJobId,
-            new ImportRequest([new ImportCandidateRequest(candidate.Id, null, null, null, " eur ")]),
+            new ImportRequest([new ImportCandidateRequest(candidate.Id, null, null, null, " usd ")]),
             "user-1");
 
         Assert.Equal(1, result.Imported);
-        Assert.Equal("EUR", (await context.Transactions.SingleAsync()).CurrencyCode);
+        Assert.Equal("USD", (await context.Transactions.SingleAsync()).CurrencyCode);
+    }
+
+    // ── Transaction write invariants on import (issue #237) ───────────────────
+
+    // Analyzes a statement on a fresh USD account and returns the job and its candidates, cheapest first.
+    private async Task<(FileAnalysisService Service, Guid JobId, Guid AccountId, List<FileAnalysisCandidateTransaction> Candidates)>
+        AnalyzeTwoCandidatesAsync(OdysseyContext context)
+    {
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var service = CreateService(context, FakeProvider.Returning(
+            Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
+            Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
+
+        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var candidates = await context.FileAnalysisCandidateTransactions.OrderBy(c => c.Amount).ToListAsync();
+        return (service, response.AnalysisJobId, accountId, candidates);
+    }
+
+    private static ImportRequest Import(params Guid[] candidateIds) =>
+        new([.. candidateIds.Select(id => new ImportCandidateRequest(id, null, null, null, null))]);
+
+    [Fact]
+    public async Task ImportCandidatesAsync_ImportedTwice_CreatesOneTransaction()
+    {
+        await using var context = TestContextFactory.Create();
+        var (service, jobId, _, candidates) = await AnalyzeTwoCandidatesAsync(context);
+
+        var first = await service.ImportCandidatesAsync(jobId, Import(candidates[0].Id), "user-1");
+        var retry = await service.ImportCandidatesAsync(jobId, Import(candidates[0].Id), "user-1");
+
+        Assert.Equal(1, first.Imported);
+        Assert.Equal(0, retry.Imported);
+        var failure = Assert.Single(retry.Failures);
+        Assert.Equal(candidates[0].Id, failure.CandidateId);
+        Assert.Contains("already been reviewed", failure.Reason, StringComparison.Ordinal);
+        Assert.Single(await context.Transactions.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ImportCandidatesAsync_SameCandidateTwiceInOneRequest_ImportsItOnce()
+    {
+        await using var context = TestContextFactory.Create();
+        var (service, jobId, _, candidates) = await AnalyzeTwoCandidatesAsync(context);
+
+        var result = await service.ImportCandidatesAsync(jobId, Import(candidates[0].Id, candidates[0].Id), "user-1");
+
+        Assert.Equal(1, result.Imported);
+        Assert.Equal(candidates[0].Id, Assert.Single(result.Failures).CandidateId);
+        Assert.Single(await context.Transactions.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ImportCandidatesAsync_RejectedCandidate_IsNotImported()
+    {
+        await using var context = TestContextFactory.Create();
+        var (service, jobId, _, candidates) = await AnalyzeTwoCandidatesAsync(context);
+        candidates[0].ReviewStatus = ContextReviewStatus.Rejected;
+        await context.SaveChangesAsync();
+
+        var result = await service.ImportCandidatesAsync(jobId, Import(candidates[0].Id), "user-1");
+
+        Assert.Equal(0, result.Imported);
+        Assert.Contains("Rejected", Assert.Single(result.Failures).Reason, StringComparison.Ordinal);
+        Assert.Empty(await context.Transactions.ToListAsync());
+    }
+
+    /// <summary>
+    /// Two requests that both read the candidate as Pending: the one that saves second is refused by
+    /// the <c>ReviewStatus</c> concurrency token rather than writing a second ledger row.
+    /// </summary>
+    [Fact]
+    public async Task ImportCandidatesAsync_ConcurrentImportOfSameCandidate_LoserGetsConflict()
+    {
+        await using var context = TestContextFactory.Create();
+        var (service, jobId, _, candidates) = await AnalyzeTwoCandidatesAsync(context);
+
+        var options = (DbContextOptions<OdysseyContext>)context.GetService<IDbContextOptions>();
+        await using var racing = new OdysseyContext(options);
+        // The losing request has already read the candidate as Pending when the winner commits.
+        var staleCandidate = await racing.FileAnalysisCandidateTransactions.SingleAsync(c => c.Id == candidates[0].Id);
+        Assert.Equal(ContextReviewStatus.Pending, staleCandidate.ReviewStatus);
+
+        await service.ImportCandidatesAsync(jobId, Import(candidates[0].Id), "user-1");
+
+        var racingService = CreateService(racing, FakeProvider.Returning(), EnabledOptions());
+        await Assert.ThrowsAsync<DomainConflictException>(() =>
+            racingService.ImportCandidatesAsync(jobId, Import(candidates[0].Id), "user-2"));
+
+        await using var verify = new OdysseyContext(options);
+        var stored = await verify.FileAnalysisCandidateTransactions.SingleAsync(c => c.Id == candidates[0].Id);
+        Assert.Equal("user-1", stored.ReviewedByUserId);
+        // That the loser's ledger row rolls back with it is a property of a real transaction, which
+        // the InMemory provider does not have; FileAnalysisImportConcurrencyTests covers it on MariaDB.
+    }
+
+    [Fact]
+    public async Task ImportCandidatesAsync_CurrencyOtherThanTheAccounts_FailsThatCandidateOnly()
+    {
+        await using var context = TestContextFactory.Create();
+        var (service, jobId, _, candidates) = await AnalyzeTwoCandidatesAsync(context);
+
+        var result = await service.ImportCandidatesAsync(
+            jobId,
+            new ImportRequest(
+            [
+                new ImportCandidateRequest(candidates[0].Id, null, null, null, "EUR"),
+                new ImportCandidateRequest(candidates[1].Id, null, null, null, null),
+            ]),
+            "user-1");
+
+        Assert.Equal(1, result.Imported);
+        var failure = Assert.Single(result.Failures);
+        Assert.Equal(candidates[0].Id, failure.CandidateId);
+        Assert.Equal("Transaction currency must match account currency.", failure.Reason);
+        Assert.All(await context.Transactions.ToListAsync(), t => Assert.Equal("USD", t.CurrencyCode));
+        // A refused candidate stays importable once corrected.
+        Assert.Equal(ContextReviewStatus.Pending, candidates[0].ReviewStatus);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ImportCandidatesAsync_ClosedOrArchivedAccount_RefusesTheBatch(bool closed)
+    {
+        await using var context = TestContextFactory.Create();
+        var (service, jobId, accountId, candidates) = await AnalyzeTwoCandidatesAsync(context);
+        var account = await context.Accounts.SingleAsync(a => a.AccountId == accountId);
+        if (closed)
+            account.Closed = DateTime.UtcNow;
+        else
+            account.Archived = DateTime.UtcNow;
+        await context.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<DomainValidationException>(() =>
+            service.ImportCandidatesAsync(jobId, Import(candidates[0].Id, candidates[1].Id), "user-1"));
+
+        Assert.Empty(await context.Transactions.ToListAsync());
+        Assert.All(candidates, c => Assert.Equal(ContextReviewStatus.Pending, c.ReviewStatus));
+    }
+
+    [Fact]
+    public async Task ImportCandidatesAsync_UnknownOrArchivedContact_FailsThatCandidateOnly()
+    {
+        await using var context = TestContextFactory.Create();
+        var archived = new Contact
+        {
+            ExternalUid = $"urn:uuid:{Guid.NewGuid()}", NormalizedName = "GONE", Type = ContactType.Organization,
+            Archived = DateTime.UtcNow, OrganizationDetails = new() { LegalName = "Gone" },
+        };
+        var known = new Contact
+        {
+            ExternalUid = $"urn:uuid:{Guid.NewGuid()}", NormalizedName = "SHOP", Type = ContactType.Organization,
+            OrganizationDetails = new() { LegalName = "Shop" },
+        };
+        journal.Contacts.AddRange(archived, known);
+        await journal.SaveChangesAsync();
+
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var service = CreateService(context, FakeProvider.Returning(
+            Extracted(DateTime.UtcNow.AddDays(-3), "A", -1m),
+            Extracted(DateTime.UtcNow.AddDays(-2), "B", -2m),
+            Extracted(DateTime.UtcNow.AddDays(-1), "C", -3m)), EnabledOptions());
+        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var candidates = await context.FileAnalysisCandidateTransactions.OrderBy(c => c.Amount).ToListAsync();
+        var unknownId = Guid.NewGuid();
+
+        var result = await service.ImportCandidatesAsync(
+            response.AnalysisJobId,
+            new ImportRequest(
+            [
+                new ImportCandidateRequest(candidates[0].Id, null, null, null, null, unknownId),
+                new ImportCandidateRequest(candidates[1].Id, null, null, null, null, archived.ContactId),
+                new ImportCandidateRequest(candidates[2].Id, null, null, null, null, known.ContactId),
+            ]),
+            "user-1");
+
+        Assert.Equal(1, result.Imported);
+        Assert.Equal(
+            new[] { candidates[0].Id, candidates[1].Id },
+            result.Failures.Select(f => f.CandidateId).ToArray());
+        Assert.Contains(unknownId.ToString(), result.Failures[0].Reason, StringComparison.Ordinal);
+        Assert.Equal(known.ContactId, (await context.Transactions.SingleAsync()).ContactId);
+    }
+
+    [Fact]
+    public async Task ImportCandidatesAsync_UnspecifiedKindDate_IsStoredAsUtc()
+    {
+        await using var context = TestContextFactory.Create();
+        var (service, jobId, _, candidates) = await AnalyzeTwoCandidatesAsync(context);
+        var date = new DateTime(2026, 3, 14, 12, 0, 0, DateTimeKind.Unspecified);
+
+        await service.ImportCandidatesAsync(
+            jobId,
+            new ImportRequest([new ImportCandidateRequest(candidates[0].Id, date, null, null, null)]),
+            "user-1");
+
+        var stored = (await context.Transactions.SingleAsync()).TimeStamp;
+        Assert.Equal(DateTimeKind.Utc, stored.Kind);
+        Assert.Equal(date.Ticks, stored.Ticks);
     }
 
     [Fact]
@@ -902,6 +1102,40 @@ public class FileAnalysisServiceTests
         Assert.Equal(DtoMatchMethod.Llm, candidate.MatchMethod);
         Assert.Single(candidate.MatchedTagIds);
         Assert.Equal(0.88m, candidate.CategoryMatchConfidence);
+    }
+
+    /// <summary>
+    /// An import that reviews a candidate while the match provider call is in flight wins: the match
+    /// run still completes for the other candidates instead of failing on the concurrency token
+    /// (issue #237), and the imported candidate keeps its review.
+    /// </summary>
+    [Fact]
+    public async Task MatchAsync_CandidateImportedDuringTheProviderCall_YieldsThatCandidate()
+    {
+        await using var context = TestContextFactory.Create();
+        var jobId = await SeedMatchJobAsync(context, [("AMZN Mktp", null), ("SPOTIFY", null)], ["Amazon"], []);
+        var options = (DbContextOptions<OdysseyContext>)context.GetService<IDbContextOptions>();
+        await using var racing = new OdysseyContext(options);
+        var spotifyId = (await racing.FileAnalysisCandidateTransactions.SingleAsync(c => c.Merchant == "SPOTIFY")).Id;
+
+        var provider = FakeProvider.Matching((cands, cps, _) =>
+        {
+            CreateService(racing, FakeProvider.Returning(), MatchOptions())
+                .ImportCandidatesAsync(jobId, Import(spotifyId), "user-2").GetAwaiter().GetResult();
+            var amazon = cps.First(v => v.Name == "Amazon").Ref;
+            return [.. cands.Select(c => new MatchedCandidate(c.Index, amazon, 0.95m, [], null))];
+        });
+        var service = CreateService(context, provider, MatchOptions());
+
+        var job = await service.MatchAsync(jobId);
+
+        Assert.Equal(DtoMatchStatus.Completed, job.MatchStatus);
+        await using var verify = new OdysseyContext(options);
+        var stored = await verify.FileAnalysisCandidateTransactions.ToListAsync();
+        var spotify = stored.Single(c => c.Id == spotifyId);
+        Assert.Equal(ContextReviewStatus.Accepted, spotify.ReviewStatus);
+        Assert.Null(spotify.MatchedContactId);
+        Assert.NotNull(stored.Single(c => c.Id != spotifyId).MatchedContactId);
     }
 
     [Fact]

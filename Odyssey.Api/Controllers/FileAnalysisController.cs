@@ -167,11 +167,12 @@ public class FileAnalysisController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ImportResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Import selected candidate transactions from an analysis job.",
-        Description = "Commits the specified candidates as real transactions. Optional field overrides (date, description, amount, currency) are applied before import.")]
+        Description = "Commits the specified candidates as real transactions. Optional field overrides (date, description, amount, currency) are applied before import. Each candidate is validated like any other transaction write: its currency must be the account's, its contact and tags must exist and be active, and a candidate that is no longer Pending is reported as a failure rather than imported again. A closed or archived account refuses the whole request (400); a candidate reviewed by a concurrent request is a 409.")]
     public async Task<IActionResult> ImportCandidates(
         [FromRoute(Name = "analysisJobId")] [SwaggerParameter("Analysis Job ID", Required = true)]
         Guid analysisJobId,

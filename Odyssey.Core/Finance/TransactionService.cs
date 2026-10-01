@@ -310,40 +310,12 @@ public class TransactionService
             throw new DomainValidationException($"Account ID {accountId} was not found.");
         }
 
-        if (account.Closed is not null || account.Archived is not null)
-        {
-            throw new DomainValidationException("Transactions cannot be added to a closed or archived account.");
-        }
-
-        if (account.CurrencyCode != transactionCurrencyCode)
-        {
-            throw new DomainValidationException("Transaction currency must match account currency.");
-        }
+        TransactionWriteRules.EnsureAccountIsOpen(account);
+        TransactionWriteRules.EnsureCurrencyMatchesAccount(account, transactionCurrencyCode);
     }
-    
-    // Resolve a set of requested tag ids to tracked TransactionTag entities, validating that each one
-    // exists and is not archived. Duplicate ids are de-duplicated; an empty/null request yields no tags.
-    private async Task<List<TransactionTag>> ResolveTags(IEnumerable<Guid>? tagIds, CancellationToken cancellationToken = default)
-    {
-        var distinctIds = tagIds?.Distinct().ToList() ?? [];
-        if (distinctIds.Count == 0)
-        {
-            return [];
-        }
 
-        var tags = await context.TransactionTags
-            .Where(tag => distinctIds.Contains(tag.TransactionTagId) && tag.Archived == null)
-            .ToListAsync(cancellationToken);
-
-        var missing = distinctIds.Except(tags.Select(tag => tag.TransactionTagId)).ToList();
-        if (missing.Count > 0)
-        {
-            throw new DomainValidationException(
-                $"Transaction tag ID(s) {string.Join(", ", missing)} are invalid or archived.");
-        }
-
-        return tags;
-    }
+    private Task<List<TransactionTag>> ResolveTags(IEnumerable<Guid>? tagIds, CancellationToken cancellationToken = default) =>
+        TransactionWriteRules.ResolveTagsAsync(context, tagIds, cancellationToken);
 
     // Diff the requested tag set against the transaction's current tags, inserting missing links and
     // removing dropped ones (rather than delete-all-then-reinsert, which churns the join rows).
@@ -364,21 +336,8 @@ public class TransactionService
         }
     }
 
-    private async Task EnsureContactIsValid(Guid? contactId, CancellationToken cancellationToken = default)
-    {
-        if (contactId is null)
-        {
-            return;
-        }
-
-        var refs = await contactLookup.ResolveRefsAsync([contactId.Value], cancellationToken);
-        var isValidContact = refs.TryGetValue(contactId.Value, out var contactRef) && contactRef.Archived == null;
-
-        if (!isValidContact)
-        {
-            throw new DomainValidationException($"Contact ID {contactId} is invalid or archived.");
-        }
-    }
+    private Task EnsureContactIsValid(Guid? contactId, CancellationToken cancellationToken = default) =>
+        TransactionWriteRules.EnsureContactIsValidAsync(contactLookup, contactId, cancellationToken);
 
     public async Task Delete(Guid id, CancellationToken cancellationToken = default)
     {
