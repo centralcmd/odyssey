@@ -84,7 +84,7 @@ The same staleness reaches Node consumers, differently. The hook exports
 `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`, which redirects the `playwright` npm package away from
 `~/.cache/ms-playwright` — so the `run-odyssey` driver's pin has to equal the `Microsoft.Playwright`
 version in `Directory.Packages.props`, or it looks for a build that directory will never hold. Both
-are `1.62.0`; keep them in lockstep.
+are `1.63.0`; keep them in lockstep.
 
 ## The environment-configuration script
 

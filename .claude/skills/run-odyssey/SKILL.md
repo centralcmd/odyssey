@@ -25,9 +25,9 @@ user and screenshots/asserts authed pages. That is the agent path; a human just 
 ## Prerequisites
 
 - **Docker** + the Compose plugin (`docker compose`).
-- **Node 22** (for the driver). The pin is `playwright@1.62.0`, deliberately equal to the
+- **Node 22** (for the driver). The pin is `playwright@1.63.0`, deliberately equal to the
   `Microsoft.Playwright` version in `Directory.Packages.props`, so the driver and `Odyssey.E2ETests`
-  want the **same** chromium build (currently `chromium-1234`). Keep the two in lockstep when either
+  want the **same** chromium build (currently `chromium-1243`). Keep the two in lockstep when either
   is bumped: a driver pinned to a build nothing else installs means a second ~650 MB download, or an
   outright launch failure where the browsers are baked in read-only.
 - **.NET 10 SDK** — only needed to *reset* the DB (see below), not to run the stack.
@@ -169,8 +169,8 @@ skips on the next launch. `/reset-environment` is the way to get a clean dataset
 ## Gotchas
 
 - **No `chromium-cli` here** — the driver uses the Node `playwright` package against the cached
-  chromium. The cache dir name is Playwright's build number (`chromium-1234`), *not* a chromium
-  version; `playwright@1.62.0` is the version that maps to it. Bumping playwright without a matching
+  chromium. The cache dir name is Playwright's build number (`chromium-1243`), *not* a chromium
+  version; `playwright@1.63.0` is the version that maps to it. Bumping playwright without a matching
   cached build means a download (which may fail offline).
 - **`PLAYWRIGHT_BROWSERS_PATH` may redirect the lookup.** A Claude Code session exports it as
   `/opt/pw-browsers`, so the driver looks there and **not** in `~/.cache/ms-playwright` — which is
@@ -203,7 +203,7 @@ skips on the next launch. `/reset-environment` is the way to get a clean dataset
   build that isn't present **in the directory it is looking in** — check `PLAYWRIGHT_BROWSERS_PATH`
   before concluding the browser is missing, since it may be resolving `/opt/pw-browsers` rather than
   `~/.cache/ms-playwright`. Fix by running `npx playwright install chromium`, or by realigning the
-  pin with `Microsoft.Playwright` in `Directory.Packages.props` (both are `1.62.0`).
+  pin with `Microsoft.Playwright` in `Directory.Packages.props` (both are `1.63.0`).
 - Driver reports a blank page or `An unhandled error has occurred`, while `node driver.mjs health`
   passes: an Aspire stack built `-c Release`. See the Aspire section above — rebuild it Debug.
 - Build fails on `docker compose up --build`: confirm the .NET 10 base images pull and there's disk
