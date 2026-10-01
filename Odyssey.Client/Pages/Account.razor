@@ -19,10 +19,10 @@
     Each section is its own component (issue #373) and owns its own form state and
     API calls; this page owns the identity the header renders, the search filter and
     the page-state persistence. Backend reality: identity comes from
-    `GET manage/info` + the cookie claims; Password is wired to Identity's
-    change-password endpoint and two-factor to its built-in `POST /manage/2fa`.
-    Email change/resend still has no backend (coming later), so that section
-    behaves as a guided preview without hitting the API.
+    `GET manage/info` + the cookie claims; Password and Email are wired to the
+    first-party `POST api/account/password` and `POST api/account/email` (issue #246
+    closed Identity's `POST manage/info`), and two-factor to its built-in
+    `POST /manage/2fa`. The confirmation resend is still a preview.
 *@
 
 <MudStack Spacing="6">

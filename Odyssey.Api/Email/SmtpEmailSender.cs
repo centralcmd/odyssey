@@ -44,7 +44,7 @@ public sealed class SmtpEmailSender(
     IEmailRecipientHashKey recipientHashKey,
     IHostEnvironment environment,
     ILogger<SmtpEmailSender> logger)
-    : IEmailSender<ApplicationUser>, IPasswordResetLinkSender
+    : IEmailSender<ApplicationUser>, IPasswordResetLinkSender, IEmailChangeMailer
 {
     public async Task SendConfirmationLinkAsync(ApplicationUser user, string email, string confirmationLink)
     {
@@ -110,6 +110,38 @@ public sealed class SmtpEmailSender(
         var message = PasswordResetMail.Compose(base64UrlCode, settings.Transport.ClientBaseUrl);
         return await DeliverAsync(
             email, PasswordResetMail.Subject, message.Body, message.Link, cancellationToken, settings);
+    }
+
+    /// <summary>
+    /// The email-change confirmation (issue #246). Unlike <see cref="SendConfirmationLinkAsync"/> it does
+    /// <b>not</b> consult <c>EmailRequireConfirmation</c>: that setting decides whether a new account may
+    /// sign in unconfirmed, and has no bearing on whether a sign-in identity may move without proof of the
+    /// destination mailbox — which it never may.
+    /// </summary>
+    public async Task SendChangeConfirmationAsync(
+        string newEmail, string confirmationLink, CancellationToken cancellationToken = default)
+    {
+        var settings = await ReadSettingsAsync(cancellationToken);
+        var link = RewriteToClient(confirmationLink, EmailChangeMail.ClientPath, settings.Transport);
+        await SendAsync(
+            newEmail, EmailChangeMail.ConfirmationSubject, EmailChangeMail.ConfirmationBody(link), link, settings);
+    }
+
+    /// <summary>
+    /// The notice to the current address (issue #246). Acquires no send permit — see
+    /// <see cref="IEmailChangeMailer.SendChangeNoticeAsync"/> — and carries no action link.
+    /// </summary>
+    public async Task SendChangeNoticeAsync(
+        string currentEmail, string newEmail, CancellationToken cancellationToken = default)
+    {
+        var settings = await ReadSettingsAsync(cancellationToken);
+        await DeliverAsync(
+            currentEmail,
+            EmailChangeMail.NoticeSubject,
+            EmailChangeMail.NoticeBody(newEmail),
+            actionLink: null,
+            cancellationToken,
+            settings);
     }
 
     /// <summary>

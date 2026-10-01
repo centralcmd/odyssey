@@ -1,5 +1,12 @@
-@* /account · "Email address". The backend email-change flow needs a confirmation mail it can't yet
-   send, so this section renders the design and previews the success state without calling the API. *@
+@inject AuthApiClient AuthApiClient
+@inject ISnackbar Snackbar
+@using Odyssey.Client.Components
+@* /account · "Email address", on Odyssey's first-party POST api/account/email (issue #246).
+
+   That endpoint verifies the current password (counting failures toward lockout), signs out other
+   sessions, mails a confirmation link to the new address and a notice to the current one. Identity's
+   POST manage/info, which did the same with no password at all, is closed. The resend card below is
+   still a design preview and calls nothing. *@
 
 <MudCard Elevation="1" Class="ods-outline">
     <MudCardContent Class="pa-4">
@@ -31,6 +38,11 @@
             </div>
         }
 
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <OdsAlert Severity="Severity.Error" Class="acc-block-alert">@_error</OdsAlert>
+        }
+
         <div class="acc-form">
             <MudTextField @bind-Value="_newEmail"
                           Label="New email address"
@@ -39,19 +51,21 @@
                           InputType="InputType.Email"
                           Immediate="true"
                           Error="@FieldError"
-                          ErrorText="@ErrorText" />
+                          ErrorText="@ErrorText"
+                          autocomplete="email" />
             <MudTextField @bind-Value="_password"
                           Label="Current password"
                           Placeholder="••••••••"
                           HelperText="Confirm it's you before we change your email."
                           Variant="Variant.Outlined"
                           InputType="InputType.Password"
-                          Immediate="true" />
+                          Immediate="true"
+                          autocomplete="current-password" />
             <div class="acc-form-actions">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.Send"
-                           Disabled="@(!CanUpdate)"
-                           OnClick="UpdateEmail">Update email</MudButton>
+                           Disabled="@(!CanUpdate || _saving)"
+                           OnClick="UpdateEmailAsync">Update email</MudButton>
             </div>
         </div>
     </MudCardContent>
@@ -92,6 +106,8 @@
     private string _password = string.Empty;
     private bool _sent;
     private bool _resent;
+    private bool _saving;
+    private string? _error;
 
     private bool LooksValid => System.Text.RegularExpressions.Regex.IsMatch(_newEmail, "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private bool IsSame => string.Equals(_newEmail.Trim(), Email, StringComparison.OrdinalIgnoreCase);
@@ -102,13 +118,28 @@
         : null;
     private bool CanUpdate => LooksValid && !IsSame && _password.Length > 0;
 
-    // Email change requires a confirmation email the backend can't yet send,
-    // so this previews the success state without calling the API.
-    private void UpdateEmail()
+    private async Task UpdateEmailAsync()
     {
-        _sent = true;
-        _newEmail = string.Empty;
+        _saving = true;
+        _sent = false;
+        _error = null;
+
+        var result = await AuthApiClient.ChangeEmailAsync(_newEmail.Trim(), _password);
+        _saving = false;
+
+        if (result.IsSuccess)
+        {
+            _sent = true;
+            _newEmail = string.Empty;
+            _password = string.Empty;
+            return;
+        }
+
+        // The endpoint answers RFC 7807 and tells a wrong password from a lockout or a rejected address,
+        // so its own wording is shown. The password is cleared either way; the address is kept to retry.
         _password = string.Empty;
+        _error = result.Error ?? "Please check your current password and try again.";
+        Snackbar.Add("Unable to change your email address.", Severity.Error);
     }
 
     private void ResendConfirmation() => _resent = true;

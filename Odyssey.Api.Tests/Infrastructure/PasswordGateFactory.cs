@@ -34,6 +34,7 @@ public sealed class PasswordGateFactory : WebApplicationFactory<Program>
     private readonly string databaseName = $"password-gate-{Guid.NewGuid()}";
     private readonly IReadOnlyDictionary<string, string?>? configuration;
     private readonly TimeSpan? securityStampValidationInterval;
+    private readonly Action<IServiceCollection>? configureServices;
 
     /// <param name="configuration">Extra configuration entries, layered over this fixture's defaults.</param>
     /// <param name="securityStampValidationInterval">
@@ -43,12 +44,15 @@ public sealed class PasswordGateFactory : WebApplicationFactory<Program>
     /// interval. It changes *when* revalidation happens, never its outcome — the production interval is a
     /// deliberate latency trade-off, not part of the property under test (issue #442).
     /// </param>
+    /// <param name="configureServices">Test-service overrides applied last, e.g. a recording mailer.</param>
     public PasswordGateFactory(
         IReadOnlyDictionary<string, string?>? configuration = null,
-        TimeSpan? securityStampValidationInterval = null)
+        TimeSpan? securityStampValidationInterval = null,
+        Action<IServiceCollection>? configureServices = null)
     {
         this.configuration = configuration;
         this.securityStampValidationInterval = securityStampValidationInterval;
+        this.configureServices = configureServices;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -101,6 +105,8 @@ public sealed class PasswordGateFactory : WebApplicationFactory<Program>
                 services.Configure<SecurityStampValidatorOptions>(
                     options => options.ValidationInterval = interval);
             }
+
+            configureServices?.Invoke(services);
         });
     }
 
