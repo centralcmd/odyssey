@@ -1476,6 +1476,9 @@
 
 /* ---------- SortSelect (filter-bar "Sort by" — field select + direction toggle) ---------- */
 .odc-sortsel { display: inline-flex; align-items: center; gap: 8px; }
+/* The direction toggle drops under the field rather than past the edge when the two do not fit
+   side by side (a filter bar on a phone). */
+.odc-sortsel.split { flex-wrap: wrap; max-width: 100%; }
 .odc-sortsel-field { position: relative; }
 .odc-sortsel-trigger, .odc-sortsel-dir {
   display: inline-flex; align-items: center; gap: 8px;
@@ -1650,6 +1653,9 @@
    never a menu row. */
 
 /* ---------- Record table (sortable · expandable · editable) ---------- */
+/* The record table's scroll frame: on a phone a table's columns need more than the page is wide,
+   and without a frame of its own that width becomes the page's (Transactions: 1071 px at 420). */
+.odc-rec-scroll { overflow-x: auto; }
 .odc-rec {
     width: 100%; border-collapse: separate; border-spacing: 0;
     font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary);
@@ -4221,6 +4227,15 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-record-glyph { font-size: var(--fs-body1); line-height: 1; font-weight: 600; opacity: 0.65; }
 .odc-record-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .odc-record-figure { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; white-space: nowrap; text-align: right; }
+/* On a phone the figure column (a nowrap amount + caption) left the identity column a few pixels,
+   so the name ellipsised to one letter and its status chips — which never shrink — ran on under the
+   amount (a tax statement's "Flagged" over "26,722 USD"). There the figure drops to a second row under
+   the identity instead; wider screens keep the three-column row. The design system has no narrow
+   layout for the record card yet, so this is the implementation's until it does. */
+@media (max-width: 600px) {
+    .odc-record-trigger { grid-template-columns: auto minmax(0, 1fr); row-gap: var(--space-2); }
+    .odc-record-figure { grid-column: 2; align-items: flex-start; text-align: left; }
+}
 .odc-record-value { font: var(--fw-medium) var(--fs-figure)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
 .odc-record-value.income  { color: var(--finance-income); }
 .odc-record-value.expense { color: var(--finance-expense); }

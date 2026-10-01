@@ -78,6 +78,10 @@
     align-items: center;
     flex-shrink: 0;
     flex-wrap: wrap;
+    /* flex-wrap alone never fires: a non-shrinking flex item sizes to its max-content, so the cluster
+       stayed one line and pushed the page sideways on a phone (Tax statements: 563 px at 420). Capping
+       it at the row's width is what lets the buttons wrap onto a second line instead. */
+    max-width: 100%;
 }
 
 /* Overflow (⋯) trigger. The Journal VJOURNAL menu (#339) is its first real consumer, so give the

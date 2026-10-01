@@ -287,8 +287,8 @@ public class OdsChartHoverTests
         cut.Find(".odc-lc-plot").KeyDown("ArrowLeft");
         Assert.Equal("Feb: 100, no change", cut.Find(".odc-lc-plot [aria-live=polite]").TextContent);
 
-        Assert.Contains("Change", cut.FindAll("table.odc-sr-only thead th").Select(th => th.TextContent));
-        var changes = cut.FindAll("table.odc-sr-only tbody tr").Select(r => r.QuerySelectorAll("td")[1].TextContent);
+        Assert.Contains("Change", cut.FindAll(".odc-sr-only table thead th").Select(th => th.TextContent));
+        var changes = cut.FindAll(".odc-sr-only table tbody tr").Select(r => r.QuerySelectorAll("td")[1].TextContent);
         Assert.Equal(["—", "No change", "+50"], changes);
     }
 
@@ -319,7 +319,7 @@ public class OdsChartHoverTests
         cut.Find(".odc-lc-plot").KeyDown("Escape");
         Assert.Empty(cut.FindAll(".odc-lc-tip"));
 
-        var changes = cut.FindAll("table.odc-sr-only tbody tr").Select(r => r.QuerySelectorAll("td")[1].TextContent);
+        var changes = cut.FindAll(".odc-sr-only table tbody tr").Select(r => r.QuerySelectorAll("td")[1].TextContent);
         Assert.Equal(["—", "+100", "+100"], changes);
     }
 }

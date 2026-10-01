@@ -305,7 +305,7 @@ public class DashboardPropertyFiguresTests
     }
 
     private static List<string> TableStates(IRenderedComponent<OdsLineChart> chart) =>
-        chart.FindAll("table.odc-sr-only tbody td:last-child").Select(e => e.TextContent.Trim()).ToList();
+        chart.FindAll(".odc-sr-only table tbody td:last-child").Select(e => e.TextContent.Trim()).ToList();
 
     private static readonly OdsLinePoint[] MarkedSeries =
     [

@@ -116,7 +116,7 @@ public class OdsStepChartTests
         Assert.Equal("+10%", legend[0].QuerySelector(".odc-sc-leg-idx")!.TextContent.Trim());
         Assert.Equal("+20%", legend[1].QuerySelector(".odc-sc-leg-idx")!.TextContent.Trim());
         // The text equivalent names the series once there is more than one.
-        Assert.Contains("Series", cut.Find("table.odc-sr-only thead").TextContent);
+        Assert.Contains("Series", cut.Find(".odc-sr-only table thead").TextContent);
     }
 
     [Fact]

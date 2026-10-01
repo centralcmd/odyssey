@@ -197,7 +197,7 @@ public class OdsLineChartTests
             new OdsLinePoint("c", 300m, OdsLinePointKind.Revalued),
         ], p => p.Add(c => c.TextEquivalent, true));
 
-        var states = cut.FindAll("table.odc-sr-only tbody td:last-child")
+        var states = cut.FindAll(".odc-sr-only table tbody td:last-child")
             .Select(e => e.TextContent.Trim())
             .ToList();
 
@@ -221,7 +221,7 @@ public class OdsLineChartTests
             new OdsLinePoint("b", 200m, OdsLinePointKind.Revalued),
         ], p => p.Add(c => c.TextEquivalent, true));
 
-        var states = cut.FindAll("table.odc-sr-only tbody td:last-child").Select(e => e.TextContent.Trim()).ToList();
+        var states = cut.FindAll(".odc-sr-only table tbody td:last-child").Select(e => e.TextContent.Trim()).ToList();
 
         Assert.Equal(
             ["Understated — an account had no exchange rate for this period",
@@ -341,6 +341,35 @@ public class OdsLineChartTests
         Assert.Equal(0, (17 - 1) % OdsLineChart.TickEvery(17) == 1 ? 1 : 0);
     }
 
+    [Theory]
+    [InlineData(44, 200)]
+    [InlineData(44, 320)]
+    [InlineData(17, 150)]
+    [InlineData(120, 900)]
+    [InlineData(9, 90)]
+    public void The_auto_stride_keeps_drawn_labels_a_label_width_apart_at_the_measured_width(int n, double plotWidth)
+    {
+        // "Apr '16" in 10 px monospace: seven characters. Eight of them did not fit a phone-width plot.
+        var labelWidth = 7 * OdsLineChart.AxisCharWidth;
+        var every = OdsLineChart.TickEvery(n, plotWidth, labelWidth);
+        var step = plotWidth / (n - 1);
+
+        var drawn = Enumerable.Range(0, n).Where(i => i % every == 0 || i == n - 1).ToList();
+        if (drawn.Count == 2) return; // only the first and the tail are left; nothing narrower exists
+
+        foreach (var (a, b) in drawn.Zip(drawn.Skip(1)))
+            Assert.True((b - a) * step >= labelWidth + OdsLineChart.XLabelGap,
+                $"n={n}, width={plotWidth}, stride={every}: labels {a} and {b} are {(b - a) * step:0.#} px apart.");
+    }
+
+    [Fact]
+    public void The_auto_stride_is_unchanged_when_the_plot_has_room()
+    {
+        // A desktop-width plot leaves the count rule in charge, so wide screens keep their density.
+        for (var n = 2; n <= 60; n++)
+            Assert.Equal(OdsLineChart.TickEvery(n), OdsLineChart.TickEvery(n, 5000, 7 * OdsLineChart.AxisCharWidth));
+    }
+
     // ── NG8 / AC34 — the additions are off by default ───────────────────────────────────────────
 
     [Fact]
@@ -350,7 +379,7 @@ public class OdsLineChartTests
 
         var cut = Render(ctx, [new OdsLinePoint("a", 100m), new OdsLinePoint("b", 300m)]);
 
-        Assert.Empty(cut.FindAll("table.odc-sr-only"));
+        Assert.Empty(cut.FindAll(".odc-sr-only table"));
         Assert.Empty(cut.FindAll(".odc-lc-marks"));
 
         // An all-Normal series keeps the single polyline rather than per-segment strokes, so the

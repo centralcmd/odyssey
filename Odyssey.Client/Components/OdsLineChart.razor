@@ -230,32 +230,38 @@
 
         @if (TextEquivalent)
         {
-            <table class="odc-sr-only">
-                @if (!string.IsNullOrEmpty(Title))
-                {
-                    <caption>@Title</caption>
-                }
-                <thead>
-                    <tr>
-                        <th scope="col">@TextEquivalentLabel</th>
-                        <th scope="col">Value</th>
-                        <th scope="col">Change</th>
-                        <th scope="col">State</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @for (var i = 0; i < _pts.Count; i++)
+            @* The wrapper, not the table, carries the visually-hidden rule: a <table> ignores width, so
+               a hidden table still lays out at its content width, and with nothing positioned above it
+               that width is added to the page's scrollable area — 857 px on a 420 px phone. The wrapper
+               is a 1 px overflow-hidden box, which is what clips it. *@
+            <div class="odc-sr-only">
+                <table>
+                    @if (!string.IsNullOrEmpty(Title))
                     {
-                        var p = _pts[i];
-                        <tr>
-                            <th scope="row">@p.Label</th>
-                            <td>@Format((decimal)p.Value)</td>
-                            <td>@ChangeText(i)</td>
-                            <td>@KindDescription(p.Kind)</td>
-                        </tr>
+                        <caption>@Title</caption>
                     }
-                </tbody>
-            </table>
+                    <thead>
+                        <tr>
+                            <th scope="col">@TextEquivalentLabel</th>
+                            <th scope="col">Value</th>
+                            <th scope="col">Change</th>
+                            <th scope="col">State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < _pts.Count; i++)
+                        {
+                            var p = _pts[i];
+                            <tr>
+                                <th scope="row">@p.Label</th>
+                                <td>@Format((decimal)p.Value)</td>
+                                <td>@ChangeText(i)</td>
+                                <td>@KindDescription(p.Kind)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         }
     }
 </div>
