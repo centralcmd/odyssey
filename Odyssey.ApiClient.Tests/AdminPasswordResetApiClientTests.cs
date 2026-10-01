@@ -132,6 +132,36 @@ public class AdminPasswordResetApiClientTests
     }
 
     [Fact]
+    public async Task ChangingAnEmail_PostsToTheFirstPartyEndpoint_NotManageInfo()
+    {
+        // Issue #246: POST manage/info is closed — it moved the sign-in email with no password.
+        var (provider, handler) = Build(HttpStatusCode.Accepted, body: null);
+        var auth = provider.GetRequiredService<AuthApiClient>();
+
+        var result = await auth.ChangeEmailAsync("moved@example.com", "Current123!Passphrase");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("/api/account/email", handler.LastPath);
+        Assert.Equal("moved@example.com", ReadProperty(handler.LastBody, "newEmail"));
+        Assert.Equal("Current123!Passphrase", ReadProperty(handler.LastBody, "currentPassword"));
+    }
+
+    [Fact]
+    public async Task AFailedEmailChange_ExposesTheProblemDetail()
+    {
+        var (provider, _) = Build(
+            HttpStatusCode.Locked,
+            """{"status":423,"detail":"This account is temporarily locked after too many failed attempts."}""");
+        var auth = provider.GetRequiredService<AuthApiClient>();
+
+        var result = await auth.ChangeEmailAsync("moved@example.com", "Wrong123!Passphrase");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(HttpStatusCode.Locked, result.Status);
+        Assert.Contains("temporarily locked", result.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ATransportFailure_IsAFailureRatherThanAnException()
     {
         var (provider, _) = Build(HttpStatusCode.NoContent, body: null, throws: true);

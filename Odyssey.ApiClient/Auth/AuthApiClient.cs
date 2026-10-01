@@ -368,6 +368,37 @@ public sealed class AuthApiClient(HttpClient httpClient, AntiforgeryTokenStore a
         }
     }
 
+    /// <summary>
+    /// Requests a change of the signed-in user's email address via Odyssey's first-party
+    /// <c>POST api/account/email</c> (issue #246). Success means a confirmation link was mailed to the new
+    /// address; the sign-in email changes only once it is opened.
+    /// </summary>
+    /// <remarks>
+    /// Identity's <c>POST manage/info</c> is closed (<c>405</c>): it moved the sign-in email with no
+    /// password and no notice to the old address. The first-party endpoint requires the current password,
+    /// counts failures toward lockout (<c>423</c>) and answers RFC 7807, so <see cref="ApiProblem.Message"/>
+    /// carries the server's wording for a wrong password versus a rejected address.
+    /// </remarks>
+    public async Task<ApiResult> ChangeEmailAsync(string newEmail, string currentPassword)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/account/email")
+            {
+                Content = JsonContent.Create(new { newEmail, currentPassword }),
+            };
+
+            using var response = await httpClient.SendAsync(request);
+            return response.IsSuccessStatusCode
+                ? ApiResult.Success(response.StatusCode)
+                : ApiResult.Failure(response.StatusCode, await response.ReadProblemAsync());
+        }
+        catch (Exception ex)
+        {
+            return ApiResult.Failure(ex);
+        }
+    }
+
     // ── Two-factor authentication ─────────────────────────────────────────────
     // All of these wrap the single built-in Identity endpoint POST /manage/2fa
     // (from MapIdentityApi). The request flags select the operation; the response

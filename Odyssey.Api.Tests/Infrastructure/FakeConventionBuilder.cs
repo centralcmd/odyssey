@@ -58,4 +58,18 @@ public sealed class FakeConventionBuilder : IEndpointConventionBuilder
     /// </summary>
     public IReadOnlyList<Endpoint> ApplyAndBuild(params string[] routes) =>
         Apply(routes).Select(endpoint => endpoint.Build()).ToList();
+
+    /// <summary>
+    /// Runs the conventions over caller-built endpoints, for a convention that matches on metadata the
+    /// real data source adds before conventions run (the HTTP method) and <see cref="Apply"/> cannot.
+    /// Same per-endpoint order as <see cref="Apply"/>.
+    /// </summary>
+    public void ApplyTo(params RouteEndpointBuilder[] endpoints)
+    {
+        foreach (var endpoint in endpoints)
+        {
+            conventions.ForEach(convention => convention(endpoint));
+            finallyConventions.ForEach(convention => convention(endpoint));
+        }
+    }
 }

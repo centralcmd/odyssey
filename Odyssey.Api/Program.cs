@@ -198,6 +198,10 @@ builder.Services.AddTransient<IEmailSender<ApplicationUser>, SmtpEmailSender>();
 // one. Deliberately not a second implementation: AdminPasswordResetApiTests asserts the reuse.
 builder.Services.AddTransient<IPasswordResetLinkSender, SmtpEmailSender>();
 
+// ...and once more for the first-party email change (issue #246): the confirmation to the new address
+// and the notice to the old one, through the same composition and the same fail-closed transport rules.
+builder.Services.AddTransient<IEmailChangeMailer, SmtpEmailSender>();
+
 // The Production ValidateOnStart gate on Email:SmtpHost is GONE (issue #8 §11.3), and its removal is
 // forced rather than incidental: a value entered through the settings UI cannot be a precondition for
 // that UI coming up. The failure moves from startup to the first send, which logs and skips — the
@@ -679,6 +683,12 @@ identityApi.RequireMailEndpointRateLimiting();
 identityApi.LogPasswordResetCompletion(
     app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(PasswordResetLogging)));
 
+// POST /manage/info is closed (issue #246): it changed the sign-in email with no password check and no
+// notice to the old address, and its password change skipped lockout accounting. GET /manage/info stays —
+// the client resolves its session through it. Both writes have first-party replacements under
+// /api/account. Whether the block landed is checked, fail-fast, at the bottom of this file.
+identityApi.BlockManageInfoWrites();
+
 // Swagger is on by default in Development, and elsewhere only when Swagger:Enabled says so — but
 // NEVER in Production (issue #451 §1.3). The config half used to be the whole story, and it defaults
 // to true in the container stack, so any deployment that did not explicitly pass the variable served
@@ -827,5 +837,8 @@ CookieOnlyIdentityEndpoints.ValidateCookieOnlyIdentity(
 // [PasswordChangeExempt], or a renamed route on one of the five endpoints that let a gated user out of
 // the state, is not a hole — it is a user who can never change their password or sign out.
 PasswordChangeExemptRoutes.ValidateExemptEndpoints(builtEndpoints);
+
+// Fail fast too: an unblocked POST /manage/info is a hole, not a degradation (issue #246).
+ManageInfoWriteBlock.ValidateBlocked(builtEndpoints);
 
 app.Run();

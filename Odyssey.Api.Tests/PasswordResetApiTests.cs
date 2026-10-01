@@ -373,7 +373,8 @@ public class PasswordResetApiTests
 
         var login = await client.PostAsJsonAsync("/login?useCookies=true", new { email = Registered, password = Password });
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-        var manage = await client.PostAsJsonAsync("/manage/info", new { });
+        // GET, since issue #246 closed the POST (it answers 405 before any handler runs).
+        var manage = await client.GetAsync("/manage/info");
         Assert.Equal(HttpStatusCode.OK, manage.StatusCode);
         var register = await client.PostAsJsonAsync(
             "/register", new { email = "fresh@example.com", password = Password });

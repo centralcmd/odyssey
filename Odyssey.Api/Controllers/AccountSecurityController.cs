@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.WebUtilities;
+using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
 using Odyssey.Context;
 using Odyssey.Dtos.Application;
@@ -23,8 +27,12 @@ namespace Odyssey.Api.Controllers;
 /// pending email change is confirmed from the <em>new</em> address, an attacker holding the compromised
 /// old password could move the account's sign-in identity to a mailbox they control while still blocked
 /// from the app. No cheap middleware body-inspection reliably distinguishes the two operations, so the
-/// password change gets an endpoint that can do nothing else. <c>/manage/info</c> stays mapped, unchanged
-/// and <b>not</b> exempt.
+/// password change gets an endpoint that can do nothing else.
+/// </para>
+/// <para>
+/// Issue #246 then closed <c>POST /manage/info</c> outright (<see cref="ManageInfoWriteBlock"/>): its email
+/// change needed no password and told nobody, and its password change skipped lockout accounting. The
+/// email change moved here as <see cref="ChangeEmail"/>. <c>GET /manage/info</c> is still served.
 /// </para>
 /// </remarks>
 [ApiController]
@@ -34,13 +42,19 @@ public sealed class AccountSecurityController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> userManager;
     private readonly SignInManager<ApplicationUser> signInManager;
+    private readonly IEmailChangeMailer emailChangeMailer;
+    private readonly ILogger<AccountSecurityController> logger;
 
     public AccountSecurityController(
         UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager)
+        SignInManager<ApplicationUser> signInManager,
+        IEmailChangeMailer emailChangeMailer,
+        ILogger<AccountSecurityController> logger)
     {
         this.userManager = userManager;
         this.signInManager = signInManager;
+        this.emailChangeMailer = emailChangeMailer;
+        this.logger = logger;
     }
 
     /// <summary>
@@ -118,6 +132,108 @@ public sealed class AccountSecurityController : ControllerBase
     }
 
     /// <summary>
+    /// Request a change of the caller's sign-in email (issue #246). Nothing changes until the link mailed
+    /// to the new address is opened; the existing <c>/confirmEmail</c> endpoint applies it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The replacement for <c>POST /manage/info</c>'s <c>newEmail</c>, and stricter in four ways:
+    /// <list type="bullet">
+    /// <item><b>The current password is required</b>, so a hijacked or unattended session cannot move the
+    /// account's identity — and with it the password-reset channel — to a mailbox the attacker controls.</item>
+    /// <item><b>Failures are counted</b> (<c>AccessFailedAsync</c>, <c>423</c> on lockout), exactly as
+    /// <see cref="ChangePassword"/> does, and the two share one rate-limit budget, so this cannot be used
+    /// to double the guesses that endpoint allows.</item>
+    /// <item><b>The security stamp rotates before the token is issued.</b> That signs out every other
+    /// session and voids any earlier change or reset token, so only the newest request can be confirmed.
+    /// The caller's own cookie is refreshed against the new stamp.</item>
+    /// <item><b>The current address is told</b>, so an owner whose session was misused finds out while the
+    /// change is still pending — and changing the password then cancels it, by rotating the stamp again.</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// The status is <c>202</c> whether or not the new address is already another account's. That case
+    /// mails nothing to the new address — the change could never be confirmed, and Identity's
+    /// <c>/confirmEmail</c> would apply the email and then fail on the user name, leaving the two apart —
+    /// and a distinct status would make this an existence oracle for any address. The notice still goes
+    /// out. The uniformity is of the <em>status</em> only: the skipped send makes that path measurably
+    /// faster. That residual is accepted rather than engineered away, because every probe costs the
+    /// account's own password, counts toward its lockout and spends the shared per-actor rate limit —
+    /// and <c>/register</c> already answers the same question more cheaply.
+    /// </para>
+    /// <para>
+    /// Deliberately <b>not</b> <see cref="PasswordChangeExemptAttribute"/>: a session gated on a forced
+    /// password change is one whose password may be compromised, which is exactly when moving the sign-in
+    /// email must be impossible.
+    /// </para>
+    /// </remarks>
+    [HttpPost("email")]
+    [EnableRateLimiting(AdminActionRateLimiting.PasswordChangePolicy)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status423Locked, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Request a change of the signed-in user's email address.")]
+    public async Task<IActionResult> ChangeEmail([FromBody] ChangeEmailRequest request)
+    {
+        var user = await userManager.GetUserAsync(User);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        var newEmail = request.NewEmail.Trim();
+
+        // Two caller-supplied values against the caller's own address, so it discloses nothing and comes
+        // before the verification, like ChangePassword's no-op rule.
+        if (string.Equals(newEmail, user.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            return this.BadRequestProblem("This is already your email address.");
+        }
+
+        if (await userManager.IsLockedOutAsync(user))
+        {
+            return LockedOut();
+        }
+
+        if (!await userManager.CheckPasswordAsync(user, request.CurrentPassword))
+        {
+            await userManager.AccessFailedAsync(user);
+            return await userManager.IsLockedOutAsync(user)
+                ? LockedOut()
+                : this.BadRequestProblem("The current password is incorrect.");
+        }
+
+        await userManager.ResetAccessFailedCountAsync(user);
+
+        // Before the token: change-email tokens are bound to the stamp, so this is what voids any earlier
+        // pending change. RefreshSignInAsync re-issues this session's cookie against the new stamp.
+        await userManager.UpdateSecurityStampAsync(user);
+        await signInManager.RefreshSignInAsync(user);
+
+        var currentEmail = user.Email;
+        if (await IsTakenAsync(newEmail, user.Id))
+        {
+            logger.LogInformation(
+                "Email change for user {UserId} requested to an address already in use; no link sent.", user.Id);
+        }
+        else
+        {
+            var token = await userManager.GenerateChangeEmailTokenAsync(user, newEmail);
+            await emailChangeMailer.SendChangeConfirmationAsync(
+                newEmail, ConfirmationLink(user.Id, token, newEmail));
+            logger.LogInformation("Email change requested for user {UserId}.", user.Id);
+        }
+
+        if (!string.IsNullOrEmpty(currentEmail))
+        {
+            await emailChangeMailer.SendChangeNoticeAsync(currentEmail, newEmail);
+        }
+
+        return Accepted();
+    }
+
+    /// <summary>
     /// Ends the caller's session by clearing the Identity application cookie server-side.
     /// </summary>
     /// <remarks>
@@ -144,6 +260,34 @@ public sealed class AccountSecurityController : ControllerBase
     {
         await signInManager.SignOutAsync();
         return NoContent();
+    }
+
+    private async Task<bool> IsTakenAsync(string email, string userId)
+    {
+        // Both lookups: the user name IS the email in this app, and /confirmEmail sets both, so a clash on
+        // either one makes the change unconfirmable.
+        var byEmail = await userManager.FindByEmailAsync(email);
+        var byName = await userManager.FindByNameAsync(email);
+        return (byEmail is not null && byEmail.Id != userId) || (byName is not null && byName.Id != userId);
+    }
+
+    /// <summary>
+    /// The link <c>MapIdentityApi</c>'s own <c>/manage/info</c> used to build: its <c>/confirmEmail</c>
+    /// with <c>userId</c>, the Base64Url-encoded token and <c>changedEmail</c>. The mailer rewrites the
+    /// origin onto the client's <c>confirm-email</c> page and keeps this query verbatim.
+    /// </summary>
+    private string ConfirmationLink(string userId, string token, string newEmail)
+    {
+        var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        var query = QueryString.Create(new Dictionary<string, string?>
+        {
+            ["userId"] = userId,
+            ["code"] = code,
+            ["changedEmail"] = newEmail,
+        });
+
+        return UriHelper.BuildAbsolute(
+            Request.Scheme, Request.Host, Request.PathBase, "/confirmEmail", query);
     }
 
     private ObjectResult LockedOut() =>
