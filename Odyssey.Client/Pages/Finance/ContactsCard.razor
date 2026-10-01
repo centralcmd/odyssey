@@ -158,7 +158,7 @@
                            card owns the headings and both section components render bare. *@
                         <OdsSectionDivider Label="Aliases" Meta="@AliasCountLabel(c)" />
                         <ContactAliasSection Contact="c"
-                                             CanCreate="_canCreate" CanUpdate="_canUpdate" CanDelete="_canDelete"
+                                             CanUpdate="_canUpdate"
                                              OnChanged="RefreshContactAsync"
                                              OnAnnounce="Announce"
                                              AddRequest="@(_addRequest is { } ar && ar.Id == c.ContactId ? (ar.Kind, ar.Nonce) : ((string, Guid)?)null)"

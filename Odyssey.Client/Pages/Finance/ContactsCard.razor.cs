@@ -276,8 +276,9 @@ public partial class ContactsCard
         // available to anyone who can see the page.
         items.Add(new OdsMenuItem { Icon = "download", Label = "Export vCard", OnClick = EventCallback.Factory.Create(this, () => ExportRowAsync(c)) });
 
-        // Add a contact from the row menu (DS): expands the row and opens the matching contact form.
-        if (_canCreate && c.Archived is null)
+        // Add a contact method from the row menu (DS): expands the row and opens the matching form.
+        // contacts.update, not .create — the server writes every child collection under it (#287 M3).
+        if (_canUpdate && c.Archived is null)
         {
             items.Add(new OdsMenuItem { Divider = true });
             items.Add(new OdsMenuItem { Icon = "badge", Label = "New alias", OnClick = EventCallback.Factory.Create(this, () => RequestAddContact(c, "alias")) });

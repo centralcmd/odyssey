@@ -46,7 +46,7 @@ public class ContactAliasSectionTests
     };
 
     private static IRenderedComponent<SectionHost> Render(
-        ExistingContact contact, bool canCreate = true, bool canUpdate = true, bool canDelete = true)
+        ExistingContact contact, bool canUpdate = true)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -56,9 +56,7 @@ public class ContactAliasSectionTests
 
         return ctx.Render<SectionHost>(p => p
             .Add(h => h.Contact, contact)
-            .Add(h => h.CanCreate, canCreate)
-            .Add(h => h.CanUpdate, canUpdate)
-            .Add(h => h.CanDelete, canDelete));
+            .Add(h => h.CanUpdate, canUpdate));
     }
 
     /// <summary>
@@ -69,9 +67,7 @@ public class ContactAliasSectionTests
     public sealed class SectionHost : Microsoft.AspNetCore.Components.ComponentBase
     {
         [Microsoft.AspNetCore.Components.Parameter] public ExistingContact Contact { get; set; } = default!;
-        [Microsoft.AspNetCore.Components.Parameter] public bool CanCreate { get; set; }
         [Microsoft.AspNetCore.Components.Parameter] public bool CanUpdate { get; set; }
-        [Microsoft.AspNetCore.Components.Parameter] public bool CanDelete { get; set; }
 
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
         {
@@ -79,9 +75,7 @@ public class ContactAliasSectionTests
             builder.CloseComponent();
             builder.OpenComponent<ContactAliasSection>(1);
             builder.AddComponentParameter(2, nameof(ContactAliasSection.Contact), Contact);
-            builder.AddComponentParameter(3, nameof(ContactAliasSection.CanCreate), CanCreate);
-            builder.AddComponentParameter(4, nameof(ContactAliasSection.CanUpdate), CanUpdate);
-            builder.AddComponentParameter(5, nameof(ContactAliasSection.CanDelete), CanDelete);
+            builder.AddComponentParameter(3, nameof(ContactAliasSection.CanUpdate), CanUpdate);
             builder.CloseComponent();
         }
     }
@@ -134,9 +128,9 @@ public class ContactAliasSectionTests
     [InlineData(true, false, "No aliases yet — use the ⋯ menu to add one.")]
     [InlineData(false, false, "No aliases.")]
     [InlineData(true, true, "No aliases.")]
-    public void The_empty_line_reflects_whether_an_alias_could_be_added(bool canCreate, bool archived, string expected)
+    public void The_empty_line_reflects_whether_an_alias_could_be_added(bool canUpdate, bool archived, string expected)
     {
-        var cut = Render(Contact(archived), canCreate: canCreate);
+        var cut = Render(Contact(archived), canUpdate: canUpdate);
 
         Assert.Equal(expected, cut.Find(".odc-aliases-empty").TextContent.Trim());
         Assert.Empty(cut.FindAll(".cp-empty-row"));
@@ -147,7 +141,7 @@ public class ContactAliasSectionTests
     [Fact]
     public void A_read_only_principal_still_gets_a_menu_with_both_copy_items_and_neither_write_item()
     {
-        var cut = Render(Contact(aliases: [Alias("Berg")]), canCreate: false, canUpdate: false, canDelete: false);
+        var cut = Render(Contact(aliases: [Alias("Berg")]), canUpdate: false);
 
         Assert.NotNull(cut.Find(".odc-alias-menu"));
         var items = MenuLabels(cut);
@@ -163,27 +157,16 @@ public class ContactAliasSectionTests
         Assert.Equal(["Copy alias", "Copy ID"], MenuLabels(cut));
     }
 
-    // AC 40's second half. ContactDetailPanel today gates Edit AND Delete on one flag, so a
-    // contacts.update-without-contacts.delete principal is offered a Delete that 403s. This section
-    // deliberately does not inherit that.
+    // Add, Edit and Delete share contacts.update, the one claim the server writes aliases under
+    // (issue #287 M3): a principal holding it gets both write items, one without it gets neither.
     [Fact]
-    public void Update_without_delete_gets_Edit_but_not_Delete()
+    public void Update_alone_gets_both_Edit_and_Delete()
     {
-        var cut = Render(Contact(aliases: [Alias("Berg")]), canUpdate: true, canDelete: false);
+        var cut = Render(Contact(aliases: [Alias("Berg")]), canUpdate: true);
 
         var items = MenuLabels(cut);
         Assert.Contains("Edit", items);
-        Assert.DoesNotContain("Delete", items);
-    }
-
-    [Fact]
-    public void Delete_without_update_gets_Delete_but_not_Edit()
-    {
-        var cut = Render(Contact(aliases: [Alias("Berg")]), canUpdate: false, canDelete: true);
-
-        var items = MenuLabels(cut);
         Assert.Contains("Delete", items);
-        Assert.DoesNotContain("Edit", items);
     }
 
     // AC 46's structural half: every action is a real focusable control in the menu, so an alias can

@@ -37,15 +37,14 @@ public static class EnumMirror
     }
 
     // A [Flags] value is defined when every set bit belongs to some member; Enum.IsDefined alone would
-    // refuse every combination.
-    private static bool IsDefined<TTo>(TTo converted, long raw) where TTo : struct, Enum
-    {
-        if (!typeof(TTo).IsDefined(typeof(FlagsAttribute), inherit: false))
-        {
-            return Enum.IsDefined(converted);
-        }
+    // refuse every combination. Whether the type is [Flags], and its member mask, are read once per type.
+    private static bool IsDefined<TTo>(TTo converted, long raw) where TTo : struct, Enum =>
+        FlagsShape<TTo>.Mask is { } mask ? (raw & ~mask) == 0 : Enum.IsDefined(converted);
 
-        var mask = Enum.GetValues<TTo>().Aggregate(0L, (all, member) => all | System.Convert.ToInt64(member));
-        return (raw & ~mask) == 0;
+    private static class FlagsShape<TEnum> where TEnum : struct, Enum
+    {
+        public static readonly long? Mask = typeof(TEnum).IsDefined(typeof(FlagsAttribute), inherit: false)
+            ? Enum.GetValues<TEnum>().Aggregate(0L, (all, member) => all | System.Convert.ToInt64(member))
+            : null;
     }
 }

@@ -10,19 +10,12 @@ public partial class ContactAliasSection
 {
     [Parameter, EditorRequired] public ExistingContact Contact { get; set; } = default!;
 
-    /// <summary>The caller holds <c>contacts.create</c> — gates <b>Add alias</b> and the empty line's copy.</summary>
-    [Parameter] public bool CanCreate { get; set; }
-
-    /// <summary>The caller holds <c>contacts.update</c> — gates Edit.</summary>
-    [Parameter] public bool CanUpdate { get; set; }
-
     /// <summary>
-    /// The caller holds <c>contacts.delete</c> — gates Delete. Distinct from
-    /// <see cref="CanUpdate"/> on purpose: ContactDetailPanel today gates Edit <i>and</i> Delete on
-    /// one flag, so a <c>contacts.update</c>-without-<c>.delete</c> principal is offered a Delete that
-    /// 403s. Do not inherit that.
+    /// The caller holds <c>contacts.update</c> — gates Add, Edit and Delete alike, matching the server,
+    /// which writes every contact child collection under that one claim (issue #287 M3). Adding or
+    /// removing an alias edits the contact; it neither creates nor deletes one.
     /// </summary>
-    [Parameter] public bool CanDelete { get; set; }
+    [Parameter] public bool CanUpdate { get; set; }
 
     /// <summary>Raised after any alias mutation so the host can refresh the row (UpdatedAt + the list).</summary>
     [Parameter] public EventCallback<Guid> OnChanged { get; set; }
@@ -66,7 +59,7 @@ public partial class ContactAliasSection
         if (AddRequest is { } request
             && request.Kind == "alias"
             && request.Nonce != _consumedNonce
-            && CanCreate && !IsArchived)
+            && CanUpdate && !IsArchived)
         {
             _consumedNonce = request.Nonce;
             OpenDialog(null);
@@ -76,7 +69,7 @@ public partial class ContactAliasSection
 
     // The copy items are UNCONDITIONAL, mirroring ContactDetailPanel.TileMenu — which is what keeps
     // the menu from ever being empty, so the ⋯ trigger is always rendered and the tile never becomes
-    // a dead target. Edit and Delete carry distinct gates.
+    // a dead target.
     private IReadOnlyList<OdsMenuItem> TileMenu(ExistingContactAlias alias)
     {
         var items = new List<OdsMenuItem>
@@ -99,7 +92,7 @@ public partial class ContactAliasSection
             OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(alias.Id.ToString(), "ID copied to clipboard.")),
         });
 
-        if (CanDelete && !IsArchived)
+        if (CanUpdate && !IsArchived)
         {
             items.Add(new() { Divider = true });
             items.Add(new() { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, () => DeleteAsync(alias)) });
