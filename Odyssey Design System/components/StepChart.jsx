@@ -154,6 +154,17 @@ export function StepChart({
   const uid = React.useId();
   const fmtAxis = axisFormat || format;
   const [hover, setHover] = React.useState(null);   // { sid, i } of the hovered entry
+  // Axis text is sized in user units, so the viewBox tracks the plot's real
+  // pixel width (1 unit = 1px) — labels stay at --fs-micro at any width.
+  const [vbW, setVbW] = React.useState(1000);
+  const roRef = React.useRef(null);
+  const plotRef = React.useCallback((el) => {
+    if (roRef.current) { roRef.current.disconnect(); roRef.current = null; }
+    if (!el) return;
+    const measure = () => { const w = Math.round(el.getBoundingClientRect().width); if (w > 0) setVbW(w); };
+    measure();
+    if (typeof ResizeObserver !== 'undefined') { roRef.current = new ResizeObserver(measure); roRef.current.observe(el); }
+  }, []);
 
   /* `lines` says what to plot; the COUNT says how to read it. One line has a
      headline figure and a real-value axis whether it arrived as `series` or as
@@ -227,7 +238,7 @@ export function StepChart({
     );
   }
 
-  const x0 = 64, x1 = 968, yTop = 28, yBot = 212;
+  let x0 = 64; const x1 = vbW - 32, yTop = 28, yBot = 212;
   const allPts = sets.flatMap((s) => s.pts);
 
   /* A series' move from its own first entry. It is what `lines` mode PLOTS
@@ -283,6 +294,12 @@ export function StepChart({
   // at zero instead.
   const yMin = lo >= 0 ? Math.max(0, lo - pad) : lo - pad;
   const yMax = hi + pad;
+  const gridVals = [yMax, yMin + (yMax - yMin) * 2 / 3, yMin + (yMax - yMin) / 3, yMin];
+  const uidSafe = uid.replace(/[^a-zA-Z0-9_-]/g, '');
+  const axisRound = (v) => (Math.abs(yMax) < 10 ? v : Math.round(v));
+  const tickFmt = indexed ? fmtIndexed : (v) => fmtAxis(axisRound(v));
+  // Gutter fits the widest y tick at true 10px mono (~6.2px/char) + 12px gap.
+  x0 = Math.max(64, Math.ceil(Math.max(...gridVals.map((v) => String(tickFmt(v)).length)) * 6.2) + 16);
   const sy = (v) => yBot - ((v - yMin) / (yMax - yMin || 1)) * (yBot - yTop);
 
   const nowX = sx(now);
@@ -321,10 +338,6 @@ export function StepChart({
     plots.forEach((s, i) => { s.dodge = (i - (plots.length - 1) / 2) * 2.6; });
   }
 
-  const gridVals = [yMax, yMin + (yMax - yMin) * 2 / 3, yMin + (yMax - yMin) / 3, yMin];
-  const uidSafe = uid.replace(/[^a-zA-Z0-9_-]/g, '');
-  const axisRound = (v) => (Math.abs(yMax) < 10 ? v : Math.round(v));
-  const tickFmt = indexed ? fmtIndexed : (v) => fmtAxis(axisRound(v));
 
   // One label per change, dropped where two would collide, and never within
   // reach of the now label — the marker's own date is what it says.
@@ -345,8 +358,8 @@ export function StepChart({
     <div className={`odc-lc${className ? ' ' + className : ''}`}>
       {head}
 
-      <div className="odc-lc-plot" onMouseLeave={() => setHover(null)}>
-      <svg className="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
+      <div className="odc-lc-plot" ref={plotRef} onMouseLeave={() => setHover(null)}>
+      <svg className="odc-line-svg" viewBox={`0 0 ${vbW} 252`} preserveAspectRatio="xMidYMid meet"
         role="img" aria-label={autoAria}>
         <g stroke="var(--chart-grid)" strokeWidth="1">
           {gridVals.map((v, i) => <line key={i} x1={x0} y1={sy(v).toFixed(1)} x2={x1} y2={sy(v).toFixed(1)} />)}
@@ -419,7 +432,7 @@ export function StepChart({
         const s = hover && plots.find((q) => q.id === hover.sid);
         const p = s && s.pts[hover.i];
         if (!p) return null;
-        const left = sx(scMs(p.date)) / 10;
+        const left = sx(scMs(p.date)) / vbW * 100;
         const top = ((sy(plotted(s, p.value)) + (s.dodge || 0)) / 252) * 100;
         const before = hover.i > 0 ? s.pts[hover.i - 1] : null;
         const d = before ? p.value - before.value : 0;

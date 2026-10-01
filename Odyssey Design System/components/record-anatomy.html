@@ -105,12 +105,12 @@
               <td><span class="chip income"><span class="dot" style="background: currentColor;"></span>Active</span></td>
               <td>
                 <div class="ua-row-actions">
-                  <button class="ua-expand-btn" type="button" aria-label="Collapse row" aria-expanded="true"><span class="material-icons ua-chev open" style="font-size: 20px;">expand_more</span></button>
+                  <button class="ua-expand-btn" type="button" aria-label="Collapse row" aria-expanded="true" aria-controls="ua-anat-detail"><span class="material-icons ua-chev open" style="font-size: 20px;">expand_more</span></button>
                   <button class="ua-expand-btn" type="button" aria-label="Row actions"><span class="material-icons" style="font-size: 20px;">more_vert</span></button>
                 </div>
               </td>
             </tr>
-            <tr class="ua-detail-row">
+            <tr class="ua-detail-row" id="ua-anat-detail">
               <td class="ua-detail-cell" colspan="5">
                 <div class="acct-detail">
                   <div class="meta-grid">
@@ -203,7 +203,7 @@
         <dl class="rules">
           <dt>Owned</dt><dd>The primitive owns sorting (<code>SortHeader</code>), accordion expand, the view ⇄ edit swap, the overflow menu, delete, and the Saved flash. <b>Pages never re-implement these.</b></dd>
           <dt>Per-page</dt><dd>A page declares only its columns, the <code>MetaTile</code> detail grid, and the edit fields (<code>renderDetail</code> / <code>renderEdit</code>). Both panels may hold custom content but keep the panel shape above.</dd>
-          <dt>Entry points</dt><dd>View: click the row or chevron. Edit: <b>Edit</b> in the row's overflow menu (also from a collapsed row — it expands straight into edit).</dd>
+          <dt>Entry points</dt><dd>View: click the row or chevron. The chevron <code>&lt;button aria-expanded aria-controls&gt;</code> is the only disclosure control; the row click is a pointer shortcut, so the <code>&lt;tr&gt;</code> never gets <code>role="button"</code>, <code>tabindex</code> or <code>aria-expanded</code> (no nested interactives, one tab stop per control). Edit: <b>Edit</b> in the row's overflow menu (also from a collapsed row — it expands straight into edit).</dd>
         </dl>
         <p class="note"><b>Where it's used.</b> Contacts, Transaction tags, Currencies, Exchange rates and Users all render this one primitive (<code>RecordTable</code>) — see the live, clickable card next to this one. The files surface (<code>FilesTable</code> — Accounts detail, Transaction panels, Files page) is a <b>preset</b> of it: same lifecycle, with <b>Preview</b> (the document viewer) as a file-specific menu item distinct from <b>View details</b>. If a new admin page needs a sortable list with per-row view/edit, it should consume <code>RecordTable</code>, not fork the pattern.</p>
       </div>

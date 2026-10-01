@@ -142,6 +142,9 @@ function RTMenu({ items }) {
 function RTRow({ row, rk, columns, leading, expanded, editing, justSaved, onToggle, actionItems, renderDetail, editCtx, renderEdit, colSpan }) {
   const canExpand = !!(renderDetail || renderEdit);
   const clickToggle = () => { if (!editing && canExpand) onToggle(rk); };
+  // The chevron is the row's only disclosure control (the <tr> click is a
+  // pointer convenience, never role=button — no nested interactives).
+  const detailId = `rt-detail-${React.useId().replace(/:/g, '')}`;
   return (
     <React.Fragment>
       <tr className={`${expanded ? 'expanded' : ''} ${editing ? 'editing' : ''}`.trim() || undefined} onClick={clickToggle}>
@@ -158,7 +161,7 @@ function RTRow({ row, rk, columns, leading, expanded, editing, justSaved, onTogg
           <div className="ua-row-actions" onClick={(e) => e.stopPropagation()}>
             <RTMenu items={actionItems} />
             {canExpand && (
-              <button className="ua-expand-btn" aria-label={expanded ? 'Collapse row' : 'Expand row'} aria-expanded={expanded} onClick={clickToggle} disabled={editing}>
+              <button type="button" className="ua-expand-btn" aria-label={expanded ? 'Collapse row' : 'Expand row'} aria-expanded={expanded} aria-controls={expanded ? detailId : undefined} onClick={clickToggle} disabled={editing}>
                 <span className={`material-icons ua-chev ${expanded ? 'open' : ''}`} aria-hidden="true" style={{ fontSize: 22 }}>expand_more</span>
               </button>
             )}
@@ -166,7 +169,7 @@ function RTRow({ row, rk, columns, leading, expanded, editing, justSaved, onTogg
         </td>
       </tr>
       {expanded && (
-        <tr className="ua-detail-row">
+        <tr className="ua-detail-row" id={detailId}>
           <td className="ua-detail-cell" colSpan={colSpan}>
             {editing && renderEdit ? renderEdit(row, editCtx) : (renderDetail ? renderDetail(row, { expanded }) : null)}
           </td>

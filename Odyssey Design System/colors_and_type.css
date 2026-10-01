@@ -232,12 +232,6 @@
   --mud-palette-lines-default:     rgba(199, 208, 224, 0.18);
   --mud-palette-lines-inputs:      rgba(199, 208, 224, 0.28);
   --mud-palette-table-lines:       rgba(199, 208, 224, 0.10);
-  /* Resting boundary of a control whose outline is its only edge (checkbox, radio,
-     input, select / multiselect trigger) — WCAG 1.4.11 needs 3:1, which the 0.28
-     lines-inputs hairline (~2.0:1) misses; keep that for decorative dividers.
-     ink-400: 3.91:1 on surface, 4.12:1 on background. Not ink-300, which is the
-     hover colour (text-secondary). */
-  --control-border:                var(--ink-400);
 
   /* Brand colors */
   --mud-palette-primary:           var(--tide-400);
@@ -248,20 +242,11 @@
   --mud-palette-secondary:         var(--sea-400);
   --mud-palette-secondary-text:    var(--ink-950);
 
-  /* Text on each filled colour, chosen for >=4.5:1 rather than defaulted to white,
-     which is 1.7-2.8:1 on these bright fills. */
   --mud-palette-tertiary:          var(--violet-500);
-  --mud-palette-tertiary-text:     var(--ink-950); /* 4.61:1 (white 4.23:1) */
   --mud-palette-info:              var(--sea-400);
-  --mud-palette-info-text:         var(--ink-950);
   --mud-palette-success:           var(--mint-500);
-  --mud-palette-success-text:      var(--ink-950);
   --mud-palette-warning:           var(--amber-500);
-  --mud-palette-warning-text:      var(--ink-950);
   --mud-palette-error:             var(--coral-500);
-  --mud-palette-error-text:        var(--ink-950); /* 7.03:1 (white 2.78:1) */
-  /* Text on the ProblemAlert error CTA (--finance-expense fill): 6.48:1 on coral-500. */
-  --error-cta-text:                #2A0E0E;
 
   /* Action overlays (hover/focus tints) */
   --mud-palette-action-default:        rgba(255, 255, 255, 0.7);
@@ -357,7 +342,7 @@
 
   /* Lines */
   --color-border:         var(--mud-palette-divider);          /* hairline / card outline */
-  --color-border-strong:  var(--control-border);               /* input outline (>=3:1, issue #254) */
+  --color-border-strong:  var(--mud-palette-lines-inputs);     /* input outline */
 
   /* Brand / actions */
   --color-primary:        var(--mud-palette-primary);          /* fills (buttons, switch, focus) */
@@ -439,31 +424,23 @@
   --mud-palette-lines-default:     rgba(14, 21, 37, 0.14);
   --mud-palette-lines-inputs:      rgba(14, 21, 37, 0.28);
   --mud-palette-table-lines:       rgba(14, 21, 37, 0.08);
-  --control-border:                var(--ink-400); /* 4.42:1 on white, 4.27:1 on background */
 
   --mud-palette-primary:           var(--tide-600);
   --mud-palette-primary-darken:    var(--tide-700);
   --mud-palette-primary-lighten:   var(--tide-500);
-  --mud-palette-primary-text:      var(--ink-950); /* 7.84:1 on tide-600; white is 2.49:1 */
+  --mud-palette-primary-text:      #FFFFFF;
 
   --mud-palette-secondary:         var(--sea-600);
-  --mud-palette-secondary-text:    var(--ink-950); /* 4.77:1 (white 4.10:1) */
+  --mud-palette-secondary-text:    #FFFFFF;
 
   --mud-palette-tertiary:          var(--violet-500);
-  --mud-palette-tertiary-text:     var(--ink-950); /* 4.61:1 (white 4.23:1) */
   --mud-palette-info:              var(--sea-500);
-  --mud-palette-info-text:         var(--ink-950); /* 7.04:1 (white 2.77:1) */
   --mud-palette-success:           var(--mint-700);
-  --mud-palette-success-text:      #FFFFFF;        /* 5.02:1 */
   /* amber-500 is ~2.2:1 on white — fails even the 3:1 graphics minimum when a
      consumer uses the warning token for an icon or outline. amber-600 clears
      3:1; text-sized warning copy uses --pending-text (amber-700). */
   --mud-palette-warning:           var(--amber-600);
-  --mud-palette-warning-text:      var(--ink-950); /* 6.13:1 (white 3.19:1) */
   --mud-palette-error:             var(--coral-700);
-  --mud-palette-error-text:        #FFFFFF;        /* 5.86:1 */
-  /* Error CTA on coral-700: white 5.86:1; #2A0E0E would be 3.07:1. */
-  --error-cta-text:                #FFFFFF;
 
   --mud-palette-action-default:        rgba(14,21,37,0.7);
   --mud-palette-action-default-hover:  rgba(14,21,37,0.04);

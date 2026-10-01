@@ -28,11 +28,11 @@
 .odc-btn.full { width: 100%; justify-content: center; }
 .odc-btn.filled   { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
 .odc-btn.filled:hover   { background: var(--mud-palette-primary-darken); }
-.odc-btn.outlined { background: transparent; color: var(--mud-palette-text-primary); border-color: var(--control-border); }
+.odc-btn.outlined { background: transparent; color: var(--mud-palette-text-primary); border-color: var(--mud-palette-lines-inputs); }
 .odc-btn.outlined:hover { background: var(--mud-palette-action-default-hover); }
 .odc-btn.text     { background: transparent; color: var(--brand-text); padding: 9px 12px; }
 .odc-btn.text:hover     { background: var(--mud-palette-action-default-hover); }
-.odc-btn.danger   { background: var(--mud-palette-error); color: var(--mud-palette-error-text); }
+.odc-btn.danger   { background: var(--mud-palette-error); color: #fff; }
 .odc-btn.danger:hover   { background: var(--coral-700); }
 .odc-btn:disabled {
   background: var(--mud-palette-action-disabled-background);
@@ -267,7 +267,7 @@
   font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
   color: var(--mud-palette-text-primary);
   background: var(--mud-palette-surface);
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm);
   padding: var(--control-pad-y) 12px;
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
@@ -308,7 +308,7 @@
   display: flex; align-items: center; gap: 8px;
   box-sizing: border-box; height: 44px; padding: 0 12px;
   background: var(--mud-palette-surface);
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm);
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
@@ -341,7 +341,7 @@
   display: flex; align-items: stretch;
   box-sizing: border-box; height: 44px;
   background: var(--mud-palette-surface);
-  border: 1px solid var(--control-border); border-radius: var(--radius-md);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-md);
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
 .odc-money:hover { border-color: var(--mud-palette-text-secondary); }
@@ -494,7 +494,7 @@
 /* ---------- ReferenceNumberField / ReferenceNumber (a counterparty identifier) ---------- */
 .odc-refnum-field { display: flex; flex-direction: column; gap: 8px; }
 .odc-refnum-input { font-family: var(--font-mono); letter-spacing: 0.02em; }
-.odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--control-border); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
+.odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--mud-palette-lines-inputs); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
 .odc-refnum-strip:hover { background: var(--mud-palette-action-default-hover); }
 .odc-refnum-strip .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
 .odc-refnum { display: inline-flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; color: var(--mud-palette-text-primary); }
@@ -536,7 +536,7 @@
   font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
   color: var(--mud-palette-text-primary);
   background: var(--mud-palette-surface);
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm);
   padding: var(--control-pad-y) 10px var(--control-pad-y) 12px;
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
@@ -602,7 +602,7 @@
   font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
   color: var(--mud-palette-text-primary);
   background: var(--mud-palette-surface);
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm);
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
@@ -685,7 +685,7 @@
   border-radius: var(--radius-pill);
   font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
   font-variant-numeric: tabular-nums;
-  background: var(--mud-palette-error); color: var(--mud-palette-error-text);
+  background: var(--mud-palette-error); color: #fff;
 }
 .odc-badge.primary { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
 .odc-badge.neutral { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
@@ -982,13 +982,13 @@
 .odc-capacity-value { flex: 1; text-align: right; font: var(--fw-regular) var(--fs-body1)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-capacity-pill {
   flex: none; cursor: pointer; white-space: nowrap;
-  border: var(--border-thin, 1px) solid var(--control-border);
+  border: var(--border-thin, 1px) solid var(--mud-palette-divider);
   border-radius: var(--radius-pill); background: transparent; padding: 4px 11px;
   font: var(--fw-medium) var(--fs-overline)/1.2 var(--font-sans);
   color: var(--mud-palette-text-secondary);
   transition: border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
 }
-.odc-capacity-pill:hover:not(:disabled) { border-color: var(--mud-palette-text-secondary); color: var(--mud-palette-text-primary); }
+.odc-capacity-pill:hover:not(:disabled) { border-color: var(--mud-palette-lines-inputs, var(--mud-palette-divider)); color: var(--mud-palette-text-primary); }
 .odc-capacity-pill[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand-border); color: var(--brand-text); }
 .odc-capacity-pill:disabled { cursor: not-allowed; color: var(--mud-palette-text-disabled); }
 .odc-capacity-num { width: 120px; min-width: 120px; }
@@ -1031,7 +1031,7 @@
 .odc-sfield { min-width: 0; }
 .odc-sfield-frame {
   margin: 0; min-width: 0;
-  border: var(--border-thin, 1px) solid var(--control-border);
+  border: var(--border-thin, 1px) solid var(--mud-palette-lines-inputs, var(--mud-palette-divider));
   border-radius: var(--radius-md); padding: 0 12px 11px;
   background: var(--mud-palette-background);
   transition: border-color var(--duration-fast) var(--ease-standard);
@@ -1111,7 +1111,7 @@
    tile, label and helper left, control right, matching the field's border. */
 .odc-sfield-tile {
   display: flex; align-items: center; gap: 16px; justify-content: space-between;
-  border: var(--border-thin, 1px) solid var(--control-border);
+  border: var(--border-thin, 1px) solid var(--mud-palette-lines-inputs, var(--mud-palette-divider));
   border-radius: var(--radius-md); background: var(--mud-palette-background);
   padding: 12px 14px;
 }
@@ -1381,7 +1381,7 @@
 .odc-check-box {
   position: relative; flex: none; width: 18px; height: 18px;
   border-radius: var(--radius-sm);
-  border: 1.5px solid var(--control-border); background: transparent;
+  border: 1.5px solid var(--mud-palette-lines-inputs); background: transparent;
   display: grid; place-items: center;
   transition: background-color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
 }
@@ -1401,7 +1401,7 @@
 .odc-radio input { position: absolute; opacity: 0; width: 0; height: 0; }
 .odc-radio-dot {
   position: relative; flex: none; width: 18px; height: 18px; border-radius: 50%;
-  border: 1.5px solid var(--control-border);
+  border: 1.5px solid var(--mud-palette-lines-inputs);
   display: grid; place-items: center; transition: border-color var(--duration-fast) var(--ease-standard);
 }
 .odc-radio-dot::after {
@@ -1646,7 +1646,7 @@
 .odc-ms-trigger {
   display: inline-flex; align-items: center; gap: 8px;
   background: var(--mud-palette-surface);
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm); padding: 9px 12px; cursor: pointer;
   font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
   color: var(--mud-palette-text-primary); white-space: nowrap;
@@ -1698,7 +1698,7 @@
   min-height: var(--control-h);
   padding: 5px 8px 5px 10px;
   background: var(--mud-palette-surface);
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm);
   color: var(--mud-palette-text-primary);
   text-align: left; cursor: pointer;
@@ -1752,7 +1752,7 @@
   border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
   padding: var(--space-2);
 }
-.odc-tagms-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
+.odc-tagms-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
 .odc-tagms-search:focus-within { border-color: var(--focus-ring); box-shadow: inset 0 0 0 1px var(--focus-ring); }
 .odc-tagms-search .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-tagms-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
@@ -1871,7 +1871,7 @@
 }
 .odc-problem-cta .material-icons { font-size: var(--icon-sm); }
 .odc-problem.warning .odc-problem-cta { background: var(--finance-pending); color: var(--ink-900); }
-.odc-problem.error   .odc-problem-cta { background: var(--finance-expense); color: var(--error-cta-text); }
+.odc-problem.error   .odc-problem-cta { background: var(--finance-expense); color: #2A0E0E; }
 .odc-problem.info    .odc-problem-cta { background: var(--sea-400);         color: var(--ink-900); }
 .odc-problem-cta:hover { filter: brightness(1.08); }
 
@@ -1920,7 +1920,9 @@
    points. Shape + stroke, never colour, is what distinguishes them. */
 .odc-lc-marks { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
 /* Hover readout — same inverted bubble as .odc-tip, pinned above the point. */
-.odc-lc-plot { position: relative; }
+/* inline-size containment: the SVG's viewBox width must not feed back into
+   the plot's min-content size, or a shrinking grid track can't shrink it. */
+.odc-lc-plot { position: relative; contain: inline-size; }
 .odc-lc-hit { fill: transparent; cursor: crosshair; }
 .odc-lc-hring { fill: none; stroke-width: 2; pointer-events: none; }
 .odc-lc-tip { position: absolute; transform: translate(-50%, calc(-100% - 14px)); pointer-events: none; z-index: var(--z-raised);
@@ -2210,7 +2212,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-dp.full { display: flex; }
 .odc-dp-trigger {
   display: inline-flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
-  background: var(--mud-palette-surface); border: 1px solid var(--control-border);
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm); padding: 9px 12px; cursor: pointer;
   font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-mono); font-variant-numeric: tabular-nums;
   color: var(--mud-palette-text-primary);
@@ -2260,7 +2262,7 @@ tr:focus-within > .odc-rowactions.reveal,
    itself is the single input frame — matching Select / MultiSelect height. */
 .odc-dpr {
   display: inline-flex; align-items: center; gap: 8px; height: var(--control-h); box-sizing: border-box;
-  padding: 0 8px 0 12px; border: 1px solid var(--control-border);
+  padding: 0 8px 0 12px; border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm); background: var(--mud-palette-surface);
 }
 .odc-dpr:focus-within { border-color: var(--mud-palette-primary); box-shadow: inset 0 0 0 1px var(--mud-palette-primary); }
@@ -2454,7 +2456,7 @@ tr:focus-within > .odc-rowactions.reveal,
   display: inline-flex; align-items: center; gap: 4px;
   appearance: none; cursor: pointer;
   padding: 3px 10px 3px 8px;
-  border: 1px dashed var(--control-border); border-radius: var(--radius-pill);
+  border: 1px dashed var(--mud-palette-lines-inputs); border-radius: var(--radius-pill);
   background: transparent; color: var(--mud-palette-text-secondary);
   font: var(--fw-medium) var(--fs-body2)/1.2 var(--font-sans);
   transition: border-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
@@ -2470,7 +2472,7 @@ tr:focus-within > .odc-rowactions.reveal,
   background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
   border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8); padding: var(--space-2);
 }
-.odc-smarttags-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
+.odc-smarttags-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
 .odc-smarttags-search:focus-within { border-color: var(--focus-ring); box-shadow: inset 0 0 0 1px var(--focus-ring); }
 .odc-smarttags-search .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
 .odc-smarttags-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
@@ -2609,7 +2611,7 @@ tr:focus-within > .odc-rowactions.reveal,
   display: inline-flex; align-items: center; gap: 6px; height: 32px; box-sizing: border-box;
   padding: 0 6px 0 10px; cursor: pointer;
   background: var(--mud-palette-background); color: var(--mud-palette-text-primary);
-  border: 1px solid var(--control-border); border-radius: var(--radius-sm);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm);
   font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans);
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
@@ -2793,7 +2795,7 @@ tr:focus-within > .odc-rowactions.reveal,
 /* ---------- TimeField ---------- */
 .odc-timefield {
   position: relative; display: inline-flex; align-items: center; gap: 8px; box-sizing: border-box;
-  background: var(--mud-palette-surface); border: 1px solid var(--control-border);
+  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: var(--radius-sm); padding: 0 10px 0 12px; height: var(--control-h);
 }
 .odc-timefield.full { display: flex; width: 100%; }
@@ -3090,7 +3092,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-tagms-search, .odc-ms-search {
   display: flex; align-items: center; gap: 8px; box-sizing: border-box;
   min-height: var(--control-h); padding: 5px 10px; margin-bottom: var(--space-2);
-  border: 1px solid var(--control-border); border-radius: var(--radius-sm);
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: var(--radius-sm);
   background: var(--mud-palette-background);
 }
 .odc-tagms-search:focus-within, .odc-ms-search:focus-within { border-color: var(--focus-ring); box-shadow: inset 0 0 0 1px var(--focus-ring); }

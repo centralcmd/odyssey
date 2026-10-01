@@ -113,11 +113,11 @@ html, body, #root {
 .btn.filled.primary   { background: var(--mud-palette-primary); color: var(--mud-palette-primary-text); }
 .btn.filled.primary:hover { background: var(--tide-500); }
 .btn.filled.secondary { background: var(--mud-palette-secondary); color: var(--mud-palette-secondary-text); }
-.btn.outlined         { background: transparent; color: var(--mud-palette-text-primary); border-color: var(--control-border); }
+.btn.outlined         { background: transparent; color: var(--mud-palette-text-primary); border-color: var(--mud-palette-lines-inputs); }
 .btn.outlined:hover   { background: var(--mud-palette-action-default-hover); }
 .btn.text             { background: transparent; color: var(--mud-palette-primary); padding: 9px 12px; }
 .btn.text:hover       { background: rgba(79, 215, 203, 0.10); }
-.btn.danger           { background: var(--mud-palette-error); color: var(--mud-palette-error-text); }
+.btn.danger           { background: var(--mud-palette-error); color: white; }
 .btn.full             { width: 100%; justify-content: center; }
 .btn[disabled], .btn.disabled { background: var(--mud-palette-action-disabled-background); color: var(--mud-palette-action-disabled); cursor: not-allowed; border-color: transparent; }
 .btn .material-icons { font-size: 18px; }
@@ -143,7 +143,7 @@ html, body, #root {
 .field .label { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 .field input, .field select, .field textarea {
   background: transparent; color: var(--mud-palette-text-primary);
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: 4px;
   padding: 9px 12px;
   font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
@@ -522,7 +522,7 @@ html, body, #root {
 .bgt-edit-row .multiselect-trigger { padding: 8px 10px; background-color: var(--mud-palette-background); }
 .bgt-edit-input {
   width: 100%; background: var(--mud-palette-background);
-  border: 1px solid var(--control-border); border-radius: 4px;
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px;
   padding: 9px 10px; font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
   color: var(--mud-palette-text-primary); outline: none;
 }
@@ -617,7 +617,7 @@ html, body, #root {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   width: 100%; box-sizing: border-box; cursor: pointer; text-align: left;
   background: transparent; color: var(--mud-palette-text-primary);
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--mud-palette-lines-inputs);
   border-radius: 4px; padding: 9px 10px 9px 12px;
   font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
 }
@@ -635,7 +635,7 @@ html, body, #root {
 .multiselect-item:hover { background: var(--mud-palette-action-default-hover); }
 .ms-check {
   width: 18px; height: 18px; flex: none; border-radius: 4px;
-  border: 1px solid var(--control-border);
+  border: 1px solid var(--mud-palette-lines-inputs);
   display: flex; align-items: center; justify-content: center; color: #fff;
 }
 .ms-check.on { background: var(--mud-palette-primary); border-color: var(--mud-palette-primary); }
@@ -1444,7 +1444,7 @@ html, body, #root {
 /* editable inputs — match the budget batch-edit input */
 .fan-input {
   width: 100%; box-sizing: border-box; height: 34px; background: var(--mud-palette-surface);
-  border: 1px solid var(--control-border); border-radius: 4px;
+  border: 1px solid var(--mud-palette-lines-inputs); border-radius: 4px;
   padding: 7px 9px; font: var(--fw-regular) 13px/1.4 var(--font-sans);
   color: var(--mud-palette-text-primary); outline: none;
 }

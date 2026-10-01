@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Components" name="LineChart" subtitle="Axis'd trend card — gridlines, value/category axes, head figure + delta, cumulative mode, and the reconstructed-series set: negatives across a labelled zero, understated / revalued point kinds, note slot and cause-specific empty states." viewport="900x1420" -->
+<!-- @dsCard group="Components" name="LineChart" subtitle="Axis'd trend card — gridlines, value/category axes, head figure + delta, cumulative mode, and the reconstructed-series set: negatives across a labelled zero, understated / revalued point kinds, note slot and cause-specific empty states." viewport="900x1760" -->
 <html lang="en" data-theme="dark">
 <head>
   <title>Odyssey · LineChart</title>
@@ -18,6 +18,7 @@
     }
     .cap code { font-family: var(--font-mono); text-transform: none; letter-spacing: 0; color: var(--brand-text); }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
     @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
   </style>
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
@@ -32,6 +33,10 @@
   <div class="block">
     <div class="cap">Reconstructed series <code>series[].kind</code> + <code>xTickEvery="auto"</code> + <code>textEquivalent</code> — negatives across a labelled zero, understated and revalued points</div>
     <div id="root-b"></div>
+  </div>
+  <div class="block">
+    <div class="cap">Narrow, three-up — axis labels stay at <code>--fs-micro</code> (10px) at any width; the viewBox tracks the plot's pixel width</div>
+    <div id="root-n" class="three"></div>
   </div>
   <div class="block">
     <div class="cap">Empty <code>emptyLabel</code> — the copy names the cause; a reconstruction that has nothing to show never draws a line</div>
@@ -111,6 +116,14 @@
           textEquivalent: true, textEquivalentLabel: 'Month',
           ariaLabel: 'Net worth over time, 23 monthly points from November 2024 to September 2026',
         })
+      );
+
+      ReactDOM.createRoot(document.getElementById('root-n')).render(
+        e(React.Fragment, null,
+          e(LineChart, { title: 'Net worth', sub: 'By fiscal year · USD', series: netWorth, color: 'var(--chart-1)', format: usd, axisFormat: usdK, ariaLabel: 'Net worth by fiscal year' }),
+          e(LineChart, { title: 'Assessed tax', sub: 'By fiscal year · NOK', series: assessed, color: 'var(--chart-4)', format: nok, axisFormat: nokK, ariaLabel: 'Assessed tax by fiscal year' }),
+          e(LineChart, { title: 'Accumulated', sub: 'All years · NOK', series: assessed, color: 'var(--chart-4)', format: nok, axisFormat: nokK, cumulative: true, ariaLabel: 'Accumulated assessed tax' })
+        )
       );
 
       ReactDOM.createRoot(document.getElementById('root-c')).render(

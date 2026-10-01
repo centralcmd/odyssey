@@ -85,6 +85,17 @@ export function LineChart({
   const uid = React.useId();
   const fmtAxis = axisFormat || format;
   const [hover, setHover] = React.useState(null);   // index of the hovered point
+  // Axis text is sized in user units, so the viewBox tracks the plot's real
+  // pixel width (1 unit = 1px) — labels stay at --fs-micro at any width.
+  const [vbW, setVbW] = React.useState(1000);
+  const roRef = React.useRef(null);
+  const plotRef = React.useCallback((el) => {
+    if (roRef.current) { roRef.current.disconnect(); roRef.current = null; }
+    if (!el) return;
+    const measure = () => { const w = Math.round(el.getBoundingClientRect().width); if (w > 0) setVbW(w); };
+    measure();
+    if (typeof ResizeObserver !== 'undefined') { roRef.current = new ResizeObserver(measure); roRef.current.observe(el); }
+  }, []);
 
   // Build the plotted points (oldest → newest), applying the running total in
   // cumulative mode. Partial and revalued points are plotted and marked, never
@@ -141,7 +152,7 @@ export function LineChart({
     );
   }
 
-  const x0 = 64, x1 = 968, yTop = 28, yBot = 212;
+  let x0 = 64; const x1 = vbW - 32, yTop = 28, yBot = 212;
   const single = pts.length === 1;
   const vals = pts.map((p) => p.value);
   const lo = Math.min(...vals), hi = Math.max(...vals);
@@ -152,6 +163,13 @@ export function LineChart({
   const yMin = lo < 0 ? lo - pad : Math.max(0, lo - pad);
   const yMax = hi + pad;
   const straddles = yMin < 0 && yMax > 0;
+  // Four evenly-spaced values, as before — unless the domain straddles zero,
+  // in which case zero is a gridline of its own and each half is halved.
+  const gridVals = straddles
+    ? [yMax, yMax / 2, 0, yMin / 2, yMin]
+    : [yMax, yMin + (yMax - yMin) * 2 / 3, yMin + (yMax - yMin) / 3, yMin];
+  // Gutter fits the widest y tick at true 10px mono (~6.2px/char) + 12px gap.
+  x0 = Math.max(64, Math.ceil(Math.max(...gridVals.map((v) => String(fmtAxis(Math.abs(yMax) < 10 ? v : Math.round(v))).length)) * 6.2) + 16);
   const sx = (i) => (single ? (x0 + x1) / 2 : x0 + (i * (x1 - x0)) / (pts.length - 1));
   const sy = (v) => yBot - ((v - yMin) / (yMax - yMin || 1)) * (yBot - yTop);
   const baseline = straddles ? sy(0) : yBot;
@@ -162,11 +180,6 @@ export function LineChart({
     pts.map((p, i) => `L ${sx(i).toFixed(1)} ${sy(p.value).toFixed(1)}`).join(' ') +
     ` L ${sx(pts.length - 1).toFixed(1)} ${baseline.toFixed(1)} Z`;
 
-  // Four evenly-spaced values, as before — unless the domain straddles zero,
-  // in which case zero is a gridline of its own and each half is halved.
-  const gridVals = straddles
-    ? [yMax, yMax / 2, 0, yMin / 2, yMin]
-    : [yMax, yMin + (yMax - yMin) * 2 / 3, yMin + (yMax - yMin) / 3, yMin];
 
   const every = xTickEvery === 'auto' ? lineChartTickEvery(pts.length) : (xTickEvery || 1);
   const anyMarked = pts.some((p) => p.kind !== 'normal');
@@ -205,8 +218,8 @@ export function LineChart({
   return (
     <div className={`odc-lc${className ? ' ' + className : ''}`}>
       {head}
-      <div className="odc-lc-plot" onMouseLeave={() => setHover(null)}>
-      <svg className="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
+      <div className="odc-lc-plot" ref={plotRef} onMouseLeave={() => setHover(null)}>
+      <svg className="odc-line-svg" viewBox={`0 0 ${vbW} 252`} preserveAspectRatio="xMidYMid meet"
         role="img" aria-label={ariaLabel || (title ? `${title} — line chart` : 'Line chart')}>
         <g stroke="var(--chart-grid)" strokeWidth="1">
           {gridVals.map((v, i) => (
@@ -287,7 +300,7 @@ export function LineChart({
       </svg>
       {hover != null && pts[hover] && (() => {
         const p = pts[hover];
-        const left = sx(hover) / 10;
+        const left = sx(hover) / vbW * 100;
         const top = (sy(p.value) / 252) * 100;
         const before = hover > 0 ? pts[hover - 1] : null;
         const d = before ? p.value - before.value : 0;
