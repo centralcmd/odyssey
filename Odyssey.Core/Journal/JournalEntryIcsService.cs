@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Core.Finance;
 using Odyssey.Context;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Interop;

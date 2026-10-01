@@ -15,13 +15,12 @@ public static class OpenApiExplorerExtension
     // Must match the AddAntiforgery header name configured in Program.cs.
     internal const string AntiforgeryHeaderName = "X-XSRF-TOKEN";
 
-    // Type names that more than one contract-carrying Odyssey namespace defines — ArchivalStatus
-    // (Shared.Dtos.Finance and Shared.Dtos.Journal) and Sex (Shared.Dtos.Application and the
-    // Shared.Dtos root) today. Swashbuckle keys schemas on the short type name, so any such collision
-    // throws while generating the document. Computed by scanning the referenced Odyssey assemblies
-    // rather than a hand-kept list, so a new module or a newly duplicated name can't silently
-    // reintroduce the failure. Note this groups on FullName, not assembly, which is why merging the
-    // four DTO projects into one did not change what it detects.
+    // Type names that more than one contract-carrying Odyssey namespace defines — Sex
+    // (Odyssey.Dtos.Application and the Odyssey.Dtos root) today. Swashbuckle keys schemas on the
+    // short type name, so any such collision throws while generating the document. Computed by
+    // scanning the referenced Odyssey assemblies rather than a hand-kept list, so a new module or a
+    // newly duplicated name can't silently reintroduce the failure. Note this groups on FullName,
+    // not assembly, which is why merging the four DTO projects into one did not change what it detects.
     private static readonly HashSet<string> AmbiguousTypeNames = ContractAssemblies()
         .SelectMany(assembly => assembly.GetExportedTypes())
         .GroupBy(type => type.Name, StringComparer.Ordinal)
@@ -30,7 +29,7 @@ public static class OpenApiExplorerExtension
         .ToHashSet(StringComparer.Ordinal);
 
     // The *.Context assemblies are excluded on purpose (issue #392). Most finance enums are defined
-    // twice — once in Finance.Dtos as the API contract, once in Finance.Context as the stored column
+    // twice — once in Odyssey.Dtos as the API contract, once in Odyssey.Context as the stored column
     // type — but only the Dtos copy is ever meant to reach the OpenAPI surface, so counting the
     // entity copy as a collision bought nineteen schemas a namespace prefix they don't need. An
     // entity type that does reach the surface is the defect, not an id to disambiguate, so
@@ -45,7 +44,6 @@ public static class OpenApiExplorerExtension
             .Where(assembly => !IsPersistenceAssembly(assembly));
     }
 
-    // Odyssey.Context, Odyssey.Context, Odyssey.Context.
     private static bool IsPersistenceAssembly(Assembly assembly) =>
         assembly.GetName().Name is { } name
         && name.StartsWith("Odyssey.", StringComparison.Ordinal)
@@ -59,7 +57,7 @@ public static class OpenApiExplorerExtension
         {
             throw new InvalidOperationException(
                 $"{type.FullName} is a persistence entity type and must not appear in the OpenAPI " +
-                "document. Bind the API contract to the matching Odyssey.<Module>.Dtos type and cast " +
+                "document. Bind the API contract to the matching Odyssey.Dtos type and cast " +
                 "across the boundary explicitly (issue #392).");
         }
 
@@ -79,10 +77,11 @@ public static class OpenApiExplorerExtension
                 Version = "v1",
             });
 
-            // Finance and Journal both define an ArchivalStatus enum, and the default short-name schema
-            // ids collide — which failed the entire /swagger/v1/swagger.json document, not just those
-            // two schemas. Qualify only the ambiguous names with their module; everything else keeps
-            // the default id, so the UI stays readable and existing ids don't churn.
+            // Two DTO namespaces can define the same short type name (Sex, today), and the default
+            // short-name schema ids would collide — which fails the entire /swagger/v1/swagger.json
+            // document, not just those two schemas. Qualify only the ambiguous names with their
+            // module; everything else keeps the default id, so the UI stays readable and existing ids
+            // don't churn.
             var defaultSchemaId = options.SchemaGeneratorOptions.SchemaIdSelector;
             options.CustomSchemaIds(type => SchemaId(type, defaultSchemaId));
 
@@ -125,8 +124,7 @@ public static class OpenApiExplorerExtension
     // The module segment of a DTO namespace: "Odyssey.Dtos.Finance" → "Finance". The project's own
     // root is labelled "Shared" rather than "Dtos" — the label names the type's *role* (it crosses
     // modules), and SharedSex against ApplicationSex reads as the contrast it is, where DtosSex would
-    // not. So the disambiguated ids are FinanceArchivalStatus / JournalArchivalStatus and
-    // ApplicationSex / SharedSex. A type outside the DTO project keeps the whole namespace tail, which
+    // not. So the disambiguated ids are ApplicationSex / SharedSex. A type outside the DTO project keeps the whole namespace tail, which
     // is how every collision was disambiguated before the DTO projects were merged into one.
     //
     // These are list patterns over the split namespace, so a rename of the DTO project does NOT reach
