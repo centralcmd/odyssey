@@ -83,6 +83,32 @@ public partial class ContractSmartTagTransactionsApiTests
         Assert.Equal(expected, (await client.GetAsync(Path(seeded.ContractId))).StatusCode);
     }
 
+    /// <summary>Issue #279: each matched transaction carries its resolved display icon and tag icons.</summary>
+    [Fact]
+    public async Task EveryTransaction_CarriesTheResolvedDisplayIcon()
+    {
+        await using var factory = new OdysseyApiFactory(BothClaims);
+        var seeded = await SeedAsync(factory);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            foreach (var tag in db.TransactionTags)
+                tag.Icon = "bolt";
+            await db.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+
+        using var body = JsonDocument.Parse(await client.GetStringAsync(Path(seeded.ContractId)));
+        var items = body.RootElement.GetProperty("page").GetProperty("items").EnumerateArray().ToList();
+        Assert.Equal(seeded.MatchingCount, items.Count);
+        Assert.All(items, item =>
+        {
+            Assert.Equal("bolt", item.GetProperty("displayIcon").GetString());
+            Assert.Equal("bolt", item.GetProperty("transactionTags")[0].GetProperty("icon").GetString());
+        });
+    }
+
     // ── AC 18-19: status codes ────────────────────────────────────────────────
 
     [Fact]

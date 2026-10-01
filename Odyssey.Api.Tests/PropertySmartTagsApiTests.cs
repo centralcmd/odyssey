@@ -48,6 +48,26 @@ public class PropertySmartTagsApiTests
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(SmartTagsPath(Guid.NewGuid()))).StatusCode);
     }
 
+    /// <summary>Issue #279: the smart-tag list carries each tag's icon, an unknown stored key as null.</summary>
+    [Fact]
+    public async Task List_CarriesEachTagsIcon_NormalisingAnUnknownKey()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var propertyId = await SeedPropertyAsync(factory);
+        var iconned = await SeedTagAsync(factory, "Upkeep");
+        var stale = await SeedTagAsync(factory, "Legacy");
+        await TagIconSeed.SetAsync(factory, iconned, "build");
+        await TagIconSeed.SetAsync(factory, stale, "retired_key");
+        using var client = factory.CreateClient();
+        await client.PostAsync(SmartTagPath(propertyId, iconned), null);
+        await client.PostAsync(SmartTagPath(propertyId, stale), null);
+
+        var tags = await client.GetFromJsonAsync<List<ExistingTransactionTag>>(SmartTagsPath(propertyId));
+
+        Assert.Equal("build", tags!.Single(t => t.TransactionTagId == iconned).Icon);
+        Assert.Null(tags!.Single(t => t.TransactionTagId == stale).Icon);
+    }
+
     // ── AC 15: the add ────────────────────────────────────────────────────────
 
     /// <summary>AC 15 — the first add is a 201 whose Location resolves to the list; a repeat is a 409 and leaves one row.</summary>

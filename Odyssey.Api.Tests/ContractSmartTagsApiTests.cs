@@ -146,6 +146,26 @@ public class ContractSmartTagsApiTests
         Assert.Equal(["first", "second", "third"], tags!.Select(t => t.Name));
     }
 
+    /// <summary>Issue #279: the smart-tag list carries each tag's icon, an unknown stored key as null.</summary>
+    [Fact]
+    public async Task List_CarriesEachTagsIcon_NormalisingAnUnknownKey()
+    {
+        await using var factory = await NewFactoryAsync(ReadWrite);
+        var contractId = await SeedContractDirectlyAsync(factory);
+        var iconned = await SeedTagAsync(factory, "Streaming");
+        var stale = await SeedTagAsync(factory, "Legacy");
+        await TagIconSeed.SetAsync(factory, iconned, "subscriptions");
+        await TagIconSeed.SetAsync(factory, stale, "retired_key");
+        using var client = factory.CreateClient();
+        await client.PostAsync(SmartTagPath(contractId, iconned), null);
+        await client.PostAsync(SmartTagPath(contractId, stale), null);
+
+        var tags = await client.GetFromJsonAsync<List<ExistingTransactionTag>>(SmartTagsPath(contractId));
+
+        Assert.Equal("subscriptions", tags!.Single(t => t.TransactionTagId == iconned).Icon);
+        Assert.Null(tags!.Single(t => t.TransactionTagId == stale).Icon);
+    }
+
     // ── AC 4-7: the add ───────────────────────────────────────────────────────
 
     [Fact]

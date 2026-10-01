@@ -219,6 +219,19 @@ public sealed class TransactionDialogTests : IAsyncLifetime
     }
 
     [Fact]
+    public void A_single_tag_without_an_icon_is_named_in_the_singular_and_announced()
+    {
+        var cut = RenderEditWithTags(IconTag("Food", null));
+
+        cut.WaitForAssertion(() =>
+        {
+            var preview = cut.Find(".odc-rowicon");
+            Assert.Equal("status", preview.GetAttribute("role"));
+            Assert.Contains("default — this tag has no icon", preview.TextContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public void With_no_tags_the_plain_hint_stays()
     {
         var cut = RenderEdit();

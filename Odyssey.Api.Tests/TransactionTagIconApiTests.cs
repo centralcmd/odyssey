@@ -277,3 +277,16 @@ public class TransactionTagIconApiTests
         return transaction.TransactionId;
     }
 }
+
+/// <summary>Sets a tag's stored icon directly, for the per-site embed tests beside each surface's own suite.</summary>
+internal static class TagIconSeed
+{
+    public static async Task SetAsync(WebApplicationFactory<Program> factory, Guid tagId, string? icon)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var tag = await context.TransactionTags.SingleAsync(t => t.TransactionTagId == tagId);
+        tag.Icon = icon;
+        await context.SaveChangesAsync();
+    }
+}

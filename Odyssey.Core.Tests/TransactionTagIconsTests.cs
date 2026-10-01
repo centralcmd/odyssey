@@ -151,7 +151,7 @@ public class TransactionTagIconsTests
         Assert.True(files.Count > 50, $"Scan set unexpectedly small ({files.Count} files) under {root}.");
 
         var assigners = files
-            .Where(path => Regex.IsMatch(StripComments(File.ReadAllText(path)), @"\.DisplayIcon\s*=[^=]"))
+            .Where(path => Regex.IsMatch(StripComments(File.ReadAllText(path)), @"\bDisplayIcon\s*=[^=>]"))
             .Select(Path.GetFileName)
             .ToList();
         Assert.Equal(["MapsterConfig.cs"], assigners);

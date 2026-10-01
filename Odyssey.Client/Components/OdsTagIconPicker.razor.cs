@@ -25,6 +25,9 @@ public partial class OdsTagIconPicker : IAsyncDisposable
 
     [Parameter] public string? AriaDescribedBy { get; set; }
 
+    /// <summary>Marks the group <c>aria-invalid</c> while the field shows an error (WCAG 3.3.1).</summary>
+    [Parameter] public bool Invalid { get; set; }
+
     [Parameter] public string? Class { get; set; }
 
     /// <summary>Used when the live column count cannot be read (prerender, a failed import).</summary>
@@ -42,6 +45,7 @@ public partial class OdsTagIconPicker : IAsyncDisposable
     private IJSObjectReference? _module;
     private IJSObjectReference? _handle;
     private int? _peek;
+    private int? _focused;
     private string _groupId = default!;
 
     private string RootClass =>
@@ -120,7 +124,7 @@ public partial class OdsTagIconPicker : IAsyncDisposable
             "ArrowUp" => Math.Max(0, index - await ColumnsAsync()),
             "Home" => 0,
             "End" => last,
-            " " or "Enter" => index,
+            // Space and Enter are left to the button's native click, which already picks the cell.
             _ => null,
         };
 
@@ -133,6 +137,7 @@ public partial class OdsTagIconPicker : IAsyncDisposable
         if (target != index)
         {
             _peek = target;
+            _focused = target;
             await _buttons[target].FocusAsync();
         }
     }
@@ -154,6 +159,13 @@ public partial class OdsTagIconPicker : IAsyncDisposable
             return FallbackColumns;
         }
     }
+
+    // The caption previews the hovered cell, falling back to the focused one when the pointer leaves.
+    private void OnCellFocus(int index) => _peek = _focused = index;
+
+    private void OnCellBlur() => _peek = _focused = null;
+
+    private void OnGridMouseLeave() => _peek = _focused;
 
     public async ValueTask DisposeAsync()
     {

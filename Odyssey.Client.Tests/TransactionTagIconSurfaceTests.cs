@@ -154,6 +154,16 @@ public class TransactionTagIconSurfaceTests : IAsyncLifetime
         Assert.Equal("tag-icon-help", group.GetAttribute("aria-describedby"));
     }
 
+    [Fact]
+    public void An_invalid_picker_marks_the_group_aria_invalid()
+    {
+        var valid = ctx.Render<OdsTagIconPicker>();
+        var invalid = ctx.Render<OdsTagIconPicker>(p => p.Add(c => c.Invalid, true));
+
+        Assert.Null(valid.Find("[role=radiogroup]").GetAttribute("aria-invalid"));
+        Assert.Equal("true", invalid.Find("[role=radiogroup]").GetAttribute("aria-invalid"));
+    }
+
     // ── OdsAvatar ─────────────────────────────────────────────────────────────
 
     /// <summary>

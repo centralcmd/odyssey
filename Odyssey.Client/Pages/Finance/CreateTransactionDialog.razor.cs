@@ -261,7 +261,7 @@ public partial class CreateTransactionDialog
     // A live preview of the row icon the server will resolve for the chosen tags — the client copy of
     // the rule is the shared TransactionTagIcons, so the two cannot drift. Empty selection keeps the
     // plain hint. A tag created inline here has no icon yet, so it never wins.
-    internal (string Glyph, string? From)? RowIcon
+    internal (string Glyph, string? From, int Count)? RowIcon
     {
         get
         {
@@ -275,7 +275,7 @@ public partial class CreateTransactionDialog
             var glyph = TransactionTagIcons.Resolve(chosen);
             var from = TransactionTagIcons.Order(chosen)
                 .FirstOrDefault(tag => TransactionTagIcons.IsKnown(tag.Icon) && tag.Icon == glyph);
-            return (glyph, from?.Name);
+            return (glyph, from?.Name, chosen.Count);
         }
     }
 

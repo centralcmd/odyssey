@@ -13,7 +13,7 @@
     unknown or stale value as Default, mirroring the server's read-side projection.
 
     ARIA radiogroup with a roving tab stop: arrows move in two dimensions over the live column count,
-    Home/End jump, selection follows focus (the radio pattern). icon-picker.js keeps those keys from
+    Home/End jump, selection follows focus (the radio pattern); Space/Enter fall to the native click. icon-picker.js keeps those keys from
     scrolling the dialog and reports the column count. The caption names the selection in words and
     previews the label of the cell under the pointer or focus, so meaning never rests on the glyph.
 
@@ -25,7 +25,8 @@
     <div class="odc-iconpick-grid" role="radiogroup" id="@_groupId"
          aria-label="@(AriaLabelledBy is null ? AriaLabel : null)" aria-labelledby="@AriaLabelledBy"
          aria-describedby="@AriaDescribedBy"
-         @ref="_grid" @onmouseleave="() => _peek = null">
+         aria-invalid="@(Invalid ? "true" : null)"
+         @ref="_grid" @onmouseleave="OnGridMouseLeave">
         @for (var i = 0; i < _cells.Count; i++)
         {
             var index = i;
@@ -43,8 +44,8 @@
                     @onclick="() => PickAsync(index)"
                     @onkeydown="e => OnKeyDownAsync(e, index)"
                     @onmouseenter="() => _peek = index"
-                    @onfocus="() => _peek = index"
-                    @onblur="() => _peek = null">
+                    @onfocus="() => OnCellFocus(index)"
+                    @onblur="OnCellBlur">
                 <span class="material-icons" aria-hidden="true">@(cell.Key ?? TransactionTagIcons.Default)</span>
                 @if (active)
                 {

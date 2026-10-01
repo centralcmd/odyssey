@@ -157,7 +157,7 @@
             <OdsFieldShell Label="Icon" HtmlFor="tag-icon" LabelId="tag-icon-label" Error="@_draftIconError"
                            Help="Shown for this tag and on every transaction carrying it. Default keeps the tag icon.">
                 <OdsTagIconPicker Id="tag-icon" Value="@_draftIcon" ValueChanged="OnDraftIconChanged"
-                                  AriaLabelledBy="tag-icon-label"
+                                  AriaLabelledBy="tag-icon-label" Invalid="@(_draftIconError is not null)"
                                   AriaDescribedBy="@(_draftIconError is null ? "tag-icon-help" : "tag-icon-help tag-icon-help-error")" />
             </OdsFieldShell>
         }
