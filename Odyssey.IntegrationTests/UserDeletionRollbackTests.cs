@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Odyssey.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -61,7 +62,7 @@ public class UserDeletionRollbackTests(MariaDbFixture fixture)
         using var scope = provider.CreateScope();
         var service = ServiceFor(scope);
 
-        await Assert.ThrowsAsync<UserAdministrationValidationException>(
+        await Assert.ThrowsAsync<DomainValidationException>(
             () => service.DeleteAsync(ActorId, TargetId));
 
         await using var verify = new OdysseyContext(OptionsFor(connectionString));

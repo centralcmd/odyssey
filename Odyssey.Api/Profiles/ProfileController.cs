@@ -64,14 +64,7 @@ public sealed class ProfileController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            return Ok(await service.SaveAsync(userId, request, cancellationToken));
-        }
-        catch (ProfileValidationException exception)
-        {
-            return this.BadRequestProblem(exception.Message);
-        }
+        return Ok(await service.SaveAsync(userId, request, cancellationToken));
     }
 
     // ── Profile picture (issue #94 §7) ────────────────────────────────────────
