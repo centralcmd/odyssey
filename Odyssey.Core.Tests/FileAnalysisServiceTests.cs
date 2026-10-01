@@ -719,12 +719,16 @@ public class FileAnalysisServiceTests
         await using var context = new OdysseyContext(options);
         context.Currencies.Add(new Currency { CurrencyCode = "USD", Name = "US Dollar", MinorUnits = 2, Symbol = "$" });
         await context.SaveChangesAsync();
+        var tag = new TransactionTag { Name = "Groceries" };
+        context.TransactionTags.Add(tag);
+        await context.SaveChangesAsync();
         var (service, jobId, _, candidates) = await AnalyzeTwoCandidatesAsync(context);
+        context.ChangeTracker.Clear();
         failTagQueries.Armed = true;
 
         var result = await service.ImportCandidatesAsync(
             jobId,
-            new ImportRequest([new ImportCandidateRequest(candidates[0].Id, null, null, null, null, null, [Guid.NewGuid()])]),
+            new ImportRequest([new ImportCandidateRequest(candidates[0].Id, null, null, null, null, null, [tag.TransactionTagId])]),
             "user-1");
 
         Assert.Equal(0, result.Imported);
@@ -733,18 +737,17 @@ public class FileAnalysisServiceTests
         Assert.DoesNotContain(FailTagQueries.Message, reason, StringComparison.Ordinal);
     }
 
-    // Faults the tag lookup with a non-domain exception, standing in for an engine error.
-    private sealed class FailTagQueries : IQueryExpressionInterceptor
+    // Faults the tag lookup with a non-domain exception, standing in for an engine error. A
+    // materialization hook rather than a query-compilation one: compiled queries are cached across
+    // tests, so a compilation hook would fire only when this test happened to compile the query first.
+    private sealed class FailTagQueries : IMaterializationInterceptor
     {
         public const string Message = "internal engine detail";
 
         public bool Armed { get; set; }
 
-        public System.Linq.Expressions.Expression QueryCompilationStarting(
-            System.Linq.Expressions.Expression queryExpression, QueryExpressionEventData eventData) =>
-            Armed && queryExpression.ToString().Contains(nameof(TransactionTag), StringComparison.Ordinal)
-                ? throw new InvalidOperationException(Message)
-                : queryExpression;
+        public object InitializedInstance(MaterializationInterceptionData materializationData, object entity) =>
+            Armed && entity is TransactionTag ? throw new InvalidOperationException(Message) : entity;
     }
 
     [Fact]
