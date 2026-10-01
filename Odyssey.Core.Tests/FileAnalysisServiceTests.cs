@@ -662,6 +662,46 @@ public class FileAnalysisServiceTests
         Assert.Equal(known.ContactId, (await context.Transactions.SingleAsync()).ContactId);
     }
 
+    [Theory]
+    [InlineData("US")]
+    [InlineData("U")]
+    public async Task ImportCandidatesAsync_ACurrencyShorterThanACode_FailsThatCandidate(string currency)
+    {
+        await using var context = TestContextFactory.Create();
+        var (service, jobId, _, candidates) = await AnalyzeTwoCandidatesAsync(context);
+
+        var result = await service.ImportCandidatesAsync(
+            jobId,
+            new ImportRequest([new ImportCandidateRequest(candidates[0].Id, null, null, null, currency)]),
+            "user-1");
+
+        Assert.Equal(0, result.Imported);
+        Assert.Contains(currency, Assert.Single(result.Failures).Reason, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The request accepts the candidate column widths (1024 and 256) because the review grid sends the
+    /// extracted values back verbatim; the ledger columns are 256 and 64, so the service fits them.
+    /// </summary>
+    [Fact]
+    public async Task ImportCandidatesAsync_OverridesWiderThanTheLedger_AreFittedToItsColumns()
+    {
+        await using var context = TestContextFactory.Create();
+        var (service, jobId, _, candidates) = await AnalyzeTwoCandidatesAsync(context);
+        var description = new string('d', 1024);
+        var externalId = new string('e', 256);
+
+        var result = await service.ImportCandidatesAsync(
+            jobId,
+            new ImportRequest([new ImportCandidateRequest(candidates[0].Id, null, description, null, null, ExternalId: externalId)]),
+            "user-1");
+
+        Assert.Equal(1, result.Imported);
+        var stored = await context.Transactions.SingleAsync();
+        Assert.Equal(description[..256], stored.Description);
+        Assert.Equal(externalId[..64], stored.ExternalId);
+    }
+
     [Fact]
     public async Task ImportCandidatesAsync_UnspecifiedKindDate_IsStoredAsUtc()
     {
@@ -1113,18 +1153,22 @@ public class FileAnalysisServiceTests
     public async Task MatchAsync_CandidateImportedDuringTheProviderCall_YieldsThatCandidate()
     {
         await using var context = TestContextFactory.Create();
-        var jobId = await SeedMatchJobAsync(context, [("AMZN Mktp", null), ("SPOTIFY", null)], ["Amazon"], []);
+        var jobId = await SeedMatchJobAsync(context, [("AMZN Mktp", null), ("SPOTIFY", null)], ["Amazon"], ["Shopping"]);
         var options = (DbContextOptions<OdysseyContext>)context.GetService<IDbContextOptions>();
         await using var racing = new OdysseyContext(options);
         var spotifyId = (await racing.FileAnalysisCandidateTransactions.SingleAsync(c => c.Merchant == "SPOTIFY")).Id;
 
-        var provider = FakeProvider.Matching((cands, cps, _) =>
-        {
-            CreateService(racing, FakeProvider.Returning(), MatchOptions())
-                .ImportCandidatesAsync(jobId, Import(spotifyId), "user-2").GetAwaiter().GetResult();
-            var amazon = cps.First(v => v.Name == "Amazon").Ref;
-            return [.. cands.Select(c => new MatchedCandidate(c.Index, amazon, 0.95m, [], null))];
-        });
+        // The import commits while the provider call is "in flight", i.e. inside the match callback.
+        var provider = new FakeProvider(
+            (_, _, _, _, _) => Task.FromResult(new List<ExtractedTransaction>()),
+            async (cands, cps, tags, _) =>
+            {
+                await CreateService(racing, FakeProvider.Returning(), MatchOptions())
+                    .ImportCandidatesAsync(jobId, Import(spotifyId), "user-2");
+                var amazon = cps.First(v => v.Name == "Amazon").Ref;
+                var shopping = tags.First(v => v.Name == "Shopping").Ref;
+                return [.. cands.Select(c => new MatchedCandidate(c.Index, amazon, 0.95m, [shopping], 0.9m))];
+            });
         var service = CreateService(context, provider, MatchOptions());
 
         var job = await service.MatchAsync(jobId);
@@ -1136,6 +1180,11 @@ public class FileAnalysisServiceTests
         Assert.Equal(ContextReviewStatus.Accepted, spotify.ReviewStatus);
         Assert.Null(spotify.MatchedContactId);
         Assert.NotNull(stored.Single(c => c.Id != spotifyId).MatchedContactId);
+        // The reload covers the candidate's columns; its tag links are separate rows and must not
+        // be written for a candidate the import already reviewed.
+        var links = await verify.FileAnalysisCandidateTags.ToListAsync();
+        Assert.DoesNotContain(links, l => l.CandidateTransactionId == spotifyId);
+        Assert.Single(links);
     }
 
     [Fact]

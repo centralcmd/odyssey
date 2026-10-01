@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Odyssey.Context;
@@ -59,6 +60,51 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
             (await verify.FileAnalysisCandidateTransactions.SingleAsync(c => c.Id == candidateId)).ReviewStatus);
     }
 
+    /// <summary>
+    /// The match step's fallback: an import commits after the match run's pre-save re-read but before
+    /// its save, so the save itself conflicts. MariaDB rolls the failed batch back, the reviewed
+    /// candidate is restored as stored — tag links included — and the retry saves the rest.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_match_save_that_conflicts_with_an_import_keeps_the_review_and_saves_the_rest()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigrateAsync();
+
+        Guid jobId, importedId, otherId, tagId;
+        await using (var context = NewContext())
+        {
+            await AttributionUsers.EnsureAsync(context, UserId);
+            (jobId, importedId) = await SeedJobAsync(context);
+            otherId = Guid.NewGuid();
+            context.FileAnalysisCandidateTransactions.Add(NewCandidate(otherId, jobId));
+            var tag = new TransactionTag { Name = "Groceries" };
+            context.TransactionTags.Add(tag);
+            await context.SaveChangesAsync();
+            tagId = tag.TransactionTagId;
+        }
+
+        var interceptor = new ImportBeforeMatchSave(() => NewContext(), jobId, importedId);
+        await using (var matching = NewContext(interceptor))
+        {
+            var provider = new NoopAnalysisProvider(tags =>
+                [new MatchedCandidate(0, null, null, [tags[0].Ref], 0.9m), new MatchedCandidate(1, null, null, [tags[0].Ref], 0.9m)]);
+            var job = await NewService(matching, provider).MatchAsync(jobId);
+
+            Assert.True(interceptor.Fired);
+            Assert.Equal(Odyssey.Dtos.Finance.FileAnalysisMatchStatus.Completed, job.MatchStatus);
+        }
+
+        await using var verify = NewContext();
+        Assert.Equal(ContextReviewStatus.Accepted,
+            (await verify.FileAnalysisCandidateTransactions.SingleAsync(c => c.Id == importedId)).ReviewStatus);
+        var links = await verify.FileAnalysisCandidateTags.ToListAsync();
+        var link = Assert.Single(links);
+        Assert.Equal(otherId, link.CandidateTransactionId);
+        Assert.Equal(tagId, link.TransactionTagId);
+        Assert.Equal(1, await verify.Transactions.CountAsync());
+    }
+
     private static ImportRequest Request(Guid candidateId) =>
         new([new ImportCandidateRequest(candidateId, null, null, null, null)]);
 
@@ -112,22 +158,26 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
             AnalyzerProvider = Odyssey.Context.AnalyzerProvider.Claude,
             ConsentRecorded = true,
         });
-        context.FileAnalysisCandidateTransactions.Add(new FileAnalysisCandidateTransaction
-        {
-            Id = candidateId,
-            AnalysisJobId = jobId,
-            TransactionDate = DateTime.UtcNow.AddDays(-1),
-            Description = "Groceries",
-            Amount = -42.10m,
-            Currency = "USD",
-            ReviewStatus = ContextReviewStatus.Pending,
-        });
+        context.FileAnalysisCandidateTransactions.Add(NewCandidate(candidateId, jobId));
         await context.SaveChangesAsync();
         return (jobId, candidateId);
     }
 
-    private static FileAnalysisService NewService(OdysseyContext context) =>
-        new(context, new NoopAnalysisProvider(), new ContactLookup(context),
+    private static FileAnalysisCandidateTransaction NewCandidate(Guid id, Guid jobId) => new()
+    {
+        Id = id,
+        AnalysisJobId = jobId,
+        TransactionDate = DateTime.UtcNow.AddDays(-1),
+        Description = "Groceries",
+        Merchant = "Store",
+        CategoryHint = "Food",
+        Amount = -42.10m,
+        Currency = "USD",
+        ReviewStatus = ContextReviewStatus.Pending,
+    };
+
+    private static FileAnalysisService NewService(OdysseyContext context, NoopAnalysisProvider? provider = null) =>
+        new(context, provider ?? new NoopAnalysisProvider(), new ContactLookup(context),
             Options.Create(new FileAnalysisOptions { Enabled = true }),
             new EnabledSettingsLookup(), NullLogger<FileAnalysisService>.Instance);
 
@@ -145,13 +195,44 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
         await context.Database.MigrateAsync();
     }
 
-    private OdysseyContext NewContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
+    private OdysseyContext NewContext(IInterceptor? interceptor = null)
+    {
+        var builder = new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString));
+        if (interceptor is not null)
+            builder.AddInterceptors(interceptor);
+        return new OdysseyContext(builder.Options);
+    }
 
-    // Import never calls the provider.
-    private sealed class NoopAnalysisProvider : IFileAnalysisProvider
+    /// <summary>
+    /// Commits an import of one candidate from a separate context just before the match run's own
+    /// save — after its pre-save re-read — so the save meets the concurrency token rather than the
+    /// re-read catching it first.
+    /// </summary>
+    private sealed class ImportBeforeMatchSave(Func<OdysseyContext> newContext, Guid jobId, Guid candidateId)
+        : SaveChangesInterceptor
+    {
+        public bool Fired { get; private set; }
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            var touchesCandidates = eventData.Context!.ChangeTracker.Entries<FileAnalysisCandidateTag>()
+                .Any(e => e.State == EntityState.Added);
+            if (!Fired && touchesCandidates)
+            {
+                Fired = true;
+                await using var other = newContext();
+                await NewService(other).ImportCandidatesAsync(jobId, Request(candidateId), UserId, cancellationToken);
+            }
+
+            return result;
+        }
+    }
+
+    // Import never calls the provider; the match test supplies its tag matches.
+    private sealed class NoopAnalysisProvider(
+        Func<IReadOnlyList<VocabularyEntry>, List<MatchedCandidate>>? match = null) : IFileAnalysisProvider
     {
         public Task<List<ExtractedTransaction>> ExtractTransactionsAsync(
             byte[] fileContent, string contentType, string accountCurrencyCode,
@@ -166,14 +247,17 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
             FileAnalysisTarget target,
             int maxTokens,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(new List<MatchedCandidate>());
+            Task.FromResult(match?.Invoke(tagVocabulary) ?? []);
     }
 
-    // Import reads only the kill switch.
     private sealed class EnabledSettingsLookup : IFileAnalysisSettingsLookup
     {
         public Task<FileAnalysisSettings> GetAsync(CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException("Import reads no file-analysis setting.");
+            Task.FromResult(new FileAnalysisSettings(
+                "Anthropic", "United States", "Consent · GDPR Art. 6(1)(a)",
+                "https://www.anthropic.com/legal/privacy", 90, 0.60m,
+                MaxTokens: 8096, MatchMaxVocabulary: 500, MatchTimeoutSeconds: 60,
+                Model: "claude-sonnet-5", BaseUrl: "https://api.anthropic.com", IsDegraded: false));
 
         public Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(true);

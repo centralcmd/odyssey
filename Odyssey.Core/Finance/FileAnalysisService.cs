@@ -3,6 +3,7 @@ using Odyssey.Dtos;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ContextJobStatus = Odyssey.Context.FileAnalysisJobStatus;
@@ -462,7 +463,9 @@ public class FileAnalysisService
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Failed to import candidate {CandidateId}.", req.CandidateId);
-                failures.Add(new ImportFailure(req.CandidateId, ex.Message));
+                // A domain rule's message is written for the caller; anything else is internal detail.
+                failures.Add(new ImportFailure(
+                    req.CandidateId, ex is DomainException ? ex.Message : "The candidate could not be imported."));
             }
         }
 
@@ -788,11 +791,33 @@ public class FileAnalysisService
 
     /// <summary>
     /// Saves a match run, yielding to an import that reviewed some of its candidates while the provider
-    /// call was in flight. <c>ReviewStatus</c> is a concurrency token (issue #237), so those rows no
-    /// longer match the UPDATE; their review wins, they are reloaded as stored, and the rest is saved.
+    /// call was in flight: their review wins, they are restored as stored, and the rest is saved.
+    ///
+    /// <para>
+    /// Two layers, because <c>ReviewStatus</c> is a concurrency token (issue #237). The re-read just
+    /// before saving catches the ordinary case — a provider call takes seconds — on every provider.
+    /// The catch covers the window between that read and the save; it relies on the failed save having
+    /// rolled back, which holds on MariaDB (<c>FileAnalysisImportConcurrencyTests</c>) but not on the
+    /// InMemory provider, which has no transactions and applies a failed batch partially.
+    /// </para>
     /// </summary>
     private async Task SaveMatchesAsync(CancellationToken cancellationToken)
     {
+        var candidates = context.ChangeTracker.Entries<FileAnalysisCandidateTransaction>().ToList();
+        var ids = candidates.Select(e => e.Entity.Id).ToList();
+        var storedStatuses = await context.FileAnalysisCandidateTransactions
+            .AsNoTracking()
+            .Where(c => ids.Contains(c.Id))
+            .Select(c => new { c.Id, c.ReviewStatus })
+            .ToDictionaryAsync(c => c.Id, c => c.ReviewStatus, cancellationToken);
+
+        foreach (var entry in candidates.Where(e =>
+                     storedStatuses.TryGetValue(e.Entity.Id, out var stored)
+                     && stored != e.Property(c => c.ReviewStatus).OriginalValue))
+        {
+            await RestoreAsStoredAsync(entry, cancellationToken);
+        }
+
         try
         {
             await context.SaveChangesAsync(cancellationToken);
@@ -800,10 +825,37 @@ public class FileAnalysisService
         catch (DbUpdateConcurrencyException ex)
         {
             foreach (var entry in ex.Entries)
-                await entry.ReloadAsync(cancellationToken);
+            {
+                if (entry.Entity is FileAnalysisCandidateTransaction candidate)
+                    await RestoreAsStoredAsync(context.Entry(candidate), cancellationToken);
+                else
+                    await entry.ReloadAsync(cancellationToken);
+            }
 
             await context.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    // A reload restores the candidate's own columns only; its tag links are separate rows, so the
+    // links this run added are dropped and the ones it removed are kept, leaving them as stored.
+    private async Task RestoreAsStoredAsync(
+        EntityEntry<FileAnalysisCandidateTransaction> entry,
+        CancellationToken cancellationToken)
+    {
+        var candidate = entry.Entity;
+        var links = context.ChangeTracker.Entries<FileAnalysisCandidateTag>()
+            .Where(e => e.Entity.CandidateTransactionId == candidate.Id)
+            .ToList();
+        var stored = links.Where(e => e.State != EntityState.Added).Select(e => e.Entity).ToList();
+
+        foreach (var link in links)
+            link.State = link.State == EntityState.Added ? EntityState.Detached : EntityState.Unchanged;
+
+        candidate.MatchedTags.Clear();
+        foreach (var tag in stored)
+            candidate.MatchedTags.Add(tag);
+
+        await entry.ReloadAsync(cancellationToken);
     }
 
     private async Task<string> LoadPromptTemplateAsync(CancellationToken cancellationToken = default)

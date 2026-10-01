@@ -40,10 +40,23 @@ public class FileAnalysisImportRequestBoundsTests
     [MemberData(nameof(Bounds))]
     public async Task A_value_at_the_bound_passes_model_validation(string field, int max)
     {
-        // Whatever the service then answers (feature off, unknown job), it is not model validation's 400.
+        // Past model validation the request reaches the service, which refuses it for a reason of its
+        // own: the feature ships switched off (503), and with it on the job does not exist (404).
         var response = await PostAsync(Candidate(field, new string('x', max)));
 
-        Assert.NotEqual(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(response.StatusCode, new[] { HttpStatusCode.ServiceUnavailable, HttpStatusCode.NotFound });
+    }
+
+    /// <summary>
+    /// Over HTTP the currency must arrive as a bare code; the service-level trim only serves non-HTTP
+    /// callers. The client's currency picker emits bare codes, so this refuses nothing it sends.
+    /// </summary>
+    [Fact]
+    public async Task A_padded_currency_is_a_400()
+    {
+        var response = await PostAsync(Candidate(nameof(ImportCandidateRequest.Currency), " usd "));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private static ImportCandidateRequest Candidate(string field, string value) => field switch

@@ -15,7 +15,7 @@ public sealed record ImportRequest(
 public sealed record ImportCandidateRequest(
     [Required] Guid CandidateId,
     DateTime? TransactionDate,
-    [StringLength(1024)]
+    [StringLength(ImportCandidateRequest.DescriptionMaxLength)]
     string? Description,
     [Range(typeof(decimal), MoneyBounds.AmountMin, MoneyBounds.AmountMax, ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     decimal? Amount,
@@ -23,9 +23,16 @@ public sealed record ImportCandidateRequest(
     string? Currency,
     Guid? ContactId = null,
     List<Guid>? TransactionTagIds = null,
-    [StringLength(256)]
+    [StringLength(ImportCandidateRequest.ExternalIdMaxLength)]
     string? ExternalId = null
-);
+)
+{
+    /// <summary>Shared with the review grid's input, so the field stops where the server would refuse.</summary>
+    public const int DescriptionMaxLength = 1024;
+
+    /// <summary>Shared with the review grid's Reference input.</summary>
+    public const int ExternalIdMaxLength = 256;
+}
 
 public sealed record ImportResponse(
     int Imported,

@@ -82,7 +82,7 @@
                         </div>
 
                         <div class="fan-cell">
-                            <input class="fan-input" value="@row.Description"
+                            <input class="fan-input" value="@row.Description" maxlength="@ImportCandidateRequest.DescriptionMaxLength"
                                    @onchange="@(e => row.Description = e.Value?.ToString() ?? string.Empty)" aria-label="Description" />
                         </div>
 
@@ -193,7 +193,7 @@
 
                         <!-- Reference → ExternalId -->
                         <div class="fan-cell">
-                            <input class="fan-input mono" value="@row.Reference" placeholder="—"
+                            <input class="fan-input mono" value="@row.Reference" placeholder="—" maxlength="@ImportCandidateRequest.ExternalIdMaxLength"
                                    @onchange="@(e => row.Reference = e.Value?.ToString() ?? string.Empty)" aria-label="Reference" />
                         </div>
 
