@@ -408,9 +408,9 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
             Type = ContactType.Organization,
             OrganizationDetails = new() { LegalName = "Nordic Bank" },
         });
-        context.TransactionTags.AddRange(
-            new TransactionTag { TransactionTagId = seed.TagOne, Name = "Home" },
-            new TransactionTag { TransactionTagId = seed.TagTwo, Name = "Fuel" });
+        // Raw SQL: this seeds below head, where TransactionTags has no Icon column yet.
+        await MigrationSeam.InsertTransactionTagAsync(context, seed.TagOne, "Home");
+        await MigrationSeam.InsertTransactionTagAsync(context, seed.TagTwo, "Fuel");
 
         context.Accounts.AddRange(
             new Account

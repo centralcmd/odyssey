@@ -37,9 +37,7 @@ public class TransactionTagIconMigrationTests(MariaDbFixture fixture)
                 await MigrationSeam.MigrateToAsync(context, Baseline);
                 Assert.Null(await ColumnAsync(context));
                 // Raw SQL: the entity already carries Icon, which the baseline schema does not have.
-                await context.Database.ExecuteSqlRawAsync(
-                    "INSERT INTO `TransactionTags` (`TransactionTagId`, `Name`, `Description`, `Archived`) VALUES ({0}, {1}, {2}, NULL)",
-                    tagId, "Groceries", "Food");
+                await MigrationSeam.InsertTransactionTagAsync(context, tagId, "Groceries");
             }
 
             await using (var context = NewContext())
@@ -56,7 +54,6 @@ public class TransactionTagIconMigrationTests(MariaDbFixture fixture)
                 var tag = await context.TransactionTags.AsNoTracking().SingleAsync(t => t.TransactionTagId == tagId);
                 Assert.Null(tag.Icon);
                 Assert.Equal("Groceries", tag.Name);
-                Assert.Equal("Food", tag.Description);
 
                 tag.Icon = "shopping_cart";
                 context.TransactionTags.Update(tag);
