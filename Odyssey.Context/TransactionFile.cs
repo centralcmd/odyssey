@@ -7,7 +7,7 @@ namespace Odyssey.Context;
 [Index(nameof(FileMetadataId))]
 [Index(nameof(AttachedAtUtc))]
 [Index(nameof(TransactionId), nameof(FileMetadataId), IsUnique = true)]
-public class TransactionFile
+public class TransactionFile : IOwnedFileLink
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

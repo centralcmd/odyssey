@@ -30,11 +30,11 @@ public sealed class AttachFileByIdAuthorizationApiTests
     {
         { Surface.Account, [PermissionClaims.AccountsUpdate], HttpStatusCode.Forbidden },
         { Surface.Account, [PermissionClaims.FilesRead], HttpStatusCode.Forbidden },
-        { Surface.Account, [PermissionClaims.AccountsUpdate, PermissionClaims.FilesRead], HttpStatusCode.NoContent },
+        { Surface.Account, [PermissionClaims.AccountsUpdate, PermissionClaims.FilesRead], HttpStatusCode.Created },
 
         { Surface.Transaction, [PermissionClaims.TransactionsUpdate], HttpStatusCode.Forbidden },
         { Surface.Transaction, [PermissionClaims.FilesRead], HttpStatusCode.Forbidden },
-        { Surface.Transaction, [PermissionClaims.TransactionsUpdate, PermissionClaims.FilesRead], HttpStatusCode.NoContent },
+        { Surface.Transaction, [PermissionClaims.TransactionsUpdate, PermissionClaims.FilesRead], HttpStatusCode.Created },
 
         { Surface.TaxStatement, [PermissionClaims.TaxesUpdate], HttpStatusCode.Forbidden },
         { Surface.TaxStatement, [PermissionClaims.FilesRead], HttpStatusCode.Forbidden },

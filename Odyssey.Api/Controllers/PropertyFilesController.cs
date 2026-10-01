@@ -41,7 +41,7 @@ public class PropertyFilesController : ControllerBase
     [HttpPost("{propertyId}/files", Name = "AttachPropertyFile")]
     [Authorize(Policy = PermissionClaims.PropertiesUpdate)]
     [Authorize(Policy = PermissionClaims.FilesRead)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingPropertyFile))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
@@ -73,9 +73,14 @@ public class PropertyFilesController : ControllerBase
         }
 
         var created = await service.AttachFile(propertyId, request, userId, cancellationToken);
-        return created is null
-            ? this.NotFoundProblem($"Property ID {propertyId} not found.")
-            : CreatedAtRoute("DownloadPropertyFile", new { propertyId, fileId = request.FileMetadataId }, null);
+        if (created is null)
+        {
+            return this.NotFoundProblem($"Property ID {propertyId} not found.");
+        }
+
+        // The created link carries AttachedByUserId, so it is enriched like every list (issue #106).
+        await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
+        return CreatedAtRoute("DownloadPropertyFile", new { propertyId, fileId = request.FileMetadataId }, created);
     }
 
     [HttpGet("{propertyId}/files", Name = "GetPropertyFiles")]

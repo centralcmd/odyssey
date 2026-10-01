@@ -75,36 +75,29 @@ public class TransactionFileControllerTests
             CurrencyCode = "USD",
             Description = "Transaction",
             TimeStamp = DateTime.UtcNow,
-            TransactionFiles = [
-                new TransactionFile
-                {
-                    Id = Guid.NewGuid(),
-                    TransactionId = default,
-                    Transaction = null,
-                    FileMetadataId = fileMetadataId,
-                    FileMetadata = new FileMetadata
-                    {
-                        Id = fileMetadataId,
-                        UploadedByUserId = "test-user",
-                        FileName = "receipt.pdf",
-                        ContentType = "application/pdf",
-                        SizeBytes = 1234,
-                        Sha256Hash = "abc",
-                        UploadedAtUtc = DateTime.UtcNow,
-                        Description = "Test file",
-                        FileBlobId = fileBlob.Id,
-                        FileBlob = fileBlob,
-                    },
-                    AttachedByUserId = "test-user",
-                    AttachedAtUtc = DateTime.UtcNow
-                }
-            ]
+            TransactionFiles = [],
         };
+        financeContext.FileBlob.Add(fileBlob);
+        financeContext.FileMetadata.Add(new FileMetadata
+        {
+            Id = fileMetadataId,
+            UploadedByUserId = "test-user",
+            FileName = "receipt.pdf",
+            ContentType = "application/pdf",
+            SizeBytes = 1234,
+            Sha256Hash = "abc",
+            UploadedAtUtc = DateTime.UtcNow,
+            Description = "Test file",
+            FileBlobId = fileBlob.Id,
+            FileBlob = fileBlob,
+        });
         financeContext.Add(transaction);
         await financeContext.SaveChangesAsync();
 
         var attachResult = await controller.AttachTransactionFile(transaction.TransactionId, new AttachTransactionFileRequest(fileMetadataId));
-        Assert.IsType<NoContentResult>(attachResult);
+        var created = Assert.IsType<CreatedAtRouteResult>(attachResult);
+        Assert.Equal("GetTransactionFiles", created.RouteName);
+        Assert.Equal(fileMetadataId, Assert.IsType<ExistingTransactionFile>(created.Value).FileMetadata.Id);
 
         var listResult = await controller.GetTransactionFiles(transaction.TransactionId);
         var okResult = Assert.IsType<OkObjectResult>(listResult);
@@ -117,6 +110,11 @@ public class TransactionFileControllerTests
 
         var detachResult = await controller.DetachTransactionFile(transaction.TransactionId, fileMetadataId);
         Assert.IsType<NoContentResult>(detachResult);
+
+        // Detaching again is a 404 — the link is gone — never a silent 204 (issue #287 H3).
+        var second = Assert.IsAssignableFrom<ObjectResult>(
+            await controller.DetachTransactionFile(transaction.TransactionId, fileMetadataId));
+        Assert.Equal(StatusCodes.Status404NotFound, second.StatusCode);
 
         var listAfterDetach = await controller.GetTransactionFiles(transaction.TransactionId);
         var okAfterDetach = Assert.IsType<OkObjectResult>(listAfterDetach);
@@ -168,7 +166,7 @@ public class TransactionFileControllerTests
         var attachResult = await controller.AttachTransactionFile(
             transaction.TransactionId,
             new AttachTransactionFileRequest(fileMetadataId, FinanceDtos.TransactionFileType.Receipt));
-        Assert.IsType<NoContentResult>(attachResult);
+        Assert.IsType<CreatedAtRouteResult>(attachResult);
 
         var listResult = await controller.GetTransactionFiles(transaction.TransactionId);
         var okResult = Assert.IsType<OkObjectResult>(listResult);
@@ -223,7 +221,7 @@ public class TransactionFileControllerTests
         var attachResult = await controller.AttachTransactionFile(
             transaction.TransactionId,
             new AttachTransactionFileRequest(fileMetadataId));
-        Assert.IsType<NoContentResult>(attachResult);
+        Assert.IsType<CreatedAtRouteResult>(attachResult);
 
         var listResult = await controller.GetTransactionFiles(transaction.TransactionId);
         var okResult = Assert.IsType<OkObjectResult>(listResult);

@@ -301,12 +301,14 @@ public class ContractFileValidityTests
     }
 
     [Fact]
-    public async Task UpdateFile_MissingContract_ThrowsNotFound()
+    public async Task UpdateFile_MissingContract_ReturnsFalse()
     {
+        // One answer for "no such contract" and "not attached to it" — the shared file-link rule
+        // (issue #287 H3); both are the same 404 at the edge.
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        await Assert.ThrowsAsync<DomainNotFoundException>(() => service.UpdateFile(
+        Assert.False(await service.UpdateFile(
             Guid.NewGuid(), Guid.NewGuid(), new UpdateContractFileRequest { FileType = ContractFileType.Other }));
     }
 
@@ -341,6 +343,23 @@ public class ContractFileValidityTests
 
         // And it is still archived — the writes did not quietly restore it.
         Assert.NotNull((await context.Contracts.SingleAsync(c => c.ContractId == contract.ContractId)).Archived);
+    }
+
+    /// <summary>
+    /// The duplicate check runs before the per-contract cap (issue #287 H3), so re-attaching a file at
+    /// the cap reads as the duplicate it is rather than as "the contract is full".
+    /// </summary>
+    [Fact]
+    public async Task AttachFile_DuplicateAtTheFileCap_IsAConflict_NotTheCap()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = CreateService(context, maxFilesPerContract: 1);
+        var contract = await service.Create(NewContractRequest(), userId: null);
+        var fileId = await SeedFileAsync(context);
+        await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId);
+
+        await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.AttachFile(contract.ContractId, Attach(fileId), TestUserId));
     }
 
     /// <summary>AC 15 — the cap gates row creation, not metadata edits, so a contract at its cap can
