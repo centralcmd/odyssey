@@ -4,6 +4,8 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
+using Microsoft.JSInterop.Infrastructure;
+using Moq;
 using MudBlazor.Services;
 using Odyssey.Client.Components;
 using Xunit;
@@ -19,14 +21,19 @@ namespace Odyssey.Client.Tests;
 /// the old fixed <c>viewBox="0 0 1000 252"</c> a card rendered 300px wide scaled every unit by 0.3, so
 /// the three-up <c>/tax-statements</c> overview drew its 10px labels at about 3px. A label's rendered
 /// size is <c>10 × renderedWidth / viewBoxWidth</c>; with the viewBox tracking the measured width that
-/// ratio is 1, so the label renders at a true 10px at any width. These drive the real JS bridge
-/// (<c>plot-width.js</c>) through bUnit's module interop and assert the rendered geometry.
+/// ratio is 1, so the label renders at a true 10px at any width.
+/// </para>
+///
+/// <para>
+/// These run the .NET half — <see cref="PlotWidthObserver"/> and the charts — against bUnit's JS
+/// interop, delivering a width the way <c>plot-width.js</c> would. The module itself, a real
+/// <c>ResizeObserver</c> and the rendered pixel size of the labels are exercised in a browser by
+/// <c>Odyssey.E2ETests.ChartAxisLabelSizeTests</c>.
 /// </para>
 /// </summary>
 public class ChartPlotWidthTests
 {
     private const string Module = "./js/plot-width.js";
-    private const double AxisFontUnits = 10;
 
     private static readonly DateTime Now = new(2026, 6, 15, 12, 0, 0, DateTimeKind.Utc);
 
@@ -98,20 +105,18 @@ public class ChartPlotWidthTests
     }
 
     /// <summary>
-    /// The pin the issue asks for: at about 300px — one of the three-up <c>/tax-statements</c> cards —
-    /// the axis text renders at 10px. That holds exactly when the viewBox width equals the rendered
-    /// width, at whatever width the plot is measured.
+    /// The viewBox width becomes the reported width, at about 300px (one of the three-up
+    /// <c>/tax-statements</c> cards) as at full width. That equality is what makes a 10-unit label a
+    /// 10px one; the browser tier measures the pixels themselves.
     /// </summary>
     [Theory]
     [MemberData(nameof(Widths))]
-    public async Task The_axis_text_renders_at_ten_pixels_at_the_measured_width(string chart, double width)
+    public async Task The_viewbox_width_is_the_measured_width(string chart, double width)
     {
         await using var ctx = NewContext(out var module);
         var (viewBox, _) = await Measured(chart, ctx, module, width);
 
         Assert.Equal([0, 0, width, OdsLineChart.ViewBoxHeight], viewBox);
-        var renderedAxisPx = AxisFontUnits * width / viewBox[2];
-        Assert.Equal(AxisFontUnits, renderedAxisPx, precision: 6);
     }
 
     /// <summary>
@@ -227,7 +232,54 @@ public class ChartPlotWidthTests
         {
             var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Components", file));
             Assert.DoesNotContain("viewBox=\"0 0 1000", source, StringComparison.Ordinal);
-            Assert.DoesNotMatch(@"X1 = 968|\) / 10;", source);
+            Assert.DoesNotContain("X1 = 968", source, StringComparison.Ordinal);
         }
+    }
+
+    /// <summary>
+    /// The step chart lays its paths out once per parameter set, so a new width re-runs the layout —
+    /// and that re-layout must keep an open readout, re-placed at the new width, rather than closing it
+    /// the way a parameter change does.
+    /// </summary>
+    [Fact]
+    public async Task A_resize_keeps_the_step_chart_readout_open_and_moves_it()
+    {
+        await using var ctx = NewContext(out var module);
+        var cut = RenderStep(ctx);
+        await ReportWidth(cut, module, 1180);
+
+        cut.Find(".odc-lc-plot").Focus();
+        var before = cut.Find(".odc-lc-tip").GetAttribute("style");
+
+        await ReportWidth(cut, module, 300);
+
+        var after = cut.Find(".odc-lc-tip").GetAttribute("style");
+        Assert.NotEqual(before, after);
+        Assert.Contains("left:", after, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_resize_keeps_the_line_chart_readout_open()
+    {
+        await using var ctx = NewContext(out var module);
+        var cut = RenderLine(ctx);
+        await ReportWidth(cut, module, 1180);
+        cut.Find(".odc-lc-plot").Focus();
+
+        await ReportWidth(cut, module, 300);
+
+        Assert.Single(cut.FindAll(".odc-lc-tip"));
+    }
+
+    /// <summary>A zero width (the plot under <c>display:none</c>) is never applied.</summary>
+    [Fact]
+    public async Task A_zero_width_is_ignored()
+    {
+        await using var ctx = NewContext(out var module);
+        var cut = RenderLine(ctx);
+
+        await ReportWidth(cut, module, 0);
+
+        Assert.Equal(OdsLineChart.DefaultViewBoxWidth, ViewBox(cut)[2]);
     }
 }

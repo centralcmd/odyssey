@@ -44,7 +44,8 @@ public class UsersRowDisclosureTests
     /// Renders <c>/users</c> with two rows. The page returns early from <c>OnInitializedAsync</c> outside a
     /// browser, so the load is driven through the search field's <c>OnSearch</c> (as
     /// <see cref="ListLoaderCardTests"/> does) and the first-load flag that only the browser path clears
-    /// is cleared by hand.
+    /// is cleared by hand — the one private field touched, because that flag has no seam outside a
+    /// browser and the alternative is not rendering the page at all.
     /// </summary>
     private static (BunitContext Ctx, IRenderedComponent<Users> Cut) RenderUsers()
     {
@@ -181,11 +182,14 @@ public class UsersRowDisclosureTests
         Assert.DoesNotContain("Created", headers);
         Assert.Equal("Actions", headers[^1]);
 
+        Assert.All(BodyRows(cut), row => Assert.Equal(headers.Count, row.Children.Count(c => c.LocalName == "td")));
+
         Chevron(cut, 0).Click();
         Assert.Equal(headers.Count.ToString(), cut.Find("td.usr-detail-cell").GetAttribute("colspan"));
 
+        // The page-local header rule the plain cells picked up — any `.tbl` selector, not `.tbl-*`.
         var css = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Users.razor.css"));
-        Assert.DoesNotMatch(new Regex(@"\.tbl\b"), css);
+        Assert.DoesNotMatch(new Regex(@"\.tbl(?![\w-])"), css);
     }
 
     /// <summary>The detail panel's Created tile names the gap rather than printing a bare dash.</summary>

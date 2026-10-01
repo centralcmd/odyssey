@@ -5,16 +5,19 @@
 export function observe(el, dotNetRef) {
     if (!el) return null;
     let last = 0;
+    let live = true;
     const measure = () => {
+        if (!live) return;
         const w = Math.round(el.getBoundingClientRect().width);
         if (w > 0 && w !== last) {
             last = w;
-            dotNetRef.invokeMethodAsync('OnPlotWidth', w);
+            // A resize can land after the component is gone; its rejection is not an app error.
+            dotNetRef.invokeMethodAsync('OnPlotWidth', w).catch(() => { });
         }
     };
     measure();
-    if (typeof ResizeObserver === 'undefined') return null;
+    if (typeof ResizeObserver === 'undefined') return { disconnect: () => { live = false; } };
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return { disconnect: () => ro.disconnect() };
+    return { disconnect: () => { live = false; ro.disconnect(); } };
 }
