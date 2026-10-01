@@ -44,8 +44,14 @@ internal static class UserDisplay
         return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
     }
 
+    /// <summary>
+    /// What the detail panel's Created tile reads for a null date (design-system Users specimen).
+    /// <c>ApplicationUser</c> has no creation timestamp yet, so today that is every row.
+    /// </summary>
+    internal const string NotRecorded = "Not recorded";
+
     public static string CreatedText(ExistingUser user) =>
-        user.CreatedAtUtc is { } created ? created.ToString("dd MMM yyyy", CultureInfo.InvariantCulture) : "—";
+        user.CreatedAtUtc is { } created ? created.ToString("dd MMM yyyy", CultureInfo.InvariantCulture) : NotRecorded;
 
     /// <summary>
     /// Structured "First Middle Last" from the profile (issue #316 follow-up), distinct from

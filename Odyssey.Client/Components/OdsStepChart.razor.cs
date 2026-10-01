@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace Odyssey.Client.Components;
 
@@ -9,7 +10,7 @@ namespace Odyssey.Client.Components;
 /// components/StepChart). See the markup file's header for what the card is and why it differs from
 /// <see cref="OdsLineChart"/>.
 /// </summary>
-public partial class OdsStepChart
+public partial class OdsStepChart : IAsyncDisposable
 {
     /// <summary>The entries, any order — sorted by date internally. Null values are skipped.</summary>
     [Parameter] public IReadOnlyList<OdsStepPoint> Series { get; set; } = [];
@@ -93,11 +94,45 @@ public partial class OdsStepChart
     /// <summary>The present, for the today marker and the in-force split. Defaults to now (UTC); tests pin it.</summary>
     [Parameter] public DateTime? Now { get; set; }
 
-    // The plot box inside the 1000 × 252 viewBox — LineChart's, so the two cards read as one. The left
-    // edge widens with the y labels exactly as LineChart's does (OdsLineChart.AxisGutter).
-    private const double X1 = 968, YTop = 28, YBot = 212;
+    // The plot box inside the W × 252 viewBox — LineChart's, so the two cards read as one. The left
+    // edge widens with the y labels exactly as LineChart's does (OdsLineChart.AxisGutter), and W is
+    // the plot's measured pixel width, as LineChart's is (issue #274).
+    private const double YTop = 28, YBot = 212;
     private double X0 => _x0;
+    private double X1 => _vbW - OdsLineChart.PlotRightInset;
     private double _x0 = OdsLineChart.DefaultX0;
+    private double _vbW = OdsLineChart.DefaultViewBoxWidth;
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private ElementReference _plotRef;
+    private PlotWidthObserver? _widthObserver;
+
+    private string ViewBox => $"0 0 {F(_vbW)} {F(OdsLineChart.ViewBoxHeight)}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        _widthObserver ??= new PlotWidthObserver(JS, OnPlotWidth);
+        await _widthObserver.SyncAsync(_plots.Count > 0 ? _plotRef : null);
+    }
+
+    // The paths are laid out once per parameter set, so a new width re-runs the layout. The hover is
+    // kept: the entries are the same, only their x positions moved.
+    private Task OnPlotWidth(double width) => InvokeAsync(() =>
+    {
+        var w = Math.Round(width);
+        if (w <= 0 || w == _vbW) return;
+        _vbW = w;
+        Layout();
+        StateHasChanged();
+    });
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_widthObserver is not null)
+            await _widthObserver.DisposeAsync();
+        GC.SuppressFinalize(this);
+    }
 
     internal sealed record Plot(
         string Id,
@@ -214,6 +249,12 @@ public partial class OdsStepChart
 
     protected override void OnParametersSet()
     {
+        ClearHover();
+        Layout();
+    }
+
+    private void Layout()
+    {
         var now = Now ?? DateTime.UtcNow;
         // Fractional day: a point dated today is already in force, one dated tomorrow is not.
         _now = DateOnly.FromDateTime(now).DayNumber + now.TimeOfDay.TotalDays;
@@ -229,7 +270,6 @@ public partial class OdsStepChart
             .ToList();
 
         _plots.Clear();
-        ClearHover();
         _multi = sets.Count > 1;
         if (sets.Count == 0) return;
 

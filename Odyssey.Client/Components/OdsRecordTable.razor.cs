@@ -123,6 +123,10 @@ public partial class OdsRecordTable<TRow>
 
     private OdsTableSort? _sort;
     private readonly HashSet<object> _openIds = [];
+
+    // The chevron's aria-controls target (Odyssey Design System · RecordTable): the detail row's id,
+    // unique per table instance so two tables on one page never share one.
+    private readonly string _detailIdPrefix = $"odc-rec-detail-{Guid.NewGuid():N}";
     private readonly HashSet<object> _editIds = [];
     private readonly HashSet<object> _savedIds = [];
 

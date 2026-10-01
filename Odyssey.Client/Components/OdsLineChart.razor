@@ -87,9 +87,9 @@
         @* One tab stop per chart: focus opens the readout on the latest point, Left / Right step
            through the points, Escape or leaving closes it. The live region below speaks only for
            keyboard steps, so pointer movement never produces a stream of announcements. *@
-        <div class="odc-lc-plot" tabindex="0" role="group" aria-label="@PlotKeyLabel"
+        <div class="odc-lc-plot" tabindex="0" role="group" aria-label="@PlotKeyLabel" @ref="_plotRef"
              @onmouseleave="ClearHover" @onfocus="OnPlotFocus" @onblur="ClearHover" @onkeydown="OnPlotKey">
-        <svg class="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
+        <svg class="odc-line-svg" viewBox="@ViewBox" preserveAspectRatio="xMidYMid meet"
              role="img" aria-label="@EffectiveAriaLabel">
             <g stroke="var(--chart-grid)" stroke-width="1">
                 @foreach (var v in _gridVals)
@@ -187,9 +187,9 @@
         @if (_hover is { } h && h < _pts.Count)
         {
             var p = _pts[h];
-            var left = Sx(h) / 10;
+            var left = TipLeftPercent(h);
             var d = h > 0 ? p.Value - _pts[h - 1].Value : 0;
-            <div class="@($"odc-lc-tip{TipEdge(left)}")" style="@TipStyle(left, Sy(p.Value) / 252 * 100)" aria-hidden="true">
+            <div class="@($"odc-lc-tip{TipEdge(left)}")" style="@TipStyle(left, Sy(p.Value) / ViewBoxHeight * 100)" aria-hidden="true">
                 <div class="odc-lc-tip-k">@p.Label@(p.Kind == OdsLinePointKind.Normal ? "" : $" · {KindLabel(p.Kind)}")</div>
                 <div class="odc-lc-tip-v" style="@($"color:{Color}")">
                     @Format((decimal)p.Value)
