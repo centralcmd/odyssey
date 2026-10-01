@@ -5,52 +5,11 @@
    .acct-detail primitives come from the page-shared scopes + app.css. All tints
    use semantic palette tokens so the page reads correctly in light and dark. */
 
-/* ── Table (kit.css .tbl, scoped here) ── */
-.tbl {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-}
-
-.tbl th,
-.tbl td {
-    padding: 12px 16px;
-    text-align: left;
-    vertical-align: middle;
-}
-
-.tbl thead th {
-    font-size: 0.6875rem;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--mud-palette-text-secondary);
-    border-bottom: 1px solid var(--mud-palette-divider);
-    background: transparent;
-    white-space: nowrap;
-}
-
-.tbl tbody tr {
-    border-bottom: 1px solid var(--mud-palette-table-lines);
-}
-
-/* The whole row is the disclosure control — show it's clickable. */
-.usr-tbl tbody tr:not(.usr-detail-row) {
-    cursor: pointer;
-}
-
-.usr-tbl tbody tr:not(.usr-detail-row):hover {
-    background: var(--mud-palette-action-default-hover);
-}
-
-.usr-tbl tbody tr:not(.usr-detail-row):focus-visible {
-    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
-    outline-offset: -2px;
-}
-
-.usr-tbl td {
-    vertical-align: middle;
-}
+/* ── Table ──
+   The table itself is the shared record table (.odc-rec, odyssey-components.css): header style,
+   cell padding, row hover and the expanded tint all come from there, so the OdsSortHeader cells
+   and the plain Actions header read as one header style (issue #274). Only the Users-specific
+   parts stay here. The row is not focusable — the chevron is the disclosure control (issue #273). */
 
 .usr-actions-col {
     width: 110px;
@@ -136,15 +95,7 @@
     transform: rotate(180deg);
 }
 
-/* Expanded row tint + seamless detail cell */
-.usr-tbl tbody tr.expanded {
-    background: color-mix(in srgb, var(--mud-palette-primary) 6%, transparent);
-}
-
-.usr-tbl tbody tr.expanded td {
-    border-bottom-color: transparent;
-}
-
+/* Seamless detail cell (the expanded tint and its border come from .odc-rec). */
 .usr-detail-cell {
     padding: 0 !important;
     background: var(--mud-palette-background);

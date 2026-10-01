@@ -116,4 +116,46 @@ public class RecordTableExpansionTests
 
         Assert.Contains("detail:a", cut.Markup);
     }
+
+    /// <summary>
+    /// The chevron names the panel it opens (Odyssey Design System · RecordTable): <c>aria-controls</c>
+    /// points at the detail row's <c>id</c> while expanded and is absent while collapsed, when there is no
+    /// such row. Two tables on one page must never share an id.
+    /// </summary>
+    [Fact]
+    public void ExpandChevron_ControlsTheDetailRowWhileExpanded()
+    {
+        using var ctx = NewContext();
+        var cut = RenderExpandable(ctx);
+
+        var chevron = cut.Find("button.odc-rec-expand");
+        Assert.Equal("false", chevron.GetAttribute("aria-expanded"));
+        Assert.Null(chevron.GetAttribute("aria-controls"));
+
+        chevron.Click();
+
+        chevron = cut.Find("button.odc-rec-expand");
+        Assert.Equal("true", chevron.GetAttribute("aria-expanded"));
+        var controls = chevron.GetAttribute("aria-controls");
+        Assert.False(string.IsNullOrEmpty(controls));
+        var detail = cut.Find($"[id='{controls}']");
+        Assert.Contains("odc-rec-detail-row", detail.ClassList);
+        Assert.Contains("detail:a", detail.TextContent);
+
+        var other = RenderExpandable(ctx);
+        other.Find("button.odc-rec-expand").Click();
+        Assert.NotEqual(controls, other.Find("button.odc-rec-expand").GetAttribute("aria-controls"));
+    }
+
+    /// <summary>The row itself is never the control — no role, tabindex or aria-expanded on the &lt;tr&gt;.</summary>
+    [Fact]
+    public void BodyRow_CarriesNoControlSemantics()
+    {
+        using var ctx = NewContext();
+        var row = RenderExpandable(ctx).FindAll("tbody tr")[0];
+
+        Assert.Null(row.GetAttribute("role"));
+        Assert.Null(row.GetAttribute("tabindex"));
+        Assert.Null(row.GetAttribute("aria-expanded"));
+    }
 }

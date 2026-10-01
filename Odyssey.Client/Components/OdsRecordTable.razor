@@ -72,9 +72,10 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var row in VisibleRows)
+        @foreach (var (row, rowIndex) in VisibleRows.Select((r, i) => (r, i)))
         {
             var rk = RowKey(row);
+            var detailId = $"{_detailIdPrefix}-{rowIndex}";
             var expanded = _openIds.Contains(rk);
             var editing = _editIds.Contains(rk);
             var cellCtx = new OdsRecordCellContext(expanded, editing, _savedIds.Contains(rk));
@@ -99,6 +100,7 @@
                         {
                             <button type="button" class="odc-rec-expand"
                                     aria-label="@(expanded ? "Collapse row" : "Expand row")" aria-expanded="@(expanded ? "true" : "false")"
+                                    aria-controls="@(expanded ? detailId : null)"
                                     disabled="@editing" @onclick="@(() => ToggleRow(rk))" @onclick:stopPropagation="true">
                                 <span class="material-icons odc-rec-chev @(expanded ? "open" : null)" aria-hidden="true">expand_more</span>
                             </button>
@@ -108,7 +110,7 @@
             </tr>
             @if (expanded)
             {
-                <tr class="odc-rec-detail-row">
+                <tr class="odc-rec-detail-row" id="@detailId">
                     <td class="odc-rec-detail-cell" colspan="@ColSpan">
                         <div class="odc-rec-panel @(editing ? "editing" : null)">
                             @if (editing && RenderEdit is not null)

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace Odyssey.Client.Components;
 
@@ -8,7 +9,7 @@ namespace Odyssey.Client.Components;
 /// components/LineChart). See the markup file's header for what the card is and why the
 /// reconstructed-series additions — negatives, point kinds, the text equivalent — exist.
 /// </summary>
-public partial class OdsLineChart
+public partial class OdsLineChart : IAsyncDisposable
 {
     /// <summary>The series, oldest → newest. Points with a null Value are skipped.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<OdsLinePoint> Series { get; set; } = [];
@@ -249,11 +250,55 @@ public partial class OdsLineChart
     internal const string DefaultPartialDescription = "Understated — an account had no exchange rate for this period";
     internal const string DefaultRevaluedDescription = "Revalued — an estimate took effect in this period";
 
-    // The plot box inside the 1000 × 252 viewBox. The x-tick baseline sits at YBot + 26 = 238. The
+    // The plot box inside the W × 252 viewBox. The x-tick baseline sits at YBot + 26 = 238. The
     // left edge is not fixed: it widens past DefaultX0 when a y label would not fit (AxisGutter).
-    private const double X1 = 968, YTop = 28, YBot = 212;
+    // The width W is the plot's measured pixel width (issue #274), so one user unit is one pixel and
+    // the 10-unit axis text renders at a true --fs-micro at any card width.
+    private const double YTop = 28, YBot = 212;
     private double X0 => _x0;
+    private double X1 => _vbW - PlotRightInset;
     private double _x0 = DefaultX0;
+    private double _vbW = DefaultViewBoxWidth;
+
+    /// <summary>The viewBox width before the plot has been measured (prerender, or no JS runtime).</summary>
+    internal const double DefaultViewBoxWidth = 1000;
+
+    /// <summary>The fixed viewBox height; with the width tracking the plot, also its pixel height.</summary>
+    internal const double ViewBoxHeight = 252;
+
+    /// <summary>The gap between the plot's right edge and the viewBox's.</summary>
+    internal const double PlotRightInset = 32;
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private ElementReference _plotRef;
+    private PlotWidthObserver? _widthObserver;
+
+    private string ViewBox => $"0 0 {Fmt(_vbW)} {Fmt(ViewBoxHeight)}";
+
+    /// <summary>A hover readout's left edge, as a percentage of the plot width.</summary>
+    private double TipLeftPercent(int i) => Sx(i) / _vbW * 100;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        _widthObserver ??= new PlotWidthObserver(JS, OnPlotWidth);
+        await _widthObserver.SyncAsync(_pts.Count > 0 ? _plotRef : null);
+    }
+
+    private Task OnPlotWidth(double width) => InvokeAsync(() =>
+    {
+        var w = Math.Round(width);
+        if (w <= 0 || w == _vbW) return;
+        _vbW = w;
+        StateHasChanged();
+    });
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_widthObserver is not null)
+            await _widthObserver.DisposeAsync();
+        GC.SuppressFinalize(this);
+    }
 
     /// <summary>The plot's left edge when every y label fits the default gutter.</summary>
     internal const double DefaultX0 = 64;

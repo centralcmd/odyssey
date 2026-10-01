@@ -472,7 +472,9 @@
    points. Shape + stroke, never colour, is what distinguishes them. */
 .odc-lc-marks { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; }
 /* Hover readout — same inverted bubble as .odc-tip, pinned above the point. */
-.odc-lc-plot { position: relative; border-radius: var(--radius-sm); }
+/* inline-size containment: the SVG's viewBox width (the plot's own measured width, issue #274) must
+   not feed back into the plot's min-content size, or a shrinking grid track can't shrink the chart. */
+.odc-lc-plot { position: relative; border-radius: var(--radius-sm); contain: inline-size; }
 .odc-lc-plot:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .odc-lc-hit { fill: transparent; cursor: crosshair; }
 .odc-lc-hring { fill: none; stroke-width: 2; pointer-events: none; }

@@ -28,7 +28,9 @@
     The specimen also shows a 2FA badge/filter and an email-status filter; the
     current ExistingUser contract exposes neither (no two-factor field, and the
     GET endpoint filters by role + enabled only), so those are intentionally
-    omitted. Created shows "—" until the service populates CreatedAtUtc.
+    omitted. The Created column is hidden rather than shown as a column of dashes:
+    ApplicationUser has no creation timestamp yet, so CreatedAtUtc is always null.
+    The detail panel still carries a Created tile, which reads "Not recorded".
 *@
 
 <OdsLiveAnnouncer Message="@_announce" />
@@ -59,12 +61,14 @@
                    Noun="users" EmptyIcon="person_search">
         <MudCard Elevation="1" Class="ods-outline">
             <MudCardContent Class="pa-0">
-                <table class="tbl usr-tbl" aria-label="Users">
+                <table class="odc-rec usr-tbl" aria-label="Users">
                     <thead>
                         <tr>
                             @* OdsSortHeader is the shared sortable <th> (the same atom OdsRecordTable
                                renders from its Columns) — it owns aria-sort, the arrow indicator and a
-                               real <button>, so this page no longer hand-rolls any of the three. *@
+                               real <button>, so this page no longer hand-rolls any of the three. The
+                               table carries the shared .odc-rec class, so these and the plain Actions
+                               header read as one header style (issue #274). *@
                             <OdsSortHeader SortKey="name" Sort="_sort" OnSort="ToggleSort">User</OdsSortHeader>
                             <OdsSortHeader SortKey="fullname" Sort="_sort" OnSort="ToggleSort">Full name</OdsSortHeader>
                             <OdsSortHeader SortKey="birthdate" Sort="_sort" OnSort="ToggleSort">Date of birth</OdsSortHeader>
@@ -72,7 +76,6 @@
                             <OdsSortHeader SortKey="role" Sort="_sort" OnSort="ToggleSort">Role</OdsSortHeader>
                             <OdsSortHeader SortKey="emailstatus" Sort="_sort" OnSort="ToggleSort">Email status</OdsSortHeader>
                             <OdsSortHeader SortKey="account" Sort="_sort" OnSort="ToggleSort">Account</OdsSortHeader>
-                            <th scope="col">Created</th>
                             <th scope="col" class="usr-actions-col">Actions</th>
                         </tr>
                     </thead>
@@ -82,14 +85,14 @@
                             var isEditing = _editingId == user.Id;
                             var isExpanded = _expandedId == user.Id;
                             var isOpen = isEditing || isExpanded;
-                            @* The whole row is the disclosure control (design-system Users
-                               specimen): clicking anywhere toggles the detail panel; the
-                               actions cell stops propagation so its controls act on their own. *@
+                            var detailId = $"usr-detail-{user.Id}";
+                            @* The chevron in the actions cell is the row's only disclosure control
+                               (design-system RecordTable). The row click is a pointer convenience and
+                               nothing more: the <tr> carries no role, tabindex or aria-expanded, so the
+                               menu and chevron are never nested inside another control (issue #273).
+                               The actions cell stops propagation so its controls act on their own. *@
                             <tr class="@(isOpen ? "expanded" : null)"
-                                role="button" tabindex="0"
-                                aria-expanded="@isOpen.ToString().ToLowerInvariant()"
-                                @onclick="@(() => ToggleExpand(user.Id))"
-                                @onkeydown="@(e => OnRowKeyDown(e, user.Id))">
+                                @onclick="@(() => ToggleExpand(user.Id))">
                                 <td>
                                     <div class="usr-user-cell">
                                         @* Decorative: the name cell beside it already identifies the
@@ -118,7 +121,6 @@
                                         }
                                     </span>
                                 </td>
-                                <td class="muted mono">@UserDisplay.CreatedText(user)</td>
                                 <td>
                                     <div class="usr-row-actions" @onclick:stopPropagation="true">
                                         @* Edit (users.update) and Delete (users.delete) share the row's
@@ -157,6 +159,8 @@
                                         </MudMenu>
                                         <button class="usr-expand-btn" type="button"
                                                 aria-label="@(isOpen ? "Collapse row" : "Expand row")"
+                                                aria-expanded="@isOpen.ToString().ToLowerInvariant()"
+                                                aria-controls="@(isOpen ? detailId : null)"
                                                 @onclick="@(() => ToggleExpand(user.Id))">
                                             <MudIcon Icon="@Icons.Material.Filled.ExpandMore"
                                                      Class="@($"usr-chev {(isOpen ? "open" : null)}")" />
@@ -167,8 +171,8 @@
 
                             @if (isEditing)
                             {
-                                <tr class="usr-detail-row">
-                                    <td class="usr-detail-cell" colspan="9">
+                                <tr class="odc-rec-detail-row usr-detail-row" id="@detailId">
+                                    <td class="usr-detail-cell" colspan="8">
                                         <UserEditPanel User="user" Roles="_roles"
                                                        Saving="_editSaving" Error="@_editError"
                                                        OnCancel="CancelEdit"
@@ -178,8 +182,8 @@
                             }
                             else if (isExpanded)
                             {
-                                <tr class="usr-detail-row">
-                                    <td class="usr-detail-cell" colspan="9">
+                                <tr class="odc-rec-detail-row usr-detail-row" id="@detailId">
+                                    <td class="usr-detail-cell" colspan="8">
                                         <UserDetailPanel User="user" CanReadProfileImages="_canReadProfileImages"
                                                          Permissions="RolePermissionsFor(user.Role)"
                                                          ClaimsOpen="@(_claimsOpenId == user.Id)"

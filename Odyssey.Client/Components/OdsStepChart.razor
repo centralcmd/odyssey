@@ -78,9 +78,9 @@
         @* One tab stop per chart, as OdsLineChart: focus opens the readout on the value in force,
            Left / Right step through every entry by date, Escape or leaving closes it; the live region
            speaks keyboard steps only. *@
-        <div class="odc-lc-plot" tabindex="0" role="group" aria-label="@PlotKeyLabel"
+        <div class="odc-lc-plot" tabindex="0" role="group" aria-label="@PlotKeyLabel" @ref="_plotRef"
              @onmouseleave="ClearHover" @onfocus="OnPlotFocus" @onblur="ClearHover" @onkeydown="OnPlotKey">
-        <svg class="odc-line-svg" viewBox="0 0 1000 252" preserveAspectRatio="xMidYMid meet"
+        <svg class="odc-line-svg" viewBox="@ViewBox" preserveAspectRatio="xMidYMid meet"
              role="img" aria-label="@EffectiveAriaLabel">
             <g stroke="var(--chart-grid)" stroke-width="1">
                 @foreach (var v in _gridVals)
@@ -148,8 +148,8 @@
         @if (_hover is { } h && _plots.FirstOrDefault(q => q.Id == h.PlotId) is { } hp && h.Index < hp.Pts.Count)
         {
             var pt = hp.Pts[h.Index];
-            var left = Sx(Days(pt.Date)) / 10;
-            var top = (Sy(Plotted(hp.Pts, pt.Value)) + hp.Dodge) / 252 * 100;
+            var left = Sx(Days(pt.Date)) / _vbW * 100;
+            var top = (Sy(Plotted(hp.Pts, pt.Value)) + hp.Dodge) / OdsLineChart.ViewBoxHeight * 100;
             var d = h.Index > 0 ? pt.Value - hp.Pts[h.Index - 1].Value : 0;
             <div class="@($"odc-lc-tip{OdsLineChart.TipEdge(left)}")" style="@OdsLineChart.TipStyle(left, top)" aria-hidden="true">
                 <div class="odc-lc-tip-k">@TipKey(hp, pt.Date)</div>

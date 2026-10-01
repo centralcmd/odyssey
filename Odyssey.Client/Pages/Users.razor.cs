@@ -312,12 +312,6 @@ public partial class Users
         }
     }
 
-    private void OnRowKeyDown(KeyboardEventArgs args, string id)
-    {
-        if (args.Key is "Enter" or " " or "Spacebar")
-            ToggleExpand(id);
-    }
-
     private void BeginEdit(ExistingUser user)
     {
         _editingId = user.Id;
