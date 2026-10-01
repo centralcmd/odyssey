@@ -212,10 +212,26 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
         StateHasChanged();
         try
         {
-            if ((await DetachFileAsync(meta.Id)).Toast(Snackbar, "Delete failed", "File detached."))
+            var result = await DetachFileAsync(meta.Id);
+            if (IsAlreadyDetached(result))
+            {
+                Snackbar.Add("File was already detached.", Severity.Info);
                 items.RemoveAll(f => MetadataOf(f).Id == meta.Id);
+            }
+            else if (result.Toast(Snackbar, "Delete failed", "File detached."))
+            {
+                items.RemoveAll(f => MetadataOf(f).Id == meta.Id);
+            }
         }
         finally { deletingFiles.Remove(meta.Id); }
     }
+
+    /// <summary>
+    /// A detach answered <c>404</c> means the link is already gone — another tab or another user
+    /// detached it first (issue #287 H3 made that a <c>404</c> rather than a silent <c>204</c>). The row is
+    /// stale either way, so it is dropped rather than left on screen beside a "Delete failed" toast.
+    /// </summary>
+    internal static bool IsAlreadyDetached(ApiResult result) =>
+        !result.IsSuccess && result.Status == System.Net.HttpStatusCode.NotFound;
 
 }

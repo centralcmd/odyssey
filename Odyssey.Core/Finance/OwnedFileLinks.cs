@@ -179,6 +179,7 @@ public sealed class OwnedFileLinks<TLink, TDto>
             .Where(OwnedBy(ownerId))
             .Where(HasMetadata)
             .OrderBy(AttachedAt)
+            .ThenBy(FileId)
             .ToListAsync(cancellationToken);
 
         return [.. links.Select(surface.ToDto)];
@@ -255,7 +256,12 @@ public sealed class OwnedFileLinks<TLink, TDto>
 
     private static readonly Expression<Func<TLink, bool>> HasMetadata = BuildHasMetadata();
 
-    private static readonly Expression<Func<TLink, DateTime>> AttachedAt = BuildAttachedAt();
+    private static readonly Expression<Func<TLink, DateTime>> AttachedAt =
+        BuildMember<DateTime>(nameof(IOwnedFileLink.AttachedAtUtc));
+
+    // The tiebreaker: two files attached in one clock tick would otherwise swap order between reads.
+    private static readonly Expression<Func<TLink, Guid>> FileId =
+        BuildMember<Guid>(nameof(IOwnedFileLink.FileMetadataId));
 
     private static Expression<Func<TLink, bool>> BuildHasMetadata()
     {
@@ -265,11 +271,10 @@ public sealed class OwnedFileLinks<TLink, TDto>
         return Expression.Lambda<Func<TLink, bool>>(body, parameter);
     }
 
-    private static Expression<Func<TLink, DateTime>> BuildAttachedAt()
+    private static Expression<Func<TLink, TValue>> BuildMember<TValue>(string member)
     {
         var parameter = Expression.Parameter(typeof(TLink), "link");
-        var body = Expression.Property(parameter, nameof(IOwnedFileLink.AttachedAtUtc));
-        return Expression.Lambda<Func<TLink, DateTime>>(body, parameter);
+        return Expression.Lambda<Func<TLink, TValue>>(Expression.Property(parameter, member), parameter);
     }
 
     private static MemberExpression Captured(Guid value) =>
