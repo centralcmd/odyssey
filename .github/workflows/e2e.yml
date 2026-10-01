@@ -25,22 +25,27 @@ jobs:
       - name: Start the stack
         run: docker compose up -d --build
 
-      - name: Wait for the client to be ready
+      # The client depends only on the API having *started*, so waiting on the client alone let
+      # a slow migration skip the whole API tier. Wait on the API's own health check too (#257).
+      - name: Wait for the API and client to be ready
         run: |
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:5199 >/dev/null 2>&1; then
-              echo "Client is up."
+            if curl -fsS http://localhost:5188/healthz >/dev/null 2>&1 \
+              && curl -fsS http://localhost:5199 >/dev/null 2>&1; then
+              echo "API and client are up."
               exit 0
             fi
-            echo "Waiting for client... ($i)"
+            echo "Waiting for API and client... ($i)"
             sleep 5
           done
-          echo "Client did not become ready in time."
+          echo "Stack did not become ready in time."
           exit 1
 
+      # ODYSSEY_REQUIRE_TIER makes an unreachable stack fail the tier instead of skipping it.
       - name: Run browser E2E tests
         env:
           E2E_BASE_URL: http://localhost:5199
+          ODYSSEY_REQUIRE_TIER: e2e
         run: >-
           dotnet test Odyssey.E2ETests -c Release
           --logger "trx;LogFilePrefix=e2e-results"
@@ -49,6 +54,7 @@ jobs:
       - name: Run API E2E tests
         env:
           E2E_API_BASE_URL: http://localhost:5188
+          ODYSSEY_REQUIRE_TIER: e2e-api
         run: >-
           dotnet test Odyssey.E2ETests.Api -c Release
           --logger "trx;LogFilePrefix=e2e-api-results"
