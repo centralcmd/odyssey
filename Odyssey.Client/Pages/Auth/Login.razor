@@ -2,7 +2,6 @@
 @layout AuthLayout
 @attribute [AllowAnonymous]
 @inject AuthApiClient AuthApiClient
-@inject CookieAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavigationManager
 
 <PageTitle>Login</PageTitle>
@@ -18,6 +17,13 @@
         @* A plain <h1>, not a MudText, so it can carry the ElementReference the phase swap focuses
            (the /forgot-password pattern); .auth-panel-heading matches the theme's H5. *@
         <h1 @ref="_headingRef" tabindex="-1" class="auth-panel-heading mb-2">Sign in</h1>
+
+        @* Arriving here because the session ended mid-use (issue #250): say so, rather than leaving the
+           user to wonder why they were moved. OdsAlert gives an info banner role="status". *@
+        @if (SessionExpired && string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <OdsAlert Severity="Severity.Info" Class="mt-2 mb-2">Your session has expired. Sign in again to continue.</OdsAlert>
+        }
 
         <MudTextField @bind-Value="_request.Email"
                       Label="Username or Email"

@@ -29,6 +29,16 @@ public partial class Login
     [SupplyParameterFromQuery]
     public string? ReturnUrl { get; set; }
 
+    /// <summary>Why the user was sent here; only <see cref="SessionExpiredReason"/> is acted on.</summary>
+    [SupplyParameterFromQuery]
+    public string? Reason { get; set; }
+
+    /// <summary>The <c>reason</c> value <c>SessionExpiryRedirect</c> sends, which shows the expiry notice.</summary>
+    internal const string SessionExpiredReason = "expired";
+
+    private bool SessionExpired =>
+        string.Equals(Reason, SessionExpiredReason, StringComparison.Ordinal);
+
     /// <summary>This page's own route, which is never a valid return target.</summary>
     internal const string LoginPath = "/login";
 
@@ -58,8 +68,9 @@ public partial class Login
     /// than in each stub is what lets a test round-trip it through <see cref="Destination"/>; two
     /// hand-written copies is how the two ends drifted apart in the first place (issue #408).
     /// </remarks>
-    internal static string SignInUrlFor(string baseRelativePath) =>
-        $"{LoginPath}?returnUrl={Uri.EscapeDataString("/" + baseRelativePath)}";
+    internal static string SignInUrlFor(string baseRelativePath, string? reason = null) =>
+        $"{LoginPath}?returnUrl={Uri.EscapeDataString("/" + baseRelativePath)}"
+        + (reason is null ? "" : $"&reason={Uri.EscapeDataString(reason)}");
 
     /// <summary>
     /// Moves focus to the new panel's heading whenever the phase changes (password → two-step and
@@ -139,8 +150,11 @@ public partial class Login
         switch (outcome)
         {
             case LoginOutcome.Success:
-                await AuthStateProvider.RefreshAsync();
-                NavigationManager.NavigateTo(Destination(ReturnUrl));
+                // A full reload, not a client-side route change: the app-lifetime caches (reference
+                // data, preferences, the limit caches, the auth state itself) were filled under the
+                // previous session, and a different user signing in on this tab would otherwise inherit
+                // them (issue #250). The reload resolves the new session from scratch.
+                NavigationManager.NavigateTo(Destination(ReturnUrl), forceLoad: true);
                 break;
 
             case LoginOutcome.RequiresTwoFactor:

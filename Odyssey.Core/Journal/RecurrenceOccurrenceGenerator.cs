@@ -173,7 +173,15 @@ internal static class RecurrenceOccurrenceGenerator
 
             case RecurrenceFrequency.Weekly:
             {
-                var days = pattern.DaysOfWeek ?? DaysOfWeekFlags.None;
+                // Only defined day bits can ever match. A mask with none (a row written before issue
+                // #243's validation, or by a non-validating path) has no next occurrence, so stop
+                // rather than stepping a day at a time until DateTime overflows.
+                var days = (pattern.DaysOfWeek ?? DaysOfWeekFlags.None) & AllDays;
+                if (days == DaysOfWeekFlags.None)
+                {
+                    yield break;
+                }
+
                 var anchorWeekStart = StartOfWeek(anchor.Date);
                 for (var date = anchor.Date; ; date = date.AddDays(1))
                 {
@@ -211,6 +219,12 @@ internal static class RecurrenceOccurrenceGenerator
                 throw new ArgumentOutOfRangeException(nameof(pattern), pattern.Frequency, "Unknown recurrence frequency.");
         }
     }
+
+    // The persistence-side twin of DaysOfWeekFlagsExtensions.AllDays (the DTO enum is a separate type);
+    // RecurrenceOccurrenceGeneratorTests pins the two to the same bits.
+    internal const DaysOfWeekFlags AllDays = DaysOfWeekFlags.Monday | DaysOfWeekFlags.Tuesday
+        | DaysOfWeekFlags.Wednesday | DaysOfWeekFlags.Thursday | DaysOfWeekFlags.Friday
+        | DaysOfWeekFlags.Saturday | DaysOfWeekFlags.Sunday;
 
     // Weeks run Monday-Sunday to match DaysOfWeekFlags' Monday-first ordering.
     private static DateTime StartOfWeek(DateTime date)

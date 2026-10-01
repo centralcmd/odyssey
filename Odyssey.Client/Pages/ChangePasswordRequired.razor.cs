@@ -28,8 +28,6 @@ public partial class ChangePasswordRequired
 
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
-    [Inject] private CookieAuthenticationStateProvider AuthStateProvider { get; set; } = default!;
-
     protected override void OnInitialized() =>
         // Rejects anything that isn't an app-relative path, and refuses this page's own route so a
         // completed gate can't redirect to itself and spin.
@@ -78,7 +76,6 @@ public partial class ChangePasswordRequired
         // emailed link or /forgot-password. POST /logout is one of the five endpoints the server keeps
         // open while the flag is set, precisely so this cannot dead-end.
         await AuthApiClient.LogoutAsync();
-        await AuthStateProvider.RefreshAsync();
         NavigationManager.NavigateTo("/login", forceLoad: true);
     }
 }

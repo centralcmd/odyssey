@@ -281,6 +281,14 @@ public class RecurrencePatternService
         var isMonthly = request.Frequency == DtoRecurrenceFrequency.Monthly;
         var isYearly = request.Frequency == DtoRecurrenceFrequency.Yearly;
 
+        // Defense in depth behind the DTO's [EnumDataType] for non-HTTP callers: an undefined bit names
+        // no weekday, so a mask with no valid day would never match and the weekly generator would
+        // step until DateTime overflows (issue #243).
+        if (request.DaysOfWeek is { } days && !days.HasOnlyDefinedDays())
+        {
+            throw new DomainValidationException("DaysOfWeek contains a value that is not a day of the week.");
+        }
+
         if ((request.DaysOfWeek is not null && request.DaysOfWeek != DtoDaysOfWeekFlags.None) != isWeekly)
         {
             throw new DomainValidationException("DaysOfWeek is required for Weekly recurrence and must be unset otherwise.");

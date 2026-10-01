@@ -175,6 +175,64 @@ public class RecurrencePatternsApiTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    // 128 has no defined day bit, so the weekly generator could never find an occurrence and used to
+    // step until DateTime overflowed (a 500 after ~450 ms); 129 carried Monday plus an undefined bit and
+    // was stored as-is. Both are a 400 now, and nothing is written (issue #243).
+    [Theory]
+    [InlineData(128)]
+    [InlineData(129)]
+    public async Task Create_DaysOfWeekWithUndefinedBit_ReturnsBadRequestAndStoresNothing(int rawDays)
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        var calendar = await CreateCalendarAsync(client, "Personal");
+
+        var response = await client.PostAsJsonAsync(PatternsPath, new NewRecurrencePattern
+        {
+            CalendarId = calendar.CalendarId,
+            Title = "Undefined day",
+            StartDateTime = new DateTime(2026, 8, 3, 10, 0, 0, DateTimeKind.Utc),
+            EndDateTime = new DateTime(2026, 8, 3, 10, 30, 0, DateTimeKind.Utc),
+            Frequency = RecurrenceFrequency.Weekly,
+            DaysOfWeek = (DaysOfWeekFlags)rawDays,
+            OccurrenceCount = 3,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadAsStringAsync();
+        Assert.Contains(nameof(NewRecurrencePattern.DaysOfWeek), problem);
+
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<CalendarContext>();
+        Assert.Empty(context.RecurrencePatterns);
+    }
+
+    [Fact]
+    public async Task Update_DaysOfWeekWithUndefinedBit_ReturnsBadRequest()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        var calendar = await CreateCalendarAsync(client, "Personal");
+        var request = new NewRecurrencePattern
+        {
+            CalendarId = calendar.CalendarId,
+            Title = "Weekly",
+            StartDateTime = new DateTime(2030, 1, 7, 10, 0, 0, DateTimeKind.Utc),
+            EndDateTime = new DateTime(2030, 1, 7, 10, 30, 0, DateTimeKind.Utc),
+            Frequency = RecurrenceFrequency.Weekly,
+            DaysOfWeek = DaysOfWeekFlags.Monday,
+            OccurrenceCount = 3,
+        };
+        var created = await CreatePatternAsync(client, request);
+
+        var response = await client.PutAsJsonAsync(
+            $"{PatternsPath}/{created.RecurrencePatternId}", request with { DaysOfWeek = (DaysOfWeekFlags)128 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task Create_ProjectedOccurrencesExceedCap_ReturnsBadRequest()
     {

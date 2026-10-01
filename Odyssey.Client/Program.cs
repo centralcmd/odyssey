@@ -55,18 +55,27 @@ var apiBaseAddress = shouldUseRelativeBase
 // next, and one handler turns that into one redirect instead of ~200 call sites each checking. It
 // signals through a singleton notifier rather than navigating itself — handler instances are built into
 // the pipeline below, so no component can resolve *this* instance from DI.
+//
+// UnauthorizedHandler is the third of the kind (issue #250): a 401 on a domain call means the cookie has
+// expired or been revoked, and without it every page fails with a Retry that can never succeed. It too
+// signals a singleton notifier; SessionExpiryRedirect (App.razor) reloads to the sign-in page.
 builder.Services.AddTransient<BrowserCredentialsHandler>();
 builder.Services.AddTransient<LegalComplianceHandler>();
 builder.Services.AddSingleton<PasswordChangeRequiredNotifier>();
 builder.Services.AddTransient<PasswordChangeRequiredHandler>();
+builder.Services.AddSingleton<SessionExpiredNotifier>();
+builder.Services.AddTransient(sp =>
+    new UnauthorizedHandler(sp.GetRequiredService<SessionExpiredNotifier>(), new Uri(apiBaseAddress!)));
 builder.Services.AddScoped(sp =>
 {
     var legalCompliance = sp.GetRequiredService<LegalComplianceHandler>();
     var passwordChange = sp.GetRequiredService<PasswordChangeRequiredHandler>();
+    var unauthorized = sp.GetRequiredService<UnauthorizedHandler>();
     var browserCredentials = sp.GetRequiredService<BrowserCredentialsHandler>();
     var antiforgery = sp.GetRequiredService<AntiforgeryHandler>();
     legalCompliance.InnerHandler = passwordChange;
-    passwordChange.InnerHandler = browserCredentials;
+    passwordChange.InnerHandler = unauthorized;
+    unauthorized.InnerHandler = browserCredentials;
     browserCredentials.InnerHandler = antiforgery;
     antiforgery.InnerHandler = new HttpClientHandler();
 

@@ -234,34 +234,61 @@ public sealed class AuthApiClient(HttpClient httpClient, AntiforgeryTokenStore a
         }
     }
 
-    public async Task<bool> IsAuthenticatedAsync()
+    /// <summary>
+    /// Resolves the caller's session: <c>GET manage/info</c> to learn whether one exists, then
+    /// <c>GET auth/claims</c> for its claims. Both are exempt from the legal and password-change gates,
+    /// so for a signed-in caller anything but <c>2xx</c> or <c>401</c> is a fault, not an answer.
+    /// </summary>
+    /// <remarks>
+    /// Only a <c>401</c> means signed out. A network failure, a <c>429</c> from the Identity rate
+    /// limiter or a <c>5xx</c> is <see cref="AuthSessionStatus.Unavailable"/>: reading it as anonymous
+    /// signed the user out on a blip, and reading a failed claims fetch as an empty list signed them in
+    /// with no permissions, so every page silently hid everything (issue #250).
+    /// </remarks>
+    public async Task<AuthSession> GetSessionAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, "manage/info");
-            var response = await httpClient.SendAsync(request);
-            return response.StatusCode != HttpStatusCode.Unauthorized;
+            using var infoRequest = new HttpRequestMessage(HttpMethod.Get, "manage/info");
+            using var info = await httpClient.SendAsync(infoRequest, cancellationToken);
+            if (info.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                return AuthSession.Anonymous;
+            }
+
+            if (!info.IsSuccessStatusCode)
+            {
+                return AuthSession.Unavailable;
+            }
+
+            using var claimsRequest = new HttpRequestMessage(HttpMethod.Get, "auth/claims");
+            using var claimsResponse = await httpClient.SendAsync(claimsRequest, cancellationToken);
+            if (claimsResponse.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                return AuthSession.Anonymous;
+            }
+
+            if (!claimsResponse.IsSuccessStatusCode)
+            {
+                return AuthSession.Unavailable;
+            }
+
+            var claims = await claimsResponse.Content.ReadFromJsonAsync<List<ClaimResponse>>(cancellationToken);
+            if (claims is null)
+            {
+                return AuthSession.Unavailable;
+            }
+
+            return new AuthSession(
+                AuthSessionStatus.Authenticated,
+                claims.Select(claim => new Claim(claim.Type, claim.Value)).ToList());
         }
-        catch
+        catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException
+                                       or NotSupportedException
+                                       || (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested))
         {
-            return false;
+            return AuthSession.Unavailable;
         }
-    }
-
-    public async Task<IReadOnlyList<Claim>> GetClaimsAsync()
-    {
-        var request = new HttpRequestMessage(HttpMethod.Get, "auth/claims");
-
-        var response = await httpClient.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-        {
-            return [];
-        }
-
-        var claims = await response.Content.ReadFromJsonAsync<List<ClaimResponse>>() ?? [];
-        return claims
-            .Select(claim => new Claim(claim.Type, claim.Value))
-            .ToList();
     }
 
     public async Task LogoutAsync()

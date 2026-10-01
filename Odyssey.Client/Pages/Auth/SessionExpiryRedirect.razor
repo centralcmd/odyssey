@@ -1,0 +1,89 @@
+@using Odyssey.Client.Auth
+@implements IDisposable
+@inject SessionExpiredNotifier SessionExpired
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+
+@code {
+    // Mounted once in App.razor, above the router, so it covers every layout — the gate pages render
+    // their own layouts rather than MainLayout, and a session can expire on those too (issue #250).
+    private bool _prompting;
+    private bool _redirecting;
+
+    protected override void OnInitialized() => SessionExpired.SessionExpired += OnSessionExpired;
+
+    private void OnSessionExpired() => _ = InvokeAsync(PromptAsync);
+
+    internal async Task PromptAsync()
+    {
+        // Several calls can fail in one render pass; one prompt answers all of them.
+        if (_prompting || _redirecting)
+        {
+            return;
+        }
+
+        _prompting = true;
+        try
+        {
+            // Only a session the app believed it had can expire. An anonymous visitor's 401s are the
+            // router's business (RedirectToAuthorizedFallback), and prompting on the sign-in page itself
+            // would loop. The read is the provider's cached answer — no probe.
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (state.User.Identity?.IsAuthenticated != true)
+            {
+                return;
+            }
+
+            if (await AskToSignInAsync())
+            {
+                Redirect();
+            }
+        }
+        finally
+        {
+            _prompting = false;
+        }
+    }
+
+    // Ask before leaving, never reload out from under the user: whatever they typed but have not saved
+    // is lost by the reload, and staying lets them copy it first (WCAG 2.2.1, 3.3.4). A later failed
+    // call asks again.
+    private async Task<bool> AskToSignInAsync()
+    {
+        try
+        {
+            var signIn = await DialogService.ShowMessageBoxAsync(
+                new MessageBoxOptions
+                {
+                    Title = "Your session has expired",
+                    Message = "Sign in again to continue. Anything on this page you have not saved will be "
+                        + "lost — choose Stay on this page to copy it first.",
+                    YesText = "Sign in",
+                    CancelText = "Stay on this page",
+                },
+                new DialogOptions { BackdropClick = false });
+            return signIn == true;
+        }
+        catch (Exception)
+        {
+            // The prompt is a courtesy; the session is gone either way. Never leave the user stranded
+            // on a page whose every call now fails.
+            return true;
+        }
+    }
+
+    private void Redirect()
+    {
+        _redirecting = true;
+
+        // forceLoad, not a client-side route change: the reload discards every app-lifetime cache
+        // (the auth state, reference data, preferences, the limit caches) with the session they were
+        // fetched under, so whoever signs in next starts clean.
+        var signInUrl = Login.SignInUrlFor(
+            NavigationManager.ToBaseRelativePath(NavigationManager.Uri), Login.SessionExpiredReason);
+        NavigationManager.NavigateTo(signInUrl, forceLoad: true);
+    }
+
+    public void Dispose() => SessionExpired.SessionExpired -= OnSessionExpired;
+}
