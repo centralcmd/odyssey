@@ -134,6 +134,24 @@ public class NotAuthorizedFallbackTests
     }
 
     /// <summary>
+    /// <c>AuthorizeRouteView</c> renders a page's <c>NotAuthorized</c> content as <c>MainLayout</c>'s body, and
+    /// the layout's own <c>AuthorizeView</c> is evaluated first. An unconditional redirect there pre-empted the
+    /// router's retry panel, so an API outage sent a signed-in user to <c>/login</c> (found by live testing):
+    /// the shell must hand its state to the same fallback.
+    /// </summary>
+    [Fact]
+    public void TheShell_HandsItsAuthenticationStateToTheFallback()
+    {
+        var layout = File.ReadAllText(Path.Combine(ClientSource.Root, "Layout", "MainLayout.razor"));
+
+        Assert.Contains("""<NotAuthorized Context="authState">""", layout, StringComparison.Ordinal);
+        Assert.Contains("""<NotAuthorizedFallback User="@authState.User" />""", layout, StringComparison.Ordinal);
+        Assert.DoesNotContain("<RedirectToLogin", layout, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(ClientSource.Root, "Pages", "Auth", "RedirectToLogin.razor")),
+            "RedirectToLogin navigates on a non-definitive answer; use NotAuthorizedFallback instead.");
+    }
+
+    /// <summary>
     /// The shell's re-run after a recovered session (issue #278) sits behind <c>OperatingSystem.IsBrowser()</c>,
     /// which bUnit cannot satisfy, so the ordering that keeps the app body from rendering behind a gate is
     /// pinned in source: the gate branch must reset <c>_gateChecked</c> before redirecting, because the

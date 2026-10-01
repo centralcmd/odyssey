@@ -60,8 +60,12 @@
             </div>
             }
         </Authorized>
-        <NotAuthorized>
-            <RedirectToLogin></RedirectToLogin>
+        @* The shell's own gate, not just the router's: AuthorizeRouteView renders the page's NotAuthorized
+           content as this layout's Body, which this branch never reaches. So the same fallback has to sit
+           here, or a probe with no definitive answer is sent to /login before the retry panel can render
+           (issue #278). *@
+        <NotAuthorized Context="authState">
+            <NotAuthorizedFallback User="@authState.User" />
         </NotAuthorized>
     </AuthorizeView>
 </MudLayout>
