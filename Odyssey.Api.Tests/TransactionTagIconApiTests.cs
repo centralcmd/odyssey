@@ -186,21 +186,6 @@ public class TransactionTagIconApiTests
     }
 
     [Fact]
-    public async Task Account_transactions_carry_the_display_icon()
-    {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.AccountsRead, PermissionClaims.TransactionsRead]);
-        var accountId = await SeedAccountAsync(factory);
-        await SeedTransactionAsync(factory, accountId, ("Zed", null), ("Food", "restaurant"));
-        using var client = factory.CreateClient();
-
-        var transactions = await client.GetFromJsonAsync<List<ExistingTransaction>>($"/api/accounts/{accountId}/transactions");
-
-        var transaction = Assert.Single(transactions!);
-        Assert.Equal("restaurant", transaction.DisplayIcon);
-        Assert.Equal(["Food", "Zed"], transaction.TransactionTags.Select(tag => tag.Name));
-    }
-
-    [Fact]
     public async Task Account_smart_tags_carry_the_tag_icon()
     {
         await using var factory = new OdysseyApiFactory([PermissionClaims.AccountsRead, PermissionClaims.AccountsUpdate]);

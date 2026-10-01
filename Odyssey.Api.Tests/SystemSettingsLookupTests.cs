@@ -332,22 +332,20 @@ public class SystemSettingsLookupTests
     // ── The watermark carries the TTL ───────────────────────────────────────────────────────────
 
     /// <summary>
-    /// A watermark older than the TTL is not "last known good", it is "last known". Written with the
-    /// same 30-second expiry as the values themselves, so a degraded read cannot resolve against a
-    /// value that has outlived every other bound in the system.
+    /// A watermark older than the TTL is not "last known good", it is "last known". The expiry lives in
+    /// the shared <see cref="IntSettingResolver"/>, so what this lookup must guarantee is that it reaches
+    /// that resolver rather than keeping a private parse.
     /// </summary>
     [Fact]
-    public async Task TheWatermark_IsWrittenWithAnExpiry()
+    public async Task TheLookup_KeepsNoPrivateParseCopy()
     {
-        var source = await File.ReadAllTextAsync(
+        // The parse/clamp/degrade logic moved to the shared IntSettingResolver (issue #287 H1); this
+        // lookup must not keep a private parse that could drift again. Expiry itself is asserted
+        // behaviourally by SettingsLookupReadPathContractTests and IntSettingResolverTests.
+        var lookup = await File.ReadAllTextAsync(
             SolutionFile("Odyssey.Api", "SystemSettings", "SystemSettingsLookup.cs"));
 
-        Assert.DoesNotContain(
-            "cache.Set(LastKnownGoodPrefix + key, fallback);", source, StringComparison.Ordinal);
-        Assert.Contains(
-            "cache.Set(LastKnownGoodPrefix + key, fallback, CacheTtl);", source, StringComparison.Ordinal);
-        Assert.Contains(
-            "cache.Set(LastKnownGoodPrefix + key, clamped, CacheTtl);", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("int.TryParse", lookup, StringComparison.Ordinal);
     }
 
     /// <summary>

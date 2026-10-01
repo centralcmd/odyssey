@@ -109,11 +109,6 @@ public interface IAccountsApiClient
 
     Task<ApiResult> DetachFileAsync(Guid accountId, Guid fileId, CancellationToken ct = default);
 
-    // ── Transactions ─────────────────────────────────────────────────────────
-
-    Task<ApiResult<PagedResult<ExistingTransaction>>> ListTransactionsAsync(
-        Guid accountId, int page, int pageSize, CancellationToken ct = default);
-
     // ── Contracts ────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -253,13 +248,6 @@ public sealed class AccountsApiClient(IOdysseyApi api) : IAccountsApiClient
 
     public Task<ApiResult> DetachFileAsync(Guid accountId, Guid fileId, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Files(accountId)}/{fileId}", null, ct);
-
-    // ── Transactions ─────────────────────────────────────────────────────────
-
-    public Task<ApiResult<PagedResult<ExistingTransaction>>> ListTransactionsAsync(
-        Guid accountId, int page, int pageSize, CancellationToken ct = default) =>
-        api.GetPagedAsync<ExistingTransaction>(
-            PagedQuery.For($"{Base}/{accountId}/transactions").Window(page, pageSize).Build(), ct);
 
     // ── Contracts ────────────────────────────────────────────────────────────
 

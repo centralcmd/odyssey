@@ -142,54 +142,6 @@ public class AccountServiceTests
     }
 
     [Fact]
-    public async Task GetTransactions_ReturnsAccountTransactionsWithoutCircularAccount()
-    {
-        await using var context = TestContextFactory.Create();
-        var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
-
-        var account = await service.Create(new NewAccount { Name = "Active", Description = "", AccountType = DtoAccountType.CheckingAccount, CurrencyCode = "USD", Archived = false });
-        var other = await service.Create(new NewAccount { Name = "Other", Description = "", AccountType = DtoAccountType.SavingsAccount, CurrencyCode = "USD", Archived = false });
-
-        context.Transactions.AddRange(
-            new Transaction { Description = "A", Amount = 10m, AccountId = account.AccountId, CurrencyCode = "USD", TimeStamp = DateTime.UtcNow, Status = TransactionStatus.New, StatusChangedAt = DateTime.UtcNow },
-            new Transaction { Description = "B", Amount = -5m, AccountId = account.AccountId, CurrencyCode = "USD", TimeStamp = DateTime.UtcNow, Status = TransactionStatus.New, StatusChangedAt = DateTime.UtcNow },
-            new Transaction { Description = "Elsewhere", Amount = 99m, AccountId = other.AccountId, CurrencyCode = "USD", TimeStamp = DateTime.UtcNow, Status = TransactionStatus.New, StatusChangedAt = DateTime.UtcNow });
-        await context.SaveChangesAsync();
-
-        var transactions = await service.GetTransactions(account.AccountId);
-
-        Assert.NotNull(transactions);
-        Assert.Equal(2, transactions!.Count);
-        Assert.All(transactions, t => Assert.Equal(account.AccountId, t.AccountId));
-        Assert.All(transactions, t => Assert.Null(t.Account));
-        Assert.Contains(transactions, t => t.Description == "A");
-        Assert.Contains(transactions, t => t.Description == "B");
-    }
-
-    [Fact]
-    public async Task GetTransactions_ReturnsEmptyForAccountWithoutTransactions()
-    {
-        await using var context = TestContextFactory.Create();
-        var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
-
-        var account = await service.Create(new NewAccount { Name = "Empty", Description = "", AccountType = DtoAccountType.CheckingAccount, Archived = false });
-
-        var transactions = await service.GetTransactions(account.AccountId);
-
-        Assert.NotNull(transactions);
-        Assert.Empty(transactions!);
-    }
-
-    [Fact]
-    public async Task GetTransactions_ReturnsNullForMissingAccount()
-    {
-        await using var context = TestContextFactory.Create();
-        var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
-
-        Assert.Null(await service.GetTransactions(Guid.NewGuid()));
-    }
-
-    [Fact]
     public async Task GetAccountFiles_ReturnsFilesOrNullForMissingAccount()
     {
         await using var context = TestContextFactory.Create();

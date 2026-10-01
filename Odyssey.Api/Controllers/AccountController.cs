@@ -325,23 +325,6 @@ public class AccountController : ControllerBase
         return Ok(contracts);
     }
 
-    [HttpGet("{accountId}/transactions", Name = "GetAccountTransactions")]
-    [Authorize(Policy = PermissionClaims.AccountsRead)]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(List<ExistingTransaction>))]
-    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get the transactions that belong to an account.")]
-    public async Task<IActionResult> GetAccountTransactions(
-        [FromRoute(Name = "accountId")] Guid accountId, CancellationToken cancellationToken = default)
-    {
-        var transactions = await accountService.GetTransactions(accountId, cancellationToken);
-        if (transactions is null)
-            return this.NotFoundProblem($"Account ID {accountId} not found.");
-
-        await displayNames.EnrichFileAttributionAsync(User, transactions, cancellationToken);
-        return Ok(transactions);
-    }
-
     [HttpPost("{accountId}/files", Name = "AttachAccountFile")]
     [Authorize(Policy = PermissionClaims.AccountsUpdate)]
     [Authorize(Policy = PermissionClaims.FilesRead)]

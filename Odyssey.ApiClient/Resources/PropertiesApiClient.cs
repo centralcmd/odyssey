@@ -62,9 +62,6 @@ public interface IPropertiesApiClient
 
     Task<ApiResult<List<ExistingPropertyEstimate>>> ListEstimatesAsync(Guid propertyId, CancellationToken ct = default);
 
-    /// <summary>The estimate in force now; a successful result with a null value means "none in force".</summary>
-    Task<ApiResult<CurrentPropertyEstimate>> GetCurrentEstimateAsync(Guid propertyId, CancellationToken ct = default);
-
     Task<ApiResult> AddEstimateAsync(Guid propertyId, NewPropertyEstimate estimate, CancellationToken ct = default);
 
     Task<ApiResult> UpdateEstimateAsync(Guid propertyId, Guid estimateId, NewPropertyEstimate estimate, CancellationToken ct = default);
@@ -208,9 +205,6 @@ public sealed class PropertiesApiClient(IOdysseyApi api) : IPropertiesApiClient
 
     public Task<ApiResult<List<ExistingPropertyEstimate>>> ListEstimatesAsync(Guid propertyId, CancellationToken ct = default) =>
         api.GetAsync<List<ExistingPropertyEstimate>>(Estimates(propertyId), ct);
-
-    public Task<ApiResult<CurrentPropertyEstimate>> GetCurrentEstimateAsync(Guid propertyId, CancellationToken ct = default) =>
-        api.GetAsync<CurrentPropertyEstimate>($"{Estimates(propertyId)}/current", ct);
 
     public Task<ApiResult> AddEstimateAsync(Guid propertyId, NewPropertyEstimate estimate, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, Estimates(propertyId), estimate, ct);

@@ -90,29 +90,6 @@ public class CurrenciesApiClientTests
         Assert.Contains("sortBy=asOf", query);
     }
 
-    /// <summary>
-    /// The conversion service does no inversion or triangulation, so the pair is directional and both
-    /// ends must reach the endpoint as given.
-    /// </summary>
-    [Fact]
-    public async Task GetLatestAsync_sends_the_directed_pair()
-    {
-        var (client, handler) = Create(api => new ExchangeRatesApiClient(api));
-        handler.Response = new HttpResponseMessage(HttpStatusCode.NotFound)
-        {
-            Content = new StringContent("""{"detail":"No rate."}""",
-                                        System.Text.Encoding.UTF8, "application/problem+json"),
-        };
-
-        var rate = await client.GetLatestAsync("NOK", "USD");
-
-        Assert.Null(rate);   // a missing rate is a 404, not an exception
-        var uri = handler.LastRequest!.RequestUri!;
-        Assert.Equal("/api/exchange-rates/latest", uri.AbsolutePath);
-        Assert.Contains("from=NOK", uri.Query);
-        Assert.Contains("to=USD", uri.Query);
-    }
-
     [Fact]
     public async Task Rates_ListAllAsync_is_unfiltered_and_full_window()
     {

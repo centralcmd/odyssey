@@ -20,9 +20,14 @@ namespace Odyssey.Api.SystemSettings;
 /// seeded-or-floor)</c>, evaluated independently per key, then all four export/import count pairs are
 /// re-clamped (<c>export' = min(export', import')</c>) so a degraded read can never itself violate the
 /// round-trip invariant nor loosen a healthy sibling (AC 28b). "LKG" (last known good) is the most
-/// recent value this instance itself successfully read for that key, cached indefinitely in-process
-/// (until the next successful read or a process restart) specifically to serve this fallback — a
-/// value never once read successfully behaves as "missing".
+/// recent value this instance itself successfully read for that key, held for the same 30s TTL as the
+/// values themselves — a watermark older than that is "last known", not "last known good" — so a
+/// value not read successfully within the window behaves as "missing" and falls to the cold floor.
+/// </para>
+/// <para>
+/// The sizes and the five plain bounds resolve through <see cref="IntSettingResolver"/> (issue #287
+/// H1), which also clamps each to its <c>SystemSettingsBounds</c> pair on a clean read. The counts stay
+/// bespoke: they have an "unlimited" spelling and no bound pair.
 /// </para>
 /// </summary>
 public sealed class ImportExportLimitsLookup(
@@ -31,13 +36,15 @@ public sealed class ImportExportLimitsLookup(
 {
     internal const string CacheKey = "system-settings:import-export-limits";
     private const string LastKnownGoodPrefix = "system-settings:import-export-limits:lkg:";
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan CacheTtl = IntSettingResolver.CacheTtl;
 
     // §11 cold floors — the least permissive value a degraded read can ever fall back to, regardless
     // of how permissive the last-known-good or seeded value was.
     private const int SizeFloorMb = 5;
     private const int IcsCountFloor = 2000;
     private const int ContactCountFloor = 100_000;
+
+    private readonly IntSettingResolver resolver = new(cache, logger, CacheKey);
 
     private static readonly string[] Keys =
     [
@@ -71,22 +78,9 @@ public sealed class ImportExportLimitsLookup(
             return cached;
         }
 
-        Dictionary<string, string>? raw;
-        try
-        {
-            raw = await context.SystemSettings.AsNoTracking()
-                .Where(row => Keys.Contains(row.Key))
-                .ToDictionaryAsync(row => row.Key, row => row.Value, cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogError(ex,
-                "Failed to read import/export limits from the settings store; degrading to the last known good configuration.");
-            raw = null;
-        }
-
-        var degraded = raw is null;
-        var resolved = Resolve(raw ?? [], degraded);
+        var (raw, readFailed) = await resolver.ReadAsync(context, Keys, "import/export limits", cancellationToken);
+        var resolved = Resolve(raw, readFailed);
+        var degraded = resolved.IsDegraded;
 
         // A degraded resolution is intentionally NOT cached under the normal 30s TTL — recomputing it
         // per call is cheap (no DB round trip once the read itself is failing) and means recovery is
@@ -99,7 +93,7 @@ public sealed class ImportExportLimitsLookup(
         return resolved;
     }
 
-    private ImportExportLimits Resolve(Dictionary<string, string> raw, bool wholeReadFailed)
+    private ImportExportLimits Resolve(IReadOnlyDictionary<string, string> raw, bool wholeReadFailed)
     {
         var anyDegraded = wholeReadFailed;
 
@@ -111,13 +105,13 @@ public sealed class ImportExportLimitsLookup(
                 // same defensive posture as SystemSettingsService: use the compiled default as a
                 // healthy value, not a degraded one. Corrupt/unparseable (row present, bad value) is
                 // the AC 28 case below, and is treated differently.
-                cache.Set(LastKnownGoodPrefix + key, seededDefault, new MemoryCacheEntryOptions());
+                cache.Set(LastKnownGoodPrefix + key, seededDefault, IntSettingResolver.CacheTtl);
                 return seededDefault;
             }
 
             if (!wholeReadFailed && raw.TryGetValue(key, out var value) && SystemSettingsKeys.TryParseCount(value, out var parsed))
             {
-                cache.Set(LastKnownGoodPrefix + key, parsed, new MemoryCacheEntryOptions());
+                cache.Set(LastKnownGoodPrefix + key, parsed, IntSettingResolver.CacheTtl);
                 return parsed;
             }
 
@@ -133,63 +127,21 @@ public sealed class ImportExportLimitsLookup(
             return Math.Min(lkgOrFloor, seededOrFloor);
         }
 
-        long ResolveSizeBytes(string key, int seededDefaultMb)
-        {
-            int mb;
-            if (!wholeReadFailed && !raw.TryGetValue(key, out _))
-            {
-                cache.Set(LastKnownGoodPrefix + key, seededDefaultMb, new MemoryCacheEntryOptions());
-                mb = seededDefaultMb;
-            }
-            else if (!wholeReadFailed && raw.TryGetValue(key, out var value)
-                && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
-            {
-                cache.Set(LastKnownGoodPrefix + key, parsed, new MemoryCacheEntryOptions());
-                mb = parsed;
-            }
-            else
-            {
-                if (!wholeReadFailed)
-                {
-                    logger.LogError(
-                        "Import/export limit '{Key}' has an unparseable stored value; falling back to a degraded value.", key);
-                }
-
-                anyDegraded = true;
-                var lkgOrFloor = cache.TryGetValue(LastKnownGoodPrefix + key, out int lkg) ? lkg : SizeFloorMb;
-                mb = Math.Min(lkgOrFloor, seededDefaultMb);
-            }
-
-            return mb * 1024L * 1024L;
-        }
+        // A size is a bounded int with one twist: a degraded read with no watermark resolves against the
+        // §11 cold floor rather than the compiled default, which is why the spec names ColdFallback.
+        long ResolveSizeBytes(string key, int seededDefaultMb, int min, int max) =>
+            Bound(new IntSettingSpec(key, seededDefaultMb, min, max, ColdFallback: SizeFloorMb)) * 1024L * 1024L;
 
         // A plain positive-integer bound with no "unlimited" spelling and no cold floor: the compiled
         // default IS the floor, because every one of these shipped as a const that nobody could raise.
-        int ResolveBound(string key, int seededDefault)
+        int ResolveBound(string key, int seededDefault, int min, int max) =>
+            Bound(new IntSettingSpec(key, seededDefault, min, max));
+
+        int Bound(IntSettingSpec spec)
         {
-            if (!wholeReadFailed && !raw.TryGetValue(key, out _))
-            {
-                cache.Set(LastKnownGoodPrefix + key, seededDefault, new MemoryCacheEntryOptions());
-                return seededDefault;
-            }
-
-            if (!wholeReadFailed && raw.TryGetValue(key, out var value)
-                && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
-                && parsed > 0)
-            {
-                cache.Set(LastKnownGoodPrefix + key, parsed, new MemoryCacheEntryOptions());
-                return parsed;
-            }
-
-            if (!wholeReadFailed)
-            {
-                logger.LogError(
-                    "Import/export bound '{Key}' has an unparseable stored value; falling back to a degraded value.", key);
-            }
-
-            anyDegraded = true;
-            var lastKnownGood = cache.TryGetValue(LastKnownGoodPrefix + key, out int lkg) ? lkg : seededDefault;
-            return Math.Min(lastKnownGood, seededDefault);
+            var result = resolver.Resolve(spec, raw, wholeReadFailed);
+            anyDegraded |= result.IsDegraded;
+            return result.Value;
         }
 
         var contactExport = ResolveCount(SystemSettingsKeys.ContactVCardMaxExportRows, ContactCountFloor, seededDefault: null);
@@ -215,48 +167,64 @@ public sealed class ImportExportLimitsLookup(
         taskExport = ClampExport(taskExport, taskImport);
 
         var contactImportBytes = ResolveSizeBytes(
-            SystemSettingsKeys.ContactVCardMaxImportMegabytes, SystemSettingsDefaults.ContactVCardMaxImportMegabytes);
+            SystemSettingsKeys.ContactVCardMaxImportMegabytes, SystemSettingsDefaults.ContactVCardMaxImportMegabytes,
+            SystemSettingsBounds.ContactVCardMaxImportMegabytesMin, SystemSettingsBounds.ContactVCardMaxImportMegabytesMax);
         var contactExportBytes = ResolveSizeBytes(
-            SystemSettingsKeys.ContactVCardMaxExportMegabytes, SystemSettingsDefaults.ContactVCardMaxExportMegabytes);
+            SystemSettingsKeys.ContactVCardMaxExportMegabytes, SystemSettingsDefaults.ContactVCardMaxExportMegabytes,
+            SystemSettingsBounds.ContactVCardMaxExportMegabytesMin, SystemSettingsBounds.ContactVCardMaxExportMegabytesMax);
         var calendarImportBytes = ResolveSizeBytes(
-            SystemSettingsKeys.CalendarIcsMaxImportMegabytes, SystemSettingsDefaults.CalendarIcsMaxImportMegabytes);
+            SystemSettingsKeys.CalendarIcsMaxImportMegabytes, SystemSettingsDefaults.CalendarIcsMaxImportMegabytes,
+            SystemSettingsBounds.CalendarIcsMaxImportMegabytesMin, SystemSettingsBounds.CalendarIcsMaxImportMegabytesMax);
         var calendarExportBytes = ResolveSizeBytes(
-            SystemSettingsKeys.CalendarIcsMaxExportMegabytes, SystemSettingsDefaults.CalendarIcsMaxExportMegabytes);
+            SystemSettingsKeys.CalendarIcsMaxExportMegabytes, SystemSettingsDefaults.CalendarIcsMaxExportMegabytes,
+            SystemSettingsBounds.CalendarIcsMaxExportMegabytesMin, SystemSettingsBounds.CalendarIcsMaxExportMegabytesMax);
         var taskImportBytes = ResolveSizeBytes(
-            SystemSettingsKeys.TaskIcsMaxImportMegabytes, SystemSettingsDefaults.TaskIcsMaxImportMegabytes);
+            SystemSettingsKeys.TaskIcsMaxImportMegabytes, SystemSettingsDefaults.TaskIcsMaxImportMegabytes,
+            SystemSettingsBounds.TaskIcsMaxImportMegabytesMin, SystemSettingsBounds.TaskIcsMaxImportMegabytesMax);
         var taskExportBytes = ResolveSizeBytes(
-            SystemSettingsKeys.TaskIcsMaxExportMegabytes, SystemSettingsDefaults.TaskIcsMaxExportMegabytes);
+            SystemSettingsKeys.TaskIcsMaxExportMegabytes, SystemSettingsDefaults.TaskIcsMaxExportMegabytes,
+            SystemSettingsBounds.TaskIcsMaxExportMegabytesMin, SystemSettingsBounds.TaskIcsMaxExportMegabytesMax);
         var journalImportBytes = ResolveSizeBytes(
-            SystemSettingsKeys.JournalIcsMaxImportMegabytes, SystemSettingsDefaults.JournalIcsMaxImportMegabytes);
+            SystemSettingsKeys.JournalIcsMaxImportMegabytes, SystemSettingsDefaults.JournalIcsMaxImportMegabytes,
+            SystemSettingsBounds.JournalIcsMaxImportMegabytesMin, SystemSettingsBounds.JournalIcsMaxImportMegabytesMax);
         var journalExportBytes = ResolveSizeBytes(
-            SystemSettingsKeys.JournalIcsMaxExportMegabytes, SystemSettingsDefaults.JournalIcsMaxExportMegabytes);
+            SystemSettingsKeys.JournalIcsMaxExportMegabytes, SystemSettingsDefaults.JournalIcsMaxExportMegabytes,
+            SystemSettingsBounds.JournalIcsMaxExportMegabytesMin, SystemSettingsBounds.JournalIcsMaxExportMegabytesMax);
 
         // The five issue #434 bounds that belong to the import/export surfaces. Plain positive-integer caps, so ResolveBound is the whole story:
         // absent-but-query-succeeded is healthy, present-but-unusable or a failed query is degraded, and
         // a degraded read resolves to min(last-known-good, default).
         //
-        // One of them additionally CLAMPS to the shipped default even on a clean read. Those two are
-        // tighten-only, and [Range] on the write DTO is the only write-side bound — which runs on the
-        // HTTP path alone. A row written by config adoption, by a hand edit or by a restore would
+        // Every one is clamped to its bound pair on a clean read. For the tighten-only vCard repeatable-
+        // property cap the pair's maximum IS the shipped default, and [Range] on the write DTO is the
+        // only write-side bound — which runs on the HTTP path alone. A row written by config adoption, by a hand edit or by a restore would
         // otherwise carry a value above the pinned bound straight into the service, re-opening exactly
         // the write amplification the tighten-only conversion closed (issue #434 §9, V3-S1).
         var aggregateExportRows = ResolveBound(
             SystemSettingsKeys.CalendarIcsMaxAggregateExportRows,
-            SystemSettingsDefaults.CalendarIcsMaxAggregateExportRows);
+            SystemSettingsDefaults.CalendarIcsMaxAggregateExportRows,
+            SystemSettingsBounds.CalendarIcsMaxAggregateExportRowsMin,
+            SystemSettingsBounds.CalendarIcsMaxAggregateExportRowsMax);
         var aggregateOccurrences = ResolveBound(
             SystemSettingsKeys.CalendarIcsMaxAggregateOccurrences,
-            SystemSettingsDefaults.CalendarIcsMaxAggregateOccurrences);
+            SystemSettingsDefaults.CalendarIcsMaxAggregateOccurrences,
+            SystemSettingsBounds.CalendarIcsMaxAggregateOccurrencesMin,
+            SystemSettingsBounds.CalendarIcsMaxAggregateOccurrencesMax);
         var aggregateExportWindowDays = ResolveBound(
             SystemSettingsKeys.CalendarIcsMaxAggregateExportWindowDays,
-            SystemSettingsDefaults.CalendarIcsMaxAggregateExportWindowDays);
-        var repeatableProperties = Math.Min(
-            ResolveBound(
-                SystemSettingsKeys.ContactVCardMaxRepeatablePropertiesPerEntry,
-                SystemSettingsDefaults.ContactVCardMaxRepeatablePropertiesPerEntry),
-            SystemSettingsDefaults.ContactVCardMaxRepeatablePropertiesPerEntry);
+            SystemSettingsDefaults.CalendarIcsMaxAggregateExportWindowDays,
+            SystemSettingsBounds.CalendarIcsMaxAggregateExportWindowDaysMin,
+            SystemSettingsBounds.CalendarIcsMaxAggregateExportWindowDaysMax);
+        var repeatableProperties = ResolveBound(
+            SystemSettingsKeys.ContactVCardMaxRepeatablePropertiesPerEntry,
+            SystemSettingsDefaults.ContactVCardMaxRepeatablePropertiesPerEntry,
+            SystemSettingsBounds.ContactVCardMaxRepeatablePropertiesPerEntryMin,
+            SystemSettingsBounds.ContactVCardMaxRepeatablePropertiesPerEntryMax);
         var samplesPerSkipReason = ResolveBound(
             SystemSettingsKeys.ImportMaxSamplesPerSkipReason,
-            SystemSettingsDefaults.ImportMaxSamplesPerSkipReason);
+            SystemSettingsDefaults.ImportMaxSamplesPerSkipReason,
+            SystemSettingsBounds.ImportMaxSamplesPerSkipReasonMin,
+            SystemSettingsBounds.ImportMaxSamplesPerSkipReasonMax);
 
         return new ImportExportLimits(
             contactExport, contactImport, contactImportBytes, contactExportBytes,

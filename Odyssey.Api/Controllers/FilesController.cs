@@ -24,7 +24,7 @@ public class FilesController : ControllerBase
     }
 
     [HttpPost(Name = "PostFile")]
-    [Authorize(Policy = FilePermissionClaims.FilesCreate)]
+    [Authorize(Policy = PermissionClaims.FilesCreate)]
     [Consumes("multipart/form-data")]
     // The transport-level cap comes from the admin-editable upload setting (issue #421 Wave 4), applied
     // per-request by the size-limit middleware; over-cap bodies are rejected with 413 before the action
@@ -61,7 +61,7 @@ public class FilesController : ControllerBase
     }
 
     [HttpGet(Name = "GetFiles")]
-    [Authorize(Policy = FilePermissionClaims.FilesRead)]
+    [Authorize(Policy = PermissionClaims.FilesRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<FileListItem>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ProblemDetails))]
@@ -80,7 +80,7 @@ public class FilesController : ControllerBase
     }
 
     [HttpGet("{id}", Name = "GetFileMetadata")]
-    [Authorize(Policy = FilePermissionClaims.FilesRead)]
+    [Authorize(Policy = PermissionClaims.FilesRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FileMetadataResponse))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
@@ -105,7 +105,7 @@ public class FilesController : ControllerBase
     }
 
     [HttpGet("{id}/content", Name = "DownloadFile")]
-    [Authorize(Policy = FilePermissionClaims.FilesRead)]
+    [Authorize(Policy = PermissionClaims.FilesRead)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
@@ -140,7 +140,7 @@ public class FilesController : ControllerBase
     }
 
     [HttpPut("{id}/metadata", Name = "UpdateFileMetadata")]
-    [Authorize(Policy = FilePermissionClaims.FilesUpdate)]
+    [Authorize(Policy = PermissionClaims.FilesUpdate)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FileMetadataResponse))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
@@ -166,7 +166,7 @@ public class FilesController : ControllerBase
     }
 
     [HttpDelete("{id}", Name = "DeleteFile")]
-    [Authorize(Policy = FilePermissionClaims.FilesDelete)]
+    [Authorize(Policy = PermissionClaims.FilesDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
