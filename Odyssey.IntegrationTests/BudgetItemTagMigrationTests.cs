@@ -82,10 +82,14 @@ public class BudgetItemTagMigrationTests(MariaDbFixture fixture)
                     item => Assert.NotEqual(Guid.Empty, item.TransactionTagId));
 
                 // ── The rename ───────────────────────────────────────────────────
-                var kept = await context.TransactionTags.AsNoTracking().SingleAsync(t => t.TransactionTagId == TagKept);
-                var renamed = await context.TransactionTags.AsNoTracking().SingleAsync(t => t.TransactionTagId == TagRenamed);
-                Assert.Equal("Groceries", kept.Name);       // the lowest id keeps its name
-                Assert.Equal("groceries (2)", renamed.Name); // the higher id takes the suffix
+                // Projected to the name: this schema is below AddTransactionTagIcon, so the entity's Icon
+                // column does not exist yet.
+                var kept = await context.TransactionTags.AsNoTracking()
+                    .Where(t => t.TransactionTagId == TagKept).Select(t => t.Name).SingleAsync();
+                var renamed = await context.TransactionTags.AsNoTracking()
+                    .Where(t => t.TransactionTagId == TagRenamed).Select(t => t.Name).SingleAsync();
+                Assert.Equal("Groceries", kept);       // the lowest id keeps its name
+                Assert.Equal("groceries (2)", renamed); // the higher id takes the suffix
 
                 // Renamed, NOT merged (Non-Goal 8): every reference to the renamed tag is still valid.
                 Assert.Equal(1, await context.TransactionTagLinks.CountAsync(l => l.TransactionTagId == TagRenamed));
@@ -399,11 +403,11 @@ public class BudgetItemTagMigrationTests(MariaDbFixture fixture)
     /// </summary>
     private static async Task SeedBeforeStateAsync(OdysseyContext context)
     {
-        context.TransactionTags.AddRange(
-            new TransactionTag { TransactionTagId = TagKept, Name = "Groceries", Description = "Food" },
-            // Differs from the above by CASE only — the duplicate migration 3 has to disambiguate.
-            new TransactionTag { TransactionTagId = TagRenamed, Name = "groceries" },
-            new TransactionTag { TransactionTagId = TagShared, Name = "Rent" });
+        // Raw SQL: this seeds below head, where TransactionTags has no Icon column yet.
+        await MigrationSeam.InsertTransactionTagAsync(context, TagKept, "Groceries", "Food");
+        // Differs from the above by CASE only — the duplicate migration 3 has to disambiguate.
+        await MigrationSeam.InsertTransactionTagAsync(context, TagRenamed, "groceries");
+        await MigrationSeam.InsertTransactionTagAsync(context, TagShared, "Rent");
 
         context.Budgets.Add(new Budget
         {
