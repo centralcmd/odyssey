@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
+using Moq;
 using Odyssey.ApiClient.Auth;
 using Odyssey.Client.Auth;
 using Odyssey.Client.Pages.Auth;
@@ -97,6 +98,42 @@ public class SessionExpiryRedirectTests
     }
 
     [Fact]
+    public async Task APromptThatCannotBeShown_StillSendsTheUserToSignIn()
+    {
+        var dialogs = new Mock<IDialogService>();
+        dialogs.Setup(d => d.ShowMessageBoxAsync(It.IsAny<MessageBoxOptions>(), It.IsAny<DialogOptions>()))
+            .ThrowsAsync(new InvalidOperationException("no dialog provider"));
+        await using var ctx = NewContext(authenticated: true, dialogs.Object);
+        var redirect = ctx.Render<SessionExpiryRedirect>();
+
+        Signal(ctx);
+
+        redirect.WaitForAssertion(() =>
+        {
+            var entry = Navigation(ctx).History.First();
+            Assert.StartsWith("/login?", entry.Uri);
+            Assert.True(entry.Options.ForceLoad);
+        });
+    }
+
+    /// <summary>
+    /// Both sign-out paths rely on the reload, not a refresh, to drop the cached auth state and every
+    /// app-lifetime cache with it.
+    /// </summary>
+    [Theory]
+    [InlineData("Pages/Account.razor.cs")]
+    [InlineData("Pages/ChangePasswordRequired.razor.cs")]
+    public void SignOut_NavigatesWithAFullReload(string relativePath)
+    {
+        var source = File.ReadAllText(Path.Combine(ClientSource.Root, relativePath));
+
+        var signOut = System.Text.RegularExpressions.Regex.Match(
+            source, @"await AuthApiClient\.LogoutAsync\(\);\s*(?<next>[^;]*;)");
+        Assert.True(signOut.Success, $"no LogoutAsync call in {relativePath}");
+        Assert.Equal("NavigationManager.NavigateTo(\"/login\", forceLoad: true);", signOut.Groups["next"].Value);
+    }
+
+    [Fact]
     public async Task TheSignInPage_ExplainsWhyTheUserIsThere()
     {
         await using var ctx = NewContext(authenticated: false);
@@ -125,7 +162,7 @@ public class SessionExpiryRedirectTests
     private static BunitNavigationManager Navigation(BunitContext ctx) =>
         (BunitNavigationManager)ctx.Services.GetRequiredService<NavigationManager>();
 
-    private static BunitContext NewContext(bool authenticated)
+    private static BunitContext NewContext(bool authenticated, IDialogService? dialogs = null)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -137,6 +174,11 @@ public class SessionExpiryRedirectTests
         }
 
         ctx.Services.AddSingleton<SessionExpiredNotifier>();
+        if (dialogs is not null)
+        {
+            ctx.Services.AddSingleton(dialogs);
+        }
+
         // Never called: the sign-in page only needs it to resolve.
         ctx.Services.AddSingleton(sp => new AuthApiClient(new HttpClient(), new AntiforgeryTokenStore(sp)));
         ctx.Services.GetRequiredService<NavigationManager>().NavigateTo(Route);

@@ -35,9 +35,24 @@
                 return;
             }
 
-            // Ask before leaving, never reload out from under the user: whatever they typed but have not
-            // saved is lost by the reload, and staying lets them copy it first (WCAG 2.2.1, 3.3.4). A
-            // later failed call asks again.
+            if (await AskToSignInAsync())
+            {
+                Redirect();
+            }
+        }
+        finally
+        {
+            _prompting = false;
+        }
+    }
+
+    // Ask before leaving, never reload out from under the user: whatever they typed but have not saved
+    // is lost by the reload, and staying lets them copy it first (WCAG 2.2.1, 3.3.4). A later failed
+    // call asks again.
+    private async Task<bool> AskToSignInAsync()
+    {
+        try
+        {
             var signIn = await DialogService.ShowMessageBoxAsync(
                 new MessageBoxOptions
                 {
@@ -48,21 +63,13 @@
                     CancelText = "Stay on this page",
                 },
                 new DialogOptions { BackdropClick = false });
-
-            if (signIn == true)
-            {
-                Redirect();
-            }
+            return signIn == true;
         }
         catch (Exception)
         {
             // The prompt is a courtesy; the session is gone either way. Never leave the user stranded
             // on a page whose every call now fails.
-            Redirect();
-        }
-        finally
-        {
-            _prompting = false;
+            return true;
         }
     }
 
