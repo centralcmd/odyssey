@@ -89,21 +89,6 @@ public sealed class FinanceFileAttributionApiTests
     }
 
     [Fact]
-    public async Task GetAccountTransactions_ResolvesAttachedFileNames()
-    {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.AccountsRead]);
-        using var client = factory.CreateClient();
-        var seeded = await SeedAsync(factory, displayName: "Ada L.");
-
-        var transactions = await client.GetFromJsonAsync<List<ExistingTransaction>>(
-            $"/api/accounts/{seeded.AccountId}/transactions");
-
-        var file = Assert.Single(Assert.Single(transactions!).TransactionFiles);
-        Assert.Equal("Ada L.", file.AttachedByName);
-        Assert.Equal("Ada L.", file.FileMetadata.UploadedByName);
-    }
-
-    [Fact]
     public async Task GetTransactionFiles_WithoutUsersRead_ReturnsNeutralLabelNotEmail()
     {
         // No profile at all, so the resolver's only remaining candidate is the email — which it

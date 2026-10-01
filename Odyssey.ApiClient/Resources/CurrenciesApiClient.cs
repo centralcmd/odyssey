@@ -83,13 +83,6 @@ public interface IExchangeRatesApiClient
     /// </summary>
     Task<ApiResult<List<ExistingExchangeRate>>> ListAllAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// The most recent rate for a directed pair. The conversion service does no inversion or
-    /// triangulation, so <paramref name="from"/>/<paramref name="to"/> must match a stored direction.
-    /// Null when no rate exists (the endpoint answers <c>404</c>).
-    /// </summary>
-    Task<ExistingExchangeRate?> GetLatestAsync(string from, string to, CancellationToken ct = default);
-
     Task<ApiResult> CreateAsync(NewExchangeRate rate, CancellationToken ct = default);
 
     Task<ApiResult> UpdateAsync(Guid id, UpdateExchangeRate rate, CancellationToken ct = default);
@@ -119,10 +112,6 @@ public sealed class ExchangeRatesApiClient(IOdysseyApi api) : IExchangeRatesApiC
 
     public Task<ApiResult<List<ExistingExchangeRate>>> ListAllAsync(CancellationToken ct = default) =>
         api.GetAllAsync<ExistingExchangeRate>(PagedQuery.For(Base).Build(), ct);
-
-    public async Task<ExistingExchangeRate?> GetLatestAsync(string from, string to, CancellationToken ct = default) =>
-        (await api.GetAsync<ExistingExchangeRate>(
-            $"{Base}/latest?from={Uri.EscapeDataString(from)}&to={Uri.EscapeDataString(to)}", ct)).Value;
 
     public Task<ApiResult> CreateAsync(NewExchangeRate rate, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, Base, rate, ct);

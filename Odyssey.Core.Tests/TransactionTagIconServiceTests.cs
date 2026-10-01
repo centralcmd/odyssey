@@ -116,19 +116,6 @@ public class TransactionTagIconServiceTests
     }
 
     [Fact]
-    public async Task Account_transactions_order_tags_and_resolve_the_display_icon()
-    {
-        await using var context = TestContextFactory.Create();
-        var seeded = await SeedAsync(context);
-        var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
-
-        var transactions = await service.GetTransactions(seeded.AccountId);
-
-        AssertMixed(transactions!.Single(t => t.TransactionId == seeded.Mixed));
-        AssertUntagged(transactions!.Single(t => t.TransactionId == seeded.Untagged));
-    }
-
-    [Fact]
     public async Task Budget_report_orders_tags_resolves_the_display_icon_and_embeds_tag_icons()
     {
         await using var context = TestContextFactory.Create();

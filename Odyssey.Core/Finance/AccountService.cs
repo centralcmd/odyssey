@@ -439,47 +439,6 @@ public class AccountService
         return files.Adapt<List<ExistingAccountFile>>();
     }
 
-    /// <summary>
-    /// Returns the transactions belonging to the given account, or <c>null</c> if the account does
-    /// not exist. Backs <c>GET /api/accounts/{id}/transactions</c>. The <see cref="ExistingTransaction.Account"/>
-    /// back-reference is cleared to avoid returning (and serializing) a circular account graph.
-    /// </summary>
-    public async Task<IList<ExistingTransaction>?> GetTransactions(Guid accountId, CancellationToken cancellationToken = default)
-    {
-        var accountExists = await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
-        if (!accountExists)
-            return null;
-
-        var transactions = await context.Transactions
-            .AsNoTracking()
-            .Include(t => t.TransactionTags)
-            .Include(t => t.TransactionFiles)
-                .ThenInclude(tf => tf.FileMetadata)
-            .Where(t => t.AccountId == accountId)
-            .AsSplitQuery()
-            .ToListAsync(cancellationToken);
-
-        var dtos = transactions.Adapt<List<ExistingTransaction>>();
-
-        // Contact moved to OdysseyContext: resolve the full contact for each transaction via the lookup
-        // (was an EF navigation include) in one batched call.
-        var contactIds = dtos.Where(d => d.ContactId.HasValue).Select(d => d.ContactId!.Value).Distinct().ToList();
-        if (contactIds.Count > 0)
-        {
-            var contacts = await contactLookup.ResolveContactsAsync(contactIds, cancellationToken);
-            foreach (var dto in dtos.Where(d => d.ContactId.HasValue))
-            {
-                dto.Contact = contacts.GetValueOrDefault(dto.ContactId!.Value);
-            }
-        }
-
-        foreach (var dto in dtos)
-        {
-            dto.Account = null;
-        }
-
-        return dtos;
-    }
     
     public Task<ExistingAccount> Create(NewAccount newAccount, CancellationToken cancellationToken = default) =>
         Create(newAccount, accountId: null, cancellationToken);

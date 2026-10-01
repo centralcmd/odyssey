@@ -85,9 +85,6 @@ public interface IContractsApiClient
     /// <summary>The contract's full term history, newest effective date first.</summary>
     Task<ApiResult<List<ExistingTerm>>> ListTermsAsync(Guid contractId, CancellationToken ct = default);
 
-    /// <summary>The in-force entry of each of the contract's term series, as of now.</summary>
-    Task<ApiResult<List<CurrentTerm>>> ListCurrentTermsAsync(Guid contractId, CancellationToken ct = default);
-
     Task<ApiResult> AddTermAsync(Guid contractId, NewTerm term, CancellationToken ct = default);
 
     Task<ApiResult> UpdateTermAsync(Guid contractId, Guid termId, NewTerm term, CancellationToken ct = default);
@@ -251,9 +248,6 @@ public sealed class ContractsApiClient(IOdysseyApi api) : IContractsApiClient
 
     public Task<ApiResult<List<ExistingTerm>>> ListTermsAsync(Guid contractId, CancellationToken ct = default) =>
         api.GetAsync<List<ExistingTerm>>(Terms(contractId), ct);
-
-    public Task<ApiResult<List<CurrentTerm>>> ListCurrentTermsAsync(Guid contractId, CancellationToken ct = default) =>
-        api.GetAsync<List<CurrentTerm>>($"{Terms(contractId)}/current", ct);
 
     public Task<ApiResult> AddTermAsync(Guid contractId, NewTerm term, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, Terms(contractId), term, ct);

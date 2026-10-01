@@ -17,7 +17,6 @@ public class FileAnalysisOptions
     // restating literals, which is what stops that documentation drifting from the seed. That is
     // exactly the mistake Wave 1 had to correct on MaxFutureTransactionDays.
     public bool Enabled { get; set; } = SystemSettingsDefaults.FileAnalysisEnabled;
-    public string Provider { get; set; } = "Claude";
     public string BaseUrl { get; set; } = SystemSettingsDefaults.FileAnalysisBaseUrl;
     // ApiKey is GONE (issue #445 Wave 1). It moved to the encrypted secret store as
     // SecretSettingKeys.FileAnalysisApiKey and is attached per request by FileAnalysisApiKeyHandler.
