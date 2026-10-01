@@ -294,9 +294,17 @@ would appear to come from Caddy: one shared rate-limit bucket that a single call
 everyone.
 
 Change it only if the topology changes: add one per extra proxy (a load balancer in front of Caddy),
-or set `ForwardedHeaders__ForwardLimit=1` if nginx is reached directly. Entries are honoured only
-while the hop that added them is inside `ForwardedHeaders:KnownNetworks` (private ranges by default),
-so a public client cannot spoof its way past Caddy.
+or use `1` if nginx is reached directly. Neither compose file passes the key through, so set it by
+adding `ForwardedHeaders__ForwardLimit` to the `api` service's `environment:` map in
+`docker-compose.prod.yml` (the same applies to `ForwardedHeaders__KnownNetworks__0`, `__1`, …). It
+must be a whole number of at least 1; anything else fails startup.
+
+Entries are honoured only while the hop that added them is inside `ForwardedHeaders:KnownNetworks`
+(private ranges by default). In production a public client cannot get a spoofed entry past Caddy,
+which overwrites an inbound `X-Forwarded-For`. The **dev** compose stack is the exception and is
+accepted: nginx is published directly on `127.0.0.1:5199`, Docker's NAT makes the peer a private
+gateway address, and so a local caller's own `X-Forwarded-For` entry is honoured. That is reachable
+from loopback only, and one spoofable entry was already honoured there before the limit was raised.
 
 ## Upload size: three ceilings, in order
 

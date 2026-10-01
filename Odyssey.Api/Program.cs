@@ -554,10 +554,23 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 // entry outside KnownNetworks, so a public client cannot push a spoofed entry past a real one; the
 // limit only bounds how far a chain of TRUSTED hops is followed. A deployment with a different hop
 // count (an extra load balancer, or nginx exposed directly) sets ForwardedHeaders:ForwardLimit.
-builder.Services.Configure<ForwardedHeadersOptions>(options =>
+// The dev compose stack is one such topology (nginx published on loopback, no Caddy), so there a
+// local caller's own X-Forwarded-For entry is honoured — accepted, see docs/deployment.md.
+//
+// ValidateOnStart so a non-positive limit fails at boot naming the key, rather than as a bare
+// ArgumentOutOfRangeException out of the options setter on the first request.
+builder.Services.AddOptions<ForwardedHeadersOptions>().Configure(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.ForwardLimit = builder.Configuration.GetValue("ForwardedHeaders:ForwardLimit", 2);
+
+    var forwardLimit = builder.Configuration.GetValue("ForwardedHeaders:ForwardLimit", 2);
+    if (forwardLimit < 1)
+    {
+        throw new InvalidOperationException(
+            $"ForwardedHeaders:ForwardLimit must be at least 1 (the number of proxy hops in front of the API); got {forwardLimit}.");
+    }
+
+    options.ForwardLimit = forwardLimit;
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
 
@@ -571,7 +584,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 
     foreach (var cidr in networks)
         options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(cidr));
-});
+}).ValidateOnStart();
 
 var app = builder.Build();
 

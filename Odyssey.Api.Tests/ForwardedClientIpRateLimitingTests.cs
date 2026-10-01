@@ -115,7 +115,10 @@ public class ForwardedClientIpRateLimitingTests
     public async Task ForwardLimit_CanBeOverriddenByConfiguration()
     {
         // A deployment with one proxy hop (nginx exposed directly) sets the limit back to 1, after
-        // which the rightmost entry is the partition and the one before it is ignored.
+        // which the rightmost entry is the partition and the one before it is ignored. The rightmost
+        // entry is a TRUSTED address on purpose: under the default of 2 the walk would continue past
+        // it to the varying client entry and nothing would throttle, so this fails if the override
+        // is not read.
         using var baseFactory = new OdysseyApiFactory(permissions: [], configuration: new Dictionary<string, string?>
         {
             ["RateLimiting:Identity:PermitLimit"] = "2",
@@ -127,12 +130,27 @@ public class ForwardedClientIpRateLimitingTests
 
         for (var attempt = 1; attempt <= 2; attempt++)
         {
-            var allowed = await AttemptLoginAsync(client, $"203.0.113.{attempt}, 203.0.113.50");
+            var allowed = await AttemptLoginAsync(client, $"203.0.113.{attempt}, {CaddyAddress}");
             Assert.NotEqual(HttpStatusCode.TooManyRequests, allowed.StatusCode);
         }
 
-        var throttled = await AttemptLoginAsync(client, "203.0.113.3, 203.0.113.50");
+        var throttled = await AttemptLoginAsync(client, $"203.0.113.3, {CaddyAddress}");
         Assert.Equal(HttpStatusCode.TooManyRequests, throttled.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    public void ANonPositiveForwardLimit_FailsStartup(string value)
+    {
+        using var factory = new OdysseyApiFactory(permissions: [], configuration: new Dictionary<string, string?>
+        {
+            ["ForwardedHeaders:ForwardLimit"] = value,
+        });
+
+        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+
+        Assert.Contains("ForwardedHeaders:ForwardLimit", exception.ToString(), StringComparison.Ordinal);
     }
 
     private sealed class PeerAddressStartupFilter(IPAddress peer) : IStartupFilter
