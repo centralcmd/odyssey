@@ -225,7 +225,7 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
 
         await Assert.ThrowsAsync<FileAnalysisDisabledException>(() =>
-            service.ImportCandidatesAsync(Guid.NewGuid(), new ImportRequest(new List<ImportCandidateRequest>()), "user-1"));
+            service.ImportCandidatesAsync(Guid.NewGuid(), new ImportRequest { Candidates = new List<ImportCandidateRequest>() }, "user-1"));
     }
 
     // ── Pre-analysis guards ─────────────────────────────────────────────────────
@@ -422,11 +422,14 @@ public class FileAnalysisServiceTests
 
         var result = await service.ImportCandidatesAsync(
             response.AnalysisJobId,
-            new ImportRequest(
-            [
-                new ImportCandidateRequest(candidates[0].Id, null, null, null, "XYZ"),
-                new ImportCandidateRequest(candidates[1].Id, null, null, null, null),
-            ]),
+            new ImportRequest
+            {
+                Candidates =
+                [
+                    new ImportCandidateRequest { CandidateId = candidates[0].Id, Currency = "XYZ" },
+                    new ImportCandidateRequest { CandidateId = candidates[1].Id },
+                ],
+            },
             "user-1");
 
         Assert.Equal(1, result.Imported);
@@ -452,7 +455,7 @@ public class FileAnalysisServiceTests
 
         var result = await service.ImportCandidatesAsync(
             response.AnalysisJobId,
-            new ImportRequest([new ImportCandidateRequest(candidate.Id, null, null, null, "SEK")]),
+            new ImportRequest { Candidates = [new ImportCandidateRequest { CandidateId = candidate.Id, Currency = "SEK" }] },
             "user-1");
 
         Assert.Equal(0, result.Imported);
@@ -474,7 +477,7 @@ public class FileAnalysisServiceTests
 
         var result = await service.ImportCandidatesAsync(
             response.AnalysisJobId,
-            new ImportRequest([new ImportCandidateRequest(candidate.Id, null, null, null, " usd ")]),
+            new ImportRequest { Candidates = [new ImportCandidateRequest { CandidateId = candidate.Id, Currency = " usd " }] },
             "user-1");
 
         Assert.Equal(1, result.Imported);
@@ -498,7 +501,7 @@ public class FileAnalysisServiceTests
     }
 
     private static ImportRequest Import(params Guid[] candidateIds) =>
-        new([.. candidateIds.Select(id => new ImportCandidateRequest(id, null, null, null, null))]);
+        new ImportRequest { Candidates = [.. candidateIds.Select(id => new ImportCandidateRequest { CandidateId = id })] };
 
     [Fact]
     public async Task ImportCandidatesAsync_ImportedTwice_CreatesOneTransaction()
@@ -582,11 +585,14 @@ public class FileAnalysisServiceTests
 
         var result = await service.ImportCandidatesAsync(
             jobId,
-            new ImportRequest(
-            [
-                new ImportCandidateRequest(candidates[0].Id, null, null, null, "EUR"),
-                new ImportCandidateRequest(candidates[1].Id, null, null, null, null),
-            ]),
+            new ImportRequest
+            {
+                Candidates =
+                [
+                    new ImportCandidateRequest { CandidateId = candidates[0].Id, Currency = "EUR" },
+                    new ImportCandidateRequest { CandidateId = candidates[1].Id },
+                ],
+            },
             "user-1");
 
         Assert.Equal(1, result.Imported);
@@ -647,12 +653,15 @@ public class FileAnalysisServiceTests
 
         var result = await service.ImportCandidatesAsync(
             response.AnalysisJobId,
-            new ImportRequest(
-            [
-                new ImportCandidateRequest(candidates[0].Id, null, null, null, null, unknownId),
-                new ImportCandidateRequest(candidates[1].Id, null, null, null, null, archived.ContactId),
-                new ImportCandidateRequest(candidates[2].Id, null, null, null, null, known.ContactId),
-            ]),
+            new ImportRequest
+            {
+                Candidates =
+                [
+                    new ImportCandidateRequest { CandidateId = candidates[0].Id, ContactId = unknownId },
+                    new ImportCandidateRequest { CandidateId = candidates[1].Id, ContactId = archived.ContactId },
+                    new ImportCandidateRequest { CandidateId = candidates[2].Id, ContactId = known.ContactId },
+                ],
+            },
             "user-1");
 
         Assert.Equal(1, result.Imported);
@@ -673,7 +682,7 @@ public class FileAnalysisServiceTests
 
         var result = await service.ImportCandidatesAsync(
             jobId,
-            new ImportRequest([new ImportCandidateRequest(candidates[0].Id, null, null, null, currency)]),
+            new ImportRequest { Candidates = [new ImportCandidateRequest { CandidateId = candidates[0].Id, Currency = currency }] },
             "user-1");
 
         Assert.Equal(0, result.Imported);
@@ -694,7 +703,7 @@ public class FileAnalysisServiceTests
 
         var result = await service.ImportCandidatesAsync(
             jobId,
-            new ImportRequest([new ImportCandidateRequest(candidates[0].Id, null, description, null, null, ExternalId: externalId)]),
+            new ImportRequest { Candidates = [new ImportCandidateRequest { CandidateId = candidates[0].Id, Description = description, ExternalId = externalId }] },
             "user-1");
 
         Assert.Equal(1, result.Imported);
@@ -728,7 +737,7 @@ public class FileAnalysisServiceTests
 
         var result = await service.ImportCandidatesAsync(
             jobId,
-            new ImportRequest([new ImportCandidateRequest(candidates[0].Id, null, null, null, null, null, [tag.TransactionTagId])]),
+            new ImportRequest { Candidates = [new ImportCandidateRequest { CandidateId = candidates[0].Id, TransactionTagIds = [tag.TransactionTagId] }] },
             "user-1");
 
         Assert.Equal(0, result.Imported);
@@ -759,7 +768,7 @@ public class FileAnalysisServiceTests
 
         await service.ImportCandidatesAsync(
             jobId,
-            new ImportRequest([new ImportCandidateRequest(candidates[0].Id, date, null, null, null)]),
+            new ImportRequest { Candidates = [new ImportCandidateRequest { CandidateId = candidates[0].Id, TransactionDate = date }] },
             "user-1");
 
         var stored = (await context.Transactions.SingleAsync()).TimeStamp;
@@ -780,7 +789,7 @@ public class FileAnalysisServiceTests
         var firstCandidate = (await context.FileAnalysisCandidateTransactions.FirstAsync()).Id;
         await service.ImportCandidatesAsync(
             response.AnalysisJobId,
-            new ImportRequest([new ImportCandidateRequest(firstCandidate, null, null, null, null)]),
+            new ImportRequest { Candidates = [new ImportCandidateRequest { CandidateId = firstCandidate }] },
             "user-1");
 
         var entry = Assert.Single(await service.GetAuditLogAsync());

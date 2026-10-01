@@ -1,6 +1,8 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Odyssey.Dtos.Finance;
 
 public sealed record AttachTransactionFileRequest(
     Guid FileId,
-    TransactionFileType Type = TransactionFileType.Other
+    [EnumDataType(typeof(TransactionFileType))] TransactionFileType Type = TransactionFileType.Other
 );

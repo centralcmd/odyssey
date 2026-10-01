@@ -32,6 +32,11 @@ public sealed record FileListItem(
 /// Both bounds match the <c>FileMetadata</c> columns (issue #247). A <c>FileName</c> that passes the bound
 /// is still sanitized server-side exactly as an upload's is.
 /// </summary>
-public sealed record UpdateFileMetadataRequest(
-    [StringLength(256)] string? Description,
-    [StringLength(256)] string? FileName = null);
+public sealed record UpdateFileMetadataRequest
+{
+    [StringLength(256)]
+    public string? Description { get; set; }
+
+    [StringLength(256)]
+    public string? FileName { get; set; }
+}

@@ -40,7 +40,7 @@ public sealed class FileRenameSanitizationApiTests
         var fileId = await SeedFileAsync(factory, "statement.pdf");
 
         var put = await client.PutAsJsonAsync($"/api/files/{fileId}/metadata",
-            new UpdateFileMetadataRequest(null, "evil\r\nX-Injected: 1\".pdf"));
+            new UpdateFileMetadataRequest { FileName = "evil\r\nX-Injected: 1\".pdf" });
 
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
         var body = await put.Content.ReadFromJsonAsync<FileMetadataResponse>();
@@ -66,7 +66,7 @@ public sealed class FileRenameSanitizationApiTests
         var fileId = await SeedFileAsync(factory, "statement.pdf");
 
         var put = await client.PutAsJsonAsync($"/api/files/{fileId}/metadata",
-            new UpdateFileMetadataRequest("desc", requested));
+            new UpdateFileMetadataRequest { Description = "desc", FileName = requested });
 
         Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
         Assert.Contains("FileName", await put.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
@@ -82,9 +82,11 @@ public sealed class FileRenameSanitizationApiTests
         using var client = factory.CreateClient();
         var fileId = await SeedFileAsync(factory, "statement.pdf");
 
-        var put = await client.PutAsJsonAsync($"/api/files/{fileId}/metadata", new UpdateFileMetadataRequest(
-            descriptionLength == 0 ? null : new string('d', descriptionLength),
-            fileNameLength == 0 ? null : new string('n', fileNameLength)));
+        var put = await client.PutAsJsonAsync($"/api/files/{fileId}/metadata", new UpdateFileMetadataRequest
+        {
+            Description = descriptionLength == 0 ? null : new string('d', descriptionLength),
+            FileName = fileNameLength == 0 ? null : new string('n', fileNameLength),
+        });
 
         Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
         Assert.Equal("statement.pdf", await StoredNameAsync(factory, fileId));
@@ -99,7 +101,7 @@ public sealed class FileRenameSanitizationApiTests
         var name = new string('n', 256);
 
         var put = await client.PutAsJsonAsync($"/api/files/{fileId}/metadata",
-            new UpdateFileMetadataRequest(new string('d', 256), name));
+            new UpdateFileMetadataRequest { Description = new string('d', 256), FileName = name });
 
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
         Assert.Equal(name, await StoredNameAsync(factory, fileId));

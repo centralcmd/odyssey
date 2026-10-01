@@ -666,18 +666,23 @@ public sealed class FileAnalysisSession
     // ── Import ────────────────────────────────────────────────────────────────
 
     /// <summary>The selected rows, as the import endpoint's request body.</summary>
-    public ImportRequest BuildImportRequest() => new(
-    [
-        .. Rows.Where(r => r.Selected).Select(r => new ImportCandidateRequest(
-            r.CandidateId,
-            r.TransactionDate,
-            r.Description,
-            r.Amount,
-            r.Currency,
-            r.ContactId,
-            [.. r.TagIds.Select(Guid.Parse)],
-            string.IsNullOrWhiteSpace(r.Reference) ? null : r.Reference.Trim())),
-    ]);
+    public ImportRequest BuildImportRequest() => new()
+    {
+        Candidates =
+        [
+            .. Rows.Where(r => r.Selected).Select(r => new ImportCandidateRequest
+            {
+                CandidateId = r.CandidateId,
+                TransactionDate = r.TransactionDate,
+                Description = r.Description,
+                Amount = r.Amount,
+                Currency = r.Currency,
+                ContactId = r.ContactId,
+                TransactionTagIds = [.. r.TagIds.Select(Guid.Parse)],
+                ExternalId = string.IsNullOrWhiteSpace(r.Reference) ? null : r.Reference.Trim(),
+            }),
+        ],
+    };
 
     // ── Formatting ────────────────────────────────────────────────────────────
     public static string FormatAmount(decimal amount) => amount.ToString("0.##", CultureInfo.InvariantCulture);

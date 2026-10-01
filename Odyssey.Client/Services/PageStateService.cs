@@ -129,7 +129,7 @@ public sealed class PageStateService : IPageStateService
 
             // Best-effort: a non-success here just means this page's layout isn't
             // remembered this time; never surface it to the user.
-            await preferences.PutAsync(pageKey, new UserPreferenceRequest(json), cts.Token);
+            await preferences.PutAsync(pageKey, new UserPreferenceRequest { PreferencesJson = json }, cts.Token);
         }
         catch
         {

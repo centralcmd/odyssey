@@ -67,7 +67,7 @@ public class FilesControllerProblemDetailsTests
         await using var context = NewContext();
         var controller = NewController(context);
 
-        var result = await controller.UpdateFileMetadata(Guid.NewGuid(), new UpdateFileMetadataRequest("desc"));
+        var result = await controller.UpdateFileMetadata(Guid.NewGuid(), new UpdateFileMetadataRequest { Description = "desc" });
 
         AssertProblem(result, StatusCodes.Status404NotFound);
     }

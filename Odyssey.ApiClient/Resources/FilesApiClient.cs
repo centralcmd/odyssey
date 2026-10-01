@@ -104,7 +104,7 @@ public sealed class FilesApiClient(IOdysseyApi api) : IFilesApiClient
 
     public Task<ApiResult<FileMetadataResponse>> UpdateMetadataAsync(Guid fileId, string? description, string fileName, CancellationToken ct = default) =>
         api.SendAsync<FileMetadataResponse>(HttpMethod.Put, $"{Base}/{fileId}/metadata",
-            new UpdateFileMetadataRequest(description, fileName), ct);
+            new UpdateFileMetadataRequest { Description = description, FileName = fileName }, ct);
 
     public Task<ApiResult<PagedResult<FileListItem>>> ListAsync(
         int page, int pageSize, string? search = null, IReadOnlyCollection<string>? kinds = null,

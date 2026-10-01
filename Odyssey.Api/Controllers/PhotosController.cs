@@ -161,7 +161,7 @@ public class PhotosController : ControllerBase
         if (meta is not null && !string.Equals(meta.FileName, newName, StringComparison.Ordinal))
         {
             await files.UpdateFileMetadataAsync(
-                fileId, new UpdateFileMetadataRequest(meta.Description, newName), cancellationToken);
+                fileId, new UpdateFileMetadataRequest { Description = meta.Description, FileName = newName }, cancellationToken);
         }
     }
 
