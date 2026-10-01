@@ -267,7 +267,7 @@ public class TaxStatementServiceTests
         var result = await service.AttachFile(
             created.TaxStatementId, Guid.NewGuid(), "user-1", FinanceDtos.TaxStatementFileType.TaxAssessment);
 
-        Assert.Equal(Context.TaxStatementFileType.TaxAssessment, result.FileType);
+        Assert.Equal(FinanceDtos.TaxStatementFileType.TaxAssessment, result!.FileType);
     }
 
     [Fact]
@@ -280,7 +280,7 @@ public class TaxStatementServiceTests
 
         var result = await service.AttachFile(created.TaxStatementId, Guid.NewGuid(), "user-1");
 
-        Assert.Equal(Context.TaxStatementFileType.Other, result.FileType);
+        Assert.Equal(FinanceDtos.TaxStatementFileType.Other, result!.FileType);
     }
 
     // ── Settlement role + range ──────────────────────────────────────────────

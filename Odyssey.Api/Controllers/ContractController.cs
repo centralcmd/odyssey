@@ -472,7 +472,7 @@ written — re-role those parties or detach them first.")]
     [HttpPost("{id}/files", Name = "AttachContractFile")]
     [Authorize(Policy = PermissionClaims.ContractsUpdate)]
     [Authorize(Policy = PermissionClaims.FilesRead)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingContractFile))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
@@ -501,9 +501,14 @@ written — re-role those parties or detach them first.")]
         }
 
         var created = await service.AttachFile(id, request, userId, cancellationToken);
-        return created is null
-            ? this.NotFoundProblem($"Contract ID {id} not found.")
-            : CreatedAtRoute("DownloadContractFile", new { id, fileId = request.FileMetadataId }, null);
+        if (created is null)
+        {
+            return this.NotFoundProblem($"Contract ID {id} not found.");
+        }
+
+        // The created link carries AttachedByUserId, so it is enriched like every list (issue #106).
+        await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
+        return CreatedAtRoute("DownloadContractFile", new { id, fileId = request.FileMetadataId }, created);
     }
 
     [HttpGet("{id}/files", Name = "GetContractFiles")]

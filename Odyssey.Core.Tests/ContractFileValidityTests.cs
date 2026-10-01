@@ -301,12 +301,14 @@ public class ContractFileValidityTests
     }
 
     [Fact]
-    public async Task UpdateFile_MissingContract_ThrowsNotFound()
+    public async Task UpdateFile_MissingContract_ReturnsFalse()
     {
+        // One answer for "no such contract" and "not attached to it" — the shared file-link rule
+        // (issue #287 H3); both are the same 404 at the edge.
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        await Assert.ThrowsAsync<DomainNotFoundException>(() => service.UpdateFile(
+        Assert.False(await service.UpdateFile(
             Guid.NewGuid(), Guid.NewGuid(), new UpdateContractFileRequest { FileType = ContractFileType.Other }));
     }
 

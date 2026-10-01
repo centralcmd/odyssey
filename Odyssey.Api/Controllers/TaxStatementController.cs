@@ -17,14 +17,6 @@ namespace Odyssey.Api.Controllers;
 [Route("api/tax-statements")]
 public class TaxStatementController : ControllerBase
 {
-    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "application/pdf",
-        "image/png",
-        "image/jpeg",
-        "image/webp",
-    };
-
     private readonly ILogger<TaxStatementController> logger;
     private readonly TaxStatementService service;
     private readonly FileService fileService;
@@ -187,7 +179,8 @@ public class TaxStatementController : ControllerBase
     [HttpPost("{id}/files", Name = "AttachTaxStatementFile")]
     [Authorize(Policy = PermissionClaims.TaxesUpdate)]
     [Authorize(Policy = PermissionClaims.FilesRead)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingTaxStatementFile))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
@@ -201,15 +194,12 @@ public class TaxStatementController : ControllerBase
             return this.NotFoundProblem($"Tax statement ID {id} not found.");
         }
 
-        var metadata = await fileService.GetFileMetadataAsync(request.FileId, cancellationToken);
-        if (metadata is null)
+        // The shared allow-list and the shared check (issue #287 H4): a private copy of the list here was
+        // a security control that a change to DocumentContentTypes.Allowed would silently skip.
+        if (await this.ValidateAttachableDocumentAsync(
+                fileService, request.FileId, "tax statement", cancellationToken) is { } problem)
         {
-            return this.NotFoundProblem($"File ID {request.FileId} not found.");
-        }
-
-        if (!AllowedContentTypes.Contains(metadata.ContentType))
-        {
-            return this.BadRequestProblem($"Content type '{metadata.ContentType}' is not allowed for tax statements.");
+            return problem;
         }
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -218,8 +208,15 @@ public class TaxStatementController : ControllerBase
             return Unauthorized();
         }
 
-        await service.AttachFile(id, request.FileId, userId, request.FileType, cancellationToken);
-        return CreatedAtRoute("DownloadTaxStatementFile", new { id, fileId = request.FileId }, null);
+        var created = await service.AttachFile(id, request.FileId, userId, request.FileType, cancellationToken);
+        if (created is null)
+        {
+            return this.NotFoundProblem($"Tax statement ID {id} not found.");
+        }
+
+        // The created link carries AttachedByUserId, so it is enriched like every list (issue #106).
+        await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
+        return CreatedAtRoute("DownloadTaxStatementFile", new { id, fileId = request.FileId }, created);
     }
 
     [HttpGet("{id}/files/{fileId}", Name = "DownloadTaxStatementFile")]
@@ -231,25 +228,12 @@ public class TaxStatementController : ControllerBase
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "fileId")] Guid fileId, CancellationToken cancellationToken = default)
     {
-        var attached = await service.GetFiles(id, cancellationToken);
-        if (attached.All(f => f.FileMetadata.Id != fileId))
+        if (!await service.IsFileAttached(id, fileId, cancellationToken))
         {
             return this.NotFoundProblem($"File ID {fileId} is not attached to tax statement ID {id}.");
         }
 
-        var (metadata, content) = await fileService.GetFileContentAsync(fileId, cancellationToken);
-        if (metadata is null || content is null)
-        {
-            return NotFound();
-        }
-
-        // Force a download and forbid content-type sniffing so a mislabeled upload
-        // cannot be rendered/executed inline in the app origin (matches the account
-        // and contract download handlers). The attachment disposition comes from
-        // File(..., fileDownloadName), which encodes the stored name (issue #247).
-        Response.Headers.XContentTypeOptions = "nosniff";
-        Response.Headers.ETag = $"\"{metadata.Sha256Hash}\"";
-        return File(content, metadata.ContentType, metadata.FileName);
+        return await this.StreamDocumentAsync(fileService, fileId, cancellationToken);
     }
 
     [HttpDelete("{id}/files/{fileId}", Name = "DetachTaxStatementFile")]

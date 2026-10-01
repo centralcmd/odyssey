@@ -351,61 +351,47 @@ public class TransactionService
         await context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<TransactionFile?> AttachFileToTransaction(Guid transactionId, Guid fileId, string userId, Context.TransactionFileType type = Context.TransactionFileType.Other, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Attaches an already-uploaded file to the transaction, or returns <c>null</c> when the transaction
+    /// does not exist. A file already attached to it is a <see cref="DomainConflictException"/> — it used to
+    /// silently re-type the existing link, the one surface of five that did (issue #287 H3).
+    /// </summary>
+    public Task<ExistingTransactionFile?> AttachFileToTransaction(Guid transactionId, Guid fileId, string userId, Context.TransactionFileType type = Context.TransactionFileType.Other, CancellationToken cancellationToken = default) =>
+        FileLinks.Attach(transactionId, fileId, userId, (link, _) =>
+        {
+            link.Type = type;
+            return Task.CompletedTask;
+        }, cancellationToken);
+
+    /// <summary>The transaction's files, oldest attachment first; <c>null</c> when the transaction does not exist.</summary>
+    public Task<List<ExistingTransactionFile>?> GetFiles(Guid transactionId, CancellationToken cancellationToken = default) =>
+        FileLinks.List(transactionId, cancellationToken);
+
+    /// <summary>
+    /// Removes the link row only. <c>false</c> when the transaction does not exist or the file is not
+    /// attached to it — a <c>404</c>, never a silent success.
+    /// </summary>
+    public Task<bool> DetachFileFromTransaction(Guid transactionId, Guid fileId, CancellationToken cancellationToken = default) =>
+        FileLinks.Detach(transactionId, fileId, cancellationToken);
+
+    private static readonly OwnedFileSurface<TransactionFile, ExistingTransactionFile> FileSurface = new()
     {
-        var transaction = await context.Transactions.FirstOrDefaultAsync(t => t.TransactionId == transactionId, cancellationToken);
-        if (transaction is null)
-        {
-            throw new DomainNotFoundException($"Transaction with ID {transactionId} was not found.");
-        }
-
-        var existingAssociation = await context.TransactionFiles.FirstOrDefaultAsync(tf =>
-            tf.TransactionId == transactionId
-            && tf.FileMetadataId == fileId, cancellationToken);
-
-        if (existingAssociation is not null)
-        {
-            if (existingAssociation.Type != type)
-            {
-                existingAssociation.Type = type;
-                await context.SaveChangesAsync(cancellationToken);
-            }
-            return existingAssociation;
-        }
-
-        var transactionFile = new TransactionFile
+        OwnerNoun = "transaction",
+        Links = context => context.TransactionFiles,
+        OwnerExists = (context, id, ct) => context.Transactions.AnyAsync(t => t.TransactionId == id, ct),
+        OwnerId = f => f.TransactionId,
+        Create = (transactionId, fileId) => new TransactionFile
         {
             Id = Guid.NewGuid(),
             TransactionId = transactionId,
             FileMetadataId = fileId,
-            AttachedByUserId = userId,
-            AttachedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
-            Type = type
-        };
+            AttachedAtUtc = default,
+        },
+        ToDto = file => file.Adapt<ExistingTransactionFile>(),
+    };
 
-        context.TransactionFiles.Add(transactionFile);
-        await context.SaveChangesAsync(cancellationToken);
+    private OwnedFileLinks<TransactionFile, ExistingTransactionFile> FileLinks =>
+        fileLinks ??= new(context, FileSurface, contactLookup, timeProvider);
 
-        return transactionFile;
-    }
-
-    public async Task<TransactionFile?> DetachFileFromTransaction(Guid transactionId, Guid fileId, CancellationToken cancellationToken = default)
-    {
-        var transaction = await context.Transactions.FirstOrDefaultAsync(t => t.TransactionId == transactionId, cancellationToken);
-        if (transaction is null)
-        {
-            return null;
-        }
-
-        var association = await context.TransactionFiles
-            .FirstOrDefaultAsync(tf => tf.TransactionId == transactionId && tf.FileMetadataId == fileId, cancellationToken);
-        
-        if (association is not null)
-        {
-            context.TransactionFiles.Remove(association);
-            await context.SaveChangesAsync(cancellationToken);
-        }
-
-        return association;
-    }
+    private OwnedFileLinks<TransactionFile, ExistingTransactionFile>? fileLinks;
 }
