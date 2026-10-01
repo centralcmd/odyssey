@@ -22,6 +22,7 @@ public partial class MainLayout
     // True while the shell was resolved against an unavailable session and is subscribed for its recovery.
     private bool _awaitingSession;
     private bool _resolvingShell;
+    private bool _resolveAgain;
     private bool _focusMainAfterRender;
     private ElementReference _main;
 
@@ -281,16 +282,24 @@ public partial class MainLayout
         _ = InvokeAsync(async () =>
         {
             // One re-run at a time: the recovery loop and a Retry can announce back to back, and two
-            // overlapping runs would fetch the profile twice and race on _gateChecked.
+            // overlapping runs would fetch the profile twice and race on _gateChecked. An announcement
+            // that lands mid-run is not dropped — it queues exactly one more pass, so the last word on
+            // the session is always the one the shell ends up resolved against.
             if (_resolvingShell)
             {
+                _resolveAgain = true;
                 return;
             }
 
             _resolvingShell = true;
             try
             {
-                await ResolveShellAsync();
+                do
+                {
+                    _resolveAgain = false;
+                    await ResolveShellAsync();
+                }
+                while (_resolveAgain);
             }
             finally
             {
