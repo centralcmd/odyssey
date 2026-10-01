@@ -38,7 +38,7 @@ namespace Odyssey.Context;
 /// </para>
 /// </summary>
 [Index(nameof(ContactId), nameof(Value), IsUnique = true)]
-public class ContactAlias
+public class ContactAlias : IContactChild
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

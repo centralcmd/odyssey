@@ -1,4 +1,5 @@
 using Odyssey.Dtos;
+using Odyssey.Dtos.Journal;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ namespace Odyssey.Context;
 /// a <see cref="Label"/> and an application-enforced single <see cref="IsPrimary"/> per contact.
 /// </summary>
 [Index(nameof(ContactId))]
-public class Address
+public class Address : IContactMethod
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -25,25 +26,25 @@ public class Address
     public bool IsPrimary { get; set; }
 
     [Required]
-    [StringLength(256)]
+    [StringLength(ContactMethodLimits.AddressLineMaxLength)]
     public required string Line1 { get; set; }
 
-    [StringLength(256)]
+    [StringLength(ContactMethodLimits.AddressLineMaxLength)]
     public string? Line2 { get; set; }
 
     [Required]
-    [StringLength(128)]
+    [StringLength(ContactMethodLimits.CityMaxLength)]
     public required string City { get; set; }
 
-    [StringLength(32)]
+    [StringLength(ContactMethodLimits.PostalCodeMaxLength)]
     public string? PostalCode { get; set; }
 
     /// <summary>State / province / county.</summary>
-    [StringLength(128)]
+    [StringLength(ContactMethodLimits.RegionMaxLength)]
     public string? Region { get; set; }
 
     /// <summary>Two-letter uppercase country code (not validated against a full ISO table in v1).</summary>
     [Required]
-    [StringLength(2)]
+    [StringLength(ContactMethodLimits.CountryCodeLength)]
     public required string CountryCode { get; set; }
 }

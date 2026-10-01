@@ -13,24 +13,24 @@ public sealed record NewAddress
     public bool IsPrimary { get; set; }
 
     [Required]
-    [StringLength(256)]
+    [StringLength(ContactMethodLimits.AddressLineMaxLength)]
     public required string Line1 { get; set; }
 
-    [StringLength(256)]
+    [StringLength(ContactMethodLimits.AddressLineMaxLength)]
     public string? Line2 { get; set; }
 
     [Required]
-    [StringLength(128)]
+    [StringLength(ContactMethodLimits.CityMaxLength)]
     public required string City { get; set; }
 
-    [StringLength(32)]
+    [StringLength(ContactMethodLimits.PostalCodeMaxLength)]
     public string? PostalCode { get; set; }
 
-    [StringLength(128)]
+    [StringLength(ContactMethodLimits.RegionMaxLength)]
     public string? Region { get; set; }
 
     [Required]
-    [StringLength(2, MinimumLength = 2)]
+    [StringLength(ContactMethodLimits.CountryCodeLength, MinimumLength = ContactMethodLimits.CountryCodeLength)]
     public required string CountryCode { get; set; }
 }
 
@@ -42,21 +42,21 @@ public sealed record ExistingAddress
     public AddressLabel Label { get; set; }
     public bool IsPrimary { get; set; }
 
-    [StringLength(256)]
+    [StringLength(ContactMethodLimits.AddressLineMaxLength)]
     public required string Line1 { get; set; }
 
-    [StringLength(256)]
+    [StringLength(ContactMethodLimits.AddressLineMaxLength)]
     public string? Line2 { get; set; }
 
-    [StringLength(128)]
+    [StringLength(ContactMethodLimits.CityMaxLength)]
     public required string City { get; set; }
 
-    [StringLength(32)]
+    [StringLength(ContactMethodLimits.PostalCodeMaxLength)]
     public string? PostalCode { get; set; }
 
-    [StringLength(128)]
+    [StringLength(ContactMethodLimits.RegionMaxLength)]
     public string? Region { get; set; }
 
-    [StringLength(2)]
+    [StringLength(ContactMethodLimits.CountryCodeLength)]
     public required string CountryCode { get; set; }
 }

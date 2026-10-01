@@ -1,4 +1,5 @@
 using Odyssey.Dtos;
+using Odyssey.Dtos.Journal;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ namespace Odyssey.Context;
 /// an <see cref="Label"/> and an application-enforced single <see cref="IsPrimary"/> per contact.
 /// </summary>
 [Index(nameof(ContactId))]
-public class EmailAddress
+public class EmailAddress : IContactMethod
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -25,6 +26,6 @@ public class EmailAddress
     public bool IsPrimary { get; set; }
 
     [Required]
-    [StringLength(256)]
+    [StringLength(ContactMethodLimits.EmailMaxLength)]
     public required string Value { get; set; }
 }

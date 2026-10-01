@@ -708,7 +708,7 @@ public class ContactService
 
         // Containment: the alias is resolved SCOPED to the parent, so an id belonging to another
         // contact is a 404 rather than a cross-parent write (§10.1).
-        var alias = await context.ContactAliases.FirstOrDefaultAsync(a => a.Id == aliasId && a.ContactId == contactId, cancellationToken);
+        var alias = await FindChildAsync(context.ContactAliases, contactId, aliasId, cancellationToken);
         if (alias is null)
             return false;
 
@@ -737,7 +737,7 @@ public class ContactService
         if (contact is null)
             return false;
 
-        var alias = await context.ContactAliases.FirstOrDefaultAsync(a => a.Id == aliasId && a.ContactId == contactId, cancellationToken);
+        var alias = await FindChildAsync(context.ContactAliases, contactId, aliasId, cancellationToken);
         if (alias is null)
             return false;
 
@@ -814,246 +814,195 @@ public class ContactService
         return cleaned;
     }
 
-    // ── Address sub-resource ──────────────────────────────────────────────────
+    // ── Contact-method sub-resources: addresses, emails, phones ───────────────
+    // One code path per verb, shared by all three collections (issue #287 M7). Each collection supplies
+    // only what differs: its DbSet, its label-scope check, and how a request becomes column values.
 
-    public async Task<IReadOnlyList<ExistingAddress>?> GetAddresses(Guid contactId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<ExistingAddress>?> GetAddresses(Guid contactId, CancellationToken cancellationToken = default) =>
+        GetMethodsAsync<Address, ExistingAddress>(context.Addresses, contactId, cancellationToken);
+
+    public Task<ExistingAddress?> CreateAddress(Guid contactId, NewAddress request, CancellationToken cancellationToken = default) =>
+        CreateMethodAsync<Address, ExistingAddress>(context.Addresses, contactId, request.IsPrimary,
+            contact => RequireLabelValidFor(request.Label, contact.Type),
+            () => new Address
+            {
+                ContactId = contactId,
+                Label = request.Label,
+                Line1 = CleanRequired(request.Line1, ContactMethodLimits.AddressLineMaxLength, "Line 1"),
+                Line2 = CleanOptional(request.Line2, ContactMethodLimits.AddressLineMaxLength, "Line 2"),
+                City = CleanRequired(request.City, ContactMethodLimits.CityMaxLength, "City"),
+                PostalCode = CleanOptional(request.PostalCode, ContactMethodLimits.PostalCodeMaxLength, "Postal code"),
+                Region = CleanOptional(request.Region, ContactMethodLimits.RegionMaxLength, "Region"),
+                CountryCode = NormalizeCountryCode(request.CountryCode),
+            },
+            cancellationToken);
+
+    public Task<bool> UpdateAddress(Guid contactId, Guid addressId, NewAddress request, CancellationToken cancellationToken = default) =>
+        UpdateMethodAsync<Address>(context.Addresses, contactId, addressId, request.IsPrimary,
+            contact => RequireLabelValidFor(request.Label, contact.Type),
+            address =>
+            {
+                address.Label = request.Label;
+                address.Line1 = CleanRequired(request.Line1, ContactMethodLimits.AddressLineMaxLength, "Line 1");
+                address.Line2 = CleanOptional(request.Line2, ContactMethodLimits.AddressLineMaxLength, "Line 2");
+                address.City = CleanRequired(request.City, ContactMethodLimits.CityMaxLength, "City");
+                address.PostalCode = CleanOptional(request.PostalCode, ContactMethodLimits.PostalCodeMaxLength, "Postal code");
+                address.Region = CleanOptional(request.Region, ContactMethodLimits.RegionMaxLength, "Region");
+                address.CountryCode = NormalizeCountryCode(request.CountryCode);
+            },
+            cancellationToken);
+
+    public Task<bool> DeleteAddress(Guid contactId, Guid addressId, CancellationToken cancellationToken = default) =>
+        DeleteMethodAsync(context.Addresses, contactId, addressId, cancellationToken);
+
+    public Task<IReadOnlyList<ExistingEmailAddress>?> GetEmails(Guid contactId, CancellationToken cancellationToken = default) =>
+        GetMethodsAsync<EmailAddress, ExistingEmailAddress>(context.EmailAddresses, contactId, cancellationToken);
+
+    public Task<ExistingEmailAddress?> CreateEmail(Guid contactId, NewEmailAddress request, CancellationToken cancellationToken = default) =>
+        CreateMethodAsync<EmailAddress, ExistingEmailAddress>(context.EmailAddresses, contactId, request.IsPrimary,
+            contact => RequireLabelValidFor(request.Label, contact.Type),
+            () => new EmailAddress
+            {
+                ContactId = contactId,
+                Label = request.Label,
+                Value = CleanRequired(request.Value, ContactMethodLimits.EmailMaxLength, "Email address"),
+            },
+            cancellationToken);
+
+    public Task<bool> UpdateEmail(Guid contactId, Guid emailId, NewEmailAddress request, CancellationToken cancellationToken = default) =>
+        UpdateMethodAsync<EmailAddress>(context.EmailAddresses, contactId, emailId, request.IsPrimary,
+            contact => RequireLabelValidFor(request.Label, contact.Type),
+            email =>
+            {
+                email.Label = request.Label;
+                email.Value = CleanRequired(request.Value, ContactMethodLimits.EmailMaxLength, "Email address");
+            },
+            cancellationToken);
+
+    public Task<bool> DeleteEmail(Guid contactId, Guid emailId, CancellationToken cancellationToken = default) =>
+        DeleteMethodAsync(context.EmailAddresses, contactId, emailId, cancellationToken);
+
+    public Task<IReadOnlyList<ExistingPhoneNumber>?> GetPhones(Guid contactId, CancellationToken cancellationToken = default) =>
+        GetMethodsAsync<PhoneNumber, ExistingPhoneNumber>(context.PhoneNumbers, contactId, cancellationToken);
+
+    public Task<ExistingPhoneNumber?> CreatePhone(Guid contactId, NewPhoneNumber request, CancellationToken cancellationToken = default) =>
+        CreateMethodAsync<PhoneNumber, ExistingPhoneNumber>(context.PhoneNumbers, contactId, request.IsPrimary,
+            contact => RequireLabelValidFor(request.Label, contact.Type),
+            () => new PhoneNumber
+            {
+                ContactId = contactId,
+                Label = request.Label,
+                Value = CleanRequired(request.Value, ContactMethodLimits.PhoneMaxLength, "Phone number"),
+            },
+            cancellationToken);
+
+    public Task<bool> UpdatePhone(Guid contactId, Guid phoneId, NewPhoneNumber request, CancellationToken cancellationToken = default) =>
+        UpdateMethodAsync<PhoneNumber>(context.PhoneNumbers, contactId, phoneId, request.IsPrimary,
+            contact => RequireLabelValidFor(request.Label, contact.Type),
+            phone =>
+            {
+                phone.Label = request.Label;
+                phone.Value = CleanRequired(request.Value, ContactMethodLimits.PhoneMaxLength, "Phone number");
+            },
+            cancellationToken);
+
+    public Task<bool> DeletePhone(Guid contactId, Guid phoneId, CancellationToken cancellationToken = default) =>
+        DeleteMethodAsync(context.PhoneNumbers, contactId, phoneId, cancellationToken);
+
+    /// <summary>Null when the contact does not exist; primary first, then by id.</summary>
+    private async Task<IReadOnlyList<TDto>?> GetMethodsAsync<TMethod, TDto>(
+        DbSet<TMethod> set, Guid contactId, CancellationToken cancellationToken)
+        where TMethod : class, IContactMethod
     {
         if (!await context.Contacts.AnyAsync(c => c.ContactId == contactId, cancellationToken))
             return null;
 
-        var rows = await context.Addresses.AsNoTracking()
-            .Where(a => a.ContactId == contactId)
-            .OrderByDescending(a => a.IsPrimary).ThenBy(a => a.Id)
+        var rows = await set.AsNoTracking()
+            .Where(m => m.ContactId == contactId)
+            .OrderByDescending(m => m.IsPrimary).ThenBy(m => m.Id)
             .ToListAsync(cancellationToken);
-        return rows.Adapt<List<ExistingAddress>>();
+        return rows.Adapt<List<TDto>>();
     }
 
-    public async Task<ExistingAddress?> CreateAddress(Guid contactId, NewAddress request, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Null when the contact does not exist. The label scope is checked before any row is built, and the
+    /// first row in a collection is primary whatever the request says (§9).
+    /// </summary>
+    private async Task<TDto?> CreateMethodAsync<TMethod, TDto>(
+        DbSet<TMethod> set, Guid contactId, bool requestedPrimary,
+        Action<Contact> requireLabelValid, Func<TMethod> build, CancellationToken cancellationToken)
+        where TMethod : class, IContactMethod
+        where TDto : class
     {
         var contact = await LoadForChildMutation(contactId, cancellationToken);
         if (contact is null)
             return null;
 
-        RequireLabelValidFor(request.Label, contact.Type);
+        requireLabelValid(contact);
 
-        var siblings = await context.Addresses.Where(a => a.ContactId == contactId).ToListAsync(cancellationToken);
-        var address = new Address
-        {
-            ContactId = contactId,
-            Label = request.Label,
-            Line1 = CleanRequired(request.Line1, 256, "Line 1"),
-            Line2 = CleanOptional(request.Line2, 256, "Line 2"),
-            City = CleanRequired(request.City, 128, "City"),
-            PostalCode = CleanOptional(request.PostalCode, 32, "Postal code"),
-            Region = CleanOptional(request.Region, 128, "Region"),
-            CountryCode = NormalizeCountryCode(request.CountryCode),
-        };
-        context.Addresses.Add(address);
+        var siblings = await set.Where(m => m.ContactId == contactId).ToListAsync(cancellationToken);
+        var created = build();
+        set.Add(created);
 
-        ArbitratePrimaryOnCreate(siblings, address, request.IsPrimary, a => a.IsPrimary, (a, v) => a.IsPrimary = v);
+        ArbitratePrimaryOnCreate(siblings, created, requestedPrimary);
         Touch(contact);
         await context.SaveChangesAsync(cancellationToken);
-        return address.Adapt<ExistingAddress>();
+        return created.Adapt<TDto>();
     }
 
-    public async Task<bool> UpdateAddress(Guid contactId, Guid addressId, NewAddress request, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// False when the contact does not exist or the row is not one of ITS rows — containment: an id
+    /// belonging to another contact is a 404 rather than a cross-parent write (§10.1).
+    /// </summary>
+    private async Task<bool> UpdateMethodAsync<TMethod>(
+        DbSet<TMethod> set, Guid contactId, Guid methodId, bool requestedPrimary,
+        Action<Contact> requireLabelValid, Action<TMethod> apply, CancellationToken cancellationToken)
+        where TMethod : class, IContactMethod
     {
         var contact = await LoadForChildMutation(contactId, cancellationToken);
         if (contact is null)
             return false;
 
-        var address = await context.Addresses.FirstOrDefaultAsync(a => a.Id == addressId && a.ContactId == contactId, cancellationToken);
-        if (address is null)
+        var method = await FindChildAsync(set, contactId, methodId, cancellationToken);
+        if (method is null)
             return false;
 
-        RequireLabelValidFor(request.Label, contact.Type);
+        requireLabelValid(contact);
+        apply(method);
 
-        address.Label = request.Label;
-        address.Line1 = CleanRequired(request.Line1, 256, "Line 1");
-        address.Line2 = CleanOptional(request.Line2, 256, "Line 2");
-        address.City = CleanRequired(request.City, 128, "City");
-        address.PostalCode = CleanOptional(request.PostalCode, 32, "Postal code");
-        address.Region = CleanOptional(request.Region, 128, "Region");
-        address.CountryCode = NormalizeCountryCode(request.CountryCode);
-
-        var siblings = await context.Addresses.Where(a => a.ContactId == contactId).ToListAsync(cancellationToken);
-        ArbitratePrimaryOnUpdate(siblings, address, request.IsPrimary, a => a.Id, a => a.IsPrimary, (a, v) => a.IsPrimary = v);
+        var siblings = await set.Where(m => m.ContactId == contactId).ToListAsync(cancellationToken);
+        ArbitratePrimaryOnUpdate(siblings, method, requestedPrimary);
         Touch(contact);
         await context.SaveChangesAsync(cancellationToken);
         return true;
     }
 
-    public async Task<bool> DeleteAddress(Guid contactId, Guid addressId, CancellationToken cancellationToken = default)
+    /// <summary>Removing the primary row promotes the first remaining one, so a primary always exists.</summary>
+    private async Task<bool> DeleteMethodAsync<TMethod>(
+        DbSet<TMethod> set, Guid contactId, Guid methodId, CancellationToken cancellationToken)
+        where TMethod : class, IContactMethod
     {
         var contact = await LoadForChildMutation(contactId, cancellationToken);
         if (contact is null)
             return false;
 
-        var address = await context.Addresses.FirstOrDefaultAsync(a => a.Id == addressId && a.ContactId == contactId, cancellationToken);
-        if (address is null)
+        var method = await FindChildAsync(set, contactId, methodId, cancellationToken);
+        if (method is null)
             return false;
 
-        context.Addresses.Remove(address);
-        var remaining = await context.Addresses.Where(a => a.ContactId == contactId && a.Id != addressId).ToListAsync(cancellationToken);
-        PromoteFirstIfNonePrimary(remaining, address.IsPrimary, a => a.Id, a => a.IsPrimary, (a, v) => a.IsPrimary = v);
+        set.Remove(method);
+        var remaining = await set.Where(m => m.ContactId == contactId && m.Id != methodId).ToListAsync(cancellationToken);
+        PromoteFirstIfNonePrimary(remaining, method.IsPrimary);
         Touch(contact);
         await context.SaveChangesAsync(cancellationToken);
         return true;
     }
 
-    // ── Email sub-resource ────────────────────────────────────────────────────
-
-    public async Task<IReadOnlyList<ExistingEmailAddress>?> GetEmails(Guid contactId, CancellationToken cancellationToken = default)
-    {
-        if (!await context.Contacts.AnyAsync(c => c.ContactId == contactId, cancellationToken))
-            return null;
-
-        var rows = await context.EmailAddresses.AsNoTracking()
-            .Where(e => e.ContactId == contactId)
-            .OrderByDescending(e => e.IsPrimary).ThenBy(e => e.Id)
-            .ToListAsync(cancellationToken);
-        return rows.Adapt<List<ExistingEmailAddress>>();
-    }
-
-    public async Task<ExistingEmailAddress?> CreateEmail(Guid contactId, NewEmailAddress request, CancellationToken cancellationToken = default)
-    {
-        var contact = await LoadForChildMutation(contactId, cancellationToken);
-        if (contact is null)
-            return null;
-
-        RequireLabelValidFor(request.Label, contact.Type);
-
-        var siblings = await context.EmailAddresses.Where(e => e.ContactId == contactId).ToListAsync(cancellationToken);
-        var email = new EmailAddress
-        {
-            ContactId = contactId,
-            Label = request.Label,
-            Value = CleanRequired(request.Value, 256, "Email address"),
-        };
-        context.EmailAddresses.Add(email);
-
-        ArbitratePrimaryOnCreate(siblings, email, request.IsPrimary, e => e.IsPrimary, (e, v) => e.IsPrimary = v);
-        Touch(contact);
-        await context.SaveChangesAsync(cancellationToken);
-        return email.Adapt<ExistingEmailAddress>();
-    }
-
-    public async Task<bool> UpdateEmail(Guid contactId, Guid emailId, NewEmailAddress request, CancellationToken cancellationToken = default)
-    {
-        var contact = await LoadForChildMutation(contactId, cancellationToken);
-        if (contact is null)
-            return false;
-
-        var email = await context.EmailAddresses.FirstOrDefaultAsync(e => e.Id == emailId && e.ContactId == contactId, cancellationToken);
-        if (email is null)
-            return false;
-
-        RequireLabelValidFor(request.Label, contact.Type);
-
-        email.Label = request.Label;
-        email.Value = CleanRequired(request.Value, 256, "Email address");
-
-        var siblings = await context.EmailAddresses.Where(e => e.ContactId == contactId).ToListAsync(cancellationToken);
-        ArbitratePrimaryOnUpdate(siblings, email, request.IsPrimary, e => e.Id, e => e.IsPrimary, (e, v) => e.IsPrimary = v);
-        Touch(contact);
-        await context.SaveChangesAsync(cancellationToken);
-        return true;
-    }
-
-    public async Task<bool> DeleteEmail(Guid contactId, Guid emailId, CancellationToken cancellationToken = default)
-    {
-        var contact = await LoadForChildMutation(contactId, cancellationToken);
-        if (contact is null)
-            return false;
-
-        var email = await context.EmailAddresses.FirstOrDefaultAsync(e => e.Id == emailId && e.ContactId == contactId, cancellationToken);
-        if (email is null)
-            return false;
-
-        context.EmailAddresses.Remove(email);
-        var remaining = await context.EmailAddresses.Where(e => e.ContactId == contactId && e.Id != emailId).ToListAsync(cancellationToken);
-        PromoteFirstIfNonePrimary(remaining, email.IsPrimary, e => e.Id, e => e.IsPrimary, (e, v) => e.IsPrimary = v);
-        Touch(contact);
-        await context.SaveChangesAsync(cancellationToken);
-        return true;
-    }
-
-    // ── Phone sub-resource ────────────────────────────────────────────────────
-
-    public async Task<IReadOnlyList<ExistingPhoneNumber>?> GetPhones(Guid contactId, CancellationToken cancellationToken = default)
-    {
-        if (!await context.Contacts.AnyAsync(c => c.ContactId == contactId, cancellationToken))
-            return null;
-
-        var rows = await context.PhoneNumbers.AsNoTracking()
-            .Where(p => p.ContactId == contactId)
-            .OrderByDescending(p => p.IsPrimary).ThenBy(p => p.Id)
-            .ToListAsync(cancellationToken);
-        return rows.Adapt<List<ExistingPhoneNumber>>();
-    }
-
-    public async Task<ExistingPhoneNumber?> CreatePhone(Guid contactId, NewPhoneNumber request, CancellationToken cancellationToken = default)
-    {
-        var contact = await LoadForChildMutation(contactId, cancellationToken);
-        if (contact is null)
-            return null;
-
-        RequireLabelValidFor(request.Label, contact.Type);
-
-        var siblings = await context.PhoneNumbers.Where(p => p.ContactId == contactId).ToListAsync(cancellationToken);
-        var phone = new PhoneNumber
-        {
-            ContactId = contactId,
-            Label = request.Label,
-            Value = CleanRequired(request.Value, 32, "Phone number"),
-        };
-        context.PhoneNumbers.Add(phone);
-
-        ArbitratePrimaryOnCreate(siblings, phone, request.IsPrimary, p => p.IsPrimary, (p, v) => p.IsPrimary = v);
-        Touch(contact);
-        await context.SaveChangesAsync(cancellationToken);
-        return phone.Adapt<ExistingPhoneNumber>();
-    }
-
-    public async Task<bool> UpdatePhone(Guid contactId, Guid phoneId, NewPhoneNumber request, CancellationToken cancellationToken = default)
-    {
-        var contact = await LoadForChildMutation(contactId, cancellationToken);
-        if (contact is null)
-            return false;
-
-        var phone = await context.PhoneNumbers.FirstOrDefaultAsync(p => p.Id == phoneId && p.ContactId == contactId, cancellationToken);
-        if (phone is null)
-            return false;
-
-        RequireLabelValidFor(request.Label, contact.Type);
-
-        phone.Label = request.Label;
-        phone.Value = CleanRequired(request.Value, 32, "Phone number");
-
-        var siblings = await context.PhoneNumbers.Where(p => p.ContactId == contactId).ToListAsync(cancellationToken);
-        ArbitratePrimaryOnUpdate(siblings, phone, request.IsPrimary, p => p.Id, p => p.IsPrimary, (p, v) => p.IsPrimary = v);
-        Touch(contact);
-        await context.SaveChangesAsync(cancellationToken);
-        return true;
-    }
-
-    public async Task<bool> DeletePhone(Guid contactId, Guid phoneId, CancellationToken cancellationToken = default)
-    {
-        var contact = await LoadForChildMutation(contactId, cancellationToken);
-        if (contact is null)
-            return false;
-
-        var phone = await context.PhoneNumbers.FirstOrDefaultAsync(p => p.Id == phoneId && p.ContactId == contactId, cancellationToken);
-        if (phone is null)
-            return false;
-
-        context.PhoneNumbers.Remove(phone);
-        var remaining = await context.PhoneNumbers.Where(p => p.ContactId == contactId && p.Id != phoneId).ToListAsync(cancellationToken);
-        PromoteFirstIfNonePrimary(remaining, phone.IsPrimary, p => p.Id, p => p.IsPrimary, (p, v) => p.IsPrimary = v);
-        Touch(contact);
-        await context.SaveChangesAsync(cancellationToken);
-        return true;
-    }
+    // Resolved SCOPED to the parent, never by id alone, on every verb of every child collection.
+    private static Task<TChild?> FindChildAsync<TChild>(
+        DbSet<TChild> set, Guid contactId, Guid childId, CancellationToken cancellationToken)
+        where TChild : class, IContactChild =>
+        set.FirstOrDefaultAsync(c => c.Id == childId && c.ContactId == contactId, cancellationToken);
 
     // ── Shared child helpers ──────────────────────────────────────────────────
 
@@ -1173,47 +1122,44 @@ public class ContactService
 
     // On create: if requested primary — or this is the first record in the collection — make it the
     // sole primary; otherwise leave the existing primary untouched (§9).
-    private static void ArbitratePrimaryOnCreate<T>(
-        IReadOnlyList<T> siblings, T created, bool requestedPrimary,
-        Func<T, bool> getPrimary, Action<T, bool> setPrimary)
+    private static void ArbitratePrimaryOnCreate<T>(IReadOnlyList<T> siblings, T created, bool requestedPrimary)
+        where T : IContactMethod
     {
         var makePrimary = requestedPrimary || siblings.Count == 0;
-        setPrimary(created, makePrimary);
+        created.IsPrimary = makePrimary;
         if (makePrimary)
         {
             foreach (var sibling in siblings)
-                setPrimary(sibling, false);
+                sibling.IsPrimary = false;
         }
     }
 
     // On update: setting primary clears the others; clearing it re-promotes the first sibling if the
     // collection would otherwise have no primary (§9).
-    private static void ArbitratePrimaryOnUpdate<T>(
-        IReadOnlyList<T> collection, T updated, bool requestedPrimary,
-        Func<T, Guid> getId, Func<T, bool> getPrimary, Action<T, bool> setPrimary)
+    private static void ArbitratePrimaryOnUpdate<T>(IReadOnlyList<T> collection, T updated, bool requestedPrimary)
+        where T : IContactMethod
     {
         if (requestedPrimary)
         {
             foreach (var item in collection)
-                setPrimary(item, getId(item) == getId(updated));
+                item.IsPrimary = item.Id == updated.Id;
             return;
         }
 
-        setPrimary(updated, false);
-        if (!collection.Any(getPrimary))
+        updated.IsPrimary = false;
+        if (!collection.Any(item => item.IsPrimary))
         {
-            var first = collection.OrderBy(getId).FirstOrDefault();
+            var first = collection.OrderBy(item => item.Id).FirstOrDefault();
             if (first is not null)
-                setPrimary(first, true);
+                first.IsPrimary = true;
         }
     }
 
-    private static void PromoteFirstIfNonePrimary<T>(
-        IReadOnlyList<T> remaining, bool removedWasPrimary,
-        Func<T, Guid> getId, Func<T, bool> getPrimary, Action<T, bool> setPrimary)
+    private static void PromoteFirstIfNonePrimary<T>(IReadOnlyList<T> remaining, bool removedWasPrimary)
+        where T : IContactMethod
     {
-        if (!removedWasPrimary || remaining.Count == 0 || remaining.Any(getPrimary))
+        if (!removedWasPrimary || remaining.Count == 0 || remaining.Any(item => item.IsPrimary))
             return;
-        setPrimary(remaining.OrderBy(getId).First(), true);
+        remaining.OrderBy(item => item.Id).First().IsPrimary = true;
     }
 }
