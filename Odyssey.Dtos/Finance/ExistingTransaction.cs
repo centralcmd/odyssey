@@ -12,7 +12,15 @@ public sealed record ExistingTransaction
     public required Guid AccountId { get; set; }
     public ExistingAccount? Account { get; set; }
     public Guid? ContactId { get; set; }
+    /// <summary>The transaction's tags, in <see cref="TransactionTagIcons.Comparer"/> order (name, case-insensitive).</summary>
     public List<ExistingTransactionTag> TransactionTags { get; set; } = [];
+
+    /// <summary>
+    /// The icon representing this transaction, resolved server-side by
+    /// <see cref="TransactionTagIcons.Resolve"/> (issue #279): the first tag with a known icon, else
+    /// <see cref="TransactionTagIcons.Default"/>. Never <c>null</c>.
+    /// </summary>
+    public string DisplayIcon { get; set; } = TransactionTagIcons.Default;
     /// <summary>
     /// The counterparty, as the deliberately-narrow <see cref="ContactEmbed"/> — id and resolved
     /// display name, nothing else (issue #48 §10.2). This endpoint is gated by

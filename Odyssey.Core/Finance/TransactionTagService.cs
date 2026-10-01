@@ -64,6 +64,7 @@ public class TransactionTagService
 
     public async Task<ExistingTransactionTag> Create(NewTransactionTag newTransactionTag, CancellationToken cancellationToken = default)
     {
+        EnsureIconIsKnown(newTransactionTag.Icon);
         await EnsureNameIsUnique(newTransactionTag.Name, null, cancellationToken);
 
         var transactionTag = new TransactionTag
@@ -71,6 +72,7 @@ public class TransactionTagService
             Name = newTransactionTag.Name,
             Description = newTransactionTag.Description,
             Archived = null,
+            Icon = newTransactionTag.Icon,
         };
 
         context.TransactionTags.Add(transactionTag);
@@ -89,10 +91,13 @@ public class TransactionTagService
             return null;
         }
 
+        EnsureIconIsKnown(putTransactionTag.Icon);
         await EnsureNameIsUnique(putTransactionTag.Name, id, cancellationToken);
 
         transactionTag.Name = putTransactionTag.Name;
         transactionTag.Description = putTransactionTag.Description;
+        // Full replacement: an omitted or null icon resets the tag to the default.
+        transactionTag.Icon = putTransactionTag.Icon;
         ApplyArchiveTransition(transactionTag, putTransactionTag.Archived);
 
         await SaveGuardingDuplicateName(putTransactionTag.Name, cancellationToken);
@@ -205,6 +210,20 @@ public class TransactionTagService
         }
 
         return blockers;
+    }
+
+    /// <summary>
+    /// Defence in depth for non-HTTP callers (issue #279 §8): <c>[TransactionTagIcon]</c> already refuses
+    /// an unknown icon on the HTTP path before this runs. Field-keyed so the <c>400</c> carries the same
+    /// <c>errors.Icon</c> shape, and the message never echoes the submitted value.
+    /// </summary>
+    private static void EnsureIconIsKnown(string? icon)
+    {
+        if (icon is not null && !TransactionTagIcons.IsKnown(icon))
+        {
+            throw new DomainValidationException(
+                TransactionTagIcons.InvalidIconMessage, code: null, nameof(NewTransactionTag.Icon));
+        }
     }
 
     /// <summary>

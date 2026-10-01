@@ -33,11 +33,16 @@ public class BudgetItemTagEmbedExposureTests
 
     /// <summary>
     /// AC 25, structural half. The embed is <see cref="ExistingTransactionTag"/> exactly — a label with
-    /// a name, a description and an archival date. A member added to that type, or a wider type swapped
-    /// in for it, fails here.
+    /// a name, a description, an archival date and an icon. A member added to that type, or a wider type
+    /// swapped in for it, fails here.
     /// </summary>
+    /// <remarks>
+    /// <c>Icon</c> was added deliberately by issue #279 (§7.3): a catalogue key, non-personal
+    /// presentation data less descriptive than the name the embed already carries, so exposing it under
+    /// <c>budgets.read</c> widens nothing.
+    /// </remarks>
     [Fact]
-    public void EmbeddedTag_IsExistingTransactionTag_WithExactlyFourMembers()
+    public void EmbeddedTag_IsExistingTransactionTag_WithExactlyFiveMembers()
     {
         var tagProperty = typeof(ExistingBudgetItem).GetProperty(nameof(ExistingBudgetItem.Tag));
 
@@ -45,7 +50,7 @@ public class BudgetItemTagEmbedExposureTests
         Assert.Equal(typeof(ExistingTransactionTag), tagProperty!.PropertyType);
 
         var members = typeof(ExistingTransactionTag).GetProperties().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal);
-        Assert.Equal(["Archived", "Description", "Name", "TransactionTagId"], members);
+        Assert.Equal(["Archived", "Description", "Icon", "Name", "TransactionTagId"], members);
     }
 
     /// <summary>
@@ -67,7 +72,7 @@ public class BudgetItemTagEmbedExposureTests
     /// <summary>
     /// AC 29. A principal holding <c>budgets.read</c> and no tag claim lists budget items and receives
     /// fully populated tags — the crossover working as designed — and the body carries nothing beyond
-    /// the four members.
+    /// the five members.
     /// </summary>
     [Fact]
     public async Task ListBudgetItems_WithoutTagsReadClaim_EmbedsTheWholeTagAndNothingMore()
@@ -83,11 +88,12 @@ public class BudgetItemTagEmbedExposureTests
         var tag = item.GetProperty("tag");
 
         Assert.Equal(
-            ["archived", "description", "name", "transactionTagId"],
+            ["archived", "description", "icon", "name", "transactionTagId"],
             tag.EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));
 
         Assert.Equal("Groceries", tag.GetProperty("name").GetString());
         Assert.Equal("Weekly food", tag.GetProperty("description").GetString());
+        Assert.Equal("shopping_cart", tag.GetProperty("icon").GetString());
 
         // The scalar round-trip key and the embed always agree.
         Assert.Equal(seeded.TagId, tag.GetProperty("transactionTagId").GetGuid());
@@ -142,6 +148,7 @@ public class BudgetItemTagEmbedExposureTests
         Assert.Equal("Groceries", tag.Name);
         Assert.Equal("Weekly food", tag.Description);
         Assert.Null(tag.Archived);
+        Assert.Equal("shopping_cart", tag.Icon);
 
         // …and the new item links the tag the SCALAR named, not the nested one.
         var created = context.BudgetItems.Single(i => i.BudgetId == seeded.SecondBudgetId);
@@ -167,6 +174,7 @@ public class BudgetItemTagEmbedExposureTests
             TransactionTagId = tagId,
             Name = "Groceries",
             Description = "Weekly food",
+            Icon = "shopping_cart",
         });
 
         context.Budgets.Add(new Budget

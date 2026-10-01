@@ -15,6 +15,8 @@ public class TransactionTagsApiClientTests
     {
         public HttpRequestMessage? LastRequest { get; private set; }
 
+        public string? LastBody { get; private set; }
+
         public HttpResponseMessage Response { get; set; } =
             new(HttpStatusCode.OK)
             {
@@ -22,10 +24,11 @@ public class TransactionTagsApiClientTests
                                             System.Text.Encoding.UTF8, "application/json"),
             };
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             LastRequest = request;
-            return Task.FromResult(Response);
+            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
+            return Response;
         }
     }
 
@@ -114,5 +117,46 @@ public class TransactionTagsApiClientTests
         await client.DeleteAsync(id);
         Assert.Equal($"/api/transaction-tags/{id}", handler.LastRequest!.RequestUri!.AbsolutePath);
         Assert.Equal(HttpMethod.Delete, handler.LastRequest.Method);
+    }
+
+    /// <summary>
+    /// Issue #279: the icon rides both directions. <c>PUT</c> is full replacement, so a client that
+    /// dropped <c>icon</c> on the way out would reset every tag it touched.
+    /// </summary>
+    [Fact]
+    public async Task Icon_is_sent_on_create_and_update_including_an_explicit_null()
+    {
+        var (client, handler) = Create();
+        handler.Response = new HttpResponseMessage(HttpStatusCode.NoContent);
+
+        await client.CreateAsync(new NewTransactionTag { Name = "Rent", Archived = false, Icon = "home" });
+        using (var body = System.Text.Json.JsonDocument.Parse(handler.LastBody!))
+        {
+            Assert.Equal("home", body.RootElement.GetProperty("icon").GetString());
+        }
+
+        await client.UpdateAsync(Guid.NewGuid(), new NewTransactionTag { Name = "Rent", Archived = false, Icon = null });
+        using (var body = System.Text.Json.JsonDocument.Parse(handler.LastBody!))
+        {
+            Assert.Equal(System.Text.Json.JsonValueKind.Null, body.RootElement.GetProperty("icon").ValueKind);
+        }
+    }
+
+    [Fact]
+    public async Task Icon_is_read_back_from_the_list()
+    {
+        var (client, handler) = Create();
+        handler.Response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""
+                {"items":[{"transactionTagId":"11111111-1111-1111-1111-111111111111","name":"Rent","archived":null,"icon":"home"},
+                          {"transactionTagId":"22222222-2222-2222-2222-222222222222","name":"Misc","archived":null,"icon":null}],
+                 "offset":0,"limit":99999,"totalCount":2}
+                """, System.Text.Encoding.UTF8, "application/json"),
+        };
+
+        var result = await client.ListAllAsync();
+
+        Assert.Equal(["home", null], result.ValueOr([]).Select(t => t.Icon));
     }
 }

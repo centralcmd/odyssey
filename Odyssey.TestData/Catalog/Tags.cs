@@ -40,35 +40,37 @@ public static class Tags
     public const string RentalIncome = "Rental Income";
     public const string Refunds = "Refunds";
 
-    private static readonly (string Name, string Description)[] Definitions =
+    // Most tags carry an icon (issue #279); a few deliberately do not, so both the iconned and the
+    // default path are visible in the dev stack.
+    private static readonly (string Name, string Description, string? Icon)[] Definitions =
     [
-        (Groceries, "Supermarket and grocery spending"),
-        (DiningOut, "Restaurants, cafes and takeaway"),
-        (Utilities, "Electricity, water, gas and internet"),
-        (Housing, "Rent or mortgage payments"),
-        (Transportation, "Public transport and rideshare"),
-        (Fuel, "Petrol and charging"),
-        (Healthcare, "Medical, dental and pharmacy"),
-        (Insurance, "Home, health and vehicle insurance"),
-        (Entertainment, "Leisure, events and hobbies"),
-        (Subscriptions, "Streaming and recurring services"),
-        (Travel, "Flights, hotels and trips"),
-        (Clothing, "Apparel and accessories"),
-        (PersonalCare, "Haircuts, cosmetics and wellbeing"),
-        (HomeMaintenance, "Repairs and household upkeep"),
-        (Education, "Courses, books and tuition"),
-        (GiftsDonations, "Presents and charitable giving"),
-        (FeesCharges, "Bank fees and service charges"),
-        (Taxes, "Income and property taxes"),
-        (LoanRepayment, "Loan and credit repayments"),
-        (Savings, "Transfers to savings"),
-        (Investments, "Contributions to investments"),
-        (Salary, "Employment income"),
-        (Bonus, "Performance and annual bonuses"),
-        (Dividends, "Investment dividend income"),
-        (InterestIncome, "Interest earned on deposits"),
-        (RentalIncome, "Income from rented property"),
-        (Refunds, "Refunds and reimbursements"),
+        (Groceries, "Supermarket and grocery spending", "shopping_cart"),
+        (DiningOut, "Restaurants, cafes and takeaway", "restaurant"),
+        (Utilities, "Electricity, water, gas and internet", "bolt"),
+        (Housing, "Rent or mortgage payments", "home"),
+        (Transportation, "Public transport and rideshare", "directions_bus"),
+        (Fuel, "Petrol and charging", "local_gas_station"),
+        (Healthcare, "Medical, dental and pharmacy", "medical_services"),
+        (Insurance, "Home, health and vehicle insurance", "shield"),
+        (Entertainment, "Leisure, events and hobbies", "movie"),
+        (Subscriptions, "Streaming and recurring services", "subscriptions"),
+        (Travel, "Flights, hotels and trips", "flight"),
+        (Clothing, "Apparel and accessories", "checkroom"),
+        (PersonalCare, "Haircuts, cosmetics and wellbeing", null),
+        (HomeMaintenance, "Repairs and household upkeep", "build"),
+        (Education, "Courses, books and tuition", "school"),
+        (GiftsDonations, "Presents and charitable giving", "card_giftcard"),
+        (FeesCharges, "Bank fees and service charges", null),
+        (Taxes, "Income and property taxes", "request_quote"),
+        (LoanRepayment, "Loan and credit repayments", null),
+        (Savings, "Transfers to savings", "savings"),
+        (Investments, "Contributions to investments", "trending_up"),
+        (Salary, "Employment income", "payments"),
+        (Bonus, "Performance and annual bonuses", null),
+        (Dividends, "Investment dividend income", null),
+        (InterestIncome, "Interest earned on deposits", null),
+        (RentalIncome, "Income from rented property", null),
+        (Refunds, "Refunds and reimbursements", null),
     ];
 
     public static Guid IdFor(string name) => DeterministicGuid.From($"tag::{name}");
@@ -81,6 +83,7 @@ public static class Tags
                 Name = definition.Name,
                 Description = definition.Description,
                 Archived = null,
+                Icon = definition.Icon,
             })
             .ToList();
 }

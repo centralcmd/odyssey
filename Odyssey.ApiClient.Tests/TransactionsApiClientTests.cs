@@ -121,6 +121,34 @@ public class TransactionsApiClientTests
     }
 
     /// <summary>
+    /// Issue #279: the server-resolved display icon and each embedded tag's icon survive
+    /// deserialisation, and a body without <c>displayIcon</c> (an older server) falls back to the default.
+    /// </summary>
+    [Fact]
+    public async Task ListAllAsync_reads_the_display_icon_and_embedded_tag_icons()
+    {
+        var (client, handler) = Create();
+        handler.Response = RecordingHandler.Json(
+            """
+            {"items":[{"transactionId":"11111111-1111-1111-1111-111111111111","description":"Lunch",
+                       "amount":-12,"timeStamp":"2030-01-01T00:00:00Z",
+                       "accountId":"22222222-2222-2222-2222-222222222222","displayIcon":"restaurant",
+                       "transactionTags":[{"transactionTagId":"33333333-3333-3333-3333-333333333333",
+                                           "name":"Food","archived":null,"icon":"restaurant"}]},
+                      {"transactionId":"44444444-4444-4444-4444-444444444444","description":"Old",
+                       "amount":-1,"timeStamp":"2030-01-01T00:00:00Z",
+                       "accountId":"22222222-2222-2222-2222-222222222222"}],
+             "offset":0,"limit":99999,"totalCount":2}
+            """);
+
+        var items = (await client.ListAllAsync()).ValueOr([]);
+
+        Assert.Equal("restaurant", items[0].DisplayIcon);
+        Assert.Equal("restaurant", Assert.Single(items[0].TransactionTags).Icon);
+        Assert.Equal(TransactionTagIcons.Default, items[1].DisplayIcon);
+    }
+
+    /// <summary>
     /// The create endpoints return <c>201</c> with an empty body, so the new id is only in the
     /// <c>Location</c> header — the attach-files step depends on reading it back.
     /// </summary>

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Odyssey.Context;
 
@@ -11,9 +12,11 @@ using Odyssey.Context;
 namespace Odyssey.Context.Migrations
 {
     [DbContext(typeof(OdysseyContext))]
-    partial class OdysseyContextModelSnapshot : ModelSnapshot
+    [Migration("20261001103043_AddTransactionTagIcon")]
+    partial class AddTransactionTagIcon
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2168,7 +2171,6 @@ namespace Odyssey.Context.Migrations
                         .HasColumnType("varchar(256)");
 
                     b.Property<int>("ReviewStatus")
-                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
