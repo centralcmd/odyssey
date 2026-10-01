@@ -69,6 +69,7 @@ public partial class CreateTransactionDialog
     private ExistingAccount? _selectedAccount;
     private IReadOnlyCollection<string> _selectedTagIds = [];
     private IReadOnlyList<OdsOption> _tagOptions = [];
+    private IReadOnlyDictionary<string, ExistingTransactionTag> _tagsById = new Dictionary<string, ExistingTransactionTag>();
 
     // Contact picker — selection is the option value (a contact id string); an inline-created contact
     // carries an optimistic temp id that ContactCreator maps to the real one on save.
@@ -157,13 +158,14 @@ public partial class CreateTransactionDialog
 
         // Edit mode: a tag the transaction already carries still needs to render its name even if it
         // has since been archived, so it doesn't collapse to a bare id in the multi-select.
-        var byId = _tags.ToDictionary(t => t.TransactionTagId.ToString(), t => t.Name);
+        var byId = _tags.ToDictionary(t => t.TransactionTagId.ToString());
         if (Transaction is { } t2)
         {
             foreach (var tag in t2.TransactionTags)
-                byId[tag.TransactionTagId.ToString()] = tag.Name;
+                byId[tag.TransactionTagId.ToString()] = tag;
         }
-        _tagOptions = byId.Select(kv => new OdsOption(kv.Key, kv.Value)).OrderBy(o => o.Label).ToList();
+        _tagsById = byId;
+        _tagOptions = byId.Values.Select(OdsTransactionTagOptions.From).OrderBy(o => o.Label).ToList();
     }
 
     private async Task LoadContacts()
@@ -253,6 +255,28 @@ public partial class CreateTransactionDialog
 
         _status = _statuses[next];
         await _statusRefs[next].FocusAsync();
+    }
+
+    // ── Row-icon preview (issue #279) ───────────────────────────────────────────
+    // A live preview of the row icon the server will resolve for the chosen tags — the client copy of
+    // the rule is the shared TransactionTagIcons, so the two cannot drift. Empty selection keeps the
+    // plain hint. A tag created inline here has no icon yet, so it never wins.
+    internal (string Glyph, string? From)? RowIcon
+    {
+        get
+        {
+            var chosen = _selectedTagIds
+                .Select(id => _tagsById.GetValueOrDefault(id))
+                .OfType<ExistingTransactionTag>()
+                .ToList();
+            if (chosen.Count == 0)
+                return null;
+
+            var glyph = TransactionTagIcons.Resolve(chosen);
+            var from = TransactionTagIcons.Order(chosen)
+                .FirstOrDefault(tag => TransactionTagIcons.IsKnown(tag.Icon) && tag.Icon == glyph);
+            return (glyph, from?.Name);
+        }
     }
 
     // ── Inline create (claim-gated) ─────────────────────────────────────────────

@@ -1591,7 +1591,8 @@
   outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -1px;
   background: var(--mud-palette-action-default-hover);
 }
-.odc-tagms-opt .odc-check-label { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.odc-tagms-opt .odc-check-label,
+.odc-smarttags-opt .odc-check-label { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
 .odc-tagms-opt-ic { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); flex: none; }
 /* The option row's secondary caption — the type, an account number — which is what disambiguates
    two same-named records in a picker whose whole job here is naming one of several. */
@@ -3226,6 +3227,32 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-swatch:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 3px; }
 .odc-swatch:disabled { cursor: not-allowed; opacity: 0.5; }
 
+/* TagIconPicker — the transaction-tag icon chooser (issue #279): a radiogroup grid of the
+   TransactionTagIcons catalogue, a dashed Default cell first, and a caption naming the selection. */
+.odc-iconpick { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); overflow: hidden; }
+.odc-iconpick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: var(--space-1); padding: var(--space-2); }
+.odc-iconpick-cell { appearance: none; position: relative; height: 40px; min-width: 40px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer; padding: 0; }
+.odc-iconpick-cell .material-icons { font-size: var(--icon-lg); }
+.odc-iconpick-cell:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-iconpick-cell.default { box-shadow: inset 0 0 0 1px var(--mud-palette-divider); background-image: none; outline-offset: 2px; }
+.odc-iconpick-cell.default:not(.selected) { box-shadow: none; border: 1px dashed var(--mud-palette-text-disabled, var(--mud-palette-divider)); }
+.odc-iconpick-cell.selected { background: var(--tag-soft); color: var(--tag-text); box-shadow: inset 0 0 0 2px var(--tag-text); }
+.odc-iconpick-check { position: absolute; top: -3px; right: -3px; width: 14px; height: 14px; border-radius: var(--radius-pill); background: var(--tag-text); color: var(--mud-palette-surface); display: inline-flex; align-items: center; justify-content: center; }
+.odc-iconpick-check .material-icons { font-size: 11px; font-weight: 700; }
+.odc-iconpick-cell:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; z-index: 1; }
+.odc-iconpick-cell:disabled { cursor: not-allowed; opacity: 0.5; }
+.odc-iconpick-caption { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 36px; padding: 0 var(--space-3); border-top: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface); font: 400 var(--fs-body2)/1.3 var(--font-sans); }
+.odc-iconpick-sel, .odc-iconpick-peek { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.odc-iconpick-sel { color: var(--mud-palette-text-primary); font-weight: 500; }
+.odc-iconpick-sel .material-icons { font-size: var(--icon-sm); color: var(--tag-text); }
+.odc-iconpick-sub { font-weight: 400; color: var(--mud-palette-text-secondary); }
+.odc-iconpick-peek { color: var(--mud-palette-text-secondary); }
+.odc-iconpick-peek .material-icons { font-size: var(--icon-sm); }
+
+/* The transaction dialog's live "Row icon" preview under Tags (DS kit.css · .atm-rowicon). */
+.odc-rowicon { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.odc-rowicon .material-icons { font-size: var(--icon-sm); color: var(--tag-text); }
+
 /* RevealPanel — a segmented toggle that, when open, becomes the header of a connected panel below. */
 .odc-reveal.open { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background-gray); overflow: hidden; }
 .odc-reveal.open .odc-reveal-head { padding: 12px; border-bottom: 1px solid var(--mud-palette-divider); }
@@ -4363,6 +4390,7 @@ tr:focus-within > .odc-rowactions.reveal,
    OdsAvatar keeps MudAvatar as its frame, so these rules target the <img> the
    component renders inside it rather than restating the frame's own sizing. */
 .odc-avatar { overflow: hidden; }
+.odc-avatar > .material-icons { font-size: var(--icon-md); }
 .odc-avatar > img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .odc-avatar.sq { border-radius: var(--radius-md); }
 /* fit="contain" — a logo, letterboxed on a neutral ground with a 3:1 boundary.

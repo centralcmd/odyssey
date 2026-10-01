@@ -355,7 +355,7 @@ public partial class AccountSmartTagsSection
         _options = allTags
             .Where(t => t.Archived is null)
             .OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase)
-            .Select(t => new OdsOption(t.TransactionTagId.ToString(), t.Name))
+            .Select(OdsTransactionTagOptions.From)
             .ToList();
         SyncSelected();
 

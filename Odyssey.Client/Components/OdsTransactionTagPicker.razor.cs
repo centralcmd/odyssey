@@ -156,11 +156,10 @@ public partial class OdsTransactionTagPicker
     private static OdsOption OptionFor(ExistingTransactionTag tag, IReadOnlySet<Guid> used)
     {
         var inUse = used.Contains(tag.TransactionTagId);
-        return new OdsOption(
-            tag.TransactionTagId.ToString(),
-            tag.Archived is null ? tag.Name : $"{tag.Name} · Archived")
+        // The shared projection carries the tag's own icon (issue #279); this picker adds its labels.
+        return OdsTransactionTagOptions.From(tag) with
         {
-            Icon = "local_offer",
+            Label = tag.Archived is null ? tag.Name : $"{tag.Name} · Archived",
             Note = inUse ? "in use" : null,
             Disabled = inUse,
         };

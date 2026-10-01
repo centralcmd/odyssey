@@ -21,6 +21,8 @@ public class TagsApiClientTests
     {
         public HttpRequestMessage? LastRequest { get; private set; }
 
+        public string? LastBody { get; private set; }
+
         public HttpResponseMessage Response { get; set; } =
             new(HttpStatusCode.OK)
             {
@@ -28,10 +30,11 @@ public class TagsApiClientTests
                                             System.Text.Encoding.UTF8, "application/json"),
             };
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             LastRequest = request;
-            return Task.FromResult(Response);
+            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
+            return Response;
         }
     }
 
@@ -159,5 +162,42 @@ public class TagsApiClientTests
             .GetCustomAttribute<RequiredAttribute>();
 
         Assert.NotNull(required);
+    }
+
+    /// <summary>
+    /// Issue #279: <see cref="TagWrite.Icon"/> belongs to transaction tags alone. A write without one
+    /// never puts the member on the wire, so the journal, task and photo resources never see it.
+    /// </summary>
+    [Fact]
+    public async Task An_icon_less_write_carries_no_icon_member()
+    {
+        var (client, handler) = Create<ExistingJournalTag>("api/journal-tags");
+        handler.Response = new HttpResponseMessage(HttpStatusCode.NoContent);
+
+        await client.UpdateAsync(Guid.NewGuid(), new TagWrite("Rent", null, Archived: false));
+
+        using var body = System.Text.Json.JsonDocument.Parse(handler.LastBody!);
+        Assert.False(body.RootElement.TryGetProperty("icon", out _));
+    }
+
+    [Fact]
+    public async Task A_transaction_tag_write_carries_its_icon()
+    {
+        var (client, handler) = Create<ExistingTransactionTag>("api/transaction-tags");
+        handler.Response = new HttpResponseMessage(HttpStatusCode.NoContent);
+
+        await client.UpdateAsync(Guid.NewGuid(), new TagWrite("Rent", null, Archived: true, Icon: "home"));
+
+        using var body = System.Text.Json.JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal("home", body.RootElement.GetProperty("icon").GetString());
+    }
+
+    [Fact]
+    public void TagWrite_icon_limit_matches_the_transaction_tag_DTO()
+    {
+        static int MaxLengthOf(Type type) =>
+            type.GetProperty("Icon")!.GetCustomAttribute<StringLengthAttribute>()!.MaximumLength;
+
+        Assert.Equal(MaxLengthOf(typeof(NewTransactionTag)), MaxLengthOf(typeof(TagWrite)));
     }
 }

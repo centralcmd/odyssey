@@ -166,7 +166,8 @@
                                        Placeholder="No tags"
                                        OnCreate="@(_canCreateTag ? CreateTagOption : null)"
                                        CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
-                                       Help="Add as many as fit — e.g. a category plus Reimbursable." />
+                                       Help="Add as many as fit — e.g. a category plus Reimbursable."
+                                       HelpContent="@RowIconPreview" />
                 </div>
 
                 <!-- Status (wide) — metadata from the DTO, shown inline -->
@@ -222,3 +223,15 @@
         </OdsButton>
     </Footer>
 </OdsModal>
+
+@code {
+    // The Tags helper becomes a live "Row icon" preview once a tag is chosen (DS AddTransactionModal ·
+    // .atm-rowicon). Null keeps the plain hint.
+    private RenderFragment? RowIconPreview => RowIcon is { } preview
+        ? @<span class="odc-rowicon">
+              <span>Row icon</span>
+              <span class="material-icons" aria-hidden="true">@preview.Glyph</span>
+              <span>@(preview.From is null ? "default — none of these tags has an icon" : $"from {preview.From}")</span>
+          </span>
+        : null;
+}

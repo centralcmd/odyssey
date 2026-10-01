@@ -60,6 +60,21 @@ public sealed record OdsTypeOption
 public sealed record OdsTypeSelectGroup(string Label, IReadOnlyList<OdsTypeOption> Items);
 
 /// <summary>
+/// The one projection of a transaction tag to a picker or filter option (issue #279; Odyssey Design
+/// System · <c>OdysseyData.tagOption</c>): the id as the value, the name as the label, and the tag's
+/// own icon as the leading glyph — a <c>null</c> or unknown key draws the generic <c>local_offer</c>,
+/// exactly as the API projects it. Every transaction-tag picker and filter builds its options here.
+/// </summary>
+public static class OdsTransactionTagOptions
+{
+    public static OdsOption From(Odyssey.Dtos.Finance.ExistingTransactionTag tag) =>
+        new(tag.TransactionTagId.ToString(), tag.Name)
+        {
+            Icon = Odyssey.Dtos.Finance.TransactionTagIcons.Glyph(tag.Icon),
+        };
+}
+
+/// <summary>
 /// The one projection of a contact record to a picker option (Odyssey Design System ·
 /// <c>ContactSelect</c>): the id as the value, the resolved display name as the label, and the leading
 /// glyph + colour read off <see cref="OdsTypeRegistries.ContactTypes"/> — never re-hardcoded per

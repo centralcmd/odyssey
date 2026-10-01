@@ -53,7 +53,13 @@
                         <span class="odc-check-box" aria-hidden="true">
                             <span class="material-icons">check</span>
                         </span>
-                        <span class="odc-check-label">@option.Label</span>
+                        <span class="odc-check-label">
+                            @if (!string.IsNullOrEmpty(option.Icon))
+                            {
+                                <span class="material-icons odc-tagms-opt-ic" aria-hidden="true">@option.Icon</span>
+                            }
+                            <span>@option.Label</span>
+                        </span>
                     </label>
                 }
                 @if (!Filtered.Any())

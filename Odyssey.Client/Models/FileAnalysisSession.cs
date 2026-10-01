@@ -171,7 +171,7 @@ public sealed class FileAnalysisSession
     {
         tags.Clear();
         tags.AddRange(loaded.Where(t => t.Archived is null).OrderBy(t => t.Name));
-        TagOptions = [.. tags.Select(t => new OdsOption(t.TransactionTagId.ToString(), t.Name))];
+        TagOptions = [.. tags.Select(OdsTransactionTagOptions.From)];
     }
 
     public void SetCurrencies(IEnumerable<string> codes) => currencyCodes = [.. codes];
