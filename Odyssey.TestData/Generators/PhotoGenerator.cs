@@ -10,7 +10,7 @@ namespace Odyssey.TestData.Generators;
 /// every read surface: titled/captioned photos with extracted-style metadata, photo tags (incl. one
 /// archived), a person link (to the seeded <c>Jane Smith (Landlord)</c> Person contact), and two
 /// albums with covers and ordered membership. Each photo provisions its own backing Files-store record
-/// (a real renderable PNG) returned separately for the finance context.
+/// (a real renderable PNG) returned separately so the seeder can insert the file rows first.
 /// </summary>
 public static class PhotoGenerator
 {

@@ -47,7 +47,7 @@ public class AccountService
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    // Maps the slim, cross-context custodian reference onto the description-free Custodian DTO. Only the
+    // Maps the slim, cross-module custodian reference onto the description-free Custodian DTO. Only the
     // Custodian columns are ever carried across — the omitted Contact.Description/Notes can never leak
     // onto the account read path (§6 / data minimisation).
     private static Custodian ToCustodian(ContactRef r) => new Custodian
@@ -280,7 +280,7 @@ public class AccountService
 
         // Resolve every linked custodian on the page with a single batched lookup over the distinct
         // non-null custodian ids (keyed by the Contact PK) — no N+1, and only the slim ContactRef
-        // fields cross the context boundary (Description never leaves the journal context).
+        // fields cross into Finance (Description never leaves the Journal module).
         var custodianIds = accounts
             .Where(a => a.CustodianId is not null)
             .Select(a => a.CustodianId!.Value)
@@ -386,7 +386,7 @@ public class AccountService
 
     /// <summary>Resolves the slim <see cref="Custodian"/> for a single custodian id, or <c>null</c> when
     /// the id is null or no longer references a contact. Resolved via <see cref="IContactLookup"/> so only
-    /// the slim ContactRef fields cross the context boundary (Description never leaves the journal context).</summary>
+    /// the slim ContactRef fields cross into Finance (Description never leaves the Journal module).</summary>
     private async Task<Custodian?> ResolveCustodian(Guid? custodianId, CancellationToken cancellationToken = default)
     {
         if (custodianId is null)

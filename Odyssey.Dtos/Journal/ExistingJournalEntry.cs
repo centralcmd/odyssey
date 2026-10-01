@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Odyssey.Dtos.Journal;
 
-/// <summary>Full journal-entry read model. Cross-context links are returned as ids only (§10.2); the client hydrates names.</summary>
+/// <summary>Full journal-entry read model. Cross-module links are returned as ids only (§10.2); the client hydrates names.</summary>
 public sealed record ExistingJournalEntry
 {
     public required Guid JournalEntryId { get; set; }

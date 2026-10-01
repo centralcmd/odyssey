@@ -95,8 +95,8 @@ public class ContractService
         if (term is not null)
         {
             var pattern = ListQuery.ContainsPattern(term);
-            // Contact now lives in OdysseyContext — a SQL JOIN to the Contacts table is impossible across
-            // the context boundary, so pre-resolve matching contact ids and filter parties by membership.
+            // Contacts are resolved through IContactLookup rather than a navigation join, so
+            // pre-resolve matching contact ids and filter parties by membership.
             var contactMatchIds = (await contactLookup.SearchIdsByNameAsync(term, cancellationToken)).ToHashSet();
             q = q.Where(c =>
                 EF.Functions.Like(c.Name, pattern) ||
@@ -2025,8 +2025,8 @@ public class ContractService
 
     private async Task<ExistingContract> ToDto(Contract contract, DateTime today, CancellationToken cancellationToken)
     {
-        // Batch-resolve the distinct, non-null party contact ids in one call (Contact now lives in
-        // OdysseyContext — no cross-context navigation include).
+        // Batch-resolve the distinct, non-null party contact ids in one IContactLookup call rather
+        // than a navigation include.
         var contactIds = contract.Parties
             .Where(p => p.ContactId is not null)
             .Select(p => p.ContactId!.Value)

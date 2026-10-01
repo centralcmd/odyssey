@@ -23,7 +23,7 @@ public interface IContactLookup
 
     /// <summary>
     /// Resolves each existing contact id to a <see cref="ContactRef"/> (display name resolved from the
-    /// Person/Organization details). Batched — replaces the cross-context navigation projections Finance
+    /// Person/Organization details). Batched — replaces the cross-module navigation projections Finance
     /// read DTOs used to build via <c>.Include(...)</c>. Ids with no matching contact are absent.
     /// </summary>
     Task<IReadOnlyDictionary<Guid, ContactRef>> ResolveRefsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);

@@ -35,8 +35,8 @@ public static class PhotoMapsterConfig
             }
 
             // Mass-assignment / nav-leak guard (§6/§9): the inbound (DTO → entity) maps ignore every
-            // navigation collection and cross-context nav, so a same-named nested property in a request
-            // body can never round-trip into a related or cross-context entity. Link rows are built
+            // navigation collection and cross-module nav, so a same-named nested property in a request
+            // body can never round-trip into a related or cross-module entity. Link rows are built
             // explicitly in the services from the scalar id arrays.
             TypeAdapterConfig<NewPhoto, Photo>
                 .NewConfig()
