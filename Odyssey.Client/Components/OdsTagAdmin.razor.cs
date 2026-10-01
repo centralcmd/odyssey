@@ -28,6 +28,13 @@ public partial class OdsTagAdmin<TRow>
     [Parameter, EditorRequired] public Func<TRow, string?> Description { get; set; } = default!;
     [Parameter, EditorRequired] public Func<TRow, DateTime?> Archived { get; set; } = default!;
 
+    /// <summary>
+    /// The tag's icon key — set only by the transaction-tag page (issue #279). When present, the
+    /// leading avatar draws the tag's icon, the dialog offers the icon picker, and every write
+    /// carries the icon so nothing resets it. Journal, task and photo tags leave it unset.
+    /// </summary>
+    [Parameter] public Func<TRow, string?>? IconOf { get; set; }
+
     // ── State ────────────────────────────────────────────────────────────────────
     private List<TRow> _tags = [];
     private List<TRow> _allTags = [];
@@ -254,6 +261,8 @@ public partial class OdsTagAdmin<TRow>
     private string? _draftName;
     private string? _draftDescription;
     private string? _draftNameError;
+    private string? _draftIcon;
+    private string? _draftIconError;
 
     private bool _isEditing => _editId != Guid.Empty;
 
@@ -267,6 +276,8 @@ public partial class OdsTagAdmin<TRow>
         _draftName = null;
         _draftDescription = null;
         _draftNameError = null;
+        _draftIcon = null;
+        _draftIconError = null;
         _formKey = Guid.NewGuid();
         _formOpen = true;
     }
@@ -281,6 +292,9 @@ public partial class OdsTagAdmin<TRow>
         _draftName = Name(tag);
         _draftDescription = Description(tag);
         _draftNameError = null;
+        // An unknown stored key opens as Default, as the server projects it.
+        _draftIcon = IconOf is null ? null : TransactionTagIcons.Normalize(IconOf(tag));
+        _draftIconError = null;
         _formKey = Guid.NewGuid();
         _formOpen = true;
     }
@@ -298,11 +312,13 @@ public partial class OdsTagAdmin<TRow>
 
         _draftNameError = null;
 
-        // Archive / restore is a separate row action, so an edit preserves the current state.
-        var body = new TagWrite(
+        // Archive / restore is a separate row action, so an edit preserves the current state. The icon
+        // is always sent where the family has one: Default is null, never the default key.
+        var body = WriteFor(
             _draftName!.Trim(),
             string.IsNullOrWhiteSpace(_draftDescription) ? null : _draftDescription!.Trim(),
-            Archived: _isEditing && _editArchived);
+            archived: _isEditing && _editArchived,
+            icon: _draftIcon);
 
         var result = _isEditing
             ? await Tags.UpdateAsync(_editId, body)
@@ -318,9 +334,33 @@ public partial class OdsTagAdmin<TRow>
             return false;
         }
 
+        // Only reachable with a stale client catalogue: the picker offers nothing the server refuses.
+        if (IconOf is not null && result.Problem?.ErrorFor("icon") is { } iconError)
+        {
+            _draftIconError = iconError;
+            return false;
+        }
+
         return Invalidated(result.Toast(Snackbar,
             _isEditing ? "Update failed" : "Unable to create tag",
             _isEditing ? "Tag updated." : "Tag created."));
+    }
+
+    /// <summary>
+    /// The one place a write body is built. A family with icons always carries the tag's icon —
+    /// normalised, so Default (and an unknown key) is <c>null</c>, never the default key — and a
+    /// family without them never carries one.
+    /// </summary>
+    private TagWrite WriteFor(string name, string? description, bool archived, string? icon) =>
+        WriteFor(IconOf is not null, name, description, archived, icon);
+
+    internal static TagWrite WriteFor(bool hasIcons, string name, string? description, bool archived, string? icon) =>
+        new(name, description, archived, hasIcons ? TransactionTagIcons.Normalize(icon) : null);
+
+    private void OnDraftIconChanged(string? value)
+    {
+        _draftIcon = value;
+        _draftIconError = null;
     }
 
     // Typing clears the server's verdict — the name it was about is no longer the name in the field.
@@ -351,7 +391,8 @@ public partial class OdsTagAdmin<TRow>
         if (!_canUpdate)
             return;
 
-        var body = new TagWrite(Name(tag), Description(tag), Archived: Archived(tag) is null);
+        // The icon rides along: a full-replacement PUT without it would reset the tag to the default.
+        var body = WriteFor(Name(tag), Description(tag), archived: Archived(tag) is null, icon: IconOf?.Invoke(tag));
         if (Invalidated((await Tags.UpdateAsync(Id(tag), body)).Toast(Snackbar, "Update failed", "Tag updated.")))
             await RefreshCurrentPageAsync();
 

@@ -72,7 +72,7 @@ public partial class TransactionsCard
     private IReadOnlyList<OdsOption> _accountOptions =>
         [.. _accounts.Select(account => new OdsOption(account.AccountId.ToString(), account.Name))];
     private IReadOnlyList<OdsOption> _tagOptions =>
-        [.. _tags.Select(tag => new OdsOption(tag.TransactionTagId.ToString(), tag.Name))];
+        [.. _tags.Select(OdsTransactionTagOptions.From)];
     // The merchant picker lists every contact, not just the ones present on the loaded page: the list
     // is server-paged, so "the contacts on these rows" would shrink as the user pages through.
     private IReadOnlyList<OdsOption> _merchantOptions =>

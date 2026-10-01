@@ -373,6 +373,7 @@ public sealed class DataExportService
                 Name = tag.Name,
                 Description = tag.Description,
                 Archived = tag.Archived,
+                Icon = tag.Icon,
             });
 
     // File metadata only — the FileBlob.Content payload is never projected, so no blob bytes leave the

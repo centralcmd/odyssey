@@ -22,6 +22,11 @@
     with their claims, copy and DTO accessors. Writes post a plain { Name, Description, Archived }
     body, valid for every tag resource (ApiClient · TagWrite).
 
+    IconOf switches on tag icons (issue #279; the factory's cfg.icons), which only transaction tags
+    pass: the leading avatar becomes the icon column, the dialog gains the Icon picker, and every
+    write carries the icon — PUT is full replacement, so an edit or an archive that dropped it would
+    reset the tag to the default.
+
     Tag names are user- and file-influenced, so they render as auto-encoded text (never MarkupString).
 *@
 
@@ -109,7 +114,8 @@
                         Actions="BuildActions"
                         OnDelete="HandleDelete">
             <Leading Context="t">
-                <OdsAvatar Icon="local_offer" />
+                <OdsAvatar Icon="@(IconOf is null ? TransactionTagIcons.Default : TransactionTagIcons.Glyph(IconOf(t)))"
+                           Bg="var(--tag-soft)" Fg="var(--tag-text)" />
             </Leading>
             <CreateAction>
                 @if (_canCreate)
@@ -146,5 +152,14 @@
         <OdsField Label="Description" @bind-Value="_draftDescription"
                   Placeholder="What this tag is for" Help="Up to 256 characters"
                   MaxLength="@TagWrite.MaxDescriptionLength" Multiline="true" />
+        @if (IconOf is not null)
+        {
+            <OdsFieldShell Label="Icon" HtmlFor="tag-icon" LabelId="tag-icon-label" Error="@_draftIconError"
+                           Help="Shown for this tag and on every transaction carrying it. Default keeps the tag icon.">
+                <OdsTagIconPicker Id="tag-icon" Value="@_draftIcon" ValueChanged="OnDraftIconChanged"
+                                  AriaLabelledBy="tag-icon-label" Invalid="@(_draftIconError is not null)"
+                                  AriaDescribedBy="@(_draftIconError is null ? "tag-icon-help" : "tag-icon-help tag-icon-help-error")" />
+            </OdsFieldShell>
+        }
     </OdsFormDialog>
 }

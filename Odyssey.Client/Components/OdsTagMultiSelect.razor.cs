@@ -51,6 +51,12 @@ public partial class OdsTagMultiSelect
     /// <summary>Helper text below the control (replaced by <see cref="Error"/> when set).</summary>
     [Parameter] public string? Help { get; set; }
 
+    /// <summary>
+    /// Rich helper content — wins over <see cref="Help"/>, and is replaced by <see cref="Error"/> like
+    /// it. For a helper that carries a glyph, such as the transaction dialog's live row-icon preview.
+    /// </summary>
+    [Parameter] public RenderFragment? HelpContent { get; set; }
+
     /// <summary>Error message — flips the field to its error state, sets <c>aria-invalid</c> on the
     /// trigger and replaces the helper with an associated <c>role="alert"</c> message.</summary>
     [Parameter] public string? Error { get; set; }
@@ -151,7 +157,7 @@ public partial class OdsTagMultiSelect
         {
             var ids = string.Join(' ', new[]
             {
-                string.IsNullOrEmpty(Message) ? null : MessageId,
+                HasMessage ? MessageId : null,
                 Required ? RequiredId : null,
             }.Where(id => id is not null));
             return ids.Length == 0 ? null : ids;
@@ -227,6 +233,10 @@ public partial class OdsTagMultiSelect
     }
 
     private string? Message => string.IsNullOrEmpty(Error) ? Help : Error;
+
+    private bool ShowsHelpContent => string.IsNullOrEmpty(Error) && HelpContent is not null;
+
+    private bool HasMessage => ShowsHelpContent || !string.IsNullOrEmpty(Message);
 
     // With a visible Label the <label for> names the trigger, so no aria-label. Without one, the
     // caller's AriaLabel wins — and AddLabel is the floor, so a host that supplies neither still

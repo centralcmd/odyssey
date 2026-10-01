@@ -51,9 +51,14 @@
                 Class="@Class" />
 
 @code {
-    // The direction-tinted leading avatar — income points down (money in), expense is a cart.
+    // The leading avatar (issue #279): the glyph is the server-resolved DisplayIcon — the first tag,
+    // by name, with an icon — while the TONE still encodes direction (mint income / coral expense).
+    // Decorative: the Tag column names the tags in text and the signed amount carries the direction.
+    // Glyph() treats a key this client's catalogue lacks (a newer server, a stale cache) as default.
     private RenderFragment<ExistingTransaction> LeadingTemplate => t =>
-        @<OdsAvatar Icon="@(t.Amount >= 0 ? "arrow_downward" : "shopping_cart")" />;
+        @<OdsAvatar Icon="@TransactionTagIcons.Glyph(t.DisplayIcon)"
+                    Bg="@(t.Amount >= 0 ? "var(--finance-income-soft)" : "var(--finance-expense-soft)")"
+                    Fg="@(t.Amount >= 0 ? "var(--finance-income)" : "var(--finance-expense)")" />;
 
     // The canonical column set. Account is dropped when HideAccount is set.
     private List<OdsRecordColumn<ExistingTransaction>> BuildColumns()

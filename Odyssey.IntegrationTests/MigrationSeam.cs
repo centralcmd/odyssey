@@ -156,4 +156,15 @@ internal static class MigrationSeam
             VALUES ({contract.ContractId}, {contract.Name}, {(int)contract.Type}, {contract.StartDate}, {contract.Signed}, {contract.CreatedAtUtc})
             """,
             ct);
+
+    /// <summary>
+    /// Inserts a transaction tag's <c>TransactionTagId</c>, <c>Name</c> and <c>Description</c> with raw SQL, for a "before"
+    /// state seeded below head — the same reason as <see cref="InsertContractAsync"/>: the current
+    /// model maps <c>Icon</c> (issue #279), which an older schema does not have.
+    /// </summary>
+    public static Task InsertTransactionTagAsync(
+        OdysseyContext context, Guid id, string name, string? description = null, CancellationToken ct = default) =>
+        context.Database.ExecuteSqlAsync(
+            $"INSERT INTO `TransactionTags` (`TransactionTagId`, `Name`, `Description`) VALUES ({id}, {name}, {description})",
+            ct);
 }

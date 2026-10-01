@@ -212,7 +212,11 @@
         </OdsPopupMenu>
     </div>
 
-    @if (!string.IsNullOrEmpty(Message))
+    @if (ShowsHelpContent)
+    {
+        <div class="odc-field-help" id="@MessageId">@HelpContent</div>
+    }
+    else if (!string.IsNullOrEmpty(Message))
     {
         <div class="odc-field-help @(string.IsNullOrEmpty(Error) ? null : "error")" id="@MessageId"
              role="@(string.IsNullOrEmpty(Error) ? null : "alert")">@Message</div>

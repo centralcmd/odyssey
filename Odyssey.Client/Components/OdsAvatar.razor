@@ -44,9 +44,15 @@
            its own controls. Both are the caller's call, never guessed here. *@
         <img src="@Src" alt="@Alt" loading="lazy" decoding="async" @onerror="OnErrorAsync" />
     }
-    else if (!string.IsNullOrEmpty(Icon))
+    else if (IsSvgIcon)
     {
         <MudIcon Icon="@Icon" />
+    }
+    else if (!string.IsNullOrEmpty(Icon))
+    {
+        @* A Material ligature is text in a material-icons span. MudIcon would put it on the class
+           attribute and draw nothing (docs/frontend-mudblazor-gotchas.md). *@
+        <span class="material-icons" aria-hidden="true">@Icon</span>
     }
     else if (!string.IsNullOrEmpty(Initials))
     {
@@ -68,7 +74,10 @@
     /// <summary>Text monogram (e.g. "JS") when there is no image.</summary>
     [Parameter] public string? Initials { get; set; }
 
-    /// <summary>Material Icons ligature name, as a fallback identity glyph.</summary>
+    /// <summary>
+    /// The fallback identity glyph: a Material Icons ligature name (rendered as text in a
+    /// <c>material-icons</c> span), or an SVG constant such as <c>Icons.Material.Filled.*</c>.
+    /// </summary>
     [Parameter] public string? Icon { get; set; }
 
     /// <summary>sm = 28 · md = 40 (default) · lg = 56.</summary>
@@ -106,6 +115,8 @@
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private bool IsSvgIcon => Icon is { } icon && icon.TrimStart().StartsWith('<');
 
     /// <summary>Icon/monogram avatar with no accessible name — decorative, hidden from AT.</summary>
     private bool IsDecorative => string.IsNullOrEmpty(Src) && string.IsNullOrEmpty(Alt);

@@ -194,7 +194,8 @@ public class ChangeArchiveTablesDropTests(MariaDbFixture fixture)
 
     private static async Task SeedBudgetItemAsync(OdysseyContext context)
     {
-        context.TransactionTags.Add(new TransactionTag { TransactionTagId = TagId, Name = "Groceries" });
+        // Raw SQL: this seeds below head, where TransactionTags has no Icon column yet.
+        await MigrationSeam.InsertTransactionTagAsync(context, TagId, "Groceries");
         context.Budgets.Add(new Budget
         {
             BudgetId = BudgetId,

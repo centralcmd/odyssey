@@ -66,6 +66,7 @@ public class TransactionTagController : ControllerBase
     [HttpPost(Name = "PostTransactionTag")]
     [Authorize(Policy = PermissionClaims.TransactionTagsCreate)]
     [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ValidationProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
@@ -83,6 +84,7 @@ public class TransactionTagController : ControllerBase
     [HttpPut("{id}", Name = "PutTransactionTag")]
     [Authorize(Policy = PermissionClaims.TransactionTagsUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ValidationProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]

@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Odyssey.Dtos;
+using Odyssey.Dtos.Finance;
 
 namespace Odyssey.ApiClient.Resources;
 
@@ -15,6 +17,14 @@ namespace Odyssey.ApiClient.Resources;
 /// siblings), all of which agree on 64 / 256. If one resource ever diverges, this record can no longer
 /// represent all four and the generic client should be split — the annotations are what will surface
 /// that.
+///
+/// <para>
+/// <see cref="Icon"/> is the one transaction-tag-only member (issue #279). It is omitted from the wire
+/// when <c>null</c>, so the journal, task and photo resources never see it. For transaction tags an
+/// omitted icon and an explicit <c>null</c> mean the same thing — <c>PUT</c> is full replacement and
+/// both reset the tag to the default — so a writer that knows the tag's icon must always pass it, or
+/// an edit or an archive would silently clear it.
+/// </para>
 /// </remarks>
 public sealed record TagWrite(
     [property: Required]
@@ -22,7 +32,10 @@ public sealed record TagWrite(
     string Name,
     [property: StringLength(TagWrite.MaxDescriptionLength)]
     string? Description,
-    bool Archived)
+    bool Archived,
+    [property: StringLength(TransactionTagIcons.MaxKeyLength)]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? Icon = null)
 {
     /// <summary>Matches <c>PhotoLimits.MaxTagNameLength</c> and its journal/task equivalents.</summary>
     public const int MaxNameLength = 64;

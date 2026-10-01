@@ -36,6 +36,7 @@ public sealed class TransactionDialogTests : IAsyncLifetime
     private readonly List<string> calls = [];
     private readonly Mock<ITransactionsApiClient> transactions = new();
     private readonly Mock<IFilesApiClient> files = new();
+    private readonly Mock<IReferenceDataCache> referenceData = new();
 
     static TransactionDialogTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
 
@@ -74,7 +75,6 @@ public sealed class TransactionDialogTests : IAsyncLifetime
         ctx.Services.AddSingleton(files.Object);
         ctx.Services.AddSingleton(accounts.Object);
         ctx.Services.AddSingleton(uploadLimits.Object);
-        var referenceData = new Mock<IReferenceDataCache>();
         referenceData.Setup(r => r.TransactionTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
         referenceData.Setup(r => r.ContactsAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
         referenceData.Setup(r => r.ActiveCurrenciesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
@@ -167,6 +167,77 @@ public sealed class TransactionDialogTests : IAsyncLifetime
         files.Verify(f => f.AttachToTransactionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<TransactionFileType>(), It.IsAny<CancellationToken>()), Times.Never);
         transactions.Verify(t => t.DetachFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         cut.WaitForAssertion(() => Assert.True(cut.Instance.Closed));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  The row-icon preview (issue #279; design system · AddTransactionModal · .atm-rowicon)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static ExistingTransactionTag IconTag(string name, string? icon) => new()
+    {
+        TransactionTagId = Guid.NewGuid(),
+        Name = name,
+        Archived = null,
+        Icon = icon,
+    };
+
+    private IRenderedComponent<DialogHost> RenderEditWithTags(params ExistingTransactionTag[] tags)
+    {
+        referenceData.Setup(r => r.TransactionTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync([.. tags]);
+        var transaction = Transaction();
+        transaction.TransactionTags = [.. tags];
+        var cut = ctx.Render<DialogHost>(p => p.Add(h => h.Transaction, transaction));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsDateField>(), f => f.Instance.Label == "Date"));
+        return cut;
+    }
+
+    [Fact]
+    public void The_tags_helper_previews_the_resolved_row_icon_and_names_its_tag()
+    {
+        var cut = RenderEditWithTags(IconTag("Food", "restaurant"), IconTag("Bills", "receipt_long"), IconTag("Archive", null));
+
+        cut.WaitForAssertion(() =>
+        {
+            var preview = cut.Find(".odc-rowicon");
+            Assert.Contains("Row icon", preview.TextContent, StringComparison.Ordinal);
+            Assert.Equal("receipt_long", preview.QuerySelector(".material-icons")!.TextContent);
+            Assert.Contains("from Bills", preview.TextContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void With_no_iconned_tag_the_preview_says_the_default_applies()
+    {
+        var cut = RenderEditWithTags(IconTag("Food", null), IconTag("Legacy", "retired_key"));
+
+        cut.WaitForAssertion(() =>
+        {
+            var preview = cut.Find(".odc-rowicon");
+            Assert.Equal(TransactionTagIcons.Default, preview.QuerySelector(".material-icons")!.TextContent);
+            Assert.Contains("default — none of these tags has an icon", preview.TextContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void A_single_tag_without_an_icon_is_named_in_the_singular_and_announced()
+    {
+        var cut = RenderEditWithTags(IconTag("Food", null));
+
+        cut.WaitForAssertion(() =>
+        {
+            var preview = cut.Find(".odc-rowicon");
+            Assert.Equal("status", preview.GetAttribute("role"));
+            Assert.Contains("default — this tag has no icon", preview.TextContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void With_no_tags_the_plain_hint_stays()
+    {
+        var cut = RenderEdit();
+
+        Assert.Empty(cut.FindAll(".odc-rowicon"));
+        Assert.Contains("Add as many as fit", cut.Markup, StringComparison.Ordinal);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -20,6 +20,11 @@ using DtoTermValueUnit = Odyssey.Dtos.Finance.TermValueUnit;
 using DtoInterval = Odyssey.Dtos.Finance.Interval;
 using ContextBudgetItem = Odyssey.Context.BudgetItem;
 using DtoExistingBudgetItem = Odyssey.Dtos.Finance.ExistingBudgetItem;
+using ContextTransaction = Odyssey.Context.Transaction;
+using ContextTransactionTag = Odyssey.Context.TransactionTag;
+using DtoExistingTransaction = Odyssey.Dtos.Finance.ExistingTransaction;
+using DtoExistingTransactionTag = Odyssey.Dtos.Finance.ExistingTransactionTag;
+using TransactionTagIcons = Odyssey.Dtos.Finance.TransactionTagIcons;
 
 namespace Odyssey.Core.Finance;
 
@@ -142,6 +147,28 @@ public static class MapsterConfig
             TypeAdapterConfig<ContextBudgetItem, DtoExistingBudgetItem>
                 .NewConfig()
                 .Map(dest => dest.Tag, src => src.TransactionTag);
+
+            // Issue #279. Every ExistingTransactionTag on every read path — the tag list, budget items,
+            // reports, the account/contract/property smart-tag lists and the tags embedded on a
+            // transaction — is projected through this one registration, so an unknown stored key (a
+            // hand edit, a restore, a key retired from the catalogue) reaches no client as anything but
+            // null. Explicit rather than convention-mapped so the raw column can never leak through.
+            TypeAdapterConfig<ContextTransactionTag, DtoExistingTransactionTag>
+                .NewConfig()
+                .Map(dest => dest.Icon, src => TransactionTagIcons.Normalize(src.Icon));
+
+            // Issue #279. The tag order and the display icon are computed after materialisation from the
+            // already-projected tags, so every producer of ExistingTransaction (the transaction list and
+            // detail, an account's transactions, the budget report, the contract smart-tag list) gets
+            // both, the EF InMemory tier runs the same code, and OrdinalIgnoreCase needs no translation.
+            // TransactionTagIcons is the only implementation of either rule; a source-lint pins that.
+            TypeAdapterConfig<ContextTransaction, DtoExistingTransaction>
+                .NewConfig()
+                .AfterMapping((_, dest) =>
+                {
+                    dest.TransactionTags = TransactionTagIcons.Order(dest.TransactionTags);
+                    dest.DisplayIcon = TransactionTagIcons.Resolve(dest.TransactionTags);
+                });
 
             // (The former Account→ExistingAccount Ignore(Custodian) pin was removed with the Contact
             // move: Account no longer has a Custodian navigation — only the scalar CustodianId — so there
