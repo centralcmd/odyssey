@@ -49,7 +49,12 @@ jobs:
       - name: Build
         run: dotnet build Odyssey.sln -c Release --no-restore -warnaserror
 
+      # The MariaDB tier self-skips when Docker is absent. Requiring it turns that skip into a
+      # failure, so this job cannot go green having run none of it (issue #257). The E2E tiers
+      # have no stack here and stay optional.
       - name: Test
+        env:
+          ODYSSEY_REQUIRE_TIER: integration
         run: >-
           dotnet test Odyssey.sln --no-build -c Release
           --logger "trx;LogFilePrefix=test-results"
