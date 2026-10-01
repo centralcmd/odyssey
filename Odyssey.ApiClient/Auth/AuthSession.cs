@@ -18,9 +18,24 @@ public enum AuthSessionStatus
     Unavailable,
 }
 
-public sealed record AuthSession(AuthSessionStatus Status, IReadOnlyList<Claim> Claims)
+/// <param name="RetryAfter">
+/// For <see cref="AuthSessionStatus.Unavailable"/> only: how long the server asked the caller to wait,
+/// from a <c>Retry-After</c> header on a <c>429</c> or <c>503</c> (issue #278). <c>null</c> when it named
+/// no wait.
+/// </param>
+public sealed record AuthSession(AuthSessionStatus Status, IReadOnlyList<Claim> Claims, TimeSpan? RetryAfter = null)
 {
     public static AuthSession Anonymous { get; } = new(AuthSessionStatus.Anonymous, []);
 
     public static AuthSession Unavailable { get; } = new(AuthSessionStatus.Unavailable, []);
+
+    public static AuthSession UnavailableFor(HttpResponseMessage response, DateTimeOffset now) =>
+        RetryAfterOf(response, now) is { } wait ? new(AuthSessionStatus.Unavailable, [], wait) : Unavailable;
+
+    private static TimeSpan? RetryAfterOf(HttpResponseMessage response, DateTimeOffset now)
+    {
+        var header = response.Headers.RetryAfter;
+        var wait = header?.Delta ?? (header?.Date is { } date ? date - now : null);
+        return wait > TimeSpan.Zero ? wait : null;
+    }
 }

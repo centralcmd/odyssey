@@ -88,13 +88,14 @@ public class CookieAuthenticationStateProviderTests
     }
 
     [Fact]
-    public async Task APersistentFailure_ReadsAnonymous_ButIsNotCached()
+    public async Task APersistentFailure_ReadsUnavailable_ButIsNotCached()
     {
         var api = new ScriptedApi { Info = HttpStatusCode.ServiceUnavailable };
         var provider = Provider(api);
 
         var failed = await provider.GetAuthenticationStateAsync();
         Assert.False(failed.User.Identity?.IsAuthenticated);
+        Assert.True(SessionUnavailable.Is(failed.User));
         Assert.Equal(1 + RetryDelays.Length, api.InfoCalls);
 
         // The outage ends: the next read probes again instead of serving the failure forever.
@@ -114,22 +115,192 @@ public class CookieAuthenticationStateProviderTests
         var state = await provider.GetAuthenticationStateAsync();
 
         Assert.False(state.User.Identity?.IsAuthenticated);
+        Assert.True(SessionUnavailable.Is(state.User));
+        Assert.DoesNotContain(state.User.Claims, claim => claim.Type == "permission");
+    }
+
+    [Fact]
+    public async Task AGenuine401_IsAnonymous_NotUnavailable()
+    {
+        var api = new ScriptedApi { Info = HttpStatusCode.Unauthorized };
+        var provider = Provider(api);
+
+        var state = await provider.GetAuthenticationStateAsync();
+
+        Assert.False(SessionUnavailable.Is(state.User));
         Assert.Empty(state.User.Claims);
+    }
+
+    [Fact]
+    public async Task AfterAnOutage_TheBackgroundProbe_AnnouncesTheRecoveredSession()
+    {
+        var api = new ScriptedApi { Info = HttpStatusCode.ServiceUnavailable };
+        var delays = new ControlledDelays();
+        var provider = Provider(api, delays);
+        var announced = new TaskCompletionSource<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>();
+        provider.AuthenticationStateChanged += async task => announced.TrySetResult(await task);
+
+        Assert.True(SessionUnavailable.Is((await provider.GetAuthenticationStateAsync()).User));
+
+        // Still down at the first background probe: nothing is announced, the wait doubles.
+        await delays.ReleaseNextAsync();
+        await delays.WaitForPendingAsync();
+        Assert.False(announced.Task.IsCompleted);
+
+        api.Info = HttpStatusCode.OK;
+        await delays.ReleaseNextAsync();
+
+        var state = await announced.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(state.User.Identity?.IsAuthenticated);
+        Assert.Equal([TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)], delays.Requested);
+
+        // Cached: a later read does not probe again.
+        var calls = api.InfoCalls;
+        Assert.True((await provider.GetAuthenticationStateAsync()).User.Identity?.IsAuthenticated);
+        Assert.Equal(calls, api.InfoCalls);
+    }
+
+    [Fact]
+    public async Task TheBackgroundBackoff_IsCappedAtThirtySeconds()
+    {
+        var api = new ScriptedApi { Info = HttpStatusCode.ServiceUnavailable };
+        var delays = new ControlledDelays();
+        var provider = Provider(api, delays);
+
+        await provider.GetAuthenticationStateAsync();
+        for (var i = 0; i < 7; i++)
+        {
+            await delays.ReleaseNextAsync();
+            await delays.WaitForPendingAsync();
+        }
+
+        Assert.Equal(
+            new[] { 1, 2, 4, 8, 16, 30, 30, 30 }.Select(seconds => TimeSpan.FromSeconds(seconds)),
+            delays.Requested);
+    }
+
+    [Fact]
+    public async Task ARateLimitedProbe_HonoursRetryAfter()
+    {
+        var api = new ScriptedApi { Info = HttpStatusCode.TooManyRequests, RetryAfterSeconds = 20 };
+        var delays = new ControlledDelays();
+        var provider = Provider(api, delays);
+
+        var state = await provider.GetAuthenticationStateAsync();
+        await delays.WaitForPendingAsync();
+
+        Assert.True(SessionUnavailable.Is(state.User));
+
+        // A wait longer than the in-read retries is not spent holding up the router: one probe, then the
+        // background loop waits out exactly what the server asked for.
+        Assert.Equal(1, api.InfoCalls);
+        Assert.Equal([TimeSpan.FromSeconds(20)], delays.Requested);
+    }
+
+    [Fact]
+    public async Task ARetryAfterBeyondTheCeiling_IsClamped()
+    {
+        var api = new ScriptedApi { Info = HttpStatusCode.TooManyRequests, RetryAfterSeconds = 3600 };
+        var delays = new ControlledDelays();
+        var provider = Provider(api, delays);
+
+        await provider.GetAuthenticationStateAsync();
+        await delays.WaitForPendingAsync();
+
+        Assert.Equal([CookieAuthenticationStateProvider.RetryAfterCeiling], delays.Requested);
+    }
+
+    [Fact]
+    public async Task ADefinitiveReadDuringRecovery_EndsTheLoop_WithoutAnotherProbe()
+    {
+        var api = new ScriptedApi { Info = HttpStatusCode.ServiceUnavailable };
+        var delays = new ControlledDelays();
+        var provider = Provider(api, delays);
+        var announcements = 0;
+        var announced = new TaskCompletionSource();
+        provider.AuthenticationStateChanged += _ =>
+        {
+            Interlocked.Increment(ref announcements);
+            announced.TrySetResult();
+        };
+
+        await provider.GetAuthenticationStateAsync();
+        await delays.WaitForPendingAsync();
+
+        api.Info = HttpStatusCode.OK;
+        Assert.True((await provider.GetAuthenticationStateAsync()).User.Identity?.IsAuthenticated);
+        var calls = api.InfoCalls;
+
+        await delays.ReleaseNextAsync();
+        await announced.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(calls, api.InfoCalls);
+        Assert.Equal(1, announcements);
+        Assert.Single(delays.Requested);
     }
 
     private static readonly TimeSpan[] RetryDelays = [TimeSpan.Zero, TimeSpan.Zero];
 
-    private static CookieAuthenticationStateProvider Provider(ScriptedApi api) =>
+    // The default never completes, so the background recovery loop sits parked and leaves the probe
+    // counts of the tests above untouched.
+    private static CookieAuthenticationStateProvider Provider(ScriptedApi api, ControlledDelays? delays = null) =>
         new(new AuthApiClient(
                 new HttpClient(api) { BaseAddress = new Uri("https://api.odyssey.test/") },
                 new AntiforgeryTokenStore(new ServiceCollection().BuildServiceProvider())),
-            RetryDelays);
+            RetryDelays,
+            delays is null ? _ => new TaskCompletionSource().Task : delays.WaitAsync);
+
+    /// <summary>Records each background wait and completes it only when the test releases it.</summary>
+    private sealed class ControlledDelays
+    {
+        private readonly Lock gate = new();
+        private readonly Queue<TaskCompletionSource> waiting = new();
+        private TaskCompletionSource pending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public List<TimeSpan> Requested { get; } = [];
+
+        public Task WaitAsync(TimeSpan wait)
+        {
+            var released = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            lock (gate)
+            {
+                Requested.Add(wait);
+                waiting.Enqueue(released);
+                pending.TrySetResult();
+            }
+
+            return released.Task;
+        }
+
+        /// <summary>Completes once the loop is parked on a wait that has not been released yet.</summary>
+        public Task WaitForPendingAsync()
+        {
+            lock (gate)
+            {
+                return waiting.Count > 0 ? Task.CompletedTask : pending.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            }
+        }
+
+        public async Task ReleaseNextAsync()
+        {
+            await WaitForPendingAsync();
+            TaskCompletionSource next;
+            lock (gate)
+            {
+                next = waiting.Dequeue();
+                pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+
+            next.SetResult();
+        }
+    }
 
     private sealed class ScriptedApi : HttpMessageHandler
     {
         public HttpStatusCode Info { get; set; } = HttpStatusCode.OK;
         public Queue<HttpStatusCode> InfoSequence { get; } = new();
         public HttpStatusCode Claims { get; set; } = HttpStatusCode.OK;
+        public int? RetryAfterSeconds { get; set; }
         public int InfoCalls;
         public int ClaimsCalls;
 
@@ -140,7 +311,14 @@ public class CookieAuthenticationStateProviderTests
             {
                 case "/manage/info":
                     Interlocked.Increment(ref InfoCalls);
-                    return new HttpResponseMessage(InfoSequence.TryDequeue(out var next) ? next : Info);
+                    var info = new HttpResponseMessage(InfoSequence.TryDequeue(out var next) ? next : Info);
+                    if (RetryAfterSeconds is { } seconds)
+                    {
+                        info.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(
+                            TimeSpan.FromSeconds(seconds));
+                    }
+
+                    return info;
                 case "/auth/claims":
                     Interlocked.Increment(ref ClaimsCalls);
                     return new HttpResponseMessage(Claims)

@@ -258,7 +258,7 @@ public sealed class AuthApiClient(HttpClient httpClient, AntiforgeryTokenStore a
 
             if (!info.IsSuccessStatusCode)
             {
-                return AuthSession.Unavailable;
+                return AuthSession.UnavailableFor(info, DateTimeOffset.UtcNow);
             }
 
             using var claimsRequest = new HttpRequestMessage(HttpMethod.Get, "auth/claims");
@@ -270,7 +270,7 @@ public sealed class AuthApiClient(HttpClient httpClient, AntiforgeryTokenStore a
 
             if (!claimsResponse.IsSuccessStatusCode)
             {
-                return AuthSession.Unavailable;
+                return AuthSession.UnavailableFor(claimsResponse, DateTimeOffset.UtcNow);
             }
 
             var claims = await claimsResponse.Content.ReadFromJsonAsync<List<ClaimResponse>>(cancellationToken);

@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
@@ -64,6 +65,41 @@ public class AuthApiClientSessionTests
 
         Assert.Equal(AuthSessionStatus.Unavailable, session.Status);
         Assert.Empty(session.Claims);
+    }
+
+    [Fact]
+    public async Task ARetryAfterDelta_IsCarriedOnTheUnavailableSession()
+    {
+        var session = await SessionFor(
+            _ => new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+            {
+                Headers = { RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(42)) },
+            },
+            Respond(HttpStatusCode.OK, ClaimsJson));
+
+        Assert.Equal(AuthSessionStatus.Unavailable, session.Status);
+        Assert.Equal(TimeSpan.FromSeconds(42), session.RetryAfter);
+    }
+
+    [Fact]
+    public async Task ARetryAfterDate_IsReadAsTheWaitFromNow()
+    {
+        var session = await SessionFor(
+            _ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+            {
+                Headers = { RetryAfter = new RetryConditionHeaderValue(DateTimeOffset.UtcNow.AddMinutes(2)) },
+            },
+            Respond(HttpStatusCode.OK, ClaimsJson));
+
+        Assert.InRange(session.RetryAfter!.Value, TimeSpan.FromSeconds(100), TimeSpan.FromSeconds(121));
+    }
+
+    [Fact]
+    public async Task NoRetryAfter_LeavesItNull()
+    {
+        var session = await SessionFor(Respond(HttpStatusCode.TooManyRequests), Respond(HttpStatusCode.OK));
+
+        Assert.Null(session.RetryAfter);
     }
 
     [Fact]

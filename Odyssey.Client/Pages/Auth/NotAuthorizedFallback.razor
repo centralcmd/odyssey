@@ -1,0 +1,19 @@
+@using Odyssey.Client.Auth
+
+@*
+    What App.razor's NotAuthorized branch renders. A probe with no definitive answer is not a signed-out
+    user (issue #278): it gets the retry panel rather than a redirect that would send a valid session to
+    /login. A genuine 401 — or an authenticated user without the page's claim — still redirects.
+*@
+@if (SessionUnavailable.Is(User))
+{
+    <SessionUnavailablePanel />
+}
+else
+{
+    <RedirectToAuthorizedFallback />
+}
+
+@code {
+    [Parameter, EditorRequired] public System.Security.Claims.ClaimsPrincipal? User { get; set; }
+}

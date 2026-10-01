@@ -1,0 +1,53 @@
+@using Odyssey.Client.Auth
+@inject AuthenticationStateProvider AuthStateProvider
+
+@*
+    Rendered by App.razor's NotAuthorized branch in place of RedirectToAuthorizedFallback when the session
+    probe had no definitive answer (issue #278). The provider keeps re-probing in the background and
+    announces the first definitive answer, so this panel is replaced without a reload; Retry asks now.
+*@
+<OdsEmptyState Icon="cloud_off" Alert="true">
+    <Title>Unable to reach Odyssey</Title>
+    <Description>
+        @if (_stillUnavailable)
+        {
+            <text>Still no answer from the server. Odyssey keeps trying in the background and will continue on its own once it is reachable.</text>
+        }
+        else
+        {
+            <text>The server is not answering right now, so your session could not be checked. Odyssey keeps trying in the background and will continue on its own once it is reachable.</text>
+        }
+    </Description>
+    <Action>
+        <OdsButton Icon="refresh" Loading="_retrying" OnClick="RetryAsync">Retry</OdsButton>
+    </Action>
+</OdsEmptyState>
+
+@code {
+    private bool _retrying;
+    private bool _stillUnavailable;
+
+    internal async Task RetryAsync()
+    {
+        if (_retrying)
+        {
+            return;
+        }
+
+        _retrying = true;
+        try
+        {
+            if (AuthStateProvider is CookieAuthenticationStateProvider cookies)
+            {
+                await cookies.RefreshAsync();
+            }
+
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            _stillUnavailable = SessionUnavailable.Is(state.User);
+        }
+        finally
+        {
+            _retrying = false;
+        }
+    }
+}

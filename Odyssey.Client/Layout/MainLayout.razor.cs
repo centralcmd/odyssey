@@ -19,6 +19,9 @@ public partial class MainLayout
     // Onboarding gate (issue #316 §5): the app body renders only once completeness is resolved.
     private bool _gateChecked;
 
+    // True while the shell was resolved against an unavailable session and is subscribed for its recovery.
+    private bool _awaitingSession;
+
     private System.Security.Claims.ClaimsPrincipal? _user;
     private Func<NavPage, bool> _canView = p => p.Claim is null;
 
@@ -48,8 +51,39 @@ public partial class MainLayout
             return;
         }
 
+        await ResolveShellAsync();
+    }
+
+    /// <summary>
+    /// Reads the session and resolves the gates and preferences that hang off it. Runs once per load —
+    /// and once more if that first read had no definitive answer (issue #278): the provider announces
+    /// the recovered session, and without this re-run the shell would keep the unavailable principal and
+    /// render a nav with no permissions under the page the router has just authorized.
+    /// </summary>
+    private async Task ResolveShellAsync()
+    {
         _user = await AuthStateProvider.GetUserAsync();
         _canView = page => page.Claim is null || (_user?.HasPermission(page.Claim) ?? false);
+
+        if (SessionUnavailable.Is(_user))
+        {
+            // Nothing to gate on and nothing to fetch: every call would fail the way the probe did. Let
+            // the body render, which is App.razor's retry panel, and wait for the recovery.
+            if (!_awaitingSession)
+            {
+                _awaitingSession = true;
+                AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+            }
+
+            _gateChecked = true;
+            return;
+        }
+
+        if (_awaitingSession)
+        {
+            _awaitingSession = false;
+            AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        }
 
         // All three gates are resolved in one place, in the order the SERVER enforces them — see
         // FirstRunGateChain for what that order buys and what it cost when it was three chained
@@ -64,7 +98,8 @@ public partial class MainLayout
 
         if (FirstRunGateChain.Owed(profile, _user) is { } gatePath)
         {
-            // Leave _gateChecked false — the layout is being left rather than rendered, so the app body
+            // Reset rather than left, since a re-run after a recovered session starts from true. Keep
+            // _gateChecked false — the layout is being left rather than rendered, so the app body
             // never flashes behind a gate. That holds whether or not RedirectToGate actually navigates.
             RedirectToGate(gatePath);
             return;
@@ -225,9 +260,21 @@ public partial class MainLayout
         await UserPreferences.SaveUserPreferencesAsync(UserPreferences.Current with { DarkModeEnabled = next });
     }
 
+    private void OnAuthenticationStateChanged(Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> state) =>
+        _ = InvokeAsync(async () =>
+        {
+            await ResolveShellAsync();
+            StateHasChanged();
+        });
+
     public async ValueTask DisposeAsync()
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
+        if (_awaitingSession)
+        {
+            AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        }
+
         UserPreferences.DarkModeChanged -= OnDarkModeChanged;
         PasswordChangeRequired.PasswordChangeRequired -= OnPasswordChangeRequired;
 

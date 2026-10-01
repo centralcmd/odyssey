@@ -5,6 +5,14 @@
     protected override async Task OnInitializedAsync()
     {
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+        // Never navigate on a non-definitive answer (issue #278). App.razor renders the retry panel for it
+        // instead of this component; this covers the read here coming back unavailable on its own.
+        if (Odyssey.Client.Auth.SessionUnavailable.Is(authenticationState.User))
+        {
+            return;
+        }
+
         var isAuthenticated = authenticationState.User.Identity?.IsAuthenticated == true;
 
         if (isAuthenticated)
