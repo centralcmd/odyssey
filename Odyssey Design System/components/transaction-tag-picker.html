@@ -24,11 +24,11 @@ const NS = window.OdysseyDesignSystem_d5aa51 || {};
 const { TransactionTagPicker } = NS;
 const h = React.createElement;
 const TAGS = [
-  { id: 't1', name: 'Groceries', description: 'Supermarkets, food shops, and weekly stock-ups', archived: null },
-  { id: 't4', name: 'Rent', description: 'Monthly housing payments', archived: null },
-  { id: 't7', name: 'Utilities', description: 'Electricity, water, gas, and internet', archived: null },
+  { id: 't1', name: 'Groceries', icon: 'shopping_cart', description: 'Supermarkets, food shops, and weekly stock-ups', archived: null },
+  { id: 't4', name: 'Rent', icon: 'home', description: 'Monthly housing payments', archived: null },
+  { id: 't7', name: 'Utilities', icon: 'bolt', description: 'Electricity, water, gas, and internet', archived: null },
   { id: 't11', name: 'Freelance', description: null, archived: null },
-  { id: 't8', name: 'Vacation 2024', description: 'One-off travel spending from the 2024 trips', archived: '2025-01-08T09:00:00Z' },
+  { id: 't8', name: 'Vacation 2024', icon: 'flight', description: 'One-off travel spending from the 2024 trips', archived: '2025-01-08T09:00:00Z' },
 ];
 function Cell(props) { return h('div', null, h('p', { className: 'cap' }, props.cap), props.children); }
 function Demo() {

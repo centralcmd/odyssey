@@ -446,7 +446,7 @@ const AccountSmartTags = ({ a, txns, onNavigate, tagIds, setTagIds, bare = false
   });
 
   const configured = tagIds.map(id => tagById[id]).filter(Boolean).map(t => ({ id: t.id, label: t.name }));
-  const options = allTags.map(t => ({ value: t.id, label: t.name }));
+  const options = allTags.map(window.OdysseyData.tagOption);
 
   const add = (id) => setTagIds(prev => (prev.includes(id) ? prev : [...prev, id]));
   const remove = (id) => setTagIds(prev => prev.filter(x => x !== id));

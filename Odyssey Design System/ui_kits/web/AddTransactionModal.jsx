@@ -210,7 +210,7 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
 
   // One source: createTag writes into the shared tag store, so the store IS the
   // option list (a local "created here" copy would list the new tag twice).
-  const tagOptions = window.OdysseyData.tags.filter(t => !t.archived).map(t => ({ value: t.id, label: t.name }));
+  const tagOptions = window.OdysseyData.tags.filter(t => !t.archived).map(window.OdysseyData.tagOption);
   const createTag = (name) => {
     const opt = window.OdysseyData.createTag('transaction', name);
     if (!opt) return null;
@@ -368,7 +368,22 @@ const AddTransactionModal = ({ onClose, onCreate, onSave, transaction = null, de
               placeholder="No tags"
               onCreate={createTag}
               createKinds={window.OdysseyData.tagCreateKinds('transaction')}
-              help="Add as many as fit — e.g. a category plus Reimbursable."
+              help={(() => {
+                // Live preview of the row icon the server will resolve (§3):
+                // first tag by name with an icon, else the generic tag glyph.
+                const TTI = (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagIcons;
+                const chosen = (draft.tags || []).map(id => window.OdysseyData.tagById[id]).filter(Boolean);
+                if (!TTI || !chosen.length) return 'Add as many as fit — e.g. a category plus Reimbursable.';
+                const g = TTI.resolve(chosen);
+                const from = TTI.order(chosen).find(t => t.icon === g);
+                return (
+                  <span className="atm-rowicon">
+                    <span>Row icon</span>
+                    <MIcon name={g} size={16} />
+                    <span>{from ? `from ${from.name}` : 'default — none of these tags has an icon'}</span>
+                  </span>
+                );
+              })()}
             />
           </div>
 

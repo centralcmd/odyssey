@@ -82,7 +82,9 @@ export function TransactionTagPicker({
     label: t.archived ? `${t.name} · Archived` : t.name,
     note: used.has(idOf(t)) ? 'in use' : undefined,
     disabled: used.has(idOf(t)),
-    icon: 'local_offer',
+    // The tag's own icon (null / unknown → local_offer), read lazily from the
+    // TagIconPicker catalogue so the two never disagree.
+    icon: ((typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 && window.OdysseyDesignSystem_d5aa51.TransactionTagIcons) || { glyph: (k) => k || 'local_offer' }).glyph(t.icon),
   });
 
   let options = all.filter((t) => !t.archived).map(optionOf);

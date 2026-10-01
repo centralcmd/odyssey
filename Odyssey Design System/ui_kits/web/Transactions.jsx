@@ -87,9 +87,13 @@ const TxnTable = ({ txns, onSave, onDelete, onNavigate, hideAccount = false, sor
 
   const rows = useMemo(() => txns.map(t => {
     const acct = d.accountById[t.account];
-    const tags = d.txnTags(t);
+    // Tags arrive name-ordered (backend §3) and the avatar glyph is the
+    // server-resolved displayIcon — recomputed here so a local edit previews it.
+    const TTI = (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagIcons;
+    const tags = TTI ? TTI.order(d.txnTags(t)) : d.txnTags(t);
     return {
       ...t,
+      displayIcon: TTI ? TTI.resolve(tags) : t.icon,
       accountLabel: acct ? acct.name : '',
       accountNumber: acct ? acct.number : '',
       tags: tags.map(tg => ({ id: tg.id, label: tg.name })),
@@ -274,7 +278,7 @@ const Transactions = ({ onNavigate }) => {
             </div>
             <div style={{ minWidth: 160 }}>
               <MultiSelect allLabel="All tags" value={tagFilter} onChange={setTagFilter}
-                options={d.tags.map(t => ({ value: t.id, label: t.name }))} />
+                options={d.tags.map(d.tagOption)} />
             </div>
             <div style={{ minWidth: 150 }}>
               <MultiSelect allLabel="Any direction" value={dirFilter} onChange={setDirFilter}

@@ -137,20 +137,20 @@ window.OdysseyData = {
   // A transaction now carries a *set* of these (many-to-many), so a purchase can be
   // both a category (Groceries) and a cross-cutting tag (Reimbursable / Business).
   tags: [
-    { id: 't1', name: 'Groceries',     description: 'Supermarkets, food shops, and weekly stock-ups', archived: null },
-    { id: 't2', name: 'Subscriptions', description: 'Recurring streaming, software, and memberships',  archived: null },
-    { id: 't3', name: 'Transit',       description: 'Public transit, rideshare, and fuel',             archived: null },
-    { id: 't4', name: 'Rent',          description: 'Monthly housing payments',                        archived: null },
-    { id: 't5', name: 'Income',        description: 'Salary, refunds, interest, and inbound payments',  archived: null },
-    { id: 't6', name: 'Dining',        description: 'Restaurants, cafés, and bars',                     archived: null },
-    { id: 't7', name: 'Utilities',     description: 'Electricity, water, gas, and internet',            archived: null },
-    { id: 't9', name: 'Reimbursable',  description: 'Expensable — to be claimed back from work or a peer', archived: null },
-    { id: 't10', name: 'Business',     description: 'Work-related spending, tracked for the books',     archived: null },
-    { id: 't11', name: 'Freelance',    description: 'Consulting and side-project income',               archived: null },
-    { id: 't12', name: 'Bonus',        description: 'Performance and year-end bonuses',                 archived: null },
-    { id: 't13', name: 'Gifts',        description: 'Presents for family and friends',                  archived: null },
-    { id: 't14', name: 'Travel',       description: 'Flights, hotels, and trips away',                  archived: null },
-    { id: 't8', name: 'Vacation 2024', description: 'One-off travel spending from the 2024 trips',      archived: '2025-01-08T09:00:00Z' },
+    { id: 't1', name: 'Groceries',     description: 'Supermarkets, food shops, and weekly stock-ups', icon: 'shopping_cart', archived: null },
+    { id: 't2', name: 'Subscriptions', description: 'Recurring streaming, software, and memberships',  icon: 'subscriptions', archived: null },
+    { id: 't3', name: 'Transit',       description: 'Public transit, rideshare, and fuel',             icon: 'directions_bus', archived: null },
+    { id: 't4', name: 'Rent',          description: 'Monthly housing payments',                        icon: 'home', archived: null },
+    { id: 't5', name: 'Income',        description: 'Salary, refunds, interest, and inbound payments',  icon: 'payments', archived: null },
+    { id: 't6', name: 'Dining',        description: 'Restaurants, cafés, and bars',                     icon: 'restaurant', archived: null },
+    { id: 't7', name: 'Utilities',     description: 'Electricity, water, gas, and internet',            icon: 'bolt', archived: null },
+    { id: 't9', name: 'Reimbursable',  description: 'Expensable — to be claimed back from work or a peer', icon: null, archived: null },
+    { id: 't10', name: 'Business',     description: 'Work-related spending, tracked for the books',     icon: 'work', archived: null },
+    { id: 't11', name: 'Freelance',    description: 'Consulting and side-project income',               icon: null, archived: null },
+    { id: 't12', name: 'Bonus',        description: 'Performance and year-end bonuses',                 icon: 'payments', archived: null },
+    { id: 't13', name: 'Gifts',        description: 'Presents for family and friends',                  icon: 'card_giftcard', archived: null },
+    { id: 't14', name: 'Travel',       description: 'Flights, hotels, and trips away',                  icon: 'flight', archived: null },
+    { id: 't8', name: 'Vacation 2024', description: 'One-off travel spending from the 2024 trips',      icon: 'flight', archived: '2025-01-08T09:00:00Z' },
   ],
 
   /* Canonical contact-type registry — single source of truth for the
@@ -786,6 +786,21 @@ window.OdysseyData.txnTagIds = (t) => {
 window.OdysseyData.txnTags = (t) => window.OdysseyData.txnTagIds(t)
   .map(id => window.OdysseyData.tagById[id])
   .filter(Boolean);
+/* ExistingTransaction.DisplayIcon — server-resolved from the tags (backend
+   spec §3). Seeded here through the DS catalogue's resolver so every ledger
+   surface (Transactions, Accounts, Budgets, Dashboard) shows the tag's icon. */
+(() => {
+  const TTI = (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagIcons;
+  if (!TTI) return;
+  window.OdysseyData.txnDisplayIcon = (t) => TTI.resolve(window.OdysseyData.txnTags(t));
+  window.OdysseyData.transactions.forEach((t) => { t.displayIcon = TTI.resolve(window.OdysseyData.txnTags(t)); });
+})();
+/* A transaction tag as a picker option — every tag picker and filter shows the
+   tag's icon (null / unknown → local_offer, the API's projection). */
+window.OdysseyData.tagOption = (t) => {
+  const TTI = (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagIcons;
+  return { value: t.id, label: t.name, icon: TTI ? TTI.glyph(t.icon) : 'local_offer' };
+};
 window.OdysseyData.accountById = Object.fromEntries(window.OdysseyData.accounts.map(a => [a.id, a]));
 window.OdysseyData.accountTypeById = Object.fromEntries(window.OdysseyData.accountTypes.map(t => [t.key, t]));
 window.OdysseyData.contactTypeByKey = Object.fromEntries(window.OdysseyData.contactTypes.map(t => [t.key, t]));

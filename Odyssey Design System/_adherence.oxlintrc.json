@@ -719,6 +719,10 @@
         "message": "<TagChipsItem> doesn't accept that prop. Declared props: id, label, name."
       },
       {
+        "selector": "JSXOpeningElement[name.name='TransactionTagIcon'] > JSXAttribute > JSXIdentifier[name!=/^(?:key|label|key|ref|className|style|children)$/]",
+        "message": "<TransactionTagIcon> doesn't accept that prop. Declared props: key, label."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='TagMultiSelectOption'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|icon|iconColor|sub|key|ref|className|style|children)$/]",
         "message": "<TagMultiSelectOption> doesn't accept that prop. Declared props: value, label, icon, iconColor, sub."
       },
@@ -1131,6 +1135,9 @@
       "TagChipsItem": {
         "replaces": []
       },
+      "TransactionTagIcon": {
+        "replaces": []
+      },
       "TagMultiSelectOption": {
         "replaces": []
       },
@@ -1214,6 +1221,7 @@
       "--con-accent",
       "--con-accent-line",
       "--con-accent-soft",
+      "--control-border",
       "--control-h",
       "--control-h-dense",
       "--control-pad-y",
@@ -1225,6 +1233,7 @@
       "--duration-slow",
       "--ease-decelerate",
       "--ease-standard",
+      "--error-cta-text",
       "--finance-expense",
       "--finance-expense-border",
       "--finance-expense-soft",
@@ -1308,7 +1317,9 @@
       "--mud-palette-drawer-background",
       "--mud-palette-drawer-text",
       "--mud-palette-error",
+      "--mud-palette-error-text",
       "--mud-palette-info",
+      "--mud-palette-info-text",
       "--mud-palette-lines-default",
       "--mud-palette-lines-inputs",
       "--mud-palette-placeholder",
@@ -1319,13 +1330,16 @@
       "--mud-palette-secondary",
       "--mud-palette-secondary-text",
       "--mud-palette-success",
+      "--mud-palette-success-text",
       "--mud-palette-surface",
       "--mud-palette-table-lines",
       "--mud-palette-tertiary",
+      "--mud-palette-tertiary-text",
       "--mud-palette-text-disabled",
       "--mud-palette-text-primary",
       "--mud-palette-text-secondary",
       "--mud-palette-warning",
+      "--mud-palette-warning-text",
       "--pending-text",
       "--radius-lg",
       "--radius-md",
@@ -1519,6 +1533,7 @@
       "--mud-palette-lines-default": "color",
       "--mud-palette-lines-inputs": "color",
       "--mud-palette-table-lines": "color",
+      "--control-border": "color",
       "--mud-palette-primary": "color",
       "--mud-palette-primary-darken": "color",
       "--mud-palette-primary-lighten": "color",
@@ -1526,10 +1541,16 @@
       "--mud-palette-secondary": "color",
       "--mud-palette-secondary-text": "font",
       "--mud-palette-tertiary": "color",
+      "--mud-palette-tertiary-text": "font",
       "--mud-palette-info": "color",
+      "--mud-palette-info-text": "font",
       "--mud-palette-success": "color",
+      "--mud-palette-success-text": "font",
       "--mud-palette-warning": "color",
+      "--mud-palette-warning-text": "font",
       "--mud-palette-error": "color",
+      "--mud-palette-error-text": "font",
+      "--error-cta-text": "font",
       "--mud-palette-action-default": "color",
       "--mud-palette-action-default-hover": "color",
       "--mud-palette-action-disabled": "color",

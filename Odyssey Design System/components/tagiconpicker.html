@@ -1,0 +1,82 @@
+<!-- @dsCard group="Components" name="TagIconPicker" subtitle="Transaction-tag icon chooser over the fixed API catalogue — Default cell (null → local_offer), violet selected state with check badge, caption names the choice; plus the tag-table avatar and the transaction-row display icon it drives." viewport="1000x760" -->
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>TagIconPicker</title>
+<link rel="stylesheet" href="../icons.css" />
+<link rel="stylesheet" href="../styles.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<style>
+body{margin:0;background:var(--mud-palette-background);color:var(--mud-palette-text-primary);font-family:var(--font-sans);padding:32px 40px}
+a{color:var(--brand-text)}a:hover{text-decoration:underline}
+.wrap{display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:32px;max-width:920px}
+.cap{margin:0 0 10px;font:500 11px/1 var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--mud-palette-text-secondary)}
+.col{display:flex;flex-direction:column;gap:28px}
+.rows{display:flex;flex-direction:column;border:1px solid var(--mud-palette-divider);border-radius:var(--radius-md);background:var(--mud-palette-surface);overflow:hidden}
+.r{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid var(--mud-palette-divider);font-size:14px}
+.r:first-child{border-top:0}
+.r .grow{flex:1;min-width:0}
+.r .mut{color:var(--mud-palette-text-secondary);font-size:13px}
+.r .chips{display:flex;gap:6px;flex-wrap:wrap}
+.amt{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.amt.expense{color:var(--finance-expense)}.amt.income{color:var(--finance-income)}
+.note{margin:0;font-size:13px;line-height:1.55;color:var(--mud-palette-text-secondary);max-width:60ch}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const NS = window.OdysseyDesignSystem_d5aa51 || {};
+const { TagIconPicker, TransactionTagIcons: I } = NS;
+const h = React.createElement;
+const ic = (n) => h('span', { className: 'material-icons', 'aria-hidden': 'true' }, n);
+const TAGS = [
+  { id: 't1', name: 'Groceries', icon: 'shopping_cart' },
+  { id: 't6', name: 'Dining', icon: 'restaurant' },
+  { id: 't9', name: 'Reimbursable', icon: null },
+  { id: 't10', name: 'Business', icon: 'work' },
+  { id: 'tx', name: 'Apple', icon: 'not_a_key' },
+];
+const TXNS = [
+  { desc: 'Whole Foods Market', tags: ['t1', 't9'], amt: '− 128.40 USD', dir: 'expense' },
+  { desc: 'Tartine Bakery', tags: ['t6', 't9'], amt: '− 18.50 USD', dir: 'expense' },
+  { desc: 'Uber · Trip to airport', tags: ['t9', 't10'], amt: '− 24.18 USD', dir: 'expense' },
+  { desc: 'Venmo · Split dinner', tags: ['t9'], amt: '+ 42.00 USD', dir: 'income' },
+  { desc: 'Cash withdrawal', tags: [], amt: '− 60.00 USD', dir: 'expense' },
+];
+function Demo() {
+  const [v, setV] = React.useState('shopping_cart');
+  const [v2, setV2] = React.useState(null);
+  if (!TagIconPicker) return h('div', null, 'Bundle not compiled yet.');
+  const byId = Object.fromEntries(TAGS.map((t) => [t.id, t]));
+  return h('div', { className: 'wrap' },
+    h('div', { className: 'col' },
+      h('div', null, h('p', { className: 'cap' }, 'Selected'), h(TagIconPicker, { value: v, onChange: setV })),
+      h('div', null, h('p', { className: 'cap' }, 'Default (null)'), h(TagIconPicker, { value: v2, onChange: setV2 })),
+    ),
+    h('div', { className: 'col' },
+      h('div', null, h('p', { className: 'cap' }, 'Tag table — leading avatar is the icon'),
+        h('div', { className: 'rows' }, TAGS.map((t) => h('div', { className: 'r', key: t.id },
+          h('span', { className: 'odc-avatar violet' }, ic(I.glyph(t.icon))),
+          h('span', { className: 'grow' }, t.name),
+          h('span', { className: 'mut' }, I.isKnown(t.icon) ? I.labelFor(t.icon) : (t.icon ? 'Unknown key → default' : 'Default')))))),
+      h('div', null, h('p', { className: 'cap' }, 'Transaction rows — displayIcon, tone = direction'),
+        h('div', { className: 'rows' }, TXNS.map((x, i) => {
+          const tags = I.order(x.tags.map((id) => byId[id]));
+          return h('div', { className: 'r', key: i },
+            h('span', { className: 'odc-avatar ' + (x.dir === 'income' ? 'mint' : 'coral') }, ic(I.resolve(tags))),
+            h('span', { className: 'grow' }, x.desc),
+            h('span', { className: 'chips' }, tags.length ? tags.map((t) => h('span', { className: 'odc-chip tag', key: t.id }, t.name)) : h('span', { className: 'mut' }, '—')),
+            h('span', { className: 'amt ' + x.dir }, x.amt));
+        }))),
+      h('p', { className: 'note' }, 'Tags order by name (case-insensitive); the first tag with a known icon wins, else local_offer. Reimbursable has no icon, so Business wins on the Uber row.'),
+    ),
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(Demo));
+</script>
+</body>
+</html>

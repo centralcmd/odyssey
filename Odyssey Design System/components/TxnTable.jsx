@@ -9,10 +9,14 @@
  * row identically.
  *
  * Data-prop driven — rows are plain denormalized objects; nothing global:
- *   { id, desc, status, amount, date, dir?, icon?, currency?,
+ *   { id, desc, status, amount, date, dir?, displayIcon?, icon?, currency?,
  *     contact?, accountLabel?, accountNumber?, tags?, tagLabel? }
  *   • dir defaults from the sign of `amount` (income ≥ 0, expense < 0)
  *   • contact defaults to the leading "·" segment of `desc`
+ *   • displayIcon is the server-resolved ExistingTransaction.DisplayIcon (a
+ *     tag-icon catalogue key or `local_offer`) and wins over the legacy `icon`.
+ *     The avatar TONE still encodes direction (mint/coral); only the glyph
+ *     comes from the tags.
  *   • tags is the multi-tag set — an array of label strings or {id,label}
  *     objects; the Tag column shows up to TT_TAG_CAP chips then a "+N"
  *     overflow. `tagLabel` (single) is still honored as a one-element
@@ -338,7 +342,7 @@ export function TxnTable({
                   {/* Decorative — direction is conveyed by the signed amount
                       and status chip, so this glyph is aria-hidden, no img role. */}
                   <span className={`odc-avatar ${dir === 'income' ? 'mint' : 'coral'}`}>
-                    <span className="material-icons" aria-hidden="true">{t.icon || (dir === 'income' ? 'arrow_downward' : 'shopping_cart')}</span>
+                    <span className="material-icons" aria-hidden="true">{t.displayIcon || t.icon || 'local_offer'}</span>
                   </span>
                 </td>
                 <td>

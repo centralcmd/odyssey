@@ -5,7 +5,12 @@
    Fields mirror the Odyssey.Finance.Dtos TransactionTag DTOs:
      ExistingTransactionTag — TransactionTagId, Name (≤64), Description (≤256),
                               Archived (datetime?, null = active)
-     NewTransactionTag      — Name, Description, Archived (bool) */
+     NewTransactionTag      — Name, Description, Archived (bool)
+   Transaction tags only (cfg.icons): Icon (catalogue key | null = default).
+   The leading avatar IS the icon column; null / unknown keys draw the
+   generic local_offer, exactly as the API projects them. */
+const TT_ICONS = () => (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagIcons;
+const tagGlyph = (t) => { const I = TT_ICONS(); return I ? I.glyph(t.icon) : 'local_offer'; };
 
 const TAG_TONE = { bg: 'oklch(0.72 0.16 295 / 0.16)', fg: 'oklch(0.78 0.13 295)' };
 const TAG_STATUS_OPTIONS = [
@@ -27,7 +32,7 @@ const tagSortVal = (t, key) => {
    declares the tag-specific columns and row actions. Rows don't expand: the
    three columns already show every field a tag has, so a detail panel would
    only repeat them. Editing happens in the tag dialog. */
-const TagTable = ({ tags, onSave, onDelete, onEdit, sort, onSortChange, empty, ariaLabel = 'Transaction tags' }) => {
+const TagTable = ({ tags, onSave, onDelete, onEdit, sort, onSortChange, empty, ariaLabel = 'Transaction tags', icons = false }) => {
   const H = window.OdysseyHelpers;
   return (
     <RecordTable
@@ -37,7 +42,7 @@ const TagTable = ({ tags, onSave, onDelete, onEdit, sort, onSortChange, empty, a
       defaultSort={{ key: 'name', dir: 'asc' }}
       sort={sort}
       onSortChange={onSortChange}
-      leading={() => <Avatar icon="local_offer" tone={TAG_TONE} />}
+      leading={(t) => <Avatar icon={icons ? tagGlyph(t) : 'local_offer'} tone={TAG_TONE} />}
       columns={[
         {
           key: 'name', header: 'Name', sortable: true, sortType: 'text', sortValue: (t) => tagSortVal(t, 'name'),
@@ -81,10 +86,12 @@ const TagTable = ({ tags, onSave, onDelete, onEdit, sort, onSortChange, empty, a
    answers a clash with a 409 keyed to `name`; this dialog renders it at the name
    field, naming the archived case, which has no inline remedy: restoring or
    renaming an archived tag is a row action on this page. */
-const AddTagModal = ({ onClose, onCreate, onSave, tag = null, siblings = [], subtitle = 'Tags group transactions and budget items by category.' }) => {
+const AddTagModal = ({ onClose, onCreate, onSave, tag = null, siblings = [], subtitle = 'Tags group transactions and budget items by category.', icons = false }) => {
   const { useState } = React;
   const editing = !!tag;
-  const [draft, setDraft] = useState({ name: tag?.name || '', description: tag?.description || '' });
+  const I = TT_ICONS();
+  const Picker = (window.OdysseyDesignSystem_d5aa51 || {}).TagIconPicker;
+  const [draft, setDraft] = useState({ name: tag?.name || '', description: tag?.description || '', icon: I ? I.normalize(tag?.icon) : null });
   const [errors, setErrors] = useState({});
   const set = (k) => (v) => {
     setDraft(d => ({ ...d, [k]: v }));
@@ -106,6 +113,8 @@ const AddTagModal = ({ onClose, onCreate, onSave, tag = null, siblings = [], sub
     const dto = {
       name,
       description: draft.description.trim() || undefined,
+      // PUT is full replacement: always send icon — null means Default.
+      ...(icons ? { icon: draft.icon || null } : {}),
     };
     if (editing) {
       // Preserve the tag's archive state — that's toggled from the row action.
@@ -133,6 +142,12 @@ const AddTagModal = ({ onClose, onCreate, onSave, tag = null, siblings = [], sub
         placeholder="e.g. Groceries" error={errors.name} helper="Up to 64 characters · must be unique" autoFocus />
       <Field label="Description" value={draft.description} onChange={set('description')}
         placeholder="What this tag is for" helper="Up to 256 characters" />
+      {icons && Picker && (
+        <FieldShell label="Icon" htmlFor="tag-icon" error={errors.icon}
+          helper="Shown for this tag and on every transaction carrying it. Default keeps the tag icon.">
+          <Picker id="tag-icon" value={draft.icon} onChange={set('icon')} ariaLabel="Icon" ariaDescribedby="tag-icon-help" />
+        </FieldShell>
+      )}
     </Modal>
   );
 };
@@ -259,8 +274,8 @@ const createTagsPage = (cfg) => () => {
         primary={{ label: 'New tag', icon: 'add', onClick: () => setAdding(true) }}
       />
 
-      {adding && <AddTagModal onClose={() => setAdding(false)} onCreate={createTag} siblings={tags} subtitle={cfg.modalSubtitle} />}
-      {editingTag && <AddTagModal tag={editingTag} onClose={() => setEditingTag(null)} onSave={onSave} siblings={tags} subtitle={cfg.modalSubtitle} />}
+      {adding && <AddTagModal onClose={() => setAdding(false)} onCreate={createTag} siblings={tags} subtitle={cfg.modalSubtitle} icons={!!cfg.icons} />}
+      {editingTag && <AddTagModal tag={editingTag} onClose={() => setEditingTag(null)} onSave={onSave} siblings={tags} subtitle={cfg.modalSubtitle} icons={!!cfg.icons} />}
       {blocked && <TagDeleteBlockedModal tag={blocked.tag} clauses={blocked.clauses} onClose={() => setBlocked(null)} />}
 
       <Card>
@@ -271,6 +286,7 @@ const createTagsPage = (cfg) => () => {
             onSave={onSave}
             onDelete={tryDelete}
             onEdit={setEditingTag}
+            icons={!!cfg.icons}
             sort={sort}
             onSortChange={setSort}
             empty={(
@@ -296,6 +312,7 @@ const TransactionTags = createTagsPage({
   title: 'Transaction tags',
   source: (d) => d.tags,
   idPrefix: 'tag-',
+  icons: true,
   searchPlaceholder: 'Search name or description…',
   modalSubtitle: 'Tags group transactions and budget items by category.',
   emptyDesc: 'Create your first tag to start categorizing transactions.',

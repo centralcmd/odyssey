@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AllocationDonuts","sourcePath":"components/AllocationDonuts.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileTypeMultiSelect","sourcePath":"components/FileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"PROPERTY_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FILE_TYPE_REGISTRIES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileTypeSelect","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"HomeownerAssociationSelect","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"PROPERTY_EVENT_TYPES","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_SYSTEM_ONLY","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_TYPE_MATRIX","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyEventTypeSelect","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountSmartTagsSection.jsx":"eb82b5c6a04b","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"9f54506f4cf3","components/AccountTypeSelect.jsx":"71a8e6f1f26b","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AllocationDonuts.jsx":"044b0391cba9","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"c39daff274ff","components/BreakdownTile.jsx":"ab8698d79f9d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"ace06e34d445","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"a44940f2426c","components/Combobox.jsx":"4fb765c097aa","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"6bb321aa4df3","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"7707449a38e7","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"fb8d5df00ef8","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileTypeMultiSelect.jsx":"fbaef310b135","components/FileTypeSelect.jsx":"602105962a04","components/FileUpload.jsx":"2a2150aed391","components/FilesTable.jsx":"13b97642e98d","components/FormRow.jsx":"760803e7e9a9","components/HomeownerAssociationSelect.jsx":"4b0af1f20e4a","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"b09819d8e2ef","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"8760b9df36a3","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"eb12efde720d","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/PropertyEventTypeSelect.jsx":"e9232a5f7149","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"a34456c62a15","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"d54e41a6f196","components/RegistrySelect.jsx":"cfdb93825f1e","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"22e374740648","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"352febb04dc1","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagMultiSelect.jsx":"f3075dad69cb","components/TaskBoard.jsx":"543103259e1e","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionTagPicker.jsx":"26e652586094","components/TxnTable.jsx":"8d863d008a9a","components/TypeSelect.jsx":"bc0a739e237a","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"ae4664340137","ui_kits/web/AccountEstimates.jsx":"74490c489fc0","ui_kits/web/AccountTerms.jsx":"0221944e1164","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"dd65c265c331","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c7cfdaf2bf79","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"5671cc00067f","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"496d5f963e1a","ui_kits/web/AddFileModal.jsx":"9ac67581e94c","ui_kits/web/AddPropertyEventModal.jsx":"7bd99a614e1c","ui_kits/web/AddPropertyFileModal.jsx":"640407cc7d81","ui_kits/web/AddPropertyModal.jsx":"2b9baf5ac130","ui_kits/web/AddTaxStatementModal.jsx":"de9daa8a7bee","ui_kits/web/AddTransactionFileModal.jsx":"1ef4e0bab1e3","ui_kits/web/AddTransactionModal.jsx":"41d329d70bb5","ui_kits/web/AnalyzeFileModal.jsx":"0079c2f4c198","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/AttachDocumentsModal.jsx":"468b57a32347","ui_kits/web/AttachPhotosModal.jsx":"0bd96e8b1977","ui_kits/web/Budgets.jsx":"6775ff33876c","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"c6cde4d0fbaa","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"672a3e086f82","ui_kits/web/ContractEvents.jsx":"5e6987305ced","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"a88b62a7449e","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"2357237a2a86","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"fe66f3f2766c","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"4660d6913fee","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"67d4424eb71c","ui_kits/web/PropertyEstimates.jsx":"26ff66003282","ui_kits/web/PropertyEvents.jsx":"661071ddeedc","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"4052ed3cec78","ui_kits/web/TaxStatements.jsx":"0dbe10b334fc","ui_kits/web/TransactionTags.jsx":"f3bf3f5cb39e","ui_kits/web/Transactions.jsx":"773c07405c56","ui_kits/web/Users.jsx":"4ddab8478138","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"b6b90dc34d06","ui_kits/web/contracts-data.js":"60703b10009e","ui_kits/web/data.js":"526050ea49e9","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"64839a67d3d5","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"ec78251314db","ui_kits/web/property-events-data.js":"2c6c4672c3ac","ui_kits/web/system-settings-data.js":"c05e455acb51","ui_kits/web/tax-data.js":"a087e9da05a6","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"homeownerAssociationState","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"propertyEventTypeLegality","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"propertyEventTypesFor","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AllocationDonuts","sourcePath":"components/AllocationDonuts.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileTypeMultiSelect","sourcePath":"components/FileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"PROPERTY_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FILE_TYPE_REGISTRIES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileTypeSelect","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"HomeownerAssociationSelect","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"PROPERTY_EVENT_TYPES","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_SYSTEM_ONLY","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_TYPE_MATRIX","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyEventTypeSelect","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TRANSACTION_TAG_ICONS","sourcePath":"components/TagIconPicker.jsx"},{"name":"TRANSACTION_TAG_ICON_DEFAULT","sourcePath":"components/TagIconPicker.jsx"},{"name":"TransactionTagIcons","sourcePath":"components/TagIconPicker.jsx"},{"name":"TagIconPicker","sourcePath":"components/TagIconPicker.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountSmartTagsSection.jsx":"eb82b5c6a04b","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"9f54506f4cf3","components/AccountTypeSelect.jsx":"71a8e6f1f26b","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AllocationDonuts.jsx":"044b0391cba9","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"c39daff274ff","components/BreakdownTile.jsx":"ab8698d79f9d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"ace06e34d445","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"a44940f2426c","components/Combobox.jsx":"4fb765c097aa","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"6bb321aa4df3","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"7707449a38e7","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"fb8d5df00ef8","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileTypeMultiSelect.jsx":"fbaef310b135","components/FileTypeSelect.jsx":"602105962a04","components/FileUpload.jsx":"2a2150aed391","components/FilesTable.jsx":"13b97642e98d","components/FormRow.jsx":"760803e7e9a9","components/HomeownerAssociationSelect.jsx":"4b0af1f20e4a","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"b09819d8e2ef","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"8760b9df36a3","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"eb12efde720d","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/PropertyEventTypeSelect.jsx":"e9232a5f7149","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"a34456c62a15","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"d54e41a6f196","components/RegistrySelect.jsx":"cfdb93825f1e","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"22e374740648","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"352febb04dc1","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagIconPicker.jsx":"0e3a4c3e94ab","components/TagMultiSelect.jsx":"f3075dad69cb","components/TaskBoard.jsx":"543103259e1e","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionTagPicker.jsx":"5724c2548658","components/TxnTable.jsx":"a8d48a29b79d","components/TypeSelect.jsx":"bc0a739e237a","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"ae4664340137","ui_kits/web/AccountEstimates.jsx":"74490c489fc0","ui_kits/web/AccountTerms.jsx":"0221944e1164","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"00b4a63d1b24","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c7cfdaf2bf79","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"5671cc00067f","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"496d5f963e1a","ui_kits/web/AddFileModal.jsx":"9ac67581e94c","ui_kits/web/AddPropertyEventModal.jsx":"7bd99a614e1c","ui_kits/web/AddPropertyFileModal.jsx":"640407cc7d81","ui_kits/web/AddPropertyModal.jsx":"2b9baf5ac130","ui_kits/web/AddTaxStatementModal.jsx":"de9daa8a7bee","ui_kits/web/AddTransactionFileModal.jsx":"1ef4e0bab1e3","ui_kits/web/AddTransactionModal.jsx":"33c1ecb9a73d","ui_kits/web/AnalyzeFileModal.jsx":"79b1f4f7490d","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/AttachDocumentsModal.jsx":"468b57a32347","ui_kits/web/AttachPhotosModal.jsx":"0bd96e8b1977","ui_kits/web/Budgets.jsx":"6775ff33876c","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"4f388f692b7a","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"672a3e086f82","ui_kits/web/ContractEvents.jsx":"5e6987305ced","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"1f4f7a1ffc3c","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"2357237a2a86","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"fe66f3f2766c","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"4660d6913fee","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"1e3b71e0af83","ui_kits/web/PropertyEstimates.jsx":"26ff66003282","ui_kits/web/PropertyEvents.jsx":"661071ddeedc","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"4052ed3cec78","ui_kits/web/TaxStatements.jsx":"0dbe10b334fc","ui_kits/web/TransactionTags.jsx":"4d2ec833a501","ui_kits/web/Transactions.jsx":"710d60a74244","ui_kits/web/Users.jsx":"4ddab8478138","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"b6b90dc34d06","ui_kits/web/contracts-data.js":"60703b10009e","ui_kits/web/data.js":"f3dec75ad47d","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"64839a67d3d5","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"ec78251314db","ui_kits/web/property-events-data.js":"2c6c4672c3ac","ui_kits/web/system-settings-data.js":"c05e455acb51","ui_kits/web/tax-data.js":"a087e9da05a6","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"homeownerAssociationState","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"propertyEventTypeLegality","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"propertyEventTypesFor","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -16662,6 +16662,298 @@ function TagChips({
 Object.assign(__ds_scope, { TagChips });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/TagChips.jsx", error: String((e && e.message) || e) }); }
 
+// components/TagIconPicker.jsx
+try { (() => {
+/**
+ * Odyssey DS — TagIconPicker  (+ TransactionTagIcons catalogue)
+ * ---------------------------------------------------------------------------
+ * The transaction-tag icon chooser. Deliberately a closed grid, not a search
+ * over the Material set: a tag's icon is a key from the fixed catalogue the
+ * API validates against (`TransactionTagIcons.All` in Odyssey.Dtos/Finance),
+ * so the picker offers exactly that list and nothing a server would refuse.
+ *
+ * The first cell is always **Default** — value `null`, drawn with today's tag
+ * glyph (`local_offer`) inside a dashed outline. The API never stores the
+ * default key (a request selecting it sends `null`), so the picker emits
+ * `null` for it and treats any unknown / stale value as Default, mirroring the
+ * server's read-side projection.
+ *
+ * Controlled: `value` (key | null) + `onChange(key | null)`. ARIA radiogroup
+ * with a roving tab stop; arrows move in two dimensions over the live column
+ * count, Home/End jump, selection follows focus (the radio pattern). The
+ * caption under the grid names the selected icon in words and previews the
+ * label of the cell under the pointer or focus, so meaning never rests on the
+ * glyph alone.
+ *
+ * `TransactionTagIcons.resolve(tags)` is the client copy of the server's
+ * display-icon rule (§3 of the backend spec): order by name, ordinal
+ * case-insensitive, ties by id; first known icon wins; else the default. The
+ * server sends `displayIcon` on every transaction — render that. `resolve` is
+ * for local previews only (e.g. a transaction being edited), so the two can't
+ * drift.
+ */
+
+const TTI_ALL = [{
+  key: 'shopping_cart',
+  label: 'Groceries'
+}, {
+  key: 'restaurant',
+  label: 'Dining'
+}, {
+  key: 'local_cafe',
+  label: 'Café'
+}, {
+  key: 'directions_car',
+  label: 'Car'
+}, {
+  key: 'local_gas_station',
+  label: 'Fuel'
+}, {
+  key: 'directions_bus',
+  label: 'Public transport'
+}, {
+  key: 'flight',
+  label: 'Travel'
+}, {
+  key: 'home',
+  label: 'Housing'
+}, {
+  key: 'bolt',
+  label: 'Utilities'
+}, {
+  key: 'wifi',
+  label: 'Internet'
+}, {
+  key: 'phone_iphone',
+  label: 'Phone'
+}, {
+  key: 'medical_services',
+  label: 'Health'
+}, {
+  key: 'fitness_center',
+  label: 'Fitness'
+}, {
+  key: 'school',
+  label: 'Education'
+}, {
+  key: 'child_care',
+  label: 'Children'
+}, {
+  key: 'pets',
+  label: 'Pets'
+}, {
+  key: 'checkroom',
+  label: 'Clothing'
+}, {
+  key: 'movie',
+  label: 'Entertainment'
+}, {
+  key: 'subscriptions',
+  label: 'Subscriptions'
+}, {
+  key: 'card_giftcard',
+  label: 'Gifts'
+}, {
+  key: 'volunteer_activism',
+  label: 'Charity'
+}, {
+  key: 'savings',
+  label: 'Savings'
+}, {
+  key: 'trending_up',
+  label: 'Investments'
+}, {
+  key: 'account_balance',
+  label: 'Bank'
+}, {
+  key: 'credit_card',
+  label: 'Card'
+}, {
+  key: 'receipt_long',
+  label: 'Bills'
+}, {
+  key: 'request_quote',
+  label: 'Tax'
+}, {
+  key: 'payments',
+  label: 'Salary'
+}, {
+  key: 'work',
+  label: 'Work'
+}, {
+  key: 'build',
+  label: 'Repairs'
+}, {
+  key: 'shield',
+  label: 'Insurance'
+}, {
+  key: 'more_horiz',
+  label: 'Other'
+}];
+const TTI_DEFAULT = 'local_offer';
+const TTI_BY_KEY = TTI_ALL.reduce((m, x) => {
+  m[x.key] = x;
+  return m;
+}, {});
+const ttiName = t => String(t && (t.name != null ? t.name : t.label) || '');
+const ttiCmp = (a, b) => {
+  const x = ttiName(a).toUpperCase(),
+    y = ttiName(b).toUpperCase();
+  if (x < y) return -1;
+  if (x > y) return 1;
+  const i = String(a && (a.id || a.transactionTagId) || ''),
+    j = String(b && (b.id || b.transactionTagId) || '');
+  return i < j ? -1 : i > j ? 1 : 0;
+};
+const TRANSACTION_TAG_ICONS = TTI_ALL;
+const TRANSACTION_TAG_ICON_DEFAULT = TTI_DEFAULT;
+const TransactionTagIcons = {
+  Default: TTI_DEFAULT,
+  All: TTI_ALL,
+  /** Ordinal, case-sensitive membership — the default key is NOT a member. */
+  isKnown: key => typeof key === 'string' && Object.prototype.hasOwnProperty.call(TTI_BY_KEY, key),
+  /** The read-side projection: known key → key, anything else → null. */
+  normalize: key => TransactionTagIcons.isKnown(key) ? key : null,
+  /** The glyph to draw for a tag's stored icon (null / unknown → default). */
+  glyph: key => TransactionTagIcons.isKnown(key) ? key : TTI_DEFAULT,
+  /** Human label for a key; null → "Default". */
+  labelFor: key => TransactionTagIcons.isKnown(key) ? TTI_BY_KEY[key].label : 'Default',
+  /** The canonical tag order (§3 step 1) — a sorted copy. */
+  order: tags => (tags || []).slice().sort(ttiCmp),
+  /** The display-icon rule (§3). Client preview only — render the server's displayIcon. */
+  resolve: tags => {
+    const hit = TransactionTagIcons.order(tags).find(t => TransactionTagIcons.isKnown(t && t.icon));
+    return hit ? hit.icon : TTI_DEFAULT;
+  }
+};
+function TagIconPicker({
+  value = null,
+  onChange,
+  icons = TTI_ALL,
+  disabled = false,
+  id,
+  ariaLabel = 'Icon',
+  ariaDescribedby,
+  className = ''
+}) {
+  const {
+    useState,
+    useRef
+  } = React;
+  const autoId = React.useId();
+  const groupId = id || autoId;
+  const gridRef = useRef(null);
+  const [peek, setPeek] = useState(null); // index under pointer / focus
+
+  const cells = [{
+    key: null,
+    label: 'Default'
+  }, ...icons];
+  const known = value != null && icons.some(x => x.key === value);
+  const selKey = known ? value : null;
+  const selIndex = Math.max(0, cells.findIndex(c => c.key === selKey));
+  const pick = c => {
+    if (!disabled && onChange) onChange(c.key);
+  };
+  const cols = () => {
+    const g = gridRef.current;
+    if (!g) return 8;
+    const t = getComputedStyle(g).gridTemplateColumns;
+    return Math.max(1, t ? t.split(' ').filter(Boolean).length : 8);
+  };
+  const onKey = (e, i) => {
+    const n = cells.length;
+    let next = null;
+    switch (e.key) {
+      case 'ArrowRight':
+        next = Math.min(n - 1, i + 1);
+        break;
+      case 'ArrowLeft':
+        next = Math.max(0, i - 1);
+        break;
+      case 'ArrowDown':
+        next = Math.min(n - 1, i + cols());
+        break;
+      case 'ArrowUp':
+        next = Math.max(0, i - cols());
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = n - 1;
+        break;
+      case ' ':
+      case 'Enter':
+        e.preventDefault();
+        pick(cells[i]);
+        return;
+      default:
+        return;
+    }
+    e.preventDefault();
+    if (next === i) return;
+    pick(cells[next]);
+    const el = gridRef.current && gridRef.current.querySelector(`[data-idx="${next}"]`);
+    if (el) el.focus();
+  };
+  const shown = peek != null && cells[peek] && cells[peek].key !== selKey ? cells[peek] : null;
+  const sel = cells[selIndex];
+  return /*#__PURE__*/React.createElement("div", {
+    className: `odc-iconpick${disabled ? ' disabled' : ''} ${className}`.trim()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "odc-iconpick-grid",
+    ref: gridRef,
+    role: "radiogroup",
+    id: groupId,
+    "aria-label": ariaLabel,
+    "aria-describedby": ariaDescribedby,
+    onMouseLeave: () => setPeek(null)
+  }, cells.map((c, i) => {
+    const active = i === selIndex;
+    const isDef = c.key == null;
+    return /*#__PURE__*/React.createElement("button", {
+      key: c.key || '__default',
+      type: "button",
+      role: "radio",
+      "data-idx": i,
+      "aria-checked": active,
+      "aria-label": isDef ? 'Default (tag icon)' : c.label,
+      disabled: disabled,
+      tabIndex: i === selIndex ? 0 : -1,
+      className: `odc-iconpick-cell${active ? ' selected' : ''}${isDef ? ' default' : ''}`,
+      onClick: () => pick(c),
+      onKeyDown: e => onKey(e, i),
+      onMouseEnter: () => setPeek(i),
+      onFocus: () => setPeek(i),
+      onBlur: () => setPeek(null)
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "material-icons",
+      "aria-hidden": "true"
+    }, isDef ? TTI_DEFAULT : c.key), active ? /*#__PURE__*/React.createElement("span", {
+      className: "odc-iconpick-check",
+      "aria-hidden": "true"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "material-icons"
+    }, "check")) : null);
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "odc-iconpick-caption",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-iconpick-sel"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons"
+  }, sel.key || TTI_DEFAULT), /*#__PURE__*/React.createElement("span", null, sel.key ? sel.label : 'Default'), !sel.key ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-iconpick-sub"
+  }, "the tag icon") : null), shown ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-iconpick-peek"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons"
+  }, shown.key || TTI_DEFAULT), /*#__PURE__*/React.createElement("span", null, shown.key ? shown.label : 'Default')) : null));
+}
+Object.assign(__ds_scope, { TRANSACTION_TAG_ICONS, TRANSACTION_TAG_ICON_DEFAULT, TransactionTagIcons, TagIconPicker });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/TagIconPicker.jsx", error: String((e && e.message) || e) }); }
+
 // components/TagMultiSelect.jsx
 try { (() => {
 /**
@@ -18534,7 +18826,11 @@ function TransactionTagPicker({
     label: t.archived ? `${t.name} · Archived` : t.name,
     note: used.has(idOf(t)) ? 'in use' : undefined,
     disabled: used.has(idOf(t)),
-    icon: 'local_offer'
+    // The tag's own icon (null / unknown → local_offer), read lazily from the
+    // TagIconPicker catalogue so the two never disagree.
+    icon: (typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 && window.OdysseyDesignSystem_d5aa51.TransactionTagIcons || {
+      glyph: k => k || 'local_offer'
+    }).glyph(t.icon)
   });
   let options = all.filter(t => !t.archived).map(optionOf);
   // The record's own tag stays selectable even once archived — keeping a link
@@ -18622,10 +18918,14 @@ try { (() => {
  * row identically.
  *
  * Data-prop driven — rows are plain denormalized objects; nothing global:
- *   { id, desc, status, amount, date, dir?, icon?, currency?,
+ *   { id, desc, status, amount, date, dir?, displayIcon?, icon?, currency?,
  *     contact?, accountLabel?, accountNumber?, tags?, tagLabel? }
  *   • dir defaults from the sign of `amount` (income ≥ 0, expense < 0)
  *   • contact defaults to the leading "·" segment of `desc`
+ *   • displayIcon is the server-resolved ExistingTransaction.DisplayIcon (a
+ *     tag-icon catalogue key or `local_offer`) and wins over the legacy `icon`.
+ *     The avatar TONE still encodes direction (mint/coral); only the glyph
+ *     comes from the tags.
  *   • tags is the multi-tag set — an array of label strings or {id,label}
  *     objects; the Tag column shows up to TT_TAG_CAP chips then a "+N"
  *     overflow. `tagLabel` (single) is still honored as a one-element
@@ -19103,7 +19403,7 @@ function TxnTable({
     }, /*#__PURE__*/React.createElement("span", {
       className: "material-icons",
       "aria-hidden": "true"
-    }, t.icon || (dir === 'income' ? 'arrow_downward' : 'shopping_cart')))), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("span", {
+    }, t.displayIcon || t.icon || 'local_offer'))), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("span", {
       style: {
         display: 'inline-flex',
         alignItems: 'center',
@@ -23609,10 +23909,7 @@ const AccountSmartTags = ({
     id: t.id,
     label: t.name
   }));
-  const options = allTags.map(t => ({
-    value: t.id,
-    label: t.name
-  }));
+  const options = allTags.map(window.OdysseyData.tagOption);
   const add = id => setTagIds(prev => prev.includes(id) ? prev : [...prev, id]);
   const remove = id => setTagIds(prev => prev.filter(x => x !== id));
   return /*#__PURE__*/React.createElement(DSSection, {
@@ -28483,10 +28780,7 @@ const AddTransactionModal = ({
 
   // One source: createTag writes into the shared tag store, so the store IS the
   // option list (a local "created here" copy would list the new tag twice).
-  const tagOptions = window.OdysseyData.tags.filter(t => !t.archived).map(t => ({
-    value: t.id,
-    label: t.name
-  }));
+  const tagOptions = window.OdysseyData.tags.filter(t => !t.archived).map(window.OdysseyData.tagOption);
   const createTag = name => {
     const opt = window.OdysseyData.createTag('transaction', name);
     if (!opt) return null;
@@ -28639,7 +28933,21 @@ const AddTransactionModal = ({
     placeholder: "No tags",
     onCreate: createTag,
     createKinds: window.OdysseyData.tagCreateKinds('transaction'),
-    help: "Add as many as fit \u2014 e.g. a category plus Reimbursable."
+    help: (() => {
+      // Live preview of the row icon the server will resolve (§3):
+      // first tag by name with an icon, else the generic tag glyph.
+      const TTI = (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagIcons;
+      const chosen = (draft.tags || []).map(id => window.OdysseyData.tagById[id]).filter(Boolean);
+      if (!TTI || !chosen.length) return 'Add as many as fit — e.g. a category plus Reimbursable.';
+      const g = TTI.resolve(chosen);
+      const from = TTI.order(chosen).find(t => t.icon === g);
+      return /*#__PURE__*/React.createElement("span", {
+        className: "atm-rowicon"
+      }, /*#__PURE__*/React.createElement("span", null, "Row icon"), /*#__PURE__*/React.createElement(MIcon, {
+        name: g,
+        size: 16
+      }), /*#__PURE__*/React.createElement("span", null, from ? `from ${from.name}` : 'default — none of these tags has an icon'));
+    })()
   })), /*#__PURE__*/React.createElement(FieldShell, {
     label: "Status",
     className: "odc-form-grid-wide"
@@ -29137,10 +29445,7 @@ const AnalyzeFileModal = ({
       iconColor: t.color
     };
   });
-  const tagOptions = D.tags.filter(t => !t.archived).map(t => ({
-    value: t.id,
-    label: t.name
-  }));
+  const tagOptions = D.tags.filter(t => !t.archived).map(D.tagOption);
   const tagName = id => D.tagById[id] ? D.tagById[id].name : id;
   const addCp = cp => setExtraCps(prev => [...prev, cp]);
 
@@ -35326,7 +35631,8 @@ const TransactionTagPicker = props => {
     value: t.id || t.transactionTagId,
     label: t.archived ? `${t.name} · Archived` : t.name,
     disabled: used.has(t.id || t.transactionTagId),
-    note: used.has(t.id || t.transactionTagId) ? 'in use' : undefined
+    note: used.has(t.id || t.transactionTagId) ? 'in use' : undefined,
+    icon: DS.TransactionTagIcons ? DS.TransactionTagIcons.glyph(t.icon) : 'local_offer'
   }));
   return /*#__PURE__*/React.createElement(FieldShell, {
     label: label,
@@ -40341,10 +40647,7 @@ const ContractSmartTags = ({
     id: t.id,
     label: t.name
   }));
-  const options = allTags.map(t => ({
-    value: t.id,
-    label: t.name
-  }));
+  const options = allTags.map(window.OdysseyData.tagOption);
   const add = id => {
     if (cap != null && tagIds.length >= cap) {
       setAddError(`A contract may have at most ${cap} smart tags.`);
@@ -50740,10 +51043,7 @@ const PropertySmartTags = ({
     id: t.id,
     label: t.name
   }));
-  const options = PR_D.tags.filter(t => !t.archived).map(t => ({
-    value: t.id,
-    label: t.name
-  }));
+  const options = PR_D.tags.filter(t => !t.archived).map(PR_D.tagOption);
   /* The server answers 422 with the effective number interpolated; the page
      only pre-checks, and stops doing so when the limits read is degraded. */
   const add = id => {
@@ -56260,8 +56560,15 @@ try { (() => {
    Fields mirror the Odyssey.Finance.Dtos TransactionTag DTOs:
      ExistingTransactionTag — TransactionTagId, Name (≤64), Description (≤256),
                               Archived (datetime?, null = active)
-     NewTransactionTag      — Name, Description, Archived (bool) */
-
+     NewTransactionTag      — Name, Description, Archived (bool)
+   Transaction tags only (cfg.icons): Icon (catalogue key | null = default).
+   The leading avatar IS the icon column; null / unknown keys draw the
+   generic local_offer, exactly as the API projects them. */
+const TT_ICONS = () => (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagIcons;
+const tagGlyph = t => {
+  const I = TT_ICONS();
+  return I ? I.glyph(t.icon) : 'local_offer';
+};
 const TAG_TONE = {
   bg: 'oklch(0.72 0.16 295 / 0.16)',
   fg: 'oklch(0.78 0.13 295)'
@@ -56299,7 +56606,8 @@ const TagTable = ({
   sort,
   onSortChange,
   empty,
-  ariaLabel = 'Transaction tags'
+  ariaLabel = 'Transaction tags',
+  icons = false
 }) => {
   const H = window.OdysseyHelpers;
   return /*#__PURE__*/React.createElement(RecordTable, {
@@ -56312,8 +56620,8 @@ const TagTable = ({
     },
     sort: sort,
     onSortChange: onSortChange,
-    leading: () => /*#__PURE__*/React.createElement(Avatar, {
-      icon: "local_offer",
+    leading: t => /*#__PURE__*/React.createElement(Avatar, {
+      icon: icons ? tagGlyph(t) : 'local_offer',
       tone: TAG_TONE
     }),
     columns: [{
@@ -56401,15 +56709,19 @@ const AddTagModal = ({
   onSave,
   tag = null,
   siblings = [],
-  subtitle = 'Tags group transactions and budget items by category.'
+  subtitle = 'Tags group transactions and budget items by category.',
+  icons = false
 }) => {
   const {
     useState
   } = React;
   const editing = !!tag;
+  const I = TT_ICONS();
+  const Picker = (window.OdysseyDesignSystem_d5aa51 || {}).TagIconPicker;
   const [draft, setDraft] = useState({
     name: tag?.name || '',
-    description: tag?.description || ''
+    description: tag?.description || '',
+    icon: I ? I.normalize(tag?.icon) : null
   });
   const [errors, setErrors] = useState({});
   const set = k => v => {
@@ -56442,7 +56754,11 @@ const AddTagModal = ({
     }
     const dto = {
       name,
-      description: draft.description.trim() || undefined
+      description: draft.description.trim() || undefined,
+      // PUT is full replacement: always send icon — null means Default.
+      ...(icons ? {
+        icon: draft.icon || null
+      } : {})
     };
     if (editing) {
       // Preserve the tag's archive state — that's toggled from the row action.
@@ -56482,7 +56798,18 @@ const AddTagModal = ({
     onChange: set('description'),
     placeholder: "What this tag is for",
     helper: "Up to 256 characters"
-  }));
+  }), icons && Picker && /*#__PURE__*/React.createElement(FieldShell, {
+    label: "Icon",
+    htmlFor: "tag-icon",
+    error: errors.icon,
+    helper: "Shown for this tag and on every transaction carrying it. Default keeps the tag icon."
+  }, /*#__PURE__*/React.createElement(Picker, {
+    id: "tag-icon",
+    value: draft.icon,
+    onChange: set('icon'),
+    ariaLabel: "Icon",
+    ariaDescribedby: "tag-icon-help"
+  })));
 };
 
 /* ---------- Delete refusal (409) ----------
@@ -56678,13 +57005,15 @@ const createTagsPage = cfg => () => {
     onClose: () => setAdding(false),
     onCreate: createTag,
     siblings: tags,
-    subtitle: cfg.modalSubtitle
+    subtitle: cfg.modalSubtitle,
+    icons: !!cfg.icons
   }), editingTag && /*#__PURE__*/React.createElement(AddTagModal, {
     tag: editingTag,
     onClose: () => setEditingTag(null),
     onSave: onSave,
     siblings: tags,
-    subtitle: cfg.modalSubtitle
+    subtitle: cfg.modalSubtitle,
+    icons: !!cfg.icons
   }), blocked && /*#__PURE__*/React.createElement(TagDeleteBlockedModal, {
     tag: blocked.tag,
     clauses: blocked.clauses,
@@ -56699,6 +57028,7 @@ const createTagsPage = cfg => () => {
     onSave: onSave,
     onDelete: tryDelete,
     onEdit: setEditingTag,
+    icons: !!cfg.icons,
     sort: sort,
     onSortChange: setSort,
     empty: /*#__PURE__*/React.createElement(EmptyState, {
@@ -56729,6 +57059,7 @@ const TransactionTags = createTagsPage({
   title: 'Transaction tags',
   source: d => d.tags,
   idPrefix: 'tag-',
+  icons: true,
   searchPlaceholder: 'Search name or description…',
   modalSubtitle: 'Tags group transactions and budget items by category.',
   emptyDesc: 'Create your first tag to start categorizing transactions.',
@@ -56931,9 +57262,13 @@ const TxnTable = ({
   const AddTransactionFileModal = window.AddTransactionFileModal;
   const rows = useMemo(() => txns.map(t => {
     const acct = d.accountById[t.account];
-    const tags = d.txnTags(t);
+    // Tags arrive name-ordered (backend §3) and the avatar glyph is the
+    // server-resolved displayIcon — recomputed here so a local edit previews it.
+    const TTI = (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagIcons;
+    const tags = TTI ? TTI.order(d.txnTags(t)) : d.txnTags(t);
     return {
       ...t,
+      displayIcon: TTI ? TTI.resolve(tags) : t.icon,
       accountLabel: acct ? acct.name : '',
       accountNumber: acct ? acct.number : '',
       tags: tags.map(tg => ({
@@ -57229,10 +57564,7 @@ const Transactions = ({
       allLabel: "All tags",
       value: tagFilter,
       onChange: setTagFilter,
-      options: d.tags.map(t => ({
-        value: t.id,
-        label: t.name
-      }))
+      options: d.tags.map(d.tagOption)
     })), /*#__PURE__*/React.createElement("div", {
       style: {
         minWidth: 150
@@ -63401,71 +63733,85 @@ window.OdysseyData = {
     id: 't1',
     name: 'Groceries',
     description: 'Supermarkets, food shops, and weekly stock-ups',
+    icon: 'shopping_cart',
     archived: null
   }, {
     id: 't2',
     name: 'Subscriptions',
     description: 'Recurring streaming, software, and memberships',
+    icon: 'subscriptions',
     archived: null
   }, {
     id: 't3',
     name: 'Transit',
     description: 'Public transit, rideshare, and fuel',
+    icon: 'directions_bus',
     archived: null
   }, {
     id: 't4',
     name: 'Rent',
     description: 'Monthly housing payments',
+    icon: 'home',
     archived: null
   }, {
     id: 't5',
     name: 'Income',
     description: 'Salary, refunds, interest, and inbound payments',
+    icon: 'payments',
     archived: null
   }, {
     id: 't6',
     name: 'Dining',
     description: 'Restaurants, cafés, and bars',
+    icon: 'restaurant',
     archived: null
   }, {
     id: 't7',
     name: 'Utilities',
     description: 'Electricity, water, gas, and internet',
+    icon: 'bolt',
     archived: null
   }, {
     id: 't9',
     name: 'Reimbursable',
     description: 'Expensable — to be claimed back from work or a peer',
+    icon: null,
     archived: null
   }, {
     id: 't10',
     name: 'Business',
     description: 'Work-related spending, tracked for the books',
+    icon: 'work',
     archived: null
   }, {
     id: 't11',
     name: 'Freelance',
     description: 'Consulting and side-project income',
+    icon: null,
     archived: null
   }, {
     id: 't12',
     name: 'Bonus',
     description: 'Performance and year-end bonuses',
+    icon: 'payments',
     archived: null
   }, {
     id: 't13',
     name: 'Gifts',
     description: 'Presents for family and friends',
+    icon: 'card_giftcard',
     archived: null
   }, {
     id: 't14',
     name: 'Travel',
     description: 'Flights, hotels, and trips away',
+    icon: 'flight',
     archived: null
   }, {
     id: 't8',
     name: 'Vacation 2024',
     description: 'One-off travel spending from the 2024 trips',
+    icon: 'flight',
     archived: '2025-01-08T09:00:00Z'
   }],
   /* Canonical contact-type registry — single source of truth for the
@@ -65236,6 +65582,27 @@ window.OdysseyData.txnTagIds = t => {
 };
 /* The same set resolved to TransactionTag records (skips unknown / archived-away ids). */
 window.OdysseyData.txnTags = t => window.OdysseyData.txnTagIds(t).map(id => window.OdysseyData.tagById[id]).filter(Boolean);
+/* ExistingTransaction.DisplayIcon — server-resolved from the tags (backend
+   spec §3). Seeded here through the DS catalogue's resolver so every ledger
+   surface (Transactions, Accounts, Budgets, Dashboard) shows the tag's icon. */
+(() => {
+  const TTI = (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagIcons;
+  if (!TTI) return;
+  window.OdysseyData.txnDisplayIcon = t => TTI.resolve(window.OdysseyData.txnTags(t));
+  window.OdysseyData.transactions.forEach(t => {
+    t.displayIcon = TTI.resolve(window.OdysseyData.txnTags(t));
+  });
+})();
+/* A transaction tag as a picker option — every tag picker and filter shows the
+   tag's icon (null / unknown → local_offer, the API's projection). */
+window.OdysseyData.tagOption = t => {
+  const TTI = (window.OdysseyDesignSystem_d5aa51 || {}).TransactionTagIcons;
+  return {
+    value: t.id,
+    label: t.name,
+    icon: TTI ? TTI.glyph(t.icon) : 'local_offer'
+  };
+};
 window.OdysseyData.accountById = Object.fromEntries(window.OdysseyData.accounts.map(a => [a.id, a]));
 window.OdysseyData.accountTypeById = Object.fromEntries(window.OdysseyData.accountTypes.map(t => [t.key, t]));
 window.OdysseyData.contactTypeByKey = Object.fromEntries(window.OdysseyData.contactTypes.map(t => [t.key, t]));
@@ -71086,6 +71453,14 @@ __ds_ns.Table = __ds_scope.Table;
 __ds_ns.Tabs = __ds_scope.Tabs;
 
 __ds_ns.TagChips = __ds_scope.TagChips;
+
+__ds_ns.TRANSACTION_TAG_ICONS = __ds_scope.TRANSACTION_TAG_ICONS;
+
+__ds_ns.TRANSACTION_TAG_ICON_DEFAULT = __ds_scope.TRANSACTION_TAG_ICON_DEFAULT;
+
+__ds_ns.TransactionTagIcons = __ds_scope.TransactionTagIcons;
+
+__ds_ns.TagIconPicker = __ds_scope.TagIconPicker;
 
 __ds_ns.TagMultiSelect = __ds_scope.TagMultiSelect;
 

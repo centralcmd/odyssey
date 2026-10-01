@@ -69,7 +69,7 @@ const PropertySmartTags = ({ property, tagIds, setTagIds, onNavigate, canWrite, 
 
   const matches = PR_D.transactions.filter(t => PR_D.txnTagIds(t).some(id => tagIds.includes(id)));
   const configured = tagIds.map(id => PR_D.tagById[id]).filter(Boolean).map(t => ({ id: t.id, label: t.name }));
-  const options = PR_D.tags.filter(t => !t.archived).map(t => ({ value: t.id, label: t.name }));
+  const options = PR_D.tags.filter(t => !t.archived).map(PR_D.tagOption);
   /* The server answers 422 with the effective number interpolated; the page
      only pre-checks, and stops doing so when the limits read is degraded. */
   const add = (id) => {

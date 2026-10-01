@@ -1186,7 +1186,7 @@ const TransactionTagPicker = (props) => {
   const used = new Set(usedTagIds.filter(t => t && t !== value));
   const sel = tags.find(t => (t.id || t.transactionTagId) === value);
   const opts = tags.filter(t => !t.archived || (t.id || t.transactionTagId) === value)
-    .map(t => ({ value: t.id || t.transactionTagId, label: t.archived ? `${t.name} · Archived` : t.name, disabled: used.has(t.id || t.transactionTagId), note: used.has(t.id || t.transactionTagId) ? 'in use' : undefined }));
+    .map(t => ({ value: t.id || t.transactionTagId, label: t.archived ? `${t.name} · Archived` : t.name, disabled: used.has(t.id || t.transactionTagId), note: used.has(t.id || t.transactionTagId) ? 'in use' : undefined, icon: (DS.TransactionTagIcons ? DS.TransactionTagIcons.glyph(t.icon) : 'local_offer') }));
   return (
     <FieldShell label={label} htmlFor={id} required helper={(sel && sel.description) || help || "Matched transactions become this item's actual."}
       error={error} className={`odc-tagpick${hideLabel ? ' hide-label' : ''}`}>

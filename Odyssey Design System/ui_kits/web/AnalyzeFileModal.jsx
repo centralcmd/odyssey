@@ -313,7 +313,7 @@ const AnalyzeFileModal = ({ file, account, onClose, onImported, onNavigateTransa
     const t = (D.contactTypeByKey || {})[c.type] || {};
     return { value: c.id, label: c.name, icon: t.icon || 'category', iconColor: t.color };
   });
-  const tagOptions = D.tags.filter(t => !t.archived).map(t => ({ value: t.id, label: t.name }));
+  const tagOptions = D.tags.filter(t => !t.archived).map(D.tagOption);
   const tagName = (id) => (D.tagById[id] ? D.tagById[id].name : id);
   const addCp = (cp) => setExtraCps(prev => [...prev, cp]);
 

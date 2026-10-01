@@ -217,7 +217,7 @@ const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite =
   if (!DSSection) return null;
 
   const configured = tagIds.map(id => tagById[id]).filter(Boolean).map(t => ({ id: t.id, label: t.name }));
-  const options = allTags.map(t => ({ value: t.id, label: t.name }));
+  const options = allTags.map(window.OdysseyData.tagOption);
   const add = (id) => {
     if (cap != null && tagIds.length >= cap) { setAddError(`A contract may have at most ${cap} smart tags.`); return; }
     setAddError(null);
