@@ -327,14 +327,17 @@ public class TuningLookupDegradationTests
         Assert.Equal(ListDefaults.MaxFilterArrayLength, limits.MaxSmartTagsPerAccount);
 
         // Warning, not Error: the level is what separates "clamped" from "degraded" in the operator's
-        // log, so it is pinned alongside the value. Both numbers are named — the stored one, so an
-        // operator can find the row to repair, and the resolved one, so the line says what is in force.
+        // log, so it is pinned alongside the value. The line names the key, so an operator can find the
+        // row to repair, and the resolved bound, so it says what is in force. Since the shared
+        // IntSettingResolver (issue #287 H1) it no longer echoes the stored value — the no-echo rule
+        // SystemSettingsLookup already followed, now applied to every lookup.
         var warning = Assert.Single(logger.Entries, entry => entry.Level == LogLevel.Warning);
-        Assert.Contains("500", warning.Message, StringComparison.Ordinal);
+        Assert.Contains(SystemSettingsKeys.AccountMaxSmartTagsPerAccount, warning.Message, StringComparison.Ordinal);
         Assert.Contains(
             SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax.ToString(CultureInfo.InvariantCulture),
             warning.Message,
             StringComparison.Ordinal);
+        Assert.DoesNotContain("500", warning.Message, StringComparison.Ordinal);
     }
 
     /// <summary>

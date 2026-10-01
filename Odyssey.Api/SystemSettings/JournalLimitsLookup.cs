@@ -1,5 +1,3 @@
-using System.Globalization;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Odyssey.Context;
 using Odyssey.Core.Journal;
@@ -43,6 +41,11 @@ namespace Odyssey.Api.SystemSettings;
 /// </para>
 ///
 /// <para>
+/// Parsing, the read-path clamp to each key's <c>SystemSettingsBounds</c> pair, the watermark (which
+/// carries the TTL) and the logging are <see cref="IntSettingResolver"/>'s (issue #287 H1).
+/// </para>
+///
+/// <para>
 /// The watermarks live in <see cref="IMemoryCache"/> rather than <c>static</c> fields. Both have the
 /// same lifetime in production (the cache is a singleton), but the cache is container-scoped, so a
 /// watermark cannot leak between test classes running in parallel.
@@ -54,23 +57,66 @@ public sealed class JournalLimitsLookup(
     ILogger<JournalLimitsLookup> logger) : IJournalLimitsLookup
 {
     internal const string CacheKey = "system-settings:journal-request-caps";
-    private const string LastKnownGoodPrefix = "system-settings:journal-request-caps:lkg:";
     private const long BytesPerMegabyte = 1024 * 1024;
 
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
+    private static readonly IntSettingSpec PhotoMaxLinksPerKind = new(
+        SystemSettingsKeys.PhotoMaxLinksPerKind, SystemSettingsDefaults.PhotoMaxLinksPerKind,
+        SystemSettingsBounds.PhotoMaxLinksPerKindMin, SystemSettingsBounds.PhotoMaxLinksPerKindMax);
 
-    private static readonly string[] Keys =
-    [
-        SystemSettingsKeys.PhotoMaxLinksPerKind,
-        SystemSettingsKeys.PhotoMaxAlbumMembers,
-        SystemSettingsKeys.JournalEntryMaxLinksPerKind,
-        SystemSettingsKeys.JournalTaskMaxLinksPerKind,
-        SystemSettingsKeys.PhotoMetadataReadMegabytes,
+    private static readonly IntSettingSpec PhotoMaxAlbumMembers = new(
+        SystemSettingsKeys.PhotoMaxAlbumMembers, SystemSettingsDefaults.PhotoMaxAlbumMembers,
+        SystemSettingsBounds.PhotoMaxAlbumMembersMin, SystemSettingsBounds.PhotoMaxAlbumMembersMax);
+
+    private static readonly IntSettingSpec JournalEntryMaxLinksPerKind = new(
+        SystemSettingsKeys.JournalEntryMaxLinksPerKind, SystemSettingsDefaults.JournalEntryMaxLinksPerKind,
+        SystemSettingsBounds.JournalEntryMaxLinksPerKindMin, SystemSettingsBounds.JournalEntryMaxLinksPerKindMax);
+
+    private static readonly IntSettingSpec JournalTaskMaxLinksPerKind = new(
+        SystemSettingsKeys.JournalTaskMaxLinksPerKind, SystemSettingsDefaults.JournalTaskMaxLinksPerKind,
+        SystemSettingsBounds.JournalTaskMaxLinksPerKindMin, SystemSettingsBounds.JournalTaskMaxLinksPerKindMax);
+
+    private static readonly IntSettingSpec PhotoMetadataReadMegabytes = new(
+        SystemSettingsKeys.PhotoMetadataReadMegabytes, SystemSettingsDefaults.PhotoMetadataReadMegabytes,
+        SystemSettingsBounds.PhotoMetadataReadMegabytesMin, SystemSettingsBounds.PhotoMetadataReadMegabytesMax);
+
+    private static readonly IntSettingSpec PhotoMetadataExtractionTimeoutSeconds = new(
         SystemSettingsKeys.PhotoMetadataExtractionTimeoutSeconds,
-        SystemSettingsKeys.CalendarMaxWindowDays,
-        SystemSettingsKeys.CalendarMaxEventDurationDays,
-        SystemSettingsKeys.RecurrenceMaxGeneratedOccurrences,
+        SystemSettingsDefaults.PhotoMetadataExtractionTimeoutSeconds,
+        SystemSettingsBounds.PhotoMetadataExtractionTimeoutSecondsMin,
+        SystemSettingsBounds.PhotoMetadataExtractionTimeoutSecondsMax);
+
+    private static readonly IntSettingSpec CalendarMaxWindowDays = new(
+        SystemSettingsKeys.CalendarMaxWindowDays, SystemSettingsDefaults.CalendarMaxWindowDays,
+        SystemSettingsBounds.CalendarMaxWindowDaysMin, SystemSettingsBounds.CalendarMaxWindowDaysMax);
+
+    private static readonly IntSettingSpec CalendarMaxEventDurationDays = new(
+        SystemSettingsKeys.CalendarMaxEventDurationDays, SystemSettingsDefaults.CalendarMaxEventDurationDays,
+        SystemSettingsBounds.CalendarMaxEventDurationDaysMin, SystemSettingsBounds.CalendarMaxEventDurationDaysMax);
+
+    // Tighten-only: the pair's maximum IS the shipped default, so the clamp holds a row written by a
+    // hand edit or a restore at the pinned bound — re-opening the write amplification the tighten-only
+    // conversion closed is exactly what it prevents (issue #434 §9, V3-S1).
+    private static readonly IntSettingSpec RecurrenceMaxGeneratedOccurrences = new(
+        SystemSettingsKeys.RecurrenceMaxGeneratedOccurrences, SystemSettingsDefaults.RecurrenceMaxGeneratedOccurrences,
+        SystemSettingsBounds.RecurrenceMaxGeneratedOccurrencesMin,
+        SystemSettingsBounds.RecurrenceMaxGeneratedOccurrencesMax);
+
+    private static readonly IntSettingSpec[] Specs =
+    [
+        PhotoMaxLinksPerKind,
+        PhotoMaxAlbumMembers,
+        JournalEntryMaxLinksPerKind,
+        JournalTaskMaxLinksPerKind,
+        PhotoMetadataReadMegabytes,
+        PhotoMetadataExtractionTimeoutSeconds,
+        CalendarMaxWindowDays,
+        CalendarMaxEventDurationDays,
+        RecurrenceMaxGeneratedOccurrences,
     ];
+
+    private static readonly string[] Keys = [.. Specs.Select(spec => spec.Key)];
+
+    private readonly IntSettingResolver resolver = new(cache, logger, CacheKey);
 
     public async Task<JournalLimits> GetAsync(CancellationToken cancellationToken = default)
     {
@@ -79,87 +125,29 @@ public sealed class JournalLimitsLookup(
             return cached;
         }
 
-        Dictionary<string, string>? values;
-        try
-        {
-            values = await context.SystemSettings.AsNoTracking()
-                .Where(row => Keys.Contains(row.Key))
-                .ToDictionaryAsync(row => row.Key, row => row.Value, cancellationToken);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            // These sit on ordinary create/update paths, so a settings read fault must degrade rather
-            // than turn a user's save into a 500.
-            logger.LogError(exception, "Reading the journal request caps failed; falling back conservatively.");
-            values = null;
-        }
+        var (values, readFailed) = await resolver.ReadAsync(context, Keys, "journal request caps", cancellationToken);
+        var degraded = false;
 
-        var readFailed = values is null;
-        var rows = values ?? [];
-        var degraded = readFailed;
+        int Cap(IntSettingSpec spec)
+        {
+            var resolved = resolver.Resolve(spec, values, readFailed);
+            degraded |= resolved.IsDegraded;
+            return resolved.Value;
+        }
 
         var limits = new JournalLimits(
-            Cap(rows, SystemSettingsKeys.PhotoMaxLinksPerKind,
-                SystemSettingsDefaults.PhotoMaxLinksPerKind, readFailed, ref degraded),
-            Cap(rows, SystemSettingsKeys.PhotoMaxAlbumMembers,
-                SystemSettingsDefaults.PhotoMaxAlbumMembers, readFailed, ref degraded),
-            Cap(rows, SystemSettingsKeys.JournalEntryMaxLinksPerKind,
-                SystemSettingsDefaults.JournalEntryMaxLinksPerKind, readFailed, ref degraded),
-            Cap(rows, SystemSettingsKeys.JournalTaskMaxLinksPerKind,
-                SystemSettingsDefaults.JournalTaskMaxLinksPerKind, readFailed, ref degraded),
-            Cap(rows, SystemSettingsKeys.PhotoMetadataReadMegabytes,
-                SystemSettingsDefaults.PhotoMetadataReadMegabytes, readFailed, ref degraded) * BytesPerMegabyte,
-            Cap(rows, SystemSettingsKeys.PhotoMetadataExtractionTimeoutSeconds,
-                SystemSettingsDefaults.PhotoMetadataExtractionTimeoutSeconds, readFailed, ref degraded),
-            Cap(rows, SystemSettingsKeys.CalendarMaxWindowDays,
-                SystemSettingsDefaults.CalendarMaxWindowDays, readFailed, ref degraded),
-            Cap(rows, SystemSettingsKeys.CalendarMaxEventDurationDays,
-                SystemSettingsDefaults.CalendarMaxEventDurationDays, readFailed, ref degraded),
-            // Clamped to the shipped default even on a clean read: this key is tighten-only, and
-            // [Range] on the write DTO is the only write-side bound — which runs on the HTTP path
-            // alone. A row written by config adoption, a hand edit or a restore would otherwise carry
-            // a value above the pinned bound straight into the generator, re-opening exactly the write
-            // amplification the tighten-only conversion closed (issue #434 §9, V3-S1).
-            Math.Min(
-                Cap(rows, SystemSettingsKeys.RecurrenceMaxGeneratedOccurrences,
-                    SystemSettingsDefaults.RecurrenceMaxGeneratedOccurrences, readFailed, ref degraded),
-                SystemSettingsDefaults.RecurrenceMaxGeneratedOccurrences),
+            Cap(PhotoMaxLinksPerKind),
+            Cap(PhotoMaxAlbumMembers),
+            Cap(JournalEntryMaxLinksPerKind),
+            Cap(JournalTaskMaxLinksPerKind),
+            Cap(PhotoMetadataReadMegabytes) * BytesPerMegabyte,
+            Cap(PhotoMetadataExtractionTimeoutSeconds),
+            Cap(CalendarMaxWindowDays),
+            Cap(CalendarMaxEventDurationDays),
+            Cap(RecurrenceMaxGeneratedOccurrences),
             degraded);
 
-        cache.Set(CacheKey, limits, CacheTtl);
+        cache.Set(CacheKey, limits, IntSettingResolver.CacheTtl);
         return limits;
-    }
-
-    /// <summary>
-    /// Resolves one cap. Absent-but-query-succeeded is <strong>healthy</strong> and yields the compiled
-    /// default; only a failed query or a present-but-unusable value is degraded, and a degraded one
-    /// resolves to <c>min(last-known-good, default)</c> — <c>min</c> because every value here is a cap.
-    /// </summary>
-    private int Cap(
-        IReadOnlyDictionary<string, string> values, string key, int fallback, bool readFailed, ref bool degraded)
-    {
-        if (!readFailed)
-        {
-            if (!values.TryGetValue(key, out var stored))
-            {
-                cache.Set(LastKnownGoodPrefix + key, fallback);
-                return fallback;
-            }
-
-            if (int.TryParse(stored, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
-                && parsed > 0)
-            {
-                cache.Set(LastKnownGoodPrefix + key, parsed);
-                return parsed;
-            }
-
-            logger.LogError(
-                "The stored journal request cap '{Key}' has an unusable value '{Value}'; falling back conservatively.",
-                key, stored);
-        }
-
-        degraded = true;
-        var lastKnownGood = cache.TryGetValue(LastKnownGoodPrefix + key, out int watermark) ? watermark : fallback;
-        return Math.Min(lastKnownGood, fallback);
     }
 }

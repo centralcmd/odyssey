@@ -333,8 +333,9 @@ public sealed class FileAnalysisSettingsLookup(
         {
             // An admin LOWERING the threshold is a legitimate write, so the watermark tracks the
             // current clean value rather than ratcheting up forever — the guarantee is "a fault never
-            // loosens", not "a threshold never decreases".
-            cache.Set(LastKnownGoodThresholdKey, parsed, new MemoryCacheEntryOptions());
+            // loosens", not "a threshold never decreases". It carries the TTL like every other
+            // watermark (issue #287 H1): one older than that is "last known", not "last known good".
+            cache.Set(LastKnownGoodThresholdKey, parsed, CacheTtl);
             return parsed;
         }
 

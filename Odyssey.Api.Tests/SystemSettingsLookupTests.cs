@@ -339,15 +339,19 @@ public class SystemSettingsLookupTests
     [Fact]
     public async Task TheWatermark_IsWrittenWithAnExpiry()
     {
-        var source = await File.ReadAllTextAsync(
+        // The parse/clamp/degrade logic moved to the shared IntSettingResolver (issue #287 H1); this
+        // lookup must reach it rather than keep a private copy that could drift again.
+        var lookup = await File.ReadAllTextAsync(
             SolutionFile("Odyssey.Api", "SystemSettings", "SystemSettingsLookup.cs"));
+        var resolver = await File.ReadAllTextAsync(
+            SolutionFile("Odyssey.Api", "SystemSettings", "IntSettingResolver.cs"));
 
-        Assert.DoesNotContain(
-            "cache.Set(LastKnownGoodPrefix + key, fallback);", source, StringComparison.Ordinal);
+        Assert.Contains("resolver.Resolve(", lookup, StringComparison.Ordinal);
+        Assert.DoesNotContain("cache.Set(LastKnownGoodPrefix", lookup, StringComparison.Ordinal);
         Assert.Contains(
-            "cache.Set(LastKnownGoodPrefix + key, fallback, CacheTtl);", source, StringComparison.Ordinal);
+            "cache.Set(WatermarkKey(spec.Key), spec.Default, CacheTtl);", resolver, StringComparison.Ordinal);
         Assert.Contains(
-            "cache.Set(LastKnownGoodPrefix + key, clamped, CacheTtl);", source, StringComparison.Ordinal);
+            "cache.Set(WatermarkKey(spec.Key), clamped, CacheTtl);", resolver, StringComparison.Ordinal);
     }
 
     /// <summary>
