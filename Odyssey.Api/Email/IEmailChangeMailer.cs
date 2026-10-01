@@ -19,14 +19,16 @@ public interface IEmailChangeMailer
     /// with its query preserved. Subject to the per-recipient send throttle, like every message that can
     /// be pointed at an address the caller does not own.
     /// </summary>
-    Task SendChangeConfirmationAsync(
-        string newEmail, string confirmationLink, CancellationToken cancellationToken = default);
+    Task SendChangeConfirmationAsync(string newEmail, string confirmationLink);
 
     /// <summary>
     /// Tells <paramref name="currentEmail"/> that a change of sign-in address was requested. <b>Not</b>
     /// throttled: the per-recipient budget is keyed by address and can be spent anonymously through
     /// <c>/forgotPassword</c>, so a throttled notice could be suppressed by whoever wants it unseen.
     /// </summary>
-    Task SendChangeNoticeAsync(
-        string currentEmail, string newEmail, CancellationToken cancellationToken = default);
+    /// <remarks>
+    /// Takes no cancellation token, on purpose: a caller-side token would be the request's, and a client
+    /// that disconnects mid-request must not be able to abort the one message that warns the owner.
+    /// </remarks>
+    Task SendChangeNoticeAsync(string currentEmail, string newEmail);
 }

@@ -152,10 +152,14 @@ public sealed class AccountSecurityController : ControllerBase
     /// </list>
     /// </para>
     /// <para>
-    /// The answer is <c>202</c> whether or not the new address is already another account's. That case
+    /// The status is <c>202</c> whether or not the new address is already another account's. That case
     /// mails nothing to the new address — the change could never be confirmed, and Identity's
     /// <c>/confirmEmail</c> would apply the email and then fail on the user name, leaving the two apart —
-    /// but saying so would make this an existence oracle for any address. The notice still goes out.
+    /// and a distinct status would make this an existence oracle for any address. The notice still goes
+    /// out. The uniformity is of the <em>status</em> only: the skipped send makes that path measurably
+    /// faster. That residual is accepted rather than engineered away, because every probe costs the
+    /// account's own password, counts toward its lockout and spends the shared per-actor rate limit —
+    /// and <c>/register</c> already answers the same question more cheaply.
     /// </para>
     /// <para>
     /// Deliberately <b>not</b> <see cref="PasswordChangeExemptAttribute"/>: a session gated on a forced
@@ -217,13 +221,13 @@ public sealed class AccountSecurityController : ControllerBase
         {
             var token = await userManager.GenerateChangeEmailTokenAsync(user, newEmail);
             await emailChangeMailer.SendChangeConfirmationAsync(
-                newEmail, ConfirmationLink(user.Id, token, newEmail), HttpContext.RequestAborted);
+                newEmail, ConfirmationLink(user.Id, token, newEmail));
             logger.LogInformation("Email change requested for user {UserId}.", user.Id);
         }
 
         if (!string.IsNullOrEmpty(currentEmail))
         {
-            await emailChangeMailer.SendChangeNoticeAsync(currentEmail, newEmail, HttpContext.RequestAborted);
+            await emailChangeMailer.SendChangeNoticeAsync(currentEmail, newEmail);
         }
 
         return Accepted();

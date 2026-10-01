@@ -104,6 +104,22 @@ public class ManageInfoWriteBlockTests
     }
 
     [Fact]
+    public async Task SendLogs_NameARecipientDigest_NeverTheAddress()
+    {
+        // An address is PII and these logs are shipped and retained; DeliverAsync logs the same keyed
+        // digest the throttle does. The failed send is the probe — it is the line that names a recipient.
+        var logger = new CapturingLogger<SmtpEmailSender>();
+        var sender = SmtpEmailSenderTestHarness.Create(
+            logger, smtpHost: SmtpEmailSenderTestHarness.UnreachableHost);
+
+        await sender.SendChangeNoticeAsync("Owner@Example.com", "moved@example.com");
+
+        var failure = Assert.Single(logger.Entries, entry => entry.Level == LogLevel.Error);
+        Assert.DoesNotContain("owner@example.com", failure.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("recipient ", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task TheConfirmation_RespectsTheThrottle()
     {
         // It goes to an address the caller names, so it must not be a way around the mail-bombing bound.

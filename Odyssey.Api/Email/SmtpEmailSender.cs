@@ -118,10 +118,9 @@ public sealed class SmtpEmailSender(
     /// sign in unconfirmed, and has no bearing on whether a sign-in identity may move without proof of the
     /// destination mailbox — which it never may.
     /// </summary>
-    public async Task SendChangeConfirmationAsync(
-        string newEmail, string confirmationLink, CancellationToken cancellationToken = default)
+    public async Task SendChangeConfirmationAsync(string newEmail, string confirmationLink)
     {
-        var settings = await ReadSettingsAsync(cancellationToken);
+        var settings = await ReadSettingsAsync();
         var link = RewriteToClient(confirmationLink, EmailChangeMail.ClientPath, settings.Transport);
         await SendAsync(
             newEmail, EmailChangeMail.ConfirmationSubject, EmailChangeMail.ConfirmationBody(link), link, settings);
@@ -131,16 +130,15 @@ public sealed class SmtpEmailSender(
     /// The notice to the current address (issue #246). Acquires no send permit — see
     /// <see cref="IEmailChangeMailer.SendChangeNoticeAsync"/> — and carries no action link.
     /// </summary>
-    public async Task SendChangeNoticeAsync(
-        string currentEmail, string newEmail, CancellationToken cancellationToken = default)
+    public async Task SendChangeNoticeAsync(string currentEmail, string newEmail)
     {
-        var settings = await ReadSettingsAsync(cancellationToken);
+        var settings = await ReadSettingsAsync();
         await DeliverAsync(
             currentEmail,
             EmailChangeMail.NoticeSubject,
             EmailChangeMail.NoticeBody(newEmail),
             actionLink: null,
-            cancellationToken,
+            CancellationToken.None,
             settings);
     }
 

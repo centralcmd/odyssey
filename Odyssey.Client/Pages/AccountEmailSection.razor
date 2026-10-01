@@ -1,12 +1,15 @@
 @inject AuthApiClient AuthApiClient
-@inject ISnackbar Snackbar
 @using Odyssey.Client.Components
 @* /account · "Email address", on Odyssey's first-party POST api/account/email (issue #246).
 
    That endpoint verifies the current password (counting failures toward lockout), signs out other
    sessions, mails a confirmation link to the new address and a notice to the current one. Identity's
-   POST manage/info, which did the same with no password at all, is closed. The resend card below is
-   still a design preview and calls nothing. *@
+   POST manage/info, which did the same with no password at all, is closed.
+
+   Accessibility: the submit is disabled while the request is in flight and stays disabled afterwards
+   (the password is cleared on every outcome), so focus is moved to the outcome banner rather than left
+   to fall to <body> (WCAG 2.4.3). The banners are OdsAlerts, so the error is announced assertively and
+   the success politely, once each — there is deliberately no snackbar alongside (WCAG 4.1.3). *@
 
 <MudCard Elevation="1" Class="ods-outline">
     <MudCardContent Class="pa-4">
@@ -28,22 +31,23 @@
             }
         </div>
 
-        @if (_sent)
-        {
-            <div class="alert info acc-block-alert" role="status">
-                <span class="material-icons alert-icon">info</span>
-                <div class="alert-body">
-                    <strong>Confirmation sent.</strong> We've emailed a confirmation link to your new address. Your sign-in email stays the same until you confirm it.
-                </div>
-            </div>
-        }
+        <div @ref="_outcomeRef" tabindex="-1" class="acc-outcome">
+            @if (_sent)
+            {
+                <OdsAlert Severity="Severity.Success" Class="acc-block-alert">
+                    <b>Check your new inbox.</b> If that address can be used, a confirmation link is on its way
+                    to it, and your current address has been told about the request. Your sign-in email stays
+                    the same until you confirm.
+                </OdsAlert>
+            }
 
-        @if (!string.IsNullOrEmpty(_error))
-        {
-            <OdsAlert Severity="Severity.Error" Class="acc-block-alert">@_error</OdsAlert>
-        }
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <OdsAlert Severity="Severity.Error" Class="acc-block-alert">@_error</OdsAlert>
+            }
+        </div>
 
-        <div class="acc-form">
+        <form class="acc-form" @onsubmit="UpdateEmailAsync" @onsubmit:preventDefault="true">
             <MudTextField @bind-Value="_newEmail"
                           Label="New email address"
                           Placeholder="you@example.com"
@@ -60,40 +64,53 @@
                           Variant="Variant.Outlined"
                           InputType="InputType.Password"
                           Immediate="true"
+                          Error="@(_passwordRejected && _password.Length == 0)"
+                          ErrorText="Re-enter your current password."
                           autocomplete="current-password" />
             <div class="acc-form-actions">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           ButtonType="ButtonType.Submit"
                            StartIcon="@Icons.Material.Filled.Send"
-                           Disabled="@(!CanUpdate || _saving)"
-                           OnClick="UpdateEmailAsync">Update email</MudButton>
+                           Disabled="@(!CanUpdate || _saving)">Update email</MudButton>
             </div>
-        </div>
+        </form>
     </MudCardContent>
 </MudCard>
 
-<MudCard Elevation="1" Class="ods-outline">
-    <MudCardContent Class="pa-4">
-        <div class="acc-resend">
-            <div class="acc-cardhead">
-                <span class="acc-ic"><MudIcon Icon="@Icons.Material.Filled.MarkEmailUnread" /></span>
-                <div class="acc-sec-titles">
-                    <div class="acc-sec-title acc-sec-title-sm">Resend confirmation email</div>
-                    <div class="acc-sec-sub">Didn't get the confirmation message? Send it again to your current address.</div>
+@* Only for an unconfirmed address: a confirmed one has nothing to confirm, and Identity would mail it a
+   "confirm your account" message. Wired to POST resendConfirmationEmail, which answers 200 for any
+   address and 429 with an actionable detail when the mail window is spent. *@
+@if (!EmailConfirmed)
+{
+    <MudCard Elevation="1" Class="ods-outline">
+        <MudCardContent Class="pa-4">
+            <div class="acc-resend">
+                <div class="acc-cardhead">
+                    <span class="acc-ic"><MudIcon Icon="@Icons.Material.Filled.MarkEmailUnread" /></span>
+                    <div class="acc-sec-titles">
+                        <div class="acc-sec-title acc-sec-title-sm">Resend confirmation email</div>
+                        <div class="acc-sec-sub">Didn't get the confirmation message? Send it again to your current address.</div>
+                    </div>
                 </div>
+                @if (_resent)
+                {
+                    <span class="acc-saved" role="status"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" aria-hidden="true" />Sent — check your inbox</span>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                               StartIcon="@Icons.Material.Filled.ForwardToInbox"
+                               Disabled="_resending"
+                               OnClick="ResendConfirmationAsync">Resend</MudButton>
+                }
             </div>
-            @if (_resent)
+            @if (!string.IsNullOrEmpty(_resendError))
             {
-                <span class="acc-saved"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />Sent — check your inbox</span>
+                <OdsAlert Severity="Severity.Warning" Class="acc-block-alert">@_resendError</OdsAlert>
             }
-            else
-            {
-                <MudButton Variant="Variant.Outlined" Color="Color.Default"
-                           StartIcon="@Icons.Material.Filled.ForwardToInbox"
-                           OnClick="ResendConfirmation">Resend</MudButton>
-            }
-        </div>
-    </MudCardContent>
-</MudCard>
+        </MudCardContent>
+    </MudCard>
+}
 
 @code {
     /// <summary>The sign-in email address.</summary>
@@ -105,9 +122,15 @@
     private string _newEmail = string.Empty;
     private string _password = string.Empty;
     private bool _sent;
-    private bool _resent;
     private bool _saving;
     private string? _error;
+    private bool _passwordRejected;
+    private bool _focusOutcome;
+    private ElementReference _outcomeRef;
+
+    private bool _resent;
+    private bool _resending;
+    private string? _resendError;
 
     private bool LooksValid => System.Text.RegularExpressions.Regex.IsMatch(_newEmail, "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private bool IsSame => string.Equals(_newEmail.Trim(), Email, StringComparison.OrdinalIgnoreCase);
@@ -120,27 +143,66 @@
 
     private async Task UpdateEmailAsync()
     {
+        // Enter submits the form, which bypasses the button's Disabled state — so the guard lives here.
+        if (!CanUpdate || _saving)
+        {
+            return;
+        }
+
         _saving = true;
         _sent = false;
         _error = null;
+        _passwordRejected = false;
 
         var result = await AuthApiClient.ChangeEmailAsync(_newEmail.Trim(), _password);
         _saving = false;
+        _password = string.Empty;
+        _focusOutcome = true;
 
         if (result.IsSuccess)
         {
             _sent = true;
             _newEmail = string.Empty;
-            _password = string.Empty;
             return;
         }
 
         // The endpoint answers RFC 7807 and tells a wrong password from a lockout or a rejected address,
-        // so its own wording is shown. The password is cleared either way; the address is kept to retry.
-        _password = string.Empty;
+        // so its own wording is shown. The password is cleared either way, and the field says so, so the
+        // user is not left wondering where it went (WCAG 3.3.1). The address is kept to retry.
+        _passwordRejected = true;
         _error = result.Error ?? "Please check your current password and try again.";
-        Snackbar.Add("Unable to change your email address.", Severity.Error);
     }
 
-    private void ResendConfirmation() => _resent = true;
+    private async Task ResendConfirmationAsync()
+    {
+        _resending = true;
+        _resendError = null;
+
+        try
+        {
+            var (succeeded, error) = await AuthApiClient.ResendConfirmationAsync(Email);
+            _resent = succeeded;
+            if (!succeeded)
+            {
+                _resendError = error ?? "We couldn't send the email. Please try again later.";
+            }
+        }
+        catch (Exception)
+        {
+            _resendError = "We couldn't send the email. Please try again later.";
+        }
+        finally
+        {
+            _resending = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusOutcome)
+        {
+            _focusOutcome = false;
+            await _outcomeRef.FocusAsync();
+        }
+    }
 }

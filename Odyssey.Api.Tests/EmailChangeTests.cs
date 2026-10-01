@@ -28,6 +28,11 @@ public class EmailChangeTests
     private const string NewEmail = "moved@example.com";
     private const string WrongPassword = "Wrong123!Passphrase";
 
+    // 257 characters: one over the Identity column width the DTO's [StringLength(256)] mirrors.
+    private const string LongestValidEmailPlusOne =
+        "a234567890123456789012345678901234567890123456789012345678901234@"
+        + "b2345678901234567890123456789012345678901234567890123456789012.c2345678901234567890123456789012345678901234567890123456789012.d234567890123456789012345678901234567890123456789012345678.example";
+
     // ── POST /manage/info is closed ──────────────────────────────────────────
 
     [Fact]
@@ -298,6 +303,25 @@ public class EmailChangeTests
         Assert.Single(mailer.Notices);
     }
 
+    [Fact]
+    public async Task AnAddressThatIsOnlyAnotherAccountsUserName_IsAlsoTreatedAsTaken()
+    {
+        // The user name is the email in this app, and /confirmEmail sets both — so a clash on the name
+        // alone is as unconfirmable as a clash on the email.
+        var mailer = new RecordingMailer();
+        await using var factory = Factory(mailer);
+        var other = await factory.CreateUserAsync("other@example.com");
+        await SetEmailAsync(factory, other.Id, "elsewhere@example.com");
+        await factory.CreateUserAsync(OwnerEmail);
+        using var client = await factory.LoginAsync(OwnerEmail);
+
+        var response = await RequestAsync(client, "other@example.com", PasswordGateFactory.Password);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Empty(mailer.Confirmations);
+        Assert.Single(mailer.Notices);
+    }
+
     [Theory]
     [InlineData(OwnerEmail)]
     [InlineData("OWNER@example.com")]
@@ -317,6 +341,7 @@ public class EmailChangeTests
     [Theory]
     [InlineData("not-an-address", PasswordGateFactory.Password)]
     [InlineData(NewEmail, "")]
+    [InlineData(LongestValidEmailPlusOne, PasswordGateFactory.Password)]
     public async Task AMalformedBody_Is400(string newEmail, string password)
     {
         var mailer = new RecordingMailer();
@@ -406,6 +431,16 @@ public class EmailChangeTests
         return (await users.FindByIdAsync(userId))!;
     }
 
+    private static async Task SetEmailAsync(PasswordGateFactory factory, string userId, string email)
+    {
+        using var scope = factory.Services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = (await users.FindByIdAsync(userId))!;
+        user.Email = email;
+        user.NormalizedEmail = users.NormalizeEmail(email);
+        await users.UpdateAsync(user);
+    }
+
     private static async Task<string?> DetailAsync(HttpResponseMessage response)
     {
         using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -423,15 +458,13 @@ public class EmailChangeTests
 
         public IReadOnlyList<Sent> Notices => notices.ToArray();
 
-        public Task SendChangeConfirmationAsync(
-            string newEmail, string confirmationLink, CancellationToken cancellationToken = default)
+        public Task SendChangeConfirmationAsync(string newEmail, string confirmationLink)
         {
             confirmations.Enqueue(new Sent(newEmail, confirmationLink, newEmail));
             return Task.CompletedTask;
         }
 
-        public Task SendChangeNoticeAsync(
-            string currentEmail, string newEmail, CancellationToken cancellationToken = default)
+        public Task SendChangeNoticeAsync(string currentEmail, string newEmail)
         {
             notices.Enqueue(new Sent(currentEmail, string.Empty, newEmail));
             return Task.CompletedTask;

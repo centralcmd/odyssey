@@ -46,6 +46,7 @@ public class PasswordChangeRequiredGateTests
     [InlineData("POST", "/api/transactions")]
     [InlineData("PUT", "/api/profile")]
     [InlineData("POST", "/manage/info")]
+    [InlineData("POST", "/api/account/email")]
     public async Task WhileGated_EveryModuleIsRefused(string method, string path)
     {
         await using var factory = new PasswordGateFactory();
@@ -71,7 +72,7 @@ public class PasswordChangeRequiredGateTests
     [Theory]
     [InlineData("GET", "/api/accounts")]
     [InlineData("GET", "/api/users")]
-    [InlineData("POST", "/manage/info")]
+    [InlineData("GET", "/manage/info")]
     public async Task WithTheFlagClear_TheMiddlewareIsInert(string method, string path)
     {
         await using var factory = new PasswordGateFactory();
@@ -118,10 +119,12 @@ public class PasswordChangeRequiredGateTests
     }
 
     /// <summary>
-    /// <c>POST /manage/info</c> changes the password <em>and</em> the email address, and a pending email
-    /// change is confirmed from the <em>new</em> address — so exempting it would let a gated session move
-    /// the account's sign-in identity to a mailbox the attacker controls. This is also the assertion that
-    /// fails loudly if the <c>/logout</c> exemption is ever applied group-wide to the Identity routes.
+    /// A pending email change is confirmed from the <em>new</em> address, so a gated session that could
+    /// start one would move the account's sign-in identity to a mailbox the attacker controls. Identity's
+    /// <c>POST /manage/info</c> is closed for everyone since issue #246 (it answers <c>405</c>), but the gate
+    /// still answers <c>403</c> first; this pins that it is the gate, not the block, refusing here. It is
+    /// also the assertion that fails loudly if the <c>/logout</c> exemption is ever applied group-wide to
+    /// the Identity routes. The first-party replacement is covered in <c>EmailChangeTests</c>.
     /// </summary>
     [Fact]
     public async Task TheEmailChangeEscalation_IsClosed()
