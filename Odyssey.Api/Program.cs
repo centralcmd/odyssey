@@ -545,9 +545,19 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 // ranges rather than every source. That keeps a directly-connecting external client from spoofing
 // X-Forwarded-For (which would otherwise poison the client IP seen by logging/audit). A deployment
 // with a known proxy subnet can override this via ForwardedHeaders:KnownNetworks (CIDR list).
+//
+// ForwardLimit is the number of proxy hops in front of the API, and production has TWO (issue #244):
+// Caddy sets X-Forwarded-For to the client, nginx appends Caddy's address, so the API receives
+// `<client>, <caddy>`. The framework default of 1 consumes only the rightmost entry, which made
+// Caddy's container IP the RemoteIpAddress of every request — one shared rate-limit partition for
+// the whole internet, and Caddy's address on every audit line. The walk still stops at the first
+// entry outside KnownNetworks, so a public client cannot push a spoofed entry past a real one; the
+// limit only bounds how far a chain of TRUSTED hops is followed. A deployment with a different hop
+// count (an extra load balancer, or nginx exposed directly) sets ForwardedHeaders:ForwardLimit.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = builder.Configuration.GetValue("ForwardedHeaders:ForwardLimit", 2);
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
 

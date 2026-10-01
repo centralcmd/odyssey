@@ -283,6 +283,21 @@ certificates start being rejected after a volume wipe.
   plus a matching `HostOptions.ShutdownTimeout`, which is why `docker compose down` can pause during a
   deploy.
 
+## Client IP: two proxy hops
+
+The API sees the real client address only because it is told how many proxies sit in front of it.
+In this overlay there are **two** — Caddy sets `X-Forwarded-For` to the client, the client container's
+nginx appends Caddy's address — so the API receives `<client>, <caddy>` and
+`ForwardedHeaders:ForwardLimit` defaults to `2` (issue #244). That address is what the sign-in and
+password-reset rate limits partition on and what audit lines record. With a limit of 1 every request
+would appear to come from Caddy: one shared rate-limit bucket that a single caller could exhaust for
+everyone.
+
+Change it only if the topology changes: add one per extra proxy (a load balancer in front of Caddy),
+or set `ForwardedHeaders__ForwardLimit=1` if nginx is reached directly. Entries are honoured only
+while the hop that added them is inside `ForwardedHeaders:KnownNetworks` (private ranges by default),
+so a public client cannot spoof its way past Caddy.
+
 ## Upload size: three ceilings, in order
 
 The maximum upload is enforced at three layers, and **raising it means raising all three, outermost
