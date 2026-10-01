@@ -10,8 +10,8 @@
     <Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(NotFound)">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
-                <NotAuthorized>
-                    <RedirectToAuthorizedFallback />
+                <NotAuthorized Context="authState">
+                    <NotAuthorizedFallback User="@authState.User" />
                 </NotAuthorized>
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />

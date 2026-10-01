@@ -55,7 +55,9 @@ public sealed class SmtpEmailSender(
         {
             // Confirmation is disabled: MapIdentityApi still calls this on register, but the user
             // can already sign in, so sending a "confirm your account" email would be misleading.
-            logger.LogDebug("Email confirmation disabled; skipping confirmation link for {Recipient}.", email);
+            logger.LogDebug(
+                "Email confirmation disabled; skipping confirmation link for recipient {RecipientHash}.",
+                HashRecipient(email, await recipientHashKey.ResolveAsync()));
             return;
         }
 
@@ -327,6 +329,15 @@ public sealed class SmtpEmailSender(
         environment.IsDevelopment() || environment.IsEnvironment("Testing");
 
     /// <summary>
+    /// The one way a recipient reaches a log line from this class (issue #248): the same truncated keyed
+    /// digest the throttle logs, so an operator can correlate a skipped send with a throttled one without
+    /// the log holding an address that sits outside the erasure path. A source-lint in
+    /// <c>SmtpEmailSenderLogRedactionTests</c> forbids a raw <c>{Recipient}</c> placeholder.
+    /// </summary>
+    private static string HashRecipient(string email, ReadOnlyMemory<byte> hashKey) =>
+        EmailSendThrottle.HashRecipient(hashKey.Span, EmailSendThrottle.Normalize(email));
+
+    /// <summary>
     /// The <c>IEmailSender&lt;ApplicationUser&gt;</c> entry point: acquire a per-recipient permit, and on
     /// rejection drop the message while returning exactly as a successful send would. Deliberate — a 429
     /// on <c>/forgotPassword</c> would reveal that this address recently received mail, i.e. that it
@@ -373,6 +384,7 @@ public sealed class SmtpEmailSender(
         // single consistent view; read a fresh one for the entry points that do not throttle.
         var settings = snapshot ?? await ReadSettingsAsync(cancellationToken);
         var transport = settings.Transport;
+        var recipient = HashRecipient(toEmail, settings.RecipientHashKey);
 
         // FAIL CLOSED, and before the unconfigured branch below (issue #8 §11.1). A stored value that
         // is present and unusable is degraded, not absent, and the difference is the whole reason this
@@ -385,9 +397,9 @@ public sealed class SmtpEmailSender(
         if (transport.UnusableKeys.Count > 0)
         {
             logger.LogError(
-                "Email not sent to {Recipient} (subject: {Subject}): the stored mail transport settings "
-                + "{Keys} cannot be used. Correct them in System settings; no default is substituted.",
-                toEmail, subject, string.Join(", ", transport.UnusableKeys));
+                "Email not sent to recipient {RecipientHash} (subject: {Subject}): the stored mail transport "
+                + "settings {Keys} cannot be used. Correct them in System settings; no default is substituted.",
+                recipient, subject, string.Join(", ", transport.UnusableKeys));
             return PasswordResetLinkDelivery.NotConfigured;
         }
 
@@ -398,9 +410,11 @@ public sealed class SmtpEmailSender(
             // no mail server — the link is HTML-encoded for the email body, so decode it to a
             // copy-pasteable URL. Without this the account is created but unconfirmable.
             //
-            // Development/Testing only (issue #405): a password-reset link is a direct
-            // account-takeover primitive, so anywhere else the log records that the mail could not be
-            // sent and stops there.
+            // Development/Testing only (issues #405, #248): a password-reset or confirmation link is a
+            // direct account-takeover primitive, so anywhere else the log records that the mail could
+            // not be sent and stops there. "Testing" cannot serve real traffic (TestingEnvironmentGuard),
+            // which is what keeps it on this side of the line. The recipient is hashed even here, so a
+            // development log shipped somewhere does not pair a live token with an address.
             //
             // Production DOES reach this branch now (issue #8 §11.3). The startup ValidateOnStart gate
             // on Email:SmtpHost could not survive the move: a value entered through the UI cannot be a
@@ -411,14 +425,15 @@ public sealed class SmtpEmailSender(
             if (actionLink is not null && IsLinkLoggingEnvironment)
             {
                 logger.LogWarning(
-                    "Email not sent to {Recipient} (subject: {Subject}): no SMTP host configured. Use this link: {Link}",
-                    toEmail, subject, WebUtility.HtmlDecode(actionLink));
+                    "Email not sent to recipient {RecipientHash} (subject: {Subject}): no SMTP host configured. "
+                    + "Use this link: {Link}",
+                    recipient, subject, WebUtility.HtmlDecode(actionLink));
             }
             else
             {
                 logger.LogWarning(
-                    "Email not sent to {Recipient} (subject: {Subject}): no SMTP host configured.",
-                    toEmail, subject);
+                    "Email not sent to recipient {RecipientHash} (subject: {Subject}): no SMTP host configured.",
+                    recipient, subject);
             }
 
             return PasswordResetLinkDelivery.NotConfigured;
@@ -432,9 +447,10 @@ public sealed class SmtpEmailSender(
             // Names neither half and echoes nothing — an operator needs to know the credential is the
             // problem, not which byte of it. "incomplete or unreadable" covers both without an oracle.
             logger.LogError(
-                "Email not sent to {Recipient} (subject: {Subject}): the SMTP credential is incomplete or "
-                + "cannot be decrypted on this server. Set the SMTP username and password in System settings.",
-                toEmail, subject);
+                "Email not sent to recipient {RecipientHash} (subject: {Subject}): the SMTP credential is "
+                + "incomplete or cannot be decrypted on this server. Set the SMTP username and password in "
+                + "System settings.",
+                recipient, subject);
             return PasswordResetLinkDelivery.NotConfigured;
         }
 
@@ -465,7 +481,8 @@ public sealed class SmtpEmailSender(
             // Swallow so a transient SMTP failure doesn't turn registration into a 500 (the user
             // exists and can resend). Surfaced as an error for operators — and, for the callers that
             // asked for it, as a Failed outcome they can report to the person who is waiting.
-            logger.LogError(ex, "Failed to send email to {Recipient} (subject: {Subject}).", toEmail, subject);
+            logger.LogError(
+                ex, "Failed to send email to recipient {RecipientHash} (subject: {Subject}).", recipient, subject);
             return PasswordResetLinkDelivery.Failed;
         }
 

@@ -1,0 +1,66 @@
+@using Odyssey.Client.Auth
+@inject AuthenticationStateProvider AuthStateProvider
+
+@*
+    Rendered by App.razor's NotAuthorized branch in place of RedirectToAuthorizedFallback when the session
+    probe had no definitive answer (issue #278). The provider keeps re-probing in the background and
+    announces the first definitive answer, so this panel is replaced without a reload; Retry asks now.
+
+    Accessibility: the panel is role="alert" so it is announced when it appears (WCAG 4.1.3); its title is
+    the page's h1, which FocusOnNavigate lands on and which names the page (2.4.2, 1.3.1). Retry stays
+    enabled while it works — a disabled button drops keyboard focus (2.4.3) — and every attempt's outcome
+    goes through a polite live region, numbered so a repeated failure is still announced.
+*@
+<PageTitle>Unable to reach Odyssey</PageTitle>
+
+<OdsEmptyState Icon="cloud_off" Alert="true">
+    <Title><h1 class="session-unavailable-title" tabindex="-1">Unable to reach Odyssey</h1></Title>
+    <Description>
+        The server is not answering right now, so your session could not be checked. Odyssey keeps trying
+        in the background and will continue on its own once it is reachable.
+    </Description>
+    <Action>
+        <OdsButton Icon="refresh" aria-busy="@(_retrying ? "true" : null)" OnClick="RetryAsync">Retry</OdsButton>
+    </Action>
+</OdsEmptyState>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+@code {
+    private bool _retrying;
+    private int _attempts;
+    private string? _announce;
+
+    internal async Task RetryAsync()
+    {
+        if (_retrying)
+        {
+            return;
+        }
+
+        _retrying = true;
+        _announce = "Trying to reach Odyssey…";
+        try
+        {
+            if (AuthStateProvider is CookieAuthenticationStateProvider cookies)
+            {
+                await cookies.RefreshAsync();
+            }
+
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (SessionUnavailable.Is(state.User))
+            {
+                _attempts++;
+                _announce = $"Still no answer from the server (attempt {_attempts}). Odyssey keeps trying in the background.";
+            }
+            else
+            {
+                _announce = "Connected to Odyssey.";
+            }
+        }
+        finally
+        {
+            _retrying = false;
+        }
+    }
+}

@@ -1,0 +1,7 @@
+/* The title is the page's h1 for assistive tech and FocusOnNavigate; it keeps the empty-state title's look. */
+.session-unavailable-title {
+    margin: 0;
+    font: inherit;
+    color: inherit;
+}
+

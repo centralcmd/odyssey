@@ -7,7 +7,7 @@ namespace Odyssey.Api.Tests;
 
 /// <summary>
 /// The generated OpenAPI document has to describe how the deployed client actually authenticates:
-/// a cookie plus the <c>X-XSRF-TOKEN</c> antiforgery header on every write. Advertising only the bearer
+/// a cookie plus the <c>X-XSRF-TOKEN</c> antiforgery header on every write. Advertising only an authentication
 /// scheme made "Try it out" fail with a bare 400 on any POST/PUT/DELETE (issue #382).
 /// </summary>
 public class OpenApiSecuritySchemeTests
@@ -25,12 +25,18 @@ public class OpenApiSecuritySchemeTests
     }
 
     [Fact]
-    public async Task TheDocument_DescribesTheAntiforgeryHeaderAlongsideBearer()
+    public async Task TheDocument_DescribesTheAntiforgeryHeaderAlongsideTheCookie()
     {
         var root = await GetSwaggerDocumentAsync();
 
         var schemes = root.GetProperty("components").GetProperty("securitySchemes");
-        Assert.True(schemes.TryGetProperty("bearer", out _));
+
+        // Cookie-only since issue #245: a bearer scheme would advertise a token login /login refuses.
+        Assert.False(schemes.TryGetProperty("bearer", out _));
+        var cookie = schemes.GetProperty("cookie");
+        Assert.Equal("apiKey", cookie.GetProperty("type").GetString());
+        Assert.Equal("cookie", cookie.GetProperty("in").GetString());
+        Assert.Equal(".AspNetCore.Identity.Application", cookie.GetProperty("name").GetString());
 
         var antiforgery = schemes.GetProperty("antiforgery");
         Assert.Equal("apiKey", antiforgery.GetProperty("type").GetString());
@@ -50,7 +56,8 @@ public class OpenApiSecuritySchemeTests
             .SelectMany(requirement => requirement.EnumerateObject().Select(scheme => scheme.Name))
             .ToList();
 
-        Assert.Contains("bearer", required);
+        Assert.Contains("cookie", required);
         Assert.Contains("antiforgery", required);
+        Assert.DoesNotContain("bearer", required);
     }
 }
