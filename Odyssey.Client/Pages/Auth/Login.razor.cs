@@ -139,8 +139,11 @@ public partial class Login
         switch (outcome)
         {
             case LoginOutcome.Success:
-                await AuthStateProvider.RefreshAsync();
-                NavigationManager.NavigateTo(Destination(ReturnUrl));
+                // A full reload, not a client-side route change: the app-lifetime caches (reference
+                // data, preferences, the limit caches, the auth state itself) were filled under the
+                // previous session, and a different user signing in on this tab would otherwise inherit
+                // them (issue #250). The reload resolves the new session from scratch.
+                NavigationManager.NavigateTo(Destination(ReturnUrl), forceLoad: true);
                 break;
 
             case LoginOutcome.RequiresTwoFactor:

@@ -1,0 +1,42 @@
+@using Odyssey.Client.Auth
+@implements IDisposable
+@inject SessionExpiredNotifier SessionExpired
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+
+@code {
+    // Mounted once in App.razor, above the router, so it covers every layout — the gate pages render
+    // their own layouts rather than MainLayout, and a session can expire on those too (issue #250).
+    private bool _redirecting;
+
+    protected override void OnInitialized() => SessionExpired.SessionExpired += OnSessionExpired;
+
+    private void OnSessionExpired() => InvokeAsync(RedirectAsync);
+
+    private async Task RedirectAsync()
+    {
+        if (_redirecting)
+        {
+            return;
+        }
+
+        // Only a session the app believed it had can expire. An anonymous visitor's 401s are the
+        // router's business (RedirectToAuthorizedFallback), and redirecting on them from the sign-in
+        // page itself would reload it in a loop. The read is the provider's cached answer — no probe.
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated != true)
+        {
+            return;
+        }
+
+        _redirecting = true;
+
+        // forceLoad, not a client-side route change: the reload discards every app-lifetime cache
+        // (the auth state, reference data, preferences, the limit caches) with the session they were
+        // fetched under, so whoever signs in next starts clean.
+        var signInUrl = Login.SignInUrlFor(NavigationManager.ToBaseRelativePath(NavigationManager.Uri));
+        NavigationManager.NavigateTo(signInUrl, forceLoad: true);
+    }
+
+    public void Dispose() => SessionExpired.SessionExpired -= OnSessionExpired;
+}
