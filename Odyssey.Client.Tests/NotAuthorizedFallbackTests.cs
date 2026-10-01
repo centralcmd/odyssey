@@ -4,11 +4,17 @@ using Bunit;
 using Bunit.TestDoubles;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using MudBlazor.Services;
 using Odyssey.ApiClient.Auth;
 using Odyssey.Client.Auth;
+using Odyssey.Client.Layout;
 using Odyssey.Client.Pages.Auth;
+using Odyssey.Client.Theme;
+using Odyssey.ApiClient.Resources;
+using Moq;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -134,22 +140,61 @@ public class NotAuthorizedFallbackTests
     }
 
     /// <summary>
-    /// <c>AuthorizeRouteView</c> renders a page's <c>NotAuthorized</c> content as <c>MainLayout</c>'s body, and
-    /// the layout's own <c>AuthorizeView</c> is evaluated first. An unconditional redirect there pre-empted the
-    /// router's retry panel, so an API outage sent a signed-in user to <c>/login</c> (found by live testing):
-    /// the shell must hand its state to the same fallback.
+    /// <c>AuthorizeRouteView</c> renders a page's <c>NotAuthorized</c> content as <c>MainLayout</c>'s body,
+    /// and the layout's own <c>AuthorizeView</c> decides first. Its unconditional <c>RedirectToLogin</c>
+    /// pre-empted the router's retry panel, so an API outage sent a signed-in user to <c>/login</c> (found by
+    /// live testing). Rendered for real: the shell itself must show the panel and stay put.
     /// </summary>
     [Fact]
-    public void TheShell_HandsItsAuthenticationStateToTheFallback()
+    public async Task TheShell_ShowsTheRetryPanel_ForAnUnavailableSession_AndDoesNotNavigate()
     {
-        var layout = File.ReadAllText(Path.Combine(ClientSource.Root, "Layout", "MainLayout.razor"));
+        await using var ctx = NewShellContext(new SessionApi { Info = HttpStatusCode.ServiceUnavailable });
+        var before = Navigation(ctx).History.Count;
 
-        Assert.Contains("""<NotAuthorized Context="authState">""", layout, StringComparison.Ordinal);
-        Assert.Contains("""<NotAuthorizedFallback User="@authState.User" />""", layout, StringComparison.Ordinal);
-        Assert.DoesNotContain("<RedirectToLogin", layout, StringComparison.Ordinal);
+        var cut = RenderShell(ctx);
+
+        cut.WaitForAssertion(() => Assert.Contains("Unable to reach Odyssey", cut.Markup));
+        Assert.DoesNotContain(PageBody, cut.Markup);
+        Assert.Equal(before, Navigation(ctx).History.Count);
+    }
+
+    [Fact]
+    public async Task TheShell_StillRedirectsAGenuineSignOutToSignIn()
+    {
+        await using var ctx = NewShellContext(new SessionApi { Info = HttpStatusCode.Unauthorized });
+
+        var cut = RenderShell(ctx);
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            Login.SignInUrlFor(Route.TrimStart('/')), Navigation(ctx).History.First().Uri));
+        Assert.DoesNotContain("Unable to reach Odyssey", cut.Markup);
+        Assert.DoesNotContain(PageBody, cut.Markup);
+    }
+
+    [Fact]
+    public void RedirectToLogin_IsGone()
+    {
+        // It navigated on any non-authenticated principal, the unavailable one included.
         Assert.False(File.Exists(Path.Combine(ClientSource.Root, "Pages", "Auth", "RedirectToLogin.razor")),
             "RedirectToLogin navigates on a non-definitive answer; use NotAuthorizedFallback instead.");
     }
+
+    private const string PageBody = "page-body-marker";
+
+    private static IRenderedComponent<CascadingAuthenticationState> RenderShell(BunitContext ctx) =>
+        ctx.Render<CascadingAuthenticationState>(p => p.AddChildContent<MainLayout>(layout => layout
+            .Add(l => l.Body, (RenderFragment)(b => b.AddContent(0, PageBody)))));
+
+    private static BunitContext NewShellContext(SessionApi api) => NewContext(api, services =>
+    {
+        // The real authorization service, not bUnit's placeholder: the point is what the shell's own
+        // AuthorizeView does with the provider's actual answer.
+        services.AddAuthorizationCore();
+        services.Replace(ServiceDescriptor.Singleton<IAuthorizationService, DefaultAuthorizationService>());
+        services.AddSingleton(Mock.Of<IUserPreferenceService>(p => p.Current == new UserPreferencesPage(true)));
+        services.AddSingleton(Mock.Of<IProfileApiClient>());
+        services.AddSingleton<PasswordChangeRequiredNotifier>();
+    });
 
     /// <summary>
     /// The shell's re-run after a recovered session (issue #278) sits behind <c>OperatingSystem.IsBrowser()</c>,
@@ -177,9 +222,10 @@ public class NotAuthorizedFallbackTests
     private static BunitNavigationManager Navigation(BunitContext ctx) =>
         (BunitNavigationManager)ctx.Services.GetRequiredService<NavigationManager>();
 
-    private static BunitContext NewContext(SessionApi api)
+    private static BunitContext NewContext(SessionApi api, Action<IServiceCollection>? services = null)
     {
         var ctx = new BunitContext();
+        services?.Invoke(ctx.Services);
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton<AuthenticationStateProvider>(sp => new CookieAuthenticationStateProvider(

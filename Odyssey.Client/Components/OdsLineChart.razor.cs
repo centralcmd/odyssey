@@ -385,12 +385,16 @@ public partial class OdsLineChart : IAsyncDisposable
             : [_yMax, _yMin + (_yMax - _yMin) * 2 / 3, _yMin + (_yMax - _yMin) / 3, _yMin];
 
         _x0 = AxisGutter(_gridVals.Select(YLabel));
+        _xLabelWidth = _pts.Count == 0 ? 0 : _pts.Max(p => p.Label.Length) * AxisCharWidth;
         _every = ResolveEvery();
         _fillId = $"odc-lc-fill-{Guid.NewGuid():N}";
     }
 
+    // The widest x label's estimated advance, fixed per parameter set so a resize only re-strides.
+    private double _xLabelWidth;
+
     private int ResolveEvery() => XTickEveryAuto
-        ? TickEvery(_pts.Count, X1 - X0, _pts.Count == 0 ? 0 : _pts.Max(p => p.Label.Length) * AxisCharWidth)
+        ? TickEvery(_pts.Count, X1 - X0, _xLabelWidth)
         : (XTickEvery > 0 ? XTickEvery : 1);
 
     /// <summary>The clear space kept between two neighbouring x labels.</summary>

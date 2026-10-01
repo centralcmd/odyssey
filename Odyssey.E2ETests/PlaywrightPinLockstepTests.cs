@@ -28,6 +28,13 @@ public sealed class PlaywrightPinLockstepTests
         var node = manifest.RootElement.GetProperty("dependencies").GetProperty("playwright").GetString();
 
         Assert.Equal(dotnet, node);
+
+        // npm ci installs what the lockfile records, not what package.json asks for, so it has to agree too.
+        using var lockfile = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(root, ".claude", "skills", "run-odyssey", "package-lock.json")));
+        var packages = lockfile.RootElement.GetProperty("packages");
+        Assert.Equal(dotnet, packages.GetProperty("node_modules/playwright").GetProperty("version").GetString());
+        Assert.Equal(dotnet, packages.GetProperty("node_modules/playwright-core").GetProperty("version").GetString());
     }
 
     private static string RepoRoot()
