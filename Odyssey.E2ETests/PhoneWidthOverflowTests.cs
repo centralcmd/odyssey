@@ -90,15 +90,16 @@ public sealed class PhoneWidthOverflowTests(StackFixture fixture) : IAsyncLifeti
     /// </summary>
     private static async Task SettledAsync(IPage page)
     {
+        // A chart measures its plot after the data render and re-renders once with the width, so it is
+        // settled when its viewBox has caught up with its rendered width (the ChartAxisLabelSizeTests rule).
         await page.WaitForFunctionAsync(
             """
             () => document.querySelector('h1')
                 && !document.querySelector('[aria-busy="true"], .mud-skeleton')
+                && [...document.querySelectorAll('svg.odc-line-svg')].every((svg) =>
+                    Math.abs(svg.getBoundingClientRect().width - svg.viewBox.baseVal.width) < 1)
             """,
             null,
             new PageWaitForFunctionOptions { Timeout = 30_000 });
-
-        // The charts measure their plot after the data render and re-render once with the width.
-        await page.WaitForTimeoutAsync(750);
     }
 }
