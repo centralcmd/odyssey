@@ -31,6 +31,8 @@ public sealed record NewRecurrencePattern
     [Range(1, 365)]
     public int Interval { get; set; } = 1;
 
+    // [Flags]-aware: rejects any bit outside Monday..Sunday (issue #243), e.g. 128 or 129.
+    [EnumDataType(typeof(DaysOfWeekFlags))]
     public DaysOfWeekFlags? DaysOfWeek { get; set; }
 
     [Range(1, 31)]

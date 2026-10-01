@@ -12,6 +12,11 @@
     </ItemGroup>
 
     <ItemGroup>
+      <!-- RecurrenceOccurrenceGenerator is internal; its date rules are unit-tested directly (issue #243). -->
+      <InternalsVisibleTo Include="Odyssey.Core.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
       <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
 

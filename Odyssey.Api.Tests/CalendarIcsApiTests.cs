@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.RegularExpressions;
 using Odyssey.Dtos.Authorization;
 using CalendarContext = Odyssey.Context.OdysseyContext;
 using Odyssey.Dtos.Journal;
@@ -168,6 +169,10 @@ public class CalendarIcsApiTests
 
         Assert.Equal(4, CountOccurrences(body, "BEGIN:VEVENT"));
         Assert.DoesNotContain("RRULE:", body);
+
+        // The flattened rows carry the generator's clamped dates, not just the right count (issue #243).
+        var starts = Regex.Matches(body, @"DTSTART[^:\r\n]*:(\d{8}T\d{6}Z?)").Select(m => m.Groups[1].Value).Order();
+        Assert.Equal(["20300131T090000Z", "20300228T090000Z", "20300331T090000Z", "20300430T090000Z"], starts);
     }
 
     [Fact]
