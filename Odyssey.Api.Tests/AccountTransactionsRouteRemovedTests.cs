@@ -22,6 +22,11 @@ public class AccountTransactionsRouteRemovedTests
         using var client = factory.CreateClient();
         var accountId = await SeedAccountAsync(factory);
 
+        // Positive controls: the account itself and the supported replacement both answer, so the 404
+        // below is specific to the removed route rather than a broken factory or a global fallthrough.
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/accounts/{accountId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/transactions?accountIds={accountId}")).StatusCode);
+
         var response = await client.GetAsync($"/api/accounts/{accountId}/transactions");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);

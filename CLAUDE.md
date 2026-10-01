@@ -687,7 +687,11 @@ Two rules that are easy to get backwards:
   the nearer bound — `"0"` included, which is the *below-floor* case and not the unparseable one. Only an
   unparseable value or a failed query is degraded, and those resolve to `min(last-known-good, default)`
   with the watermark carrying the same TTL as the values (a watermark older than the TTL is "last known",
-  not "last known good").
+  not "last known good"). Every lookup resolves its int settings through one `IntSettingResolver`
+  (`Odyssey.Api/SystemSettings/`, issue #287) — never a private parse/clamp copy. Because the watermark
+  and the resolved value expire together, the watermark only covers the window after an explicit
+  eviction (a save); a fault on the first read after a natural expiry resolves to the cold value. That is
+  the accepted price of the TTL rule — lengthen the watermark's TTL only as a deliberate change to it.
 
 **Adding a *secret* setting is a different recipe, and the seed/default steps do NOT apply**
 (issue #444). A secret-valued setting — a credential, an API key, an HMAC key — lives in the

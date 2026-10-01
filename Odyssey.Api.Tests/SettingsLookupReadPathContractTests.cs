@@ -112,7 +112,9 @@ public class SettingsLookupReadPathContractTests
             {
                 var caps = await new SystemSettingsLookup(context, cache, NullLogger<SystemSettingsLookup>.Instance).GetRequestCapsAsync();
 
-                // FinanceRequestCaps carries no degraded flag; the value is the whole observable.
+                // FinanceRequestCaps carries no degraded flag, so the value is the whole observable here and
+                // the degraded assertions are vacuous for this row. The outcome itself is pinned once, at
+                // the resolver, by IntSettingResolverTests.
                 return (caps.MaxPartiesPerContract, null);
             }),
     ];
@@ -209,9 +211,10 @@ public class SettingsLookupReadPathContractTests
     }
 
     /// <summary>
-    /// The watermark carries the TTL. Inside the window a degraded read honours a value the administrator
-    /// had tightened; past it the watermark is "last known", not "last known good", and the read falls back
-    /// to the cold value. Six lookups stored their watermark with no expiry before the shared resolver.
+    /// The watermark carries the TTL. After an explicit eviction inside the window a degraded read honours
+    /// a value the administrator had tightened; once the window passes naturally the watermark is "last
+    /// known", not "last known good", and the read falls back to the cold value. Six lookups stored their
+    /// watermark with no expiry before the shared resolver.
     /// </summary>
     [Theory]
     [MemberData(nameof(AllProbes))]
@@ -234,9 +237,11 @@ public class SettingsLookupReadPathContractTests
         cache.Remove(probe.ResultCacheKey);
         Assert.Equal(tightened, (await probe.Read(await BrokenContextAsync(dbName), cache)).Value);
 
-        // Past the TTL: the watermark has expired with every other value.
+        // Past the TTL, with no eviction: the resolved value and the watermark expire together, so a
+        // fault on the next read finds no live watermark and resolves to the cold value. This is the
+        // documented price of the TTL rule (IntSettingResolver, CLAUDE.md), pinned so it changes only
+        // deliberately.
         clock.UtcNow += IntSettingResolver.CacheTtl + TimeSpan.FromSeconds(1);
-        cache.Remove(probe.ResultCacheKey);
         var (expired, degraded) = await probe.Read(await BrokenContextAsync(dbName), cache);
 
         Assert.Equal(Math.Min(probe.ColdFallback ?? probe.Default, probe.Default), expired);
@@ -244,25 +249,58 @@ public class SettingsLookupReadPathContractTests
     }
 
     /// <summary>
-    /// The resolver is the only place a settings lookup writes a watermark, and nothing in the folder
-    /// stores a cache entry with no expiry — the drift <c>new MemoryCacheEntryOptions()</c> was.
+    /// Nothing in the settings folder stores a cache entry with no expiry — the drift
+    /// <c>new MemoryCacheEntryOptions()</c> and a two-argument <c>cache.Set</c> both were. Asserted as a
+    /// property of every call rather than as literal source lines, so a rename does not trip it.
     /// </summary>
     [Fact]
-    public void NoLookup_StoresACacheEntryWithoutAnExpiry()
+    public void NoSettingsCacheEntry_IsStoredWithoutAnExpiry()
     {
         var folder = Path.Combine(RepositoryRootPath(), "Odyssey.Api", "SystemSettings");
-        var lookups = Directory.GetFiles(folder, "*Lookup.cs");
-        Assert.NotEmpty(lookups);
+        var files = Directory.GetFiles(folder, "*.cs");
+        var calls = 0;
 
-        foreach (var file in lookups)
+        foreach (var file in files)
         {
             var source = File.ReadAllText(file);
             Assert.DoesNotContain("new MemoryCacheEntryOptions()", source, StringComparison.Ordinal);
+
+            foreach (var arguments in CacheSetArguments(source))
+            {
+                calls++;
+                Assert.True(arguments >= 3,
+                    $"{Path.GetFileName(file)} calls cache.Set with {arguments} argument(s); every settings cache entry needs an expiry.");
+            }
         }
 
-        var resolver = File.ReadAllText(Path.Combine(folder, "IntSettingResolver.cs"));
-        Assert.Contains("cache.Set(WatermarkKey(spec.Key), spec.Default, CacheTtl);", resolver, StringComparison.Ordinal);
-        Assert.Contains("cache.Set(WatermarkKey(spec.Key), clamped, CacheTtl);", resolver, StringComparison.Ordinal);
+        Assert.True(calls > 0, "the scan found no cache.Set calls, so it is no longer looking at the lookups");
+    }
+
+    /// <summary>Counts the top-level arguments of each <c>cache.Set(...)</c> call in a source file.</summary>
+    private static IEnumerable<int> CacheSetArguments(string source)
+    {
+        const string marker = "cache.Set(";
+        for (var start = source.IndexOf(marker, StringComparison.Ordinal);
+             start >= 0;
+             start = source.IndexOf(marker, start + marker.Length, StringComparison.Ordinal))
+        {
+            var depth = 0;
+            var arguments = 1;
+            for (var i = start + marker.Length; i < source.Length; i++)
+            {
+                var c = source[i];
+                if (c is '(' or '[' or '{') depth++;
+                else if (c is ']' or '}') depth--;
+                else if (c == ')')
+                {
+                    if (depth == 0) break;
+                    depth--;
+                }
+                else if (c == ',' && depth == 0) arguments++;
+            }
+
+            yield return arguments;
+        }
     }
 
     private static string RepositoryRootPath()

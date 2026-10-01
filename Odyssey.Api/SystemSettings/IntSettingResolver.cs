@@ -41,7 +41,8 @@ public readonly record struct ResolvedIntSetting(int Value, IntSettingOutcome Ou
 /// cannot carry a value past either end into the consumer.
 /// </summary>
 /// <param name="ColdFallback">
-/// What a degraded read resolves against when this instance has no watermark yet. Defaults to
+/// What a degraded read resolves against when this instance has no <em>live</em> watermark — none read
+/// yet, or the last one older than the TTL. Ignored while a watermark is live. Defaults to
 /// <paramref name="Default"/>; a surface with a stricter cold floor (the import/export sizes) names it.
 /// </param>
 public sealed record IntSettingSpec(
@@ -71,6 +72,17 @@ public sealed record IntSettingSpec(
 /// <strong>The watermark carries the TTL.</strong> A watermark older than the TTL is "last known", not
 /// "last known good", and letting one outlive every other bound is how a degraded read stops being
 /// bounded at all.
+/// </para>
+///
+/// <para>
+/// <strong>Consequence, accepted deliberately:</strong> the watermark and a lookup's resolved-value entry
+/// are written in the same read with the same TTL, so they expire together. The watermark therefore
+/// covers the window after an <em>explicit</em> eviction — a settings save, which evicts the resolved
+/// value but not the watermark — and a lookup that caches its degraded result. A fault on the first read
+/// after a <em>natural</em> expiry finds no live watermark and resolves against the cold value
+/// (<see cref="IntSettingSpec.ColdFallback"/>, else the shipped default), so an administrator-tightened
+/// cap reads as the shipped default for the length of that fault. Lengthening the watermark's TTL would
+/// close that gap at the cost of the rule above; that trade is a CLAUDE.md decision, not this type's.
 /// </para>
 ///
 /// <para>
