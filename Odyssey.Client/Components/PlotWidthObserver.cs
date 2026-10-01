@@ -28,8 +28,7 @@ namespace Odyssey.Client.Components;
 /// </summary>
 internal sealed class PlotWidthObserver(IJSRuntime js, Func<double, Task> onWidth) : IAsyncDisposable
 {
-    private IJSObjectReference? module;
-    private bool importAttempted;
+    private Task<IJSObjectReference?>? moduleLoad;
     private IJSObjectReference? handle;
     private DotNetObjectReference<PlotWidthObserver>? self;
     private string? observedId;
@@ -50,25 +49,20 @@ internal sealed class PlotWidthObserver(IJSRuntime js, Func<double, Task> onWidt
         if (plot is not { } element)
             return;
 
+        // One shared load: a sync that arrives while the first import is still in flight (the plot
+        // swapped meanwhile) awaits the same import rather than finding no module and giving up.
+        var module = await (moduleLoad ??= LoadModuleAsync());
+        if (module is null || observedId != id || disposed)
+            return;
+
         IJSObjectReference? observed;
         try
         {
-            if (!importAttempted)
-            {
-                importAttempted = true;
-                module = await js.InvokeAsync<IJSObjectReference>("import", "./js/plot-width.js");
-            }
-            if (module is null)
-                return;
-
             self ??= DotNetObjectReference.Create(this);
             observed = await module.InvokeAsync<IJSObjectReference>("observe", element, self);
         }
         catch (Exception ex) when (ex is JSException or JSDisconnectedException)
         {
-            // Measuring is a refinement, not a dependency: a chart whose bridge fails to load keeps
-            // the 1000-unit default box (scaled labels, as before) rather than raising the app's
-            // global error bar from OnAfterRenderAsync.
             return;
         }
 
@@ -80,6 +74,21 @@ internal sealed class PlotWidthObserver(IJSRuntime js, Func<double, Task> onWidt
         }
 
         handle = observed;
+    }
+
+    // Measuring is a refinement, not a dependency: a chart whose bridge fails to load keeps the
+    // 1000-unit default box (scaled labels, as before) rather than raising the app's global error bar
+    // from OnAfterRenderAsync. A failed load is not retried.
+    private async Task<IJSObjectReference?> LoadModuleAsync()
+    {
+        try
+        {
+            return await js.InvokeAsync<IJSObjectReference>("import", "./js/plot-width.js");
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException)
+        {
+            return null;
+        }
     }
 
     [JSInvokable]
@@ -97,17 +106,24 @@ internal sealed class PlotWidthObserver(IJSRuntime js, Func<double, Task> onWidt
         if (observed is null)
             return;
 
-        await observed.InvokeVoidAsync("disconnect");
-        await observed.DisposeAsync();
+        try
+        {
+            await observed.InvokeVoidAsync("disconnect");
+            await observed.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The runtime is already gone, and the observer with it.
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
         disposed = true;
+        await DetachAsync();
         try
         {
-            await DetachAsync();
-            if (module is not null)
+            if (moduleLoad is { IsCompletedSuccessfully: true } load && load.Result is { } module)
                 await module.DisposeAsync();
         }
         catch (JSDisconnectedException)

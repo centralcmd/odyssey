@@ -22,10 +22,18 @@ public class PlotWidthObserverTests
         public List<Mock<IJSObjectReference>> Handles { get; } = [];
         public List<double> Widths { get; } = [];
 
-        public Bridge(Exception? importFails = null)
+        /// <summary>Set to hold the module import in flight until the test completes it.</summary>
+        public TaskCompletionSource<IJSObjectReference>? HeldImport { get; }
+
+        public Bridge(Exception? importFails = null, bool holdImport = false)
         {
             var import = Js.Setup(j => j.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]?>()));
-            if (importFails is null)
+            if (holdImport)
+            {
+                HeldImport = new TaskCompletionSource<IJSObjectReference>();
+                import.Returns(new ValueTask<IJSObjectReference>(HeldImport.Task));
+            }
+            else if (importFails is null)
                 import.Returns(new ValueTask<IJSObjectReference>(Module.Object));
             else
                 import.Returns(ValueTask.FromException<IJSObjectReference>(importFails));
@@ -84,6 +92,30 @@ public class PlotWidthObserverTests
         Assert.Equal(1, Bridge.Disconnects(handle));
     }
 
+    /// <summary>
+    /// The plot swaps while the very first module import is still loading. The newer plot must wait on
+    /// the same import and be observed — not find no module and stay at the default width — and the
+    /// superseded plot must never be observed at all.
+    /// </summary>
+    [Fact]
+    public async Task A_plot_swapped_during_the_first_import_is_observed_once_it_loads()
+    {
+        var bridge = new Bridge(holdImport: true);
+        var observer = bridge.Observer();
+
+        var first = observer.SyncAsync(PlotA);
+        var second = observer.SyncAsync(PlotB);
+        bridge.HeldImport!.SetResult(bridge.Module.Object);
+        await first;
+        bridge.Release(0);
+        await second;
+
+        var observed = Assert.Single(bridge.Module.Invocations, i => (string?)i.Arguments[0] == "observe");
+        var args = Assert.IsType<object?[]>(observed.Arguments[1]);
+        Assert.Equal(PlotB.Id, Assert.IsType<ElementReference>(args[0]).Id);
+        Assert.Single(bridge.Js.Invocations);
+    }
+
     /// <summary>A plot removed while its observe call is in flight gets that observer disconnected on arrival.</summary>
     [Fact]
     public async Task An_observer_that_arrives_after_its_plot_left_is_disconnected()
@@ -96,6 +128,21 @@ public class PlotWidthObserverTests
         var handle = bridge.Release(0);
         await first;
 
+        Assert.Equal(1, Bridge.Disconnects(handle));
+    }
+
+    /// <summary>The chart is disposed while its observe call is in flight: the late observer is disconnected.</summary>
+    [Fact]
+    public async Task An_observer_that_arrives_after_disposal_is_disconnected()
+    {
+        var bridge = new Bridge();
+        var observer = bridge.Observer();
+
+        var first = observer.SyncAsync(PlotA);
+        await observer.DisposeAsync();
+        var handle = bridge.Release(0, onDisconnect: new JSDisconnectedException("gone"));
+
+        Assert.Null(await Record.ExceptionAsync(() => first));
         Assert.Equal(1, Bridge.Disconnects(handle));
     }
 

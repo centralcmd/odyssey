@@ -249,13 +249,14 @@ public class ChartPlotWidthTests
         await ReportWidth(cut, module, 1180);
 
         cut.Find(".odc-lc-plot").Focus();
-        var before = cut.Find(".odc-lc-tip").GetAttribute("style");
+        var before = cut.Find(".odc-lc-tip");
+        var (beforeStyle, beforeText) = (before.GetAttribute("style"), before.TextContent);
 
         await ReportWidth(cut, module, 300);
 
-        var after = cut.Find(".odc-lc-tip").GetAttribute("style");
-        Assert.NotEqual(before, after);
-        Assert.Contains("left:", after, StringComparison.Ordinal);
+        var after = cut.Find(".odc-lc-tip");
+        Assert.Equal(beforeText, after.TextContent);   // the same entry…
+        Assert.NotEqual(beforeStyle, after.GetAttribute("style"));   // …re-placed at the new width
     }
 
     [Fact]
