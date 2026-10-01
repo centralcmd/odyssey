@@ -97,18 +97,7 @@ public sealed class LegalController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            await service.RespondAsync(userId, request, cancellationToken);
-        }
-        catch (LegalValidationException exception)
-        {
-            return this.BadRequestProblem(exception.Message);
-        }
-        catch (LegalVersionConflictException exception)
-        {
-            return this.ConflictProblem(exception.Message);
-        }
+        await service.RespondAsync(userId, request, cancellationToken);
 
         if (request.Accepted == true)
         {
@@ -161,15 +150,8 @@ public sealed class LegalController : ControllerBase
         [FromBody] NewTermsOfServiceVersion request,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var version = await service.PublishAsync(User, CallerUserId ?? string.Empty, request, cancellationToken);
-            return CreatedAtRoute("GetTermsOfServiceVersion", new { id = version.Id }, version);
-        }
-        catch (LegalValidationException exception)
-        {
-            return this.BadRequestProblem(exception.Message);
-        }
+        var version = await service.PublishAsync(User, CallerUserId ?? string.Empty, request, cancellationToken);
+        return CreatedAtRoute("GetTermsOfServiceVersion", new { id = version.Id }, version);
     }
 
     private string? CallerUserId

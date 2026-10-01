@@ -41,15 +41,8 @@ public sealed class SystemSettingsController : ControllerBase
     public async Task<ActionResult<SystemSettingsDto>> Put(
         [FromBody] SystemSettingsUpdate request, CancellationToken cancellationToken)
     {
-        try
-        {
-            var dto = await service.UpdateAsync(User, ActorUserId, request, cancellationToken);
-            return Ok(dto);
-        }
-        catch (SystemSettingsForbiddenException exception)
-        {
-            return this.ForbiddenProblem(exception.Message);
-        }
+        var dto = await service.UpdateAsync(User, ActorUserId, request, cancellationToken);
+        return Ok(dto);
     }
 
     private string ActorUserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";

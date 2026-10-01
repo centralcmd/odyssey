@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Api.Identity;
 using Odyssey.Context;
+using Odyssey.Core;
 using Odyssey.Context.Legal;
 using Odyssey.Dtos.Application;
 
@@ -89,12 +90,12 @@ public sealed class LegalComplianceService(
         // service against direct (non-HTTP) callers, matching the ListQuery clamp convention.
         if (request.DocumentType is not { } documentType || !Enum.IsDefined(documentType))
         {
-            throw new LegalValidationException("A valid documentType is required.");
+            throw new DomainValidationException("A valid documentType is required.");
         }
 
         if (request.Accepted is not { } accepted)
         {
-            throw new LegalValidationException("accepted is required.");
+            throw new DomainValidationException("accepted is required.");
         }
 
         var respondedAt = timeProvider.GetUtcNow().UtcDateTime;
@@ -112,16 +113,16 @@ public sealed class LegalComplianceService(
         else
         {
             var currentVersionId = await CurrentVersionIdAsync(cancellationToken)
-                ?? throw new LegalVersionConflictException("No Terms of Service version has been published.");
+                ?? throw new DomainConflictException("No Terms of Service version has been published.");
 
             if (request.TosVersionId is not { } echoedVersionId)
             {
-                throw new LegalValidationException("tosVersionId is required when responding to the Terms of Service.");
+                throw new DomainValidationException("tosVersionId is required when responding to the Terms of Service.");
             }
 
             if (echoedVersionId != currentVersionId)
             {
-                throw new LegalVersionConflictException(
+                throw new DomainConflictException(
                     "The Terms of Service changed while you were reading it. Reload and respond to the current version.");
             }
 
@@ -183,12 +184,12 @@ public sealed class LegalComplianceService(
         var content = request.Content?.Trim();
         if (string.IsNullOrEmpty(content))
         {
-            throw new LegalValidationException("Content is required.");
+            throw new DomainValidationException("Content is required.");
         }
 
         if (content.Length > LegalLimits.MaxTermsOfServiceContentLength)
         {
-            throw new LegalValidationException(
+            throw new DomainValidationException(
                 $"Content must be at most {LegalLimits.MaxTermsOfServiceContentLength} characters.");
         }
 

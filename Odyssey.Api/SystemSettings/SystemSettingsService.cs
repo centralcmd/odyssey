@@ -97,7 +97,7 @@ public sealed class SystemSettingsService(
 
             if (!caller.HasClaim(PermissionClaims.Type, descriptor.RequiredClaim))
             {
-                throw new SystemSettingsForbiddenException(
+                throw new DomainForbiddenException(
                     $"Setting '{descriptor.FieldName}' requires the '{descriptor.RequiredClaim}' claim.");
             }
         }

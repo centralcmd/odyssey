@@ -268,7 +268,7 @@ public sealed class SecretSettingsService(
 
         if (!caller.HasClaim(PermissionClaims.Type, descriptor.RequiredClaim))
         {
-            throw new SystemSettingsForbiddenException(
+            throw new DomainForbiddenException(
                 $"Secret setting '{descriptor.Key}' requires the '{descriptor.RequiredClaim}' claim.");
         }
 
@@ -359,9 +359,12 @@ public sealed class SecretSettingsService(
 public sealed record StagedSecretClear(string Key, string Reason);
 
 /// <summary>
-/// The key ring would not survive a restart, so a write is refused (issue #444 §11). Mapped to
-/// <c>503</c> by <c>SecretSettingsController</c> rather than by the shared <c>DomainException</c>
-/// hierarchy: it is an infrastructure condition of this one surface, not a domain rule, and it
-/// deliberately carries no <c>Retry-After</c> — it is not retryable until an operator acts.
+/// The key ring would not survive a restart, so a write is refused (issue #444 §11) with a <c>503</c>.
+/// A <see cref="DomainException"/> so <c>GlobalExceptionHandler</c> maps it for every caller, not only
+/// <c>SecretSettingsController</c> (issue #287 M11). It deliberately carries no <c>Retry-After</c> — it
+/// is not retryable until an operator acts.
 /// </summary>
-public sealed class KeyRingNotDurableException(string message) : Exception(message);
+public sealed class KeyRingNotDurableException(string message) : DomainException(message)
+{
+    public override int StatusCode => StatusCodes.Status503ServiceUnavailable;
+}
