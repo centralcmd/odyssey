@@ -61,139 +61,141 @@
                    Noun="users" EmptyIcon="person_search">
         <MudCard Elevation="1" Class="ods-outline">
             <MudCardContent Class="pa-0">
-                <table class="odc-rec usr-tbl" aria-label="Users">
-                    <thead>
-                        <tr>
-                            @* OdsSortHeader is the shared sortable <th> (the same atom OdsRecordTable
-                               renders from its Columns) — it owns aria-sort, the arrow indicator and a
-                               real <button>, so this page no longer hand-rolls any of the three. The
-                               table carries the shared .odc-rec class, so these and the plain Actions
-                               header read as one header style (issue #274). *@
-                            <OdsSortHeader SortKey="name" Sort="_sort" OnSort="ToggleSort">User</OdsSortHeader>
-                            <OdsSortHeader SortKey="fullname" Sort="_sort" OnSort="ToggleSort">Full name</OdsSortHeader>
-                            <OdsSortHeader SortKey="birthdate" Sort="_sort" OnSort="ToggleSort">Date of birth</OdsSortHeader>
-                            <OdsSortHeader SortKey="email" Sort="_sort" OnSort="ToggleSort">Email</OdsSortHeader>
-                            <OdsSortHeader SortKey="role" Sort="_sort" OnSort="ToggleSort">Role</OdsSortHeader>
-                            <OdsSortHeader SortKey="emailstatus" Sort="_sort" OnSort="ToggleSort">Email status</OdsSortHeader>
-                            <OdsSortHeader SortKey="account" Sort="_sort" OnSort="ToggleSort">Account</OdsSortHeader>
-                            <th scope="col" class="usr-actions-col">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var user in PageItems)
-                        {
-                            var isEditing = _editingId == user.Id;
-                            var isExpanded = _expandedId == user.Id;
-                            var isOpen = isEditing || isExpanded;
-                            var detailId = $"usr-detail-{user.Id}";
-                            @* The chevron in the actions cell is the row's only disclosure control
-                               (design-system RecordTable). The row click is a pointer convenience and
-                               nothing more: the <tr> carries no role, tabindex or aria-expanded, so the
-                               menu and chevron are never nested inside another control (issue #273).
-                               The actions cell stops propagation so its controls act on their own. *@
-                            <tr class="@(isOpen ? "expanded" : null)"
-                                @onclick="@(() => ToggleExpand(user.Id))">
-                                <td>
-                                    <div class="usr-user-cell">
-                                        @* Decorative: the name cell beside it already identifies the
-                                           person, and the picture never carries a fact of its own. *@
-                                        <UserProfileMark User="user" CanReadProfileImages="_canReadProfileImages" Alt="" />
-                                        <div>
-                                            <div class="usr-user-name">@UserDisplay.DisplayName(user)</div>
-                                            <div class="usr-user-id">@@@(user.UserName ?? "—")</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>@(UserDisplay.FullName(user) ?? "—")</td>
-                                <td class="muted mono">@(UserDisplay.BirthDateText(user) ?? "—")</td>
-                                <td class="usr-email">@(user.Email ?? "—")</td>
-                                <td><UserRolePill Role="@user.Role" /></td>
-                                <td><UserStatusBadge Kind="UserStatusKind.Email" On="user.EmailConfirmed" /></td>
-                                @* The pending-reset chip rides inside the existing Account-status cell
-                                   rather than adding a ninth column to an already-dense row (issue #406
-                                   §3). Text + icon, never colour alone. *@
-                                <td>
-                                    <span class="usr-status-stack">
-                                        <UserStatusBadge Kind="UserStatusKind.Account" On="user.Enabled" />
-                                        @if (user.MustChangePassword)
-                                        {
-                                            <OdsChip Tone="OdsChipTone.Warning" Icon="lock_reset">Reset pending</OdsChip>
-                                        }
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="usr-row-actions" @onclick:stopPropagation="true">
-                                        @* Edit (users.update) and Delete (users.delete) share the row's
-                                           action menu, each gated on its own permission. Permanent delete
-                                           is admin-only. *@
-                                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
-                                                 Size="Size.Small"
-                                                 Color="Color.Default"
-                                                 AnchorOrigin="Origin.BottomRight"
-                                                 TransformOrigin="Origin.TopRight"
-                                                 AriaLabel="More actions">
-                                            <AuthorizeView Policy="@PermissionClaims.UsersUpdate" Context="editAuth">
-                                                <MudMenuItem Icon="@Icons.Material.Filled.Edit"
-                                                             OnClick="@(() => BeginEdit(user))">Edit</MudMenuItem>
-                                                @* Directly after Edit, inside the same users.update gate
-                                                   (issue #406 §3): triggering a reset is an edit of the
-                                                   account, not a destructive act, so it stays above the
-                                                   divider that separates Delete. *@
-                                                <MudMenuItem Icon="@Icons.Material.Filled.LockReset"
-                                                             OnClick="@(() => RequestPasswordReset(user))">Send password reset</MudMenuItem>
-                                            </AuthorizeView>
-                                            <MudMenuItem OnClick="@(() => CopyUserId(user))">
-                                                <span class="odc-menu-item">
-                                                    <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
-                                                    <span>Copy ID</span>
-                                                    <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
-                                                </span>
-                                            </MudMenuItem>
-                                            <AuthorizeView Policy="@PermissionClaims.UsersDelete" Context="deleteAuth">
-                                                @* Delete is divided off and coral (design-system Users specimen). *@
-                                                <MudDivider />
-                                                <MudMenuItem Icon="@Icons.Material.Filled.DeleteForever"
-                                                             IconColor="Color.Error"
-                                                             OnClick="@(() => RequestDelete(user))">Delete</MudMenuItem>
-                                            </AuthorizeView>
-                                        </MudMenu>
-                                        <button class="usr-expand-btn" type="button"
-                                                aria-label="@(isOpen ? "Collapse row" : "Expand row")"
-                                                aria-expanded="@isOpen.ToString().ToLowerInvariant()"
-                                                aria-controls="@(isOpen ? detailId : null)"
-                                                @onclick="@(() => ToggleExpand(user.Id))">
-                                            <MudIcon Icon="@Icons.Material.Filled.ExpandMore"
-                                                     Class="@($"usr-chev {(isOpen ? "open" : null)}")" />
-                                        </button>
-                                    </div>
-                                </td>
+                <div class="odc-rec-scroll">
+                    <table class="odc-rec usr-tbl" aria-label="Users">
+                        <thead>
+                            <tr>
+                                @* OdsSortHeader is the shared sortable <th> (the same atom OdsRecordTable
+                                   renders from its Columns) — it owns aria-sort, the arrow indicator and a
+                                   real <button>, so this page no longer hand-rolls any of the three. The
+                                   table carries the shared .odc-rec class, so these and the plain Actions
+                                   header read as one header style (issue #274). *@
+                                <OdsSortHeader SortKey="name" Sort="_sort" OnSort="ToggleSort">User</OdsSortHeader>
+                                <OdsSortHeader SortKey="fullname" Sort="_sort" OnSort="ToggleSort">Full name</OdsSortHeader>
+                                <OdsSortHeader SortKey="birthdate" Sort="_sort" OnSort="ToggleSort">Date of birth</OdsSortHeader>
+                                <OdsSortHeader SortKey="email" Sort="_sort" OnSort="ToggleSort">Email</OdsSortHeader>
+                                <OdsSortHeader SortKey="role" Sort="_sort" OnSort="ToggleSort">Role</OdsSortHeader>
+                                <OdsSortHeader SortKey="emailstatus" Sort="_sort" OnSort="ToggleSort">Email status</OdsSortHeader>
+                                <OdsSortHeader SortKey="account" Sort="_sort" OnSort="ToggleSort">Account</OdsSortHeader>
+                                <th scope="col" class="usr-actions-col">Actions</th>
                             </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in PageItems)
+                            {
+                                var isEditing = _editingId == user.Id;
+                                var isExpanded = _expandedId == user.Id;
+                                var isOpen = isEditing || isExpanded;
+                                var detailId = $"usr-detail-{user.Id}";
+                                @* The chevron in the actions cell is the row's only disclosure control
+                                   (design-system RecordTable). The row click is a pointer convenience and
+                                   nothing more: the <tr> carries no role, tabindex or aria-expanded, so the
+                                   menu and chevron are never nested inside another control (issue #273).
+                                   The actions cell stops propagation so its controls act on their own. *@
+                                <tr class="@(isOpen ? "expanded" : null)"
+                                    @onclick="@(() => ToggleExpand(user.Id))">
+                                    <td>
+                                        <div class="usr-user-cell">
+                                            @* Decorative: the name cell beside it already identifies the
+                                               person, and the picture never carries a fact of its own. *@
+                                            <UserProfileMark User="user" CanReadProfileImages="_canReadProfileImages" Alt="" />
+                                            <div>
+                                                <div class="usr-user-name">@UserDisplay.DisplayName(user)</div>
+                                                <div class="usr-user-id">@@@(user.UserName ?? "—")</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>@(UserDisplay.FullName(user) ?? "—")</td>
+                                    <td class="muted mono">@(UserDisplay.BirthDateText(user) ?? "—")</td>
+                                    <td class="usr-email">@(user.Email ?? "—")</td>
+                                    <td><UserRolePill Role="@user.Role" /></td>
+                                    <td><UserStatusBadge Kind="UserStatusKind.Email" On="user.EmailConfirmed" /></td>
+                                    @* The pending-reset chip rides inside the existing Account-status cell
+                                       rather than adding a ninth column to an already-dense row (issue #406
+                                       §3). Text + icon, never colour alone. *@
+                                    <td>
+                                        <span class="usr-status-stack">
+                                            <UserStatusBadge Kind="UserStatusKind.Account" On="user.Enabled" />
+                                            @if (user.MustChangePassword)
+                                            {
+                                                <OdsChip Tone="OdsChipTone.Warning" Icon="lock_reset">Reset pending</OdsChip>
+                                            }
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="usr-row-actions" @onclick:stopPropagation="true">
+                                            @* Edit (users.update) and Delete (users.delete) share the row's
+                                               action menu, each gated on its own permission. Permanent delete
+                                               is admin-only. *@
+                                            <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                                     Size="Size.Small"
+                                                     Color="Color.Default"
+                                                     AnchorOrigin="Origin.BottomRight"
+                                                     TransformOrigin="Origin.TopRight"
+                                                     AriaLabel="More actions">
+                                                <AuthorizeView Policy="@PermissionClaims.UsersUpdate" Context="editAuth">
+                                                    <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                                                 OnClick="@(() => BeginEdit(user))">Edit</MudMenuItem>
+                                                    @* Directly after Edit, inside the same users.update gate
+                                                       (issue #406 §3): triggering a reset is an edit of the
+                                                       account, not a destructive act, so it stays above the
+                                                       divider that separates Delete. *@
+                                                    <MudMenuItem Icon="@Icons.Material.Filled.LockReset"
+                                                                 OnClick="@(() => RequestPasswordReset(user))">Send password reset</MudMenuItem>
+                                                </AuthorizeView>
+                                                <MudMenuItem OnClick="@(() => CopyUserId(user))">
+                                                    <span class="odc-menu-item">
+                                                        <span class="material-icons odc-menu-item-ic" aria-hidden="true">fingerprint</span>
+                                                        <span>Copy ID</span>
+                                                        <span class="material-icons odc-menu-item-trail" aria-hidden="true">content_copy</span>
+                                                    </span>
+                                                </MudMenuItem>
+                                                <AuthorizeView Policy="@PermissionClaims.UsersDelete" Context="deleteAuth">
+                                                    @* Delete is divided off and coral (design-system Users specimen). *@
+                                                    <MudDivider />
+                                                    <MudMenuItem Icon="@Icons.Material.Filled.DeleteForever"
+                                                                 IconColor="Color.Error"
+                                                                 OnClick="@(() => RequestDelete(user))">Delete</MudMenuItem>
+                                                </AuthorizeView>
+                                            </MudMenu>
+                                            <button class="usr-expand-btn" type="button"
+                                                    aria-label="@(isOpen ? "Collapse row" : "Expand row")"
+                                                    aria-expanded="@isOpen.ToString().ToLowerInvariant()"
+                                                    aria-controls="@(isOpen ? detailId : null)"
+                                                    @onclick="@(() => ToggleExpand(user.Id))">
+                                                <MudIcon Icon="@Icons.Material.Filled.ExpandMore"
+                                                         Class="@($"usr-chev {(isOpen ? "open" : null)}")" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
 
-                            @if (isEditing)
-                            {
-                                <tr class="odc-rec-detail-row usr-detail-row" id="@detailId">
-                                    <td class="usr-detail-cell" colspan="8">
-                                        <UserEditPanel User="user" Roles="_roles"
-                                                       Saving="_editSaving" Error="@_editError"
-                                                       OnCancel="CancelEdit"
-                                                       OnSave="@(draft => ApplyEdit(user, draft))" />
-                                    </td>
-                                </tr>
+                                @if (isEditing)
+                                {
+                                    <tr class="odc-rec-detail-row usr-detail-row" id="@detailId">
+                                        <td class="usr-detail-cell" colspan="8">
+                                            <UserEditPanel User="user" Roles="_roles"
+                                                           Saving="_editSaving" Error="@_editError"
+                                                           OnCancel="CancelEdit"
+                                                           OnSave="@(draft => ApplyEdit(user, draft))" />
+                                        </td>
+                                    </tr>
+                                }
+                                else if (isExpanded)
+                                {
+                                    <tr class="odc-rec-detail-row usr-detail-row" id="@detailId">
+                                        <td class="usr-detail-cell" colspan="8">
+                                            <UserDetailPanel User="user" CanReadProfileImages="_canReadProfileImages"
+                                                             Permissions="RolePermissionsFor(user.Role)"
+                                                             ClaimsOpen="@(_claimsOpenId == user.Id)"
+                                                             OnToggleClaims="@(() => ToggleClaims(user.Id))" />
+                                        </td>
+                                    </tr>
+                                }
                             }
-                            else if (isExpanded)
-                            {
-                                <tr class="odc-rec-detail-row usr-detail-row" id="@detailId">
-                                    <td class="usr-detail-cell" colspan="8">
-                                        <UserDetailPanel User="user" CanReadProfileImages="_canReadProfileImages"
-                                                         Permissions="RolePermissionsFor(user.Role)"
-                                                         ClaimsOpen="@(_claimsOpenId == user.Id)"
-                                                         OnToggleClaims="@(() => ToggleClaims(user.Id))" />
-                                    </td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
 
                 @if (FilteredUsers.Count > 0)
                 {

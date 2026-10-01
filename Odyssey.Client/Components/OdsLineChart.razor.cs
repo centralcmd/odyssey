@@ -290,6 +290,7 @@ public partial class OdsLineChart : IAsyncDisposable
         var w = Math.Round(width);
         if (w <= 0 || w == _vbW) return;
         _vbW = w;
+        _every = ResolveEvery();
         StateHasChanged();
     });
 
@@ -384,9 +385,23 @@ public partial class OdsLineChart : IAsyncDisposable
             : [_yMax, _yMin + (_yMax - _yMin) * 2 / 3, _yMin + (_yMax - _yMin) / 3, _yMin];
 
         _x0 = AxisGutter(_gridVals.Select(YLabel));
-        _every = XTickEveryAuto ? TickEvery(_pts.Count) : (XTickEvery > 0 ? XTickEvery : 1);
+        _xLabelWidth = _pts.Count == 0 ? 0 : _pts.Max(p => p.Label.Length) * AxisCharWidth;
+        _every = ResolveEvery();
         _fillId = $"odc-lc-fill-{Guid.NewGuid():N}";
     }
+
+    // The widest x label's estimated advance, fixed per parameter set so a resize only re-strides.
+    private double _xLabelWidth;
+
+    private int ResolveEvery() => XTickEveryAuto
+        ? TickEvery(_pts.Count, X1 - X0, _xLabelWidth)
+        : (XTickEvery > 0 ? XTickEvery : 1);
+
+    /// <summary>The clear space kept between two neighbouring x labels.</summary>
+    internal const double XLabelGap = 8;
+
+    /// <inheritdoc cref="TickEvery(int, double, double)"/>
+    internal static int TickEvery(int n) => TickEvery(n, 0, 0);
 
     /// <summary>
     /// The auto stride: start at <c>ceil(n / 8)</c>, then step up until the tail label and the last
@@ -398,14 +413,32 @@ public partial class OdsLineChart : IAsyncDisposable
     /// enough: incrementing can land on the same condition again, and a rule that merely recomputed
     /// from a smaller divisor was a no-op at <c>n = 17</c>, where <c>ceil(17/8) == ceil(17/7) == 3</c>.
     /// </para>
+    /// <para>
+    /// Eight labels is a count, not a width: since the plot is sized in pixels (issue #274), eight
+    /// <c>Apr '16</c>-wide labels on a phone-width card overlapped one another. So when the plot width
+    /// and the widest label are known, the stride also never puts two drawn labels — the tail included
+    /// — closer than a label's width plus <see cref="XLabelGap"/>. Unmeasured (prerender, no JS), it
+    /// falls back to the count rule alone.
+    /// </para>
     /// </summary>
-    internal static int TickEvery(int n)
+    internal static int TickEvery(int n, double plotWidth, double labelWidth)
     {
         if (n <= 1) return 1;
         var every = Math.Max(1, (int)Math.Ceiling(n / 8.0));
-        var guard = 0;
-        while ((n - 1) % every == 1 && guard++ < n) every += 1;
-        return every;
+        var step = plotWidth > 0 && labelWidth > 0 ? plotWidth / (n - 1) : 0;
+        var need = labelWidth + XLabelGap;
+        if (step > 0)
+            every = Math.Max(every, (int)Math.Ceiling(need / step));
+
+        bool Crowded(int e)
+        {
+            var tail = (n - 1) % e;
+            return tail == 1 || (step > 0 && tail != 0 && tail * step < need);
+        }
+
+        // Past n - 1 only the first and the tail label are left, and nothing further can help.
+        while (every < n - 1 && Crowded(every)) every += 1;
+        return Math.Min(every, Math.Max(1, n - 1));
     }
 
     private double Sx(int i) => _single ? (X0 + X1) / 2 : X0 + i * (X1 - X0) / (_pts.Count - 1);

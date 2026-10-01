@@ -190,44 +190,50 @@
 
         @if (TextEquivalent)
         {
-            <table class="odc-sr-only">
-                @if (!string.IsNullOrEmpty(Title))
-                {
-                    <caption>@Title</caption>
-                }
-                <thead>
-                    <tr>
-                        @if (_multi)
-                        {
-                            <th scope="col">Series</th>
-                        }
-                        <th scope="col">@TextEquivalentLabel</th>
-                        <th scope="col">Value</th>
-                        <th scope="col">Change</th>
-                        <th scope="col">State</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var p in _plots)
+            @* The wrapper, not the table, carries the visually-hidden rule: a <table> ignores width, so
+               a hidden table still lays out at its content width, and with nothing positioned above it
+               that width is added to the page's scrollable area — 857 px on a 420 px phone. The wrapper
+               is a 1 px overflow-hidden box, which is what clips it. *@
+            <div class="odc-sr-only">
+                <table>
+                    @if (!string.IsNullOrEmpty(Title))
                     {
-                        for (var i = 0; i < p.Pts.Count; i++)
-                        {
-                            var pt = p.Pts[i];
-                            var state = StateOf(p, i);
-                            <tr>
-                                @if (_multi)
-                                {
-                                    <td>@p.Label</td>
-                                }
-                                <th scope="row">@pt.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)</th>
-                                <td>@Format((decimal)pt.Value)</td>
-                                <td>@ChangeText(p, i)</td>
-                                <td>@state</td>
-                            </tr>
-                        }
+                        <caption>@Title</caption>
                     }
-                </tbody>
-            </table>
+                    <thead>
+                        <tr>
+                            @if (_multi)
+                            {
+                                <th scope="col">Series</th>
+                            }
+                            <th scope="col">@TextEquivalentLabel</th>
+                            <th scope="col">Value</th>
+                            <th scope="col">Change</th>
+                            <th scope="col">State</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in _plots)
+                        {
+                            for (var i = 0; i < p.Pts.Count; i++)
+                            {
+                                var pt = p.Pts[i];
+                                var state = StateOf(p, i);
+                                <tr>
+                                    @if (_multi)
+                                    {
+                                        <td>@p.Label</td>
+                                    }
+                                    <th scope="row">@pt.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)</th>
+                                    <td>@Format((decimal)pt.Value)</td>
+                                    <td>@ChangeText(p, i)</td>
+                                    <td>@state</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
         }
     }
 </div>

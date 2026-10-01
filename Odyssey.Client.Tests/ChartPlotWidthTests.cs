@@ -120,6 +120,41 @@ public class ChartPlotWidthTests
     }
 
     /// <summary>
+    /// The auto x stride follows the measured width, through the same observer callback the browser
+    /// drives: a phone-width dashboard chart drew eight overlapping <c>Apr '16</c> labels because the
+    /// stride was a count while the axis had become pixel-sized. Narrowing must thin the labels until
+    /// neighbours sit a label apart, and widening again must restore the count rule's density — the
+    /// re-stride happens on the width callback, not only on a parameter change.
+    /// </summary>
+    [Fact]
+    public async Task The_auto_x_stride_rethins_on_every_reported_width()
+    {
+        await using var ctx = NewContext(out var module);
+        IReadOnlyList<OdsLinePoint> quarters = [.. Enumerable.Range(0, 44).Select(i =>
+            new OdsLinePoint($"{(i % 4) switch { 0 => "Jan", 1 => "Apr", 2 => "Jul", _ => "Oct" }} '{16 + i / 4:00}", 1000m + i))];
+        var cut = ctx.Render<OdsLineChart>(p => p
+            .Add(c => c.Series, quarters)
+            .Add(c => c.Format, Whole)
+            .Add(c => c.XTickEveryAuto, true));
+
+        double[] XLabels() => [.. cut.FindAll("g.odc-lc-axis text")
+            .Where(t => t.GetAttribute("y") == "238")
+            .Select(t => double.Parse(t.GetAttribute("x")!, CultureInfo.InvariantCulture))];
+
+        var unmeasured = XLabels().Length;
+
+        await ReportWidth(cut, module, 280);
+        var narrow = XLabels();
+        var need = 7 * OdsLineChart.AxisCharWidth + OdsLineChart.XLabelGap;
+        Assert.True(narrow.Length < unmeasured, $"{narrow.Length} labels at 280px, {unmeasured} unmeasured.");
+        Assert.All(narrow.Zip(narrow.Skip(1)), pair => Assert.True(pair.Second - pair.First >= need,
+            $"labels at {pair.First} and {pair.Second} are closer than {need}."));
+
+        await ReportWidth(cut, module, 1180);
+        Assert.Equal(unmeasured, XLabels().Length);
+    }
+
+    /// <summary>
     /// Everything drawn sits inside the measured box: the gridlines end at <c>W − 32</c> rather than the
     /// old fixed 968, which at 300px would have drawn the plot three times past the right edge. The step
     /// chart lays its paths out once per parameter set, so this also proves a new width re-runs that.

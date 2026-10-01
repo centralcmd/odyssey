@@ -44,113 +44,118 @@
 {
     <div class="sr-only" role="status" aria-live="polite">Loading @Noun…</div>
 }
-<table class="odc-rec @(CanExpand ? null : "odc-rec-flat") @Class" aria-label="@AriaLabel" aria-busy="@(Loading ? "true" : "false")">
-    <thead>
-        <tr>
-            @if (Leading is not null)
-            {
-                <th scope="col" style="width:36px"></th>
-            }
-            @foreach (var col in Columns)
-            {
-                @if (col.Sortable)
-                {
-                    <OdsSortHeader SortKey="@col.Key" Sort="@EffectiveSort" OnSort="ToggleSort" Align="@col.Align"
-                                   Style="@(col.Width is not null ? $"width:{col.Width}" : null)">
-                        @HeaderFor(col)
-                    </OdsSortHeader>
-                }
-                else
-                {
-                    <th scope="col" class="@(col.Align == OdsAlign.End ? "odc-rec-numeric" : null)"
-                        style="@(col.Width is not null ? $"width:{col.Width}" : null)">
-                        @HeaderFor(col)
-                    </th>
-                }
-            }
-            <th scope="col" style="width:96px;text-align:right">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var (row, rowIndex) in VisibleRows.Select((r, i) => (r, i)))
-        {
-            var rk = RowKey(row);
-            var detailId = $"{_detailIdPrefix}-{rowIndex}";
-            var expanded = _openIds.Contains(rk);
-            var editing = _editIds.Contains(rk);
-            var cellCtx = new OdsRecordCellContext(expanded, editing, _savedIds.Contains(rk));
-            <tr class="@RowClass(expanded, editing)" @onclick="@(() => OnRowClick(rk, editing))">
+@* A record table is as wide as its columns need, which on a phone is wider than the page; the
+   wrapper scrolls it in place instead of pushing the whole page sideways. No tab stop of its own:
+   every row carries focusable controls, and focusing one scrolls it into view. *@
+<div class="odc-rec-scroll">
+    <table class="odc-rec @(CanExpand ? null : "odc-rec-flat") @Class" aria-label="@AriaLabel" aria-busy="@(Loading ? "true" : "false")">
+        <thead>
+            <tr>
                 @if (Leading is not null)
                 {
-                    <td>@Leading(row)</td>
+                    <th scope="col" style="width:36px"></th>
                 }
                 @foreach (var col in Columns)
                 {
-                    <td class="@CellClass(col)">
-                        @col.Cell?.Invoke(row, cellCtx)
-                    </td>
+                    @if (col.Sortable)
+                    {
+                        <OdsSortHeader SortKey="@col.Key" Sort="@EffectiveSort" OnSort="ToggleSort" Align="@col.Align"
+                                       Style="@(col.Width is not null ? $"width:{col.Width}" : null)">
+                            @HeaderFor(col)
+                        </OdsSortHeader>
+                    }
+                    else
+                    {
+                        <th scope="col" class="@(col.Align == OdsAlign.End ? "odc-rec-numeric" : null)"
+                            style="@(col.Width is not null ? $"width:{col.Width}" : null)">
+                            @HeaderFor(col)
+                        </th>
+                    }
                 }
-                <td>
-                    <div class="odc-rec-actions" @onclick:stopPropagation="true">
-                        @if (Actions is not null)
-                        {
-                            <OdsMenu Items="@Actions(row, ActionCtx(rk, expanded, editing))" AriaLabel="Row actions" />
-                        }
-                        @if (CanExpand)
-                        {
-                            <button type="button" class="odc-rec-expand"
-                                    aria-label="@(expanded ? "Collapse row" : "Expand row")" aria-expanded="@(expanded ? "true" : "false")"
-                                    aria-controls="@(expanded ? detailId : null)"
-                                    disabled="@editing" @onclick="@(() => ToggleRow(rk))" @onclick:stopPropagation="true">
-                                <span class="material-icons odc-rec-chev @(expanded ? "open" : null)" aria-hidden="true">expand_more</span>
-                            </button>
-                        }
-                    </div>
-                </td>
+                <th scope="col" style="width:96px;text-align:right">Actions</th>
             </tr>
-            @if (expanded)
+        </thead>
+        <tbody>
+            @foreach (var (row, rowIndex) in VisibleRows.Select((r, i) => (r, i)))
             {
-                <tr class="odc-rec-detail-row" id="@detailId">
-                    <td class="odc-rec-detail-cell" colspan="@ColSpan">
-                        <div class="odc-rec-panel @(editing ? "editing" : null)">
-                            @if (editing && RenderEdit is not null)
+                var rk = RowKey(row);
+                var detailId = $"{_detailIdPrefix}-{rowIndex}";
+                var expanded = _openIds.Contains(rk);
+                var editing = _editIds.Contains(rk);
+                var cellCtx = new OdsRecordCellContext(expanded, editing, _savedIds.Contains(rk));
+                <tr class="@RowClass(expanded, editing)" @onclick="@(() => OnRowClick(rk, editing))">
+                    @if (Leading is not null)
+                    {
+                        <td>@Leading(row)</td>
+                    }
+                    @foreach (var col in Columns)
+                    {
+                        <td class="@CellClass(col)">
+                            @col.Cell?.Invoke(row, cellCtx)
+                        </td>
+                    }
+                    <td>
+                        <div class="odc-rec-actions" @onclick:stopPropagation="true">
+                            @if (Actions is not null)
                             {
-                                @RenderEdit(row, EditCtx(rk))
+                                <OdsMenu Items="@Actions(row, ActionCtx(rk, expanded, editing))" AriaLabel="Row actions" />
                             }
-                            else
+                            @if (CanExpand)
                             {
-                                @RenderDetail?.Invoke(row)
+                                <button type="button" class="odc-rec-expand"
+                                        aria-label="@(expanded ? "Collapse row" : "Expand row")" aria-expanded="@(expanded ? "true" : "false")"
+                                        aria-controls="@(expanded ? detailId : null)"
+                                        disabled="@editing" @onclick="@(() => ToggleRow(rk))" @onclick:stopPropagation="true">
+                                    <span class="material-icons odc-rec-chev @(expanded ? "open" : null)" aria-hidden="true">expand_more</span>
+                                </button>
                             }
                         </div>
                     </td>
                 </tr>
+                @if (expanded)
+                {
+                    <tr class="odc-rec-detail-row" id="@detailId">
+                        <td class="odc-rec-detail-cell" colspan="@ColSpan">
+                            <div class="odc-rec-panel @(editing ? "editing" : null)">
+                                @if (editing && RenderEdit is not null)
+                                {
+                                    @RenderEdit(row, EditCtx(rk))
+                                }
+                                else
+                                {
+                                    @RenderDetail?.Invoke(row)
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
             }
-        }
-        @* The first fetch renders OdsSkeletonRows shaped like this table's own columns, so the row
-           layout (including right-aligned numeric cells) holds steady as real rows replace it. This
-           is OdsListStatus's LoadingContent idea — the placeholder takes the shape of the thing
-           loading — supplied centrally here rather than per page, because only the table knows its
-           column count and alignment. A <tr> cannot live inside the status <td>, so loading is
-           rendered here and OdsListStatus below keeps the error / empty states. *@
-        @if (Loading)
-        {
-            @for (var i = 0; i < SkeletonRowCount; i++)
+            @* The first fetch renders OdsSkeletonRows shaped like this table's own columns, so the row
+               layout (including right-aligned numeric cells) holds steady as real rows replace it. This
+               is OdsListStatus's LoadingContent idea — the placeholder takes the shape of the thing
+               loading — supplied centrally here rather than per page, because only the table knows its
+               column count and alignment. A <tr> cannot live inside the status <td>, so loading is
+               rendered here and OdsListStatus below keeps the error / empty states. *@
+            @if (Loading)
             {
-                <OdsSkeletonRow Columns="@ColSpan" Align="@SkeletonAlign" />
+                @for (var i = 0; i < SkeletonRowCount; i++)
+                {
+                    <OdsSkeletonRow Columns="@ColSpan" Align="@SkeletonAlign" />
+                }
             }
-        }
-        @* One full-width status cell for the remaining pre-row states, so a page can neither invent
-           its own dialect nor show the onboarding copy for a failed or over-filtered load. *@
-        else if (Error || !VisibleRows.Any())
-        {
-            <tr class="odc-rec-detail-row">
-                <td colspan="@ColSpan" style="padding:0">
-                    <OdsListStatus Error="Error" OnRetry="OnRetry" ErrorDescription="@ErrorDescription"
-                                   IsEmpty="true" HasFilters="HasFilters" OnClearFilters="OnClearFilters"
-                                   Noun="@Noun" EmptyIcon="@EmptyIcon" EmptyTitle="@EmptyTitle"
-                                   EmptyDescription="@EmptyDescription" CreateAction="CreateAction" Empty="Empty" />
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+            @* One full-width status cell for the remaining pre-row states, so a page can neither invent
+               its own dialect nor show the onboarding copy for a failed or over-filtered load. *@
+            else if (Error || !VisibleRows.Any())
+            {
+                <tr class="odc-rec-detail-row">
+                    <td colspan="@ColSpan" style="padding:0">
+                        <OdsListStatus Error="Error" OnRetry="OnRetry" ErrorDescription="@ErrorDescription"
+                                       IsEmpty="true" HasFilters="HasFilters" OnClearFilters="OnClearFilters"
+                                       Noun="@Noun" EmptyIcon="@EmptyIcon" EmptyTitle="@EmptyTitle"
+                                       EmptyDescription="@EmptyDescription" CreateAction="CreateAction" Empty="Empty" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
