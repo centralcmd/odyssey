@@ -19,6 +19,13 @@ public partial class MainLayout
     // Onboarding gate (issue #316 §5): the app body renders only once completeness is resolved.
     private bool _gateChecked;
 
+    // True while the shell was resolved against an unavailable session and is subscribed for its recovery.
+    private bool _awaitingSession;
+    private bool _resolvingShell;
+    private bool _resolveAgain;
+    private bool _focusMainAfterRender;
+    private ElementReference _main;
+
     private System.Security.Claims.ClaimsPrincipal? _user;
     private Func<NavPage, bool> _canView = p => p.Claim is null;
 
@@ -48,8 +55,39 @@ public partial class MainLayout
             return;
         }
 
+        await ResolveShellAsync();
+    }
+
+    /// <summary>
+    /// Reads the session and resolves the gates and preferences that hang off it. Runs once per load —
+    /// and once more if that first read had no definitive answer (issue #278): the provider announces
+    /// the recovered session, and without this re-run the shell would keep the unavailable principal and
+    /// render a nav with no permissions under the page the router has just authorized.
+    /// </summary>
+    private async Task ResolveShellAsync()
+    {
         _user = await AuthStateProvider.GetUserAsync();
         _canView = page => page.Claim is null || (_user?.HasPermission(page.Claim) ?? false);
+
+        if (SessionUnavailable.Is(_user))
+        {
+            // Nothing to gate on and nothing to fetch: every call would fail the way the probe did. Let
+            // the body render, which is App.razor's retry panel, and wait for the recovery.
+            if (!_awaitingSession)
+            {
+                _awaitingSession = true;
+                AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+            }
+
+            _gateChecked = true;
+            return;
+        }
+
+        if (_awaitingSession)
+        {
+            _awaitingSession = false;
+            AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        }
 
         // All three gates are resolved in one place, in the order the SERVER enforces them — see
         // FirstRunGateChain for what that order buys and what it cost when it was three chained
@@ -64,8 +102,10 @@ public partial class MainLayout
 
         if (FirstRunGateChain.Owed(profile, _user) is { } gatePath)
         {
-            // Leave _gateChecked false — the layout is being left rather than rendered, so the app body
+            // Reset rather than left, since a re-run after a recovered session starts from true. Keep
+            // _gateChecked false — the layout is being left rather than rendered, so the app body
             // never flashes behind a gate. That holds whether or not RedirectToGate actually navigates.
+            _gateChecked = false;
             RedirectToGate(gatePath);
             return;
         }
@@ -107,6 +147,19 @@ public partial class MainLayout
     {
         if (!OperatingSystem.IsBrowser())
             return;
+
+        if (_focusMainAfterRender)
+        {
+            _focusMainAfterRender = false;
+            try
+            {
+                await _main.FocusAsync();
+            }
+            catch (Exception)
+            {
+                // Best-effort focus move; the page is usable either way.
+            }
+        }
 
         if (firstRender)
         {
@@ -225,9 +278,48 @@ public partial class MainLayout
         await UserPreferences.SaveUserPreferencesAsync(UserPreferences.Current with { DarkModeEnabled = next });
     }
 
+    private void OnAuthenticationStateChanged(Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> state) =>
+        _ = InvokeAsync(async () =>
+        {
+            // One re-run at a time: the recovery loop and a Retry can announce back to back, and two
+            // overlapping runs would fetch the profile twice and race on _gateChecked. An announcement
+            // that lands mid-run is not dropped — it queues exactly one more pass, so the last word on
+            // the session is always the one the shell ends up resolved against.
+            if (_resolvingShell)
+            {
+                _resolveAgain = true;
+                return;
+            }
+
+            _resolvingShell = true;
+            try
+            {
+                do
+                {
+                    _resolveAgain = false;
+                    await ResolveShellAsync();
+                }
+                while (_resolveAgain);
+            }
+            finally
+            {
+                _resolvingShell = false;
+            }
+
+            // The retry panel that held focus is gone and no route change fired FocusOnNavigate, so hand
+            // focus to the main landmark rather than letting it fall to <body> (WCAG 2.4.3).
+            _focusMainAfterRender = !_awaitingSession;
+            StateHasChanged();
+        });
+
     public async ValueTask DisposeAsync()
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
+        if (_awaitingSession)
+        {
+            AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        }
+
         UserPreferences.DarkModeChanged -= OnDarkModeChanged;
         PasswordChangeRequired.PasswordChangeRequired -= OnPasswordChangeRequired;
 
