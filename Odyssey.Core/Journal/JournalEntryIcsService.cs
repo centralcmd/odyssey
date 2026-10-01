@@ -467,7 +467,7 @@ public class JournalEntryIcsService
         // Match targets by UID → ExternalUid. Only load entries whose (well-formed) UID appears in this file.
         var incomingUids = journals
             .Select(j => j.Uid)
-            .Where(u => u is not null && IsValidExternalUid(u) && u.Length <= MaxExternalUidLength)
+            .Where(u => u is not null && u.Length <= MaxExternalUidLength && IsValidExternalUid(u))
             .Select(u => u!)
             .Distinct(StringComparer.Ordinal)
             .ToList();
@@ -525,18 +525,20 @@ public class JournalEntryIcsService
         var sample = string.IsNullOrWhiteSpace(title) ? UntitledEntry : title;
 
         var rawUid = journal.Uid;
-        if (rawUid is not null && !IsValidExternalUid(rawUid))
-        {
-            skipped.Add("Invalid UID: control characters or leading/trailing whitespace not allowed.", sample);
-            return null;
-        }
 
         // A UID longer than the column would, on a strict-mode MariaDB, surface as a non-duplicate
         // DbUpdateException the collision handler doesn't recognize — a whole-batch 500 that breaks the
         // skip-and-continue contract. Bound it here so an over-length UID is a clean per-block skip.
+        // Checked before the pattern so the regex only ever runs over a bounded value.
         if (rawUid is { Length: > MaxExternalUidLength })
         {
             skipped.Add($"UID exceeds the maximum length of {MaxExternalUidLength} characters.", sample);
+            return null;
+        }
+
+        if (rawUid is not null && !IsValidExternalUid(rawUid))
+        {
+            skipped.Add("Invalid UID: control characters or leading/trailing whitespace not allowed.", sample);
             return null;
         }
 

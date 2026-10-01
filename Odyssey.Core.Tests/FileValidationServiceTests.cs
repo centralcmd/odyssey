@@ -7,7 +7,9 @@ namespace Odyssey.Core.Tests;
 public class FileValidationServiceTests
 {
     private static FileUpload CreateMockFile(string fileName, string contentType, long size, byte[]? content = null) =>
-        new(fileName, contentType, size, () => new MemoryStream(content ?? []));
+        new(fileName, contentType, size, () => content is null
+            ? throw new InvalidOperationException("This fixture has no content; the test should fail before reading it.")
+            : new MemoryStream(content));
 
     [Fact]
     public async Task ValidateFile_Succeeds_WithValidPdf()

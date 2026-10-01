@@ -30,6 +30,10 @@ public sealed class JournalEntryExternalUidRuleParityTests
         Assert.Equal(DtoRule.IsValid(uid), JournalEntryIcsService.IsValidExternalUid(uid));
 
     [Fact]
+    public void ImportAcceptsC1ControlCharacters_AsTheDtoDoes() =>
+        Assert.True(JournalEntryIcsService.IsValidExternalUid("c1\u0085control"));
+
+    [Fact]
     public void ImportRejectsEmptyUid_WhichTheAttributeSkips()
     {
         Assert.True(DtoRule.IsValid(string.Empty));
