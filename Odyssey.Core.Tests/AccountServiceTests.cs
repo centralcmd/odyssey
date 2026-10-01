@@ -336,8 +336,8 @@ public class AccountServiceTests
         var result = await service.AttachFileToAccount(account.AccountId, fileId, "user-1");
 
         Assert.NotNull(result);
-        Assert.Equal(fileId, result!.FileMetadataId);
-        Assert.Equal(account.AccountId, result.AccountId);
+        Assert.Equal(fileId, Assert.Single(context.AccountFiles).FileMetadataId);
+        Assert.Equal(account.AccountId, result!.AccountId);
         Assert.Equal("user-1", result.AttachedByUserId);
     }
 
@@ -358,7 +358,7 @@ public class AccountServiceTests
         var result = await service.AttachFileToAccount(account.AccountId, Guid.NewGuid(), "user-1");
 
         Assert.NotNull(result);
-        Assert.Equal(ContextAccountFileType.Other, result!.FileType);
+        Assert.Equal(DtoAccountFileType.Other, result!.FileType);
     }
 
     [Fact]
@@ -389,7 +389,7 @@ public class AccountServiceTests
             new AttachAccountFileRequest(Guid.NewGuid(), DtoAccountFileType.InsurancePolicy, validFrom, validTo, issuedAt, issuer.ContactId));
 
         Assert.NotNull(result);
-        Assert.Equal(ContextAccountFileType.InsurancePolicy, result!.FileType);
+        Assert.Equal(DtoAccountFileType.InsurancePolicy, result!.FileType);
         Assert.Equal(validFrom, result.ValidFrom);
         Assert.Equal(validTo, result.ValidTo);
         Assert.Equal(issuedAt, result.IssuedAt);
@@ -437,8 +437,8 @@ public class AccountServiceTests
         var updated = await service.UpdateAccountFileType(account.AccountId, fileId,
             new UpdateAccountFileRequest { FileType = DtoAccountFileType.Warranty, ValidTo = validTo });
 
-        Assert.NotNull(updated);
-        Assert.Equal(validTo, updated!.ValidTo);
+        Assert.True(updated);
+        Assert.Equal(validTo, Assert.Single(context.AccountFiles).ValidTo);
     }
 
     [Theory]
@@ -463,11 +463,11 @@ public class AccountServiceTests
         var result = await service.AttachFileToAccount(account.AccountId, Guid.NewGuid(), "user-1", fileType);
 
         Assert.NotNull(result);
-        Assert.Equal((ContextAccountFileType)(int)fileType, result!.FileType);
+        Assert.Equal(fileType, result!.FileType);
     }
 
     [Fact]
-    public async Task AttachFileToAccount_IsIdempotent()
+    public async Task AttachFileToAccount_Twice_IsAConflict_AndStoresOneLink()
     {
         await using var context = TestContextFactory.Create();
         var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
@@ -482,19 +482,20 @@ public class AccountServiceTests
         var fileId = Guid.NewGuid();
 
         await service.AttachFileToAccount(account.AccountId, fileId, "user-1");
-        await service.AttachFileToAccount(account.AccountId, fileId, "user-1");
+        await Assert.ThrowsAsync<DomainConflictException>(() =>
+            service.AttachFileToAccount(account.AccountId, fileId, "user-1"));
 
         Assert.Equal(1, context.AccountFiles.Count());
     }
 
     [Fact]
-    public async Task AttachFileToAccount_WhenAccountMissing_Throws()
+    public async Task AttachFileToAccount_WhenAccountMissing_ReturnsNull()
     {
         await using var context = TestContextFactory.Create();
         var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
 
-        await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            service.AttachFileToAccount(Guid.NewGuid(), Guid.NewGuid(), "user-1"));
+        Assert.Null(await service.AttachFileToAccount(Guid.NewGuid(), Guid.NewGuid(), "user-1"));
+        Assert.Empty(context.AccountFiles);
     }
 
     [Fact]
@@ -520,7 +521,7 @@ public class AccountServiceTests
     }
 
     [Fact]
-    public async Task DetachFileFromAccount_IsNoOpWhenAssociationMissing()
+    public async Task DetachFileFromAccount_ReturnsFalseWhenAssociationMissing()
     {
         await using var context = TestContextFactory.Create();
         var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
@@ -535,7 +536,7 @@ public class AccountServiceTests
 
         var result = await service.DetachFileFromAccount(account.AccountId, Guid.NewGuid());
 
-        Assert.Null(result);
+        Assert.False(result);
     }
 
     [Fact]
@@ -557,13 +558,12 @@ public class AccountServiceTests
         var updated = await service.UpdateAccountFileType(account.AccountId, fileId,
             new UpdateAccountFileRequest { FileType = DtoAccountFileType.Statement });
 
-        Assert.NotNull(updated);
-        Assert.Equal(ContextAccountFileType.Statement, updated!.FileType);
-        Assert.Equal(1, context.AccountFiles.Count());
+        Assert.True(updated);
+        Assert.Equal(ContextAccountFileType.Statement, Assert.Single(context.AccountFiles).FileType);
     }
 
     [Fact]
-    public async Task UpdateAccountFileType_ReturnsNullWhenNotAttached()
+    public async Task UpdateAccountFileType_ReturnsFalseWhenNotAttached()
     {
         await using var context = TestContextFactory.Create();
         var service = new AccountService(context, TestContextFactory.EmptyContactLookup());
@@ -579,6 +579,6 @@ public class AccountServiceTests
         var result = await service.UpdateAccountFileType(account.AccountId, Guid.NewGuid(),
             new UpdateAccountFileRequest { FileType = DtoAccountFileType.Tax });
 
-        Assert.Null(result);
+        Assert.False(result);
     }
 }

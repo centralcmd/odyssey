@@ -153,20 +153,21 @@ public class TransactionController : ControllerBase
         [FromRoute(Name = "transactionId")] [SwaggerParameter("TransactionId", Required = true, 
             Description = @"The ID for the transaction.")] Guid transactionId, CancellationToken cancellationToken = default)
     {
-        var transaction = await transactionService.Get(transactionId, cancellationToken);
-        if (transaction is null)
+        var files = await transactionService.GetFiles(transactionId, cancellationToken);
+        if (files is null)
         {
             return this.NotFoundProblem($"Transaction ID {transactionId} not found.");
         }
 
-        await displayNames.EnrichFileAttributionAsync(User, transaction.TransactionFiles, cancellationToken);
-        return Ok(transaction.TransactionFiles);
+        await displayNames.EnrichFileAttributionAsync(User, files, cancellationToken);
+        return Ok(files);
     }
 
     [HttpPost("{transactionId}/files", Name = "AttachTransactionFile")]
     [Authorize(Policy = PermissionClaims.TransactionsUpdate)]
     [Authorize(Policy = PermissionClaims.FilesRead)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingTransactionFile))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
@@ -199,9 +200,15 @@ public class TransactionController : ControllerBase
             return this.BadRequestProblem($"Invalid file type value: {(int)request.Type}.");
 
         var fileType = (Odyssey.Context.TransactionFileType)(int)request.Type;
-        await transactionService.AttachFileToTransaction(transactionId, request.FileId, userId, fileType, cancellationToken);
-        
-        return NoContent();
+        var created = await transactionService.AttachFileToTransaction(transactionId, request.FileId, userId, fileType, cancellationToken);
+        if (created is null)
+        {
+            return this.NotFoundProblem($"Transaction ID {transactionId} not found.");
+        }
+
+        // The created link carries AttachedByUserId, so it is enriched like every list (issue #106).
+        await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
+        return CreatedAtRoute("GetTransactionFiles", new { transactionId }, created);
     }
 
     [HttpDelete("{transactionId}/files/{fileId}", Name = "DetachTransactionFile")]
@@ -219,7 +226,8 @@ public class TransactionController : ControllerBase
         [FromRoute(Name = "fileId")] [SwaggerParameter("FileId", Required = true, 
             Description = @"The ID for the file to detach.")] Guid fileId, CancellationToken cancellationToken = default)
     {
-        var association = await transactionService.DetachFileFromTransaction(transactionId, fileId, cancellationToken);
-        return NoContent();
+        return await transactionService.DetachFileFromTransaction(transactionId, fileId, cancellationToken)
+            ? NoContent()
+            : this.NotFoundProblem($"File ID {fileId} is not attached to transaction ID {transactionId}.");
     }
 }

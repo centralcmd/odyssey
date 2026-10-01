@@ -5,9 +5,9 @@ using Odyssey.Dtos.Finance;
 namespace Odyssey.Api;
 
 /// <summary>
-/// The attach-time check and the download response shared by the contract and property document
-/// surfaces (issue #210 §6, §7.9) — one implementation, so the two cannot drift on which content types
-/// attach or on the safe-download headers.
+/// The attach-time check and the download response shared by the contract, property and tax-statement
+/// document surfaces (issue #210 §6, §7.9; issue #287 H4) — one implementation, so they cannot drift on
+/// which content types attach or on the safe-download headers.
 /// </summary>
 public static class DocumentAttachmentExtensions
 {
@@ -15,7 +15,7 @@ public static class DocumentAttachmentExtensions
     /// Validates an attach target: the file must exist and its server-recorded content type must be on
     /// <see cref="DocumentContentTypes.Allowed"/>. Returns a problem result to short-circuit, or
     /// <c>null</c> when the file may be attached. <paramref name="surface"/> names the document kind in
-    /// the rejection (<c>"contract"</c>, <c>"property"</c>).
+    /// the rejection (<c>"contract"</c>, <c>"property"</c>, <c>"tax statement"</c>).
     /// </summary>
     public static async Task<IActionResult?> ValidateAttachableDocumentAsync(
         this ControllerBase controller,

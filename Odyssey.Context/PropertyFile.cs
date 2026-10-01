@@ -21,7 +21,7 @@ namespace Odyssey.Context;
 [Index(nameof(AttachedAtUtc))]
 [Index(nameof(IssuedBy))]
 [Index(nameof(PropertyId), nameof(FileMetadataId), IsUnique = true)]
-public class PropertyFile
+public class PropertyFile : IDocumentValidityLink
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

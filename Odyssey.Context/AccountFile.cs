@@ -8,7 +8,7 @@ namespace Odyssey.Context;
 [Index(nameof(AttachedAtUtc))]
 [Index(nameof(IssuedBy))]
 [Index(nameof(AccountId), nameof(FileMetadataId), IsUnique = true)]
-public class AccountFile
+public class AccountFile : IDocumentValidityLink
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

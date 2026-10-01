@@ -14,7 +14,7 @@ namespace Odyssey.Context;
 [Index(nameof(AttachedAtUtc))]
 [Index(nameof(IssuedBy))]
 [Index(nameof(ContractId), nameof(FileMetadataId), IsUnique = true)]
-public class ContractFile
+public class ContractFile : IDocumentValidityLink
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

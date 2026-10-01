@@ -329,7 +329,8 @@ public class AccountController : ControllerBase
     [HttpPost("{accountId}/files", Name = "AttachAccountFile")]
     [Authorize(Policy = PermissionClaims.AccountsUpdate)]
     [Authorize(Policy = PermissionClaims.FilesRead)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingAccountFile))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
@@ -350,9 +351,15 @@ public class AccountController : ControllerBase
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
             ?? throw new InvalidOperationException("User ID not found in claims.");
 
-        await accountService.AttachFileToAccount(accountId, request.FileId, userId, request.FileType, request, cancellationToken);
+        var created = await accountService.AttachFileToAccount(accountId, request.FileId, userId, request.FileType, request, cancellationToken);
+        if (created is null)
+        {
+            return this.NotFoundProblem($"Account ID {accountId} not found.");
+        }
 
-        return NoContent();
+        // The created link carries AttachedByUserId, so it is enriched like every list (issue #106).
+        await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
+        return CreatedAtRoute("GetAccountFiles", new { accountId }, created);
     }
 
     [HttpGet("{accountId}/files/analysis/resumable", Name = "GetResumableAnalysisJobs")]
@@ -409,11 +416,9 @@ public class AccountController : ControllerBase
         [FromRoute(Name = "fileId")] Guid fileId,
         [FromBody] UpdateAccountFileRequest request, CancellationToken cancellationToken = default)
     {
-        var updated = await accountService.UpdateAccountFileType(accountId, fileId, request, cancellationToken);
-        if (updated is null)
-            return this.NotFoundProblem($"File ID {fileId} is not attached to account ID {accountId}.");
-
-        return NoContent();
+        return await accountService.UpdateAccountFileType(accountId, fileId, request, cancellationToken)
+            ? NoContent()
+            : this.NotFoundProblem($"File ID {fileId} is not attached to account ID {accountId}.");
     }
 
     [HttpDelete("{accountId}/files/{fileId}", Name = "DetachAccountFile")]
@@ -426,7 +431,8 @@ public class AccountController : ControllerBase
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromRoute(Name = "fileId")] Guid fileId, CancellationToken cancellationToken = default)
     {
-        await accountService.DetachFileFromAccount(accountId, fileId, cancellationToken);
-        return NoContent();
+        return await accountService.DetachFileFromAccount(accountId, fileId, cancellationToken)
+            ? NoContent()
+            : this.NotFoundProblem($"File ID {fileId} is not attached to account ID {accountId}.");
     }
 }

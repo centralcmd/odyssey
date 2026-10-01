@@ -18,6 +18,28 @@ public class AccountService
     private readonly IContactLookup contactLookup;
     private readonly TimeProvider timeProvider;
 
+    private static readonly OwnedFileSurface<AccountFile, ExistingAccountFile> FileSurface = new()
+    {
+        OwnerNoun = "account",
+        Links = context => context.AccountFiles,
+        OwnerExists = (context, id, ct) => context.Accounts.AnyAsync(a => a.AccountId == id, ct),
+        OwnerId = f => f.AccountId,
+        Create = (accountId, fileId) => new AccountFile
+        {
+            Id = Guid.NewGuid(),
+            AccountId = accountId,
+            FileMetadataId = fileId,
+            AttachedAtUtc = default,
+            FileType = ContextAccountFileType.Other,
+        },
+        ToDto = file => file.Adapt<ExistingAccountFile>(),
+    };
+
+    private OwnedFileLinks<AccountFile, ExistingAccountFile> FileLinks =>
+        fileLinks ??= new(context, FileSurface, contactLookup, timeProvider);
+
+    private OwnedFileLinks<AccountFile, ExistingAccountFile>? fileLinks;
+
     public AccountService(OdysseyContext context, IContactLookup contactLookup, TimeProvider? timeProvider = null)
     {
         this.context = context;
@@ -424,20 +446,9 @@ public class AccountService
     /// Backs <c>GET /api/accounts/{id}/files</c> now that <see cref="ExistingAccount"/> no longer
     /// embeds the file collection.
     /// </summary>
-    public async Task<IList<ExistingAccountFile>?> GetAccountFiles(Guid accountId, CancellationToken cancellationToken = default)
-    {
-        var accountExists = await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
-        if (!accountExists)
-            return null;
-
-        var files = await context.AccountFiles
-            .AsNoTracking()
-            .Include(af => af.FileMetadata)
-            .Where(af => af.AccountId == accountId)
-            .ToListAsync(cancellationToken);
-
-        return files.Adapt<List<ExistingAccountFile>>();
-    }
+    /// <summary>The account's files, oldest attachment first; <c>null</c> when the account does not exist.</summary>
+    public async Task<IList<ExistingAccountFile>?> GetAccountFiles(Guid accountId, CancellationToken cancellationToken = default) =>
+        await FileLinks.List(accountId, cancellationToken);
 
     
     public Task<ExistingAccount> Create(NewAccount newAccount, CancellationToken cancellationToken = default) =>
@@ -560,105 +571,35 @@ public class AccountService
         context.Accounts.Remove(account);
         await context.SaveChangesAsync(cancellationToken);
     }
-    public async Task<AccountFile?> AttachFileToAccount(Guid accountId, Guid fileId, string userId, DtoAccountFileType fileType = DtoAccountFileType.Other, AttachAccountFileRequest? validity = null, CancellationToken cancellationToken = default)
-    {
-        var account = await context.Accounts.FirstOrDefaultAsync(a => a.AccountId == accountId, cancellationToken);
-        if (account is null)
+    /// <summary>
+    /// Attaches an already-uploaded file to the account, or returns <c>null</c> when the account does not
+    /// exist. A file already attached to it is a <see cref="DomainConflictException"/> (issue #287 H3).
+    /// </summary>
+    public Task<ExistingAccountFile?> AttachFileToAccount(Guid accountId, Guid fileId, string userId, DtoAccountFileType fileType = DtoAccountFileType.Other, AttachAccountFileRequest? validity = null, CancellationToken cancellationToken = default) =>
+        FileLinks.Attach(accountId, fileId, userId, async (link, ct) =>
         {
-            throw new DomainNotFoundException($"Account with ID {accountId} was not found.");
-        }
+            link.FileType = fileType.Adapt<ContextAccountFileType>();
+            await FileLinks.ApplyValidity(
+                link, validity?.ValidFrom, validity?.ValidTo, validity?.IssuedAt, validity?.IssuedBy, ct);
+        }, cancellationToken);
 
-        var (validFrom, validTo, issuedAt) = DocumentValidity.Normalize(
-            validity?.ValidFrom, validity?.ValidTo, validity?.IssuedAt);
-        await EnsureIssuerExists(validity?.IssuedBy, cancellationToken);
-
-        var existingAssociation = await context.AccountFiles.FirstOrDefaultAsync(af =>
-            af.AccountId == accountId
-            && af.FileMetadataId == fileId, cancellationToken);
-
-        if (existingAssociation is not null)
+    /// <summary>
+    /// Replaces an attached file's type and validity metadata. <c>false</c> when the account does not
+    /// exist or the file is not attached to it.
+    /// </summary>
+    public Task<bool> UpdateAccountFileType(Guid accountId, Guid fileId, UpdateAccountFileRequest request, CancellationToken cancellationToken = default) =>
+        FileLinks.Update(accountId, fileId, async (link, ct) =>
         {
-            return existingAssociation;
-        }
+            await FileLinks.ApplyValidity(link, request.ValidFrom, request.ValidTo, request.IssuedAt, request.IssuedBy, ct);
+            link.FileType = request.FileType.Adapt<ContextAccountFileType>();
+        }, cancellationToken);
 
-        var accountFile = new AccountFile
-        {
-            Id = Guid.NewGuid(),
-            AccountId = accountId,
-            FileMetadataId = fileId,
-            AttachedByUserId = userId,
-            AttachedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
-            FileType = fileType.Adapt<ContextAccountFileType>(),
-            ValidFrom = validFrom,
-            ValidTo = validTo,
-            IssuedAt = issuedAt,
-            IssuedBy = validity?.IssuedBy,
-        };
-
-        context.AccountFiles.Add(accountFile);
-        await context.SaveChangesAsync(cancellationToken);
-
-        return accountFile;
-    }
-
-    public async Task<AccountFile?> UpdateAccountFileType(Guid accountId, Guid fileId, UpdateAccountFileRequest request, CancellationToken cancellationToken = default)
-    {
-        var association = await context.AccountFiles
-            .FirstOrDefaultAsync(af => af.AccountId == accountId && af.FileMetadataId == fileId, cancellationToken);
-
-        if (association is null)
-        {
-            return null;
-        }
-
-        var (validFrom, validTo, issuedAt) = DocumentValidity.Normalize(
-            request.ValidFrom, request.ValidTo, request.IssuedAt);
-        await EnsureIssuerExists(request.IssuedBy, cancellationToken);
-
-        association.FileType = request.FileType.Adapt<ContextAccountFileType>();
-        association.ValidFrom = validFrom;
-        association.ValidTo = validTo;
-        association.IssuedAt = issuedAt;
-        association.IssuedBy = request.IssuedBy;
-        await context.SaveChangesAsync(cancellationToken);
-
-        return association;
-    }
-
-    private async Task EnsureIssuerExists(Guid? issuedBy, CancellationToken cancellationToken = default)
-    {
-        if (issuedBy is null)
-        {
-            return;
-        }
-
-        var id = issuedBy.Value;
-        var existing = await contactLookup.ExistingIdsAsync([id], cancellationToken);
-        if (!existing.Contains(id))
-        {
-            throw new DomainValidationException($"Contact with ID {id} was not found.");
-        }
-    }
-
-    public async Task<AccountFile?> DetachFileFromAccount(Guid accountId, Guid fileId, CancellationToken cancellationToken = default)
-    {
-        var account = await context.Accounts.FirstOrDefaultAsync(a => a.AccountId == accountId, cancellationToken);
-        if (account is null)
-        {
-            return null;
-        }
-
-        var association = await context.AccountFiles
-            .FirstOrDefaultAsync(af => af.AccountId == accountId && af.FileMetadataId == fileId, cancellationToken);
-
-        if (association is not null)
-        {
-            context.AccountFiles.Remove(association);
-            await context.SaveChangesAsync(cancellationToken);
-        }
-
-        return association;
-    }
+    /// <summary>
+    /// Removes the link row only. <c>false</c> when the account does not exist or the file is not
+    /// attached to it — a <c>404</c>, never a silent success.
+    /// </summary>
+    public Task<bool> DetachFileFromAccount(Guid accountId, Guid fileId, CancellationToken cancellationToken = default) =>
+        FileLinks.Detach(accountId, fileId, cancellationToken);
 
     private void ApplyArchiveTransition(Account account, bool requestedArchived)
     {

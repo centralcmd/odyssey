@@ -97,7 +97,7 @@ public class TransactionFileAssociationServiceTests
     }
 
     [Fact]
-    public async Task AttachFileToTransactionIsIdempotent()
+    public async Task AttachFileToTransactionTwice_IsAConflict_AndStoresOneLink()
     {
         await using var context = TestContextFactory.Create();
         var account = new Account
@@ -121,17 +121,17 @@ public class TransactionFileAssociationServiceTests
         var fileId = Guid.NewGuid();
         var userId = "test-user";
 
-        // Attach the same file twice
+        // The second attach is refused rather than silently re-typing the first (issue #287 H3).
         await service.AttachFileToTransaction(transaction.TransactionId, fileId, userId);
-        await service.AttachFileToTransaction(transaction.TransactionId, fileId, userId);
+        await Assert.ThrowsAsync<DomainConflictException>(() =>
+            service.AttachFileToTransaction(transaction.TransactionId, fileId, userId, Odyssey.Context.TransactionFileType.Receipt));
 
-        // Should only have one attachment
         var files = FilesFor(context, transaction.TransactionId);
         Assert.Single(files);
     }
 
     [Fact]
-    public async Task AttachFileToTransactionFailsWhenTransactionNotFound()
+    public async Task AttachFileToTransactionReturnsNullWhenTransactionNotFound()
     {
         await using var context = TestContextFactory.Create();
         var service = new TransactionService(context, TestContextFactory.EmptyContactLookup());
@@ -140,8 +140,7 @@ public class TransactionFileAssociationServiceTests
         var fileId = Guid.NewGuid();
         var userId = "test-user";
 
-        await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            service.AttachFileToTransaction(transactionId, fileId, userId));
+        Assert.Null(await service.AttachFileToTransaction(transactionId, fileId, userId));
     }
 
     [Fact]
@@ -178,7 +177,7 @@ public class TransactionFileAssociationServiceTests
     }
 
     [Fact]
-    public async Task DetachFileFromTransactionIsIdempotent()
+    public async Task DetachFileFromTransactionTwice_ReportsTheSecondAsNotAttached()
     {
         await using var context = TestContextFactory.Create();
         var account = new Account
@@ -202,10 +201,10 @@ public class TransactionFileAssociationServiceTests
         var fileId = Guid.NewGuid();
         var userId = "test-user";
 
-        // Attach and then detach twice (second detach should not fail)
+        // The second detach finds nothing to remove and says so — a 404 at the edge, not a 204.
         await service.AttachFileToTransaction(transaction.TransactionId, fileId, userId);
-        await service.DetachFileFromTransaction(transaction.TransactionId, fileId);
-        await service.DetachFileFromTransaction(transaction.TransactionId, fileId); // Should not throw
+        Assert.True(await service.DetachFileFromTransaction(transaction.TransactionId, fileId));
+        Assert.False(await service.DetachFileFromTransaction(transaction.TransactionId, fileId));
 
         var files = FilesFor(context, transaction.TransactionId);
         Assert.Empty(files);

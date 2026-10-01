@@ -520,57 +520,49 @@ public class TaxStatementService
 
     // ── File attachments ──────────────────────────────────────────────────────
 
-    public async Task<IList<ExistingTaxStatementFile>> GetFiles(Guid id, CancellationToken cancellationToken = default)
+    // One rule set with the other four file surfaces (issue #287 H3): a duplicate attach is a 409 —
+    // it used to return the existing link as if newly created — and a missing link a 404.
+    private static readonly OwnedFileSurface<TaxStatementFile, ExistingTaxStatementFile> FileSurface = new()
     {
-        var files = await context.TaxStatementFiles
-            .AsNoTracking()
-            .Where(f => f.TaxStatementId == id)
-            .Include(f => f.FileMetadata)
-            .OrderBy(f => f.AttachedAtUtc)
-            .ToListAsync(cancellationToken);
-
-        return files.Select(ToFileDto).ToList();
-    }
-
-    public async Task<TaxStatementFile> AttachFile(Guid id, Guid fileId, string userId, FinanceDtos.TaxStatementFileType fileType = FinanceDtos.TaxStatementFileType.Other, CancellationToken cancellationToken = default)
-    {
-        var existing = await context.TaxStatementFiles
-            .Include(f => f.FileMetadata)
-            .FirstOrDefaultAsync(f => f.TaxStatementId == id && f.FileMetadataId == fileId, cancellationToken);
-        if (existing is not null)
+        OwnerNoun = "tax statement",
+        Links = context => context.TaxStatementFiles,
+        OwnerExists = (context, id, ct) => context.TaxStatements.AnyAsync(s => s.TaxStatementId == id, ct),
+        OwnerId = f => f.TaxStatementId,
+        Create = (statementId, fileId) => new TaxStatementFile
         {
-            return existing;
-        }
-
-        var association = new TaxStatementFile
-        {
-            TaxStatementId = id,
+            TaxStatementId = statementId,
             FileMetadataId = fileId,
-            AttachedByUserId = userId,
-            AttachedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
-            FileType = fileType.Adapt<Context.TaxStatementFileType>(),
-        };
+            AttachedAtUtc = default,
+        },
+        ToDto = ToFileDto,
+    };
 
-        context.TaxStatementFiles.Add(association);
-        await context.SaveChangesAsync(cancellationToken);
+    // No contact lookup: a tax-statement document records no issuer.
+    private OwnedFileLinks<TaxStatementFile, ExistingTaxStatementFile> FileLinks =>
+        fileLinks ??= new(context, FileSurface, contactLookup: null, timeProvider);
 
-        return association;
-    }
+    private OwnedFileLinks<TaxStatementFile, ExistingTaxStatementFile>? fileLinks;
 
-    public async Task<bool> DetachFile(Guid id, Guid fileId, CancellationToken cancellationToken = default)
-    {
-        var association = await context.TaxStatementFiles
-            .FirstOrDefaultAsync(f => f.TaxStatementId == id && f.FileMetadataId == fileId, cancellationToken);
+    /// <summary>The statement's files, oldest attachment first; <c>null</c> when the statement does not exist.</summary>
+    public Task<List<ExistingTaxStatementFile>?> GetFiles(Guid id, CancellationToken cancellationToken = default) =>
+        FileLinks.List(id, cancellationToken);
 
-        if (association is null)
+    public Task<bool> IsFileAttached(Guid id, Guid fileId, CancellationToken cancellationToken = default) =>
+        FileLinks.IsAttached(id, fileId, cancellationToken);
+
+    /// <summary>
+    /// Attaches an already-uploaded file, or returns <c>null</c> when the statement does not exist.
+    /// A file already attached to it is a <see cref="DomainConflictException"/>.
+    /// </summary>
+    public Task<ExistingTaxStatementFile?> AttachFile(Guid id, Guid fileId, string userId, FinanceDtos.TaxStatementFileType fileType = FinanceDtos.TaxStatementFileType.Other, CancellationToken cancellationToken = default) =>
+        FileLinks.Attach(id, fileId, userId, (link, _) =>
         {
-            return false;
-        }
+            link.FileType = fileType.Adapt<Context.TaxStatementFileType>();
+            return Task.CompletedTask;
+        }, cancellationToken);
 
-        context.TaxStatementFiles.Remove(association);
-        await context.SaveChangesAsync(cancellationToken);
-        return true;
-    }
+    public Task<bool> DetachFile(Guid id, Guid fileId, CancellationToken cancellationToken = default) =>
+        FileLinks.Detach(id, fileId, cancellationToken);
 
     public async Task<bool> Exists(Guid id, CancellationToken cancellationToken = default)
     {
