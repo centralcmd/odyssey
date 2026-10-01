@@ -118,6 +118,19 @@ public class RecurrenceOccurrenceGeneratorTests
     }
 
     [Fact]
+    public void TheGeneratorMask_AgreesWithTheValidatorMask()
+    {
+        // Two enums (persistence and DTO), so two declarations of "every day"; a day added to one and
+        // not the other would make validation and generation disagree about what a valid mask is.
+        var everyDefinedDay = Enum.GetValues<DaysOfWeekFlags>().Aggregate(0, (mask, day) => mask | (int)day);
+        var dtoMask = (int)Odyssey.Dtos.Journal.DaysOfWeekFlagsExtensions.AllDays;
+        var generatorMask = (int)RecurrenceOccurrenceGenerator.AllDays;
+
+        Assert.Equal(everyDefinedDay, generatorMask);
+        Assert.Equal(everyDefinedDay, dtoMask);
+    }
+
+    [Fact]
     public void RecurrenceEndDate_IsInclusiveOfAnOccurrenceStartingExactlyThen()
     {
         var pattern = Pattern(RecurrenceFrequency.Daily, Utc(2030, 1, 1, 9, 0), count: null);

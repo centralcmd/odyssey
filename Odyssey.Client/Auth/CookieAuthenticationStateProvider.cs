@@ -17,7 +17,9 @@ namespace Odyssey.Client.Auth;
 /// without one of three things happening: a sign-in or a gate (which call <see cref="RefreshAsync"/>),
 /// a sign-out (which reloads the app), or the cookie expiring — which surfaces as a <c>401</c> on the
 /// next domain call, and <see cref="UnauthorizedHandler"/> turns that into a reload to the sign-in page.
-/// So a cached answer is never stale in a way a fresh probe would have caught.
+/// The claims cannot drift either: they are baked into the auth cookie at sign-in, so a fresh probe of
+/// the same cookie would return the same set. A cached answer is therefore never stale in a way a
+/// fresh probe would have caught.
 /// </para>
 /// <para>
 /// <b>Only a definitive answer is cached.</b> An <see cref="AuthSessionStatus.Unavailable"/> probe is

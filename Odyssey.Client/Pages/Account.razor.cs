@@ -258,7 +258,6 @@ public partial class Account
     private async Task LogoutAsync()
     {
         await AuthApiClient.LogoutAsync();
-        await AuthStateProvider.RefreshAsync();
-        NavigationManager.NavigateTo("/login", true);
+        NavigationManager.NavigateTo("/login", forceLoad: true);
     }
 }

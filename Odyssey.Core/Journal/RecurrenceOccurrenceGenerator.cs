@@ -220,7 +220,9 @@ internal static class RecurrenceOccurrenceGenerator
         }
     }
 
-    private const DaysOfWeekFlags AllDays = DaysOfWeekFlags.Monday | DaysOfWeekFlags.Tuesday
+    // The persistence-side twin of DaysOfWeekFlagsExtensions.AllDays (the DTO enum is a separate type);
+    // RecurrenceOccurrenceGeneratorTests pins the two to the same bits.
+    internal const DaysOfWeekFlags AllDays = DaysOfWeekFlags.Monday | DaysOfWeekFlags.Tuesday
         | DaysOfWeekFlags.Wednesday | DaysOfWeekFlags.Thursday | DaysOfWeekFlags.Friday
         | DaysOfWeekFlags.Saturday | DaysOfWeekFlags.Sunday;
 

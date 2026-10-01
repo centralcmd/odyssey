@@ -84,6 +84,15 @@ public class AuthApiClientSessionTests
     }
 
     [Fact]
+    public async Task ATimeout_TheCallerDidNotAskFor_IsUnavailable()
+    {
+        // HttpClient.Timeout surfaces as a TaskCanceledException whose token the caller never cancelled.
+        var session = await SessionFor(_ => throw new TaskCanceledException("timed out"), Respond(HttpStatusCode.OK));
+
+        Assert.Equal(AuthSessionStatus.Unavailable, session.Status);
+    }
+
+    [Fact]
     public async Task CallerCancellation_IsNotSwallowed()
     {
         using var cts = new CancellationTokenSource();

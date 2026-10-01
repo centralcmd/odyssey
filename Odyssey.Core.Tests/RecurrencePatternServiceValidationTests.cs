@@ -38,6 +38,33 @@ public class RecurrencePatternServiceValidationTests
         Assert.Empty(context.CalendarEvents);
     }
 
+    [Fact]
+    public async Task Update_DaysOfWeekWithUndefinedBit_IsRefused_AndLeavesTheSeriesAsItWas()
+    {
+        await using var context = TestContextFactory.Create();
+        var calendar = new Context.Calendar { Name = "Personal" };
+        context.Calendars.Add(calendar);
+        await context.SaveChangesAsync();
+        var service = new RecurrencePatternService(context, new StubJournalLimits(), new FixedTimeProvider(Now));
+        var request = new NewRecurrencePattern
+        {
+            CalendarId = calendar.CalendarId,
+            Title = "Weekly",
+            StartDateTime = new DateTime(2030, 1, 7, 9, 0, 0, DateTimeKind.Utc),
+            EndDateTime = new DateTime(2030, 1, 7, 9, 30, 0, DateTimeKind.Utc),
+            Frequency = RecurrenceFrequency.Weekly,
+            DaysOfWeek = DaysOfWeekFlags.Monday,
+            OccurrenceCount = 3,
+        };
+        var created = await service.Create(request, "user-id");
+
+        await Assert.ThrowsAsync<DomainValidationException>(() =>
+            service.Update(created.RecurrencePatternId, request with { DaysOfWeek = (DaysOfWeekFlags)128 }, "user-id"));
+
+        Assert.Equal(Context.DaysOfWeekFlags.Monday, context.RecurrencePatterns.Single().DaysOfWeek);
+        Assert.Equal(3, context.CalendarEvents.Count());
+    }
+
     [Theory]
     [InlineData(DaysOfWeekFlags.Monday, true)]
     [InlineData(DaysOfWeekFlagsExtensions.AllDays, true)]
