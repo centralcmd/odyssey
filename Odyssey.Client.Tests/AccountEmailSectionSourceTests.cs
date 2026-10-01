@@ -56,6 +56,10 @@ public class AccountEmailSectionSourceTests
 
         Assert.Contains("@ref=\"_outcomeRef\" tabindex=\"-1\"", text, StringComparison.Ordinal);
         Assert.Contains("_outcomeRef.FocusAsync()", text, StringComparison.Ordinal);
+
+        // The resend card removes its button on success, so it does the same.
+        Assert.Contains("@ref=\"_resendOutcomeRef\" tabindex=\"-1\"", text, StringComparison.Ordinal);
+        Assert.Contains("_resendOutcomeRef.FocusAsync()", text, StringComparison.Ordinal);
     }
 
     [Fact]

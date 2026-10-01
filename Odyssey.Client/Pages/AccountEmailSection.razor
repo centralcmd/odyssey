@@ -92,11 +92,7 @@
                         <div class="acc-sec-sub">Didn't get the confirmation message? Send it again to your current address.</div>
                     </div>
                 </div>
-                @if (_resent)
-                {
-                    <span class="acc-saved" role="status"><MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" aria-hidden="true" />Sent — check your inbox</span>
-                }
-                else
+                @if (!_resent)
                 {
                     <MudButton Variant="Variant.Outlined" Color="Color.Default"
                                StartIcon="@Icons.Material.Filled.ForwardToInbox"
@@ -104,10 +100,21 @@
                                OnClick="ResendConfirmationAsync">Resend</MudButton>
                 }
             </div>
-            @if (!string.IsNullOrEmpty(_resendError))
-            {
-                <OdsAlert Severity="Severity.Warning" Class="acc-block-alert">@_resendError</OdsAlert>
-            }
+            @* Rendered empty up front and filled in, so the status is announced reliably (WCAG 4.1.3);
+               focusable, because the button that had focus is removed on success (WCAG 2.4.3). *@
+            <div @ref="_resendOutcomeRef" tabindex="-1" class="acc-outcome">
+                <span class="acc-saved" role="status">
+                    @if (_resent)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" aria-hidden="true" />
+                        <text>Sent — check your inbox</text>
+                    }
+                </span>
+                @if (!string.IsNullOrEmpty(_resendError))
+                {
+                    <OdsAlert Severity="Severity.Warning" Class="acc-block-alert">@_resendError</OdsAlert>
+                }
+            </div>
         </MudCardContent>
     </MudCard>
 }
@@ -131,6 +138,8 @@
     private bool _resent;
     private bool _resending;
     private string? _resendError;
+    private bool _focusResendOutcome;
+    private ElementReference _resendOutcomeRef;
 
     private bool LooksValid => System.Text.RegularExpressions.Regex.IsMatch(_newEmail, "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private bool IsSame => string.Equals(_newEmail.Trim(), Email, StringComparison.OrdinalIgnoreCase);
@@ -175,6 +184,11 @@
 
     private async Task ResendConfirmationAsync()
     {
+        if (_resending)
+        {
+            return;
+        }
+
         _resending = true;
         _resendError = null;
 
@@ -194,6 +208,7 @@
         finally
         {
             _resending = false;
+            _focusResendOutcome = true;
         }
     }
 
@@ -203,6 +218,12 @@
         {
             _focusOutcome = false;
             await _outcomeRef.FocusAsync();
+        }
+
+        if (_focusResendOutcome)
+        {
+            _focusResendOutcome = false;
+            await _resendOutcomeRef.FocusAsync();
         }
     }
 }
