@@ -8,6 +8,7 @@ using Odyssey.Context;
 using Odyssey.Context.Secrets;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos;
+using Odyssey.Core.Email;
 
 namespace Odyssey.Api.Email;
 

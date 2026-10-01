@@ -6,7 +6,7 @@ using Odyssey.Context;
 using Microsoft.EntityFrameworkCore;
 using FinanceDtos = Odyssey.Dtos.Finance;
 
-namespace Odyssey.Api.DataExport;
+namespace Odyssey.Core.DataExport;
 
 /// <summary>Metadata fixed before the first byte is written, so the response headers can be sent
 /// ahead of the body. <see cref="ExportedAt"/> is both the document's timestamp and the source of the

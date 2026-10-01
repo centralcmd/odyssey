@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Dtos.Application;
 
-namespace Odyssey.Api.Preferences;
+namespace Odyssey.Core.Preferences;
 
 /// <summary>
 /// Reads and upserts the authenticated caller's own per-page-key <see cref="UserPreference"/> row.

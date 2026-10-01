@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Profiles;
 
-namespace Odyssey.Api.Profiles;
+namespace Odyssey.Core.Profiles;
 
 /// <summary>
 /// Reads and upserts the authenticated caller's own <see cref="UserProfile"/> (issue #316). Operates

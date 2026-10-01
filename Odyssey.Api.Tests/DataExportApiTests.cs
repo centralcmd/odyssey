@@ -5,7 +5,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using Odyssey.Api.DataExport;
+using Odyssey.Core.DataExport;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Authentication;

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Legal;
-using Odyssey.Api.UserAdministration;
+using Odyssey.Core.UserAdministration;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Profiles;
@@ -17,6 +17,9 @@ using Odyssey.Dtos.Application;
 using Microsoft.Extensions.Hosting;
 using System.Security.Claims;
 using Xunit;
+using Odyssey.Core.Email;
+using Odyssey.Core.Identity;
+using Odyssey.Core.Legal;
 
 namespace Odyssey.IntegrationTests;
 

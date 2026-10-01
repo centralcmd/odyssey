@@ -17,6 +17,7 @@ using Odyssey.Api.Identity;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Xunit;
+using Odyssey.Core.Email;
 
 namespace Odyssey.Api.Tests;
 

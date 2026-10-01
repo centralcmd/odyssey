@@ -43,7 +43,7 @@ public sealed class StubSecretSettingsReader : ISecretSettingsReader
 /// standing up the real resolver and its database read.
 /// </summary>
 public sealed class StubEmailRecipientHashKey(string key = "test-recipient-hash-key")
-    : Odyssey.Api.Email.IEmailRecipientHashKey
+    : Odyssey.Core.Email.IEmailRecipientHashKey
 {
     public ReadOnlyMemory<byte> Key { get; } = System.Text.Encoding.UTF8.GetBytes(key);
 

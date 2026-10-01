@@ -9,6 +9,7 @@ using Odyssey.Context;
 using Odyssey.Core;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.SystemSettings;
 
@@ -613,9 +614,9 @@ public sealed class SystemSettingsService(
         }
     }
 
-    // Resolves UpdatedByDisplayName here (not in the controller): SystemSettingsService lives inside
-    // Odyssey.Api and can depend on Odyssey.Api.Identity directly, the same way UserAdministrationService
-    // resolves display names internally rather than leaving it to its controller.
+    // Resolves UpdatedByDisplayName here (not in the controller) through IUserDisplayNameResolver, the
+    // same way UserAdministrationService resolves display names internally rather than leaving it to
+    // its controller.
     private async Task<SystemSettingsDto> AssembleAsync(
         ClaimsPrincipal caller, IReadOnlyCollection<SystemSetting> rows, CancellationToken cancellationToken)
     {

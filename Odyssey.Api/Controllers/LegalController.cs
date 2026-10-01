@@ -7,6 +7,7 @@ using Odyssey.Context;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Swashbuckle.AspNetCore.Annotations;
+using Odyssey.Core.Legal;
 
 namespace Odyssey.Api.Controllers;
 

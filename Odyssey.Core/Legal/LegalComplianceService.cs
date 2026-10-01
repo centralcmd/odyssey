@@ -1,12 +1,12 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
-using Odyssey.Api.Identity;
+using Odyssey.Core.Identity;
 using Odyssey.Context;
 using Odyssey.Core;
 using Odyssey.Context.Legal;
 using Odyssey.Dtos.Application;
 
-namespace Odyssey.Api.Legal;
+namespace Odyssey.Core.Legal;
 
 /// <summary>
 /// The one place that knows what "compliant" means (issue #354 §5). Everything else — the claims

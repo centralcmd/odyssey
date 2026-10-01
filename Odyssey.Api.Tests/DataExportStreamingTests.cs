@@ -11,10 +11,11 @@ using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
-using Odyssey.Api.DataExport;
+using Odyssey.Core.DataExport;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Dtos.Authorization;
 using Xunit;
+using Odyssey.Api.Controllers;
 
 namespace Odyssey.Api.Tests;
 

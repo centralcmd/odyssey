@@ -6,8 +6,10 @@ using Odyssey.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Odyssey.Core.UserAdministration;
+using Odyssey.Core.Email;
 
-namespace Odyssey.Api.UserAdministration;
+namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/users")]

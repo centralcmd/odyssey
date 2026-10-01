@@ -1,4 +1,4 @@
-namespace Odyssey.Api.Email;
+namespace Odyssey.Core.Email;
 
 /// <summary>
 /// Sends the password-reset mail from a call site that needs to know whether it went out (issue #406

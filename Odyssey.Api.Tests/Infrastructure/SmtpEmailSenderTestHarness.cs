@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Api.Email;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
+using Odyssey.Core.Email;
 
 namespace Odyssey.Api.Tests.Infrastructure;
 

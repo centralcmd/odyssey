@@ -18,7 +18,7 @@ public class DomainExceptionHierarchyGuardTests
     private static readonly HashSet<string> AllowedNonDomain =
     [
         // An export that cannot be produced as a complete snapshot; logged and surfaced as a generic 500.
-        "Odyssey.Api.FileExport.FileExportException",
+        "Odyssey.Core.FileExport.FileExportException",
         // A third-party provider failure, recorded on the analysis job rather than shaped for a client.
         "Odyssey.Core.Finance.FileAnalysisProviderException",
         "Odyssey.Core.Finance.FileAnalysisCredentialException",

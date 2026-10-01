@@ -11,6 +11,7 @@ using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 using Swashbuckle.AspNetCore.Annotations;
+using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Controllers;
 

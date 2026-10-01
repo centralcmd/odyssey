@@ -2,9 +2,10 @@ using Odyssey.Dtos.Application;
 using Odyssey.Core;
 using System.Security.Claims;
 using System.Text;
-using Odyssey.Api.Email;
-using Odyssey.Api.Identity;
-using Odyssey.Api.Legal;
+using Odyssey.Core.Email;
+using Odyssey.Core.Identity;
+using Odyssey.Core.Legal;
+using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Context.Authorization;
 using Odyssey.Dtos.Authorization;
@@ -15,7 +16,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Odyssey.Api.UserAdministration;
+namespace Odyssey.Core.UserAdministration;
 
 public sealed class UserAdministrationService
 {

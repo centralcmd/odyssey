@@ -1,13 +1,10 @@
 using Odyssey.Api;
-using Odyssey.Api.DataExport;
 using Odyssey.Api.Email;
-using Odyssey.Api.FileExport;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Legal;
 using Odyssey.Context;
 using Odyssey.Context.Authorization;
 using Odyssey.Dtos.Authorization;
-using Odyssey.Api.UserAdministration;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Configuration;
 using Microsoft.AspNetCore.Antiforgery;
@@ -24,6 +21,11 @@ using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
+using Odyssey.Core.Email;
+using Odyssey.Core.DataExport;
+using Odyssey.Core.FileExport;
+using Odyssey.Core.Legal;
+using Odyssey.Core.UserAdministration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -366,9 +368,9 @@ builder.Services.AddScoped<FileValidationService>(sp =>
     new FileValidationService(sp.GetRequiredService<IUploadLimitsLookup>()));
 
 builder.Services.AddScoped<UserAdministrationService>();
-builder.Services.AddScoped<Odyssey.Api.Identity.IUserDisplayNameResolver, Odyssey.Api.Identity.UserDisplayNameResolver>();
-builder.Services.AddScoped<Odyssey.Api.Profiles.ProfileService>();
-builder.Services.AddScoped<Odyssey.Api.Preferences.UserPreferencesService>();
+builder.Services.AddScoped<Odyssey.Core.Identity.IUserDisplayNameResolver, Odyssey.Api.Identity.UserDisplayNameResolver>();
+builder.Services.AddScoped<Odyssey.Core.Profiles.ProfileService>();
+builder.Services.AddScoped<Odyssey.Core.Preferences.UserPreferencesService>();
 
 builder.Services.AddScoped<TaxStatementService>();
 

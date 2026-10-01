@@ -6,6 +6,7 @@ using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
 using Xunit;
+using Odyssey.Core.Legal;
 
 namespace Odyssey.Api.Tests;
 

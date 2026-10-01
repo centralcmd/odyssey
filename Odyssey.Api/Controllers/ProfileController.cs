@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Odyssey.Core.Profiles;
 using Swashbuckle.AspNetCore.Annotations;
 
-namespace Odyssey.Api.Profiles;
+namespace Odyssey.Api.Controllers;
 
 /// <summary>
 /// Self-service profile endpoints (issue #316). Both operate strictly on the authenticated caller's own

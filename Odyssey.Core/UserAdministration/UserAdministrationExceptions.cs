@@ -1,6 +1,7 @@
+using System.Net;
 using Odyssey.Core;
 
-namespace Odyssey.Api.UserAdministration;
+namespace Odyssey.Core.UserAdministration;
 
 /// <summary>
 /// A per-recipient send budget is exhausted, so the operation was refused before it mutated anything —
@@ -11,5 +12,5 @@ namespace Odyssey.Api.UserAdministration;
 /// </summary>
 public sealed class UserAdministrationThrottledException(string message) : DomainException(message)
 {
-    public override int StatusCode => StatusCodes.Status429TooManyRequests;
+    public override int StatusCode => (int)HttpStatusCode.TooManyRequests;
 }

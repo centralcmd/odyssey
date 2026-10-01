@@ -1,7 +1,7 @@
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 
-namespace Odyssey.Api.DataExport;
+namespace Odyssey.Core.DataExport;
 
 // Export-only DTOs (issue #160). Deliberately NOT the write DTOs: these are flat table-row
 // projections that mirror the stored columns, reference related entities by foreign-key column
