@@ -545,9 +545,32 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 // ranges rather than every source. That keeps a directly-connecting external client from spoofing
 // X-Forwarded-For (which would otherwise poison the client IP seen by logging/audit). A deployment
 // with a known proxy subnet can override this via ForwardedHeaders:KnownNetworks (CIDR list).
-builder.Services.Configure<ForwardedHeadersOptions>(options =>
+//
+// ForwardLimit is the number of proxy hops in front of the API, and production has TWO (issue #244):
+// Caddy sets X-Forwarded-For to the client, nginx appends Caddy's address, so the API receives
+// `<client>, <caddy>`. The framework default of 1 consumes only the rightmost entry, which made
+// Caddy's container IP the RemoteIpAddress of every request — one shared rate-limit partition for
+// the whole internet, and Caddy's address on every audit line. The walk still stops at the first
+// entry outside KnownNetworks, so a public client cannot push a spoofed entry past a real one; the
+// limit only bounds how far a chain of TRUSTED hops is followed. A deployment with a different hop
+// count (an extra load balancer, or nginx exposed directly) sets ForwardedHeaders:ForwardLimit.
+// The dev compose stack is one such topology (nginx published on loopback, no Caddy), so there a
+// local caller's own X-Forwarded-For entry is honoured — accepted, see docs/deployment.md.
+//
+// ValidateOnStart so a non-positive limit fails at boot naming the key, rather than as a bare
+// ArgumentOutOfRangeException out of the options setter on the first request.
+builder.Services.AddOptions<ForwardedHeadersOptions>().Configure(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+
+    var forwardLimit = builder.Configuration.GetValue("ForwardedHeaders:ForwardLimit", 2);
+    if (forwardLimit < 1)
+    {
+        throw new InvalidOperationException(
+            $"ForwardedHeaders:ForwardLimit must be at least 1 (the number of proxy hops in front of the API); got {forwardLimit}.");
+    }
+
+    options.ForwardLimit = forwardLimit;
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
 
@@ -561,7 +584,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 
     foreach (var cidr in networks)
         options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(cidr));
-});
+}).ValidateOnStart();
 
 var app = builder.Build();
 
