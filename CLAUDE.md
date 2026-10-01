@@ -576,6 +576,22 @@ that path's coverage lives in `Odyssey.IntegrationTests`.
 
 **Docker MariaDB port:** mapped to host port **3307**, not 3306.
 
+**Never hand-edit `Odyssey Design System/`. It is an export from Claude Design, and the next export
+replaces the whole folder.** A fix made only in the repo's copy is silently reverted. This has happened
+twice. `c42bc47` had to put back the `TermChanged` key after an export undid #201. Then `eff7ac1`
+reverted #259's WCAG contrast tokens (`--control-border`, the `--mud-palette-*-text` set,
+`--error-cta-text`) and turned `ControlContrastTests` red on `main` (#280).
+
+Make a design-system change upstream instead. File an issue carrying a prompt the designer can paste
+into Claude Design (#280 is the template), then bring the result in as a plain
+`docs: update design system` commit with no hand edits.
+
+When the client and an export disagree, decide which side is wrong:
+- **The client is wrong:** fix the client (the `odyssey-design-system-changes` skill).
+- **The export lost something on purpose in the code:** a contrast fix, a renamed wire key. File that
+  issue rather than patching the export. The guard tests that compare the client with the design
+  system (`ControlContrastTests`, `OdsTypeRegistriesTests`) are what catch it.
+
 **Central package management:** All NuGet versions are pinned in `Directory.Packages.props`. Do not add `Version=` attributes to individual `.csproj` files.
 
 **All projects target `net10.0`** — ensure the .NET 10 SDK is active (`dotnet --info`).
