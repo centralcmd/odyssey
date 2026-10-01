@@ -5,7 +5,7 @@ namespace Odyssey.Client.Pages.Finance;
 /// <summary>
 /// Flattened view of a contract attachment (<see cref="ExistingContractFile"/>) for the files table.
 /// The download/detach/update routes are keyed by <see cref="FileId"/> (the file's
-/// <c>FileMetadata.Id</c>, which is the route's <c>fileId</c>; see ContractController).
+/// <c>FileMetadata.Id</c>, which is the route's <c>fileId</c>; see ContractsController).
 /// </summary>
 /// <remarks>
 /// The four validity fields (issue #146) ride on the LINK row, not the <c>FileMetadata</c>: the same

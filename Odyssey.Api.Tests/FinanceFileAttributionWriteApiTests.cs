@@ -144,7 +144,7 @@ public sealed class FinanceFileAttributionWriteApiTests
         Assert.True(
             transaction.TransactionFiles.Count == 0,
             "The budget report now carries transaction files. That is a real change to what this "
-            + "endpoint discloses: confirm BudgetController.GetBudgetTransactions still enriches them "
+            + "endpoint discloses: confirm BudgetsController.GetBudgetTransactions still enriches them "
             + "(issue #106), then replace this tripwire with the resolved-name assertions used by the "
             + "other surfaces.");
 

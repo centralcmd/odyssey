@@ -18,7 +18,7 @@ namespace Odyssey.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/calendars")]
-public class CalendarIcsController : ControllerBase
+public sealed class CalendarIcsController : ControllerBase
 {
     private readonly CalendarIcsService service;
 

@@ -11,7 +11,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/accounts")]
-public class AccountSmartTagsController : ControllerBase
+public sealed class AccountSmartTagsController : ControllerBase
 {
     private readonly AccountSmartTagService accountSmartTagService;
 

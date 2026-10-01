@@ -9,7 +9,7 @@ using Xunit;
 namespace Odyssey.E2ETests.Api;
 
 /// <summary>
-/// Exercises <c>DELETE /api/contacts/{id}</c> end to end over real HTTP → <c>ContactController</c> →
+/// Exercises <c>DELETE /api/contacts/{id}</c> end to end over real HTTP → <c>ContactsController</c> →
 /// the DI-resolved <c>ContactService</c>/<c>IContactReferenceGuard</c> → real MariaDB. The guard runs in
 /// front of the database's own cross-module foreign keys (RESTRICT an in-use insurer, SET NULL the
 /// nullable links) so the caller gets an explained 409 rather than a constraint violation — behaviour

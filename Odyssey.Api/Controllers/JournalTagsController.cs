@@ -12,7 +12,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/journal-tags")]
-public class JournalTagsController : ControllerBase
+public sealed class JournalTagsController : ControllerBase
 {
     private readonly ILogger<JournalTagsController> logger;
     private readonly JournalTagService service;

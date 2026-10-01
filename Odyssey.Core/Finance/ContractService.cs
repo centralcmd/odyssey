@@ -1292,7 +1292,7 @@ public class ContractService
     /// when the contract does not exist.
     /// </summary>
     /// <remarks>
-    /// Public because <c>ContractController</c> pre-checks with it to build the claim-free structured
+    /// Public because <c>ContractsController</c> pre-checks with it to build the claim-free structured
     /// body, exactly as the contact-delete <c>409</c> pre-checks with <c>IContactReferenceGuard</c>:
     /// a <c>DomainException</c> cannot carry a list of objects. Both callers therefore have to agree
     /// on <em>when</em> the rule applies, which is why the "only on a type CHANGE" condition lives

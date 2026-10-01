@@ -80,7 +80,7 @@ public class DemoDataSetTests
             .ToHashSet();
 
         // Display currencies an account balance may need to convert into: any account currency,
-        // plus the default main currency (AccountController.DefaultMainCurrency = "NOK"), which is
+        // plus the default main currency (AccountsController.DefaultMainCurrency = "NOK"), which is
         // what the totals/net-worth view uses out of the box.
         var displayCurrencies = accountCurrencies.Append("NOK").Distinct().ToList();
 

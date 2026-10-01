@@ -17,7 +17,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/photos")]
-public class PhotosController : ControllerBase
+public sealed class PhotosController : ControllerBase
 {
     private readonly ILogger<PhotosController> logger;
     private readonly PhotoService service;

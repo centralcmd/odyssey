@@ -17,17 +17,17 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/contracts")]
-public class ContractController : ControllerBase
+public sealed class ContractsController : ControllerBase
 {
-    private readonly ILogger<ContractController> logger;
+    private readonly ILogger<ContractsController> logger;
     private readonly ContractService service;
     private readonly TermService termService;
     private readonly ContractEventService eventService;
     private readonly FileService fileService;
     private readonly IUserDisplayNameResolver displayNames;
 
-    public ContractController(
-        ILogger<ContractController> logger,
+    public ContractsController(
+        ILogger<ContractsController> logger,
         ContractService service,
         TermService termService,
         ContractEventService eventService,

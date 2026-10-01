@@ -15,14 +15,14 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/budgets")]
-public class BudgetController : ControllerBase
+public sealed class BudgetsController : ControllerBase
 {
-    private readonly ILogger<BudgetController> logger;
+    private readonly ILogger<BudgetsController> logger;
     private readonly BudgetService budgetService;
     private readonly IUserDisplayNameResolver displayNames;
 
-    public BudgetController(
-        ILogger<BudgetController> logger,
+    public BudgetsController(
+        ILogger<BudgetsController> logger,
         BudgetService budgetService,
         IUserDisplayNameResolver displayNames)
     {

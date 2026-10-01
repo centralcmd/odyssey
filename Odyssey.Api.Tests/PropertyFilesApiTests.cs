@@ -580,7 +580,7 @@ public sealed class PropertyFilesApiTests
         Assert.Contains("DocumentContentTypes.Allowed", helper, StringComparison.Ordinal);
         Assert.DoesNotContain("\"application/pdf\"", helper, StringComparison.Ordinal);
 
-        foreach (var controller in new[] { "ContractController.cs", "PropertyFilesController.cs" })
+        foreach (var controller in new[] { "ContractsController.cs", "PropertyFilesController.cs" })
         {
             var source = File.ReadAllText(Path.Combine(root, "Odyssey.Api", "Controllers", controller));
             Assert.Contains("ValidateAttachableDocumentAsync", source, StringComparison.Ordinal);

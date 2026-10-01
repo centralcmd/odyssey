@@ -13,13 +13,13 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/exchange-rates")]
-public class ExchangeRateController : ControllerBase
+public sealed class ExchangeRatesController : ControllerBase
 {
-    private readonly ILogger<ExchangeRateController> logger;
+    private readonly ILogger<ExchangeRatesController> logger;
     private readonly ExchangeRateService exchangeRateService;
 
-    public ExchangeRateController(
-        ILogger<ExchangeRateController> logger,
+    public ExchangeRatesController(
+        ILogger<ExchangeRatesController> logger,
         ExchangeRateService exchangeRateService)
     {
         this.logger = logger;

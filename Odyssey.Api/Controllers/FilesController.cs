@@ -14,7 +14,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/files")]
-public class FilesController : ControllerBase
+public sealed class FilesController : ControllerBase
 {
     private readonly FileService fileService;
 
