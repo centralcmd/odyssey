@@ -95,6 +95,31 @@ public class AuthApiClientSessionTests
     }
 
     [Fact]
+    public async Task AForbiddenProbe_IsUnavailable_NotAnonymous()
+    {
+        // Only a 401 means signed out; a 403 (a gate, a proxy) says nothing definitive about the session.
+        var info = await SessionFor(Respond(HttpStatusCode.Forbidden), Respond(HttpStatusCode.OK, ClaimsJson));
+        var claims = await SessionFor(Respond(HttpStatusCode.OK), Respond(HttpStatusCode.Forbidden));
+
+        Assert.Equal(AuthSessionStatus.Unavailable, info.Status);
+        Assert.Equal(AuthSessionStatus.Unavailable, claims.Status);
+    }
+
+    [Fact]
+    public async Task A401_IsAnonymous_EvenWithARetryAfter()
+    {
+        var session = await SessionFor(
+            _ => new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Headers = { RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(30)) },
+            },
+            Respond(HttpStatusCode.OK, ClaimsJson));
+
+        Assert.Equal(AuthSessionStatus.Anonymous, session.Status);
+        Assert.Null(session.RetryAfter);
+    }
+
+    [Fact]
     public async Task NoRetryAfter_LeavesItNull()
     {
         var session = await SessionFor(Respond(HttpStatusCode.TooManyRequests), Respond(HttpStatusCode.OK));

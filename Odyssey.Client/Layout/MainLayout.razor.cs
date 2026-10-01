@@ -21,6 +21,9 @@ public partial class MainLayout
 
     // True while the shell was resolved against an unavailable session and is subscribed for its recovery.
     private bool _awaitingSession;
+    private bool _resolvingShell;
+    private bool _focusMainAfterRender;
+    private ElementReference _main;
 
     private System.Security.Claims.ClaimsPrincipal? _user;
     private Func<NavPage, bool> _canView = p => p.Claim is null;
@@ -101,6 +104,7 @@ public partial class MainLayout
             // Reset rather than left, since a re-run after a recovered session starts from true. Keep
             // _gateChecked false — the layout is being left rather than rendered, so the app body
             // never flashes behind a gate. That holds whether or not RedirectToGate actually navigates.
+            _gateChecked = false;
             RedirectToGate(gatePath);
             return;
         }
@@ -142,6 +146,19 @@ public partial class MainLayout
     {
         if (!OperatingSystem.IsBrowser())
             return;
+
+        if (_focusMainAfterRender)
+        {
+            _focusMainAfterRender = false;
+            try
+            {
+                await _main.FocusAsync();
+            }
+            catch (Exception)
+            {
+                // Best-effort focus move; the page is usable either way.
+            }
+        }
 
         if (firstRender)
         {
@@ -263,7 +280,26 @@ public partial class MainLayout
     private void OnAuthenticationStateChanged(Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> state) =>
         _ = InvokeAsync(async () =>
         {
-            await ResolveShellAsync();
+            // One re-run at a time: the recovery loop and a Retry can announce back to back, and two
+            // overlapping runs would fetch the profile twice and race on _gateChecked.
+            if (_resolvingShell)
+            {
+                return;
+            }
+
+            _resolvingShell = true;
+            try
+            {
+                await ResolveShellAsync();
+            }
+            finally
+            {
+                _resolvingShell = false;
+            }
+
+            // The retry panel that held focus is gone and no route change fired FocusOnNavigate, so hand
+            // focus to the main landmark rather than letting it fall to <body> (WCAG 2.4.3).
+            _focusMainAfterRender = !_awaitingSession;
             StateHasChanged();
         });
 

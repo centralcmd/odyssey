@@ -80,6 +80,50 @@ public sealed class CookieOnlyIdentityTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    /// <summary>
+    /// The property #245 is about: a bearer credential authenticates nothing. Before the change this
+    /// token would have been minted by /login?useCookies=false and honoured for an hour.
+    /// </summary>
+    [Fact]
+    public async Task ABearerHeader_AuthenticatesNothing()
+    {
+        using var client = factory.CreateClient(new() { AllowAutoRedirect = false });
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/manage/info");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer", "CfDJ8-any-token-shaped-value");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public void ARenamedRoute_IsReportedAsAnError_AndAPresentOneIsNot()
+    {
+        var logger = new CapturingLogger<CookieOnlyIdentityTests>();
+        var builder = new FakeConventionBuilder();
+        builder.RequireCookieOnlyIdentity();
+
+        CookieOnlyIdentityEndpoints.ValidateCookieOnlyIdentity(
+            builder.ApplyAndBuild("/login", "/refreshV2", "/register"), logger);
+
+        var error = Assert.Single(logger.Entries, entry => entry.Level == Microsoft.Extensions.Logging.LogLevel.Error);
+        Assert.Contains(CookieOnlyIdentityEndpoints.RefreshRoute, error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WithBothRoutesPresent_NothingIsReported()
+    {
+        var logger = new CapturingLogger<CookieOnlyIdentityTests>();
+        var builder = new FakeConventionBuilder();
+        builder.RequireCookieOnlyIdentity();
+
+        CookieOnlyIdentityEndpoints.ValidateCookieOnlyIdentity(
+            builder.ApplyAndBuild("/register", "/login", "/refresh", "/manage/info"), logger);
+
+        Assert.Empty(logger.Entries);
+    }
+
     [Fact]
     public async Task Unauthenticated_ApiCall_Is401_NotARedirect()
     {

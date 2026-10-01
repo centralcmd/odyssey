@@ -36,7 +36,8 @@ public static class SmtpEmailSenderTestHarness
         string smtpHost = "",
         string clientBaseUrl = ClientBaseUrl,
         string environmentName = "Development",
-        StubSecretSettingsReader? secrets = null)
+        StubSecretSettingsReader? secrets = null,
+        IReadOnlyDictionary<string, string>? extraRows = null)
     {
         // Its own container: the sender opens scopes against this for the live
         // EmailRequireConfirmation read (see its class remarks), for the SMTP credential pair since
@@ -52,7 +53,7 @@ public static class SmtpEmailSenderTestHarness
         services.AddSingleton<ISecretSettingsReader>(secrets ?? new StubSecretSettingsReader());
         var provider = services.BuildServiceProvider();
 
-        SeedTransport(provider, smtpHost, clientBaseUrl);
+        SeedTransport(provider, smtpHost, clientBaseUrl, extraRows);
 
         return new SmtpEmailSender(
             provider.GetRequiredService<IServiceScopeFactory>(),
@@ -78,7 +79,8 @@ public static class SmtpEmailSenderTestHarness
     /// and an empty one identically, and this exercises the spelling a real database has.
     /// </para>
     /// </summary>
-    private static void SeedTransport(IServiceProvider provider, string smtpHost, string clientBaseUrl)
+    private static void SeedTransport(
+        IServiceProvider provider, string smtpHost, string clientBaseUrl, IReadOnlyDictionary<string, string>? extraRows)
     {
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -95,6 +97,12 @@ public static class SmtpEmailSenderTestHarness
             Value = clientBaseUrl,
             UpdatedAt = DateTime.UtcNow,
         });
+
+        // Any further row a caller needs — a malformed transport value, a settings toggle.
+        foreach (var (key, value) in extraRows ?? new Dictionary<string, string>())
+        {
+            context.SystemSettings.Add(new SystemSetting { Key = key, Value = value, UpdatedAt = DateTime.UtcNow });
+        }
 
         context.SaveChanges();
     }

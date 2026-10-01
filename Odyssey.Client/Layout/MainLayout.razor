@@ -45,7 +45,7 @@
 
                 @* A <main> landmark carrying the skip-link target id. While the modal command palette is
                    open the background is inert (removed from tab order + the AT tree). *@
-                <main class="odn-main" id="main-content" tabindex="-1" role="main" inert="@_paletteOpen">
+                <main @ref="_main" class="odn-main" id="main-content" tabindex="-1" role="main" inert="@_paletteOpen">
                     <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
                         @Body
                     </MudContainer>

@@ -34,7 +34,7 @@ namespace Odyssey.Client.Auth;
 /// still unauthenticated, so nothing is authorized on it, but <c>App.razor</c> recognises it and renders
 /// a retry panel instead of redirecting. Meanwhile a background loop re-probes with backoff (honouring
 /// <c>Retry-After</c>) and announces the first definitive answer, so the router re-evaluates without a
-/// reload.
+/// reload. While that loop runs, reads are answered unavailable without a probe of their own.
 /// </para>
 /// </remarks>
 public sealed class CookieAuthenticationStateProvider : AuthenticationStateProvider
@@ -87,6 +87,15 @@ public sealed class CookieAuthenticationStateProvider : AuthenticationStateProvi
         Task<Resolution> pending;
         lock (gate)
         {
+            // While the background loop is re-probing, it is the only prober: the router, the layout and
+            // every other reader get the unavailable answer at once instead of each starting a chain of
+            // its own against an API that is down — or rate-limiting, where extra probes prolong the 429.
+            // RefreshAsync (a sign-in, or the Retry button) is the one bypass.
+            if (current is null && recovery is { IsCompleted: false })
+            {
+                return Unavailable;
+            }
+
             pending = current ??= ResolveAsync();
         }
 

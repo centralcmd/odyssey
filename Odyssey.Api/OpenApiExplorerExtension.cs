@@ -7,6 +7,11 @@ public static class OpenApiExplorerExtension
 {
     internal const string AntiforgeryScheme = "antiforgery";
 
+    internal const string CookieScheme = "cookie";
+
+    // Identity's default application cookie name: ".AspNetCore." + IdentityConstants.ApplicationScheme.
+    internal const string IdentityCookieName = ".AspNetCore.Identity.Application";
+
     // Must match the AddAntiforgery header name configured in Program.cs.
     internal const string AntiforgeryHeaderName = "X-XSRF-TOKEN";
 
@@ -81,18 +86,21 @@ public static class OpenApiExplorerExtension
             var defaultSchemaId = options.SchemaGeneratorOptions.SchemaIdSelector;
             options.CustomSchemaIds(type => SchemaId(type, defaultSchemaId));
 
-            options.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
+            // The Identity application cookie, the only scheme the API accepts since issue #245 removed
+            // the bearer handler. Advertising a bearer scheme here would promise a token login that
+            // /login now refuses. The browser holds the cookie after POST /login?useCookies=true, so
+            // "Try it out" sends it without anything to paste.
+            options.AddSecurityDefinition(CookieScheme, new OpenApiSecurityScheme
             {
-                Type = SecuritySchemeType.Http,
-                Scheme = "bearer",
-                BearerFormat = "JWT",
-                Description = "JWT Authorization header using the Bearer scheme."
+                Type = SecuritySchemeType.ApiKey,
+                Name = IdentityCookieName,
+                In = ParameterLocation.Cookie,
+                Description = "The session cookie POST /login?useCookies=true sets. Bearer tokens are not supported."
             });
 
-            // The deployed client authenticates with a cookie, not a bearer token, and every write is
-            // additionally gated on the antiforgery header (enforced in Program.cs). Advertising only
-            // the bearer scheme left "Try it out" on any POST/PUT/DELETE failing with a bare 400 and no
-            // hint why (issue #382).
+            // Every write is additionally gated on the antiforgery header (enforced in Program.cs).
+            // Advertising only an authentication scheme left "Try it out" on any POST/PUT/DELETE failing
+            // with a bare 400 and no hint why (issue #382).
             options.AddSecurityDefinition(AntiforgeryScheme, new OpenApiSecurityScheme
             {
                 Type = SecuritySchemeType.ApiKey,
@@ -106,7 +114,7 @@ public static class OpenApiExplorerExtension
 
             options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
             {
-                [new OpenApiSecuritySchemeReference("bearer", document)] = [],
+                [new OpenApiSecuritySchemeReference(CookieScheme, document)] = [],
                 [new OpenApiSecuritySchemeReference(AntiforgeryScheme, document)] = []
             });
         });
