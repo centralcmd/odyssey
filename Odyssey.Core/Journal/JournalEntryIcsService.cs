@@ -52,11 +52,7 @@ public class JournalEntryIcsService
     /// admin-editable — a literal in the text would go stale the moment it changed.
     /// </para>
     /// </summary>
-    internal static string LinksCappedReason(int maxLinksPerKind) =>
-        $"Links over the per-entry cap of {maxLinksPerKind} were not imported.";
-
-    private static readonly string[] AcceptedContentTypes =
-        ["text/calendar", "application/octet-stream", "text/plain"];
+    internal static string LinksCappedReason(int maxLinksPerKind) => ImportLinks.LinksCappedReason("entry", maxLinksPerKind);
 
     private readonly OdysseyContext context;
     private readonly IContactLookup contacts;
@@ -748,45 +744,14 @@ public class JournalEntryIcsService
         JournalEntry entry, IcalJournal journal, Dictionary<string, Guid> tagsByName, LinkSkipCounts counts,
         int maxLinksPerKind, ImportSkipCollector skipped)
     {
-        var resolved = new List<Guid>();
-        foreach (var category in journal.Categories)
-        {
-            if (resolved.Count >= maxLinksPerKind)
-            {
-                counts.Tags++;
-                skipped.Add(LinksCappedReason(maxLinksPerKind), entry.Title);
-                continue;
-            }
+        var names = journal.Categories.Select(category => category?.Trim()).Where(name => !string.IsNullOrEmpty(name));
+        var resolved = ImportLinks.Resolve(
+            names, name => tagsByName.TryGetValue(name!, out var tagId) ? tagId : null, maxLinksPerKind,
+            onUnresolved: () => counts.Tags++,
+            onCapped: () => Capped(entry, maxLinksPerKind, skipped, () => counts.Tags++));
 
-            var name = category?.Trim();
-            if (string.IsNullOrEmpty(name))
-            {
-                continue;
-            }
-
-            if (!tagsByName.TryGetValue(name, out var tagId))
-            {
-                counts.Tags++;
-                continue;
-            }
-
-            if (!resolved.Contains(tagId))
-            {
-                resolved.Add(tagId);
-            }
-        }
-
-        var desired = resolved.ToHashSet();
-        foreach (var link in entry.EntryTags.Where(t => !desired.Contains(t.JournalTagId)).ToList())
-        {
-            entry.EntryTags.Remove(link);
-        }
-
-        var current = entry.EntryTags.Select(t => t.JournalTagId).ToHashSet();
-        foreach (var tagId in resolved.Where(id => current.Add(id)))
-        {
-            entry.EntryTags.Add(new JournalEntryTag { JournalTagId = tagId });
-        }
+        ImportLinks.Replace(entry.EntryTags, resolved, link => link.JournalTagId,
+            tagId => new JournalEntryTag { JournalTagId = tagId });
     }
 
     private static void ApplyContacts(
@@ -806,44 +771,13 @@ public class JournalEntryIcsService
             return;
         }
 
-        var resolved = new List<Guid>();
-        foreach (var uid in references)
-        {
-            if (resolved.Count >= maxLinksPerKind)
-            {
-                counts.Contacts++;
-                skipped.Add(LinksCappedReason(maxLinksPerKind), entry.Title);
-                continue;
-            }
+        var resolved = ImportLinks.Resolve(
+            references, uid => contactIdByUid.TryGetValue(uid, out var contactId) ? contactId : null, maxLinksPerKind,
+            onUnresolved: () => counts.Contacts++,
+            onCapped: () => Capped(entry, maxLinksPerKind, skipped, () => counts.Contacts++));
 
-            if (!contactIdByUid.TryGetValue(uid, out var contactId))
-            {
-                counts.Contacts++;
-                continue;
-            }
-
-            if (!resolved.Contains(contactId))
-            {
-                resolved.Add(contactId);
-            }
-        }
-
-        ReplaceContacts(entry, resolved);
-    }
-
-    private static void ReplaceContacts(JournalEntry entry, IReadOnlyList<Guid> desiredIds)
-    {
-        var desired = desiredIds.ToHashSet();
-        foreach (var link in entry.Contacts.Where(c => !desired.Contains(c.ContactId)).ToList())
-        {
-            entry.Contacts.Remove(link);
-        }
-
-        var current = entry.Contacts.Select(c => c.ContactId).ToHashSet();
-        foreach (var contactId in desiredIds.Where(id => current.Add(id)))
-        {
-            entry.Contacts.Add(new JournalEntryContact { ContactId = contactId });
-        }
+        ImportLinks.Replace(entry.Contacts, resolved, link => link.ContactId,
+            contactId => new JournalEntryContact { ContactId = contactId });
     }
 
     private static void ApplyAttachments(
@@ -857,44 +791,13 @@ public class JournalEntryIcsService
             return;
         }
 
-        var resolved = new List<Guid>();
-        foreach (var fileId in references)
-        {
-            if (resolved.Count >= maxLinksPerKind)
-            {
-                counts.Attachments++;
-                skipped.Add(LinksCappedReason(maxLinksPerKind), entry.Title);
-                continue;
-            }
+        var resolved = ImportLinks.Resolve(
+            references, fileId => existingFileIds.Contains(fileId) ? fileId : null, maxLinksPerKind,
+            onUnresolved: () => counts.Attachments++,
+            onCapped: () => Capped(entry, maxLinksPerKind, skipped, () => counts.Attachments++));
 
-            if (!existingFileIds.Contains(fileId))
-            {
-                counts.Attachments++;
-                continue;
-            }
-
-            if (!resolved.Contains(fileId))
-            {
-                resolved.Add(fileId);
-            }
-        }
-
-        ReplaceAttachments(entry, resolved, now);
-    }
-
-    private static void ReplaceAttachments(JournalEntry entry, IReadOnlyList<Guid> desiredFileIds, DateTime now)
-    {
-        var desired = desiredFileIds.ToHashSet();
-        foreach (var link in entry.Attachments.Where(a => !desired.Contains(a.FileId)).ToList())
-        {
-            entry.Attachments.Remove(link);
-        }
-
-        var current = entry.Attachments.Select(a => a.FileId).ToHashSet();
-        foreach (var fileId in desiredFileIds.Where(id => current.Add(id)))
-        {
-            entry.Attachments.Add(new JournalEntryAttachment { FileId = fileId, CreatedAt = now });
-        }
+        ImportLinks.Replace(entry.Attachments, resolved, link => link.FileId,
+            fileId => new JournalEntryAttachment { FileId = fileId, CreatedAt = now });
     }
 
     private static void ApplyPhotos(
@@ -909,30 +812,21 @@ public class JournalEntryIcsService
             return;
         }
 
-        var resolved = new List<Guid>();
-        foreach (var fileId in references)
-        {
-            if (resolved.Count >= maxLinksPerKind)
-            {
-                counts.Photos++;
-                skipped.Add(LinksCappedReason(maxLinksPerKind), entry.Title);
-                continue;
-            }
-
-            // Not an image (or unknown), or the library Photo couldn't be resolved → skip this link only.
-            if (!imageFileIds.Contains(fileId) || !photoIdByFileId.TryGetValue(fileId, out var photoId))
-            {
-                counts.Photos++;
-                continue;
-            }
-
-            if (!resolved.Contains(photoId))
-            {
-                resolved.Add(photoId);
-            }
-        }
+        // Not an image (or unknown), or the library Photo couldn't be resolved → skip this link only.
+        var resolved = ImportLinks.Resolve(
+            references,
+            fileId => imageFileIds.Contains(fileId) && photoIdByFileId.TryGetValue(fileId, out var photoId) ? photoId : null,
+            maxLinksPerKind,
+            onUnresolved: () => counts.Photos++,
+            onCapped: () => Capped(entry, maxLinksPerKind, skipped, () => counts.Photos++));
 
         ReplacePhotos(entry, resolved, now);
+    }
+
+    private static void Capped(JournalEntry entry, int maxLinksPerKind, ImportSkipCollector skipped, Action count)
+    {
+        count();
+        skipped.Add(LinksCappedReason(maxLinksPerKind), entry.Title);
     }
 
     private static void ReplacePhotos(JournalEntry entry, IReadOnlyList<Guid> desiredPhotoIds, DateTime now)
@@ -1132,7 +1026,7 @@ public class JournalEntryIcsService
     /// <summary>Whether the multipart part's content type is acceptable for an <c>.ics</c> upload — the
     /// extension and the parse are the real gates. Public for edge gating in the controller.</summary>
     public static bool IsAcceptedContentType(string? contentType) =>
-        ImportFileReader.IsAcceptedContentType(contentType, AcceptedContentTypes);
+        ImportFileReader.IsAcceptedContentType(contentType, ImportLinks.CalendarContentTypes);
 
     private sealed class LinkSkipCounts
     {

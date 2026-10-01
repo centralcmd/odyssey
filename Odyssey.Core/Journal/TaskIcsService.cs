@@ -36,11 +36,7 @@ public class TaskIcsService
     /// it changed. This path already counted its capped links numerically; the named reason is new, so
     /// both import summaries now describe the same thing the same way.
     /// </summary>
-    internal static string LinksCappedReason(int maxLinksPerKind) =>
-        $"Links over the per-task cap of {maxLinksPerKind} were not imported.";
-
-    private static readonly string[] AcceptedContentTypes =
-        ["text/calendar", "application/octet-stream", "text/plain"];
+    internal static string LinksCappedReason(int maxLinksPerKind) => ImportLinks.LinksCappedReason("task", maxLinksPerKind);
 
     private readonly OdysseyContext context;
     private readonly IFileLookup files;
@@ -496,109 +492,58 @@ public class TaskIcsService
         JournalTask target, IcalTodo todo, Dictionary<string, Guid> tagsByName, int maxLinksPerKind,
         ImportSkipCollector skipped, ref int skippedTagLinks)
     {
-        var resolved = new List<Guid>();
-        foreach (var category in todo.Categories)
-        {
-            var name = category?.Trim();
-            if (string.IsNullOrEmpty(name))
+        var skippedCount = 0;
+        var names = todo.Categories.Select(category => category?.Trim()).Where(name => !string.IsNullOrEmpty(name));
+        var resolved = ImportLinks.Resolve(
+            names, name => tagsByName.TryGetValue(name!, out var tagId) ? tagId : null, maxLinksPerKind,
+            onUnresolved: () => skippedCount++,
+            onCapped: () =>
             {
-                continue;
-            }
-
-            if (!tagsByName.TryGetValue(name, out var tagId))
-            {
-                skippedTagLinks++;
-                continue;
-            }
-
-            if (resolved.Contains(tagId))
-            {
-                continue;
-            }
-
-            if (resolved.Count >= maxLinksPerKind)
-            {
-                skippedTagLinks++;
+                skippedCount++;
                 skipped.Add(LinksCappedReason(maxLinksPerKind), target.Title);
-                continue;
-            }
+            });
+        skippedTagLinks += skippedCount;
 
-            resolved.Add(tagId);
-        }
-
-        var desired = resolved.ToHashSet();
-        foreach (var link in target.ItemTags.ToList())
-        {
-            if (!desired.Contains(link.JournalTaskTagId))
-            {
-                target.ItemTags.Remove(link);
-            }
-        }
-
-        var current = target.ItemTags.Select(l => l.JournalTaskTagId).ToHashSet();
-        foreach (var tagId in resolved)
-        {
-            if (current.Add(tagId))
-            {
-                target.ItemTags.Add(new JournalTaskTagLink { JournalTaskTagId = tagId });
-            }
-        }
+        ImportLinks.Replace(target.ItemTags, resolved, link => link.JournalTaskTagId,
+            tagId => new JournalTaskTagLink { JournalTaskTagId = tagId });
     }
 
     private static void ApplyAttachments(
         JournalTask target, IcalTodo todo, bool canLinkFiles, IReadOnlySet<Guid> existingFileIds,
         DateTime now, int maxLinksPerKind, ImportSkipCollector skipped, ref int skippedAttachments)
     {
-        var resolved = new List<Guid>();
-        foreach (var attachment in todo.Attachments)
+        // An ATTACH using any scheme other than odyssey-file (a real linked/embedded file from a
+        // third-party producer) is silently ignored — never skip-counted (§5 pipeline step 4.7).
+        var references = todo.Attachments
+            .Select(attachment => TryParseFileId(attachment, out var fileId) ? (Matched: true, FileId: fileId) : default)
+            .Where(reference => reference.Matched)
+            .Select(reference => reference.FileId)
+            .ToList();
+
+        // Without the right to link files every reference is skipped and the existing links are left
+        // untouched, as on the journal-entry import (§9, N1). This path used to replace them with the
+        // empty set, so re-importing a task without files.read deleted its attachments (issue #287 M8).
+        if (!canLinkFiles)
         {
-            // An ATTACH using any scheme other than odyssey-file (a real linked/embedded file from a
-            // third-party producer) is silently ignored — never skip-counted (§5 pipeline step 4.7).
-            if (!TryParseFileId(attachment, out var fileId))
-            {
-                continue;
-            }
+            skippedAttachments += references.Count;
+            return;
+        }
 
-            // Scheme matched but the value wasn't a parseable file id, or the caller can't link files, or
-            // the file doesn't exist / isn't visible → skip that link only, count it, keep the task.
-            if (fileId is not { } id || !canLinkFiles || !existingFileIds.Contains(id))
+        // A malformed odyssey-file value, or a file that doesn't exist / isn't visible → skip that link
+        // only, count it, keep the task.
+        var skippedCount = 0;
+        var resolved = ImportLinks.Resolve(
+            references, fileId => fileId is { } id && existingFileIds.Contains(id) ? id : null, maxLinksPerKind,
+            onUnresolved: () => skippedCount++,
+            onCapped: () =>
             {
-                skippedAttachments++;
-                continue;
-            }
-
-            if (resolved.Contains(id))
-            {
-                continue;
-            }
-
-            if (resolved.Count >= maxLinksPerKind)
-            {
-                skippedAttachments++;
+                skippedCount++;
                 skipped.Add(LinksCappedReason(maxLinksPerKind), target.Title);
-                continue;
-            }
+            });
+        skippedAttachments += skippedCount;
 
-            resolved.Add(id);
-        }
-
-        var desired = resolved.ToHashSet();
-        foreach (var link in target.Attachments.ToList())
-        {
-            if (!desired.Contains(link.FileId))
-            {
-                target.Attachments.Remove(link);
-            }
-        }
-
-        var current = target.Attachments.Select(a => a.FileId).ToHashSet();
-        foreach (var fileId in resolved)
-        {
-            if (current.Add(fileId))
-            {
-                target.Attachments.Add(new JournalTaskAttachment { FileId = fileId, CreatedAt = now });
-            }
-        }
+        ImportLinks.Replace(target.Attachments, resolved, link => link.FileId,
+            fileId => new JournalTaskAttachment { FileId = fileId, CreatedAt = now });
     }
 
     // Parses an ATTACH value under the odyssey-file scheme. Returns false when the scheme is something
@@ -655,5 +600,5 @@ public class TaskIcsService
     /// extension and the parse are the real gates, so we accept what browsers/OSes send for calendar
     /// files and only reject a clearly-wrong declared type. Public for edge gating in the controller.</summary>
     public static bool IsAcceptedContentType(string? contentType) =>
-        ImportFileReader.IsAcceptedContentType(contentType, AcceptedContentTypes);
+        ImportFileReader.IsAcceptedContentType(contentType, ImportLinks.CalendarContentTypes);
 }

@@ -462,6 +462,38 @@ public class TaskIcsApiTests
         Assert.Equal(1, result.SkippedAttachmentCount);
     }
 
+    /// <summary>
+    /// Re-importing a task without <c>files.read</c> skips its attachment references and leaves the
+    /// links it already has alone, as the journal-entry import does (§9, N1). This path used to replace
+    /// them with the empty set, deleting attachments the caller could not even see (issue #287 M8).
+    /// </summary>
+    [Fact]
+    public async Task Reimport_WithoutFilesRead_KeepsTheExistingAttachments()
+    {
+        await using var factory = new ApiFactory(ReadWrite); // no files.read
+        using var client = factory.CreateClient();
+        var fileId = await SeedFileAsync(factory, "doc.pdf", "application/pdf");
+        var ics = Vcalendar(Vtodo("keep-1", "SUMMARY:Has a file", $"ATTACH:odyssey-file:{fileId}"));
+        await ImportAsync(client, ics);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var task = await ctx.JournalTasks.SingleAsync();
+            ctx.Add(new JournalTaskAttachment { JournalTaskId = task.JournalTaskId, FileId = fileId, CreatedAt = DateTime.UtcNow });
+            await ctx.SaveChangesAsync();
+        }
+
+        var result = await ImportAsync(client, ics);
+
+        Assert.Equal(1, result.UpdatedCount);
+        Assert.Equal(1, result.SkippedAttachmentCount);
+        using var verify = factory.Services.CreateScope();
+        var row = await verify.ServiceProvider.GetRequiredService<OdysseyContext>()
+            .JournalTasks.Include(t => t.Attachments).SingleAsync();
+        Assert.Equal(fileId, Assert.Single(row.Attachments).FileId);
+    }
+
     [Fact]
     public async Task Import_NonOdysseyAttachmentScheme_IsIgnoredNotCounted()
     {
