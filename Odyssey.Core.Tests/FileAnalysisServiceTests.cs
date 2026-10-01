@@ -1,6 +1,7 @@
 using Odyssey.Core;
 using Odyssey.Dtos;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -700,6 +701,50 @@ public class FileAnalysisServiceTests
         var stored = await context.Transactions.SingleAsync();
         Assert.Equal(description[..256], stored.Description);
         Assert.Equal(externalId[..64], stored.ExternalId);
+    }
+
+    /// <summary>
+    /// A failure that is not a domain rule reports a generic reason: its message is internal detail
+    /// (an engine error, a provider body) and the failures list is returned to the caller.
+    /// </summary>
+    [Fact]
+    public async Task ImportCandidatesAsync_AnUnexpectedFailure_ReportsAGenericReason()
+    {
+        var failTagQueries = new FailTagQueries();
+        var options = new DbContextOptionsBuilder<OdysseyContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .AddInterceptors(failTagQueries)
+            .Options;
+        await using var context = new OdysseyContext(options);
+        context.Currencies.Add(new Currency { CurrencyCode = "USD", Name = "US Dollar", MinorUnits = 2, Symbol = "$" });
+        await context.SaveChangesAsync();
+        var (service, jobId, _, candidates) = await AnalyzeTwoCandidatesAsync(context);
+        failTagQueries.Armed = true;
+
+        var result = await service.ImportCandidatesAsync(
+            jobId,
+            new ImportRequest([new ImportCandidateRequest(candidates[0].Id, null, null, null, null, null, [Guid.NewGuid()])]),
+            "user-1");
+
+        Assert.Equal(0, result.Imported);
+        var reason = Assert.Single(result.Failures).Reason;
+        Assert.Equal("The candidate could not be imported.", reason);
+        Assert.DoesNotContain(FailTagQueries.Message, reason, StringComparison.Ordinal);
+    }
+
+    // Faults the tag lookup with a non-domain exception, standing in for an engine error.
+    private sealed class FailTagQueries : IQueryExpressionInterceptor
+    {
+        public const string Message = "internal engine detail";
+
+        public bool Armed { get; set; }
+
+        public System.Linq.Expressions.Expression QueryCompilationStarting(
+            System.Linq.Expressions.Expression queryExpression, QueryExpressionEventData eventData) =>
+            Armed && queryExpression.ToString().Contains(nameof(TransactionTag), StringComparison.Ordinal)
+                ? throw new InvalidOperationException(Message)
+                : queryExpression;
     }
 
     [Fact]
