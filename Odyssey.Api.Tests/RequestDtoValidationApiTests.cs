@@ -27,10 +27,35 @@ public sealed class RequestDtoValidationApiTests
     public async Task Attach_WithAnUndefinedFileType_IsRejectedByModelValidation(
         string route, string field, string updateClaim)
     {
+        foreach (var ordinal in new[] { 99, -1 })
+        {
+            await AssertRejectedAsync(route, field, updateClaim, ordinal);
+        }
+    }
+
+    /// <summary>
+    /// The positive control: a defined ordinal passes validation and reaches the action, which then
+    /// finds no such record. Without it a 400 above could come from something other than the enum.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(OutOfRangeFileTypes))]
+    public async Task Attach_WithADefinedFileType_PassesValidation(string route, string field, string updateClaim)
+    {
         await using var factory = new OdysseyApiFactory([updateClaim, PermissionClaims.FilesRead]);
         using var client = factory.CreateClient();
 
-        var body = new Dictionary<string, object> { ["fileId"] = Guid.NewGuid(), [field] = 99 };
+        var body = new Dictionary<string, object> { ["fileId"] = Guid.NewGuid(), [field] = 1 };
+        var response = await client.PostAsJsonAsync(string.Format(route, Guid.NewGuid()), body);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    private static async Task AssertRejectedAsync(string route, string field, string updateClaim, int ordinal)
+    {
+        await using var factory = new OdysseyApiFactory([updateClaim, PermissionClaims.FilesRead]);
+        using var client = factory.CreateClient();
+
+        var body = new Dictionary<string, object> { ["fileId"] = Guid.NewGuid(), [field] = ordinal };
         var response = await client.PostAsJsonAsync(string.Format(route, Guid.NewGuid()), body);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -50,6 +75,24 @@ public sealed class RequestDtoValidationApiTests
             new StringContent(json, System.Text.Encoding.UTF8, "application/json"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    /// <summary>
+    /// The boundary itself: 256 characters fits the column, so validation passes and the service
+    /// refuses the unknown role on its own terms — still a 400, but without a <c>role</c> model error.
+    /// </summary>
+    [Fact]
+    public async Task AssignRole_WithARoleExactlyTheColumnWidth_PassesModelValidation()
+    {
+        await using var factory = new OdysseyApiFactory([PermissionClaims.UsersUpdate]);
+        using var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync($"/api/users/{Guid.NewGuid()}/role",
+            new { role = new string('r', 256) });
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("does not exist", body, StringComparison.Ordinal);
     }
 
     [Fact]
