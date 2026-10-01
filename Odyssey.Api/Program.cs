@@ -38,9 +38,14 @@ builder.Configuration.ThrowIfPlaceholderValues(builder.Environment.EnvironmentNa
 
 builder.AddDatabases();
 
-builder.Services.AddIdentityApiEndpoints<ApplicationUser>()
-    .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<OdysseyContext>();
+// Cookie-only (issue #245). AddIdentityApiEndpoints would also register the BearerToken handler and make
+// a bearer-or-cookie composite the default scheme, so /login?useCookies=false would mint 1 h access and
+// 14 d refresh tokens that nothing here uses — and that the one-minute security-stamp revalidation below,
+// which runs for the cookie only, never re-checks. The application cookie is therefore the only
+// authentication scheme; CookieOnlyIdentityEndpoints refuses the two Identity routes that assume a
+// bearer handler exists.
+builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
+    .AddIdentityCookies();
 
 var identityBuilder = builder.Services.AddIdentityCore<ApplicationUser>()
     .AddRoles<IdentityRole>()
@@ -56,9 +61,9 @@ var identityBuilder = builder.Services.AddIdentityCore<ApplicationUser>()
 
 // Clears MustChangePassword on a completed reset or change (issue #406 §5.3). AddUserManager performs a
 // plain AddScoped for UserManager<ApplicationUser>, so the last registration wins — which is why this must
-// come AFTER both Identity builder chains above, or AddIdentityApiEndpoints' own registration would
-// overwrite it. MapIdentityApi resolves UserManager<ApplicationUser>, not the derived type, so what
-// matters is that *that* service type resolves to OdysseyUserManager; AdminPasswordResetApiTests pins it.
+// come AFTER the Identity builder chain above, or its own registration would overwrite it. MapIdentityApi
+// resolves UserManager<ApplicationUser>, not the derived type, so what matters is that *that* service
+// type resolves to OdysseyUserManager; AdminPasswordResetApiTests pins it.
 identityBuilder.AddUserManager<OdysseyUserManager>();
 
 // A rotated security stamp otherwise leaves other sessions alive for up to Identity's default 30 minutes,
@@ -73,11 +78,11 @@ builder.Services.AddOptions<IdentityOptions>()
     .Configure(identity =>
         identity.Tokens.PasswordResetTokenProvider = PasswordResetTokenProviderOptions.ProviderName);
 
-// Legal acceptance (issue #354 §5). This Replace MUST come after BOTH Identity builder calls above.
-// Both of them register an IUserClaimsPrincipalFactory, so a custom factory handed to whichever call
-// runs first is silently discarded by the other: the app builds, boots and logs in, the
+// Legal acceptance (issue #354 §5). This Replace MUST come after the Identity builder call above, which
+// registers an IUserClaimsPrincipalFactory of its own (there were two such calls until issue #245; any
+// further one would discard a factory handed to an earlier call): the app builds, boots and logs in, the
 // pending-acceptance claim is simply never added, and the entire feature enforces nothing with no error
-// anywhere. Replacing after both is order-independent and therefore correct regardless of which
+// anywhere. Replacing after it is order-independent and therefore correct regardless of which
 // registration would otherwise win — LegalClaimsFactoryTests resolves the service from a real container
 // and asserts the custom type, so a future reordering or a third Identity registration can't quietly
 // reintroduce that failure mode.
@@ -139,6 +144,22 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy = builder.Environment.IsProduction()
         ? CookieSecurePolicy.Always
         : CookieSecurePolicy.SameAsRequest;
+
+    // With the cookie as the default scheme (issue #245) its challenge and forbid answer every API
+    // request, and the handler's defaults are 302s to /Account/Login and /Account/AccessDenied — pages
+    // that do not exist here. The removed composite forwarded both to the bearer handler, which answered
+    // with a bare 401/403; keep that wire behaviour. The events are assigned individually because
+    // AddIdentityCookies already installed OnValidatePrincipal on the same instance.
+    options.Events.OnRedirectToLogin = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Task.CompletedTask;
+    };
 });
 
 // RequireConfirmedAccount is pinned true unconditionally (issue #349) rather than bound from config:
@@ -197,7 +218,7 @@ builder.Services.AddSingleton<IEmailRecipientHashKey, EmailRecipientHashKey>();
 
 // The sign-in-side half of EmailRequireConfirmation (issue #349) — see SystemSettingsUserConfirmation.
 // AddScoped (not TryAdd) so this overrides Identity's own DefaultUserConfirmation<TUser> registered
-// above by AddIdentityApiEndpoints/AddIdentityCore, mirroring the IEmailSender override immediately above.
+// above by AddIdentityCore, mirroring the IEmailSender override immediately above.
 builder.Services.AddScoped<IUserConfirmation<ApplicationUser>, Odyssey.Api.Identity.SystemSettingsUserConfirmation>();
 
 builder.Services.AddAuthorization(options =>
@@ -604,6 +625,9 @@ app.MapGet("/healthz", () =>
 var identityApi = app.MapIdentityApi<ApplicationUser>()
     .RequireRateLimiting(IdentityRateLimiting.PolicyName);
 
+// No bearer tokens (issue #245): /login must ask for a cookie and /refresh does not exist.
+identityApi.RequireCookieOnlyIdentity();
+
 // The global FallbackPolicy (see AddAuthorization above) requires an authenticated user on any
 // endpoint that declares no authorization metadata of its own — which is every endpoint
 // MapIdentityApi maps outside /manage. Without this, /login itself would demand a login.
@@ -773,6 +797,8 @@ IdentityRateLimiting.ValidateMailEndpointRateLimiting(
     builtEndpoints, startupCheckLoggers.CreateLogger(typeof(IdentityRateLimiting)));
 PasswordResetLogging.ValidatePasswordResetLogging(
     builtEndpoints, startupCheckLoggers.CreateLogger(typeof(PasswordResetLogging)));
+CookieOnlyIdentityEndpoints.ValidateCookieOnlyIdentity(
+    builtEndpoints, startupCheckLoggers.CreateLogger(typeof(CookieOnlyIdentityEndpoints)));
 
 // Fail fast rather than boot into an unrecoverable lockout (issue #406 §5.6): a removed
 // [PasswordChangeExempt], or a renamed route on one of the five endpoints that let a gated user out of
