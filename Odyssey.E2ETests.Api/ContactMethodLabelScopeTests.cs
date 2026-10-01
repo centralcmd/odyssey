@@ -30,11 +30,11 @@ public class ContactMethodLabelScopeTests(ApiStackFixture fixture)
     /// </summary>
     private static readonly (string Path, string Claim, object Body)[] CreateEndpoints =
     [
-        ($"/api/contacts/{Guid.NewGuid()}/addresses", PermissionClaims.ContactsCreate,
+        ($"/api/contacts/{Guid.NewGuid()}/addresses", PermissionClaims.ContactsUpdate,
             new NewAddress { Label = AddressLabel.Home, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO" }),
-        ($"/api/contacts/{Guid.NewGuid()}/emails", PermissionClaims.ContactsCreate,
+        ($"/api/contacts/{Guid.NewGuid()}/emails", PermissionClaims.ContactsUpdate,
             new NewEmailAddress { Label = EmailLabel.Home, Value = "post@example.com" }),
-        ($"/api/contacts/{Guid.NewGuid()}/phones", PermissionClaims.ContactsCreate,
+        ($"/api/contacts/{Guid.NewGuid()}/phones", PermissionClaims.ContactsUpdate,
             new NewPhoneNumber { Label = PhoneLabel.Home, Value = "+47 22 00 00 00" }),
     ];
 
@@ -79,7 +79,7 @@ public class ContactMethodLabelScopeTests(ApiStackFixture fixture)
         foreach (var user in DemoUsers.All)
         {
             var claims = ClaimsForRole(user.Role);
-            if (claims.Contains(PermissionClaims.ContactsCreate))
+            if (claims.Contains(PermissionClaims.ContactsUpdate))
                 continue;
 
             var client = await fixture.CreateAuthenticatedClientAsync(user.Email, user.Password);

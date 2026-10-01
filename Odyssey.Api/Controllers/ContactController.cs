@@ -622,9 +622,10 @@ truncated response reports itself rather than returning a silently short documen
     }
 
     // ── Aliases (issue #48 §7) ────────────────────────────────────────────────
-    // Four sub-resource actions gated by the SIBLING claims — contacts.read/.create/.update/.delete.
-    // No new claim, so no RolePermissions change, no RoleClaimSeeder reconciliation and no forced
-    // sign-out/sign-in (§10.8).
+    // Every child collection below (aliases, addresses, emails, phones) is read under contacts.read
+    // and written — add, replace AND remove — under contacts.update, like every other sub-resource:
+    // editing a contact's phone number is an update to the contact, not the creation or deletion of
+    // one (issue #287 M3). No new claim, so no RolePermissions change and no forced sign-out/sign-in.
     //
     // Containment holds on all four verbs: the service resolves an aliasId SCOPED to contactId, so an
     // alias belonging to another contact is a 404 — not a 403, which would confirm the row exists
@@ -642,7 +643,7 @@ truncated response reports itself rather than returning a silently short documen
     }
 
     [HttpPost("{contactId}/aliases", Name = "PostContactAlias")]
-    [Authorize(Policy = PermissionClaims.ContactsCreate)]
+    [Authorize(Policy = PermissionClaims.ContactsUpdate)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingContactAlias))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
@@ -692,7 +693,7 @@ collection, so the cap is unreachable on this verb.")]
     }
 
     [HttpDelete("{contactId}/aliases/{aliasId}", Name = "DeleteContactAlias")]
-    [Authorize(Policy = PermissionClaims.ContactsDelete)]
+    [Authorize(Policy = PermissionClaims.ContactsUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> DeleteAlias(
@@ -721,7 +722,7 @@ collection, so the cap is unreachable on this verb.")]
     }
 
     [HttpPost("{contactId}/addresses", Name = "PostContactAddress")]
-    [Authorize(Policy = PermissionClaims.ContactsCreate)]
+    [Authorize(Policy = PermissionClaims.ContactsUpdate)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingAddress))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
@@ -745,7 +746,7 @@ collection, so the cap is unreachable on this verb.")]
     }
 
     [HttpDelete("{contactId}/addresses/{addressId}", Name = "DeleteContactAddress")]
-    [Authorize(Policy = PermissionClaims.ContactsDelete)]
+    [Authorize(Policy = PermissionClaims.ContactsUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> DeleteAddress([FromRoute] Guid contactId, [FromRoute] Guid addressId, CancellationToken cancellationToken = default)
@@ -767,7 +768,7 @@ collection, so the cap is unreachable on this verb.")]
     }
 
     [HttpPost("{contactId}/emails", Name = "PostContactEmail")]
-    [Authorize(Policy = PermissionClaims.ContactsCreate)]
+    [Authorize(Policy = PermissionClaims.ContactsUpdate)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingEmailAddress))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
@@ -791,7 +792,7 @@ collection, so the cap is unreachable on this verb.")]
     }
 
     [HttpDelete("{contactId}/emails/{emailId}", Name = "DeleteContactEmail")]
-    [Authorize(Policy = PermissionClaims.ContactsDelete)]
+    [Authorize(Policy = PermissionClaims.ContactsUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> DeleteEmail([FromRoute] Guid contactId, [FromRoute] Guid emailId, CancellationToken cancellationToken = default)
@@ -813,7 +814,7 @@ collection, so the cap is unreachable on this verb.")]
     }
 
     [HttpPost("{contactId}/phones", Name = "PostContactPhone")]
-    [Authorize(Policy = PermissionClaims.ContactsCreate)]
+    [Authorize(Policy = PermissionClaims.ContactsUpdate)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingPhoneNumber))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
@@ -837,7 +838,7 @@ collection, so the cap is unreachable on this verb.")]
     }
 
     [HttpDelete("{contactId}/phones/{phoneId}", Name = "DeleteContactPhone")]
-    [Authorize(Policy = PermissionClaims.ContactsDelete)]
+    [Authorize(Policy = PermissionClaims.ContactsUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> DeletePhone([FromRoute] Guid contactId, [FromRoute] Guid phoneId, CancellationToken cancellationToken = default)
