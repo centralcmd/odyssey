@@ -3,6 +3,7 @@ using Odyssey.Dtos;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ContextJobStatus = Odyssey.Context.FileAnalysisJobStatus;
@@ -354,6 +355,10 @@ public class FileAnalysisService
         var account = job.AccountFile?.Account
             ?? throw new InvalidOperationException("Account could not be resolved from the analysis job.");
 
+        // The same rule TransactionService applies (issue #237). Refused for the whole batch rather than
+        // per candidate: it is a property of the job's account, so every row would fail identically.
+        TransactionWriteRules.EnsureAccountIsOpen(account);
+
         var candidateMap = job.CandidateTransactions.ToDictionary(c => c.Id);
 
         var imported = 0;
@@ -367,11 +372,32 @@ public class FileAnalysisService
                 .ToListAsync(cancellationToken))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // One lookup for every contact the batch names; an unknown id would otherwise reach the FK at
+        // SaveChangesAsync and fail the whole batch as an unmapped 500.
+        var requestedContactIds = request.Candidates
+            .Where(r => r.ContactId is not null)
+            .Select(r => r.ContactId!.Value)
+            .Distinct()
+            .ToList();
+        var contactRefs = requestedContactIds.Count == 0
+            ? new Dictionary<Guid, ContactRef>()
+            : await contactLookup.ResolveRefsAsync(requestedContactIds, cancellationToken);
+
         foreach (var req in request.Candidates)
         {
             if (!candidateMap.TryGetValue(req.CandidateId, out var candidate))
             {
                 failures.Add(new ImportFailure(req.CandidateId, "Candidate not found in this job."));
+                continue;
+            }
+
+            // A candidate becomes a ledger row once. Without this a double submit or a retry of the same
+            // request (or the same id twice in one body) imported it again. The status is also the
+            // entity's concurrency token, so two requests racing past this check cannot both commit.
+            if (candidate.ReviewStatus != ContextReviewStatus.Pending)
+            {
+                failures.Add(new ImportFailure(
+                    req.CandidateId, $"Candidate has already been reviewed ({candidate.ReviewStatus})."));
                 continue;
             }
 
@@ -406,14 +432,16 @@ public class FileAnalysisService
 
             try
             {
-                var tags = await ResolveImportTagsAsync(req.TransactionTagIds, cancellationToken);
+                TransactionWriteRules.EnsureCurrencyMatchesAccount(account, normalizedCurrency);
+                TransactionWriteRules.EnsureContactIsValid(contactRefs, req.ContactId);
+                var tags = await TransactionWriteRules.ResolveTagsAsync(context, req.TransactionTagIds, cancellationToken);
 
                 var transaction = new Transaction
                 {
                     AccountId = account.AccountId,
                     Description = Truncate(description, 256) ?? string.Empty,
                     Amount = amount,
-                    TimeStamp = txDate,
+                    TimeStamp = DateTimeNormalization.NormalizeToUtc(txDate),
                     CurrencyCode = normalizedCurrency,
                     // Optional review overrides: contact, tags, and reference (external id).
                     ContactId = req.ContactId,
@@ -435,11 +463,23 @@ public class FileAnalysisService
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Failed to import candidate {CandidateId}.", req.CandidateId);
-                failures.Add(new ImportFailure(req.CandidateId, ex.Message));
+                // A domain rule's message is written for the caller; anything else is internal detail.
+                failures.Add(new ImportFailure(
+                    req.CandidateId, ex is DomainException ? ex.Message : "The candidate could not be imported."));
             }
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Another request reviewed one of these candidates between our read and this save. The
+            // save is one statement batch in one transaction, so nothing of this request committed.
+            throw new DomainConflictException(
+                "One or more candidates were reviewed by another request. Reload the analysis and try again.");
+        }
 
         return new ImportResponse(imported, failures.Count, failures);
     }
@@ -500,7 +540,7 @@ public class FileAnalysisService
             ApplyMatches(candidates, results, vocabulary, matchSettings.AutoLinkThreshold);
 
             job.MatchStatus = ContextMatchStatus.Completed;
-            await context.SaveChangesAsync(cancellationToken);
+            await SaveMatchesAsync(cancellationToken);
 
             logger.LogInformation("Match for job {JobId} completed over {Vocab} names.", jobId, job.VocabularyCount);
         }
@@ -749,28 +789,73 @@ public class FileAnalysisService
             ? uri.Host
             : null;
 
-    // Resolve the optional tag overrides for an imported transaction, validating that each requested
-    // tag exists and is not archived. Throws so the per-candidate catch records it as a failure.
-    private async Task<List<TransactionTag>> ResolveImportTagsAsync(IEnumerable<Guid>? tagIds, CancellationToken cancellationToken)
+    /// <summary>
+    /// Saves a match run, yielding to an import that reviewed some of its candidates while the provider
+    /// call was in flight: their review wins, they are restored as stored, and the rest is saved.
+    ///
+    /// <para>
+    /// Two layers, because <c>ReviewStatus</c> is a concurrency token (issue #237). The re-read just
+    /// before saving catches the ordinary case — a provider call takes seconds — on every provider.
+    /// The catch covers the window between that read and the save; it relies on the failed save having
+    /// rolled back, which holds on MariaDB (<c>FileAnalysisImportConcurrencyTests</c>) but not on the
+    /// InMemory provider, which has no transactions and applies a failed batch partially.
+    /// </para>
+    /// </summary>
+    private async Task SaveMatchesAsync(CancellationToken cancellationToken)
     {
-        var distinctIds = tagIds?.Distinct().ToList() ?? [];
-        if (distinctIds.Count == 0)
+        var candidates = context.ChangeTracker.Entries<FileAnalysisCandidateTransaction>().ToList();
+        var ids = candidates.Select(e => e.Entity.Id).ToList();
+        var storedStatuses = await context.FileAnalysisCandidateTransactions
+            .AsNoTracking()
+            .Where(c => ids.Contains(c.Id))
+            .Select(c => new { c.Id, c.ReviewStatus })
+            .ToDictionaryAsync(c => c.Id, c => c.ReviewStatus, cancellationToken);
+
+        foreach (var entry in candidates.Where(e =>
+                     storedStatuses.TryGetValue(e.Entity.Id, out var stored)
+                     && stored != e.Property(c => c.ReviewStatus).OriginalValue))
         {
-            return [];
+            await RestoreAsStoredAsync(entry, cancellationToken);
         }
 
-        var tags = await context.TransactionTags
-            .Where(tag => distinctIds.Contains(tag.TransactionTagId) && tag.Archived == null)
-            .ToListAsync(cancellationToken);
-
-        var missing = distinctIds.Except(tags.Select(tag => tag.TransactionTagId)).ToList();
-        if (missing.Count > 0)
+        try
         {
-            throw new DomainValidationException(
-                $"Transaction tag ID(s) {string.Join(", ", missing)} are invalid or archived.");
+            await context.SaveChangesAsync(cancellationToken);
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            foreach (var entry in ex.Entries)
+            {
+                if (entry.Entity is FileAnalysisCandidateTransaction candidate)
+                    await RestoreAsStoredAsync(context.Entry(candidate), cancellationToken);
+                else
+                    await entry.ReloadAsync(cancellationToken);
+            }
 
-        return tags;
+            await context.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    // A reload restores the candidate's own columns only; its tag links are separate rows, so the
+    // links this run added are dropped and the ones it removed are kept, leaving them as stored.
+    private async Task RestoreAsStoredAsync(
+        EntityEntry<FileAnalysisCandidateTransaction> entry,
+        CancellationToken cancellationToken)
+    {
+        var candidate = entry.Entity;
+        var links = context.ChangeTracker.Entries<FileAnalysisCandidateTag>()
+            .Where(e => e.Entity.CandidateTransactionId == candidate.Id)
+            .ToList();
+        var stored = links.Where(e => e.State != EntityState.Added).Select(e => e.Entity).ToList();
+
+        foreach (var link in links)
+            link.State = link.State == EntityState.Added ? EntityState.Detached : EntityState.Unchanged;
+
+        candidate.MatchedTags.Clear();
+        foreach (var tag in stored)
+            candidate.MatchedTags.Add(tag);
+
+        await entry.ReloadAsync(cancellationToken);
     }
 
     private async Task<string> LoadPromptTemplateAsync(CancellationToken cancellationToken = default)
