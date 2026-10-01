@@ -17,14 +17,10 @@
     </ItemGroup>
 
     <ItemGroup>
-      <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    </ItemGroup>
-
-    <ItemGroup>
       <PackageReference Include="Mapster" />
-      <!-- From the former Odyssey.Shared, which needed Microsoft.Extensions.Configuration.Abstractions
-           explicitly because it carried no FrameworkReference. Here the AspNetCore framework reference
-           above already provides it, and NU1510 fails the build if it is listed again. -->
+      <!-- No Microsoft.AspNetCore.App FrameworkReference (issue #287 L9): the domain takes
+           FileUpload rather than IFormFile, and nothing else here needs the web framework. The
+           Microsoft.Extensions.* abstractions it does use arrive transitively through Odyssey.Context. -->
       <PackageReference Include="Microsoft.EntityFrameworkCore" />
       <!-- VTODO/VEVENT .ics import/export (issues #330, #337). -->
       <PackageReference Include="Ical.Net" />

@@ -56,7 +56,7 @@ public sealed class FilesController : ControllerBase
             return this.UnauthorizedProblem("User identity is missing from the request.");
         }
 
-        var result = await fileService.UploadFileAsync(file, userId, description, cancellationToken);
+        var result = await fileService.UploadFileAsync(file.ToFileUpload(), userId, description, cancellationToken);
         return CreatedAtAction(nameof(GetFileMetadata), new { id = result.Id }, result);
     }
 
