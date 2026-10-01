@@ -5,6 +5,35 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.0](https://github.com/centralcmd/odyssey/compare/v0.37.1...v0.38.0) (2026-10-01)
+
+
+### Features
+
+* transaction tag icons ([#285](https://github.com/centralcmd/odyssey/issues/285)) ([324f95a](https://github.com/centralcmd/odyssey/commit/324f95abc71182a7086445bc9b10a20c4357d946))
+
+
+### Bug Fixes
+
+* **api:** follow both proxy hops when resolving the client ip ([#282](https://github.com/centralcmd/odyssey/issues/282)) ([ff4d5c2](https://github.com/centralcmd/odyssey/commit/ff4d5c2562ec6e59445665e9a2460a046cbdbf6c))
+* **auth:** close post /manage/info and require re-auth to change email ([#286](https://github.com/centralcmd/odyssey/issues/286)) ([83a4085](https://github.com/centralcmd/odyssey/commit/83a4085991d9305cb2728f8a1b02f29a830ad74a))
+* **client:** make the chevron the users row disclosure and size chart axes in px ([#277](https://github.com/centralcmd/odyssey/issues/277)) ([9b22085](https://github.com/centralcmd/odyssey/commit/9b22085169d9232bc63e5d96e95f2b11a6934d05))
+* cookie-only auth, redacted mail logs, and an unavailable-session retry panel ([#281](https://github.com/centralcmd/odyssey/issues/281)) ([8a6d074](https://github.com/centralcmd/odyssey/commit/8a6d074cb6d1481904f71414d448bb01c006d58b))
+* **core:** validate file-analysis imports like any transaction write ([#284](https://github.com/centralcmd/odyssey/issues/284)) ([dc4be9d](https://github.com/centralcmd/odyssey/commit/dc4be9d92bf76768b39f8770692492ffed3ca79d))
+* recurrence day-mask validation, client auth-state caching and 401 handling ([#275](https://github.com/centralcmd/odyssey/issues/275)) ([77dda9e](https://github.com/centralcmd/odyssey/commit/77dda9e29699951a73783624c9adb6f3276d1c9c))
+* retry panel during an outage, phone-width overflow and nginx header/timeout ([#288](https://github.com/centralcmd/odyssey/issues/288)) ([dc0f2c3](https://github.com/centralcmd/odyssey/commit/dc0f2c326145585797901068b37f2df6b0f88a61))
+
+
+### Documentation
+
+* update design system ([894b108](https://github.com/centralcmd/odyssey/commit/894b1088edf07ca9696c0b8ecb440a9787ee89b8))
+* update design system ([eff7ac1](https://github.com/centralcmd/odyssey/commit/eff7ac12ec474e6b49e630772ce96acee602372b))
+
+
+### CI/CD
+
+* require the docker and e2e test tiers in the jobs meant to run them ([574e9e6](https://github.com/centralcmd/odyssey/commit/574e9e644729f5675ae590057f939664ba519d58)), closes [#257](https://github.com/centralcmd/odyssey/issues/257)
+
 ## [0.37.1](https://github.com/centralcmd/odyssey/compare/v0.37.0...v0.37.1) (2026-09-30)
 
 
