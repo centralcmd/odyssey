@@ -424,6 +424,9 @@ builder.Services.AddScoped<Odyssey.Context.Secrets.ISecretSettingsReader,
     Odyssey.Api.SystemSettings.SecretSettingsReader>();
 
 builder.Services.AddScoped<ContractService>();
+builder.Services.AddScoped<ContractPartyService>();
+builder.Services.AddScoped<ContractFileService>();
+builder.Services.AddScoped<ContractSummaryService>();
 builder.Services.AddScoped<ContractEventService>();
 
 // Journal module (issue #311). The lookups keep the module boundary one-directional in code even though

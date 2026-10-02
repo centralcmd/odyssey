@@ -40,7 +40,21 @@ public class ContractServiceTests
     private ContractService CreateService(
         OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
         new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
-            caps ?? new StubFinanceCaps(), logger ?? NullLogger<ContractService>.Instance);
+            logger ?? NullLogger<ContractService>.Instance);
+
+    private ContractPartyService Parties(
+        OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            caps ?? new StubFinanceCaps(), (logger is null ? NullLogger<ContractPartyService>.Instance : new ForwardingLogger<ContractPartyService>(logger)));
+
+    private ContractFileService Files(
+        OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            caps ?? new StubFinanceCaps());
+
+    private ContractSummaryService Summaries(
+        OdysseyContext context, ISystemSettingsLookup? caps = null, ILogger<ContractService>? logger = null) =>
+        new(context, new FixedTimeProvider(FixedToday), caps ?? new StubFinanceCaps());
 
     /// <summary>
     /// Captures the formatted message of every line the service logs. Issue #121 §7.7's line is the
@@ -478,7 +492,7 @@ public class ContractServiceTests
         await service.Create(OneOffContract(FixedToday.AddDays(5)), userId: null); // Upcoming
         await service.Create(NewContract(FixedToday.AddDays(-3)), userId: null);   // Active term
 
-        var summary = await service.GetSummary(baseCurrency: null);
+        var summary = await Summaries(context).GetSummary(baseCurrency: null);
 
         Assert.Equal(1, summary.CountsByStatus.Upcoming);
         Assert.Equal(1, summary.CountsByStatus.Active);
@@ -509,7 +523,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AddParty(contract.ContractId, new ContractPartyRequest(), TestUserId));
+            Parties(context).AddParty(contract.ContractId, new ContractPartyRequest(), TestUserId));
     }
 
     [Fact]
@@ -521,7 +535,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AddParty(contract.ContractId,
+            Parties(context).AddParty(contract.ContractId,
                 new ContractPartyRequest { AccountId = accountId, ContactId = contactId }, TestUserId));
     }
 
@@ -533,7 +547,7 @@ public class ContractServiceTests
         var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
-        var party = await service.AddParty(contract.ContractId,
+        var party = await Parties(context).AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
 
         Assert.NotNull(party);
@@ -551,7 +565,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = Guid.NewGuid(), Role = ContractPartyRole.Seller }, TestUserId));
+            Parties(context).AddParty(contract.ContractId, new ContractPartyRequest { AccountId = Guid.NewGuid(), Role = ContractPartyRole.Seller }, TestUserId));
     }
 
     [Fact]
@@ -562,7 +576,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            service.AddParty(contract.ContractId, new ContractPartyRequest { ContactId = Guid.NewGuid(), Role = ContractPartyRole.Seller }, TestUserId));
+            Parties(context).AddParty(contract.ContractId, new ContractPartyRequest { ContactId = Guid.NewGuid(), Role = ContractPartyRole.Seller }, TestUserId));
     }
 
     [Fact]
@@ -573,10 +587,10 @@ public class ContractServiceTests
         var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
-        await service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
+        await Parties(context).AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
 
         await Assert.ThrowsAsync<DomainConflictException>(() =>
-            service.AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId));
+            Parties(context).AddParty(contract.ContractId, new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId));
     }
 
     /// <summary>
@@ -601,7 +615,7 @@ public class ContractServiceTests
             Ready = contract.Ready, Signed = contract.Signed,
         }, userId: null);
 
-        var party = await service.AddParty(
+        var party = await Parties(context).AddParty(
             contract.ContractId, new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
 
         Assert.NotNull(party);
@@ -655,7 +669,7 @@ public class ContractServiceTests
         // clear them so what follows measures the PARTY lines alone.
         log.Lines.Clear();
 
-        var party = await service.AddParty(contract.ContractId,
+        var party = await Parties(context, logger: log).AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer }, TestUserId);
 
         var added = Assert.Single(log.Lines);
@@ -672,7 +686,7 @@ public class ContractServiceTests
         log.Lines.Clear();
 
         // A full replacement changing the role: Buyer -> Seller, visible in the line.
-        await service.UpdateParty(contract.ContractId, party.ContractPartyId,
+        await Parties(context, logger: log).UpdateParty(contract.ContractId, party.ContractPartyId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
 
         var updated = Assert.Single(log.Lines);
@@ -681,7 +695,7 @@ public class ContractServiceTests
 
         log.Lines.Clear();
 
-        await service.DeleteParty(contract.ContractId, party.ContractPartyId, TestUserId);
+        await Parties(context, logger: log).DeleteParty(contract.ContractId, party.ContractPartyId, TestUserId);
 
         var detached = Assert.Single(log.Lines);
         Assert.Contains("detached", detached);
@@ -709,12 +723,12 @@ public class ContractServiceTests
         var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
-        await service.AddParty(contract.ContractId,
+        await Parties(context, logger: log).AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
         log.Lines.Clear();
 
         await Assert.ThrowsAsync<DomainConflictException>(() =>
-            service.AddParty(contract.ContractId,
+            Parties(context, logger: log).AddParty(contract.ContractId,
                 new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId));
 
         Assert.Empty(log.Lines);
@@ -735,14 +749,14 @@ public class ContractServiceTests
         var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
-        await service.AddParty(contract.ContractId,
+        await Parties(context).AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer }, TestUserId);
-        var second = await service.AddParty(contract.ContractId,
+        var second = await Parties(context).AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller }, TestUserId);
 
         Assert.Equal(ContractPartyRole.Seller, second!.Role);
         await Assert.ThrowsAsync<DomainConflictException>(() =>
-            service.AddParty(contract.ContractId,
+            Parties(context).AddParty(contract.ContractId,
                 new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Buyer }, TestUserId));
     }
 
@@ -758,7 +772,7 @@ public class ContractServiceTests
         var (accountId, _) = await SeedTargets(context);
         var contract = await service.Create(NewContract(FixedToday), userId: null);
 
-        var party = await service.AddParty(contract.ContractId, new ContractPartyRequest
+        var party = await Parties(context).AddParty(contract.ContractId, new ContractPartyRequest
         {
             AccountId = accountId,
             Role = ContractPartyRole.Seller,
@@ -782,7 +796,7 @@ public class ContractServiceTests
         var contract = await service.Create(NewContract(FixedToday.AddDays(-60)), userId: null);
 
         var from = FixedToday.AddDays(-50);
-        var party = await service.AddParty(contract.ContractId,
+        var party = await Parties(context).AddParty(contract.ContractId,
             new ContractPartyRequest { AccountId = accountId, Role = ContractPartyRole.Seller, FromDate = from }, TestUserId);
 
         await service.Update(contract.ContractId, new UpdateContract

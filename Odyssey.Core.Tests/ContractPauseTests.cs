@@ -43,7 +43,18 @@ public class ContractPauseTests
 
     private ContractService CreateService(OdysseyContext context) =>
         new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
-            new Caps(), NullLogger<ContractService>.Instance);
+            NullLogger<ContractService>.Instance);
+
+    private ContractPartyService Parties(OdysseyContext context) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new Caps(), NullLogger<ContractPartyService>.Instance);
+
+    private ContractFileService Files(OdysseyContext context) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new Caps());
+
+    private ContractSummaryService Summaries(OdysseyContext context) =>
+        new(context, new FixedTimeProvider(FixedToday), new Caps());
 
     // SIGNED by default (issue #145): the signature layer outranks the date chain, so an unsigned
     // contract reads Draft/Ready and could never be paused at all. Pausing is about the date chain,
@@ -125,7 +136,7 @@ public class ContractPauseTests
         // A later clock — only a fresh stamp could move, so a moved value is the defect.
         var later = new ContractService(
             context, TestContextFactory.ContactLookup(journal),
-            new FixedTimeProvider(FixedToday.AddDays(3)), new Caps(), NullLogger<ContractService>.Instance);
+            new FixedTimeProvider(FixedToday.AddDays(3)), NullLogger<ContractService>.Instance);
         var second = await later.Update(created.ContractId, Write(created, isPaused: true), userId: null);
 
         Assert.Equal(first!.Paused, second!.Paused);
@@ -388,7 +399,7 @@ public class ContractPauseTests
         Assert.Empty((await service.ListAsync(new ContractsQueryParams { Statuses = [ContractStatus.Active] })).Items);
 
         // 4. The summary bucket.
-        var summary = await service.GetSummary(baseCurrency: null);
+        var summary = await Summaries(context).GetSummary(baseCurrency: null);
         Assert.Equal(1, summary.CountsByStatus.Paused);
         Assert.Equal(0, summary.CountsByStatus.Active);
     }

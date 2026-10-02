@@ -41,7 +41,18 @@ public class ContractFileValidityTests
 
     private ContractService CreateService(OdysseyContext context, int maxFilesPerContract = 50) =>
         new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
-            new StubCaps(maxFilesPerContract), NullLogger<ContractService>.Instance);
+            NullLogger<ContractService>.Instance);
+
+    private ContractPartyService Parties(OdysseyContext context, int maxFilesPerContract = 50) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new StubCaps(maxFilesPerContract), NullLogger<ContractPartyService>.Instance);
+
+    private ContractFileService Files(OdysseyContext context, int maxFilesPerContract = 50) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new StubCaps(maxFilesPerContract));
+
+    private ContractSummaryService Summaries(OdysseyContext context, int maxFilesPerContract = 50) =>
+        new(context, new FixedTimeProvider(FixedToday), new StubCaps(maxFilesPerContract));
 
     private static NewContract NewContractRequest() => new()
     {
@@ -108,7 +119,7 @@ public class ContractFileValidityTests
         var validTo = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc);
         var issuedAt = new DateTime(2025, 12, 18, 0, 0, 0, DateTimeKind.Utc);
 
-        var attached = await service.AttachFile(contract.ContractId, new AttachContractFileRequest
+        var attached = await Files(context).AttachFile(contract.ContractId, new AttachContractFileRequest
         {
             FileMetadataId = fileId,
             FileType = ContractFileType.Signed,
@@ -133,7 +144,7 @@ public class ContractFileValidityTests
         var contract = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
 
-        var attached = await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId);
+        var attached = await Files(context).AttachFile(contract.ContractId, Attach(fileId), TestUserId);
 
         Assert.NotNull(attached);
         Assert.Null(attached!.ValidFrom);
@@ -152,7 +163,7 @@ public class ContractFileValidityTests
         var fileId = await SeedFileAsync(context);
 
         var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AttachFile(contract.ContractId, new AttachContractFileRequest
+            Files(context).AttachFile(contract.ContractId, new AttachContractFileRequest
             {
                 FileMetadataId = fileId,
                 ValidFrom = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -173,7 +184,7 @@ public class ContractFileValidityTests
         var fileId = await SeedFileAsync(context);
 
         var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AttachFile(contract.ContractId, new AttachContractFileRequest
+            Files(context).AttachFile(contract.ContractId, new AttachContractFileRequest
             {
                 FileMetadataId = fileId,
                 IssuedAt = new DateTime(202, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -193,7 +204,7 @@ public class ContractFileValidityTests
         var fileId = await SeedFileAsync(context);
 
         var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AttachFile(contract.ContractId, new AttachContractFileRequest
+            Files(context).AttachFile(contract.ContractId, new AttachContractFileRequest
             {
                 FileMetadataId = fileId,
                 IssuedBy = Guid.NewGuid(),
@@ -213,7 +224,7 @@ public class ContractFileValidityTests
         var fileId = await SeedFileAsync(context);
         var local = new DateTime(2026, 3, 1, 9, 0, 0, DateTimeKind.Local);
 
-        await service.AttachFile(contract.ContractId, new AttachContractFileRequest
+        await Files(context).AttachFile(contract.ContractId, new AttachContractFileRequest
         {
             FileMetadataId = fileId,
             ValidFrom = local,
@@ -233,11 +244,11 @@ public class ContractFileValidityTests
         var contract = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
         var contactId = await SeedContactAsync();
-        await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId);
+        await Files(context).AttachFile(contract.ContractId, Attach(fileId), TestUserId);
 
         var validFrom = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        var updated = await service.UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
+        var updated = await Files(context).UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
         {
             FileType = ContractFileType.Amendment,
             ValidFrom = validFrom,
@@ -245,7 +256,7 @@ public class ContractFileValidityTests
         });
 
         Assert.True(updated);
-        var files = await service.GetFiles(contract.ContractId);
+        var files = await Files(context).GetFiles(contract.ContractId);
         var file = Assert.Single(files!);
         Assert.Equal(ContractFileType.Amendment, file.FileType);
         Assert.Equal(validFrom, file.ValidFrom);
@@ -261,7 +272,7 @@ public class ContractFileValidityTests
         var contract = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
         var contactId = await SeedContactAsync();
-        await service.AttachFile(contract.ContractId, new AttachContractFileRequest
+        await Files(context).AttachFile(contract.ContractId, new AttachContractFileRequest
         {
             FileMetadataId = fileId,
             ValidFrom = FixedToday,
@@ -270,10 +281,10 @@ public class ContractFileValidityTests
             IssuedBy = contactId,
         }, TestUserId);
 
-        await service.UpdateFile(contract.ContractId, fileId,
+        await Files(context).UpdateFile(contract.ContractId, fileId,
             new UpdateContractFileRequest { FileType = ContractFileType.Other });
 
-        var file = Assert.Single((await service.GetFiles(contract.ContractId))!);
+        var file = Assert.Single((await Files(context).GetFiles(contract.ContractId))!);
         Assert.Null(file.ValidFrom);
         Assert.Null(file.ValidTo);
         Assert.Null(file.IssuedAt);
@@ -290,13 +301,13 @@ public class ContractFileValidityTests
         var contractA = await service.Create(NewContractRequest(), userId: null);
         var contractB = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
-        await service.AttachFile(contractA.ContractId, Attach(fileId), TestUserId);
+        await Files(context).AttachFile(contractA.ContractId, Attach(fileId), TestUserId);
 
-        var updated = await service.UpdateFile(contractB.ContractId, fileId,
+        var updated = await Files(context).UpdateFile(contractB.ContractId, fileId,
             new UpdateContractFileRequest { FileType = ContractFileType.Amendment });
 
         Assert.False(updated);
-        var file = Assert.Single((await service.GetFiles(contractA.ContractId))!);
+        var file = Assert.Single((await Files(context).GetFiles(contractA.ContractId))!);
         Assert.Equal(ContractFileType.Signed, file.FileType);
     }
 
@@ -308,7 +319,7 @@ public class ContractFileValidityTests
         await using var context = TestContextFactory.Create();
         var service = CreateService(context);
 
-        Assert.False(await service.UpdateFile(
+        Assert.False(await Files(context).UpdateFile(
             Guid.NewGuid(), Guid.NewGuid(), new UpdateContractFileRequest { FileType = ContractFileType.Other }));
     }
 
@@ -333,13 +344,13 @@ public class ContractFileValidityTests
         await context.SaveChangesAsync();
 
         // Attached while archived, not before it.
-        Assert.NotNull(await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId));
+        Assert.NotNull(await Files(context).AttachFile(contract.ContractId, Attach(fileId), TestUserId));
 
         var request = new UpdateContractFileRequest { FileType = ContractFileType.Amendment };
-        Assert.True(await service.UpdateFile(contract.ContractId, fileId, request));
+        Assert.True(await Files(context).UpdateFile(contract.ContractId, fileId, request));
         Assert.Equal(
             ContractFileType.Amendment,
-            Assert.Single((await service.GetFiles(contract.ContractId))!).FileType);
+            Assert.Single((await Files(context).GetFiles(contract.ContractId))!).FileType);
 
         // And it is still archived — the writes did not quietly restore it.
         Assert.NotNull((await context.Contracts.SingleAsync(c => c.ContractId == contract.ContractId)).Archived);
@@ -356,10 +367,10 @@ public class ContractFileValidityTests
         var service = CreateService(context, maxFilesPerContract: 1);
         var contract = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
-        await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId);
+        await Files(context, maxFilesPerContract: 1).AttachFile(contract.ContractId, Attach(fileId), TestUserId);
 
         await Assert.ThrowsAsync<DomainConflictException>(
-            () => service.AttachFile(contract.ContractId, Attach(fileId), TestUserId));
+            () => Files(context, maxFilesPerContract: 1).AttachFile(contract.ContractId, Attach(fileId), TestUserId));
     }
 
     /// <summary>AC 15 — the cap gates row creation, not metadata edits, so a contract at its cap can
@@ -371,14 +382,14 @@ public class ContractFileValidityTests
         var service = CreateService(context, maxFilesPerContract: 1);
         var contract = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
-        await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId);
+        await Files(context, maxFilesPerContract: 1).AttachFile(contract.ContractId, Attach(fileId), TestUserId);
 
         // The cap is reached: a second attach is refused.
         var second = await SeedFileAsync(context);
         await Assert.ThrowsAsync<DomainUnprocessableException>(
-            () => service.AttachFile(contract.ContractId, Attach(second), TestUserId));
+            () => Files(context, maxFilesPerContract: 1).AttachFile(contract.ContractId, Attach(second), TestUserId));
 
-        var updated = await service.UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
+        var updated = await Files(context, maxFilesPerContract: 1).UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
         {
             FileType = ContractFileType.Amendment,
             ValidTo = FixedToday.AddYears(1),
@@ -395,10 +406,10 @@ public class ContractFileValidityTests
         var service = CreateService(context);
         var contract = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
-        await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId);
+        await Files(context).AttachFile(contract.ContractId, Attach(fileId), TestUserId);
 
         var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
+            Files(context).UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
             {
                 FileType = ContractFileType.Amendment,
                 ValidFrom = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -408,7 +419,7 @@ public class ContractFileValidityTests
         Assert.True(error.Errors!.ContainsKey(DocumentValidity.ValidToField));
         Assert.Equal(
             ContractFileType.Signed,
-            Assert.Single((await service.GetFiles(contract.ContractId))!).FileType);
+            Assert.Single((await Files(context).GetFiles(contract.ContractId))!).FileType);
     }
 
     [Fact]
@@ -418,10 +429,10 @@ public class ContractFileValidityTests
         var service = CreateService(context);
         var contract = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
-        await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId);
+        await Files(context).AttachFile(contract.ContractId, Attach(fileId), TestUserId);
 
         var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
+            Files(context).UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
             {
                 FileType = ContractFileType.Amendment,
                 IssuedBy = Guid.NewGuid(),
@@ -430,7 +441,7 @@ public class ContractFileValidityTests
         Assert.True(error.Errors!.ContainsKey(nameof(UpdateContractFileRequest.IssuedBy)));
         Assert.Equal(
             ContractFileType.Signed,
-            Assert.Single((await service.GetFiles(contract.ContractId))!).FileType);
+            Assert.Single((await Files(context).GetFiles(contract.ContractId))!).FileType);
     }
 
     [Fact]
@@ -440,10 +451,10 @@ public class ContractFileValidityTests
         var service = CreateService(context);
         var contract = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
-        await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId);
+        await Files(context).AttachFile(contract.ContractId, Attach(fileId), TestUserId);
 
         var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
+            Files(context).UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
             {
                 FileType = ContractFileType.Amendment,
                 ValidTo = new DateTime(202, 1, 1, 0, 0, 0, DateTimeKind.Utc),
@@ -459,10 +470,10 @@ public class ContractFileValidityTests
         var service = CreateService(context);
         var contract = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
-        await service.AttachFile(contract.ContractId, Attach(fileId), TestUserId);
+        await Files(context).AttachFile(contract.ContractId, Attach(fileId), TestUserId);
         var local = new DateTime(2026, 3, 1, 9, 0, 0, DateTimeKind.Local);
 
-        await service.UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
+        await Files(context).UpdateFile(contract.ContractId, fileId, new UpdateContractFileRequest
         {
             FileType = ContractFileType.Amendment,
             IssuedAt = local,
@@ -482,8 +493,8 @@ public class ContractFileValidityTests
         var service = CreateService(context);
         var contract = await service.Create(NewContractRequest(), userId: null);
 
-        Assert.Empty((await service.GetFiles(contract.ContractId))!);
-        Assert.Null(await service.GetFiles(Guid.NewGuid()));
+        Assert.Empty((await Files(context).GetFiles(contract.ContractId))!);
+        Assert.Null(await Files(context).GetFiles(Guid.NewGuid()));
     }
 
     /// <summary>AC 1 at the service seam — the list and the inlined contract collection agree.</summary>
@@ -495,7 +506,7 @@ public class ContractFileValidityTests
         var contract = await service.Create(NewContractRequest(), userId: null);
         var fileId = await SeedFileAsync(context);
         var contactId = await SeedContactAsync();
-        await service.AttachFile(contract.ContractId, new AttachContractFileRequest
+        await Files(context).AttachFile(contract.ContractId, new AttachContractFileRequest
         {
             FileMetadataId = fileId,
             FileType = ContractFileType.Signed,
@@ -505,7 +516,7 @@ public class ContractFileValidityTests
             IssuedBy = contactId,
         }, TestUserId);
 
-        var listed = Assert.Single((await service.GetFiles(contract.ContractId))!);
+        var listed = Assert.Single((await Files(context).GetFiles(contract.ContractId))!);
         var inlined = Assert.Single((await service.Get(contract.ContractId))!.Files);
 
         Assert.Equal(inlined.ValidFrom, listed.ValidFrom);
@@ -524,10 +535,10 @@ public class ContractFileValidityTests
         var service = CreateService(context);
         var contractA = await service.Create(NewContractRequest(), userId: null);
         var contractB = await service.Create(NewContractRequest(), userId: null);
-        await service.AttachFile(contractA.ContractId, Attach(await SeedFileAsync(context)), TestUserId);
-        await service.AttachFile(contractB.ContractId, Attach(await SeedFileAsync(context)), TestUserId);
+        await Files(context).AttachFile(contractA.ContractId, Attach(await SeedFileAsync(context)), TestUserId);
+        await Files(context).AttachFile(contractB.ContractId, Attach(await SeedFileAsync(context)), TestUserId);
 
-        var listed = Assert.Single((await service.GetFiles(contractA.ContractId))!);
+        var listed = Assert.Single((await Files(context).GetFiles(contractA.ContractId))!);
         Assert.Equal(contractA.ContractId, listed.ContractId);
     }
 }

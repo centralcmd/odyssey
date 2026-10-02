@@ -19,13 +19,16 @@ namespace Odyssey.Api.Controllers;
 public class ContractController : ControllerBase
 {
     private readonly ContractService service;
+    private readonly ContractSummaryService summaryService;
     private readonly IUserDisplayNameResolver displayNames;
 
     public ContractController(
         ContractService service,
+        ContractSummaryService summaryService,
         IUserDisplayNameResolver displayNames)
     {
         this.service = service;
+        this.summaryService = summaryService;
         this.displayNames = displayNames;
     }
 
@@ -67,7 +70,7 @@ public class ContractController : ControllerBase
         [FromQuery(Name = "baseCurrency")][StringLength(3, ErrorMessage = "baseCurrency must be a 3-letter ISO 4217 code.")] string? baseCurrency = null,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await service.GetSummary(baseCurrency, cancellationToken));
+        return Ok(await summaryService.GetSummary(baseCurrency, cancellationToken));
     }
 
     [HttpGet("{id}", Name = "GetContract")]

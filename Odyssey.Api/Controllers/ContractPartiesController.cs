@@ -22,10 +22,10 @@ namespace Odyssey.Api.Controllers;
 [Route("api/contracts")]
 public sealed class ContractPartiesController : ControllerBase
 {
-    private readonly ContractService service;
+    private readonly ContractPartyService service;
 
     public ContractPartiesController(
-        ContractService service)
+        ContractPartyService service)
     {
         this.service = service;
     }

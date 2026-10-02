@@ -22,10 +22,12 @@ using DtoContractPartyRole = Odyssey.Dtos.Finance.ContractPartyRole;
 namespace Odyssey.Core.Finance;
 
 /// <summary>
-/// CRUD for contracts plus party- and file-link management, derived-status computation and the summary
-/// rollup (issue #174). Owns all business validation — the one-of-two (XOR) party invariant,
-/// defensive caps and the data-minimised read projections; the controller owns claim authorization
-/// and the file content-type allow-list. Note there is no archive guard on the write paths: archival
+/// CRUD for contracts: the list and detail reads, create, update and delete, the lifecycle stamps
+/// (ready, signed, paused, archived) and the type-change guard over existing parties (issue #174).
+/// Parties, files and the summary rollup live in <see cref="ContractPartyService"/>,
+/// <see cref="ContractFileService"/> and <see cref="ContractSummaryService"/> (issue #287 M1); the
+/// derived status they all report is <see cref="ContractStatusRules"/>. The controllers own claim
+/// authorization and the file content-type allow-list. Note there is no archive guard on the write paths: archival
 /// hides a contract from the default list, it does not lock it, and only <see cref="EnsureArchivable"/>
 /// (the transition INTO archived) still refuses anything on that account.
 ///
@@ -37,26 +39,18 @@ public class ContractService
     private readonly OdysseyContext context;
     private readonly IContactLookup contactLookup;
     private readonly TimeProvider timeProvider;
-    private readonly ISystemSettingsLookup systemSettingsLookup;
     private readonly ILogger<ContractService> logger;
-    private readonly CurrencyConversionService conversion;
 
     public ContractService(
         OdysseyContext context,
         IContactLookup contactLookup,
         TimeProvider timeProvider,
-        ISystemSettingsLookup systemSettingsLookup,
-        ILogger<ContractService> logger,
-        CurrencyConversionService? conversion = null)
+        ILogger<ContractService> logger)
     {
         this.context = context;
         this.contactLookup = contactLookup;
         this.timeProvider = timeProvider;
-        this.systemSettingsLookup = systemSettingsLookup;
         this.logger = logger;
-        // Optional-defaulted: the run rate is the only thing that needs it,
-        // and a direct construction in a unit test should not have to supply one to exercise the rest.
-        this.conversion = conversion ?? new CurrencyConversionService(context);
     }
 
     private DateTime Today => timeProvider.GetUtcNow().UtcDateTime.Date;
@@ -153,7 +147,7 @@ public class ContractService
             StartDate = x.Contract.StartDate,
             EndDate = x.Contract.EndDate,
             CompletionDate = x.Contract.CompletionDate,
-            Status = DeriveStatus(x.Contract, today),
+            Status = ContractStatusRules.DeriveStatus(x.Contract, today),
             InstitutionName = x.InstitutionContactId is { } cid && institutionRefs.TryGetValue(cid, out var institution)
                 ? institution.Name
                 : null,
@@ -202,128 +196,6 @@ public class ContractService
     }
 
     /// <summary>
-    /// The page-header roll-up: counts by status and by type, what the agreements cost to run, and the
-    /// recurring charges falling due inside the look-ahead window.
-    ///
-    /// <para>
-    /// The run rate and the movements are the SAME read of the same rows — the in-force <c>Fee</c>
-    /// terms of the Active contracts — once summed and once projected forward. Neither schedules
-    /// anything: a term's cadence anchor is read, never advanced or written.
-    /// </para>
-    ///
-    /// <para>
-    /// Since issue #159 each of those rows also says which way its money moves, so the run rate reports
-    /// the two sides separately plus an explicit net, and the projection emits into two lists. Direction
-    /// plays NO part in the status derivation, in <c>CountsByStatus</c>, in <c>CountsByType</c> or in
-    /// the "ending soon" slice; it is not a query predicate and not part of the series key, so the query
-    /// plan is unchanged and the split is an in-memory bucketing of a set already materialised.
-    /// </para>
-    ///
-    /// <para>
-    /// <paramref name="baseCurrency"/> is the caller's display currency; blank falls back to the most
-    /// common currency among the in-force fees, so a single-currency household never sees a converted
-    /// figure at all.
-    /// </para>
-    /// </summary>
-    public async Task<ContractSummary> GetSummary(
-        string? baseCurrency, CancellationToken cancellationToken = default)
-    {
-        var today = Today;
-        var caps = await systemSettingsLookup.GetRequestCapsAsync(cancellationToken);
-        var windows = await systemSettingsLookup.GetContractSummarySettingsAsync(cancellationToken);
-
-        var contracts = await context.Contracts
-            .AsNoTracking()
-            .OrderByDescending(c => c.CreatedAtUtc)
-            .ThenBy(c => c.ContractId)
-            .Take(caps.MaxSummaryContracts)
-            .Select(c => new SummaryRow(
-                c.ContractId, c.Name, c.Type, c.StartDate, c.EndDate, c.CompletionDate,
-                c.Archived, c.Paused, c.Ready, c.Signed))
-            .ToListAsync(cancellationToken);
-
-        var counts = new ContractStatusCounts();
-        var byType = new Dictionary<DtoContractType, int>();
-        var priceable = new List<SummaryRow>();
-
-        foreach (var c in contracts)
-        {
-            var status = DeriveStatus(
-                c.StartDate, c.EndDate, c.CompletionDate, c.Archived, c.Paused, c.Ready, c.Signed, today);
-            switch (status)
-            {
-                case ContractStatus.Active: counts.Active++; break;
-                case ContractStatus.Upcoming: counts.Upcoming++; break;
-                case ContractStatus.Expired: counts.Expired++; break;
-                case ContractStatus.Archived: counts.Archived++; break;
-                case ContractStatus.Paused: counts.Paused++; break;
-                // Two more REAL buckets (issue #145 §5.5), not a slice: the seven are mutually
-                // exclusive derived statuses and still sum to TotalContracts.
-                case ContractStatus.Draft: counts.Draft++; break;
-                case ContractStatus.Ready: counts.Ready++; break;
-            }
-
-            // A SLICE of Active, not a sixth bucket: it is already counted above, so the five still sum
-            // to the total. Only a dated term can run out — an open-ended one never reaches a cliff.
-            // A paused contract derives as Paused, so it drops out of this slice with no extra test.
-            if (status == ContractStatus.Active && c.EndDate is { } end
-                && DaysUntil(end, today) is var days && days >= 0 && days <= windows.EndingWindowDays)
-            {
-                counts.EndingSoon++;
-            }
-
-            // The by-type breakdown covers only the active (non-archived) set — archived contracts are
-            // counted in the status pills but excluded from "By type" (matches the design's summary).
-            // Deliberately PAUSE-AGNOSTIC (issue #140 §5.4) and, for the same reason,
-            // SIGNATURE-AGNOSTIC (issue #145 §5.5): this is a headcount of the contracts on file, not
-            // a cost split, and a paused agreement — or an unsigned draft — is still a contract of its
-            // type. The cost split is RunRate.ByType, which excludes both — the two by-type reads
-            // answer different questions and this is the one place they are answered differently.
-            if (c.Archived is null)
-            {
-                var dtoType = c.Type.Adapt<DtoContractType>();
-                byType[dtoType] = byType.GetValueOrDefault(dtoType) + 1;
-            }
-
-            // Two different sets, and they are deliberately not the same one. The run rate is what the
-            // file costs to run RIGHT NOW, so only Active contracts carry one. A next charge is a
-            // question about the future, so an Upcoming contract belongs there too — one signed today
-            // with a price already in force has a first charge to report, clamped to its start date.
-            //
-            // A paused contract is excluded from the run rate, its by-type split AND the charges by
-            // this one gate, because it no longer derives as Active — never by a parallel
-            // "Paused is not null" test, which is how the "counts one set, prices another" defect
-            // class gets in (issue #140 §3). An UNSIGNED contract (Draft / Ready) leaves through the
-            // very same gate for the very same reason (issue #145 §5.5): it may carry a fully priced
-            // fee, but a price nobody has agreed to is a quote, and there is nothing to run-rate or to
-            // expect a charge from. No second "Signed is null" test is added here.
-            if (status is ContractStatus.Active or ContractStatus.Upcoming)
-            {
-                priceable.Add(c with { IsActive = status == ContractStatus.Active });
-            }
-        }
-
-        var priced = await LoadInForceFeesAsync(priceable, today, cancellationToken);
-        var movements = BuildUpcomingMovements(
-            priced, today, windows.ChargeWindowDays, windows.MaxSummaryCharges);
-
-        return new ContractSummary
-        {
-            TotalContracts = contracts.Count,
-            CountsByStatus = counts,
-            CountsByType = byType
-                .OrderBy(kv => kv.Key)
-                .Select(kv => new ContractTypeCount { Type = kv.Key, Count = kv.Value })
-                .ToList(),
-            RunRate = await BuildRunRateAsync(priced, baseCurrency, cancellationToken),
-            UpcomingCharges = movements.Charges,
-            UpcomingReceipts = movements.Receipts,
-            EndingWindowDays = windows.EndingWindowDays,
-            ChargeWindowDays = windows.ChargeWindowDays,
-        };
-    }
-
-    /// <summary>
     /// The contracts on this PAGE whose in-force terms include an <c>Incoming</c> one (issue #159),
     /// for the collapsed row's "Money in" marker.
     /// </summary>
@@ -359,395 +231,6 @@ public class ContractService
             .Where(group => TermSeries.Current(group).Any(t => t.Direction == ContextTermDirection.Incoming))
             .Select(group => group.Key)];
     }
-
-    /// <summary>
-    /// The in-force amount terms of the Active and Upcoming contracts, in one query.
-    ///
-    /// <para>
-    /// Narrowed in SQL to those contracts and to <c>EffectiveFrom &lt;= today</c>, then collapsed per
-    /// series in memory by <see cref="TermSeries"/> — the same winner rule the record card and the
-    /// <c>…/terms/current</c> endpoint use, so "in force" cannot mean three different things.
-    /// </para>
-    /// </summary>
-    private async Task<List<PricedTerm>> LoadInForceFeesAsync(
-        List<SummaryRow> contracts, DateTime today, CancellationToken cancellationToken)
-    {
-        if (contracts.Count == 0)
-        {
-            return [];
-        }
-
-        var byId = contracts.ToDictionary(c => c.ContractId);
-        var ids = byId.Keys.ToList();
-
-        // Every kind is a candidate, not just Amount: the in-force entry of each series is resolved
-        // FIRST and only then filtered to Amount (issue #192 §8). Filtering in SQL would let a series
-        // whose amount was superseded by a Text or Percentage entry keep contributing that amount.
-        var candidates = await context.Terms
-            .AsNoTracking()
-            .Where(t => ids.Contains(t.ContractId) && t.EffectiveFrom <= today)
-            .ToListAsync(cancellationToken);
-
-        var priced = new List<PricedTerm>();
-        foreach (var group in candidates.GroupBy(t => t.ContractId))
-        {
-            foreach (var term in TermSeries.Current(group))
-            {
-                if (term.ValueUnit != ContextTermValueUnit.Amount || term.Value is not { } amount)
-                {
-                    continue;
-                }
-
-                // A fee with no cadence names an occasion (OneTime, PerOccurrence, PerUnit) rather than
-                // a rhythm, so it carries neither a rate to project nor a next occurrence to predict.
-                if (term.Interval is not { } interval || !interval.IsPeriodic())
-                {
-                    continue;
-                }
-
-                priced.Add(new PricedTerm(
-                    byId[group.Key], term.Label, amount,
-                    CurrencyValidationService.Normalize(term.CurrencyCode ?? string.Empty),
-                    interval, Math.Max(1, term.IntervalCount ?? 1),
-                    (term.AnchorDate ?? term.EffectiveFrom).Date,
-                    // R1 (issue #159) — the direction of the WINNING entry, read after the series
-                    // collapse, so a superseded entry's direction never reaches a total. Direction is
-                    // not a query predicate and not part of the series key, so nothing above changes.
-                    term.Direction));
-            }
-        }
-
-        return priced;
-    }
-
-    /// <summary>
-    /// What the file costs to run and what it brings in: each in-force periodic fee projected by its
-    /// cadence (<c>Value ÷ IntervalCount × periods</c>), bucketed by the direction of the in-force
-    /// entry, and converted to base.
-    ///
-    /// <para>
-    /// A currency with no rate to base is NAMED rather than folded in at 1:1 — a silent 1:1 would
-    /// under-report a strong currency and over-report a weak one, and either reads as a real figure.
-    /// The same exclusion applies to the per-type split and to BOTH directions, so the rows, the two
-    /// grosses and the net always cover the same set of terms.
-    /// </para>
-    ///
-    /// <para>
-    /// The base-currency vote (issue #159 §5.7 rule 6) counts both directions and runs BEFORE the
-    /// bucketing. Splitting first and voting per bucket would elect two bases, and the net would then
-    /// be a difference of two different currencies.
-    /// </para>
-    /// </summary>
-    private async Task<ContractRunRate> BuildRunRateAsync(
-        List<PricedTerm> priced, string? baseCurrency, CancellationToken cancellationToken)
-    {
-        // Only the Active rows feed the run rate, so only they name its currencies and vote on its base:
-        // a currency used solely by a contract that has not started could otherwise win a base-currency
-        // vote it then contributes nothing to.
-        var running = priced.Where(p => p.Contract.IsActive).ToList();
-        var currencies = running
-            .Select(p => p.CurrencyCode)
-            .Where(code => code.Length > 0)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        // Blank base → the currency the most in-force fees are priced in; the code tie-break keeps the
-        // pick deterministic. A term with no currency of its own is read as being in base.
-        var baseCode = string.IsNullOrWhiteSpace(baseCurrency)
-            ? running.Where(p => p.CurrencyCode.Length > 0)
-                .GroupBy(p => p.CurrencyCode, StringComparer.Ordinal)
-                .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal)
-                .FirstOrDefault()?.Key ?? "USD"
-            : CurrencyValidationService.Normalize(baseCurrency);
-
-        var rates = await conversion.GetLatestRatesToAsync(baseCode, currencies, cancellationToken: cancellationToken);
-
-        var runRate = new ContractRunRate { BaseCurrency = baseCode };
-        var unconverted = new SortedSet<string>(StringComparer.Ordinal);
-
-        // One accumulator per direction. The two are summed independently and NEVER mixed: the only
-        // figure that crosses them is the net, which says so in its name.
-        var outgoing = new DirectionTotals();
-        var incoming = new DirectionTotals();
-
-        foreach (var p in priced)
-        {
-            // Narrowed back to Active here rather than at the query: a next charge legitimately looks
-            // ahead to a contract that has not started, but nothing that has not started is costing
-            // anything yet, so it carries no run rate. R2 — direction neither widens nor narrows this
-            // gate, and no parallel status test is added beside it.
-            if (!p.Contract.IsActive)
-            {
-                continue;
-            }
-
-            var code = p.CurrencyCode.Length == 0 ? baseCode : p.CurrencyCode;
-            if (!TryRateToBase(code, baseCode, rates, out var rate))
-            {
-                // Named once, on whichever side it appeared, and excluded from both grosses and the
-                // net — so the net is partial exactly when the grosses are, which is the existing
-                // legibility contract extended rather than a new one.
-                unconverted.Add(code);
-                continue;
-            }
-
-            var (moFactor, yrFactor) = CadenceFactors(p.Interval);
-            var mo = p.Amount * moFactor / p.IntervalCount * rate;
-            var yr = p.Amount * yrFactor / p.IntervalCount * rate;
-
-            var side = p.Direction == ContextTermDirection.Incoming ? incoming : outgoing;
-            side.Add(p.Contract.Type.Adapt<DtoContractType>(), mo, yr);
-        }
-
-        // Display-only estimates (the daily/weekly cadence factors are not exact in decimal), so round
-        // to a clean money figure — after summing, never per term. The per-type rows and the totals are
-        // rounded independently, so with enough types their sum can differ from the total by a cent;
-        // what "the rows sum to the totals" guarantees is CURRENCY PARITY — a currency excluded from
-        // the total is excluded from every row too — not post-rounding arithmetic equality.
-        runRate.Monthly = outgoing.Monthly is { } om ? Round2(om) : null;
-        runRate.Yearly = outgoing.Yearly is { } oy ? Round2(oy) : null;
-        runRate.ByType = outgoing.Rows();
-
-        runRate.IncomingMonthly = incoming.Monthly is { } im ? Round2(im) : null;
-        runRate.IncomingYearly = incoming.Yearly is { } iy ? Round2(iy) : null;
-        runRate.IncomingByType = incoming.Rows();
-
-        // Computed from the UNROUNDED sums and rounded once: differencing two already-rounded figures
-        // compounds the rounding rather than cancelling it. Null only when BOTH sides are null — a
-        // household with income and no recorded costs has a perfectly good net.
-        runRate.NetMonthly = Net(incoming.Monthly, outgoing.Monthly);
-        runRate.NetYearly = Net(incoming.Yearly, outgoing.Yearly);
-
-        runRate.UnconvertedCurrencies = [.. unconverted];
-
-        return runRate;
-    }
-
-    /// <summary>
-    /// <c>(incoming ?? 0) − (outgoing ?? 0)</c>, rounded once, or <c>null</c> when neither side
-    /// contributed anything convertible.
-    /// </summary>
-    private static decimal? Net(decimal? incoming, decimal? outgoing) =>
-        incoming is null && outgoing is null ? null : Round2((incoming ?? 0m) - (outgoing ?? 0m));
-
-    /// <summary>
-    /// One direction's running totals and per-type split. Two instances rather than a parameterised
-    /// pass, so the two sides are summed by the SAME arithmetic and cannot drift — and so a total can
-    /// never be assembled from rows of mixed direction.
-    /// </summary>
-    private sealed class DirectionTotals
-    {
-        private readonly Dictionary<DtoContractType, ContractRunRateTypeRow> byType = [];
-
-        /// <summary>Null until something is added: absent means "no convertible terms on this side".</summary>
-        public decimal? Monthly { get; private set; }
-
-        public decimal? Yearly { get; private set; }
-
-        public void Add(DtoContractType type, decimal monthly, decimal yearly)
-        {
-            Monthly = (Monthly ?? 0m) + monthly;
-            Yearly = (Yearly ?? 0m) + yearly;
-
-            if (!byType.TryGetValue(type, out var row))
-            {
-                row = new ContractRunRateTypeRow { Type = type };
-                byType[type] = row;
-            }
-
-            row.Monthly += monthly;
-            row.Yearly += yearly;
-            row.Count++;
-        }
-
-        public List<ContractRunRateTypeRow> Rows() => byType
-            .OrderBy(kv => kv.Key)
-            .Select(kv =>
-            {
-                kv.Value.Monthly = Round2(kv.Value.Monthly);
-                kv.Value.Yearly = Round2(kv.Value.Yearly);
-                return kv.Value;
-            })
-            .ToList();
-    }
-
-    /// <summary>
-    /// Each contract's SOONEST next movement inside the window, per DIRECTION — one outgoing row and
-    /// one incoming row per contract at most, so a contract pricing four fees does not crowd out three
-    /// others, and a contract that pays a salary on the 25th and deducts a fee on the 1st reports both.
-    ///
-    /// <para>
-    /// Collapsing on the contract alone would silently discard whichever movement fell later, which is
-    /// why the key is <c>(contract, direction)</c> since issue #159. The cap applies PER LIST, so a
-    /// file with many outgoing charges cannot starve the receipts.
-    /// </para>
-    ///
-    /// <para>
-    /// A movement never falls outside the agreement it is priced under, so an occurrence past the
-    /// contract's end date is dropped rather than shown.
-    /// </para>
-    /// </summary>
-    private static (List<ContractUpcomingCharge> Charges, List<ContractUpcomingCharge> Receipts) BuildUpcomingMovements(
-        List<PricedTerm> priced, DateTime today, int windowDays, int maxCharges)
-    {
-        var soonest = new Dictionary<(Guid ContractId, ContextTermDirection Direction), ContractUpcomingCharge>();
-
-        foreach (var p in priced)
-        {
-            // A term whose contract has not started yet cannot be charged before it does.
-            var from = p.Contract.StartDate is { } start && start.Date > today ? start.Date : today;
-            if (NextOccurrence(p.Anchor, p.Interval, p.IntervalCount, from) is not { } date)
-            {
-                continue;
-            }
-
-            if (p.Contract.EndDate is { } end && date > end.Date)
-            {
-                continue;
-            }
-
-            var days = DaysUntil(date, today);
-            if (days < 0 || days > windowDays)
-            {
-                continue;
-            }
-
-            var key = (p.Contract.ContractId, p.Direction);
-            if (soonest.TryGetValue(key, out var held) && held.ChargeDate <= date)
-            {
-                continue;
-            }
-
-            soonest[key] = new ContractUpcomingCharge
-            {
-                ContractId = p.Contract.ContractId,
-                Name = p.Contract.Name,
-                Type = p.Contract.Type.Adapt<DtoContractType>(),
-                Label = p.Label,
-                Amount = p.Amount,
-                CurrencyCode = p.CurrencyCode,
-                Interval = p.Interval.Adapt<DtoInterval>(),
-                IntervalCount = p.IntervalCount,
-                ChargeDate = date,
-                DaysUntil = days,
-            };
-        }
-
-        List<ContractUpcomingCharge> Ordered(ContextTermDirection direction) => soonest
-            .Where(kv => kv.Key.Direction == direction)
-            .Select(kv => kv.Value)
-            .OrderBy(c => c.ChargeDate)
-            .ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(c => c.ContractId)
-            .Take(maxCharges)
-            .ToList();
-
-        return (Ordered(ContextTermDirection.Outgoing), Ordered(ContextTermDirection.Incoming));
-    }
-
-    /// <summary>Cadence → (monthly, yearly) multiplier for a single charge (the design's own factors).</summary>
-    private static (decimal Monthly, decimal Yearly) CadenceFactors(ContextInterval interval) => interval switch
-    {
-        ContextInterval.Daily => (365.25m / 12m, 365.25m),
-        ContextInterval.Weekly => (52.1775m / 12m, 52.1775m),
-        ContextInterval.Annually => (1m / 12m, 1m),
-        _ => (1m, 12m), // Monthly
-    };
-
-    /// <summary>
-    /// The first occurrence of a periodic cadence falling on or after <paramref name="from"/>, stepped
-    /// from the anchor.
-    ///
-    /// <para>
-    /// Month and year steps are always measured from the ORIGINAL anchor rather than from a prior
-    /// clamped result, so an anchor on the 31st recovers its day-of-month in longer months instead of
-    /// drifting permanently to the 28th after one short February — the same rule
-    /// <c>RecurrenceOccurrenceGenerator</c> follows on the journal side.
-    /// </para>
-    /// </summary>
-    private static DateTime? NextOccurrence(DateTime anchor, ContextInterval interval, int intervalCount, DateTime from)
-    {
-        var count = Math.Max(1, intervalCount);
-        var cur = anchor.Date;
-        if (cur >= from)
-        {
-            return cur;
-        }
-
-        switch (interval)
-        {
-            case ContextInterval.Daily:
-            case ContextInterval.Weekly:
-            {
-                var stepDays = (interval == ContextInterval.Weekly ? 7 : 1) * count;
-                var diff = (from - cur).Days;
-                var steps = (diff + stepDays - 1) / stepDays; // ceil to the first occurrence >= from
-                return cur.AddDays((long)steps * stepDays);
-            }
-            case ContextInterval.Annually:
-            case ContextInterval.Monthly:
-            {
-                var months = interval == ContextInterval.Annually ? 12 * count : count;
-                // Bounded rather than a bare while: an anchor far in the past with a huge count must not
-                // spin, and beyond the bound there is no occurrence worth reporting anyway.
-                for (var k = 1; k <= MaxCadenceSteps; k++)
-                {
-                    cur = anchor.Date.AddMonths(months * k);
-                    if (cur >= from)
-                    {
-                        return cur;
-                    }
-                }
-
-                return null;
-            }
-            default:
-                return null;
-        }
-    }
-
-    /// <summary>
-    /// The step ceiling on a monthly/annual projection. 6000 monthly steps is 500 years — far past any
-    /// window an administrator can set — so reaching it means the anchor is nonsense, not that a real
-    /// charge was missed.
-    /// </summary>
-    private const int MaxCadenceSteps = 6000;
-
-    private static bool TryRateToBase(
-        string currency, string baseCode, IReadOnlyDictionary<string, decimal> rates, out decimal rate)
-    {
-        if (string.Equals(currency, baseCode, StringComparison.Ordinal))
-        {
-            rate = 1m;
-            return true;
-        }
-
-        return rates.TryGetValue(currency, out rate);
-    }
-
-    private static int DaysUntil(DateTime date, DateTime today) => (date.Date - today).Days;
-
-    private static decimal Round2(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
-
-    /// <summary>Slim projection row for the summary computation (all contracts, one batch query).</summary>
-    private sealed record SummaryRow(
-        Guid ContractId, string Name, ContextContractType Type,
-        DateTime? StartDate, DateTime? EndDate, DateTime? CompletionDate,
-        DateTime? Archived, DateTime? Paused, DateTime? Ready, DateTime? Signed)
-    {
-        /// <summary>
-        /// Set once from the single <c>DeriveStatus</c> call per contract, so the run rate and the
-        /// charge projection cannot disagree about which contracts are running.
-        /// </summary>
-        public bool IsActive { get; init; }
-    }
-
-    /// <summary>One in-force periodic fee, resolved against its contract — the run rate's unit of work
-    /// and the next-charge projection's, so both read exactly the same set.</summary>
-    private sealed record PricedTerm(
-        SummaryRow Contract, string? Label, decimal Amount, string CurrencyCode,
-        ContextInterval Interval, int IntervalCount, DateTime Anchor,
-        ContextTermDirection Direction);
 
     /// <summary>
     /// The raw id of the user who added the contract, or null when none is recorded. Kept off
@@ -972,7 +455,7 @@ public class ContractService
                     ContractId = x.Contract.ContractId,
                     Name = x.Contract.Name,
                     Type = x.Contract.Type.Adapt<DtoContractType>(),
-                    Status = DeriveStatus(x.Contract, today),
+                    Status = ContractStatusRules.DeriveStatus(x.Contract, today),
                     Roles = [.. x.Roles.Select(r => r.Adapt<DtoContractPartyRole>())],
                 })
                 .OrderBy(l => l.Name, StringComparer.CurrentCultureIgnoreCase)
@@ -1015,254 +498,13 @@ public class ContractService
                     ContractId = x.Contract.ContractId,
                     Name = x.Contract.Name,
                     Type = x.Contract.Type.Adapt<DtoContractType>(),
-                    Status = DeriveStatus(x.Contract, today),
+                    Status = ContractStatusRules.DeriveStatus(x.Contract, today),
                     Roles = [.. x.Roles.Select(r => r.Adapt<DtoContractPartyRole>())],
                 })
                 .OrderBy(l => l.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ThenBy(l => l.ContractId),
         ];
     }
-
-    // ── Parties ──────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Links one account, contact or property to a contract, in a role, optionally for a term (issue #121 §5).
-    /// Returns <see langword="null"/> when the contract does not exist.
-    /// </summary>
-    public async Task<ExistingContractParty?> AddParty(
-        Guid contractId, ContractPartyRequest request, string? userId, CancellationToken cancellationToken = default)
-    {
-        var contract = await context.Contracts.FirstOrDefaultAsync(c => c.ContractId == contractId, cancellationToken);
-        if (contract is null)
-        {
-            return null;
-        }
-
-        EnsurePartyTargetXor(request);
-
-        await EnsureTargetExists(request, cancellationToken);
-        var requestedRole = EnsureRoleLegalForType(contract, request);
-        var role = requestedRole.Adapt<ContextContractPartyRole>();
-        var (fromDate, toDate) = NormalizePartyTerm(contract, request);
-        await EnsureNotDuplicateParty(contractId, request, role, excludingPartyId: null, cancellationToken);
-
-        var caps = await systemSettingsLookup.GetRequestCapsAsync(cancellationToken);
-        var count = await context.ContractParties.CountAsync(p => p.ContractId == contractId, cancellationToken);
-        if (count >= caps.MaxPartiesPerContract)
-        {
-            throw new DomainUnprocessableException(
-                $"Contract {contractId} already has the maximum of {caps.MaxPartiesPerContract} parties.",
-                PartyTargetField(request));
-        }
-
-        var party = new ContractParty
-        {
-            ContractId = contractId,
-            AccountId = request.AccountId,
-            ContactId = request.ContactId,
-            PropertyId = request.PropertyId,
-            Role = role,
-            FromDate = fromDate,
-            ToDate = toDate,
-        };
-
-        context.ContractParties.Add(party);
-
-        // The event carries no link to the row being inserted (issue #138 Non-Goal 5) — only the role —
-        // so there is nothing to wait for: it is staged in the same change tracker as the insert and
-        // both go out in one save. No second round trip and no post-save write.
-        var addedAt = UtcNow;
-        ContractEventRecorder.Stage(
-            context, contractId, ContractEventCatalogue.PartyAdded(role, addedAt), userId, addedAt);
-
-        await context.SaveChangesAsync(cancellationToken);
-
-        LogPartyWrite("added", party, previousRole: null, userId);
-        return await ProjectPartyAsync(party.ContractPartyId, cancellationToken);
-    }
-
-    /// <summary>
-    /// Re-writes one party: its role, its target, its dates, or any combination (issue #121 §5). The
-    /// row is updated <b>in place</b>, so <c>ContractPartyId</c> is stable across a role or target
-    /// change and the party stays one party. Returns <see langword="null"/> when the party is not on
-    /// <i>this</i> contract; throws <see cref="DomainNotFoundException"/> when the contract itself is
-    /// gone.
-    /// </summary>
-    /// <remarks>
-    /// The body is a <b>full replacement</b>, not a patch: an omitted date clears it, and the role is
-    /// required (issue #157 §8.1) so it is always restated. That is why every write is logged (§7.7).
-    /// The party cap is deliberately not re-checked — an in-place update is row-count-neutral, so it is
-    /// never refused by a cap, including on a contract already at or above one a later edit lowered.
-    /// </remarks>
-    public async Task<ExistingContractParty?> UpdateParty(
-        Guid contractId, Guid partyId, ContractPartyRequest request, string? userId,
-        CancellationToken cancellationToken = default)
-    {
-        var contract = await context.Contracts.FirstOrDefaultAsync(c => c.ContractId == contractId, cancellationToken);
-        if (contract is null)
-        {
-            // ContractNotFound and PartyNotOnContract are distinct failure classes (§9) that happen to
-            // share a status: this one names only the contract, the null return below names both ids.
-            // Neither carries a field key, which is what tells them apart from the inline target 404.
-            throw new DomainNotFoundException($"Contract ID {contractId} not found.");
-        }
-
-        // Scoped by BOTH ids, exactly as DeleteParty is: a valid party id from another contract is a
-        // 404, never a silent cross-contract edit (§7.5).
-        var party = await context.ContractParties
-            .FirstOrDefaultAsync(p => p.ContractPartyId == partyId && p.ContractId == contractId, cancellationToken);
-        if (party is null)
-        {
-            return null;
-        }
-
-        EnsurePartyTargetXor(request);
-
-        // Only a NEW target is validated for existence, so re-dating a party whose contact was deleted
-        // meanwhile does not fail.
-        if (!SameTarget(party, request))
-        {
-            await EnsureTargetExists(request, cancellationToken);
-        }
-
-        var requestedRole = EnsureRoleLegalForType(contract, request);
-        var role = requestedRole.Adapt<ContextContractPartyRole>();
-        var (fromDate, toDate) = NormalizePartyTerm(contract, request);
-        await EnsureNotDuplicateParty(contractId, request, role, excludingPartyId: partyId, cancellationToken);
-
-        var previousRole = party.Role;
-        // Whether the link is being REPOINTED, judged before the row is overwritten. The row is updated
-        // in place and stays one party (issue #121), but from the agreement's point of view one party
-        // left and another joined — which is exactly the change a reader of the log needs to see, and
-        // which would otherwise let a party vanish from the tiles with a silent log (issue #154 §8.2).
-        var targetChanged = !SameTarget(party, request);
-
-        party.AccountId = request.AccountId;
-        party.ContactId = request.ContactId;
-        party.PropertyId = request.PropertyId;
-        party.Role = role;
-        party.FromDate = fromDate;
-        party.ToDate = toDate;
-
-        if (targetChanged)
-        {
-            // Ordered removed-then-added so it reads in the order it happened. A write that changes only
-            // the role and/or the dates records NOTHING here: that describes HOW an existing party is
-            // described, not WHO is party to the agreement, and LogPartyWrite already covers it.
-            var changedAt = UtcNow;
-            ContractEventRecorder.Stage(
-                context, contractId, ContractEventCatalogue.PartyRemoved(previousRole, changedAt), userId, changedAt);
-            ContractEventRecorder.Stage(
-                context, contractId, ContractEventCatalogue.PartyAdded(role, changedAt), userId, changedAt);
-        }
-
-        await context.SaveChangesAsync(cancellationToken);
-
-        LogPartyWrite("updated", party, previousRole, userId);
-        return await ProjectPartyAsync(party.ContractPartyId, cancellationToken);
-    }
-
-    public async Task<bool> DeleteParty(
-        Guid contractId, Guid partyId, string? userId, CancellationToken cancellationToken = default)
-    {
-        var party = await context.ContractParties
-            .FirstOrDefaultAsync(p => p.ContractPartyId == partyId && p.ContractId == contractId, cancellationToken);
-        if (party is null)
-        {
-            return false;
-        }
-
-        context.ContractParties.Remove(party);
-
-        var removedAt = UtcNow;
-        ContractEventRecorder.Stage(
-            context, contractId, ContractEventCatalogue.PartyRemoved(party.Role, removedAt), userId, removedAt);
-
-        await context.SaveChangesAsync(cancellationToken);
-
-        // A detach has no role AFTER — the row is gone. Writing Unspecified there would make the line
-        // byte-identical to a PUT that downgraded the role to Unspecified, which is precisely the event
-        // this log exists to make visible; the two would then differ only by the action word, so a query
-        // for the downgrade would match every detach as well.
-        LogPartyWrite("detached", party, party.Role, userId, roleAfter: NoRole);
-        return true;
-    }
-
-    /// <summary>What the "after" slot reads when there is no role after the write, i.e. on a detach.</summary>
-    private const string NoRole = ContractPartyAudit.NoRole;
-
-    /// <summary>
-    /// One structured <c>Information</c> line per party write (issue #121 §7.7). <c>ContractParty</c>
-    /// deliberately carries no <c>CreatedByUserId</c> column, so without this line an accidental role
-    /// downgrade on the full-replacement <c>PUT</c> would leave no trace anywhere. A thin call to
-    /// <see cref="ContractPartyAudit"/>, which <c>PropertyService.Delete</c> shares (issue #208), so the
-    /// two sites cannot drift.
-    /// </summary>
-    private void LogPartyWrite(
-        string action, ContractParty party, ContextContractPartyRole? previousRole, string? userId,
-        string? roleAfter = null) =>
-        ContractPartyAudit.Log(logger, action, party, previousRole, userId, roleAfter);
-
-    /// <summary>Whether <paramref name="request"/> names the same target the stored row does.</summary>
-    private static bool SameTarget(ContractParty party, ContractPartyRequest request) =>
-        party.AccountId == request.AccountId &&
-        party.ContactId == request.ContactId &&
-        party.PropertyId == request.PropertyId;
-
-    private async Task<ExistingContractParty> ProjectPartyAsync(Guid partyId, CancellationToken cancellationToken)
-    {
-        var loaded = await LoadPartyWithTargets(partyId, cancellationToken);
-        IReadOnlyDictionary<Guid, ContactRef> contacts = loaded!.ContactId is { } contactId
-            ? await contactLookup.ResolveRefsAsync([contactId], cancellationToken)
-            : new Dictionary<Guid, ContactRef>();
-        return ToPartyDto(loaded, contacts);
-    }
-
-    /// <summary>
-    /// The matrix check for a party write (issue #157 §3.2 step 3, §8.2). Returns the requested role
-    /// once it is known legal on <paramref name="contract"/>'s type.
-    /// </summary>
-    /// <remarks>
-    /// A service-layer rule rather than a data annotation, deliberately: legality depends on the
-    /// <em>contract's</em> type, which model validation cannot see because the request body does not
-    /// carry it. This is the derived-bound case CLAUDE.md distinguishes from a compile-time one, so a
-    /// validator here is correct rather than decorative.
-    ///
-    /// <para>
-    /// Raises <see cref="DomainUnprocessableException"/> — a <c>422</c>, not the <c>400</c> a
-    /// <see cref="DomainValidationException"/> would give: the body is well-formed and every value in
-    /// it is a real member, so what fails is the combination. The field key is <c>role</c>, so the
-    /// message lands on the control the client rendered.
-    /// </para>
-    /// </remarks>
-    private static DtoContractPartyRole EnsureRoleLegalForType(Contract contract, ContractPartyRequest request)
-    {
-        // [Required] already refused a null role on the HTTP path; a direct caller gets the same
-        // rejection here rather than a NullReferenceException.
-        if (request.Role is not { } role)
-        {
-            throw new DomainValidationException(
-                "A party role is required.", code: null, field: nameof(ContractPartyRequest.Role));
-        }
-
-        var type = contract.Type.Adapt<DtoContractType>();
-        if (ContractPartyRoleMatrix.IsLegal(type, role))
-        {
-            return role;
-        }
-
-        throw new DomainUnprocessableException(
-            $"{role} is not a role a {type} contract can have. "
-            + $"The roles it can have are: {DescribeLegalRoles(type)}.",
-            nameof(ContractPartyRequest.Role));
-    }
-
-    /// <summary>
-    /// The legal roles for <paramref name="type"/> as a reading list, suggested ones first — the same
-    /// order the picker offers them in, so the message and the control agree.
-    /// </summary>
-    private static string DescribeLegalRoles(DtoContractType type) =>
-        string.Join(", ", ContractPartyRoleMatrix.LegalFor(type));
 
     /// <summary>
     /// Refuses a contract type change that would orphan an existing party (issue #157 §3.3). No-op
@@ -1367,155 +609,6 @@ public class ContractService
         ];
     }
 
-    // One-of-three: exactly one target id must be set (issue #208 widened it from one-of-two).
-    private static void EnsurePartyTargetXor(ContractPartyRequest request)
-    {
-        var setCount =
-            (request.AccountId is not null ? 1 : 0) +
-            (request.ContactId is not null ? 1 : 0) +
-            (request.PropertyId is not null ? 1 : 0);
-        if (setCount != 1)
-        {
-            // Keyed on the property field when it is one of several targets sent, so a client that
-            // offered the property picker renders the message there (issue #208 §5.1).
-            const string message = "Exactly one of accountId, contactId or propertyId must be set.";
-            if (setCount > 1 && request.PropertyId is not null)
-            {
-                throw new DomainValidationException(message, code: null, field: nameof(ContractPartyRequest.PropertyId));
-            }
-
-            throw new DomainValidationException(message);
-        }
-    }
-
-    /// <summary>
-    /// The field key the inline-rendered party failures are attributed to: whichever of the three target
-    /// ids the caller actually sent, since that is the control the client rendered.
-    /// </summary>
-    private static string PartyTargetField(ContractPartyRequest request) =>
-        request.AccountId is not null ? nameof(ContractPartyRequest.AccountId)
-        : request.ContactId is not null ? nameof(ContractPartyRequest.ContactId)
-        : nameof(ContractPartyRequest.PropertyId);
-
-    /// <summary>
-    /// A party's term is the party's own fact, with one tie to the contract: it cannot begin before the
-    /// contract did. Both dates are optional and null is the <b>default term</b> — the contract's own
-    /// extent — not an unset value. Only the lower bound is tied, and only when the contract has a
-    /// <c>StartDate</c>: an open-started term contract and a one-off (completion date only) have no
-    /// anchor. <c>ToDate</c> is deliberately <b>not</b> bounded by the contract's <c>EndDate</c>, since
-    /// a term contract's end moves when it is extended and bounding here would make an existing party's
-    /// validity depend on the order two edits happened in.
-    /// </summary>
-    /// <remarks>
-    /// The anchor is checked at party-write time only: editing the contract's <c>StartDate</c> later
-    /// neither re-validates nor re-dates its parties: a renewal never
-    /// re-dates a party.
-    /// </remarks>
-    private static (DateTime? FromDate, DateTime? ToDate) NormalizePartyTerm(
-        Contract contract, ContractPartyRequest request)
-    {
-        var fromDate = DateTimeNormalization.NormalizeToUtc(request.FromDate);
-        var toDate = DateTimeNormalization.NormalizeToUtc(request.ToDate);
-
-        if (fromDate is { } start && toDate is { } end && end.Date < start.Date)
-        {
-            throw new DomainValidationException(
-                "ToDate must be on or after FromDate.",
-                code: null,
-                field: nameof(ContractPartyRequest.ToDate));
-        }
-
-        if (fromDate is { } began && contract.StartDate is { } contractStart && began.Date < contractStart.Date)
-        {
-            throw new DomainValidationException(
-                $"This contract began {contractStart:yyyy-MM-dd} — a party cannot be in the role before that.",
-                code: null,
-                field: nameof(ContractPartyRequest.FromDate));
-        }
-
-        return (fromDate, toDate);
-    }
-
-    // ── Files ────────────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// The contract-document surface (issue #146) on the shared file-link rules (issue #287 H3), plus
-    /// the one thing only contracts have: the per-contract file cap, evaluated after the duplicate check
-    /// so a duplicate at the cap still reads as a duplicate.
-    /// </summary>
-    private OwnedFileLinks<ContractFile, ExistingContractFile> FileLinks => fileLinks ??= new(
-        context,
-        new OwnedFileSurface<ContractFile, ExistingContractFile>
-        {
-            OwnerNoun = "contract",
-            Links = c => c.ContractFiles,
-            OwnerExists = (c, id, ct) => c.Contracts.AnyAsync(contract => contract.ContractId == id, ct),
-            OwnerId = f => f.ContractId,
-            Create = (contractId, fileId) => new ContractFile
-            {
-                ContractId = contractId,
-                FileMetadataId = fileId,
-                AttachedAtUtc = default,
-            },
-            ToDto = ToFileDto,
-            BeforeAttach = async (c, contractId, ct) =>
-            {
-                var caps = await systemSettingsLookup.GetRequestCapsAsync(ct);
-                var count = await c.ContractFiles.CountAsync(f => f.ContractId == contractId, ct);
-                if (count >= caps.MaxFilesPerContract)
-                {
-                    throw new DomainUnprocessableException(
-                        $"Contract {contractId} already has the maximum of {caps.MaxFilesPerContract} attached files.");
-                }
-            },
-        },
-        contactLookup,
-        timeProvider);
-
-    private OwnedFileLinks<ContractFile, ExistingContractFile>? fileLinks;
-
-    /// <summary>
-    /// Attaches an already-uploaded file to the contract, recording the optional validity metadata
-    /// the request carries (issue #146). <c>null</c> when the contract does not exist.
-    /// </summary>
-    public Task<ExistingContractFile?> AttachFile(
-        Guid contractId, AttachContractFileRequest request, string userId, CancellationToken cancellationToken = default) =>
-        FileLinks.Attach(contractId, request.FileMetadataId, userId, async (link, ct) =>
-        {
-            link.FileType = request.FileType.Adapt<ContextContractFileType>();
-            await FileLinks.ApplyValidity(link, request.ValidFrom, request.ValidTo, request.IssuedAt, request.IssuedBy, ct);
-        }, cancellationToken);
-
-    /// <summary>
-    /// Replaces an attached document's type and validity metadata (issue #146 §5.2), addressed by
-    /// <c>(ContractId, FileMetadataId)</c>. <c>false</c> when the contract does not exist or the file is
-    /// not attached to it, which the controller turns into a <c>404</c>.
-    /// </summary>
-    /// <remarks>
-    /// The per-contract file cap is deliberately <b>not</b> evaluated: this creates no row, so a
-    /// contract already at its cap can still have a document's dates corrected.
-    /// </remarks>
-    public Task<bool> UpdateFile(
-        Guid contractId, Guid fileMetadataId, UpdateContractFileRequest request, CancellationToken cancellationToken = default) =>
-        FileLinks.Update(contractId, fileMetadataId, async (link, ct) =>
-        {
-            await FileLinks.ApplyValidity(link, request.ValidFrom, request.ValidTo, request.IssuedAt, request.IssuedBy, ct);
-            link.FileType = request.FileType.Adapt<ContextContractFileType>();
-        }, cancellationToken);
-
-    /// <summary>
-    /// The documents attached to one contract (issue #146 §5.3), or <c>null</c> when the contract does
-    /// not exist. Unpaged and bounded by <c>MaxFilesPerContract</c>.
-    /// </summary>
-    public Task<List<ExistingContractFile>?> GetFiles(Guid contractId, CancellationToken cancellationToken = default) =>
-        FileLinks.List(contractId, cancellationToken);
-
-    public Task<bool> IsFileAttachedToContract(Guid contractId, Guid fileMetadataId, CancellationToken cancellationToken = default) =>
-        FileLinks.IsAttached(contractId, fileMetadataId, cancellationToken);
-
-    public Task<bool> DetachFile(Guid contractId, Guid fileMetadataId, CancellationToken cancellationToken = default) =>
-        FileLinks.Detach(contractId, fileMetadataId, cancellationToken);
-
     /// <summary>
     /// Archiving requires a contract that is over — the lifecycle is ordered, so Archived implies
     /// ended and the status chip renders one state rather than a stack of flags.
@@ -1597,7 +690,7 @@ public class ContractService
         // the same stale read would be a defect rather than a mirror of one — a single PUT that signs
         // a Draft contract AND pauses it would be judged against the still-null stored Signed and
         // refused, for a contract the very same body makes Active.
-        var status = DeriveBaseStatus(startDate, endDate, completionDate, contract.Archived, ready, signed, Today);
+        var status = ContractStatusRules.DeriveBaseStatus(startDate, endDate, completionDate, contract.Archived, ready, signed, Today);
         if (status != ContractStatus.Active)
         {
             throw new DomainValidationException(
@@ -1605,92 +698,6 @@ public class ContractService
                 "contract_pause_requires_active",
                 nameof(UpdateContract.IsPaused));
         }
-    }
-
-    // ── Derived status (deterministic, ordered — §6) ──────────────────────────────
-
-    private static ContractStatus DeriveStatus(Contract contract, DateTime today) =>
-        DeriveStatus(
-            contract.StartDate, contract.EndDate, contract.CompletionDate,
-            contract.Archived, contract.Paused, contract.Ready, contract.Signed, today);
-
-    /// <summary>
-    /// The full derivation: the pause-blind base status, then <c>Paused</c> applied <b>once, to its
-    /// result</b> (issue #140 §8).
-    ///
-    /// <para>
-    /// <b>Paused replaces Active and nothing else</b> — it is deliberately not a sixth step in the
-    /// chain below. <see cref="DeriveBaseStatus"/> contains an early return for one-off contracts that
-    /// resolves <i>both</i> of its outcomes before any later branch runs, so a pause check written
-    /// inside that chain would be unreachable for a settled one-off: the stamp would be stored and
-    /// every read would keep reporting <c>Active</c> while the contract kept contributing to the run
-    /// rate. Applying it to the result closes that by construction rather than by careful placement.
-    /// </para>
-    ///
-    /// <para>
-    /// Read as precedence:
-    /// <c>Archived &gt; Draft/Ready &gt; Upcoming &gt; Expired &gt; Paused &gt; Active</c>. A
-    /// terminal fact outranks a temporary one, so a paused contract whose term has since run out reads
-    /// <c>Expired</c> — its stamp is retained, so resuming it after fixing its dates is one write.
-    /// </para>
-    /// </summary>
-    private static ContractStatus DeriveStatus(
-        DateTime? startDate, DateTime? endDate, DateTime? completionDate,
-        DateTime? archived, DateTime? paused, DateTime? ready, DateTime? signed, DateTime today)
-    {
-        var status = DeriveBaseStatus(startDate, endDate, completionDate, archived, ready, signed, today);
-        return status == ContractStatus.Active && paused is not null
-            ? ContractStatus.Paused
-            : status;
-    }
-
-    /// <summary>
-    /// The pause-blind derivation: the archive check, then the <b>signature layer</b>, then the date
-    /// chain (issue #174 §6, issue #145 §3).
-    ///
-    /// <para>
-    /// <b>The signature layer sits between the archive check and the date chain, and short-circuits
-    /// it.</b> An unsigned contract with a future start date reads <c>Draft</c>/<c>Ready</c>, not
-    /// <c>Upcoming</c>: its dates describe a term nobody has agreed to, and reporting <c>Upcoming</c>
-    /// would assert a commitment that does not exist — and would put it back into the upcoming
-    /// charges. An unsigned contract whose end date has passed reads <c>Draft</c>/<c>Ready</c>, not
-    /// <c>Expired</c>: a term cannot lapse before it begins, and describing a negotiation that stalled
-    /// as an agreement that ran its course would make the row look retired rather than abandoned —
-    /// which matters, because abandonment is the thing the reader has to act on.
-    /// </para>
-    ///
-    /// <para>
-    /// <c>Archived</c> still wins over both: a retired contract's signature history is no longer the
-    /// thing a reader is acting on.
-    /// </para>
-    /// </summary>
-    private static ContractStatus DeriveBaseStatus(
-        DateTime? startDate, DateTime? endDate, DateTime? completionDate, DateTime? archived,
-        DateTime? ready, DateTime? signed, DateTime today)
-    {
-        if (archived is not null)
-        {
-            return ContractStatus.Archived;
-        }
-        // The signature layer. Nothing below runs for an unsigned contract, by design.
-        if (signed is null)
-        {
-            return ready is not null ? ContractStatus.Ready : ContractStatus.Draft;
-        }
-        // One-off: a point-in-time agreement — Upcoming until its completion date, a settled record after.
-        if (completionDate is { } completion)
-        {
-            return completion.Date > today ? ContractStatus.Upcoming : ContractStatus.Active;
-        }
-        if (startDate is { } start && start.Date > today)
-        {
-            return ContractStatus.Upcoming;
-        }
-        if (endDate is { } end && end.Date < today)
-        {
-            return ContractStatus.Expired;
-        }
-        return ContractStatus.Active;
     }
 
     // ── Validation helpers ─────────────────────────────────────────────────────────
@@ -1921,71 +928,6 @@ public class ContractService
     /// <summary>What a log slot reads when the stamp is absent on that side of the write.</summary>
     private const string NoValue = "(none)";
 
-    // The two target 404s carry the field key of the id that was sent; the whole-request 404s (contract
-    // gone, party not on this contract) deliberately carry none, which is how a client tells the three
-    // apart without matching on message text (§9).
-    private async Task EnsureTargetExists(ContractPartyRequest request, CancellationToken cancellationToken = default)
-    {
-        if (request.AccountId is { } accountId)
-        {
-            if (!await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken))
-            {
-                throw new DomainNotFoundException(
-                    $"Account ID {accountId} not found.", nameof(ContractPartyRequest.AccountId));
-            }
-        }
-        else if (request.ContactId is { } contactId)
-        {
-            if (!(await contactLookup.ExistingIdsAsync([contactId], cancellationToken)).Contains(contactId))
-            {
-                throw new DomainNotFoundException(
-                    $"Contact ID {contactId} not found.", nameof(ContractPartyRequest.ContactId));
-            }
-        }
-        else if (request.PropertyId is { } propertyId)
-        {
-            // An archived or disposed property may still be linked: history must stay recordable
-            // (issue #208 §8), exactly as an archived account can be.
-            if (!await context.Properties.AnyAsync(p => p.PropertyId == propertyId, cancellationToken))
-            {
-                throw new DomainNotFoundException(
-                    $"Property ID {propertyId} not found.", nameof(ContractPartyRequest.PropertyId));
-            }
-        }
-    }
-
-    /// <summary>
-    /// The <i>(contract, target, role)</i> uniqueness pre-check (issue #121 §8 rule 6). Widened from
-    /// <i>(contract, target)</i>: the same record may be named twice in two genuinely different
-    /// capacities. <paramref name="excludingPartyId"/> takes the row being edited out of its own check,
-    /// so a date-only edit is not a self-conflict.
-    /// </summary>
-    /// <remarks>
-    /// This is a check-then-act with no transaction around it, so it is not what makes the rule
-    /// <i>true</i> — the two unique indexes are, and a race surfaces through
-    /// <c>GlobalExceptionHandler</c> as a generic 409. The pre-check is kept for the explaining message
-    /// and because it is the only implementation the EF InMemory tiers see: that provider enforces no
-    /// indexes at all.
-    /// </remarks>
-    private async Task EnsureNotDuplicateParty(
-        Guid contractId, ContractPartyRequest request, ContextContractPartyRole role, Guid? excludingPartyId,
-        CancellationToken cancellationToken = default)
-    {
-        var duplicate = await context.ContractParties.AnyAsync(p =>
-            p.ContractId == contractId &&
-            p.Role == role &&
-            (excludingPartyId == null || p.ContractPartyId != excludingPartyId) &&
-            ((request.AccountId != null && p.AccountId == request.AccountId) ||
-             (request.ContactId != null && p.ContactId == request.ContactId) ||
-             (request.PropertyId != null && p.PropertyId == request.PropertyId)), cancellationToken);
-        if (duplicate)
-        {
-            throw new DomainConflictException(
-                "That party is already linked to the contract in that role.",
-                PartyTargetField(request));
-        }
-    }
-
     // ── Loading & mapping ───────────────────────────────────────────────────────────
 
     private async Task<Contract?> LoadWithDetails(Guid id, CancellationToken cancellationToken = default)
@@ -2015,14 +957,6 @@ public class ContractService
         return TermSeries.Current(candidates).Adapt<List<AccountCurrentTerm>>();
     }
 
-    private async Task<ContractParty?> LoadPartyWithTargets(Guid partyId, CancellationToken cancellationToken = default)
-    {
-        return await context.ContractParties
-            .Include(p => p.Account)
-            .Include(p => p.Property)
-            .FirstOrDefaultAsync(p => p.ContractPartyId == partyId, cancellationToken);
-    }
-
     private async Task<ExistingContract> ToDto(Contract contract, DateTime today, CancellationToken cancellationToken)
     {
         // Batch-resolve the distinct, non-null party contact ids in one call (Contact now lives in
@@ -2050,15 +984,15 @@ public class ContractService
             StartDate = contract.StartDate,
             EndDate = contract.EndDate,
             CompletionDate = contract.CompletionDate,
-            Status = DeriveStatus(contract, today),
+            Status = ContractStatusRules.DeriveStatus(contract, today),
             Parties = contract.Parties
                 .OrderBy(p => p.ContractPartyId)
-                .Select(p => ToPartyDto(p, contacts))
+                .Select(p => ContractProjection.ToPartyDto(p, contacts))
                 .ToList(),
             Files = contract.Files
                 .Where(f => f.FileMetadata is not null)
                 .OrderBy(f => f.AttachedAtUtc)
-                .Select(ToFileDto)
+                .Select(ContractProjection.ToFileDto)
                 .ToList(),
             CurrentTerms = currentTerms,
             Archived = contract.Archived,
@@ -2068,79 +1002,4 @@ public class ContractService
             CreatedAtUtc = contract.CreatedAtUtc,
         };
     }
-
-    // Explicit member mapping (never a permissive Adapt) so a future field added to Account, Contact or
-    // Property cannot silently re-leak into this cross-claim projection (§9/§10 #2, issue #208 §7.3).
-    // Each branch tests its OWN column: a bare trailing else would classify every property party as an
-    // Institution (issue #208 §8).
-    private static ExistingContractParty ToPartyDto(ContractParty party, IReadOnlyDictionary<Guid, ContactRef> contacts)
-    {
-        var dto = new ExistingContractParty
-        {
-            ContractPartyId = party.ContractPartyId,
-            ContractId = party.ContractId,
-            // A top-level field on the party, so it survives an unresolved target reference.
-            Role = party.Role.Adapt<DtoContractPartyRole>(),
-            FromDate = party.FromDate,
-            ToDate = party.ToDate,
-        };
-
-        if (party.AccountId is not null)
-        {
-            dto.Kind = ContractPartyKind.Account;
-            dto.Account = party.Account is null ? null : new ContractAccountReference
-            {
-                AccountId = party.Account.AccountId,
-                Name = party.Account.Name,
-                Type = party.Account.AccountType.Adapt<DtoAccountType>(),
-            };
-        }
-        else if (party.ContactId is { } contactId)
-        {
-            // Resolve via the batched lookup. An unresolved link nulls the reference, as the read path
-            // does for any missing link.
-            var contact = contacts.GetValueOrDefault(contactId);
-            dto.Kind = ContractPartyKind.Institution;
-            dto.Institution = contact is null ? null : new ContractContactReference
-            {
-                ContactId = contact.ContactId,
-                Name = contact.Name,
-                // No .Adapt here (unlike Account): ContactRef already declares Type as the Dtos
-                // ContactType, so this is a same-type assignment.
-                Type = contact.Type,
-            };
-        }
-        else if (party.PropertyId is not null)
-        {
-            dto.Kind = ContractPartyKind.Property;
-            dto.Property = party.Property is null ? null : new ContractPropertyReference
-            {
-                PropertyId = party.Property.PropertyId,
-                Name = party.Property.Name,
-                Type = party.Property.Type,
-            };
-        }
-        else
-        {
-            // Unreachable under CK_ContractParties_ExactlyOneTarget; refusing beats guessing a kind.
-            throw new InvalidOperationException(
-                $"Contract party {party.ContractPartyId} names no target.");
-        }
-
-        return dto;
-    }
-
-    private static ExistingContractFile ToFileDto(ContractFile file) => new()
-    {
-        ContractFileId = file.ContractFileId,
-        ContractId = file.ContractId,
-        FileMetadata = file.FileMetadata!.Adapt<ExistingFileMetadata>(),
-        FileType = file.FileType.Adapt<DtoContractFileType>(),
-        AttachedByUserId = file.AttachedByUserId,
-        AttachedAtUtc = file.AttachedAtUtc,
-        ValidFrom = file.ValidFrom,
-        ValidTo = file.ValidTo,
-        IssuedAt = file.IssuedAt,
-        IssuedBy = file.IssuedBy,
-    };
 }

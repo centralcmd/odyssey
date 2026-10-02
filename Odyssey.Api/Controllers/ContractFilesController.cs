@@ -22,15 +22,18 @@ namespace Odyssey.Api.Controllers;
 [Route("api/contracts")]
 public sealed class ContractFilesController : ControllerBase
 {
-    private readonly ContractService service;
+    private readonly ContractService contracts;
+    private readonly ContractFileService service;
     private readonly FileService fileService;
     private readonly IUserDisplayNameResolver displayNames;
 
     public ContractFilesController(
-        ContractService service,
+        ContractService contracts,
+        ContractFileService service,
         FileService fileService,
         IUserDisplayNameResolver displayNames)
     {
+        this.contracts = contracts;
         this.service = service;
         this.fileService = fileService;
         this.displayNames = displayNames;
@@ -53,7 +56,7 @@ public sealed class ContractFilesController : ControllerBase
     {
         // Check the (cheap) contract existence before the file-metadata lookup + allow-list, so
         // attaching to a missing contract 404s without a wasted file read.
-        if (!await service.Exists(id, cancellationToken))
+        if (!await contracts.Exists(id, cancellationToken))
         {
             return this.NotFoundProblem($"Contract ID {id} not found.");
         }

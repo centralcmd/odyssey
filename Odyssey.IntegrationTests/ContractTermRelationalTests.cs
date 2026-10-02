@@ -229,7 +229,6 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
                 // test has no stake in.
                 new ContactLookup(context),
                 TimeProvider.System,
-                new ShippedCaps(),
                 NullLogger<ContractService>.Instance)
             .ListAsync(new ContractsQueryParams { Limit = limit });
 

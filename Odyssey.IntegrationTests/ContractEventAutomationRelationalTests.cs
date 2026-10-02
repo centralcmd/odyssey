@@ -273,7 +273,7 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
     };
 
     private static ContractService Contracts(OdysseyContext context) =>
-        new(context, new ContactLookup(context), TimeProvider.System, new ShippedCaps(),
+        new(context, new ContactLookup(context), TimeProvider.System,
             NullLogger<ContractService>.Instance);
 
     private static TermService Terms(OdysseyContext context) =>

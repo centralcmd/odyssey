@@ -133,7 +133,7 @@ public class ContractReferenceNumberMigrationTests(MariaDbFixture fixture)
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static ContractService NewService(OdysseyContext context) =>
-        new(context, new ContactLookup(context), TimeProvider.System, new ShippedCaps(),
+        new(context, new ContactLookup(context), TimeProvider.System,
             NullLogger<ContractService>.Instance);
 
     private static async Task<bool> ColumnExistsAsync(OdysseyContext context) =>

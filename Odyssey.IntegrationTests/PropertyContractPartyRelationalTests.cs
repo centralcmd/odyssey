@@ -196,7 +196,7 @@ public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
         await using (var context = NewContext())
         {
             var contracts = new ContractService(
-                context, new ContactLookup(context), TimeProvider.System, new ShippedCaps(),
+                context, new ContactLookup(context), TimeProvider.System,
                 NullLogger<ContractService>.Instance);
 
             var rows = (await contracts.ListForPropertyAsync(propertyId))!;
