@@ -43,8 +43,15 @@ public class AttachDocumentRequestsTests
     {
         var r = AttachDocumentRequests.Account(Item(nameof(AccountFileType.Statement)));
 
-        Assert.Equal(new AttachAccountFileRequest(FileId, AccountFileType.Statement,
-            new DateTime(2026, 1, 1), new DateTime(2027, 1, 1), new DateTime(2025, 12, 1), Issuer), r);
+        Assert.Equal(new AttachAccountFileRequest
+        {
+            FileId = FileId,
+            FileType = AccountFileType.Statement,
+            ValidFrom = new DateTime(2026, 1, 1),
+            ValidTo = new DateTime(2027, 1, 1),
+            IssuedAt = new DateTime(2025, 12, 1),
+            IssuedBy = Issuer,
+        }, r);
     }
 
     [Fact]
@@ -75,7 +82,7 @@ public class AttachDocumentRequestsTests
     [Fact]
     public void Tax_and_transaction_requests_carry_the_type_and_fall_back_to_other()
     {
-        Assert.Equal(new AttachTaxStatementFileRequest(FileId, TaxStatementFileType.TaxReturn),
+        Assert.Equal(new AttachTaxStatementFileRequest { FileId = FileId, FileType = TaxStatementFileType.TaxReturn },
             AttachDocumentRequests.TaxStatement(Item(nameof(TaxStatementFileType.TaxReturn))));
         Assert.Equal(TaxStatementFileType.Other, AttachDocumentRequests.TaxStatement(Item("Nonsense")).FileType);
         Assert.Equal(TransactionFileType.Receipt, AttachDocumentRequests.TransactionType(Item(nameof(TransactionFileType.Receipt))));

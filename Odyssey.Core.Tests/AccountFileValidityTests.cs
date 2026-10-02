@@ -55,10 +55,12 @@ public class AccountFileValidityTests
 
         var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
             service.AttachFileToAccount(accountId, fileId, "user-1", DtoAccountFileType.Other,
-                new AttachAccountFileRequest(
-                    fileId,
-                    ValidFrom: new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-                    ValidTo: new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc))));
+                new AttachAccountFileRequest
+                {
+                    FileId = fileId,
+                    ValidFrom = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+                    ValidTo = new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc),
+                }));
 
         Assert.True(error.Errors!.ContainsKey(DocumentValidity.ValidToField));
         Assert.False(await context.AccountFiles.AnyAsync());
@@ -93,7 +95,7 @@ public class AccountFileValidityTests
 
         var error = await Assert.ThrowsAsync<DomainValidationException>(() =>
             service.AttachFileToAccount(accountId, fileId, "user-1", DtoAccountFileType.Other,
-                new AttachAccountFileRequest(fileId, IssuedAt: DateTime.MinValue)));
+                new AttachAccountFileRequest { FileId = fileId, IssuedAt = DateTime.MinValue }));
 
         Assert.True(error.Errors!.ContainsKey(DocumentValidity.IssuedAtField));
     }
@@ -125,7 +127,7 @@ public class AccountFileValidityTests
         var local = new DateTime(2026, 3, 1, 9, 0, 0, DateTimeKind.Local);
 
         await service.AttachFileToAccount(accountId, fileId, "user-1", DtoAccountFileType.Other,
-            new AttachAccountFileRequest(fileId, ValidFrom: local));
+            new AttachAccountFileRequest { FileId = fileId, ValidFrom = local });
 
         var attached = await context.AccountFiles.SingleAsync();
         Assert.Equal(local.ToUniversalTime(), attached.ValidFrom);

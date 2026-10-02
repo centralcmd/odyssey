@@ -35,10 +35,18 @@ public static class AttachDocumentRequests
     };
 
     public static AttachAccountFileRequest Account(AttachDocumentItem item) =>
-        new(item.FileId, item.KindAs(AccountFileType.Other), item.ValidFrom, item.ValidTo, item.IssuedAt, item.IssuedBy);
+        new AttachAccountFileRequest
+        {
+            FileId = item.FileId,
+            FileType = item.KindAs(AccountFileType.Other),
+            ValidFrom = item.ValidFrom,
+            ValidTo = item.ValidTo,
+            IssuedAt = item.IssuedAt,
+            IssuedBy = item.IssuedBy,
+        };
 
     public static AttachTaxStatementFileRequest TaxStatement(AttachDocumentItem item) =>
-        new(item.FileId, item.KindAs(TaxStatementFileType.Other));
+        new AttachTaxStatementFileRequest { FileId = item.FileId, FileType = item.KindAs(TaxStatementFileType.Other) };
 
     public static TransactionFileType TransactionType(AttachDocumentItem item) =>
         item.KindAs(TransactionFileType.Other);

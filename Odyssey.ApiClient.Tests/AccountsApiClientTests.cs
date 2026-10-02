@@ -203,7 +203,7 @@ public class AccountsApiClientTests
         await client.AddEstimateAsync(Account, SampleEstimate());
         Assert.Equal($"/api/accounts/{Account}/estimates", handler.LastRequest!.RequestUri!.AbsolutePath);
 
-        await client.AttachFileAsync(Account, new AttachAccountFileRequest(Child));
+        await client.AttachFileAsync(Account, new AttachAccountFileRequest { FileId = Child });
         Assert.Equal($"/api/accounts/{Account}/files", handler.LastRequest!.RequestUri!.AbsolutePath);
     }
 

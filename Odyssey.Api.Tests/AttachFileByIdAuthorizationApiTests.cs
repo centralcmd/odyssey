@@ -52,11 +52,17 @@ public sealed class AttachFileByIdAuthorizationApiTests
         var response = surface switch
         {
             Surface.Account => await client.PostAsJsonAsync(
-                $"/api/accounts/{seeded.AccountId}/files", new AttachAccountFileRequest(seeded.FileId)),
+                $"/api/accounts/{seeded.AccountId}/files", new AttachAccountFileRequest { FileId = seeded.FileId }),
             Surface.Transaction => await client.PostAsJsonAsync(
-                $"/api/transactions/{seeded.TransactionId}/files", new AttachTransactionFileRequest(seeded.FileId)),
+                $"/api/transactions/{seeded.TransactionId}/files", new AttachTransactionFileRequest
+                {
+                    FileId = seeded.FileId,
+                }),
             Surface.TaxStatement => await client.PostAsJsonAsync(
-                $"/api/tax-statements/{seeded.TaxStatementId}/files", new AttachTaxStatementFileRequest(seeded.FileId)),
+                $"/api/tax-statements/{seeded.TaxStatementId}/files", new AttachTaxStatementFileRequest
+                {
+                    FileId = seeded.FileId,
+                }),
             _ => throw new ArgumentOutOfRangeException(nameof(surface)),
         };
 

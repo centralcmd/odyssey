@@ -154,7 +154,7 @@ public sealed class OwnedFileSurfaceRulesApiTests
         var response = surface switch
         {
             Surface.Account => await client.PostAsJsonAsync($"/api/accounts/{seeded.AccountId}/files",
-                new AttachAccountFileRequest(seeded.FileId, ValidFrom: from, ValidTo: inverted)),
+                new AttachAccountFileRequest { FileId = seeded.FileId, ValidFrom = from, ValidTo = inverted }),
             Surface.Contract => await client.PostAsJsonAsync($"/api/contracts/{seeded.ContractId}/files",
                 new AttachContractFileRequest { FileMetadataId = seeded.FileId, ValidFrom = from, ValidTo = inverted }),
             Surface.Property => await client.PostAsJsonAsync($"/api/properties/{seeded.PropertyId}/files",
@@ -240,11 +240,17 @@ public sealed class OwnedFileSurfaceRulesApiTests
         surface switch
         {
             Surface.Account => client.PostAsJsonAsync(
-                $"/api/accounts/{seeded.AccountId}/files", new AttachAccountFileRequest(seeded.FileId)),
+                $"/api/accounts/{seeded.AccountId}/files", new AttachAccountFileRequest { FileId = seeded.FileId }),
             Surface.Transaction => client.PostAsJsonAsync(
-                $"/api/transactions/{seeded.TransactionId}/files", new AttachTransactionFileRequest(seeded.FileId)),
+                $"/api/transactions/{seeded.TransactionId}/files", new AttachTransactionFileRequest
+                {
+                    FileId = seeded.FileId,
+                }),
             Surface.TaxStatement => client.PostAsJsonAsync(
-                $"/api/tax-statements/{seeded.TaxStatementId}/files", new AttachTaxStatementFileRequest(seeded.FileId)),
+                $"/api/tax-statements/{seeded.TaxStatementId}/files", new AttachTaxStatementFileRequest
+                {
+                    FileId = seeded.FileId,
+                }),
             Surface.Contract => client.PostAsJsonAsync(
                 $"/api/contracts/{seeded.ContractId}/files", new AttachContractFileRequest { FileMetadataId = seeded.FileId }),
             Surface.Property => client.PostAsJsonAsync(

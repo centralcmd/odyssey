@@ -127,7 +127,7 @@ public partial class TaxStatementFilesSection
     private async Task AttachAsync(Guid fileId)
     {
         var attach = await TaxStatements.AttachFileAsync(
-            StatementId, new AttachTaxStatementFileRequest(fileId, SelectedFileTypeEnum));
+            StatementId, new AttachTaxStatementFileRequest { FileId = fileId, FileType = SelectedFileTypeEnum });
         if (!attach.IsSuccess)
             throw new InvalidOperationException($"Failed to attach document: {attach.Error}");
     }
