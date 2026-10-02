@@ -16,15 +16,15 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/tax-statements")]
-public class TaxStatementController : ControllerBase
+public sealed class TaxStatementsController : ControllerBase
 {
-    private readonly ILogger<TaxStatementController> logger;
+    private readonly ILogger<TaxStatementsController> logger;
     private readonly TaxStatementService service;
     private readonly FileService fileService;
     private readonly IUserDisplayNameResolver displayNames;
 
-    public TaxStatementController(
-        ILogger<TaxStatementController> logger,
+    public TaxStatementsController(
+        ILogger<TaxStatementsController> logger,
         TaxStatementService service,
         FileService fileService,
         IUserDisplayNameResolver displayNames)

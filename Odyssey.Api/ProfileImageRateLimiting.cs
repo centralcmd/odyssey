@@ -1,9 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
-using System.Threading.RateLimiting;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Options;
-
 namespace Odyssey.Api;
 
 /// <summary>
@@ -69,73 +63,21 @@ public static class ProfileImageRateLimiting
     public static IServiceCollection AddProfileImageRateLimiter(
         this IServiceCollection services, IConfiguration configuration)
     {
-        // ValidateOnStart, not just ValidateDataAnnotations: an out-of-range limit is a misconfigured
-        // security control, and surfacing it at startup beats discovering it on the first request that
-        // needed limiting.
-        services.AddOptions<ProfileImageWriteRateLimitOptions>()
-            .Bind(configuration.GetSection(ProfileImageWriteRateLimitOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
+        services
+            .AddPerUserFixedWindowOptions<ProfileImageWriteRateLimitOptions>(
+                configuration, ProfileImageWriteRateLimitOptions.SectionName)
+            .AddPerUserFixedWindowOptions<ProfileImageDeleteRateLimitOptions>(
+                configuration, ProfileImageDeleteRateLimitOptions.SectionName)
+            .AddPerUserFixedWindowOptions<ProfileImageReadRateLimitOptions>(
+                configuration, ProfileImageReadRateLimitOptions.SectionName);
 
-        services.AddOptions<ProfileImageDeleteRateLimitOptions>()
-            .Bind(configuration.GetSection(ProfileImageDeleteRateLimitOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
-        services.AddOptions<ProfileImageReadRateLimitOptions>()
-            .Bind(configuration.GetSection(ProfileImageReadRateLimitOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
-        services.AddRateLimiter(options =>
-        {
-            // The partitioner runs per request, so the limits are resolved from options rather than
-            // captured at startup — the value a test (or a deployment) overrides is the one that applies.
-            options.AddPolicy(WritePolicy, context =>
-            {
-                var limits = context.RequestServices
-                    .GetRequiredService<IOptions<ProfileImageWriteRateLimitOptions>>().Value;
-
-                return FixedWindowPerCaller(WritePolicy, context, limits.PermitLimit, limits.WindowSeconds);
-            });
-
-            options.AddPolicy(DeletePolicy, context =>
-            {
-                var limits = context.RequestServices
-                    .GetRequiredService<IOptions<ProfileImageDeleteRateLimitOptions>>().Value;
-
-                return FixedWindowPerCaller(DeletePolicy, context, limits.PermitLimit, limits.WindowSeconds);
-            });
-
-            options.AddPolicy(ReadPolicy, context =>
-            {
-                var limits = context.RequestServices
-                    .GetRequiredService<IOptions<ProfileImageReadRateLimitOptions>>().Value;
-
-                return FixedWindowPerCaller(ReadPolicy, context, limits.PermitLimit, limits.WindowSeconds);
-            });
-        });
+        services.AddRateLimiter(options => options
+            .AddPerUserFixedWindowPolicy<ProfileImageWriteRateLimitOptions>(WritePolicy)
+            .AddPerUserFixedWindowPolicy<ProfileImageDeleteRateLimitOptions>(DeletePolicy)
+            .AddPerUserFixedWindowPolicy<ProfileImageReadRateLimitOptions>(ReadPolicy));
 
         return services;
     }
-
-    private static RateLimitPartition<string> FixedWindowPerCaller(
-        string policy, HttpContext context, int permitLimit, int windowSeconds) =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            $"{policy}:{CallerPartitionKey(context)}",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = permitLimit,
-                Window = TimeSpan.FromSeconds(windowSeconds),
-                // Reject immediately rather than parking the request behind a queue slot.
-                QueueLimit = 0,
-            });
-
-    // UseRateLimiter runs after UseAuthentication/UseAuthorization, so an authenticated user id is
-    // always present on a request that reaches any of these endpoints; the fallback is defensive only,
-    // and errs toward one shared bucket rather than an unpartitioned pass.
-    private static string CallerPartitionKey(HttpContext context) =>
-        context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
 }
 
 /// <summary>
@@ -143,32 +85,20 @@ public static class ProfileImageRateLimiting
 /// minutes is far more than a person setting their own picture needs, and a hard bound on a script
 /// spending the double container walk.
 /// </summary>
-public sealed class ProfileImageWriteRateLimitOptions
+public sealed class ProfileImageWriteRateLimitOptions()
+    : PerUserFixedWindowRateLimitOptions(permitLimit: 12, windowSeconds: 300)
 {
     public const string SectionName = "RateLimiting:ProfileImageWrite";
-
-    /// <summary>Profile-picture uploads one caller may make per window.</summary>
-    [Range(1, int.MaxValue)]
-    public int PermitLimit { get; set; } = 12;
-
-    [Range(1, 86400)]
-    public int WindowSeconds { get; set; } = 300;
 }
 
 /// <summary>
 /// Bound from <c>RateLimiting:ProfileImageDelete</c>. A <b>separate</b> budget from the write, so
 /// exhausting the upload window never costs a user the ability to erase their own picture.
 /// </summary>
-public sealed class ProfileImageDeleteRateLimitOptions
+public sealed class ProfileImageDeleteRateLimitOptions()
+    : PerUserFixedWindowRateLimitOptions(permitLimit: 12, windowSeconds: 300)
 {
     public const string SectionName = "RateLimiting:ProfileImageDelete";
-
-    /// <summary>Profile-picture removals one caller may make per window.</summary>
-    [Range(1, int.MaxValue)]
-    public int PermitLimit { get; set; } = 12;
-
-    [Range(1, 86400)]
-    public int WindowSeconds { get; set; } = 300;
 }
 
 /// <summary>
@@ -177,14 +107,8 @@ public sealed class ProfileImageDeleteRateLimitOptions
 /// is invisible to the user (it degrades to the monogram), so a tight limit would produce a silent,
 /// hard-to-diagnose defect rather than an error anybody reports.
 /// </summary>
-public sealed class ProfileImageReadRateLimitOptions
+public sealed class ProfileImageReadRateLimitOptions()
+    : PerUserFixedWindowRateLimitOptions(permitLimit: 300, windowSeconds: 60)
 {
     public const string SectionName = "RateLimiting:ProfileImageRead";
-
-    /// <summary>Profile-picture reads one caller may make per window.</summary>
-    [Range(1, int.MaxValue)]
-    public int PermitLimit { get; set; } = 300;
-
-    [Range(1, 86400)]
-    public int WindowSeconds { get; set; } = 60;
 }

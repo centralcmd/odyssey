@@ -22,7 +22,7 @@ public class TermVocabularyGuardTests
         typeof(Odyssey.Context.Term).Assembly,
         typeof(Odyssey.Dtos.Finance.NewTerm).Assembly,
         typeof(Odyssey.Core.Finance.TermService).Assembly,
-        typeof(ContractController).Assembly,
+        typeof(ContractsController).Assembly,
     ];
 
     /// <summary>

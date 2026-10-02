@@ -16,13 +16,13 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/contracts")]
-public class ContractController : ControllerBase
+public sealed class ContractsController : ControllerBase
 {
     private readonly ContractService service;
     private readonly ContractSummaryService summaryService;
     private readonly IUserDisplayNameResolver displayNames;
 
-    public ContractController(
+    public ContractsController(
         ContractService service,
         ContractSummaryService summaryService,
         IUserDisplayNameResolver displayNames)

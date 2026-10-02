@@ -6,7 +6,7 @@ namespace Odyssey.Dtos.Finance;
 /// (issue #157 §5.3, §9.2). Nothing is written.
 /// </summary>
 /// <remarks>
-/// Shaped in <c>ContractController</c> rather than thrown from the service, for the same reason the
+/// Shaped in <c>ContractsController</c> rather than thrown from the service, for the same reason the
 /// contact-delete <c>409</c> payload is: <c>DomainException</c> carries a message, a code and a
 /// <c>string → string[]</c> errors dictionary, which cannot express a list of objects.
 /// <c>ContractService</c> keeps an unconditional <c>DomainUnprocessableException</c> for non-HTTP

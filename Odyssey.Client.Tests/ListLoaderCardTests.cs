@@ -387,7 +387,7 @@ public class ListLoaderCardTests
     {
         var status = cut.FindComponents<OdsMultiSelect>().Single(m => m.Instance.Label == "Active").Instance;
         return cut.InvokeAsync(() => status.ValuesChanged.InvokeAsync(
-            [nameof(Odyssey.Dtos.Journal.ArchivalStatus.Active), nameof(Odyssey.Dtos.Journal.ArchivalStatus.Archived)]));
+            [nameof(Odyssey.Dtos.ArchivalStatus.Active), nameof(Odyssey.Dtos.ArchivalStatus.Archived)]));
     }
 
     private static string? JournalAnnouncement(IRenderedComponent<JournalCard> cut) =>

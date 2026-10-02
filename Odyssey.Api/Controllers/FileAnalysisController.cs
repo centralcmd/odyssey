@@ -18,7 +18,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/file-analysis")]
-public class FileAnalysisController : ControllerBase
+public sealed class FileAnalysisController : ControllerBase
 {
     private readonly ILogger<FileAnalysisController> logger;
     private readonly FileAnalysisService fileAnalysisService;

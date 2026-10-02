@@ -15,7 +15,7 @@ namespace Odyssey.Api.Controllers;
 /// The property document endpoints (issue #210) — a separate controller on the <c>api/properties</c>
 /// route prefix beside <see cref="PropertyEstimatesController"/> and
 /// <see cref="PropertySmartTagsController"/>. Behaviourally the contract-document surface on
-/// <see cref="ContractController"/>, sharing its content-type allow-list and download helper through
+/// <see cref="ContractsController"/>, sharing its content-type allow-list and download helper through
 /// <see cref="DocumentAttachmentExtensions"/>, minus the per-owner file cap.
 ///
 /// <para>
@@ -25,7 +25,7 @@ namespace Odyssey.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/properties")]
-public class PropertyFilesController : ControllerBase
+public sealed class PropertyFilesController : ControllerBase
 {
     private readonly PropertyFileService service;
     private readonly FileService fileService;

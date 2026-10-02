@@ -1,26 +1,15 @@
 using Odyssey.Core;
 using Odyssey.Core.Finance;
-using Microsoft.AspNetCore.Http;
-using Moq;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
 
 public class FileValidationServiceTests
 {
-    private static IFormFile CreateMockFile(string fileName, string contentType, long size, byte[]? content = null)
-    {
-        var mock = new Mock<IFormFile>();
-        mock.Setup(f => f.FileName).Returns(fileName);
-        mock.Setup(f => f.ContentType).Returns(contentType);
-        mock.Setup(f => f.Length).Returns(size);
-        if (content is not null)
-        {
-            mock.Setup(f => f.OpenReadStream()).Returns(() => new MemoryStream(content));
-        }
-
-        return mock.Object;
-    }
+    private static FileUpload CreateMockFile(string fileName, string contentType, long size, byte[]? content = null) =>
+        new(fileName, contentType, size, () => content is null
+            ? throw new InvalidOperationException("This fixture has no content; the test should fail before reading it.")
+            : new MemoryStream(content));
 
     [Fact]
     public async Task ValidateFile_Succeeds_WithValidPdf()

@@ -14,7 +14,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/files")]
-public class FilesController : ControllerBase
+public sealed class FilesController : ControllerBase
 {
     private readonly FileService fileService;
 
@@ -55,7 +55,7 @@ public class FilesController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        var result = await fileService.UploadFileAsync(file, userId, description, cancellationToken);
+        var result = await fileService.UploadFileAsync(file.ToFileUpload(), userId, description, cancellationToken);
         return CreatedAtAction(nameof(GetFileMetadata), new { id = result.Id }, result);
     }
 

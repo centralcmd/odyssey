@@ -16,15 +16,15 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/transactions")]
-public class TransactionController : ControllerBase
+public sealed class TransactionsController : ControllerBase
 {
-    private readonly ILogger<TransactionController> logger;
+    private readonly ILogger<TransactionsController> logger;
     private readonly TransactionService transactionService;
     private readonly FileService fileService;
     private readonly IUserDisplayNameResolver displayNames;
 
-    public TransactionController(
-        ILogger<TransactionController> logger,
+    public TransactionsController(
+        ILogger<TransactionsController> logger,
         TransactionService transactionService,
         FileService fileService,
         IUserDisplayNameResolver displayNames)

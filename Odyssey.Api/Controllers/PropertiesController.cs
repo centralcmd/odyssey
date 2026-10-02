@@ -15,7 +15,7 @@ namespace Odyssey.Api.Controllers;
 /// <summary>
 /// Property CRUD and list (issue #167). Estimates and smart tags have their own controllers on the same
 /// route prefix, the way <see cref="AccountEstimatesController"/> and
-/// <see cref="AccountSmartTagsController"/> sit beside <see cref="AccountController"/>.
+/// <see cref="AccountSmartTagsController"/> sit beside <see cref="AccountsController"/>.
 ///
 /// <para>
 /// Unlike <c>PUT /api/accounts/{id}</c>, <c>PUT</c> here is <b>not an upsert</b>: an unknown id is a
@@ -24,13 +24,13 @@ namespace Odyssey.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/properties")]
-public class PropertyController : ControllerBase
+public sealed class PropertiesController : ControllerBase
 {
     private readonly PropertyService propertyService;
     private readonly PropertySummaryService summaryService;
     private readonly ContractService contractService;
 
-    public PropertyController(
+    public PropertiesController(
         PropertyService propertyService, PropertySummaryService summaryService, ContractService contractService)
     {
         this.propertyService = propertyService;

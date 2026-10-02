@@ -11,7 +11,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/accounts")]
-public class AccountEstimatesController : ControllerBase
+public sealed class AccountEstimatesController : ControllerBase
 {
     private readonly AccountService accountService;
     private readonly AccountEstimateService accountEstimateService;

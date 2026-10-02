@@ -14,7 +14,7 @@ namespace Odyssey.Api.Controllers;
 /// <summary>
 /// The contract smart-tag endpoints (issue #166) — a separate controller on the <c>api/contracts</c>
 /// route prefix, mirroring how <see cref="AccountSmartTagsController"/> sits beside
-/// <see cref="ContractController"/>.
+/// <see cref="ContractsController"/>.
 ///
 /// <para>
 /// <strong>Neither write takes a request body.</strong> Both the contract and the tag are named by
@@ -25,7 +25,7 @@ namespace Odyssey.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/contracts")]
-public class ContractSmartTagsController : ControllerBase
+public sealed class ContractSmartTagsController : ControllerBase
 {
     private readonly ContractSmartTagService contractSmartTagService;
     private readonly ContractSmartTagTransactionService smartTagTransactions;

@@ -13,12 +13,12 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/currencies")]
-public class CurrencyController : ControllerBase
+public sealed class CurrenciesController : ControllerBase
 {
-    private readonly ILogger<CurrencyController> logger;
+    private readonly ILogger<CurrenciesController> logger;
     private readonly CurrencyService currencyService;
 
-    public CurrencyController(ILogger<CurrencyController> logger, CurrencyService currencyService)
+    public CurrenciesController(ILogger<CurrenciesController> logger, CurrencyService currencyService)
     {
         this.logger = logger;
         this.currencyService = currencyService;

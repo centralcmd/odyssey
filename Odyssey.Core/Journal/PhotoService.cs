@@ -10,9 +10,9 @@ using Odyssey.Dtos;
 namespace Odyssey.Core.Journal;
 
 /// <summary>
-/// CRUD, archival, and server-side listing for library photos (issue #321). Cross-context references
+/// CRUD, archival, and server-side listing for library photos (issue #321). Cross-module references
 /// (people, files) are validated via narrow read-only Finance lookups in front of the DB foreign keys
-/// boundary (§5). Reads return link ids only (§10.5), and unresolved person links are dropped at read
+/// (§5). Reads return link ids only (§10.5), and unresolved person links are dropped at read
 /// time (§10.4). Metadata extraction runs on add only and never overrides a caller-supplied value.
 /// </summary>
 public class PhotoService

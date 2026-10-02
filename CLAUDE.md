@@ -345,7 +345,7 @@ number while the server counted by another — the client-side-copy defect state
 `Beneficiary` contract party naming the contact and deletes it **in one transaction**, composing
 `contacts.delete` with `contracts.update` rather than adding a claim. Its `409` counterpart is
 **claim-conditional**, and
-that conditional lives in `ContactController` — `DomainConflictException` carries a message and nothing
+that conditional lives in `ContactsController` — `DomainConflictException` carries a message and nothing
 else, and the domain service has no `ClaimsPrincipal`, so neither it nor `GlobalExceptionHandler` could
 shape one.
 

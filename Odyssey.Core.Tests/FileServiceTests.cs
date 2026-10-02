@@ -3,25 +3,16 @@ using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
-using Microsoft.AspNetCore.Http;
-using Moq;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
 
 public class FileServiceTests
 {
-    private static IFormFile CreateMockFile(string fileName, string contentType, byte[] content)
-    {
-        var fileMock = new Mock<IFormFile>();
-        fileMock.Setup(f => f.FileName).Returns(fileName);
-        fileMock.Setup(f => f.ContentType).Returns(contentType);
-        fileMock.Setup(f => f.Length).Returns(content.Length);
-        // Return a fresh stream per call so content validation (header sniff) and the upload
-        // (hash + read) get independent streams — mirroring real FormFile.OpenReadStream().
-        fileMock.Setup(f => f.OpenReadStream()).Returns(() => new MemoryStream(content));
-        return fileMock.Object;
-    }
+    // A fresh stream per call so content validation (header sniff) and the upload (hash + read) get
+    // independent streams — mirroring real FormFile.OpenReadStream().
+    private static FileUpload CreateMockFile(string fileName, string contentType, byte[] content) =>
+        new(fileName, contentType, content.Length, () => new MemoryStream(content));
 
     // A minimal buffer beginning with the %PDF magic number so it passes content-type sniffing.
     // The trailing bytes distinguish otherwise-identical fixtures.

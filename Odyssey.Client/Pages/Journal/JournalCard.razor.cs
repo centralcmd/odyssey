@@ -10,7 +10,6 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
-using ArchivalStatus = Odyssey.Dtos.Journal.ArchivalStatus;
 
 namespace Odyssey.Client.Pages.Journal;
 

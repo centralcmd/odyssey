@@ -13,13 +13,13 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/transaction-tags")]
-public class TransactionTagController : ControllerBase
+public sealed class TransactionTagsController : ControllerBase
 {
-    private readonly ILogger<TransactionTagController> logger;
+    private readonly ILogger<TransactionTagsController> logger;
     private readonly TransactionTagService transactionTagService;
 
-    public TransactionTagController(
-        ILogger<TransactionTagController> logger,
+    public TransactionTagsController(
+        ILogger<TransactionTagsController> logger,
         TransactionTagService transactionTagService)
     {
         this.logger = logger;

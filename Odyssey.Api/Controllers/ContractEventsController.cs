@@ -15,7 +15,7 @@ using Odyssey.Core.Identity;
 namespace Odyssey.Api.Controllers;
 
 /// <summary>
-/// A contract's own event log. Split out of <c>ContractController</c> along the Property precedent, one controller per
+/// A contract's own event log. Split out of <c>ContractsController</c> along the Property precedent, one controller per
 /// sub-resource under the same route prefix; the routes and route names are unchanged (issue #287 M2).
 /// </summary>
 [ApiController]

@@ -89,8 +89,8 @@ public class ContractService
         if (term is not null)
         {
             var pattern = ListQuery.ContainsPattern(term);
-            // Contact now lives in OdysseyContext — a SQL JOIN to the Contacts table is impossible across
-            // the context boundary, so pre-resolve matching contact ids and filter parties by membership.
+            // Contacts are resolved through IContactLookup rather than a navigation join, so
+            // pre-resolve matching contact ids and filter parties by membership.
             var contactMatchIds = (await contactLookup.SearchIdsByNameAsync(term, cancellationToken)).ToHashSet();
             q = q.Where(c =>
                 EF.Functions.Like(c.Name, pattern) ||
@@ -534,7 +534,7 @@ public class ContractService
     /// when the contract does not exist.
     /// </summary>
     /// <remarks>
-    /// Public because <c>ContractController</c> pre-checks with it to build the claim-free structured
+    /// Public because <c>ContractsController</c> pre-checks with it to build the claim-free structured
     /// body, exactly as the contact-delete <c>409</c> pre-checks with <c>IContactReferenceGuard</c>:
     /// a <c>DomainException</c> cannot carry a list of objects. Both callers therefore have to agree
     /// on <em>when</em> the rule applies, which is why the "only on a type CHANGE" condition lives
@@ -959,8 +959,8 @@ public class ContractService
 
     private async Task<ExistingContract> ToDto(Contract contract, DateTime today, CancellationToken cancellationToken)
     {
-        // Batch-resolve the distinct, non-null party contact ids in one call (Contact now lives in
-        // OdysseyContext — no cross-context navigation include).
+        // Batch-resolve the distinct, non-null party contact ids in one IContactLookup call rather
+        // than a navigation include.
         var contactIds = contract.Parties
             .Where(p => p.ContactId is not null)
             .Select(p => p.ContactId!.Value)

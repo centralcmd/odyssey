@@ -33,8 +33,8 @@ namespace Odyssey.Dtos;
 /// <para>
 /// It lives here, beside the defaults, for the same reason they do: an attribute argument must be a
 /// compile-time constant naming a real symbol, <c>SystemSettingsUpdate</c> lives in
-/// <c>Odyssey.Dtos.Application</c>, and this assembly is that project's only project reference. The
-/// WebAssembly client can reach it too (client → <c>Application.Dtos</c> → here), unlike
+/// <c>Odyssey.Dtos.Application</c>, and <c>Odyssey.Dtos</c> has zero project references. The
+/// WebAssembly client can reach it too (client → <c>Odyssey.Dtos</c>), unlike
 /// <c>SystemSettingsKeys</c>.
 /// </para>
 /// </summary>

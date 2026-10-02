@@ -16,11 +16,11 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/accounts")]
-public class AccountController : ControllerBase
+public sealed class AccountsController : ControllerBase
 {
     private const string DefaultMainCurrency = "NOK";
 
-    private readonly ILogger<AccountController> logger;
+    private readonly ILogger<AccountsController> logger;
     private readonly AccountService accountService;
     private readonly FileService fileService;
     private readonly FileAnalysisService fileAnalysisService;
@@ -31,8 +31,8 @@ public class AccountController : ControllerBase
     private readonly ContractService contractService;
     private readonly IAuthorizationService authorizationService;
 
-    public AccountController(
-        ILogger<AccountController> logger,
+    public AccountsController(
+        ILogger<AccountsController> logger,
         AccountService accountService,
         FileService fileService,
         FileAnalysisService fileAnalysisService,

@@ -3,7 +3,7 @@ namespace Odyssey.TestData;
 /// <summary>
 /// A demo login user. Plain data only — actual Identity user creation (UserManager,
 /// password hashing, role assignment) happens in the seeder (step 2), so this project
-/// stays free of any Identity / Application.Context dependency.
+/// stays free of any Identity / Odyssey.Context dependency.
 /// </summary>
 /// <param name="Email">Login email; also used as the user name.</param>
 /// <param name="Role">Canonical role name from RoleDefinitions (Admin/Owner/User/Guest).</param>
@@ -12,7 +12,7 @@ namespace Odyssey.TestData;
 /// <param name="DisplayName">Profile display-name override shown in attribution.</param>
 /// <param name="BirthDate">Profile date of birth.</param>
 /// <param name="Sex">Profile sex as the Odyssey.Dtos.Application.Sex ordinal (1 = Male, 2 = Female);
-/// kept as a primitive so this project takes no Identity/Application.Context dependency.</param>
+/// kept as a primitive so this project takes no Identity/Odyssey.Context dependency.</param>
 public sealed record DemoUser(
     string Email,
     string Role,

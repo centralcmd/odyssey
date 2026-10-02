@@ -159,7 +159,7 @@ public class ContactAliasAuditTests
     }
 
     /// <summary>
-    /// The image and vCard audit lines moved out of <c>ContactController</c> with their actions when the
+    /// The image and vCard audit lines moved out of <c>ContactsController</c> with their actions when the
     /// controller was split per sub-resource (issue #287 M2). These pin that each still reaches the one
     /// <c>ContactAuditLog</c> category, names the actor, and echoes no name, value or file detail.
     /// </summary>

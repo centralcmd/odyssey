@@ -2,7 +2,6 @@ using Odyssey.Core;
 using Odyssey.Core.Imaging;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Http;
 
 namespace Odyssey.Core.Finance;
 
@@ -34,7 +33,7 @@ public class FileValidationService
     {
     }
 
-    public async Task ValidateFileAsync(IFormFile file, CancellationToken cancellationToken = default)
+    public async Task ValidateFileAsync(FileUpload file, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(file);
 
@@ -42,7 +41,7 @@ public class FileValidationService
         ValidateFile(file, limits.MaxUploadBytes);
     }
 
-    public void ValidateFile(IFormFile file, long maxFileSizeBytes)
+    public void ValidateFile(FileUpload file, long maxFileSizeBytes)
     {
         if (file == null)
         {
@@ -145,7 +144,7 @@ public class FileValidationService
     /// <para>
     /// <b>Public rather than private</b> (issue #86 §4.3): the image paths apply a narrower allow-list
     /// on top of this one and need the same check over a byte span they already hold (the vCard import
-    /// path decodes base64 and has no <c>IFormFile</c> at all).
+    /// path decodes base64 and has no uploaded file at all).
     /// </para>
     ///
     /// <para>

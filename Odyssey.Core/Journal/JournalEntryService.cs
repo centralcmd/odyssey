@@ -11,10 +11,10 @@ using Odyssey.Dtos;
 namespace Odyssey.Core.Journal;
 
 /// <summary>
-/// CRUD, archival, and server-side listing for the shared journal. Cross-context references
+/// CRUD, archival, and server-side listing for the shared journal. Cross-module references
 /// (contacts, files) are validated for existence via narrow read-only Finance lookups, which run in
 /// front of the DB foreign keys so a bad reference is a 400 rather than a constraint violation
-/// crosses the context boundary (§5). Reads return link ids only — the client hydrates names (§10.2).
+/// (§5). Reads return link ids only — the client hydrates names (§10.2).
 /// </summary>
 public class JournalEntryService
 {

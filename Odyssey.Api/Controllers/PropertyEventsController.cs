@@ -28,7 +28,7 @@ namespace Odyssey.Api.Controllers;
 /// </remarks>
 [ApiController]
 [Route("api/properties")]
-public class PropertyEventsController : ControllerBase
+public sealed class PropertyEventsController : ControllerBase
 {
     private readonly PropertyEventService eventService;
     private readonly IUserDisplayNameResolver displayNames;

@@ -17,7 +17,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/calendar-events")]
-public class CalendarEventsController : ControllerBase
+public sealed class CalendarEventsController : ControllerBase
 {
     private readonly ILogger<CalendarEventsController> logger;
     private readonly CalendarEventService service;

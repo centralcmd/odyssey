@@ -19,7 +19,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/journal-entries")]
-public class JournalEntriesController : ControllerBase
+public sealed class JournalEntriesController : ControllerBase
 {
     private readonly ILogger<JournalEntriesController> logger;
     private readonly JournalEntryService service;

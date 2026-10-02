@@ -15,7 +15,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/albums")]
-public class AlbumsController : ControllerBase
+public sealed class AlbumsController : ControllerBase
 {
     private readonly ILogger<AlbumsController> logger;
     private readonly PhotoAlbumService service;

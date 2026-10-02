@@ -19,7 +19,7 @@ using Odyssey.Core.Journal.Avatar;
 namespace Odyssey.Api.Controllers;
 
 /// <summary>
-/// A contact's email addresses. Split out of <c>ContactController</c> along the Property precedent, one controller per
+/// A contact's email addresses. Split out of <c>ContactsController</c> along the Property precedent, one controller per
 /// sub-resource under the same route prefix; the routes and route names are unchanged (issue #287 M2).
 /// </summary>
 [ApiController]

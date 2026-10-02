@@ -19,7 +19,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/tasks")]
-public class JournalTasksController : ControllerBase
+public sealed class JournalTasksController : ControllerBase
 {
     private readonly ILogger<JournalTasksController> logger;
     private readonly JournalTaskService service;

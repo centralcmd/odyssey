@@ -20,15 +20,15 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/contacts")]
-public class ContactController : ControllerBase
+public sealed class ContactsController : ControllerBase
 {
-    private readonly ILogger<ContactController> logger;
+    private readonly ILogger<ContactsController> logger;
     private readonly ContactService contactService;
     private readonly IContactReferenceGuard referenceGuard;
     private readonly ContactAuditLog audit;
 
-    public ContactController(
-        ILogger<ContactController> logger,
+    public ContactsController(
+        ILogger<ContactsController> logger,
         ContactService contactService,
         IContactReferenceGuard referenceGuard,
         ContactAuditLog audit)

@@ -17,6 +17,8 @@
     </ItemGroup>
 
     <ItemGroup>
+      <!-- UserAdministrationService (moved here by issue #287 M10) uses Identity and WebUtilities.
+           The domain's own file signatures still take FileUpload, not IFormFile (issue #287 L9). -->
       <FrameworkReference Include="Microsoft.AspNetCore.App" />
     </ItemGroup>
 

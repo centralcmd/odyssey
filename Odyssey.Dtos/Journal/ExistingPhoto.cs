@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Odyssey.Dtos.Journal;
 
 /// <summary>
-/// Full photo read model. Cross-context links are returned as ids only (§10.5); the client hydrates
+/// Full photo read model. Cross-module links are returned as ids only (§10.5); the client hydrates
 /// names (tag ids → tag names, person ids → contact names, album ids → album names). The image
 /// bytes are served separately via the existing authenticated <c>GET /api/files/{FileId}/content</c>.
 /// </summary>

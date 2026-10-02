@@ -177,9 +177,9 @@ public class TransactionService
         };
     }
 
-    // The Contact navigation was removed when Contact moved to OdysseyContext, so Mapster can no longer
-    // populate ExistingTransaction.Contact from the entity graph. Resolve the full contacts cross-context
-    // by id and attach them to the projected DTOs.
+    // Transaction carries no Contact navigation, so Mapster cannot populate ExistingTransaction.Contact
+    // from the entity graph. Resolve the full contacts through IContactLookup by id and attach them to
+    // the projected DTOs.
     private async Task EnrichContactsAsync(IReadOnlyCollection<ExistingTransaction> transactions, CancellationToken cancellationToken)
     {
         var contactIds = transactions

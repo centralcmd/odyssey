@@ -11,7 +11,7 @@ namespace Odyssey.Api.Controllers;
 
 /// <summary>
 /// The property smart-tag endpoints (issue #167) — a separate controller on the <c>api/properties</c>
-/// route prefix beside <see cref="PropertyController"/>, mirroring
+/// route prefix beside <see cref="PropertiesController"/>, mirroring
 /// <see cref="ContractSmartTagsController"/>. Behaviourally identical to it and to
 /// <see cref="AccountSmartTagsController"/>.
 ///
@@ -24,7 +24,7 @@ namespace Odyssey.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/properties")]
-public class PropertySmartTagsController : ControllerBase
+public sealed class PropertySmartTagsController : ControllerBase
 {
     private readonly PropertySmartTagService propertySmartTagService;
 

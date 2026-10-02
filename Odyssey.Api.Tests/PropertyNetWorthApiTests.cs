@@ -113,7 +113,7 @@ public class PropertyNetWorthApiTests
     [Fact]
     public void BothNetWorthActions_ReadTheOneHelper_AndNeitherInlinesTheClaim()
     {
-        var source = RepositoryRoot.ReadAllText(System.IO.Path.Combine("Odyssey.Api", "Controllers", "AccountController.cs"));
+        var source = RepositoryRoot.ReadAllText(System.IO.Path.Combine("Odyssey.Api", "Controllers", "AccountsController.cs"));
 
         foreach (var action in new[] { "GetTotals", "GetNetWorthHistory" })
         {

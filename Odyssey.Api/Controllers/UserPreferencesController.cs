@@ -12,7 +12,7 @@ namespace Odyssey.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/user-preferences")]
-public class UserPreferencesController : ControllerBase
+public sealed class UserPreferencesController : ControllerBase
 {
     // Matches UserPreference.Key's [Length(1, 256)] column, so an over-long key is a 400 rather than
     // a write failure (architect finding F-14).

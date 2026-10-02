@@ -15,7 +15,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/recurrence-patterns")]
-public class RecurrencePatternsController : ControllerBase
+public sealed class RecurrencePatternsController : ControllerBase
 {
     private readonly ILogger<RecurrencePatternsController> logger;
     private readonly RecurrencePatternService service;

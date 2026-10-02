@@ -6,7 +6,6 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Odyssey.Context;
 using Odyssey.Dtos.Journal;
-// Aliased rather than a plain using: Odyssey.Dtos.Finance also declares ArchivalStatus.
 using DetachedContactLinks = Odyssey.Dtos.Finance.DetachedContactLinks;
 using ContactDeleteBlockerClass = Odyssey.Dtos.Finance.ContactDeleteBlockerClass;
 using Odyssey.Core.Journal.Avatar;

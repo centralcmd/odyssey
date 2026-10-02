@@ -225,10 +225,10 @@ public sealed class OwnedFileSurfaceRulesApiTests
     /// download handler — a copy is a security control that a change to the shared one silently skips.
     /// </summary>
     [Fact]
-    public void TaxStatementController_UsesTheSharedDocumentHelpers()
+    public void TaxStatementsController_UsesTheSharedDocumentHelpers()
     {
         var source = RepositoryRoot.ReadAllText(
-            Path.Combine("Odyssey.Api", "Controllers", "TaxStatementController.cs"));
+            Path.Combine("Odyssey.Api", "Controllers", "TaxStatementsController.cs"));
 
         Assert.Contains("ValidateAttachableDocumentAsync(", source, StringComparison.Ordinal);
         Assert.Contains("StreamDocumentAsync(", source, StringComparison.Ordinal);
