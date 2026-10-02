@@ -158,7 +158,7 @@ public class ContactAliasAuditTests
     }
 
     private static List<string> ContactLines(LoggingApiFactory factory) =>
-        [.. factory.Logs.ForCategory("ContactController").Select(entry => entry.Message)];
+        [.. factory.Logs.ForCategory("ContactAuditLog").Select(entry => entry.Message)];
 
     private static List<string> AuditLines(LoggingApiFactory factory, string action) =>
         [.. ContactLines(factory).Where(message => message.Contains($" {action} by ", StringComparison.Ordinal))];
