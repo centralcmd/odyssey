@@ -10,9 +10,8 @@ namespace Odyssey.Api;
 public sealed class ContactAuditLog(ILogger<ContactAuditLog> logger)
 {
     /// <summary>
-    /// The actor slot for a principal with no user id. The writes behind these lines refuse such a
-    /// principal before they run, but the read-side vCard export does not, and an audit line must never
-    /// render an empty actor that reads as a logging fault.
+    /// The actor slot for a principal with no user id. Authentication never admits one, so this is
+    /// defence in depth: an audit line must never render an empty actor that reads as a logging fault.
     /// </summary>
     internal const string NoActor = "(no user id)";
 
