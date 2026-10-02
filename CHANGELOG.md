@@ -5,6 +5,21 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.1](https://github.com/centralcmd/odyssey/compare/v0.38.0...v0.38.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **api:** one rule set for the five file-attachment surfaces ([#287](https://github.com/centralcmd/odyssey/issues/287) H3, H4) ([#293](https://github.com/centralcmd/odyssey/issues/293)) ([de37904](https://github.com/centralcmd/odyssey/commit/de3790416e381e8f183a7b1f83cb4a1615045e4e))
+* **api:** shared settings resolver and dead-code removal ([#287](https://github.com/centralcmd/odyssey/issues/287) steps 1–2) ([#290](https://github.com/centralcmd/odyssey/issues/290)) ([b482aeb](https://github.com/centralcmd/odyssey/commit/b482aebb31cab6ec921d053a149a9a8090ffb682))
+
+
+### Refactoring
+
+* backend low-severity cleanups from [#287](https://github.com/centralcmd/odyssey/issues/287) (L3–L9) ([#294](https://github.com/centralcmd/odyssey/issues/294)) ([28afec0](https://github.com/centralcmd/odyssey/commit/28afec008e36a8df7ebd1919f66a40ecc628bfc8))
+* backend review medium findings (claims, exceptions, dtos, enum mirror, contacts, ics, core services) ([#295](https://github.com/centralcmd/odyssey/issues/295)) ([990e21b](https://github.com/centralcmd/odyssey/commit/990e21bceebcf9af0e8763d68e81ca957b6aedbf))
+* split contract service and controllers, unify acting-user plumbing ([#296](https://github.com/centralcmd/odyssey/issues/296)) ([46b1753](https://github.com/centralcmd/odyssey/commit/46b17533f95342bf4305ac211a6ae25b3ca452f8))
+
 ## [0.38.0](https://github.com/centralcmd/odyssey/compare/v0.37.1...v0.38.0) (2026-10-01)
 
 
