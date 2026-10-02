@@ -1,9 +1,9 @@
-using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.Dtos.Application;
+using Odyssey.Dtos.Authorization;
 using Odyssey.Client.Auth;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Pages;

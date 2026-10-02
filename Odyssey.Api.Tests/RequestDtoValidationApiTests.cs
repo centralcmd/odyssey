@@ -64,7 +64,11 @@ public sealed class RequestDtoValidationApiTests
         var body = new Dictionary<string, object> { [field] = 1 };
         var response = await client.PostAsJsonAsync(string.Format(route, Guid.NewGuid()), body);
 
+        // The `required` member is what refuses the body — [Required] alone is inert on a non-nullable
+        // Guid — and the problem names the missing property rather than some other failure.
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var text = await response.Content.ReadAsStringAsync();
+        Assert.Contains("fileId", text, StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task AssertRejectedAsync(string route, string field, string updateClaim, int ordinal)

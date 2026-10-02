@@ -9,9 +9,9 @@ namespace Odyssey.Api.Tests;
 
 /// <summary>
 /// Controllers learn who is acting one way and check a permission one way (issue #287 M4). The source
-/// lints keep the five former patterns — a <c>"unknown"</c> default, a thrown
-/// <see cref="InvalidOperationException"/>, a bare <c>Unauthorized()</c>, a hand-rolled problem and a
-/// null passed to the service — from coming back one call site at a time.
+/// lints keep the replaced patterns out: reading <c>ClaimTypes.NameIdentifier</c> directly (behind
+/// which the <c>null</c> pass-through and the thrown <see cref="InvalidOperationException"/> lived),
+/// an <c>"unknown"</c> actor, a bare <c>Unauthorized()</c>, and a raw permission <c>HasClaim</c>.
 /// </summary>
 public class ActingUserTests
 {
@@ -44,6 +44,13 @@ public class ActingUserTests
         Assert.Equal(StatusCodes.Status401Unauthorized, Assert.IsType<ProblemDetails>(result.Value).Status);
     }
 
+    [Theory]
+    [InlineData("User.HasClaim(PermissionClaims.Type, x)")]
+    [InlineData("User.HasClaim(\n    PermissionClaims.Type, x)")]
+    [InlineData("caller.HasClaim(type: PermissionClaims.Type, value: x)")]
+    public void TheRawCheckLint_MatchesItsVariants(string source) =>
+        Assert.Matches(RawPermissionCheck, source);
+
     [Fact]
     public void HasPermission_TestsThePermissionClaimType()
     {
@@ -67,18 +74,34 @@ public class ActingUserTests
     }
 
     [Fact]
+    public void NoController_DefaultsTheActorToUnknown_OrReturnsABareUnauthorized()
+    {
+        var offenders = ControllerSources()
+            .Where(source => source.Text.Contains("\"unknown\"", StringComparison.Ordinal)
+                || source.Text.Contains("return Unauthorized();", StringComparison.Ordinal))
+            .Select(source => source.Name)
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "Use MissingUserProblem(): " + string.Join(", ", offenders));
+    }
+
+    [Fact]
     public void NothingServerSide_ChecksAPermissionWithARawHasClaim()
     {
         var offenders = new[] { "Odyssey.Api", "Odyssey.Core" }
             .SelectMany(project => Directory.EnumerateFiles(
                 Path.Combine(RepositoryRoot.Path, project), "*.cs", SearchOption.AllDirectories))
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(path => File.ReadAllText(path).Contains("HasClaim(PermissionClaims.Type", StringComparison.Ordinal))
+            .Where(path => RawPermissionCheck.IsMatch(File.ReadAllText(path)))
             .Select(Path.GetFileName)
             .ToList();
 
         Assert.True(offenders.Count == 0, "Use HasPermission(claim): " + string.Join(", ", offenders));
     }
+
+    // Any spacing, line break or named argument between HasClaim( and the claim type.
+    private static readonly System.Text.RegularExpressions.Regex RawPermissionCheck =
+        new(@"HasClaim\(\s*(type:\s*)?PermissionClaims\.Type\b");
 
     private static IEnumerable<(string Name, string Text)> ControllerSources()
     {

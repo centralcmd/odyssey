@@ -18,9 +18,7 @@ public static class ActingUser
 {
     /// <summary>The caller's user id, or <see langword="null"/> when the principal carries none.</summary>
     public static string? ActingUserId(this ClaimsPrincipal user) =>
-        user.FindFirstValue(ClaimTypes.NameIdentifier) is { Length: > 0 } id && !string.IsNullOrWhiteSpace(id)
-            ? id
-            : null;
+        user.FindFirstValue(ClaimTypes.NameIdentifier) is { } id && !string.IsNullOrWhiteSpace(id) ? id : null;
 
     /// <summary>The <c>401</c> every action returns when <see cref="ActingUserId"/> is null.</summary>
     public static ObjectResult MissingUserProblem(this ControllerBase controller) =>

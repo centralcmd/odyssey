@@ -276,7 +276,7 @@ public class TermService
     /// <summary>
     /// The values a term log line names, on one side of a write. Money amounts, a currency code, a
     /// date and an opaque id — <b>no names, no free text and no user-supplied <c>Label</c></b>, matching
-    /// <c>ContractService.LogPartyWrite</c>'s rule. A <c>Guid</c> or a <c>decimal</c> cannot carry the
+    /// <c>ContractPartyService.LogPartyWrite</c>'s rule. A <c>Guid</c> or a <c>decimal</c> cannot carry the
     /// CR/LF a forged log line would need, which is what makes them safe to record verbatim.
     /// </summary>
     /// <remarks>

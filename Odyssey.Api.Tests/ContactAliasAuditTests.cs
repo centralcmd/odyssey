@@ -8,6 +8,7 @@ using Odyssey.Context;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.TestData.Fixtures;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -155,6 +156,58 @@ public class ContactAliasAuditTests
             Assert.DoesNotContain(Value, entry.Message, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain(Label, entry.Message, StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    /// <summary>
+    /// The image and vCard audit lines moved out of <c>ContactController</c> with their actions when the
+    /// controller was split per sub-resource (issue #287 M2). These pin that each still reaches the one
+    /// <c>ContactAuditLog</c> category, names the actor, and echoes no name, value or file detail.
+    /// </summary>
+    [Fact]
+    public async Task SettingAndRemovingTheImage_EmitsValueFreeEvents()
+    {
+        await using var factory = new LoggingApiFactory(ReadWrite);
+        var contactId = await SeedContactAsync(factory);
+        using var client = factory.CreateClient();
+
+        using (var content = new MultipartFormDataContent())
+        {
+            var part = new ByteArrayContent(ContactImageFixtures.BaselinePng());
+            part.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+            content.Add(part, "file", "portrait.png");
+            Assert.True((await client.PostAsync($"/api/contacts/{contactId}/avatar", content)).IsSuccessStatusCode);
+        }
+
+        Assert.True((await client.DeleteAsync($"/api/contacts/{contactId}/avatar")).IsSuccessStatusCode);
+
+        foreach (var action in new[] { "image set", "image removed" })
+        {
+            var line = Assert.Single(AuditLines(factory, action));
+            Assert.Contains(contactId.ToString(), line, StringComparison.Ordinal);
+            Assert.Contains(ActorUserId, line, StringComparison.Ordinal);
+            Assert.DoesNotContain("portrait", line, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Acme", line, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public async Task BothVCardExports_EmitACountOnlyEvent()
+    {
+        await using var factory = new LoggingApiFactory(ReadWrite);
+        var contactId = await SeedContactAsync(factory);
+        using var client = factory.CreateClient();
+
+        Assert.True((await client.GetAsync($"/api/contacts/{contactId}/vcard")).IsSuccessStatusCode);
+        Assert.True((await client.GetAsync("/api/contacts/vcard")).IsSuccessStatusCode);
+
+        var lines = ContactLines(factory).Where(line => line.Contains("vCard export", StringComparison.Ordinal)).ToList();
+        Assert.Equal(2, lines.Count);
+        Assert.All(lines, line =>
+        {
+            Assert.Contains("1 contact(s) (all)", line, StringComparison.Ordinal);
+            Assert.Contains(ActorUserId, line, StringComparison.Ordinal);
+            Assert.DoesNotContain("Acme", line, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     private static List<string> ContactLines(LoggingApiFactory factory) =>

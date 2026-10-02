@@ -10,6 +10,13 @@ namespace Odyssey.Api;
 public sealed class ContactAuditLog(ILogger<ContactAuditLog> logger)
 {
     /// <summary>
+    /// The actor slot for a principal with no user id. The writes behind these lines refuse such a
+    /// principal before they run, but the read-side vCard export does not, and an audit line must never
+    /// render an empty actor that reads as a logging fault.
+    /// </summary>
+    internal const string NoActor = "(no user id)";
+
+    /// <summary>
     /// A structured, <b>value-free</b> audit event for a change to the personal data issue #48 adds
     /// (§10.9). <c>Contact.UpdatedAt</c> records <i>that</i> something changed and never <i>who</i> or
     /// <i>what</i>, which cannot answer "who recorded this?" or, after an incident, "whose maiden
@@ -23,7 +30,7 @@ public sealed class ContactAuditLog(ILogger<ContactAuditLog> logger)
     /// </summary>
     public void ContactChanged(ClaimsPrincipal actor, Guid contactId, string action) =>
         logger.LogInformation(
-            "Contact {ContactId} {Action} by {ActorUserId}.", contactId, action, actor.ActingUserId());
+            "Contact {ContactId} {Action} by {ActorUserId}.", contactId, action, actor.ActingUserId() ?? NoActor);
 
     /// <summary>
     /// The bulk-read counterpart (§10.11). A <c>contacts.read</c> holder — <b>Guest included</b> — can
@@ -33,5 +40,5 @@ public sealed class ContactAuditLog(ILogger<ContactAuditLog> logger)
     public void VCardExported(ClaimsPrincipal actor, int rowCount, bool filtered) =>
         logger.LogInformation(
             "Contacts vCard export of {RowCount} contact(s) ({Scope}) by {ActorUserId}.",
-            rowCount, filtered ? "filtered" : "all", actor.ActingUserId());
+            rowCount, filtered ? "filtered" : "all", actor.ActingUserId() ?? NoActor);
 }

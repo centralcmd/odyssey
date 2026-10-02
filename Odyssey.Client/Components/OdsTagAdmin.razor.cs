@@ -1,10 +1,10 @@
-using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Services;
+using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Components;
