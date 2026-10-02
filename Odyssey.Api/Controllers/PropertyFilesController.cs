@@ -67,10 +67,9 @@ public sealed class PropertyFilesController : ControllerBase
             return problem;
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         var created = await service.AttachFile(propertyId, request, userId, cancellationToken);

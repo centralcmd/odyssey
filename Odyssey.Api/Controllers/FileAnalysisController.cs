@@ -180,8 +180,10 @@ public sealed class FileAnalysisController : ControllerBase
         [FromBody] [SwaggerParameter("ImportRequest", Required = true)]
         ImportRequest request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            ?? throw new InvalidOperationException("User ID not found in claims.");
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
 
         var result = await fileAnalysisService.ImportCandidatesAsync(analysisJobId, request, userId, cancellationToken);
         return Ok(result);

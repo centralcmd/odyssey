@@ -81,8 +81,13 @@ public sealed class PropertyEventsController : ControllerBase
         [FromBody] NewPropertyEvent request,
         CancellationToken cancellationToken = default)
     {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         var created = await eventService.CreateAsync(
-            propertyId, request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+            propertyId, request, userId, cancellationToken);
         if (created is null)
         {
             return this.NotFoundProblem($"Property ID {propertyId} was not found.");

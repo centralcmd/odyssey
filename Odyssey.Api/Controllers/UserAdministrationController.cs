@@ -73,7 +73,12 @@ public sealed class UserAdministrationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> UpdateUser([FromRoute] string id, [FromBody] UpdatedUser request)
     {
-        var updatedUser = await userAdministrationService.UpdateAsync(User, GetActorUserId(), id, request);
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        var updatedUser = await userAdministrationService.UpdateAsync(User, userId, id, request);
         return Ok(updatedUser);
     }
 
@@ -85,7 +90,12 @@ public sealed class UserAdministrationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> AssignRole([FromRoute] string id, [FromBody] UpdatedUserRole request)
     {
-        var updatedUser = await userAdministrationService.AssignRoleAsync(User, GetActorUserId(), id, request);
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        var updatedUser = await userAdministrationService.AssignRoleAsync(User, userId, id, request);
         return Ok(updatedUser);
     }
 
@@ -126,8 +136,13 @@ public sealed class UserAdministrationController : ControllerBase
         [FromRoute] string id,
         CancellationToken cancellationToken = default)
     {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         var delivery = await userAdministrationService.SendPasswordResetAsync(
-            GetActorUserId(), id, cancellationToken);
+            userId, id, cancellationToken);
 
         // NotConfigured maps to delivered: with no SMTP host the link is logged instead, and in that
         // (Development/Testing-only) environment logging *is* the delivery mechanism.
@@ -145,12 +160,12 @@ public sealed class UserAdministrationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> DeleteUser([FromRoute] string id)
     {
-        await userAdministrationService.DeleteAsync(GetActorUserId(), id);
-        return NoContent();
-    }
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
 
-    private string GetActorUserId()
-    {
-        return User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
+        await userAdministrationService.DeleteAsync(userId, id);
+        return NoContent();
     }
 }

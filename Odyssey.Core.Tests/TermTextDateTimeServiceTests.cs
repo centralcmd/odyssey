@@ -158,7 +158,7 @@ public class TermTextDateTimeServiceTests
         SeedTerm(context, id, "Service charge", ContextTermValueUnit.Amount, FixedToday.AddMonths(-6), value: 40m);
         SeedTerm(context, id, "Service charge", ContextTermValueUnit.Text, FixedToday.AddMonths(-1), text: "Included in the rent");
 
-        var summary = await Summary(context).GetSummary("USD");
+        var summary = await Summaries(context).GetSummary("USD");
 
         Assert.Null(summary.RunRate.Monthly);
         Assert.Empty(summary.UpcomingCharges);
@@ -172,7 +172,7 @@ public class TermTextDateTimeServiceTests
         SeedTerm(context, id, "Management", ContextTermValueUnit.Amount, FixedToday.AddMonths(-6), value: 40m);
         SeedTerm(context, id, "Management", ContextTermValueUnit.Percentage, FixedToday.AddMonths(-1), value: 0.01m);
 
-        var summary = await Summary(context).GetSummary("USD");
+        var summary = await Summaries(context).GetSummary("USD");
 
         Assert.Null(summary.RunRate.Monthly);
     }
@@ -187,7 +187,7 @@ public class TermTextDateTimeServiceTests
         SeedTerm(context, id, "Break deadline", ContextTermValueUnit.DateTime, FixedToday.AddMonths(-6),
             instant: FixedToday.AddMonths(5));
 
-        var summary = await Summary(context).GetSummary("USD");
+        var summary = await Summaries(context).GetSummary("USD");
 
         Assert.Equal(1000m, summary.RunRate.Monthly);
     }
@@ -221,7 +221,18 @@ public class TermTextDateTimeServiceTests
 
     private ContractService Summary(OdysseyContext context) =>
         new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
-            new FakeSystemSettingsLookup(), NullLogger<ContractService>.Instance);
+            NullLogger<ContractService>.Instance);
+
+    private ContractPartyService Parties(OdysseyContext context) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new FakeSystemSettingsLookup(), NullLogger<ContractPartyService>.Instance);
+
+    private ContractFileService Files(OdysseyContext context) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new FakeSystemSettingsLookup());
+
+    private ContractSummaryService Summaries(OdysseyContext context) =>
+        new(context, new FixedTimeProvider(FixedToday), new FakeSystemSettingsLookup());
 
     private static Guid SeedActiveContract(OdysseyContext context)
     {

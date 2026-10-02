@@ -44,7 +44,7 @@ public sealed class UserDisplayNameResolver : IUserDisplayNameResolver
             result[id] = UnknownUser;
         }
 
-        var callerCanSeeEmail = caller.HasClaim(PermissionClaims.Type, PermissionClaims.UsersRead);
+        var callerCanSeeEmail = caller.HasPermission(PermissionClaims.UsersRead);
 
         // Single batched WHERE Id IN (...) left-join projecting only the five allowed columns — never
         // BirthDate/Sex/Title/MiddleName/LastName (spec §5/§10).

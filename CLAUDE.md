@@ -277,8 +277,8 @@ Five further rules are easy to get backwards:
 - **A rejected role is a `422`, never a `400`.** The body is well-formed and every value in it is a
   real member — what fails is the *combination*, which is the derived-bound case CLAUDE.md
   distinguishes from a compile-time one. So it is `DomainUnprocessableException`, keyed on `role`, and
-  the check lives in `ContractService` because legality depends on the *contract's* type, which model
-  validation cannot see.
+  the check lives in `ContractPartyService` (the party writes, split out of `ContractService` by issue
+  #287 M1) because legality depends on the *contract's* type, which model validation cannot see.
 - **Only a type CHANGE is checked, and that condition lives in `ContractService`, not at either call
   site.** A contract keeping its type is never refused however illegal an existing party's role is:
   such a row is a legacy one, and freezing every other field on its contract would not help — the

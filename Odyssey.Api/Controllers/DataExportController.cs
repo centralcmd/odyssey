@@ -41,8 +41,12 @@ public sealed class DataExportController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DataExportDocument))]
     public async Task<IActionResult> Export(CancellationToken cancellationToken)
     {
-        var exportedByUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
-        var header = dataExportService.CreateHeader(exportedByUserId);
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        var header = dataExportService.CreateHeader(userId);
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -60,7 +64,7 @@ public sealed class DataExportController : ControllerBase
             // Metadata only — never the payload itself.
             logger.LogInformation(
                 "Data export succeeded for user {UserId}: {ByteCount} bytes, {ElapsedMs} ms, row counts {@RowCounts}.",
-                exportedByUserId,
+                userId,
                 summary.ByteCount,
                 stopwatch.ElapsedMilliseconds,
                 summary.RowCounts);
@@ -69,7 +73,7 @@ public sealed class DataExportController : ControllerBase
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            logger.LogInformation("Data export cancelled by client for user {UserId}.", exportedByUserId);
+            logger.LogInformation("Data export cancelled by client for user {UserId}.", userId);
             throw;
         }
         catch (Exception exception)
@@ -80,7 +84,7 @@ public sealed class DataExportController : ControllerBase
             logger.LogError(
                 exception,
                 "Data export failed for user {UserId} after {ElapsedMs} ms ({ResponseState}).",
-                exportedByUserId,
+                userId,
                 stopwatch.ElapsedMilliseconds,
                 Response.HasStarted ? "response already started" : "nothing written");
             throw;

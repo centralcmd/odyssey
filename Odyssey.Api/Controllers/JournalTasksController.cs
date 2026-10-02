@@ -85,10 +85,9 @@ public sealed class JournalTasksController : ControllerBase
     public async Task<IActionResult> Post(
         [FromBody] NewJournalTask request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         if (request.AttachmentFileIds.Length > 0 && !CanLinkFiles())
@@ -113,10 +112,9 @@ public sealed class JournalTasksController : ControllerBase
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateJournalTask request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         if (request.AttachmentFileIds.Length > 0 && !CanLinkFiles())
@@ -205,10 +203,9 @@ public sealed class JournalTasksController : ControllerBase
             return this.BadRequestProblem("The uploaded file must be a calendar file (text/calendar).");
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return this.UnauthorizedProblem("User identity is missing from the request.");
+            return this.MissingUserProblem();
         }
 
         await using var stream = file.OpenReadStream();
@@ -224,5 +221,5 @@ public sealed class JournalTasksController : ControllerBase
         task.UpdatedByName = names.NameForOptional(task.UpdatedByUserId);
     }
 
-    private bool CanLinkFiles() => User.HasClaim(PermissionClaims.Type, PermissionClaims.FilesRead);
+    private bool CanLinkFiles() => User.HasPermission(PermissionClaims.FilesRead);
 }

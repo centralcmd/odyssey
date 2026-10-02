@@ -50,10 +50,9 @@ public sealed class FilesController : ControllerBase
             return this.BadRequestProblem("File is required");
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return this.UnauthorizedProblem("User identity is missing from the request.");
+            return this.MissingUserProblem();
         }
 
         var result = await fileService.UploadFileAsync(file.ToFileUpload(), userId, description, cancellationToken);

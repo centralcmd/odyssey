@@ -335,6 +335,13 @@ public class AccountService
             .Select(g => new { AccountId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.AccountId, x => x.Count, cancellationToken);
 
+    /// <summary>
+    /// Whether the account exists, without the balance sum and the joins <see cref="Get"/> runs to
+    /// build the read model (issue #287 M9). Use it wherever only presence matters.
+    /// </summary>
+    public async Task<bool> Exists(Guid accountId, CancellationToken cancellationToken = default) =>
+        await context.Accounts.AnyAsync(a => a.AccountId == accountId, cancellationToken);
+
     /// <param name="includeContractCount">As on <see cref="ListAsync"/>.</param>
     public async Task<ExistingAccount?> Get(
         Guid accountId, CancellationToken cancellationToken = default, bool includeContractCount = false)

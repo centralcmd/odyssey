@@ -40,10 +40,9 @@ public sealed class ProfileController : ControllerBase
     [SwaggerOperation(Summary = "Read the current user's own profile and its completeness flag.")]
     public async Task<IActionResult> Get(CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         return Ok(await service.GetAsync(userId, cancellationToken));
@@ -58,10 +57,9 @@ public sealed class ProfileController : ControllerBase
         [FromBody] ProfileDto request,
         CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         return Ok(await service.SaveAsync(userId, request, cancellationToken));
@@ -115,10 +113,9 @@ at most 1024 x 1024; not animated), stripped of all embedded metadata and re-val
         IFormFile file,
         CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         // Only `file` is bound. Any other form field — a userId, a fileId, a contentType, a sizeBytes —
@@ -167,10 +164,9 @@ Its rate limit is a SEPARATE budget from the upload's: sharing one would mean a 
 it uploading could not remove their picture, which throttles the erasure control itself.")]
     public async Task<IActionResult> DeleteImage(CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         var outcome = await images.RemoveAsync(userId, cancellationToken);

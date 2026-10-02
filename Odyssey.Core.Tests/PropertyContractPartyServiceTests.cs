@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
@@ -51,7 +52,18 @@ public class PropertyContractPartyServiceTests
 
     private ContractService Contracts(OdysseyContext context, ILogger<ContractService>? logger = null) =>
         new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
-            new StubCaps(), logger ?? new RecordingLogger<ContractService>());
+            logger ?? new RecordingLogger<ContractService>());
+
+    private ContractPartyService Parties(OdysseyContext context, ILogger<ContractService>? logger = null) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new StubCaps(), (logger is null ? NullLogger<ContractPartyService>.Instance : new ForwardingLogger<ContractPartyService>(logger)));
+
+    private ContractFileService Files(OdysseyContext context, ILogger<ContractService>? logger = null) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new StubCaps());
+
+    private ContractSummaryService Summaries(OdysseyContext context, ILogger<ContractService>? logger = null) =>
+        new(context, new FixedTimeProvider(FixedToday), new StubCaps());
 
     private static PropertyService Properties(OdysseyContext context, ILogger<PropertyService>? logger = null) =>
         new(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(FixedToday), logger);
@@ -73,7 +85,7 @@ public class PropertyContractPartyServiceTests
         var service = Contracts(context);
         var contract = await service.Create(Contract(), userId: null);
 
-        var party = await service.AddParty(contract.ContractId,
+        var party = await Parties(context).AddParty(contract.ContractId,
             new ContractPartyRequest { PropertyId = propertyId, Role = ContractPartyRole.Object }, UserId);
 
         Assert.Equal(ContractPartyKind.Property, party!.Kind);
@@ -99,7 +111,7 @@ public class PropertyContractPartyServiceTests
         var service = Contracts(context);
         var contract = await service.Create(Contract(), userId: null);
 
-        var error = await Assert.ThrowsAsync<DomainValidationException>(() => service.AddParty(contract.ContractId,
+        var error = await Assert.ThrowsAsync<DomainValidationException>(() => Parties(context).AddParty(contract.ContractId,
             new ContractPartyRequest { PropertyId = propertyId, AccountId = Guid.NewGuid(), Role = ContractPartyRole.Other },
             UserId));
 
@@ -116,7 +128,7 @@ public class PropertyContractPartyServiceTests
         var service = Contracts(context);
         var contract = await service.Create(Contract(), userId: null);
 
-        var party = await service.AddParty(contract.ContractId,
+        var party = await Parties(context).AddParty(contract.ContractId,
             new ContractPartyRequest { PropertyId = propertyId, Role = ContractPartyRole.Property }, UserId);
 
         Assert.Equal(ContractPartyKind.Property, party!.Kind);
@@ -129,10 +141,10 @@ public class PropertyContractPartyServiceTests
         var propertyId = (await Properties(context).Create(PropertyTestData.House(), userId: null)).PropertyId;
         var service = Contracts(context);
         var contract = await service.Create(Contract(), userId: null);
-        var party = await service.AddParty(contract.ContractId,
+        var party = await Parties(context).AddParty(contract.ContractId,
             new ContractPartyRequest { PropertyId = propertyId, Role = ContractPartyRole.Property }, UserId);
 
-        await service.UpdateParty(contract.ContractId, party!.ContractPartyId,
+        await Parties(context).UpdateParty(contract.ContractId, party!.ContractPartyId,
             new ContractPartyRequest { PropertyId = propertyId, Role = ContractPartyRole.Property, ToDate = FixedToday },
             UserId);
 
@@ -146,7 +158,7 @@ public class PropertyContractPartyServiceTests
         var propertyId = (await Properties(context).Create(PropertyTestData.House("Cabin"), userId: null)).PropertyId;
         var service = Contracts(context);
         var contract = await service.Create(Contract(type: DtoContractType.Insurance), userId: null);
-        await service.AddParty(contract.ContractId,
+        await Parties(context).AddParty(contract.ContractId,
             new ContractPartyRequest { PropertyId = propertyId, Role = ContractPartyRole.Insured }, UserId);
 
         var blockers = await service.FindPartiesRejectedByTypeAsync(contract.ContractId, DtoContractType.Employment);
@@ -162,11 +174,11 @@ public class PropertyContractPartyServiceTests
         var contracts = Contracts(context);
         var loan = await contracts.Create(Contract("Loan"), userId: null);
         var cover = await contracts.Create(Contract("Cover"), userId: null);
-        await contracts.AddParty(loan.ContractId,
+        await Parties(context).AddParty(loan.ContractId,
             new ContractPartyRequest { PropertyId = propertyId, Role = ContractPartyRole.Collateral }, UserId);
-        await contracts.AddParty(loan.ContractId,
+        await Parties(context).AddParty(loan.ContractId,
             new ContractPartyRequest { PropertyId = propertyId, Role = ContractPartyRole.Property }, UserId);
-        await contracts.AddParty(cover.ContractId,
+        await Parties(context).AddParty(cover.ContractId,
             new ContractPartyRequest { PropertyId = propertyId, Role = ContractPartyRole.Object }, UserId);
         var eventsBefore = await context.ContractEvents.CountAsync();
         var logger = new RecordingLogger<PropertyService>();

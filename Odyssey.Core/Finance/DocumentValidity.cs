@@ -51,7 +51,7 @@ public static class DocumentValidity
         var to = NormalizeOne(validTo, ValidToField);
         var issued = NormalizeOne(issuedAt, IssuedAtField);
 
-        // By date, not by instant, matching ContractService.NormalizePartyTerm: these are calendar
+        // By date, not by instant, matching ContractPartyService.NormalizePartyTerm: these are calendar
         // facts on a document, and ValidFrom == ValidTo is a legitimate single-day validity.
         if (from is { } start && to is { } end && end.Date < start.Date)
         {

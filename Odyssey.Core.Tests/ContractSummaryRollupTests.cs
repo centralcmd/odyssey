@@ -34,7 +34,18 @@ public class ContractSummaryRollupTests
 
     private ContractService CreateService(OdysseyContext context) =>
         new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
-            new FakeSystemSettingsLookup(), NullLogger<ContractService>.Instance);
+            NullLogger<ContractService>.Instance);
+
+    private ContractPartyService Parties(OdysseyContext context) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new FakeSystemSettingsLookup(), NullLogger<ContractPartyService>.Instance);
+
+    private ContractFileService Files(OdysseyContext context) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new FakeSystemSettingsLookup());
+
+    private ContractSummaryService Summaries(OdysseyContext context) =>
+        new(context, new FixedTimeProvider(FixedToday), new FakeSystemSettingsLookup());
 
     private static Guid SeedContract(
         OdysseyContext context,
@@ -100,7 +111,7 @@ public class ContractSummaryRollupTests
     }
 
     private Task<ContractSummary> Summarise(OdysseyContext context) =>
-        CreateService(context).GetSummary("USD");
+        Summaries(context).GetSummary("USD");
 
     // ── Run rate ─────────────────────────────────────────────────────────────
 
@@ -333,7 +344,7 @@ public class ContractSummaryRollupTests
 
         // Blank base: the pick is the most common currency among the RUNNING fees, so the two EUR
         // rows on the not-yet-started contract must not outvote the single USD one.
-        var summary = await CreateService(context).GetSummary(baseCurrency: null);
+        var summary = await Summaries(context).GetSummary(baseCurrency: null);
 
         Assert.Equal("USD", summary.RunRate.BaseCurrency);
     }
@@ -406,8 +417,7 @@ public class ContractSummaryRollupTests
         }
 
         var lookup = new FakeSystemSettingsLookup { ContractSummary = new ContractSummarySettings(45, 45, 2) };
-        var service = new ContractService(context, TestContextFactory.ContactLookup(journal),
-            new FixedTimeProvider(FixedToday), lookup, NullLogger<ContractService>.Instance);
+        var service = new ContractSummaryService(context, new FixedTimeProvider(FixedToday), lookup);
 
         var summary = await service.GetSummary("USD");
 

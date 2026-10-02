@@ -58,10 +58,9 @@ public sealed class CalendarEventsController : ControllerBase
     public async Task<IActionResult> ExportIcs(
         [FromQuery] CalendarEventsIcsExportQueryParams query, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         await icsService.ExportAggregateStreamingAsync(query, userId, Response.Body, (fileName, rowCount) =>
@@ -120,10 +119,9 @@ public sealed class CalendarEventsController : ControllerBase
     public async Task<IActionResult> Post(
         [FromBody] NewCalendarEvent request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         var created = await service.Create(request, userId, cancellationToken);
@@ -140,10 +138,9 @@ public sealed class CalendarEventsController : ControllerBase
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewCalendarEvent request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         var updated = await service.Update(id, request, userId, cancellationToken);

@@ -89,7 +89,7 @@ public sealed class AccountSecurityController : ControllerBase
         var user = await userManager.GetUserAsync(User);
         if (user is null)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         // Identity does NOT reject a no-op change — ChangePasswordAsync happily rehashes the same password
@@ -179,7 +179,7 @@ public sealed class AccountSecurityController : ControllerBase
         var user = await userManager.GetUserAsync(User);
         if (user is null)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         var newEmail = request.NewEmail.Trim();

@@ -89,10 +89,9 @@ public sealed class CalendarIcsController : ControllerBase
             return this.BadRequestProblem("The uploaded file must be a calendar file (text/calendar).");
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return this.UnauthorizedProblem("User identity is missing from the request.");
+            return this.MissingUserProblem();
         }
 
         await using var stream = file.OpenReadStream();

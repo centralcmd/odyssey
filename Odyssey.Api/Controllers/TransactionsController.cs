@@ -1,3 +1,4 @@
+using Odyssey.Core;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -181,8 +182,7 @@ public sealed class TransactionsController : ControllerBase
         [FromBody] [SwaggerParameter("Request", Required = true,
             Description = @"The file to attach.")] AttachTransactionFileRequest request, CancellationToken cancellationToken = default)
     {
-        var transaction = await transactionService.Get(transactionId, cancellationToken);
-        if (transaction is null)
+        if (!await transactionService.Exists(transactionId, cancellationToken))
         {
             return this.NotFoundProblem($"Transaction ID {transactionId} not found.");
         }
@@ -193,13 +193,14 @@ public sealed class TransactionsController : ControllerBase
             return this.NotFoundProblem($"File ID {request.FileId} not found.");
         }
         
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            ?? throw new InvalidOperationException("User ID not found in claims.");
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
 
-        if (!Enum.IsDefined(typeof(Odyssey.Dtos.Finance.TransactionFileType), request.Type))
-            return this.BadRequestProblem($"Invalid file type value: {(int)request.Type}.");
-
-        var fileType = (Odyssey.Context.TransactionFileType)(int)request.Type;
+        // An undefined Type never gets here over HTTP: [EnumDataType] on the request is a model-validation
+        // 400 (issue #287 M5). The mirror's fallback only matters for a direct, non-HTTP caller.
+        var fileType = EnumMirror.Convert(request.Type, Odyssey.Context.TransactionFileType.Other);
         var created = await transactionService.AttachFileToTransaction(transactionId, request.FileId, userId, fileType, cancellationToken);
         if (created is null)
         {

@@ -213,7 +213,7 @@ public class ContractSummaryDirectionTests
             direction: ContextTermDirection.Incoming);
 
         var lookup = new FakeSystemSettingsLookup { ContractSummary = new ContractSummarySettings(45, 45, 2) };
-        var summary = await CreateService(context, lookup).GetSummary("USD");
+        var summary = await Summaries(context, lookup).GetSummary("USD");
 
         // Two charges — the cap — AND the receipt, which a shared budget would have crowded out.
         Assert.Equal(2, summary.UpcomingCharges.Count);
@@ -333,10 +333,21 @@ public class ContractSummaryDirectionTests
 
     private ContractService CreateService(OdysseyContext context, FakeSystemSettingsLookup? lookup = null) =>
         new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
-            lookup ?? new FakeSystemSettingsLookup(), NullLogger<ContractService>.Instance);
+            NullLogger<ContractService>.Instance);
+
+    private ContractPartyService Parties(OdysseyContext context, FakeSystemSettingsLookup? lookup = null) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            lookup ?? new FakeSystemSettingsLookup(), NullLogger<ContractPartyService>.Instance);
+
+    private ContractFileService Files(OdysseyContext context, FakeSystemSettingsLookup? lookup = null) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            lookup ?? new FakeSystemSettingsLookup());
+
+    private ContractSummaryService Summaries(OdysseyContext context, FakeSystemSettingsLookup? lookup = null) =>
+        new(context, new FixedTimeProvider(FixedToday), lookup ?? new FakeSystemSettingsLookup());
 
     private Task<ContractSummary> Summarise(OdysseyContext context) =>
-        CreateService(context).GetSummary("USD");
+        Summaries(context).GetSummary("USD");
 
     /// <summary>
     /// A contract that derives as Active unless the caller asks otherwise. Signed by default, because

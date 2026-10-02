@@ -70,7 +70,11 @@ public sealed class AdminFileExportController : ControllerBase
     private async Task<IActionResult> WriteExportAsync(
         Func<Task<IReadOnlyList<FileExportItem>>> prepare, string? fileNameSuffix, CancellationToken cancellationToken)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         logger.LogInformation("File export requested by user {UserId}.", userId);
 
         // Validate the snapshot BEFORE writing any bytes, so a missing-content failure can still

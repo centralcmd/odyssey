@@ -383,13 +383,22 @@ public class TaxStatementApiTests
 
         var id = await CreateAsync(client);
 
-        var pdf = await client.PostAsJsonAsync($"{Path}/{id}/files", new AttachTaxStatementFileRequest(pdfId));
+        var pdf = await client.PostAsJsonAsync($"{Path}/{id}/files", new AttachTaxStatementFileRequest
+        {
+            FileId = pdfId,
+        });
         Assert.Equal(HttpStatusCode.Created, pdf.StatusCode);
 
-        var jpeg = await client.PostAsJsonAsync($"{Path}/{id}/files", new AttachTaxStatementFileRequest(jpegId));
+        var jpeg = await client.PostAsJsonAsync($"{Path}/{id}/files", new AttachTaxStatementFileRequest
+        {
+            FileId = jpegId,
+        });
         Assert.Equal(HttpStatusCode.Created, jpeg.StatusCode);
 
-        var unsupported = await client.PostAsJsonAsync($"{Path}/{id}/files", new AttachTaxStatementFileRequest(textId));
+        var unsupported = await client.PostAsJsonAsync($"{Path}/{id}/files", new AttachTaxStatementFileRequest
+        {
+            FileId = textId,
+        });
         Assert.Equal(HttpStatusCode.BadRequest, unsupported.StatusCode);
 
         var downloadPdf = await client.GetAsync($"{Path}/{id}/files/{pdfId}");

@@ -57,8 +57,7 @@ public sealed class AccountEstimatesController : ControllerBase
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromQuery(Name = "asOf")] DateTime? asOf = null, CancellationToken cancellationToken = default)
     {
-        var accountExists = await accountService.Get(accountId, cancellationToken) is not null;
-        if (!accountExists)
+        if (!await accountService.Exists(accountId, cancellationToken))
             return this.NotFoundProblem($"Account ID {accountId} not found.");
 
         var estimate = await accountEstimateService.GetCurrent(accountId, asOf, cancellationToken);

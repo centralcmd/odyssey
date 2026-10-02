@@ -58,7 +58,7 @@ public class AccountContractLinkRelationalTests(MariaDbFixture fixture)
         await using (var context = NewContext())
         {
             var contracts = new ContractService(
-                context, new ContactLookup(context), TimeProvider.System, new ShippedCaps(),
+                context, new ContactLookup(context), TimeProvider.System,
                 NullLogger<ContractService>.Instance);
 
             var rows = Assert.IsType<List<AccountContractLink>>(await contracts.ListForAccountAsync(accountId));

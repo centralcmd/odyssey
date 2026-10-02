@@ -94,7 +94,10 @@ public class TransactionFileControllerTests
         financeContext.Add(transaction);
         await financeContext.SaveChangesAsync();
 
-        var attachResult = await controller.AttachTransactionFile(transaction.TransactionId, new AttachTransactionFileRequest(fileMetadataId));
+        var attachResult = await controller.AttachTransactionFile(transaction.TransactionId, new AttachTransactionFileRequest
+        {
+            FileId = fileMetadataId,
+        });
         var created = Assert.IsType<CreatedAtRouteResult>(attachResult);
         Assert.Equal("GetTransactionFiles", created.RouteName);
         Assert.Equal(fileMetadataId, Assert.IsType<ExistingTransactionFile>(created.Value).FileMetadata.Id);
@@ -165,7 +168,11 @@ public class TransactionFileControllerTests
 
         var attachResult = await controller.AttachTransactionFile(
             transaction.TransactionId,
-            new AttachTransactionFileRequest(fileMetadataId, FinanceDtos.TransactionFileType.Receipt));
+            new AttachTransactionFileRequest
+            {
+                FileId = fileMetadataId,
+                Type = FinanceDtos.TransactionFileType.Receipt,
+            });
         Assert.IsType<CreatedAtRouteResult>(attachResult);
 
         var listResult = await controller.GetTransactionFiles(transaction.TransactionId);
@@ -220,7 +227,7 @@ public class TransactionFileControllerTests
         // Attach without specifying type — should default to Other
         var attachResult = await controller.AttachTransactionFile(
             transaction.TransactionId,
-            new AttachTransactionFileRequest(fileMetadataId));
+            new AttachTransactionFileRequest { FileId = fileMetadataId });
         Assert.IsType<CreatedAtRouteResult>(attachResult);
 
         var listResult = await controller.GetTransactionFiles(transaction.TransactionId);
@@ -252,7 +259,10 @@ public class TransactionFileControllerTests
         });
         await financeContext.SaveChangesAsync();
 
-        var result = await controller.AttachTransactionFile(Guid.NewGuid(), new AttachTransactionFileRequest(fileBlob.Id));
+        var result = await controller.AttachTransactionFile(Guid.NewGuid(), new AttachTransactionFileRequest
+        {
+            FileId = fileBlob.Id,
+        });
         var notFound = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status404NotFound, notFound.StatusCode);
         Assert.IsType<ProblemDetails>(notFound.Value);
@@ -284,7 +294,10 @@ public class TransactionFileControllerTests
             AccountId = account.AccountId,
         });
 
-        var result = await controller.AttachTransactionFile(transaction.TransactionId, new AttachTransactionFileRequest(Guid.NewGuid()));
+        var result = await controller.AttachTransactionFile(transaction.TransactionId, new AttachTransactionFileRequest
+        {
+            FileId = Guid.NewGuid(),
+        });
         var notFound = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status404NotFound, notFound.StatusCode);
         Assert.IsType<ProblemDetails>(notFound.Value);

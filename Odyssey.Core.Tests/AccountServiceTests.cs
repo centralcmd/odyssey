@@ -386,7 +386,15 @@ public class AccountServiceTests
 
         var result = await service.AttachFileToAccount(account.AccountId, Guid.NewGuid(), "user-1",
             DtoAccountFileType.InsurancePolicy,
-            new AttachAccountFileRequest(Guid.NewGuid(), DtoAccountFileType.InsurancePolicy, validFrom, validTo, issuedAt, issuer.ContactId));
+            new AttachAccountFileRequest
+            {
+                FileId = Guid.NewGuid(),
+                FileType = DtoAccountFileType.InsurancePolicy,
+                ValidFrom = validFrom,
+                ValidTo = validTo,
+                IssuedAt = issuedAt,
+                IssuedBy = issuer.ContactId,
+            });
 
         Assert.NotNull(result);
         Assert.Equal(DtoAccountFileType.InsurancePolicy, result!.FileType);
@@ -413,7 +421,12 @@ public class AccountServiceTests
         await Assert.ThrowsAsync<DomainValidationException>(() =>
             service.AttachFileToAccount(account.AccountId, Guid.NewGuid(), "user-1",
                 DtoAccountFileType.InsurancePolicy,
-                new AttachAccountFileRequest(Guid.NewGuid(), DtoAccountFileType.InsurancePolicy, IssuedBy: Guid.NewGuid())));
+                new AttachAccountFileRequest
+                {
+                    FileId = Guid.NewGuid(),
+                    FileType = DtoAccountFileType.InsurancePolicy,
+                    IssuedBy = Guid.NewGuid(),
+                }));
     }
 
     [Fact]

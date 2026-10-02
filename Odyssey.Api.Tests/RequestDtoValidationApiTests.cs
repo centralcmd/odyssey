@@ -50,6 +50,27 @@ public sealed class RequestDtoValidationApiTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    /// <summary>
+    /// <c>FileId</c> is required on all three attach requests (issue #287 M5). As a positional record an
+    /// omitted id bound to <see cref="Guid.Empty"/> and surfaced as a confusing "file not found".
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(OutOfRangeFileTypes))]
+    public async Task Attach_WithoutAFileId_IsRejectedByModelValidation(string route, string field, string updateClaim)
+    {
+        await using var factory = new OdysseyApiFactory([updateClaim, PermissionClaims.FilesRead]);
+        using var client = factory.CreateClient();
+
+        var body = new Dictionary<string, object> { [field] = 1 };
+        var response = await client.PostAsJsonAsync(string.Format(route, Guid.NewGuid()), body);
+
+        // The `required` member is what refuses the body — [Required] alone is inert on a non-nullable
+        // Guid — and the problem names the missing property rather than some other failure.
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var text = await response.Content.ReadAsStringAsync();
+        Assert.Contains("fileId", text, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static async Task AssertRejectedAsync(string route, string field, string updateClaim, int ordinal)
     {
         await using var factory = new OdysseyApiFactory([updateClaim, PermissionClaims.FilesRead]);

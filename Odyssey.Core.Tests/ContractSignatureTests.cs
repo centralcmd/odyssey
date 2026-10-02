@@ -62,7 +62,18 @@ public class ContractSignatureTests
 
     private ContractService CreateService(OdysseyContext context, ILogger<ContractService>? logger = null) =>
         new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
-            new Caps(), logger ?? NullLogger<ContractService>.Instance);
+            logger ?? NullLogger<ContractService>.Instance);
+
+    private ContractPartyService Parties(OdysseyContext context, ILogger<ContractService>? logger = null) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new Caps(), (logger is null ? NullLogger<ContractPartyService>.Instance : new ForwardingLogger<ContractPartyService>(logger)));
+
+    private ContractFileService Files(OdysseyContext context, ILogger<ContractService>? logger = null) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            new Caps());
+
+    private ContractSummaryService Summaries(OdysseyContext context, ILogger<ContractService>? logger = null) =>
+        new(context, new FixedTimeProvider(FixedToday), new Caps());
 
     private static readonly DateTime ReadyOn = FixedToday.AddDays(-30);
     private static readonly DateTime SignedOn = FixedToday.AddDays(-28);

@@ -57,7 +57,21 @@ public class ContractEventAutomationTests
     private ContractService Contracts(
         OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
         new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
-            caps ?? new FakeSystemSettingsLookup(), logger ?? NullLogger<ContractService>.Instance);
+            logger ?? NullLogger<ContractService>.Instance);
+
+    private ContractPartyService Parties(
+        OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            caps ?? new FakeSystemSettingsLookup(), (logger is null ? NullLogger<ContractPartyService>.Instance : new ForwardingLogger<ContractPartyService>(logger)));
+
+    private ContractFileService Files(
+        OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
+        new(context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(FixedToday),
+            caps ?? new FakeSystemSettingsLookup());
+
+    private ContractSummaryService Summaries(
+        OdysseyContext context, ILogger<ContractService>? logger = null, ISystemSettingsLookup? caps = null) =>
+        new(context, new FixedTimeProvider(FixedToday), caps ?? new FakeSystemSettingsLookup());
 
     private static TermService Terms(
         OdysseyContext context, ILogger<TermService>? logger = null, ISystemSettingsLookup? caps = null) =>
@@ -345,7 +359,7 @@ public class ContractEventAutomationTests
         var at9am = FixedToday.AddHours(9);
         var service = new ContractService(
             context, TestContextFactory.ContactLookup(journal), new FixedTimeProvider(at9am),
-            new FakeSystemSettingsLookup(), NullLogger<ContractService>.Instance);
+            NullLogger<ContractService>.Instance);
 
         var sameDay = await service.Create(
             New(ready: FixedToday.AddHours(22), signed: FixedToday.AddHours(23)), TestUserId);
@@ -378,7 +392,7 @@ public class ContractEventAutomationTests
         var created = await service.Create(New() with { Type = DtoContractType.Employment }, TestUserId);
         ClearEvents(context, created.ContractId);
 
-        await service.AddParty(
+        await Parties(context).AddParty(
             created.ContractId,
             new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Employer },
             TestUserId);
@@ -407,7 +421,7 @@ public class ContractEventAutomationTests
         var service = Contracts(context);
         var contactId = await SeedContactAsync("Acme AS");
         var created = await service.Create(New() with { Type = DtoContractType.Employment }, TestUserId);
-        await service.AddParty(
+        await Parties(context).AddParty(
             created.ContractId,
             new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Employer },
             TestUserId);
@@ -428,13 +442,13 @@ public class ContractEventAutomationTests
         var service = Contracts(context);
         var contactId = await SeedContactAsync("Acme AS");
         var created = await service.Create(New(), TestUserId);
-        var party = await service.AddParty(
+        var party = await Parties(context).AddParty(
             created.ContractId,
             new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Landlord },
             TestUserId);
         ClearEvents(context, created.ContractId);
 
-        Assert.True(await service.DeleteParty(created.ContractId, party!.ContractPartyId, TestUserId));
+        Assert.True(await Parties(context).DeleteParty(created.ContractId, party!.ContractPartyId, TestUserId));
 
         var recorded = SingleSystemEvent(context, created.ContractId);
         Assert.Equal(EventType.PartyRemoved, recorded.Type);
@@ -455,13 +469,13 @@ public class ContractEventAutomationTests
         var first = await SeedContactAsync("Acme AS");
         var second = await SeedContactAsync("Globex AS");
         var created = await service.Create(New(), TestUserId);
-        var party = await service.AddParty(
+        var party = await Parties(context).AddParty(
             created.ContractId,
             new ContractPartyRequest { ContactId = first, Role = ContractPartyRole.Landlord },
             TestUserId);
         ClearEvents(context, created.ContractId);
 
-        await service.UpdateParty(
+        await Parties(context).UpdateParty(
             created.ContractId, party!.ContractPartyId,
             new ContractPartyRequest { ContactId = second, Role = ContractPartyRole.Landlord },
             TestUserId);
@@ -484,13 +498,13 @@ public class ContractEventAutomationTests
         var service = Contracts(context);
         var contactId = await SeedContactAsync("Acme AS");
         var created = await service.Create(New(), TestUserId);
-        var party = await service.AddParty(
+        var party = await Parties(context).AddParty(
             created.ContractId,
             new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Landlord },
             TestUserId);
         ClearEvents(context, created.ContractId);
 
-        await service.UpdateParty(
+        await Parties(context).UpdateParty(
             created.ContractId, party!.ContractPartyId,
             new ContractPartyRequest
             {
@@ -728,7 +742,7 @@ public class ContractEventAutomationTests
         var created = await service.Create(
             New(ready: FixedToday.AddDays(-20), signed: FixedToday.AddDays(-19)), TestUserId);
 
-        await service.AddParty(
+        await Parties(context, contractLog).AddParty(
             created.ContractId,
             new ContractPartyRequest { ContactId = contactId, Role = ContractPartyRole.Landlord },
             TestUserId);

@@ -19,11 +19,19 @@ namespace Odyssey.Core.Tests;
 public class ContractTermServiceTests
 {
     private static ContractService Contracts(OdysseyContext context, ISystemSettingsLookup? settings = null) =>
-        new(context,
-            TestContextFactory.EmptyContactLookup(),
-            TimeProvider.System,
-            settings ?? new FakeSystemSettingsLookup(),
+        new(context, TestContextFactory.EmptyContactLookup(), TimeProvider.System,
             NullLogger<ContractService>.Instance);
+
+    private static ContractPartyService Parties(OdysseyContext context, ISystemSettingsLookup? settings = null) =>
+        new(context, TestContextFactory.EmptyContactLookup(), TimeProvider.System,
+            settings ?? new FakeSystemSettingsLookup(), NullLogger<ContractPartyService>.Instance);
+
+    private static ContractFileService Files(OdysseyContext context, ISystemSettingsLookup? settings = null) =>
+        new(context, TestContextFactory.EmptyContactLookup(), TimeProvider.System,
+            settings ?? new FakeSystemSettingsLookup());
+
+    private static ContractSummaryService Summaries(OdysseyContext context, ISystemSettingsLookup? settings = null) =>
+        new(context, TimeProvider.System, settings ?? new FakeSystemSettingsLookup());
 
     private static TermService Terms(OdysseyContext context, ISystemSettingsLookup? settings = null) =>
         new(context, TimeProvider.System, settings ?? new FakeSystemSettingsLookup());

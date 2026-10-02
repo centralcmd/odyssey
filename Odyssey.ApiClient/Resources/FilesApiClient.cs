@@ -80,7 +80,15 @@ public sealed class FilesApiClient(IOdysseyApi api) : IFilesApiClient
         CancellationToken ct = default)
     {
         var result = await api.SendAsync(HttpMethod.Post, $"api/accounts/{accountId}/files",
-            new AttachAccountFileRequest(fileId, type, validFrom, validTo, issuedAt, issuedBy), ct);
+            new AttachAccountFileRequest
+            {
+                FileId = fileId,
+                FileType = type,
+                ValidFrom = validFrom,
+                ValidTo = validTo,
+                IssuedAt = issuedAt,
+                IssuedBy = issuedBy,
+            }, ct);
         if (!result.IsSuccess)
             throw new Exception($"Failed to attach file: {result.Error}");
     }
@@ -88,7 +96,7 @@ public sealed class FilesApiClient(IOdysseyApi api) : IFilesApiClient
     public async Task AttachToTransactionAsync(Guid transactionId, Guid fileId, TransactionFileType type, CancellationToken ct = default)
     {
         var result = await api.SendAsync(HttpMethod.Post, $"api/transactions/{transactionId}/files",
-            new AttachTransactionFileRequest(fileId, type), ct);
+            new AttachTransactionFileRequest { FileId = fileId, Type = type }, ct);
         if (!result.IsSuccess)
             throw new Exception($"Failed to attach file: {result.Error}");
     }

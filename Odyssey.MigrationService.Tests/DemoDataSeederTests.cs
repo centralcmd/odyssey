@@ -448,12 +448,10 @@ public class DemoDataSeederTests
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
-        var service = new ContractService(
+        var service = new ContractSummaryService(
             context,
-            new ContactLookup(context),
             new FixedTimeProvider(DemoDataDefaults.AnchorDate),
-            new AnchorSettingsLookup(),
-            NullLogger<ContractService>.Instance);
+            new AnchorSettingsLookup());
 
         var summary = await service.GetSummary("USD");
 

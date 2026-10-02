@@ -84,7 +84,7 @@ public class ScopedWriteRouteTests
             "contract smart tag list" => contracts.ListSmartTagsAsync(Parent),
             "contract smart tag add" => contracts.AddSmartTagAsync(Parent, Child),
             "contract smart tag remove" => contracts.RemoveSmartTagAsync(Parent, Child),
-            "tax file attach" => tax.AttachFileAsync(Parent, new AttachTaxStatementFileRequest(Child)),
+            "tax file attach" => tax.AttachFileAsync(Parent, new AttachTaxStatementFileRequest { FileId = Child }),
             "tax file download" => tax.DownloadFileAsync(Parent, Child),
             "tax file detach" => tax.DetachFileAsync(Parent, Child),
             "transaction file list" => transactions.ListFilesAsync(Parent),

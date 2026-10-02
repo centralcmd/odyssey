@@ -203,6 +203,12 @@ public class TransactionService
         }
     }
     
+    /// <summary>
+    /// Whether the transaction exists, without loading its tags, files and contact (issue #287 M9).
+    /// </summary>
+    public async Task<bool> Exists(Guid transactionId, CancellationToken cancellationToken = default) =>
+        await context.Transactions.AnyAsync(t => t.TransactionId == transactionId, cancellationToken);
+
     public async Task<ExistingTransaction?> Get(Guid transactionId, CancellationToken cancellationToken = default)
     {
         var transaction = await context.Transactions

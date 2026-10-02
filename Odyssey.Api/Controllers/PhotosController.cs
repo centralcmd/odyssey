@@ -90,21 +90,20 @@ public sealed class PhotosController : ControllerBase
     public async Task<IActionResult> Post(
         [FromBody] NewPhoto request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         // A photo always links a Files-store image, so creating one requires files.read (mirrors the
         // Journal file-link guard). Auto-creating tags from extracted keywords additionally needs
         // photos.tags.create; absent it, only existing keyword tags are linked (§7/§10.6).
-        if (!HasClaim(PermissionClaims.FilesRead))
+        if (!User.HasPermission(PermissionClaims.FilesRead))
         {
             return this.ForbiddenProblem("Linking a file requires the files.read permission.");
         }
 
-        var created = await service.Create(request, userId, HasClaim(PermissionClaims.PhotoTagsCreate), cancellationToken);
+        var created = await service.Create(request, userId, User.HasPermission(PermissionClaims.PhotoTagsCreate), cancellationToken);
         await EnrichAsync(created, cancellationToken);
         return CreatedAtRoute("GetPhoto", new { id = created.PhotoId }, created);
     }
@@ -120,17 +119,16 @@ public sealed class PhotosController : ControllerBase
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdatePhoto request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         // Renaming the backing file is a Files-store write, so it requires files.update — the same claim
         // the Files page's rename enforces. Check before applying anything so the photo update isn't
         // half-committed. A blank/omitted FileName leaves the file name untouched.
         var wantsRename = !string.IsNullOrWhiteSpace(request.FileName);
-        if (wantsRename && !HasClaim(PermissionClaims.FilesUpdate))
+        if (wantsRename && !User.HasPermission(PermissionClaims.FilesUpdate))
         {
             return this.ForbiddenProblem("Renaming the backing file requires the files.update permission.");
         }
@@ -191,5 +189,4 @@ public sealed class PhotosController : ControllerBase
         photo.FileName = meta?.FileName;
     }
 
-    private bool HasClaim(string claimValue) => User.HasClaim(PermissionClaims.Type, claimValue);
 }

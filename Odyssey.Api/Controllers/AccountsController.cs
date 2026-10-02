@@ -60,7 +60,7 @@ public sealed class AccountsController : ControllerBase
     /// gated on <c>accounts.read</c> alone and Guest holds no contract claim, so the count is filled
     /// only for a <c>contracts.read</c> holder — the service has no <c>ClaimsPrincipal</c> to decide.
     /// </summary>
-    private bool CanReadContracts() => User.HasClaim(PermissionClaims.Type, PermissionClaims.ContractsRead);
+    private bool CanReadContracts() => User.HasPermission(PermissionClaims.ContractsRead);
 
     /// <summary>
     /// Whether property value is part of the caller's net worth (issue #214 §5.1): only with
@@ -71,8 +71,8 @@ public sealed class AccountsController : ControllerBase
     /// they cannot drift apart.
     /// </summary>
     private bool CanIncludeProperties() =>
-        User.HasClaim(PermissionClaims.Type, PermissionClaims.PropertiesRead)
-        && User.HasClaim(PermissionClaims.Type, PermissionClaims.PropertiesEstimatesRead);
+        User.HasPermission(PermissionClaims.PropertiesRead)
+        && User.HasPermission(PermissionClaims.PropertiesEstimatesRead);
     
     [HttpGet(Name = "GetAccounts")]
     [Authorize(Policy = PermissionClaims.AccountsRead)]
@@ -340,16 +340,17 @@ public sealed class AccountsController : ControllerBase
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromBody] AttachAccountFileRequest request, CancellationToken cancellationToken = default)
     {
-        var account = await accountService.Get(accountId, cancellationToken);
-        if (account is null)
+        if (!await accountService.Exists(accountId, cancellationToken))
             return this.NotFoundProblem($"Account ID {accountId} not found.");
 
         var fileMetadata = await fileService.GetFileMetadataAsync(request.FileId, cancellationToken);
         if (fileMetadata is null)
             return this.NotFoundProblem($"File ID {request.FileId} not found.");
 
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            ?? throw new InvalidOperationException("User ID not found in claims.");
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
 
         var created = await accountService.AttachFileToAccount(accountId, request.FileId, userId, request.FileType, request, cancellationToken);
         if (created is null)
@@ -398,8 +399,10 @@ public sealed class AccountsController : ControllerBase
         AnalyzeFileRequest? request = null,
         CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            ?? throw new InvalidOperationException("User ID not found in claims.");
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
 
         var result = await fileAnalysisService.AnalyzeAsync(accountId, fileId, userId, request, cancellationToken);
         return Ok(result);

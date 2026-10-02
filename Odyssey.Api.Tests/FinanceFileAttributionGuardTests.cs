@@ -106,6 +106,8 @@ public sealed class FinanceFileAttributionGuardTests
             [
                 "AccountsController",
                 "BudgetsController",
+                // Issue #287 M2 moved the contract file actions into their own controller.
+                "ContractFilesController",
                 "ContractsController",
                 // Issue #226: the contract-scoped smart-tag match returns ExistingTransactions.
                 "ContractSmartTagsController",
