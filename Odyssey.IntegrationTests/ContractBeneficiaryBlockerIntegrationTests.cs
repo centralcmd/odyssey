@@ -24,7 +24,7 @@ namespace Odyssey.IntegrationTests;
 ///
 /// <para>
 /// <b>AC 13 and AC 23 are NOT here</b>, despite being contact-delete criteria: both are decided in
-/// <c>ContactController</c> before the service reaches any relational-only statement, so they are
+/// <c>ContactsController</c> before the service reaches any relational-only statement, so they are
 /// reachable on the fast tier — and only there do they go through the real ASP.NET Core pipeline,
 /// which is what AC 13 actually asserts. They live in
 /// <c>Odyssey.Api.Tests/ContractPartyRoleMatrixApiTests</c>. What this file covers of the claim check

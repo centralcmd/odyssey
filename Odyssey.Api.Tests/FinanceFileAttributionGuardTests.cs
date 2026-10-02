@@ -57,7 +57,7 @@ public sealed class FinanceFileAttributionGuardTests
     private static Assembly DtosAssembly => typeof(IAttributedFile).Assembly;
 
     private static IEnumerable<Type> Controllers =>
-        typeof(Odyssey.Api.Controllers.AccountController).Assembly
+        typeof(Odyssey.Api.Controllers.AccountsController).Assembly
             .GetTypes()
             .Where(type => typeof(ControllerBase).IsAssignableFrom(type) && !type.IsAbstract);
 
@@ -104,14 +104,14 @@ public sealed class FinanceFileAttributionGuardTests
         // file DTOs at all. Pin the surfaces the issue and its follow-up cover.
         Assert.Equal(
             [
-                "AccountController",
-                "BudgetController",
-                "ContractController",
+                "AccountsController",
+                "BudgetsController",
+                "ContractsController",
                 // Issue #226: the contract-scoped smart-tag match returns ExistingTransactions.
                 "ContractSmartTagsController",
                 "PropertyFilesController",
-                "TaxStatementController",
-                "TransactionController",
+                "TaxStatementsController",
+                "TransactionsController",
             ],
             Controllers.Where(ReturnsAttributedFile).Select(c => c.Name).Order().ToArray());
     }
@@ -194,7 +194,7 @@ public sealed class FinanceFileAttributionGuardTests
     /// </summary>
     /// <remarks>
     /// Anchored on the action's ROUTE NAME (<c>[HttpGet("{id}", Name = "GetContract")]</c>), never on
-    /// the method name: <c>ContractController</c> and four others carry two overloads called
+    /// the method name: <c>ContractsController</c> and four others carry two overloads called
     /// <c>Get</c>, and a name-anchored scan silently reads the list overload's body while reporting on
     /// the by-id one. The route name is unique per action and is what the framework itself keys on.
     /// An action with no route name, or one the scan cannot locate, is reported as an offender rather

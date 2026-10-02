@@ -4,8 +4,9 @@
 
 - **Finance** — accounts, transactions, budgets, tags, contracts,
   tax statements, the Files store (`FileMetadata`/`FileBlob`) and the file-analysis tables, plus the
-  `Currencies` reference table (164 ISO-4217 rows seeded from `HasData` in `OnModelCreating`, so the
-  initial migration carries them and nothing needs to seed them at runtime).
+  `Currencies` reference table (164 ISO-4217 rows seeded from `HasData` in
+  `ModelConfiguration/CurrencyConfiguration.cs`, so the initial migration carries them and nothing needs
+  to seed them at runtime).
 - **Journal** — entries, tasks, their tags and attachments.
 - **Photos** — the photo library, its tags, people and albums.
 - **Calendars** — calendars, events and recurrence patterns.
@@ -14,6 +15,14 @@
 - **Identity and auth** — the ASP.NET Identity schema plus `UserProfile`, `UserPreference`,
   `SystemSetting`, the encrypted `SystemSettingSecret` store and the three legal-acceptance tables.
 
+## Where the model is configured
+
+Each entity's fluent configuration is one `IEntityTypeConfiguration<T>` under `ModelConfiguration/`,
+picked up by `ApplyConfigurationsFromAssembly` (issue #287). Three key sets stay in `OdysseyContext`
+itself because each spans many entities and is reviewed as a set: `ConfigureCurrencyReferences`,
+`ConfigureCrossModuleForeignKeys` and `ConfigureUserAttribution`. A key belonging to one of those sets
+goes there, not into the entity's own file.
+
 ## Why one context
 
 This project is the former `Odyssey.Finance.Context`, `Odyssey.Journal.Context` and
@@ -21,7 +30,7 @@ This project is the former `Odyssey.Finance.Context`, `Odyssey.Journal.Context` 
 declare a relationship whose principal lives in a different model, so every reference across a context
 boundary was a bare key — validated by a lookup service on write and swept by a guard on delete, with
 nothing stopping a write path that forgot to call either. One context makes them declarable, and
-`OdysseyContext.OnModelCreating` declares them under **Cross-module foreign keys**:
+`OdysseyContext.ConfigureCrossModuleForeignKeys` declares them:
 
 | Reference | On delete |
 |---|---|

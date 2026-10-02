@@ -82,7 +82,7 @@ public sealed class PhotoLookup(
         catch (DbUpdateException ex) when (DbErrors.IsDuplicateKey(ex))
         {
             // Concurrent create raced us on the Photo.FileId unique index — re-fetch the winner so a
-            // routine journal save never turns into a 409 (§5 cross-context write atomicity).
+            // routine journal save never turns into a 409 (§5 cross-module write atomicity).
             context.Entry(photo).State = EntityState.Detached;
             return await context.Photos
                 .Where(p => p.FileId == fileId)

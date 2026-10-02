@@ -17,7 +17,7 @@ namespace Odyssey.Api.Tests;
 
 public class TransactionFileControllerTests
 {
-    private static (TransactionController controller, OdysseyContext financeContext) CreateControllerWithContexts()
+    private static (TransactionsController controller, OdysseyContext financeContext) CreateControllerWithContexts()
     {
         var financeOptions = new DbContextOptionsBuilder<OdysseyContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -34,7 +34,7 @@ public class TransactionFileControllerTests
             .Options);
         var fileService = new FileService(financeContext, new FileValidationService());
         var transactionService = new TransactionService(financeContext, new ContactLookup(journalContext));
-        var controller = new TransactionController(NullLogger<TransactionController>.Instance, transactionService, fileService, new UserDisplayNameResolver(financeContext));
+        var controller = new TransactionsController(NullLogger<TransactionsController>.Instance, transactionService, fileService, new UserDisplayNameResolver(financeContext));
 
         // Provide a stable user identity so controller can resolve userId
         controller.ControllerContext = new ControllerContext

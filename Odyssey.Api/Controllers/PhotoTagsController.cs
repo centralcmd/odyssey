@@ -12,7 +12,7 @@ namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/photo-tags")]
-public class PhotoTagsController : ControllerBase
+public sealed class PhotoTagsController : ControllerBase
 {
     private readonly ILogger<PhotoTagsController> logger;
     private readonly PhotoTagService service;

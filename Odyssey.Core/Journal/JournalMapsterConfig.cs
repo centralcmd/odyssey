@@ -36,7 +36,7 @@ public static class JournalMapsterConfig
 
             // Mass-assignment / nav-leak guard (§6/§9): the inbound (DTO → entity) maps ignore every
             // navigation collection, so a same-named nested property in a request body can never
-            // round-trip into a related or cross-context entity. Link rows are built explicitly in
+            // round-trip into a related or cross-module entity. Link rows are built explicitly in
             // the services from the scalar id arrays.
             TypeAdapterConfig<NewJournalEntry, JournalEntry>
                 .NewConfig()

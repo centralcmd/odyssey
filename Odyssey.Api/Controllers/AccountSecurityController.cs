@@ -16,7 +16,7 @@ namespace Odyssey.Api.Controllers;
 /// <summary>
 /// The caller's own credential and session operations (issue #406 §5.7). Named for security rather than
 /// for the account resource because "Account" is already load-bearing for the Finance bank-account domain
-/// (<c>AccountController</c> → <c>api/accounts</c>); the route still mirrors the client's <c>/account</c>
+/// (<c>AccountsController</c> → <c>api/accounts</c>); the route still mirrors the client's <c>/account</c>
 /// page.
 /// </summary>
 /// <remarks>

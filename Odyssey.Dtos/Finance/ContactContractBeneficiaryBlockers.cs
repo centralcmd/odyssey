@@ -8,7 +8,7 @@ namespace Odyssey.Dtos.Finance;
 /// <remarks>
 /// <b>The names are claim-gated and the counts are not.</b> <see cref="Contracts"/> is populated only
 /// for a caller that also holds <c>contracts.read</c>. The boundary is applied in
-/// <c>ContactController</c> rather than the service: <c>DomainConflictException</c> carries a message
+/// <c>ContactsController</c> rather than the service: <c>DomainConflictException</c> carries a message
 /// and nothing else, and the domain service has no <c>ClaimsPrincipal</c>.
 ///
 /// <para>

@@ -64,7 +64,7 @@ public static class DemoDataDefaults
         public const string Gbp = "GBP";
 
         /// <summary>Not used by accounts, but it is the default display/main currency
-        /// (<c>AccountController.DefaultMainCurrency</c>), so exchange rates must reach it.</summary>
+        /// (<c>AccountsController.DefaultMainCurrency</c>), so exchange rates must reach it.</summary>
         public const string Nok = "NOK";
     }
 

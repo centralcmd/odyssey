@@ -2,7 +2,6 @@ using Odyssey.Context;
 using Odyssey.Dtos.Finance;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace Odyssey.Core.Finance;
@@ -20,7 +19,7 @@ public class FileService
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    public async Task<FileUploadResponse> UploadFileAsync(IFormFile file, string userId, string? description, CancellationToken cancellationToken = default)
+    public async Task<FileUploadResponse> UploadFileAsync(FileUpload file, string userId, string? description, CancellationToken cancellationToken = default)
     {
         await validationService.ValidateFileAsync(file, cancellationToken);
 
@@ -58,8 +57,8 @@ public class FileService
     /// <c>SecretSettingsService.StageClearAsync</c> was carved out for in issue #8.
     ///
     /// <para>
-    /// This exists because <see cref="UploadFileAsync"/> is not composable: it commits, it takes an
-    /// <see cref="IFormFile"/> (which the vCard import path does not have at all), and it hashes the
+    /// This exists because <see cref="UploadFileAsync"/> is not composable: it commits, it takes a
+    /// <see cref="FileUpload"/> (which the vCard import path does not have at all), and it hashes the
     /// <i>original</i> stream — so it can store neither a stripped body nor a generated filename. A
     /// contact avatar must stage its file, release the previous one and repoint the contact in ONE
     /// transaction, which a method that saves cannot take part in.

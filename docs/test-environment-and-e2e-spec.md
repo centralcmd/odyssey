@@ -113,7 +113,7 @@ and a few months of transactions per account.
    a `(from,to)` request), so the seeder inserts a **direct rate for every directed
    pair** among the demo currencies — the account currencies (USD/EUR/SEK/GBP) **plus
    `NOK`**, which has no account but is the default display/main currency
-   (`AccountController.DefaultMainCurrency`) that the totals/net-worth view converts
+   (`AccountsController.DefaultMainCurrency`) that the totals/net-worth view converts
    into. (Miss it and *every* account is flagged unconvertible, since none is NOK.)
    Rates are derived from one USD-value table so the matrix is internally consistent,
    with a short monthly history. Result: the whole portfolio converts, so currency

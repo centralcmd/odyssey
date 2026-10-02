@@ -26,13 +26,12 @@ public class OpenApiSchemaIdTests
         var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
         var ids = schemas.EnumerateObject().Select(schema => schema.Name).ToList();
 
-        // Both ArchivalStatus enums survive as distinct schemas rather than one clobbering the other.
-        // The ids are the module segment of the namespace — Odyssey.Dtos.Finance → "Finance" —
-        // since the four DTO projects were merged into one and the whole namespace tail would now read
-        // SharedDtosFinanceArchivalStatus.
-        Assert.Contains("FinanceArchivalStatus", ids);
-        Assert.Contains("JournalArchivalStatus", ids);
-        // The other ambiguous pair: the identity-side profile Sex against the contact Sex, kept
+        // The one shared ArchivalStatus enum (issue #287 L4 merged the Finance and Journal copies)
+        // is not ambiguous, so it keeps its short id.
+        Assert.Contains("ArchivalStatus", ids);
+        Assert.DoesNotContain("FinanceArchivalStatus", ids);
+        Assert.DoesNotContain("JournalArchivalStatus", ids);
+        // The ambiguous pair: the identity-side profile Sex against the contact Sex, kept
         // deliberately distinct by issue #316 §6. The root of the merged DTO project prefixes as
         // "Shared", a module folder as its own name.
         Assert.Contains("ApplicationSex", ids);

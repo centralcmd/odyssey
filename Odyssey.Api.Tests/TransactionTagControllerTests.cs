@@ -16,7 +16,7 @@ public class TransactionTagControllerTests
         // Not an upsert (issue #239): creating through PUT bypassed transaction-tags.create.
         await using var context = TestContextFactory.Create();
         var service = new TransactionTagService(context);
-        var controller = new TransactionTagController(NullLogger<TransactionTagController>.Instance, service);
+        var controller = new TransactionTagsController(NullLogger<TransactionTagsController>.Instance, service);
 
         var result = await controller.Put(Guid.NewGuid(), new NewTransactionTag
         {
@@ -36,7 +36,7 @@ public class TransactionTagControllerTests
         // An existing id updates in place (204); it does NOT create a second tag.
         await using var context = TestContextFactory.Create();
         var service = new TransactionTagService(context);
-        var controller = new TransactionTagController(NullLogger<TransactionTagController>.Instance, service);
+        var controller = new TransactionTagsController(NullLogger<TransactionTagsController>.Instance, service);
 
         var existing = await service.Create(new NewTransactionTag
         {

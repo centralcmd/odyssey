@@ -33,7 +33,7 @@ namespace Odyssey.Api.Tests;
 /// Everything here runs on the fast tier, and the dividing line is <b>not</b> "does it touch
 /// <c>ContactReferenceGuard</c>" — the last two do. It is whether the response is decided <em>before</em>
 /// that guard's relational-only <c>ExecuteUpdate</c>/<c>ExecuteDelete</c> cleanup, which throws on the
-/// InMemory provider. The <c>409</c> returns from <c>ContactController</c> without entering the service
+/// InMemory provider. The <c>409</c> returns from <c>ContactsController</c> without entering the service
 /// at all, and the <c>403</c> is raised by <c>EnsureDetachPermitted</c> ahead of <c>StageLinkDetach</c>,
 /// so both are reachable — and only here do they go through the real ASP.NET Core pipeline, which is
 /// what AC 13 actually asserts about a status no <c>DomainException</c> subtype had mapped to before.

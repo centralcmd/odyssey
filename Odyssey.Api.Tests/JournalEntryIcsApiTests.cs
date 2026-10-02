@@ -451,6 +451,25 @@ public class JournalEntryIcsApiTests
     }
 
     [Fact]
+    public async Task Import_C1ControlCharUid_IsImported()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        // The import runs the create/update DTO's own pattern (issue #287 L8), which bounds the C0 range
+        // and DEL only. A C1 character is therefore accepted here exactly as the API accepts it.
+        const string uid = "c1\u0085uid";
+        var ics = Vcalendar(Vjournal(uid, "SUMMARY:C1", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101"));
+        var result = await ImportAsync(client, ics);
+
+        Assert.Equal(1, result.ImportedCount);
+        Assert.Empty(result.Skipped);
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.Equal(uid, (await ctx.JournalEntries.SingleAsync()).ExternalUid);
+    }
+
+    [Fact]
     public async Task Import_DuplicateUidWithinFile_LastWriteWins()
     {
         await using var factory = new ApiFactory(ReadWrite);

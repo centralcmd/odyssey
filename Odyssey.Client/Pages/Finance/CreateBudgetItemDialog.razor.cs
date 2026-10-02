@@ -110,7 +110,7 @@ public partial class CreateBudgetItemDialog
     protected override async Task OnInitializedAsync()
     {
         // The create row is an affordance; the authorization that matters is server-side on
-        // TransactionTagController.Post. Passing no handler is what suppresses the row — OdsCombobox
+        // TransactionTagsController.Post. Passing no handler is what suppresses the row — OdsCombobox
         // has no AllowCreate flag, it renders the row exactly when OnCreate is non-null.
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canCreateTag = user.HasPermission(PermissionClaims.TransactionTagsCreate);

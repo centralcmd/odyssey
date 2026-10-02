@@ -16,7 +16,7 @@ namespace Odyssey.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/properties")]
-public class PropertyEstimatesController : ControllerBase
+public sealed class PropertyEstimatesController : ControllerBase
 {
     private readonly PropertyEstimateService propertyEstimateService;
 

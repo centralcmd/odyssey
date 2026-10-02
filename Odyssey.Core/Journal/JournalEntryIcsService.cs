@@ -1,9 +1,11 @@
 using Odyssey.Core;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Core.Finance;
 using Odyssey.Context;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Interop;
@@ -465,7 +467,7 @@ public class JournalEntryIcsService
         // Match targets by UID → ExternalUid. Only load entries whose (well-formed) UID appears in this file.
         var incomingUids = journals
             .Select(j => j.Uid)
-            .Where(u => u is not null && !HasControlOrEdgeWhitespace(u) && u.Length <= MaxExternalUidLength)
+            .Where(u => u is not null && u.Length <= MaxExternalUidLength && IsValidExternalUid(u))
             .Select(u => u!)
             .Distinct(StringComparer.Ordinal)
             .ToList();
@@ -523,18 +525,20 @@ public class JournalEntryIcsService
         var sample = string.IsNullOrWhiteSpace(title) ? UntitledEntry : title;
 
         var rawUid = journal.Uid;
-        if (rawUid is not null && HasControlOrEdgeWhitespace(rawUid))
-        {
-            skipped.Add("Invalid UID: control characters or leading/trailing whitespace not allowed.", sample);
-            return null;
-        }
 
         // A UID longer than the column would, on a strict-mode MariaDB, surface as a non-duplicate
         // DbUpdateException the collision handler doesn't recognize — a whole-batch 500 that breaks the
         // skip-and-continue contract. Bound it here so an over-length UID is a clean per-block skip.
+        // Checked before the pattern so the regex only ever runs over a bounded value.
         if (rawUid is { Length: > MaxExternalUidLength })
         {
             skipped.Add($"UID exceeds the maximum length of {MaxExternalUidLength} characters.", sample);
+            return null;
+        }
+
+        if (rawUid is not null && !IsValidExternalUid(rawUid))
+        {
+            skipped.Add("Invalid UID: control characters or leading/trailing whitespace not allowed.", sample);
             return null;
         }
 
@@ -1017,11 +1021,23 @@ public class JournalEntryIcsService
     // True when a caller-/import-supplied UID contains a control character or leading/trailing whitespace
     // (§5 step 3.2a). Rejecting edge whitespace keeps the ordinal in-memory match consistent with the
     // column's PAD SPACE (utf8mb4_bin) unique index.
-    private static bool HasControlOrEdgeWhitespace(string value) =>
-        value.Length == 0
-        || char.IsWhiteSpace(value[0])
-        || char.IsWhiteSpace(value[^1])
-        || value.Any(char.IsControl);
+    // The rule the create/update DTOs apply through [RegularExpression] (issue #287 L8), so the import
+    // and the API accept the same UIDs. Two details mirror RegularExpressionAttribute rather than a bare
+    // IsMatch: the match must span the whole value (.NET's '$' also matches before a trailing '\n'),
+    // and "" is rejected here where the attribute lets it through, because an empty UID identifies
+    // nothing to match on.
+    private static readonly Regex ExternalUidRule = new(JournalEntryExternalUidRules.Pattern, RegexOptions.Compiled);
+
+    internal static bool IsValidExternalUid(string value)
+    {
+        if (value.Length == 0)
+        {
+            return false;
+        }
+
+        var match = ExternalUidRule.Match(value);
+        return match.Success && match.Index == 0 && match.Length == value.Length;
+    }
 
     /// <summary>Whether the multipart part's content type is acceptable for an <c>.ics</c> upload — the
     /// extension and the parse are the real gates. Public for edge gating in the controller.</summary>
