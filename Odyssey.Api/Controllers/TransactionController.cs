@@ -193,8 +193,10 @@ public class TransactionController : ControllerBase
             return this.NotFoundProblem($"File ID {request.FileId} not found.");
         }
         
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-            ?? throw new InvalidOperationException("User ID not found in claims.");
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
 
         // An undefined Type never gets here over HTTP: [EnumDataType] on the request is a model-validation
         // 400 (issue #287 M5). The mirror's fallback only matters for a direct, non-HTTP caller.

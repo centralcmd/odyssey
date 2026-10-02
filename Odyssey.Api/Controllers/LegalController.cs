@@ -66,9 +66,9 @@ public sealed class LegalController : ControllerBase
     [SwaggerOperation(Summary = "The calling user's own License/ToS compliance state.")]
     public async Task<IActionResult> GetStatus(CancellationToken cancellationToken)
     {
-        if (CallerUserId is not { } userId)
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         return Ok(await service.GetStatusAsync(userId, cancellationToken));
@@ -93,9 +93,9 @@ public sealed class LegalController : ControllerBase
         [FromBody] LegalDocumentResponse request,
         CancellationToken cancellationToken)
     {
-        if (CallerUserId is not { } userId)
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         await service.RespondAsync(userId, request, cancellationToken);
@@ -151,16 +151,12 @@ public sealed class LegalController : ControllerBase
         [FromBody] NewTermsOfServiceVersion request,
         CancellationToken cancellationToken)
     {
-        var version = await service.PublishAsync(User, CallerUserId ?? string.Empty, request, cancellationToken);
-        return CreatedAtRoute("GetTermsOfServiceVersion", new { id = version.Id }, version);
-    }
-
-    private string? CallerUserId
-    {
-        get
+        if (User.ActingUserId() is not { } userId)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            return string.IsNullOrWhiteSpace(userId) ? null : userId;
+            return this.MissingUserProblem();
         }
+
+        var version = await service.PublishAsync(User, userId, request, cancellationToken);
+        return CreatedAtRoute("GetTermsOfServiceVersion", new { id = version.Id }, version);
     }
 }

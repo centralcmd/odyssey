@@ -99,10 +99,9 @@ public class RecurrencePatternsController : ControllerBase
     public async Task<IActionResult> Post(
         [FromBody] NewRecurrencePattern request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         var created = await service.Create(request, userId, cancellationToken);
@@ -119,10 +118,9 @@ public class RecurrencePatternsController : ControllerBase
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewRecurrencePattern request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         var updated = await service.Update(id, request, userId, cancellationToken);

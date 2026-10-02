@@ -77,10 +77,9 @@ public class AlbumsController : ControllerBase
     public async Task<IActionResult> Post(
         [FromBody] NewPhotoAlbum request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         var created = await service.Create(request, userId, cancellationToken);
@@ -99,10 +98,9 @@ public class AlbumsController : ControllerBase
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdatePhotoAlbum request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         var updated = await service.Update(id, request, userId, cancellationToken);

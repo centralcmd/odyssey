@@ -43,11 +43,6 @@ public class ContactController : ControllerBase
         this.referenceGuard = referenceGuard;
     }
 
-    /// <summary>The house claim check — the same shape PhotosController and JournalEntriesController use.</summary>
-    private bool HasClaim(string claimValue) => User.HasClaim(PermissionClaims.Type, claimValue);
-
-    private string ActorUserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
-
     /// <summary>
     /// A structured, <b>value-free</b> audit event for a change to the personal data issue #48 adds
     /// (§10.9). <c>Contact.UpdatedAt</c> records <i>that</i> something changed and never <i>who</i> or
@@ -63,7 +58,7 @@ public class ContactController : ControllerBase
     /// </summary>
     private void AuditContactChange(Guid contactId, string action) =>
         logger.LogInformation(
-            "Contact {ContactId} {Action} by {ActorUserId}.", contactId, action, ActorUserId);
+            "Contact {ContactId} {Action} by {ActorUserId}.", contactId, action, User.ActingUserId());
 
     /// <summary>
     /// The bulk-read counterpart (§10.11). A <c>contacts.read</c> holder — <b>Guest included</b> — can
@@ -73,7 +68,7 @@ public class ContactController : ControllerBase
     private void AuditVCardExport(int rowCount, bool filtered) =>
         logger.LogInformation(
             "Contacts vCard export of {RowCount} contact(s) ({Scope}) by {ActorUserId}.",
-            rowCount, filtered ? "filtered" : "all", ActorUserId);
+            rowCount, filtered ? "filtered" : "all", User.ActingUserId());
 
     [HttpGet(Name = "GetContacts")]
     [Authorize(Policy = PermissionClaims.ContactsRead)]
@@ -192,7 +187,7 @@ Requires contracts.update when that class is actually present.")] bool detachBlo
             // prove the claim for it. A caller missing a needed claim gets a 403 — never a silent
             // downgrade to the refused delete.
             var permitted = new HashSet<ContactDeleteBlockerClass>();
-            if (HasClaim(PermissionClaims.ContractsUpdate)) permitted.Add(ContactDeleteBlockerClass.ContractBeneficiary);
+            if (User.HasPermission(PermissionClaims.ContractsUpdate)) permitted.Add(ContactDeleteBlockerClass.ContractBeneficiary);
 
             var detached = await contactService.Delete(id, detachBlockingLinks: true, permitted, cancellationToken);
             if (detached is null)
@@ -227,7 +222,7 @@ Requires contracts.update when that class is actually present.")] bool detachBlo
             // contract NAMES need contracts.read. The boundary costs nothing today (every shipped role
             // holding contacts.delete also holds contracts.read, asserted by a guard test) and is kept
             // for a future role.
-            var canReadContracts = HasClaim(PermissionClaims.ContractsRead);
+            var canReadContracts = User.HasPermission(PermissionClaims.ContractsRead);
             var extensions = new Dictionary<string, object?>
             {
                 ["contractBeneficiaries"] = new ContactContractBeneficiaryBlockers
@@ -361,18 +356,21 @@ before storage. The previous image's file is released in the SAME transaction.")
                 + "Crop a smaller area, or choose a different file.");
         }
 
+        // FileMetadata.UploadedByUserId is a real foreign key to AspNetUsers, so only a real id may be
+        // stored; a principal without one is refused before the body is buffered.
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         var bytes = new byte[file.Length];
         await using (var stream = file.OpenReadStream())
         {
             await stream.ReadExactlyAsync(bytes, cancellationToken);
         }
 
-        // The RAW claim, not ActorUserId: that falls back to the literal "unknown" for audit lines, and
-        // FileMetadata.UploadedByUserId is a real foreign key to AspNetUsers — so storing the fallback
-        // would fail the constraint and surface as a 500. An absent claim stores NULL, which is the
-        // healthy state the column and its ON DELETE SET NULL are already built around.
         var attached = await avatarService.AttachAsync(
-            id, bytes, file.ContentType, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+            id, bytes, file.ContentType, userId, cancellationToken);
 
         if (!attached)
         {

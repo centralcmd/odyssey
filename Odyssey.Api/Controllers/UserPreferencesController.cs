@@ -43,10 +43,9 @@ public class UserPreferencesController : ControllerBase
             return problem;
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         var preference = await service.GetAsync(userId, pageKey, cancellationToken);
@@ -78,10 +77,9 @@ public class UserPreferencesController : ControllerBase
             return this.BadRequestProblem("Preferences JSON is required.");
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         return Ok(await service.UpsertAsync(userId, pageKey, request.PreferencesJson, cancellationToken));

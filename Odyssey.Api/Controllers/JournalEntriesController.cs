@@ -90,10 +90,9 @@ public class JournalEntriesController : ControllerBase
     public async Task<IActionResult> Post(
         [FromBody] NewJournalEntry request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         if (LinksFiles(request.PhotoFileIds, request.AttachmentFileIds) && !CanLinkFiles())
@@ -118,10 +117,9 @@ public class JournalEntriesController : ControllerBase
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateJournalEntry request, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         if (LinksFiles(request.PhotoFileIds, request.AttachmentFileIds) && !CanLinkFiles())
@@ -230,10 +228,9 @@ public class JournalEntriesController : ControllerBase
             return this.BadRequestProblem("The uploaded file must be a calendar file (text/calendar).");
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return this.UnauthorizedProblem("User identity is missing from the request.");
+            return this.MissingUserProblem();
         }
 
         await using var stream = file.OpenReadStream();
@@ -260,7 +257,7 @@ public class JournalEntriesController : ControllerBase
     private static bool LinksFiles(Guid[] photoFileIds, Guid[] attachmentFileIds) =>
         photoFileIds.Length > 0 || attachmentFileIds.Length > 0;
 
-    private bool CanLinkFiles() => User.HasClaim(PermissionClaims.Type, PermissionClaims.FilesRead);
+    private bool CanLinkFiles() => User.HasPermission(PermissionClaims.FilesRead);
 
-    private bool CanReadContacts() => User.HasClaim(PermissionClaims.Type, PermissionClaims.ContactsRead);
+    private bool CanReadContacts() => User.HasPermission(PermissionClaims.ContactsRead);
 }

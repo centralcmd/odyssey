@@ -267,7 +267,7 @@ public sealed class SecretSettingsService(
         var descriptor = registry.Find(key)
             ?? throw new DomainNotFoundException($"Secret setting '{key}' is not registered.");
 
-        if (!caller.HasClaim(PermissionClaims.Type, descriptor.RequiredClaim))
+        if (!caller.HasPermission(descriptor.RequiredClaim))
         {
             throw new DomainForbiddenException(
                 $"Secret setting '{descriptor.Key}' requires the '{descriptor.RequiredClaim}' claim.");

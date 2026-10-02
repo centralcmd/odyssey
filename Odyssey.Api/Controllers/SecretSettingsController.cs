@@ -65,7 +65,12 @@ public sealed class SecretSettingsController : ControllerBase
     public async Task<IActionResult> Put(
         string key, [FromBody] SecretSettingUpdate request, CancellationToken cancellationToken)
     {
-        await service.SetAsync(User, ActorUserId, key, request.Value, cancellationToken);
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        await service.SetAsync(User, userId, key, request.Value, cancellationToken);
         return NoContent();
     }
 
@@ -77,9 +82,13 @@ public sealed class SecretSettingsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> Delete(string key, CancellationToken cancellationToken)
     {
-        await service.ClearAsync(User, ActorUserId, key, cancellationToken);
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        await service.ClearAsync(User, userId, key, cancellationToken);
         return NoContent();
     }
 
-    private string ActorUserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
 }

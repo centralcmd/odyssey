@@ -14,10 +14,6 @@ public static class AuthorizationExtensions
     public static async Task<ClaimsPrincipal> GetUserAsync(this AuthenticationStateProvider provider) =>
         (await provider.GetAuthenticationStateAsync()).User;
 
-    /// <summary>Whether the user holds the given permission claim (<see cref="PermissionClaims.Type"/>).</summary>
-    public static bool HasPermission(this ClaimsPrincipal user, string permission) =>
-        user.HasClaim(PermissionClaims.Type, permission);
-
     /// <summary>
     /// The signed-in user's own id, or an empty string when the principal carries neither claim.
     /// </summary>

@@ -44,14 +44,14 @@ public class PropertyController : ControllerBase
     /// <c>ExistingAccount.ContractCount</c> following <c>contracts.read</c>.
     /// </summary>
     private bool CanReadEstimates() =>
-        User.HasClaim(PermissionClaims.Type, PermissionClaims.PropertiesEstimatesRead);
+        User.HasPermission(PermissionClaims.PropertiesEstimatesRead);
 
     /// <summary>
     /// A count of contracts is contract data, so <see cref="ExistingProperty.ContractCount"/> follows
     /// <c>contracts.read</c> (issue #208 §5.6) — decided here because the service has no principal.
     /// </summary>
     private bool CanReadContracts() =>
-        User.HasClaim(PermissionClaims.Type, PermissionClaims.ContractsRead);
+        User.HasPermission(PermissionClaims.ContractsRead);
 
     [HttpGet(Name = "GetProperties")]
     [Authorize(Policy = PermissionClaims.PropertiesRead)]
@@ -146,8 +146,13 @@ public class PropertyController : ControllerBase
     public async Task<IActionResult> Post(
         [FromBody] NewProperty newProperty, CancellationToken cancellationToken = default)
     {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         var property = await propertyService.Create(
-            newProperty, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+            newProperty, userId, cancellationToken);
         return CreatedAtRoute("GetProperty", new { id = property.PropertyId }, property);
     }
 
@@ -166,8 +171,13 @@ public class PropertyController : ControllerBase
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewProperty putProperty, CancellationToken cancellationToken = default)
     {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         var property = await propertyService.Update(
-            id, putProperty, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+            id, putProperty, userId, cancellationToken);
         if (property is null)
             return this.NotFoundProblem($"Property ID {id} not found.");
 
@@ -187,7 +197,10 @@ public class PropertyController : ControllerBase
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
         var deleted = await propertyService.Delete(id, userId, cancellationToken);
         if (!deleted)
             return this.NotFoundProblem($"Property ID {id} not found.");

@@ -110,11 +110,16 @@ public class ContractController : ControllerBase
     public async Task<IActionResult> Post(
         [FromBody] NewContract request, CancellationToken cancellationToken = default)
     {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         // The caller's id travels to the service for the signature-transition log line (issue #145
         // §7.7) — the body accepts no user id, on this or any other contract endpoint. A Signed
         // transition can happen on POST as well as PUT, so both actions carry it.
         var created = await service.Create(
-            request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+            request, userId, cancellationToken);
         await displayNames.EnrichFileAttributionAsync(User, [created], cancellationToken);
         await EnrichCreatorAsync(created, cancellationToken);
         return CreatedAtRoute("GetContract", new { id = created.ContractId }, created);
@@ -156,8 +161,13 @@ written — re-role those parties or detach them first.")]
                 new Dictionary<string, object?> { ["typeChange"] = payload });
         }
 
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         var updated = await service.Update(
-            id, request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+            id, request, userId, cancellationToken);
         if (updated is null)
         {
             return this.NotFoundProblem($"Contract ID {id} not found.");
@@ -193,7 +203,12 @@ written — re-role those parties or detach them first.")]
         [FromRoute(Name = "id")] Guid id,
         [FromBody] ContractPartyRequest request, CancellationToken cancellationToken = default)
     {
-        var created = await service.AddParty(id, request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        var created = await service.AddParty(id, request, userId, cancellationToken);
         // A party has no standalone GET (it is only ever read through its contract), so the 201
         // Location points at the contract — the addressable resource that now contains the new
         // party — while the body is the created party. Mirrors the contract file endpoints.
@@ -219,11 +234,16 @@ written — re-role those parties or detach them first.")]
         [FromRoute(Name = "partyId")] Guid partyId,
         [FromBody] ContractPartyRequest request, CancellationToken cancellationToken = default)
     {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         // A missing contract throws its own 404 from the service; a null here is the narrower
         // PartyNotOnContract class. Neither carries a field key, which is what distinguishes both from
         // the inline PartyTargetNotFound the record picker renders (issue #121 §9).
         var updated = await service.UpdateParty(
-            id, partyId, request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+            id, partyId, request, userId, cancellationToken);
         return updated is null
             ? this.NotFoundProblem($"Party ID {partyId} is not part of contract ID {id}.")
             : Ok(updated);
@@ -238,7 +258,12 @@ written — re-role those parties or detach them first.")]
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "partyId")] Guid partyId, CancellationToken cancellationToken = default)
     {
-        return await service.DeleteParty(id, partyId, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken)
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        return await service.DeleteParty(id, partyId, userId, cancellationToken)
             ? NoContent()
             : this.NotFoundProblem($"Party ID {partyId} is not part of contract ID {id}.");
     }
@@ -302,12 +327,17 @@ written — re-role those parties or detach them first.")]
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewTerm newTerm, CancellationToken cancellationToken = default)
     {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         // The acting user, threaded through exactly as every sibling contract write already does. Without
         // it the TermChanged system event this write records would read "Unknown user" — which is
         // indistinguishable from a deleted author, so the defect would look like correct behaviour
         // (issue #154 §5.6).
         var term = await termService.CreateForContract(
-            id, newTerm, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+            id, newTerm, userId, cancellationToken);
         // A term has no standalone GET (it is only ever read through its owner), so the 201 Location
         // points at the contract's term list — the addressable collection that now contains it.
         return CreatedAtRoute("GetContractTerms", new { id }, term);
@@ -334,8 +364,13 @@ written — re-role those parties or detach them first.")]
         [FromRoute(Name = "termId")] Guid termId,
         [FromBody] NewTerm putTerm, CancellationToken cancellationToken = default)
     {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         var updated = await termService.UpdateForContract(
-            id, termId, putTerm, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+            id, termId, putTerm, userId, cancellationToken);
         return updated
             ? NoContent()
             // Deliberately does not reveal which owner DOES hold the id (issue #135 §9).
@@ -352,8 +387,13 @@ written — re-role those parties or detach them first.")]
         [FromRoute(Name = "id")] Guid id,
         [FromRoute(Name = "termId")] Guid termId, CancellationToken cancellationToken = default)
     {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         return await termService.DeleteForContract(
-            id, termId, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken)
+            id, termId, userId, cancellationToken)
             ? NoContent()
             : this.NotFoundProblem($"Term ID {termId} is not attached to contract ID {id}.");
     }
@@ -412,8 +452,13 @@ written — re-role those parties or detach them first.")]
         [FromBody] NewContractEvent request,
         CancellationToken cancellationToken = default)
     {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
         var created = await eventService.CreateAsync(
-            id, request, User.FindFirstValue(ClaimTypes.NameIdentifier), cancellationToken);
+            id, request, userId, cancellationToken);
         if (created is null)
         {
             return this.NotFoundProblem($"Contract ID {id} not found.");
@@ -495,10 +540,9 @@ written — re-role those parties or detach them first.")]
             return problem;
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
+        if (User.ActingUserId() is not { } userId)
         {
-            return Unauthorized();
+            return this.MissingUserProblem();
         }
 
         var created = await service.AttachFile(id, request, userId, cancellationToken);
