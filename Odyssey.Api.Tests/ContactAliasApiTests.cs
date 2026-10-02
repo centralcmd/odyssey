@@ -55,8 +55,8 @@ public class ContactAliasApiTests
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    // The three write verbs each carry their OWN claim, not a shared "can edit" one — a
-    // contacts.update-without-.delete principal must not be able to delete.
+    // All three write verbs are contacts.update (issue #287 M3); the per-verb matrix across every
+    // child collection is ContactChildCollectionClaimApiTests.
     [Fact]
     public async Task AliasWrites_WithReadOnlyClaim_AreForbidden()
     {
@@ -70,20 +70,6 @@ public class ContactAliasApiTests
             (await client.PutAsJsonAsync($"/api/contacts/{id}/aliases/{Guid.NewGuid()}", Alias("Kari"))).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden,
             (await client.DeleteAsync($"/api/contacts/{id}/aliases/{Guid.NewGuid()}")).StatusCode);
-    }
-
-    [Fact]
-    public async Task DeleteAlias_WithUpdateButNotDeleteClaim_IsForbidden()
-    {
-        await using var factory = new ApiFactory(
-            [PermissionClaims.ContactsRead, PermissionClaims.ContactsCreate, PermissionClaims.ContactsUpdate]);
-        var id = await SeedContactAsync(factory);
-        using var client = factory.CreateClient();
-        var alias = await CreateAliasAsync(client, id, Alias("Kari"));
-
-        var response = await client.DeleteAsync($"/api/contacts/{id}/aliases/{alias.Id}");
-
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     // ── Status codes (AC 1, 5, 6, 8) ──────────────────────────────────────────

@@ -503,7 +503,7 @@ public class MoneyBoundsTests
     }
 
     private static ImportRequest Import(decimal amount) =>
-        new([new ImportCandidateRequest(Guid.NewGuid(), null, null, amount, null)]);
+        new ImportRequest { Candidates = [new ImportCandidateRequest { CandidateId = Guid.NewGuid(), Amount = amount }] };
 
     [Fact]
     public async Task ImportCandidates_AmountOverridePastTheColumn_Returns400()

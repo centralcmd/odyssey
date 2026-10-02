@@ -4,8 +4,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Core.DataExport;
 
-namespace Odyssey.Api.DataExport;
+namespace Odyssey.Api.Controllers;
 
 /// <summary>
 /// Admin-only database JSON export (issue #160). Gated by the <c>data.export</c> permission policy.

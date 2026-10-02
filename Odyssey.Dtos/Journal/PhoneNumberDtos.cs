@@ -13,7 +13,7 @@ public sealed record NewPhoneNumber
     public bool IsPrimary { get; set; }
 
     [Required]
-    [StringLength(32)]
+    [StringLength(ContactMethodLimits.PhoneMaxLength)]
     [Phone]
     public required string Value { get; set; }
 }
@@ -26,6 +26,6 @@ public sealed record ExistingPhoneNumber
     public PhoneLabel Label { get; set; }
     public bool IsPrimary { get; set; }
 
-    [StringLength(32)]
+    [StringLength(ContactMethodLimits.PhoneMaxLength)]
     public required string Value { get; set; }
 }

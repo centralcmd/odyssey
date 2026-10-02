@@ -1,4 +1,4 @@
-namespace Odyssey.Api.Email;
+namespace Odyssey.Core.Email;
 
 /// <summary>
 /// Caps how often transactional mail may be sent to one address (issue #393). The per-IP limiter in

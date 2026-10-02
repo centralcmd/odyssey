@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Odyssey.Dtos.Finance;
+using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Identity;
 

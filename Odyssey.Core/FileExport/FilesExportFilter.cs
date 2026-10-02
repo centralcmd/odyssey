@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
 
-namespace Odyssey.Api.FileExport;
+namespace Odyssey.Core.FileExport;
 
 /// <summary>
 /// Query filter for <c>GET /api/admin/files/export/filtered</c> (Odyssey Design System · Files.jsx

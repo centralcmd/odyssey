@@ -6,8 +6,9 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Core.FileExport;
 
-namespace Odyssey.Api.FileExport;
+namespace Odyssey.Api.Controllers;
 
 /// <summary>
 /// Admin-only "export all files" / "export filtered files" ZIP downloads (issue #159, extended per

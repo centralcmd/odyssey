@@ -2,9 +2,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Odyssey.Dtos.Finance;
 
-public sealed record ImportRequest(
-    [Required] List<ImportCandidateRequest> Candidates
-);
+public sealed record ImportRequest
+{
+    [Required]
+    public required List<ImportCandidateRequest> Candidates { get; set; }
+}
 
 /// <summary>
 /// One reviewed candidate to import. <see cref="Description"/> and <see cref="ExternalId"/> are bounded
@@ -12,21 +14,29 @@ public sealed record ImportRequest(
 /// the review grid sends the extracted values back verbatim, so a ledger-width bound would refuse the
 /// whole batch over one long extracted description. The service fits them to the ledger on import.
 /// </summary>
-public sealed record ImportCandidateRequest(
-    [Required] Guid CandidateId,
-    DateTime? TransactionDate,
-    [StringLength(ImportCandidateRequest.DescriptionMaxLength)]
-    string? Description,
-    [Range(typeof(decimal), MoneyBounds.AmountMin, MoneyBounds.AmountMax, ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
-    decimal? Amount,
-    [StringLength(3)]
-    string? Currency,
-    Guid? ContactId = null,
-    List<Guid>? TransactionTagIds = null,
-    [StringLength(ImportCandidateRequest.ExternalIdMaxLength)]
-    string? ExternalId = null
-)
+public sealed record ImportCandidateRequest
 {
+    [Required]
+    public required Guid CandidateId { get; set; }
+
+    public DateTime? TransactionDate { get; set; }
+
+    [StringLength(DescriptionMaxLength)]
+    public string? Description { get; set; }
+
+    [Range(typeof(decimal), MoneyBounds.AmountMin, MoneyBounds.AmountMax, ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
+    public decimal? Amount { get; set; }
+
+    [StringLength(3)]
+    public string? Currency { get; set; }
+
+    public Guid? ContactId { get; set; }
+
+    public List<Guid>? TransactionTagIds { get; set; }
+
+    [StringLength(ExternalIdMaxLength)]
+    public string? ExternalId { get; set; }
+
     /// <summary>Shared with the review grid's input, so the field stops where the server would refuse.</summary>
     public const int DescriptionMaxLength = 1024;
 

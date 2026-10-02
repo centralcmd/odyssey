@@ -41,9 +41,6 @@ public class CalendarIcsService
     private const string SyntheticUidSuffix = "@odyssey.local";
     private const string UntitledEvent = "(untitled)";
 
-    private static readonly string[] AcceptedContentTypes =
-        ["text/calendar", "application/octet-stream", "text/plain"];
-
     private readonly OdysseyContext context;
     private readonly ILogger<CalendarIcsService> logger;
     private readonly IImportExportLimitsLookup limits;
@@ -1214,7 +1211,7 @@ public class CalendarIcsService
     /// clearly-wrong declared type like <c>application/json</c>. Public so the controller can gate at
     /// the edge (defense-in-depth for direct service callers keeps it here too).</summary>
     public static bool IsAcceptedContentType(string? contentType) =>
-        ImportFileReader.IsAcceptedContentType(contentType, AcceptedContentTypes);
+        ImportFileReader.IsAcceptedContentType(contentType, ImportLinks.CalendarContentTypes);
 
     // Builds the download filename "yyyyMMdd_<calendar name>.ics" (date = export date), stripping quotes
     // and control characters from the name for a safe Content-Disposition value.

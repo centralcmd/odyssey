@@ -25,7 +25,7 @@
            email and phone. There is no load-failure variant: aliases arrive inline on the contact,
            so there is no per-card fetch to fail. *@
         <p class="odc-aliases-empty">
-            @(CanCreate && !IsArchived
+            @(CanUpdate && !IsArchived
                 ? "No aliases yet — use the ⋯ menu to add one."
                 : "No aliases.")
         </p>

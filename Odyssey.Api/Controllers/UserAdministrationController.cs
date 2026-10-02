@@ -6,22 +6,20 @@ using Odyssey.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Odyssey.Core.UserAdministration;
+using Odyssey.Core.Email;
 
-namespace Odyssey.Api.UserAdministration;
+namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Route("api/users")]
 public sealed class UserAdministrationController : ControllerBase
 {
     private readonly UserAdministrationService userAdministrationService;
-    private readonly ILogger<UserAdministrationController> logger;
 
-    public UserAdministrationController(
-        UserAdministrationService userAdministrationService,
-        ILogger<UserAdministrationController> logger)
+    public UserAdministrationController(UserAdministrationService userAdministrationService)
     {
         this.userAdministrationService = userAdministrationService;
-        this.logger = logger;
     }
 
     [HttpGet]
@@ -32,15 +30,8 @@ public sealed class UserAdministrationController : ControllerBase
         [FromQuery] UsersQueryParams query,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var users = await userAdministrationService.SearchAsync(User, query, cancellationToken);
-            return Ok(users);
-        }
-        catch (UserAdministrationValidationException exception)
-        {
-            return this.BadRequestProblem(exception.Message);
-        }
+        var users = await userAdministrationService.SearchAsync(User, query, cancellationToken);
+        return Ok(users);
     }
 
     [HttpGet("roles")]
@@ -82,28 +73,8 @@ public sealed class UserAdministrationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> UpdateUser([FromRoute] string id, [FromBody] UpdatedUser request)
     {
-        try
-        {
-            var updatedUser = await userAdministrationService.UpdateAsync(User, GetActorUserId(), id, request);
-            return Ok(updatedUser);
-        }
-        catch (UserAdministrationValidationException exception)
-        {
-            return this.BadRequestProblem(exception.Message);
-        }
-        catch (UserAdministrationNotFoundException exception)
-        {
-            return this.NotFoundProblem(exception.Message);
-        }
-        catch (UserAdministrationConflictException exception)
-        {
-            return this.ConflictProblem(exception.Message);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(exception, "Unexpected error updating user {TargetUserId}.", id);
-            throw;
-        }
+        var updatedUser = await userAdministrationService.UpdateAsync(User, GetActorUserId(), id, request);
+        return Ok(updatedUser);
     }
 
     [HttpPut("{id}/role")]
@@ -114,28 +85,8 @@ public sealed class UserAdministrationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> AssignRole([FromRoute] string id, [FromBody] UpdatedUserRole request)
     {
-        try
-        {
-            var updatedUser = await userAdministrationService.AssignRoleAsync(User, GetActorUserId(), id, request);
-            return Ok(updatedUser);
-        }
-        catch (UserAdministrationValidationException exception)
-        {
-            return this.BadRequestProblem(exception.Message);
-        }
-        catch (UserAdministrationNotFoundException exception)
-        {
-            return this.NotFoundProblem(exception.Message);
-        }
-        catch (UserAdministrationConflictException exception)
-        {
-            return this.ConflictProblem(exception.Message);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(exception, "Unexpected error assigning role for user {TargetUserId}.", id);
-            throw;
-        }
+        var updatedUser = await userAdministrationService.AssignRoleAsync(User, GetActorUserId(), id, request);
+        return Ok(updatedUser);
     }
 
     /// <summary>
@@ -175,39 +126,15 @@ public sealed class UserAdministrationController : ControllerBase
         [FromRoute] string id,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var delivery = await userAdministrationService.SendPasswordResetAsync(
-                GetActorUserId(), id, cancellationToken);
+        var delivery = await userAdministrationService.SendPasswordResetAsync(
+            GetActorUserId(), id, cancellationToken);
 
-            // NotConfigured maps to delivered: with no SMTP host the link is logged instead, and in that
-            // (Development/Testing-only) environment logging *is* the delivery mechanism.
-            return Ok(new PasswordResetDispatch
-            {
-                EmailDelivered = delivery is not PasswordResetLinkDelivery.Failed,
-            });
-        }
-        catch (UserAdministrationValidationException exception)
+        // NotConfigured maps to delivered: with no SMTP host the link is logged instead, and in that
+        // (Development/Testing-only) environment logging *is* the delivery mechanism.
+        return Ok(new PasswordResetDispatch
         {
-            return this.BadRequestProblem(exception.Message);
-        }
-        catch (UserAdministrationNotFoundException exception)
-        {
-            return this.NotFoundProblem(exception.Message);
-        }
-        catch (UserAdministrationUnprocessableException exception)
-        {
-            return this.UnprocessableEntityProblem(exception.Message);
-        }
-        catch (UserAdministrationThrottledException exception)
-        {
-            return this.TooManyRequestsProblem(exception.Message);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(exception, "Unexpected error sending a password reset for user {TargetUserId}.", id);
-            throw;
-        }
+            EmailDelivered = delivery is not PasswordResetLinkDelivery.Failed,
+        });
     }
 
     [HttpDelete("{id}")]
@@ -218,28 +145,8 @@ public sealed class UserAdministrationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> DeleteUser([FromRoute] string id)
     {
-        try
-        {
-            await userAdministrationService.DeleteAsync(GetActorUserId(), id);
-            return NoContent();
-        }
-        catch (UserAdministrationValidationException exception)
-        {
-            return this.BadRequestProblem(exception.Message);
-        }
-        catch (UserAdministrationNotFoundException exception)
-        {
-            return this.NotFoundProblem(exception.Message);
-        }
-        catch (UserAdministrationConflictException exception)
-        {
-            return this.ConflictProblem(exception.Message);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(exception, "Unexpected error deleting user {TargetUserId}.", id);
-            throw;
-        }
+        await userAdministrationService.DeleteAsync(GetActorUserId(), id);
+        return NoContent();
     }
 
     private string GetActorUserId()

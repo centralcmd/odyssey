@@ -194,7 +194,7 @@ public class FileServiceTests
 
         var uploaded = await fileService.UploadFileAsync(file, "u", "Original desc");
 
-        var updated = await fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest("New desc"));
+        var updated = await fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest { Description = "New desc" });
 
         Assert.NotNull(updated);
         Assert.Equal("New desc", updated!.Description);
@@ -210,7 +210,7 @@ public class FileServiceTests
         var uploaded = await fileService.UploadFileAsync(file, "u", "Keep desc");
 
         var updated = await fileService.UpdateFileMetadataAsync(
-            uploaded.Id, new UpdateFileMetadataRequest("Keep desc", "statement-2026.pdf"));
+            uploaded.Id, new UpdateFileMetadataRequest { Description = "Keep desc", FileName = "statement-2026.pdf" });
 
         Assert.NotNull(updated);
         Assert.Equal("statement-2026.pdf", updated!.FileName);
@@ -226,7 +226,7 @@ public class FileServiceTests
 
         var uploaded = await fileService.UploadFileAsync(file, "u", "desc");
 
-        var updated = await fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest("desc"));
+        var updated = await fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest { Description = "desc" });
 
         Assert.NotNull(updated);
         Assert.Equal("note.pdf", updated!.FileName);
@@ -245,7 +245,7 @@ public class FileServiceTests
         var fileService = new FileService(context, new FileValidationService());
         var uploaded = await fileService.UploadFileAsync(CreateMockFile("note.pdf", "application/pdf", Pdf(1)), "u", null);
 
-        var updated = await fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest(null, requested));
+        var updated = await fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest { FileName = requested });
 
         Assert.Equal(expected, updated!.FileName);
         Assert.Equal(expected, context.FileMetadata.Single(fm => fm.Id == uploaded.Id).FileName);
@@ -262,7 +262,7 @@ public class FileServiceTests
         var uploaded = await fileService.UploadFileAsync(CreateMockFile("note.pdf", "application/pdf", Pdf(1)), "u", "old");
 
         var ex = await Assert.ThrowsAsync<DomainValidationException>(() =>
-            fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest("new", requested)));
+            fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest { Description = "new", FileName = requested }));
 
         Assert.True(ex.Errors!.ContainsKey("FileName"));
         var row = context.FileMetadata.Single(fm => fm.Id == uploaded.Id);
@@ -276,7 +276,7 @@ public class FileServiceTests
         await using var context = TestContextFactory.Create();
         var fileService = new FileService(context, new FileValidationService());
 
-        var result = await fileService.UpdateFileMetadataAsync(Guid.NewGuid(), new UpdateFileMetadataRequest("desc"));
+        var result = await fileService.UpdateFileMetadataAsync(Guid.NewGuid(), new UpdateFileMetadataRequest { Description = "desc" });
 
         Assert.Null(result);
     }

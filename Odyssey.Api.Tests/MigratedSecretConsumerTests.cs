@@ -7,6 +7,7 @@ using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context.Secrets;
 using Odyssey.Dtos.Application;
 using Xunit;
+using Odyssey.Core.Email;
 
 namespace Odyssey.Api.Tests;
 

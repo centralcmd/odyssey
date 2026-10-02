@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Identity;
 

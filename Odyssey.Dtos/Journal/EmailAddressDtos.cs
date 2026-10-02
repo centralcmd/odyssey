@@ -13,7 +13,7 @@ public sealed record NewEmailAddress
     public bool IsPrimary { get; set; }
 
     [Required]
-    [StringLength(256)]
+    [StringLength(ContactMethodLimits.EmailMaxLength)]
     [EmailAddress]
     public required string Value { get; set; }
 }
@@ -26,6 +26,6 @@ public sealed record ExistingEmailAddress
     public EmailLabel Label { get; set; }
     public bool IsPrimary { get; set; }
 
-    [StringLength(256)]
+    [StringLength(ContactMethodLimits.EmailMaxLength)]
     public required string Value { get; set; }
 }

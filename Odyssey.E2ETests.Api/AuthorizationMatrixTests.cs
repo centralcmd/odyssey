@@ -68,11 +68,11 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ($"/api/transactions/{Guid.NewGuid()}", PermissionClaims.TransactionsDelete),
         ($"/api/transaction-tags/{Guid.NewGuid()}", PermissionClaims.TransactionTagsDelete),
         ($"/api/contacts/{Guid.NewGuid()}", PermissionClaims.ContactsDelete),
-        // Contact contact sub-resources (issue #325) reuse the contacts.* claims; probe each
-        // DELETE so the sub-resource routes are pinned in the matrix, not just the base resource.
-        ($"/api/contacts/{Guid.NewGuid()}/addresses/{Guid.NewGuid()}", PermissionClaims.ContactsDelete),
-        ($"/api/contacts/{Guid.NewGuid()}/emails/{Guid.NewGuid()}", PermissionClaims.ContactsDelete),
-        ($"/api/contacts/{Guid.NewGuid()}/phones/{Guid.NewGuid()}", PermissionClaims.ContactsDelete),
+        // Contact child collections (issue #325) are written under contacts.update (issue #287 M3); probe
+        // each DELETE so the sub-resource routes are pinned in the matrix, not just the base resource.
+        ($"/api/contacts/{Guid.NewGuid()}/addresses/{Guid.NewGuid()}", PermissionClaims.ContactsUpdate),
+        ($"/api/contacts/{Guid.NewGuid()}/emails/{Guid.NewGuid()}", PermissionClaims.ContactsUpdate),
+        ($"/api/contacts/{Guid.NewGuid()}/phones/{Guid.NewGuid()}", PermissionClaims.ContactsUpdate),
         ($"/api/exchange-rates/{Guid.NewGuid()}", PermissionClaims.ExchangeRatesDelete),
         ($"/api/photos/{Guid.NewGuid()}", PermissionClaims.PhotosDelete),
         ($"/api/albums/{Guid.NewGuid()}", PermissionClaims.PhotoAlbumsDelete),

@@ -15,6 +15,7 @@ using Odyssey.Dtos.Application;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Xunit;
+using Odyssey.Core.Email;
 
 namespace Odyssey.Api.Tests;
 
@@ -330,7 +331,7 @@ public class AdminPasswordResetApiTests
         var code = CodeFrom(Assert.Single(ResetLinks(factory)));
 
         var entry = Assert.Single(
-            factory.Logs.ForCategory(typeof(UserAdministration.UserAdministrationService).FullName!),
+            factory.Logs.ForCategory(typeof(Odyssey.Core.UserAdministration.UserAdministrationService).FullName!),
             line => line.Message.Contains("Admin-initiated password reset", StringComparison.Ordinal));
 
         Assert.Contains(ActorUserId, entry.Message, StringComparison.Ordinal);

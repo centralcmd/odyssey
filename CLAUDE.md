@@ -127,6 +127,13 @@ Guard the boundary with:
 | `Finance/` | `Odyssey.Core.Finance` |
 | `Journal/` | `Odyssey.Core.Journal` (plus `Journal/Interop/` → `…Journal.Interop`) |
 
+Account-level services sit in their own folders beside these (`UserAdministration/`, `Profiles/`,
+`Preferences/`, `Legal/`, `DataExport/`, `FileExport/`), moved out of `Odyssey.Api` by issue #287 M10.
+Where one needs something only the host can provide — mail delivery, the send throttle, the
+pseudonymization key, display-name resolution — the **interface** lives in Core (`Email/`, `Identity/`,
+`Legal/`) and the implementation stays in `Odyssey.Api`. `Odyssey.Api` keeps controllers (all under
+`Controllers/`), middleware and those implementations; a new business service goes in Core.
+
 The root, `Configuration/` and `Pagination/` are the former `Odyssey.Shared` project, merged in for the
 same reason: its only three consumers were `Odyssey.Api`, `Odyssey.MigrationService` and the two service
 projects, and all of them already referenced what is now `Odyssey.Core`, so the separate assembly bought

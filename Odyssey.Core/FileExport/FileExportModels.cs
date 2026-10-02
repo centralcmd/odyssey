@@ -1,4 +1,4 @@
-namespace Odyssey.Api.FileExport;
+namespace Odyssey.Core.FileExport;
 
 /// <summary>A single file to export — the columns needed to locate content and name the ZIP entry.</summary>
 public sealed record FileExportItem(Guid FileId, string FileName, string ContentType, Guid FileBlobId);

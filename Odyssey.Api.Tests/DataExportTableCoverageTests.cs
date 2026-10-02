@@ -1,6 +1,6 @@
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
-using Odyssey.Api.DataExport;
+using Odyssey.Core.DataExport;
 using Odyssey.Context;
 using Xunit;
 

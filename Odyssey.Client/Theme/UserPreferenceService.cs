@@ -121,7 +121,7 @@ public sealed class UserPreferenceService(IUserPreferencesApiClient preferences,
 
     public async Task<bool> SaveUserPreferencesAsync(UserPreferencesPage userPreferences)
     {
-        var request = new UserPreferenceRequest(JsonSerializer.Serialize(userPreferences));
+        var request = new UserPreferenceRequest { PreferencesJson = JsonSerializer.Serialize(userPreferences) };
 
         try
         {

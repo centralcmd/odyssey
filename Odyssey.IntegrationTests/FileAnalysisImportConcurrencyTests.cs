@@ -106,7 +106,7 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
     }
 
     private static ImportRequest Request(Guid candidateId) =>
-        new([new ImportCandidateRequest(candidateId, null, null, null, null)]);
+        new ImportRequest { Candidates = [new ImportCandidateRequest { CandidateId = candidateId }] };
 
     private static async Task<(Guid JobId, Guid CandidateId)> SeedJobAsync(OdysseyContext context)
     {

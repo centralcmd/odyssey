@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Swashbuckle.AspNetCore.Annotations;
 
 using Odyssey.Core.Finance;
+using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Controllers;
 

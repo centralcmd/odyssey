@@ -124,31 +124,38 @@ public class SmtpEmailSenderLogRedactionTests
     }
 
     /// <summary>
-    /// The source-lint half: no log template in the API may carry a raw <c>{Recipient}</c>, and the one
-    /// <c>{Link}</c> placeholder sits inside the environment gate. Behavioural tests only cover the
-    /// branches they reach; this covers the next log line someone adds.
+    /// The source-lint half: no log template in the API or in Core may carry a raw <c>{Recipient}</c>,
+    /// and the one <c>{Link}</c> placeholder sits inside the environment gate. Behavioural tests only
+    /// cover the branches they reach; this covers the next log line someone adds. Core is scanned too
+    /// because the account services that log about users and mail (user administration, legal, profile,
+    /// data export) moved there (issue #287 M10) — scanning the API alone would keep passing over them.
     /// </summary>
     [Fact]
     public void NoLogTemplate_CarriesARawRecipientOrAnUngatedLink()
     {
-        var apiRoot = Path.Combine(RepositoryRoot.Path, "Odyssey.Api");
-        var sources = Directory.EnumerateFiles(apiRoot, "*.cs", SearchOption.AllDirectories)
+        var sources = new[] { "Odyssey.Api", "Odyssey.Core" }
+            .Select(project => Path.Combine(RepositoryRoot.Path, project))
+            .SelectMany(root => Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             .ToList();
-        Assert.NotEmpty(sources);
+        Assert.Contains(sources, path => path.EndsWith("UserAdministrationService.cs", StringComparison.Ordinal));
 
         // Any message-template placeholder naming an address — {Recipient}, {Email}, {To}, {ToAddress},
         // {RecipientAddress}, {UserEmail} … — in a regular, verbatim or raw string. The digest
-        // ({RecipientHash}) and a count ({MaxTrackedRecipients}) do not end in an address noun.
+        // ({RecipientHash}) does not end in an address noun, and a count that does — a cap
+        // ({MaxTrackedRecipients}), a remap tally ({RemappedEmails}) or a usage count ({appliedTo}) —
+        // is excluded by its prefix.
         var rawRecipient = new Regex(
-            @"\{(?!(Max|Min)\w*\})\w*(Recipients?|Emails?|Address(es)?|Mailbox|To)\}", RegexOptions.IgnoreCase);
+            @"\{(?!(Max|Min|Remapped|Applied)\w*\})\w*(Recipients?|Emails?|Address(es)?|Mailbox|To)\}", RegexOptions.IgnoreCase);
         Assert.Matches(rawRecipient, "{Recipient}");
         Assert.Matches(rawRecipient, "{UserEmail}");
         Assert.Matches(rawRecipient, "{ToAddress}");
         Assert.Matches(rawRecipient, "{To}");
         Assert.DoesNotMatch(rawRecipient, "{RecipientHash}");
         Assert.DoesNotMatch(rawRecipient, "{MaxTrackedRecipients}");
+        Assert.DoesNotMatch(rawRecipient, "{RemappedEmails}");
+        Assert.DoesNotMatch(rawRecipient, "{appliedTo}");
         var offenders = sources
             .SelectMany(path => File.ReadLines(path)
                 .Where(line => IsLogCall(line) || LooksLikeTemplate(line))

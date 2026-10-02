@@ -58,7 +58,7 @@ public class FileAnalysisFeatureFlagTests
 
         var response = await client.PostAsJsonAsync(
             $"/api/file-analysis/{Guid.NewGuid()}/import",
-            new ImportRequest(new List<ImportCandidateRequest>()));
+            new ImportRequest { Candidates = new List<ImportCandidateRequest>() });
 
         await AssertFeatureDisabledAsync(response);
     }

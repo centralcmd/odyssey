@@ -360,6 +360,53 @@ public class ContactAliasIntegrationTests(MariaDbFixture fixture)
         return id;
     }
 
+    /// <summary>
+    /// The address, email and phone collections share one generic code path whose queries filter and
+    /// order through the <c>IContactChild</c>/<c>IContactMethod</c> interface members (issue #287 M7).
+    /// EF InMemory evaluates those in memory; this proves the Pomelo provider translates them, and that
+    /// the primary arbitration still holds end to end: first row primary, a new primary demotes the
+    /// old, deleting the primary promotes the survivor, and another contact's row is out of reach.
+    /// </summary>
+    [SkippableFact]
+    public async Task ContactMethods_SharedPath_TranslatesAndArbitratesPrimaryOnMariaDb()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var options = await MigratedSchemaAsync();
+        var contactId = await SeedContactAsync(options, "Kari", "Nordmann");
+        var otherId = await SeedContactAsync(options, "Ola", "Nordmann");
+
+        await using (var context = new OdysseyContext(options))
+        {
+            var service = new ContactService(context, new NoopContactReferenceGuard());
+
+            var first = (await service.CreatePhone(contactId, new NewPhoneNumber { Label = PhoneLabel.Mobile, Value = "+47 400 00 001" }))!;
+            var second = (await service.CreatePhone(contactId, new NewPhoneNumber { Label = PhoneLabel.Home, Value = "+47 22 00 00 02", IsPrimary = true }))!;
+            Assert.False(await service.UpdateEmail(contactId, Guid.NewGuid(), new NewEmailAddress { Label = EmailLabel.Home, Value = "a@example.com" }));
+
+            var phones = (await service.GetPhones(contactId))!;
+            Assert.Equal([second.Id, first.Id], phones.Select(p => p.Id));
+            Assert.Equal([true, false], phones.Select(p => p.IsPrimary));
+
+            // Containment: the other contact cannot reach this contact's row on any verb.
+            Assert.False(await service.UpdatePhone(otherId, first.Id, new NewPhoneNumber { Label = PhoneLabel.Mobile, Value = "+47 400 00 009" }));
+            Assert.False(await service.DeletePhone(otherId, first.Id));
+
+            Assert.True(await service.DeletePhone(contactId, second.Id));
+            Assert.True(Assert.Single((await service.GetPhones(contactId))!).IsPrimary);
+
+            var address = (await service.CreateAddress(contactId, new NewAddress
+            {
+                Label = AddressLabel.Home, Line1 = "Storgata 55", City = "Oslo", CountryCode = "no",
+            }))!;
+            Assert.True(address.IsPrimary);
+            Assert.Equal("NO", address.CountryCode);
+            Assert.Empty((await service.GetEmails(contactId))!);
+            Assert.Null(await service.GetAddresses(Guid.NewGuid()));
+        }
+
+        await DropAsync();
+    }
+
     private async Task<DbContextOptions<OdysseyContext>> MigratedSchemaAsync()
     {
         await DropAsync();

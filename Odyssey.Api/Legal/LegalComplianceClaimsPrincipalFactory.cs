@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Core.Legal;
 
 namespace Odyssey.Api.Legal;
 

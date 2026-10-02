@@ -1,10 +1,11 @@
 using Odyssey.Dtos.Application;
+using Odyssey.Core;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Profiles;
 
-namespace Odyssey.Api.Profiles;
+namespace Odyssey.Core.Profiles;
 
 /// <summary>
 /// Reads and upserts the authenticated caller's own <see cref="UserProfile"/> (issue #316). Operates
@@ -47,7 +48,7 @@ public sealed class ProfileService
     /// <summary>
     /// Validate and upsert the caller's profile. All four required fields (First/Last name, birth date,
     /// sex) must be present and valid, so a persisted row is only ever complete (§6). Optional fields
-    /// clear on blank. Throws <see cref="ProfileValidationException"/> (→ 400) on any rule violation.
+    /// clear on blank. Throws <see cref="DomainValidationException"/> (→ 400) on any rule violation.
     /// </summary>
     public async Task<ProfileDto> SaveAsync(string userId, ProfileDto request, CancellationToken cancellationToken)
     {
@@ -59,33 +60,33 @@ public sealed class ProfileService
 
         if (firstName is null)
         {
-            throw new ProfileValidationException("First name is required.");
+            throw new DomainValidationException("First name is required.");
         }
 
         if (lastName is null)
         {
-            throw new ProfileValidationException("Last name is required.");
+            throw new DomainValidationException("Last name is required.");
         }
 
         if (request.BirthDate is not { } birthDate)
         {
-            throw new ProfileValidationException("Date of birth is required.");
+            throw new DomainValidationException("Date of birth is required.");
         }
 
         if (request.Sex is not { } sex)
         {
-            throw new ProfileValidationException("Sex is required.");
+            throw new DomainValidationException("Sex is required.");
         }
 
         if (!Enum.IsDefined(sex))
         {
-            throw new ProfileValidationException("Sex is invalid.");
+            throw new DomainValidationException("Sex is invalid.");
         }
 
         var today = DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime);
         if (birthDate < MinBirthDate || birthDate > today)
         {
-            throw new ProfileValidationException(
+            throw new DomainValidationException(
                 $"Date of birth must be on or after {MinBirthDate:yyyy-MM-dd} and not in the future.");
         }
 
@@ -139,12 +140,12 @@ public sealed class ProfileService
 
         if (trimmed.Any(char.IsControl))
         {
-            throw new ProfileValidationException($"{field} must not contain control characters or line breaks.");
+            throw new DomainValidationException($"{field} must not contain control characters or line breaks.");
         }
 
         if (rejectEmail && new EmailAddressAttribute().IsValid(trimmed))
         {
-            throw new ProfileValidationException($"{field} must not be an email address.");
+            throw new DomainValidationException($"{field} must not be an email address.");
         }
 
         return trimmed;

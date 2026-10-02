@@ -56,68 +56,32 @@ public static class MapsterConfig
                 return;
             }
 
-            TypeAdapterConfig<ContextAccountType, DtoAccountType>
-                .NewConfig()
-                .MapWith(src => ConvertContextToDto(src));
+            // Every Context↔Dtos enum pair maps by ordinal through EnumMirror; EnumMirrorParityTests pins
+            // each pair to identical names and ordinals, which is what makes that sound (issue #287 M6).
+            // The fallback is where an undefined stored value (a retired ordinal, a hand edit) lands.
+            Mirror(DtoAccountType.Unknown, ContextAccountType.Unknown);
+            Mirror(DtoAccountFileType.Other, ContextAccountFileType.Other);
+            Mirror(DtoBudgetCategoryType.Expense, ContextBudgetCategoryType.Expense);
+            Mirror(DtoTransactionFileType.Other, ContextTransactionFileType.Other);
+            Mirror(DtoTaxStatementFileType.Other, ContextTaxStatementFileType.Other);
+            Mirror(DtoPropertyFileType.Other, ContextPropertyFileType.Other);
 
-            TypeAdapterConfig<DtoAccountType, ContextAccountType>
-                .NewConfig()
-                .MapWith(src => ConvertDtoToContext(src));
-
-            TypeAdapterConfig<ContextAccountFileType, DtoAccountFileType>
-                .NewConfig()
-                .MapWith(src => ConvertContextToDto(src));
-
-            TypeAdapterConfig<DtoAccountFileType, ContextAccountFileType>
-                .NewConfig()
-                .MapWith(src => ConvertDtoToContext(src));
-
-            TypeAdapterConfig<ContextBudgetCategoryType, DtoBudgetCategoryType>
-                .NewConfig()
-                .MapWith(src => ConvertContextToDto(src));
-
-            TypeAdapterConfig<DtoBudgetCategoryType, ContextBudgetCategoryType>
-                .NewConfig()
-                .MapWith(src => ConvertDtoToContext(src));
-
-            TypeAdapterConfig<ContextTransactionFileType, DtoTransactionFileType>
-                .NewConfig()
-                .MapWith(src => ConvertContextToDto(src));
-
-            TypeAdapterConfig<DtoTransactionFileType, ContextTransactionFileType>
-                .NewConfig()
-                .MapWith(src => ConvertDtoToContext(src));
-
-            TypeAdapterConfig<ContextTaxStatementFileType, DtoTaxStatementFileType>
-                .NewConfig()
-                .MapWith(src => ConvertContextToDto(src));
-
-            TypeAdapterConfig<DtoTaxStatementFileType, ContextTaxStatementFileType>
-                .NewConfig()
-                .MapWith(src => ConvertDtoToContext(src));
-
-            // Issue #210: the two enums share every ordinal by contract (a guard test pins the member
-            // lists), so the ordinal is the mapping — an unknown stored value degrades to Other.
-            TypeAdapterConfig<ContextPropertyFileType, DtoPropertyFileType>
-                .NewConfig()
-                .MapWith(src => Enum.IsDefined((DtoPropertyFileType)(int)src)
-                    ? (DtoPropertyFileType)(int)src
-                    : DtoPropertyFileType.Other);
-
-            TypeAdapterConfig<DtoPropertyFileType, ContextPropertyFileType>
-                .NewConfig()
-                .MapWith(src => Enum.IsDefined((ContextPropertyFileType)(int)src)
-                    ? (ContextPropertyFileType)(int)src
-                    : ContextPropertyFileType.Other);
-
+            // No fallback, and THROWING on anything else (issue #192 §8). A fallback arm here once read
+            // `_ => Percentage`, so an unmapped member would have been persisted — and shown — as a
+            // percentage. There is no safe member to fall back to, and an unknown ordinal cannot be
+            // stored (CK_Terms_ValueMatchesUnit), so reaching the throw means the schema was bypassed.
             TypeAdapterConfig<ContextTermValueUnit, DtoTermValueUnit>
                 .NewConfig()
-                .MapWith(src => ConvertContextToDto(src));
+                .MapWith(src => EnumMirror.ConvertOrThrow<ContextTermValueUnit, DtoTermValueUnit>(src));
 
             TypeAdapterConfig<DtoTermValueUnit, ContextTermValueUnit>
                 .NewConfig()
-                .MapWith(src => ConvertDtoToContext(src));
+                .MapWith(src => EnumMirror.ConvertOrThrow<DtoTermValueUnit, ContextTermValueUnit>(src));
 
+            // The retired ordinal 4 (was Quarterly) is defined in neither copy, so a stored row still
+            // holding it reads as OneTime: readable and repairable rather than 500-ing the account page.
+            // The write path never reaches that fallback — TermService refuses an undefined ordinal first.
+            //
             // HEADS-UP (Mapster version): this MapWith converter is registered for the NON-nullable
             // Interval pair, but Term.Interval is nullable and maps to the (different) nullable
             // Dtos.Interval. Mapster 10.0.8 lifts this converter over Nullable<T> with a
@@ -127,15 +91,9 @@ public static class MapsterConfig
             // tests, so Mapster is pinned to 10.0.8 in Directory.Packages.props. Before accepting a bump
             // to >= 10.0.9, register null-guarded nullable converters here, e.g.
             //   TypeAdapterConfig<ContextInterval?, DtoInterval?>.NewConfig()
-            //       .MapWith(src => src.HasValue ? ConvertContextToDto(src.Value) : null);
+            //       .MapWith(src => src.HasValue ? EnumMirror.Convert(src.Value, DtoInterval.OneTime) : null);
             // (and the reverse), then re-verify the term suites stay green.
-            TypeAdapterConfig<ContextInterval, DtoInterval>
-                .NewConfig()
-                .MapWith(src => ConvertContextToDto(src));
-
-            TypeAdapterConfig<DtoInterval, ContextInterval>
-                .NewConfig()
-                .MapWith(src => ConvertDtoToContext(src));
+            Mirror(DtoInterval.OneTime, ContextInterval.OneTime);
 
             // A budget item's identity IS its tag (issue #75), so the read model embeds it — and this
             // registration is what puts it there. Mapster maps by NAME convention otherwise, and
@@ -180,202 +138,11 @@ public static class MapsterConfig
         }
     }
 
-    private static DtoAccountType ConvertContextToDto(ContextAccountType src)
+    private static void Mirror<TDto, TContext>(TDto dtoFallback, TContext contextFallback)
+        where TDto : struct, Enum
+        where TContext : struct, Enum
     {
-        return src switch
-        {
-            // Assets
-            ContextAccountType.Cash => DtoAccountType.Cash,
-            ContextAccountType.CheckingAccount => DtoAccountType.CheckingAccount,
-            ContextAccountType.SavingsAccount => DtoAccountType.SavingsAccount,
-            ContextAccountType.InvestmentAccount => DtoAccountType.InvestmentAccount,
-            ContextAccountType.PensionAccount => DtoAccountType.PensionAccount,
-            ContextAccountType.OtherAsset => DtoAccountType.OtherAsset,
-            // Liabilities
-            ContextAccountType.CreditCard => DtoAccountType.CreditCard,
-            ContextAccountType.Mortgage => DtoAccountType.Mortgage,
-            ContextAccountType.StudentLoan => DtoAccountType.StudentLoan,
-            ContextAccountType.PersonalLoan => DtoAccountType.PersonalLoan,
-            ContextAccountType.CarLoan => DtoAccountType.CarLoan,
-            ContextAccountType.TaxDebt => DtoAccountType.TaxDebt,
-            ContextAccountType.OtherLiability => DtoAccountType.OtherLiability,
-            _ => DtoAccountType.Unknown,
-        };
+        TypeAdapterConfig<TContext, TDto>.NewConfig().MapWith(src => EnumMirror.Convert(src, dtoFallback));
+        TypeAdapterConfig<TDto, TContext>.NewConfig().MapWith(src => EnumMirror.Convert(src, contextFallback));
     }
-
-    private static ContextAccountType ConvertDtoToContext(DtoAccountType src)
-    {
-        return src switch
-        {
-            // Assets
-            DtoAccountType.Cash => ContextAccountType.Cash,
-            DtoAccountType.CheckingAccount => ContextAccountType.CheckingAccount,
-            DtoAccountType.SavingsAccount => ContextAccountType.SavingsAccount,
-            DtoAccountType.InvestmentAccount => ContextAccountType.InvestmentAccount,
-            DtoAccountType.PensionAccount => ContextAccountType.PensionAccount,
-            DtoAccountType.OtherAsset => ContextAccountType.OtherAsset,
-            // Liabilities
-            DtoAccountType.CreditCard => ContextAccountType.CreditCard,
-            DtoAccountType.Mortgage => ContextAccountType.Mortgage,
-            DtoAccountType.StudentLoan => ContextAccountType.StudentLoan,
-            DtoAccountType.PersonalLoan => ContextAccountType.PersonalLoan,
-            DtoAccountType.CarLoan => ContextAccountType.CarLoan,
-            DtoAccountType.TaxDebt => ContextAccountType.TaxDebt,
-            DtoAccountType.OtherLiability => ContextAccountType.OtherLiability,
-            _ => ContextAccountType.Unknown,
-        };
-    }
-
-    private static DtoAccountFileType ConvertContextToDto(ContextAccountFileType src) => src switch
-    {
-        ContextAccountFileType.Message => DtoAccountFileType.Message,
-        ContextAccountFileType.Statement => DtoAccountFileType.Statement,
-        ContextAccountFileType.Contract => DtoAccountFileType.Contract,
-        ContextAccountFileType.Tax => DtoAccountFileType.Tax,
-        ContextAccountFileType.Documentation => DtoAccountFileType.Documentation,
-        ContextAccountFileType.InsurancePolicy => DtoAccountFileType.InsurancePolicy,
-        ContextAccountFileType.LoanAgreement => DtoAccountFileType.LoanAgreement,
-        ContextAccountFileType.RepaymentSchedule => DtoAccountFileType.RepaymentSchedule,
-        ContextAccountFileType.PurchaseAgreement => DtoAccountFileType.PurchaseAgreement,
-        ContextAccountFileType.Valuation => DtoAccountFileType.Valuation,
-        ContextAccountFileType.Warranty => DtoAccountFileType.Warranty,
-        ContextAccountFileType.Registration => DtoAccountFileType.Registration,
-        ContextAccountFileType.Prospectus => DtoAccountFileType.Prospectus,
-        _ => DtoAccountFileType.Other,
-    };
-
-    private static ContextAccountFileType ConvertDtoToContext(DtoAccountFileType src) => src switch
-    {
-        DtoAccountFileType.Message => ContextAccountFileType.Message,
-        DtoAccountFileType.Statement => ContextAccountFileType.Statement,
-        DtoAccountFileType.Contract => ContextAccountFileType.Contract,
-        DtoAccountFileType.Tax => ContextAccountFileType.Tax,
-        DtoAccountFileType.Documentation => ContextAccountFileType.Documentation,
-        DtoAccountFileType.InsurancePolicy => ContextAccountFileType.InsurancePolicy,
-        DtoAccountFileType.LoanAgreement => ContextAccountFileType.LoanAgreement,
-        DtoAccountFileType.RepaymentSchedule => ContextAccountFileType.RepaymentSchedule,
-        DtoAccountFileType.PurchaseAgreement => ContextAccountFileType.PurchaseAgreement,
-        DtoAccountFileType.Valuation => ContextAccountFileType.Valuation,
-        DtoAccountFileType.Warranty => ContextAccountFileType.Warranty,
-        DtoAccountFileType.Registration => ContextAccountFileType.Registration,
-        DtoAccountFileType.Prospectus => ContextAccountFileType.Prospectus,
-        _ => ContextAccountFileType.Other,
-    };
-
-    private static DtoBudgetCategoryType ConvertContextToDto(ContextBudgetCategoryType src)
-    {
-        return src switch
-        {
-            ContextBudgetCategoryType.Expense => DtoBudgetCategoryType.Expense,
-            ContextBudgetCategoryType.Income => DtoBudgetCategoryType.Income,
-            _ => DtoBudgetCategoryType.Expense,
-        };
-    }
-
-    private static ContextBudgetCategoryType ConvertDtoToContext(DtoBudgetCategoryType src)
-    {
-        return src switch
-        {
-            DtoBudgetCategoryType.Expense => ContextBudgetCategoryType.Expense,
-            DtoBudgetCategoryType.Income => ContextBudgetCategoryType.Income,
-            _ => ContextBudgetCategoryType.Expense,
-        };
-    }
-
-    private static DtoTransactionFileType ConvertContextToDto(ContextTransactionFileType src)
-    {
-        return src switch
-        {
-            ContextTransactionFileType.Receipt => DtoTransactionFileType.Receipt,
-            ContextTransactionFileType.Invoice => DtoTransactionFileType.Invoice,
-            ContextTransactionFileType.CreditNote => DtoTransactionFileType.CreditNote,
-            ContextTransactionFileType.Quote => DtoTransactionFileType.Quote,
-            ContextTransactionFileType.PaymentConfirmation => DtoTransactionFileType.PaymentConfirmation,
-            ContextTransactionFileType.Documentation => DtoTransactionFileType.Documentation,
-            _ => DtoTransactionFileType.Other,
-        };
-    }
-
-    private static ContextTransactionFileType ConvertDtoToContext(DtoTransactionFileType src)
-    {
-        return src switch
-        {
-            DtoTransactionFileType.Receipt => ContextTransactionFileType.Receipt,
-            DtoTransactionFileType.Invoice => ContextTransactionFileType.Invoice,
-            DtoTransactionFileType.CreditNote => ContextTransactionFileType.CreditNote,
-            DtoTransactionFileType.Quote => ContextTransactionFileType.Quote,
-            DtoTransactionFileType.PaymentConfirmation => ContextTransactionFileType.PaymentConfirmation,
-            DtoTransactionFileType.Documentation => ContextTransactionFileType.Documentation,
-            _ => ContextTransactionFileType.Other,
-        };
-    }
-
-    private static DtoTaxStatementFileType ConvertContextToDto(ContextTaxStatementFileType src) => src switch
-    {
-        ContextTaxStatementFileType.TaxReturn => DtoTaxStatementFileType.TaxReturn,
-        ContextTaxStatementFileType.TaxAssessment => DtoTaxStatementFileType.TaxAssessment,
-        ContextTaxStatementFileType.SupportingDocument => DtoTaxStatementFileType.SupportingDocument,
-        _ => DtoTaxStatementFileType.Other,
-    };
-
-    private static ContextTaxStatementFileType ConvertDtoToContext(DtoTaxStatementFileType src) => src switch
-    {
-        DtoTaxStatementFileType.TaxReturn => ContextTaxStatementFileType.TaxReturn,
-        DtoTaxStatementFileType.TaxAssessment => ContextTaxStatementFileType.TaxAssessment,
-        DtoTaxStatementFileType.SupportingDocument => ContextTaxStatementFileType.SupportingDocument,
-        _ => ContextTaxStatementFileType.Other,
-    };
-
-    // Exhaustive, and THROWING on anything else (issue #192 §8). A fallback arm here once read
-    // `_ => Percentage`, so an unmapped member would have been persisted — and shown — as a
-    // percentage. There is no safe member to fall back to, and an unknown ordinal cannot be stored
-    // (CK_Terms_ValueMatchesUnit), so reaching the throw means the schema itself was bypassed.
-    private static DtoTermValueUnit ConvertContextToDto(ContextTermValueUnit src) => src switch
-    {
-        ContextTermValueUnit.Percentage => DtoTermValueUnit.Percentage,
-        ContextTermValueUnit.Amount => DtoTermValueUnit.Amount,
-        ContextTermValueUnit.Text => DtoTermValueUnit.Text,
-        ContextTermValueUnit.DateTime => DtoTermValueUnit.DateTime,
-        _ => throw new ArgumentOutOfRangeException(nameof(src), (int)src, "Unknown term value unit."),
-    };
-
-    private static ContextTermValueUnit ConvertDtoToContext(DtoTermValueUnit src) => src switch
-    {
-        DtoTermValueUnit.Percentage => ContextTermValueUnit.Percentage,
-        DtoTermValueUnit.Amount => ContextTermValueUnit.Amount,
-        DtoTermValueUnit.Text => ContextTermValueUnit.Text,
-        DtoTermValueUnit.DateTime => ContextTermValueUnit.DateTime,
-        _ => throw new ArgumentOutOfRangeException(nameof(src), (int)src, "Unknown term value unit."),
-    };
-
-    // Exhaustive and explicit, never a blanket Adapt: the context and DTO copies of this cadence enum
-    // are separate declarations, so a convention-mapped conversion could silently change meaning if
-    // the two ever drift.
-    //
-    // There is deliberately NO arm for the retired ordinal 4 (was Quarterly): after the migration no
-    // row holds it, and an arm mapping it would keep a retired value alive on the read path. The
-    // `_ =>` fallthrough is unreachable from the write path — TermService refuses an undefined
-    // ordinal before the converter is called — so its only remaining job is keeping a STORED bad row
-    // readable and repairable rather than 500-ing the account page.
-    private static DtoInterval ConvertContextToDto(ContextInterval src) => src switch
-    {
-        ContextInterval.PerOccurrence => DtoInterval.PerOccurrence,
-        ContextInterval.Daily => DtoInterval.Daily,
-        ContextInterval.Monthly => DtoInterval.Monthly,
-        ContextInterval.Annually => DtoInterval.Annually,
-        ContextInterval.PerUnit => DtoInterval.PerUnit,
-        ContextInterval.Weekly => DtoInterval.Weekly,
-        _ => DtoInterval.OneTime,
-    };
-
-    private static ContextInterval ConvertDtoToContext(DtoInterval src) => src switch
-    {
-        DtoInterval.PerOccurrence => ContextInterval.PerOccurrence,
-        DtoInterval.Daily => ContextInterval.Daily,
-        DtoInterval.Monthly => ContextInterval.Monthly,
-        DtoInterval.Annually => ContextInterval.Annually,
-        DtoInterval.PerUnit => ContextInterval.PerUnit,
-        DtoInterval.Weekly => ContextInterval.Weekly,
-        _ => ContextInterval.OneTime,
-    };
 }

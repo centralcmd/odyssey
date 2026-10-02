@@ -1,9 +1,11 @@
 using Odyssey.Dtos.Application;
+using Odyssey.Core;
 using System.Security.Claims;
 using System.Text;
-using Odyssey.Api.Email;
-using Odyssey.Api.Identity;
-using Odyssey.Api.Legal;
+using Odyssey.Core.Email;
+using Odyssey.Core.Identity;
+using Odyssey.Core.Legal;
+using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Context.Authorization;
 using Odyssey.Dtos.Authorization;
@@ -14,7 +16,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
-namespace Odyssey.Api.UserAdministration;
+namespace Odyssey.Core.UserAdministration;
 
 public sealed class UserAdministrationService
 {
@@ -96,7 +98,7 @@ public sealed class UserAdministrationService
             var trimmedRole = query.Role.Trim();
             if (!await roleManager.RoleExistsAsync(trimmedRole))
             {
-                throw new UserAdministrationValidationException($"Role '{trimmedRole}' does not exist.");
+                throw new DomainValidationException($"Role '{trimmedRole}' does not exist.");
             }
 
             q = q.Where(x =>
@@ -213,7 +215,7 @@ public sealed class UserAdministrationService
         ValidateUpdateRequest(request);
 
         var user = await userManager.FindByIdAsync(id)
-            ?? throw new UserAdministrationNotFoundException($"User ID {id} was not found.");
+            ?? throw new DomainNotFoundException($"User ID {id} was not found.");
 
         var changedFields = new List<string>();
         var revokeSessions = false;
@@ -228,7 +230,7 @@ public sealed class UserAdministrationService
         {
             if (!request.Enabled.Value && await IsEnabledAdminAsync(user) && await CountEnabledAdminsAsync() <= 1)
             {
-                throw new UserAdministrationConflictException("Cannot disable the last enabled Admin user.");
+                throw new DomainConflictException("Cannot disable the last enabled Admin user.");
             }
 
             if (request.Enabled.Value)
@@ -256,7 +258,7 @@ public sealed class UserAdministrationService
 
         if (!result.Succeeded)
         {
-            throw new UserAdministrationValidationException(FormatIdentityErrors(result));
+            throw new DomainValidationException(FormatIdentityErrors(result));
         }
 
         logger.LogInformation(
@@ -274,16 +276,16 @@ public sealed class UserAdministrationService
         var requestedRole = request.Role?.Trim();
         if (string.IsNullOrWhiteSpace(requestedRole))
         {
-            throw new UserAdministrationValidationException("Role is required.");
+            throw new DomainValidationException("Role is required.");
         }
 
         if (!await roleManager.RoleExistsAsync(requestedRole))
         {
-            throw new UserAdministrationValidationException($"Role '{requestedRole}' does not exist.");
+            throw new DomainValidationException($"Role '{requestedRole}' does not exist.");
         }
 
         var user = await userManager.FindByIdAsync(id)
-            ?? throw new UserAdministrationNotFoundException($"User ID {id} was not found.");
+            ?? throw new DomainNotFoundException($"User ID {id} was not found.");
 
         var existingRoles = await userManager.GetRolesAsync(user);
         if (!string.Equals(requestedRole, RoleDefinitions.Admin, StringComparison.Ordinal)
@@ -291,7 +293,7 @@ public sealed class UserAdministrationService
             && IsEnabled(user)
             && await CountEnabledAdminsAsync() <= 1)
         {
-            throw new UserAdministrationConflictException("Cannot demote the last enabled Admin user.");
+            throw new DomainConflictException("Cannot demote the last enabled Admin user.");
         }
 
         if (existingRoles.Count > 0)
@@ -299,14 +301,14 @@ public sealed class UserAdministrationService
             var removeResult = await userManager.RemoveFromRolesAsync(user, existingRoles);
             if (!removeResult.Succeeded)
             {
-                throw new UserAdministrationValidationException(FormatIdentityErrors(removeResult));
+                throw new DomainValidationException(FormatIdentityErrors(removeResult));
             }
         }
 
         var addResult = await userManager.AddToRoleAsync(user, requestedRole);
         if (!addResult.Succeeded)
         {
-            throw new UserAdministrationValidationException(FormatIdentityErrors(addResult));
+            throw new DomainValidationException(FormatIdentityErrors(addResult));
         }
 
         logger.LogInformation(
@@ -345,13 +347,13 @@ public sealed class UserAdministrationService
         string actorUserId, string id, CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByIdAsync(id)
-            ?? throw new UserAdministrationNotFoundException($"User ID {id} was not found.");
+            ?? throw new DomainNotFoundException($"User ID {id} was not found.");
 
         // Identity's /resetPassword refuses an unconfirmed address — otherwise registering an address you
         // don't control would be a route to taking it over — so a link would be unusable.
         if (string.IsNullOrWhiteSpace(user.Email) || !user.EmailConfirmed)
         {
-            throw new UserAdministrationUnprocessableException(
+            throw new DomainUnprocessableException(
                 "This account has no confirmed email address, so a reset link cannot be sent.");
         }
 
@@ -372,7 +374,7 @@ public sealed class UserAdministrationService
         var stampResult = await userManager.UpdateSecurityStampAsync(user);
         if (!stampResult.Succeeded)
         {
-            throw new UserAdministrationValidationException(FormatIdentityErrors(stampResult));
+            throw new DomainValidationException(FormatIdentityErrors(stampResult));
         }
 
         // Strictly after the rotation: reset tokens embed the security stamp, so a token minted before it
@@ -440,16 +442,16 @@ public sealed class UserAdministrationService
     public async Task DeleteAsync(string actorUserId, string id)
     {
         var user = await userManager.FindByIdAsync(id)
-            ?? throw new UserAdministrationNotFoundException($"User ID {id} was not found.");
+            ?? throw new DomainNotFoundException($"User ID {id} was not found.");
 
         if (string.Equals(actorUserId, id, StringComparison.Ordinal))
         {
-            throw new UserAdministrationConflictException("You cannot delete your own account.");
+            throw new DomainConflictException("You cannot delete your own account.");
         }
 
         if (await IsEnabledAdminAsync(user) && await CountEnabledAdminsAsync() <= 1)
         {
-            throw new UserAdministrationConflictException("Cannot delete the last enabled Admin user.");
+            throw new DomainConflictException("Cannot delete the last enabled Admin user.");
         }
 
         // Everything the user owns or is attributed on shares this context now, so the deletion below
@@ -477,7 +479,7 @@ public sealed class UserAdministrationService
             var result = await userManager.DeleteAsync(user);
             if (!result.Succeeded)
             {
-                throw new UserAdministrationValidationException(FormatIdentityErrors(result));
+                throw new DomainValidationException(FormatIdentityErrors(result));
             }
         });
 
@@ -582,7 +584,7 @@ public sealed class UserAdministrationService
         if (request.ExtensionData is not null && request.ExtensionData.Count > 0)
         {
             var fields = string.Join(", ", request.ExtensionData.Keys.OrderBy(key => key, StringComparer.Ordinal));
-            throw new UserAdministrationValidationException($"Unsupported fields: {fields}.");
+            throw new DomainValidationException($"Unsupported fields: {fields}.");
         }
     }
 

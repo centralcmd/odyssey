@@ -88,7 +88,7 @@ public class FileAnalysisImportApiTests
     }
 
     private static ImportRequest Request(Guid candidateId) =>
-        new([new ImportCandidateRequest(candidateId, null, null, null, null)]);
+        new ImportRequest { Candidates = [new ImportCandidateRequest { CandidateId = candidateId }] };
 
     private static async Task AssertNothingImportedAsync(OdysseyApiFactory factory, Guid candidateId)
     {

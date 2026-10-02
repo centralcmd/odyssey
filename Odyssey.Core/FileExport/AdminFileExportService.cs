@@ -5,7 +5,7 @@ using Odyssey.Context;
 using Odyssey.Dtos.Finance;
 using Odyssey.Core.Pagination;
 
-namespace Odyssey.Api.FileExport;
+namespace Odyssey.Core.FileExport;
 
 /// <summary>
 /// Builds the admin "export all files" / "export filtered files" ZIPs (issue #159, extended per the

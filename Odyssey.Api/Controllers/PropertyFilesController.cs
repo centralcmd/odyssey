@@ -7,6 +7,7 @@ using Odyssey.Core.Finance;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Swashbuckle.AspNetCore.Annotations;
+using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Controllers;
 

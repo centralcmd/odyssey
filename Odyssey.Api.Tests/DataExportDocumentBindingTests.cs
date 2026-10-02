@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Reflection;
-using Odyssey.Api.DataExport;
+using Odyssey.Core.DataExport;
 using Xunit;
 
 namespace Odyssey.Api.Tests;

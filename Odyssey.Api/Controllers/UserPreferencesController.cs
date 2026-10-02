@@ -5,8 +5,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Security.Claims;
+using Odyssey.Core.Preferences;
 
-namespace Odyssey.Api.Preferences;
+namespace Odyssey.Api.Controllers;
 
 [ApiController]
 [Authorize]

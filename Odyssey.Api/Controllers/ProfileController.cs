@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Odyssey.Core.Profiles;
 using Swashbuckle.AspNetCore.Annotations;
 
-namespace Odyssey.Api.Profiles;
+namespace Odyssey.Api.Controllers;
 
 /// <summary>
 /// Self-service profile endpoints (issue #316). Both operate strictly on the authenticated caller's own
@@ -64,14 +64,7 @@ public sealed class ProfileController : ControllerBase
             return Unauthorized();
         }
 
-        try
-        {
-            return Ok(await service.SaveAsync(userId, request, cancellationToken));
-        }
-        catch (ProfileValidationException exception)
-        {
-            return this.BadRequestProblem(exception.Message);
-        }
+        return Ok(await service.SaveAsync(userId, request, cancellationToken));
     }
 
     // ── Profile picture (issue #94 §7) ────────────────────────────────────────

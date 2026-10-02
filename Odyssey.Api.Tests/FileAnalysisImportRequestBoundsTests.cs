@@ -61,9 +61,9 @@ public class FileAnalysisImportRequestBoundsTests
 
     private static ImportCandidateRequest Candidate(string field, string value) => field switch
     {
-        nameof(ImportCandidateRequest.Description) => new(Guid.NewGuid(), null, value, null, null),
-        nameof(ImportCandidateRequest.Currency) => new(Guid.NewGuid(), null, null, null, value),
-        nameof(ImportCandidateRequest.ExternalId) => new(Guid.NewGuid(), null, null, null, null, ExternalId: value),
+        nameof(ImportCandidateRequest.Description) => new ImportCandidateRequest { CandidateId = Guid.NewGuid(), Description = value },
+        nameof(ImportCandidateRequest.Currency) => new ImportCandidateRequest { CandidateId = Guid.NewGuid(), Currency = value },
+        nameof(ImportCandidateRequest.ExternalId) => new ImportCandidateRequest { CandidateId = Guid.NewGuid(), ExternalId = value },
         _ => throw new ArgumentOutOfRangeException(nameof(field)),
     };
 
@@ -71,6 +71,6 @@ public class FileAnalysisImportRequestBoundsTests
     {
         await using var factory = new OdysseyApiFactory(Claims);
         using var client = factory.CreateClient();
-        return await client.PostAsJsonAsync($"/api/file-analysis/{Guid.NewGuid()}/import", new ImportRequest([candidate]));
+        return await client.PostAsJsonAsync($"/api/file-analysis/{Guid.NewGuid()}/import", new ImportRequest { Candidates = [candidate] });
     }
 }

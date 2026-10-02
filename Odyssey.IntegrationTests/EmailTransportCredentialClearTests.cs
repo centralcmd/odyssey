@@ -15,6 +15,7 @@ using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Microsoft.Extensions.Hosting;
 using Xunit;
+using Odyssey.Core.Identity;
 
 namespace Odyssey.IntegrationTests;
 

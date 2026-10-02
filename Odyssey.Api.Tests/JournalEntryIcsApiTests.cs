@@ -884,6 +884,29 @@ public class JournalEntryIcsApiTests
     }
 
     /// <summary>
+    /// A repeat of a tag already linked is a duplicate, not a link over the cap — the rule the task
+    /// import already applied, and the one the shared <c>ImportLinks.Resolve</c> now applies to both
+    /// (issue #287 M8). This path used to test the cap first, so the repeat was reported as capped.
+    /// </summary>
+    [Fact]
+    public async Task Import_ADuplicateTagAtTheCap_IsNotReportedAsCapped()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        await SystemSettingsSeed.SetAsync(
+            factory.Services, SystemSettingsKeys.JournalEntryMaxLinksPerKind, "2");
+        using var client = factory.CreateClient();
+        var names = await SeedManyTagsAsync(factory, 2);
+
+        var ics = Vcalendar(Vjournal("dup-cap", "SUMMARY:Repeat", "DESCRIPTION:x",
+            "DTSTART;VALUE=DATE:20260101", $"CATEGORIES:{names[0]},{names[1]},{names[0]}"));
+        var result = await ImportAsync(client, ics);
+
+        Assert.Equal(1, result.ImportedCount);
+        Assert.Equal(0, result.SkippedTagLinkCount);
+        Assert.DoesNotContain(result.Skipped, group => group.Reason.Contains("per-entry cap"));
+    }
+
+    /// <summary>
     /// The defect fix (issue #434 §9-A). Before it, this service enforced a hardcoded 50 while the
     /// administrator's <c>JournalEntryMaxLinksPerKind</c> setting was honoured on the create/update path
     /// and silently ignored here — so lowering the limit took effect on one path and not the other.

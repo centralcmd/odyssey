@@ -10,6 +10,7 @@ using Swashbuckle.AspNetCore.Annotations;
 
 using Odyssey.Api.Identity;
 using Odyssey.Core.Finance;
+using Odyssey.Core.Identity;
 
 namespace Odyssey.Api.Controllers;
 

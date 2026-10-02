@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Odyssey.Api.Controllers;
-using Odyssey.Api.DataExport;
+using Odyssey.Core.DataExport;
 using Odyssey.Dtos.Authorization;
 using Xunit;
 using ContextInterval = Odyssey.Context.Interval;

@@ -122,6 +122,12 @@ public sealed class DomainNotFoundException : DomainException
 /// inserted between the two would be destroyed by a caller never asked to prove the claim for it.
 ///
 /// <para>
+/// The system and secret settings writes are the other instance: the claim a <c>PUT</c> needs depends
+/// on which fields (or which secret key) the body names, so it is decided by the service against its
+/// registry rather than by one action-level policy (issue #349 §7, issue #287 M11).
+/// </para>
+///
+/// <para>
 /// A service still has no <c>ClaimsPrincipal</c>: the caller passes in <em>what it may detach</em> and
 /// the service decides against the snapshot, raising this when the two disagree. It fails closed —
 /// nothing is written — and never silently downgrades to the refused delete.

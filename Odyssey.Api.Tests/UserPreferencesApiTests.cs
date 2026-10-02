@@ -30,8 +30,10 @@ public class UserPreferencesApiTests
 
         await CreateTestUserAsync(factory);
 
-        var upsertResponse = await client.PutAsJsonAsync("/api/user-preferences/transactions-page", new UserPreferenceRequest(
-            "{\"version\":1,\"columns\":[]}"));
+        var upsertResponse = await client.PutAsJsonAsync("/api/user-preferences/transactions-page", new UserPreferenceRequest
+        {
+            PreferencesJson = "{\"version\":1,\"columns\":[]}",
+        });
 
         upsertResponse.EnsureSuccessStatusCode();
 
@@ -60,7 +62,7 @@ public class UserPreferencesApiTests
         // database (architect finding F-14).
         var overLongPageKey = new string('a', 257);
         var response = await client.PutAsJsonAsync(
-            $"/api/user-preferences/{overLongPageKey}", new UserPreferenceRequest("{}"));
+            $"/api/user-preferences/{overLongPageKey}", new UserPreferenceRequest { PreferencesJson = "{}" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -74,7 +76,7 @@ public class UserPreferencesApiTests
 
         await CreateTestUserAsync(factory);
 
-        var response = await client.PutAsJsonAsync("/api/user-preferences/transactions-page", new UserPreferenceRequest(""));
+        var response = await client.PutAsJsonAsync("/api/user-preferences/transactions-page", new UserPreferenceRequest { PreferencesJson = "" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);

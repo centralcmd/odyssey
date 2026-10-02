@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace Odyssey.Api.Identity;
+namespace Odyssey.Core.Identity;
 
 /// <summary>
 /// Resolves user-ids to human display labels at the API edge, given the caller's claims (issue #316).
