@@ -181,8 +181,7 @@ public class TransactionController : ControllerBase
         [FromBody] [SwaggerParameter("Request", Required = true,
             Description = @"The file to attach.")] AttachTransactionFileRequest request, CancellationToken cancellationToken = default)
     {
-        var transaction = await transactionService.Get(transactionId, cancellationToken);
-        if (transaction is null)
+        if (!await transactionService.Exists(transactionId, cancellationToken))
         {
             return this.NotFoundProblem($"Transaction ID {transactionId} not found.");
         }

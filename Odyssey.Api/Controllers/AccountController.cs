@@ -340,8 +340,7 @@ public class AccountController : ControllerBase
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromBody] AttachAccountFileRequest request, CancellationToken cancellationToken = default)
     {
-        var account = await accountService.Get(accountId, cancellationToken);
-        if (account is null)
+        if (!await accountService.Exists(accountId, cancellationToken))
             return this.NotFoundProblem($"Account ID {accountId} not found.");
 
         var fileMetadata = await fileService.GetFileMetadataAsync(request.FileId, cancellationToken);
