@@ -48,7 +48,7 @@
     <PackageVersion Include="Swashbuckle.AspNetCore.Swagger" Version="10.2.3" />
     <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.2.3" />
     <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.3" />
-    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="coverlet.collector" Version="10.1.0" />
     <!-- The Apache-2.0 community fork of FluentAssertions. FluentAssertions 8.0 moved to the
          Xceed license, which is free for open source but charges for commercial use; the fork
          continues the 7.x lineage under the original terms. See THIRD-PARTY-NOTICES.md. -->
