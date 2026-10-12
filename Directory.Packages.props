@@ -7,9 +7,9 @@
     <PackageVersion Include="Microsoft.Playwright" Version="1.63.0" />
     <!-- 4.14.0+ : Testcontainers 4.6.0 pulled SSH.NET 2024.2.0, which carries high-severity
          advisory GHSA-q939-rpr3-3284. 4.14.0 depends on SSH.NET 2026.0.0 and clears it. -->
-    <PackageVersion Include="Testcontainers.MySql" Version="4.15.0" />
+    <PackageVersion Include="Testcontainers.MySql" Version="4.16.0" />
     <PackageVersion Include="Xunit.SkippableFact" Version="1.5.85" />
-    <PackageVersion Include="MailKit" Version="4.18.0" />
+    <PackageVersion Include="MailKit" Version="4.18.1" />
     <PackageVersion Include="Ical.Net" Version="5.2.3" />
     <PackageVersion Include="Mapster" Version="10.0.13" />
     <!-- Pure-managed (Apache-2.0) EXIF/IPTC/XMP reader for the Photos module (issue #321). No native
@@ -40,15 +40,15 @@
     <PackageVersion Include="Microsoft.NET.Sdk.WebAssembly.Pack" Version="10.0.12" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageVersion Include="MySqlConnector" Version="2.6.2" />
-    <PackageVersion Include="MudBlazor" Version="9.10.0" />
+    <PackageVersion Include="MudBlazor" Version="9.11.0" />
     <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
     <PackageVersion Include="QRCoder" Version="1.8.0" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.Annotations" Version="10.2.3" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.Annotations" Version="10.3.0" />
     <PackageVersion Include="Swashbuckle.AspNetCore.Filters" Version="10.0.1" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.Swagger" Version="10.2.3" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.2.3" />
-    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.3" />
-    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.Swagger" Version="10.3.0" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.3.0" />
+    <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.3.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.1.0" />
     <!-- The Apache-2.0 community fork of FluentAssertions. FluentAssertions 8.0 moved to the
          Xceed license, which is free for open source but charges for commercial use; the fork
          continues the 7.x lineage under the original terms. See THIRD-PARTY-NOTICES.md. -->
@@ -60,7 +60,7 @@
     <PackageVersion Include="bunit" Version="2.11.3" />
     <PackageVersion Include="Moq" Version="4.21.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
     <!-- Retry + circuit breaker for the file-analysis provider's HttpClient — the one third-party
          network call in the app (issue #382). Ships out of dotnet/extensions, whose versions run
@@ -77,6 +77,6 @@
          depth rather than the only thing holding the CVE off. Keep it, and keep it on the 2.5.x
          line: StreamJsonRpc targets the MessagePack 2.x API, so a 3.x bump risks runtime
          breakage for nothing. -->
-    <PackageVersion Include="MessagePack" Version="2.5.305" />
+    <PackageVersion Include="MessagePack" Version="2.5.307" />
   </ItemGroup>
 </Project>
