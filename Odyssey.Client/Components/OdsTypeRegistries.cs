@@ -515,7 +515,7 @@ public static class OdsTypeRegistries
     /// only — it never drives the contract's own Draft/Ready status, and it is never a picker default.
     /// Its lightness is 0.80, not the export's 0.82: the export authors it above the design system's own
     /// registry glyph band (L 0.66–0.80, <c>RegistryGlyphContrastTests</c>), so the client holds the band
-    /// edge until the design system is corrected upstream.</summary>
+    /// edge until the design system is corrected upstream (issue #311).</summary>
     public static readonly IReadOnlyList<OdsTypeOption> ContractFileTypes =
     [
         new() { Key = "Draft",          Label = "Draft",          Icon = "edit_note",         Color = "oklch(0.80 0.035 75)", Soft = "oklch(0.80 0.035 75 / 0.16)" },
