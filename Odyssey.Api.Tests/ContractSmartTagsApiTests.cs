@@ -597,6 +597,8 @@ public class ContractSmartTagsApiTests
             Name = name,
             Type = Odyssey.Context.ContractType.Rental,
             StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            // Set as create would copy it from the term (issue #308).
+            SmartTagScopeStart = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         };
         context.Contracts.Add(contract);

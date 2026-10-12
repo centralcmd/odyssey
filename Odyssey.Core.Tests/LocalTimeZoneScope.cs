@@ -25,24 +25,31 @@ internal sealed class LocalTimeZoneScope : IDisposable
 
     private readonly string? previous;
 
-    private LocalTimeZoneScope()
+    private LocalTimeZoneScope(string zoneId)
     {
         previous = Environment.GetEnvironmentVariable("TZ");
-        Environment.SetEnvironmentVariable("TZ", "Asia/Tokyo");
+        Environment.SetEnvironmentVariable("TZ", zoneId);
         TimeZoneInfo.ClearCachedData();
     }
 
-    public static LocalTimeZoneScope UseTokyo()
+    // Probed at the dates the tests use, not via SupportsDaylightSavingTime: Tokyo's tz history
+    // carries a 1948–1951 DST rule, which that flag reports even though no test date is near it.
+    public static LocalTimeZoneScope UseTokyo() => Use("Asia/Tokyo", TokyoOffset);
+
+    /// <summary>
+    /// Pins <see cref="TimeZoneInfo.Local"/> to <paramref name="zoneId"/>, skipping the test unless the
+    /// zone reads <paramref name="expectedOffset"/> at both probe dates. Used with fixed-offset zones
+    /// (Pacific/Honolulu, UTC−10; Pacific/Kiritimati, UTC+14) by the smart-tag scope tests (issue #308).
+    /// </summary>
+    public static LocalTimeZoneScope Use(string zoneId, TimeSpan expectedOffset)
     {
-        var scope = new LocalTimeZoneScope();
-        // Probed at the dates the tests use, not via SupportsDaylightSavingTime: Tokyo's tz history
-        // carries a 1948–1951 DST rule, which that flag reports even though no test date is near it.
-        var pinned = TimeZoneInfo.Local.GetUtcOffset(new DateTime(2017, 1, 1, 0, 0, 0, DateTimeKind.Utc)) == TokyoOffset
-            && TimeZoneInfo.Local.GetUtcOffset(new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)) == TokyoOffset;
+        var scope = new LocalTimeZoneScope(zoneId);
+        var pinned = TimeZoneInfo.Local.GetUtcOffset(new DateTime(2017, 1, 1, 0, 0, 0, DateTimeKind.Utc)) == expectedOffset
+            && TimeZoneInfo.Local.GetUtcOffset(new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc)) == expectedOffset;
         if (!pinned)
         {
             scope.Dispose();
-            Skip.If(true, "TimeZoneInfo.Local could not be pinned to Asia/Tokyo on this platform.");
+            Skip.If(true, $"TimeZoneInfo.Local could not be pinned to {zoneId} on this platform.");
         }
         return scope;
     }

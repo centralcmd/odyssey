@@ -83,6 +83,14 @@ public class ContractSmartTagTransactionServiceTests
             await Context.SaveChangesAsync();
         }
 
+        public async Task SetScope(DateTime? start, DateTime? end)
+        {
+            var contract = Context.Contracts.Single(c => c.ContractId == ContractId);
+            contract.SmartTagScopeStart = start;
+            contract.SmartTagScopeEnd = end;
+            await Context.SaveChangesAsync();
+        }
+
         public async Task SetDates(DateTime? start, DateTime? end, DateTime? completion = null)
         {
             var contract = Context.Contracts.Single(c => c.ContractId == ContractId);
@@ -113,6 +121,9 @@ public class ContractSmartTagTransactionServiceTests
             Type = Context.ContractType.Subscription,
             StartDate = TermStart,
             EndDate = TermEnd,
+            // R2 reads the scope, not the term (issue #308); set as create would copy it.
+            SmartTagScopeStart = TermStart,
+            SmartTagScopeEnd = TermEnd,
             CreatedAtUtc = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         };
         var smartTag = new TransactionTag { Name = "Electricity" };
@@ -206,7 +217,7 @@ public class ContractSmartTagTransactionServiceTests
     public async Task NonMidnightDatesOfAnyKind_YieldTheMidnightUtcBounds(DateTimeKind kind)
     {
         var f = await Seed();
-        await f.SetDates(
+        await f.SetScope(
             new DateTime(2025, 1, 1, 15, 30, 0, kind),
             new DateTime(2025, 12, 31, 9, 45, 0, kind));
 
@@ -265,7 +276,7 @@ public class ContractSmartTagTransactionServiceTests
     public async Task OnlyStartDate_HasNoUpperBound()
     {
         var f = await Seed();
-        await f.SetDates(TermStart, null);
+        await f.SetScope(TermStart, null);
         var late = await f.AddTransaction(new DateTime(2040, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         await f.AddTransaction(TermStart.AddDays(-1));
 
@@ -280,7 +291,7 @@ public class ContractSmartTagTransactionServiceTests
     public async Task OnlyEndDate_HasNoLowerBound()
     {
         var f = await Seed();
-        await f.SetDates(null, TermEnd);
+        await f.SetScope(null, TermEnd);
         var early = await f.AddTransaction(new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         await f.AddTransaction(TermEnd.AddDays(2));
 
@@ -291,10 +302,11 @@ public class ContractSmartTagTransactionServiceTests
     }
 
     [Fact]
-    public async Task OneOffContract_HasNoDateBound()
+    public async Task OneOffContract_WithAnOpenScope_HasNoDateBound()
     {
         var f = await Seed();
         await f.SetDates(null, null, completion: new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc));
+        await f.SetScope(null, null);
         var early = await f.AddTransaction(new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         var late = await f.AddTransaction(new DateTime(2040, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 
@@ -306,10 +318,24 @@ public class ContractSmartTagTransactionServiceTests
     }
 
     [Fact]
-    public async Task NoDatesAtAll_HasNoDateBound()
+    public async Task OneOffContract_WithAScope_IsBoundedByIt()
     {
         var f = await Seed();
-        await f.SetDates(null, null);
+        await f.SetDates(null, null, completion: new DateTime(2025, 3, 1, 0, 0, 0, DateTimeKind.Utc));
+        var inScope = await f.AddTransaction(InTerm);
+        await f.AddTransaction(new DateTime(2040, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var result = await f.List();
+
+        Assert.Equal(TermStart, result.Scope.From);
+        Assert.Equal([inScope], Ids(result));
+    }
+
+    [Fact]
+    public async Task OpenScope_HasNoDateBound()
+    {
+        var f = await Seed();
+        await f.SetScope(null, null);
         await f.AddTransaction(new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 
         var result = await f.List();
@@ -320,27 +346,45 @@ public class ContractSmartTagTransactionServiceTests
     }
 
     [Fact]
-    public async Task StartDayAfterEndDay_IsInvalidTerm_WithTheComputedBounds()
+    public async Task InvertedTerm_NoLongerEmptiesTheMatch()
     {
+        // Issue #308: the term takes no part in R2, so a legacy inverted term is just data — the
+        // scope decides, and InvalidTerm (3) is never emitted.
         var f = await Seed();
         await f.SetDates(TermEnd, TermStart);
-        await f.AddTransaction(InTerm);
+        var id = await f.AddTransaction(InTerm);
 
         var result = await f.List();
 
-        Assert.Equal(ContractSmartTagEmptyReason.InvalidTerm, result.Scope.EmptyReason);
-        Assert.True(result.Scope.From >= result.Scope.ToExclusive);
-        Assert.Empty(result.Page.Items);
-        Assert.Equal(0, result.Page.TotalCount);
+        Assert.Equal(ContractSmartTagEmptyReason.None, result.Scope.EmptyReason);
+        Assert.NotEqual(ContractSmartTagEmptyReason.InvalidTerm, result.Scope.EmptyReason);
+        Assert.Equal([id], Ids(result));
     }
 
     [Fact]
-    public async Task SameDayWithStartTimeAfterEndTime_IsNotInvalidTerm()
+    public async Task ScopeOutsideTheTerm_IsApplied_TermIsIgnored()
+    {
+        // The motivating case: a payment after the term ends still counts while the scope is open,
+        // and one before the term's start counts when the scope reaches back.
+        var f = await Seed();
+        await f.SetScope(TermStart.AddYears(-1), null);
+        var beforeTerm = await f.AddTransaction(TermStart.AddMonths(-6));
+        var afterTerm = await f.AddTransaction(TermEnd.AddMonths(6));
+        await f.AddTransaction(TermStart.AddYears(-2));
+
+        var result = await f.List();
+
+        Assert.Equal([afterTerm, beforeTerm], Ids(result));
+    }
+
+    [Fact]
+    public async Task SameDayScope_IsAOneDayWindow()
     {
         var f = await Seed();
         var day = new DateTime(2025, 6, 15, 0, 0, 0, DateTimeKind.Utc);
-        await f.SetDates(day.AddHours(10), day.AddHours(9));
+        await f.SetScope(day, day);
         var id = await f.AddTransaction(day.AddHours(20));
+        await f.AddTransaction(day.AddDays(1));
 
         var result = await f.List();
 
@@ -373,7 +417,7 @@ public class ContractSmartTagTransactionServiceTests
     }
 
     [Fact]
-    public async Task NoSmartTags_TakesPrecedenceOverNoContactParties_AndInvalidTerm()
+    public async Task NoSmartTags_TakesPrecedenceOverNoContactParties()
     {
         var f = await Seed(withSmartTag: false, withParty: false);
         await f.SetDates(TermEnd, TermStart);
@@ -528,15 +572,16 @@ public class ContractSmartTagTransactionServiceTests
     }
 
     [Fact]
-    public async Task Summary_IsEmptyForInvalidTerm()
+    public async Task Summary_InvertedTerm_StillSummarisesTheScope()
     {
         var f = await Seed();
         await f.SetDates(TermEnd, TermStart);
+        await f.AddTransaction(InTerm, amount: -10m);
 
         var summary = (await f.List()).Summary;
 
-        Assert.Equal(0, summary.TransactionCount);
-        Assert.Empty(summary.ByCurrency);
+        Assert.Equal(1, summary.TransactionCount);
+        Assert.Equal(10m, Assert.Single(summary.ByCurrency).TotalOut);
     }
 
     [Fact]
@@ -568,10 +613,17 @@ public class ContractSmartTagTransactionServiceTests
     }
 
     [Fact]
-    public void ComputeWindow_OneOffIgnoresTermDates()
+    public void ComputeWindow_OpenScope_IsUnbounded()
     {
-        Assert.Equal((null, null),
-            ContractSmartTagTransactionService.ComputeWindow(TermStart, TermEnd, TermStart));
+        Assert.Equal((null, null), ContractSmartTagTransactionService.ComputeWindow(null, null));
+    }
+
+    [Fact]
+    public void ComputeWindow_LastRepresentableDay_Saturates()
+    {
+        var (_, toExclusive) = ContractSmartTagTransactionService.ComputeWindow(null, SmartTagScopeRules.MaxDate);
+
+        Assert.Equal(DateTime.MaxValue, toExclusive);
     }
 
     [Fact]
@@ -579,7 +631,7 @@ public class ContractSmartTagTransactionServiceTests
     {
         // The window is built from PeriodBounds, the helper budgets and tax statements share.
         var (from, toExclusive) = ContractSmartTagTransactionService.ComputeWindow(
-            TermStart.AddHours(9), new DateTime(2025, 12, 31, 23, 59, 59, DateTimeKind.Unspecified), completionDate: null);
+            TermStart.AddHours(9), new DateTime(2025, 12, 31, 23, 59, 59, DateTimeKind.Unspecified));
 
         Assert.Equal(TermStart, from);
         Assert.Equal(new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), toExclusive);

@@ -48,6 +48,18 @@ public class Contract
     public DateTime? CompletionDate { get; set; }
 
     /// <summary>
+    /// First calendar day of the smart-tag scope (issue #308) — the date range the smart-tag
+    /// transaction match applies, independent of the term. Always UTC midnight (unlike
+    /// <see cref="StartDate"/>, which is stored as entered); null = no lower bound. Copied from the
+    /// term on create by <c>SmartTagScopeRules.FromTerm</c> and edited separately afterwards.
+    /// <c>CK_Contracts_SmartTagScopeOrder</c> keeps it on or before <see cref="SmartTagScopeEnd"/>.
+    /// </summary>
+    public DateTime? SmartTagScopeStart { get; set; }
+
+    /// <summary>Last calendar day (inclusive) of the smart-tag scope; null = no upper bound.</summary>
+    public DateTime? SmartTagScopeEnd { get; set; }
+
+    /// <summary>
     /// Archival timestamp — <b>not</b> a soft-delete marker. Non-null means the contract is archived
     /// (retained, hidden from the default list, fully restorable by clearing it); null means it is in
     /// the active set. Toggled through the regular update endpoint; permanent removal is the separate

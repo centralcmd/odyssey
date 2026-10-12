@@ -230,10 +230,14 @@ public partial class CreateContractDialog
                 StartDate = startDate,
                 EndDate = endDate,
                 CompletionDate = completionDate,
+                // Full replacement: an omitted scope OPENS the smart-tag match (issue #308). Carried
+                // forward from the record — a term edit never moves the scope by itself.
+                SmartTagScopeStart = Contract!.SmartTagScopeStart,
+                SmartTagScopeEnd = Contract.SmartTagScopeEnd,
                 // Archive/restore and pause/resume are separate row actions, and PUT is a full
                 // replacement — so both stamps are carried forward from the record as it stands.
                 // Omitting either would let an ordinary field edit silently restore or resume it.
-                IsArchived = Contract!.Archived is not null,
+                IsArchived = Contract.Archived is not null,
                 IsPaused = Contract.Paused is not null,
                 // The dialog is a FULL REPLACEMENT and that includes the two signature stamps: a
                 // value sets them, a cleared field clears them. Carried explicitly because an

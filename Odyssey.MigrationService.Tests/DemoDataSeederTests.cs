@@ -334,6 +334,40 @@ public class DemoDataSeederTests
     }
 
     /// <summary>
+    /// Issue #308 AC 21 — seeded contracts look like created ones: every term contract's smart-tag
+    /// scope is its term's calendar days (an open side stays open), every one-off's is open/open.
+    /// </summary>
+    [Fact]
+    public async Task Seeds_each_contract_with_the_smart_tag_scope_copied_from_its_term()
+    {
+        await using var provider = BuildProvider(out var seeder);
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var contracts = await context.Contracts.AsNoTracking().ToListAsync();
+
+        Assert.NotEmpty(contracts);
+        Assert.Contains(contracts, c => c.SmartTagScopeStart is not null);
+        Assert.All(contracts, c =>
+        {
+            var (start, end) = Odyssey.Dtos.Finance.SmartTagScopeRules.FromTerm(c.StartDate, c.EndDate, c.CompletionDate);
+            Assert.Equal(start, c.SmartTagScopeStart);
+            Assert.Equal(end, c.SmartTagScopeEnd);
+            if (c.CompletionDate is not null)
+            {
+                Assert.Null(c.SmartTagScopeStart);
+                Assert.Null(c.SmartTagScopeEnd);
+            }
+            else
+            {
+                Assert.Equal(c.StartDate?.Date, c.SmartTagScopeStart);
+            }
+        });
+    }
+
+    /// <summary>
     /// Issue #138 — the demo set carries contract event logs, and carries the states the surface has
     /// to draw differently. Without them the rail, the year markers and the "Unknown user" attribution
     /// would all be unreachable in the demo stack, so the feature would look absent rather than empty.

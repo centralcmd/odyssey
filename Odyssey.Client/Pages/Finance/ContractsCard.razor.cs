@@ -589,6 +589,9 @@ public partial class ContractsCard
             StartDate = d.StartDate,
             EndDate = d.EndDate,
             CompletionDate = d.CompletionDate,
+            // Full replacement: an omitted scope OPENS the smart-tag match (issue #308).
+            SmartTagScopeStart = d.SmartTagScopeStart,
+            SmartTagScopeEnd = d.SmartTagScopeEnd,
             IsArchived = archiving,
             // PUT is a full replacement, so an omitted flag RESUMES: archiving without carrying the
             // pause stamp forward would silently clear it. The two stamps are orthogonal in storage
@@ -630,6 +633,9 @@ public partial class ContractsCard
             StartDate = d.StartDate,
             EndDate = d.EndDate,
             CompletionDate = d.CompletionDate,
+            // Full replacement: an omitted scope OPENS the smart-tag match (issue #308).
+            SmartTagScopeStart = d.SmartTagScopeStart,
+            SmartTagScopeEnd = d.SmartTagScopeEnd,
             // Carried forward for the same reason archiving carries the pause stamp: a full
             // replacement that omitted this would restore a contract the reader only meant to resume.
             IsArchived = d.Archived is not null,
@@ -725,6 +731,9 @@ public partial class ContractsCard
             StartDate = d.StartDate,
             EndDate = d.EndDate,
             CompletionDate = d.CompletionDate,
+            // Full replacement: an omitted scope OPENS the smart-tag match (issue #308).
+            SmartTagScopeStart = d.SmartTagScopeStart,
+            SmartTagScopeEnd = d.SmartTagScopeEnd,
             IsArchived = d.Archived is not null,
             IsPaused = d.Paused is not null,
             Ready = ready,

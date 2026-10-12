@@ -761,6 +761,12 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("Signed")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<DateTime?>("SmartTagScopeEnd")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("SmartTagScopeStart")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime(6)");
 
@@ -777,7 +783,10 @@ namespace Odyssey.Context.Migrations
 
                     b.HasIndex("Type", "Archived");
 
-                    b.ToTable("Contracts");
+                    b.ToTable("Contracts", t =>
+                        {
+                            t.HasCheckConstraint("CK_Contracts_SmartTagScopeOrder", "`SmartTagScopeStart` IS NULL OR `SmartTagScopeEnd` IS NULL OR `SmartTagScopeStart` <= `SmartTagScopeEnd`");
+                        });
                 });
 
             modelBuilder.Entity("Odyssey.Context.ContractFile", b =>
