@@ -51,6 +51,15 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null, initialT
     signed: contract ? (H.conDateOnly(contract.signed) || '') : '',
   });
   const [errors, setErrors] = useState({});
+  /* Smart-tag scope (*Contract Smart-Tag Scope*). Independent of the term after
+     creation: an edit carries the stored scope forward unchanged unless the
+     user ticks the sync prompt, which writes fromTerm(new term) instead. */
+  const [syncScope, setSyncScope] = useState(false);
+  const scopeNow = contract ? { start: H.conDateOnly(contract.smartTagScopeStart), end: H.conDateOnly(contract.smartTagScopeEnd) } : null;
+  const termBefore = contract ? { startDate: contract.startDate, endDate: contract.endDate, completionDate: contract.completionDate } : null;
+  const termAfter = mode === 'oneoff'
+    ? { startDate: null, endDate: null, completionDate: draft.completionDate || 'pending' }
+    : { startDate: draft.startDate || null, endDate: draft.endDate || null, completionDate: null };
   const set = (k) => (v) => { setDraft(d => ({ ...d, [k]: v })); if (errors[k]) setErrors(e => ({ ...e, [k]: undefined })); };
 
   /* The parties the INCOMING type would orphan — the client half of the 422.
@@ -84,9 +93,9 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null, initialT
     if (Object.keys(next).length) { setErrors(next); return; }
     if (editing) {
       // Parity with the list item's saveEdit patch shape.
-      onSave && onSave({ ...draft, name: draft.name.trim(), referenceNumber: normRef(draft.referenceNumber), mode });
+      onSave && onSave({ ...draft, name: draft.name.trim(), referenceNumber: normRef(draft.referenceNumber), mode, syncScope });
     } else {
-      onCreate && onCreate({
+      const created = {
         id: `ct-new-${Date.now()}`,
         name: draft.name.trim(),
         type: draft.type,
@@ -99,9 +108,13 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null, initialT
         ready: draft.ready || null, signed: draft.signed || null,
         paused: null, archived: null, createdAtUtc: new Date().toISOString(),
         parties: [], files: [],
-      });
+      };
+      /* POST /api/contracts takes no scope fields: the server copies the term
+         (§8 rule 4) and the 201 body carries the result. */
+      onCreate && onCreate({ ...created, ...H.conScopeFromTerm(created) });
     }
   };
+  const SyncPrompt = DSNS.SmartTagScopeSyncPrompt;
 
   return (
     <Modal
@@ -182,6 +195,11 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null, initialT
         </FormRow>
       )}
 
+      {editing && SyncPrompt ? (
+        <SyncPrompt before={termBefore} after={termAfter} scope={scopeNow}
+          checked={syncScope} onChange={setSyncScope} />
+      ) : null}
+
       {/* SIGNATURE — edit only. A brand-new contract always starts as a
           Draft, so the stamps are set later from the contract itself; on edit
           they matter, and neither is required. */}
@@ -209,3 +227,43 @@ const AddContractModal = ({ onClose, onCreate, onSave, contract = null, initialT
 };
 
 Object.assign(window, { AddContractModal });
+
+/* EditSmartTagScopeModal — the scope editor, opened from "Edit scope" on the
+   contract's Smart tags section. Writes ONLY the two scope fields onto the
+   full-replacement PUT (every other field carried forward by the host).
+   Client checks mirror the server: 400 outside 1900-01-01…9999-12-31, 422
+   start after end (keyed smartTagScopeEnd). Never checked against the term. */
+const EditSmartTagScopeModal = ({ contract, onClose, onSave }) => {
+  const { useState } = React;
+  const H = window.OdysseyHelpers;
+  const NS = window.OdysseyDesignSystem_d5aa51 || {};
+  const R = NS.SMART_TAG_SCOPE_RULES;
+  const ScopeField = NS.SmartTagScopeField;
+  const [scope, setScope] = useState({ start: H.conDateOnly(contract.smartTagScopeStart), end: H.conDateOnly(contract.smartTagScopeEnd) });
+  const [tried, setTried] = useState(false);
+  const errors = R ? R.validate(scope) : {};
+  const shown = tried ? errors : (errors.end && errors.end.indexOf('before its start') >= 0 ? { end: errors.end } : {});
+  const unchanged = R ? R.equals(scope, { start: H.conDateOnly(contract.smartTagScopeStart), end: H.conDateOnly(contract.smartTagScopeEnd) }) : false;
+  const submit = () => {
+    setTried(true);
+    if (Object.keys(errors).length) return;
+    onSave && onSave({ smartTagScopeStart: R.toWire(scope.start), smartTagScopeEnd: R.toWire(scope.end) });
+  };
+  return (
+    <Modal title="Edit smart-tag scope" icon="date_range" onClose={onClose}
+      subtitle="Smart tags match transactions dated inside this range. It is set separately from the contract’s term, so payments that arrive after the term ends can still count here."
+      footer={
+        <React.Fragment>
+          <Button variant="text" onClick={onClose}>Cancel</Button>
+          <Button variant="filled" color="primary" icon="check" onClick={submit} disabled={unchanged || Object.keys(shown).length > 0}>Save scope</Button>
+        </React.Fragment>
+      }>
+      {ScopeField ? (
+        <ScopeField value={scope} onChange={setScope} errors={shown}
+          term={{ startDate: contract.startDate, endDate: contract.endDate, completionDate: contract.completionDate }} />
+      ) : null}
+    </Modal>
+  );
+};
+
+Object.assign(window, { EditSmartTagScopeModal });

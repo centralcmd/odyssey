@@ -13,11 +13,16 @@
    "Add validity" toggle account uploads use (AddFileModal's AfmValidity). All
    four are optional and travel in the attach body; an omitted one is stored
    null. `ValidTo` before `ValidFrom` is refused here as it is by the service,
-   on the "Valid to" control that most likely holds the mistake. */
+   on the "Valid to" control that most likely holds the mistake.
+
+   The type guess never lands on `Draft` from the extension alone — only a
+   filename that says draft/proposal does — and the fallback stays `Signed`,
+   matching the client's explicit picker default. `Draft` is a label only. */
 
 const ACF_GUESS = (name) => {
   const ext = (name.split('.').pop() || '').toLowerCase();
   if (['eml', 'msg'].includes(ext)) return 'Correspondence';
+  if (/(^|[^a-z])(draft|proposal|redline)([^a-z]|$)/i.test(name)) return 'Draft';
   return 'Signed'; // the signed agreement is the common upload; user can re-tag
 };
 
@@ -58,7 +63,7 @@ const AddContractFileModal = ({ contract, onClose, onAttach }) => {
   const H = window.OdysseyHelpers;
   return (
     <AttachDocumentsModal
-      subtitle="Keep the signed agreement, an amendment, or correspondence with this contract. Files stay in Files; attaching links them here."
+      subtitle="Keep a draft, the signed agreement, an amendment, or correspondence with this contract. Files stay in Files; attaching links them here."
       kinds={window.OdysseyData.contractFileTypes}
       guessKind={ACF_GUESS}
       validity

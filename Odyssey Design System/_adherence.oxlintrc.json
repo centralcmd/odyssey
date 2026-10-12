@@ -651,6 +651,14 @@
         "message": "<Skeleton> variant must be one of 'text' | 'circle' | 'block'."
       },
       {
+        "selector": "JSXOpeningElement[name.name='SmartTagScope'] > JSXAttribute > JSXIdentifier[name!=/^(?:start|end|key|ref|className|style|children)$/]",
+        "message": "<SmartTagScope> doesn't accept that prop. Declared props: start, end."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SmartTagScopeSyncPrompt'] > JSXAttribute > JSXIdentifier[name!=/^(?:before|after|scope|checked|onChange|className|key|ref|className|style|children)$/]",
+        "message": "<SmartTagScopeSyncPrompt> doesn't accept that prop. Declared props: before, after, scope, checked, onChange, className."
+      },
+      {
         "selector": "JSXOpeningElement[name.name='SortHeader'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|sortKey|sort|onSort|align|style|key|ref|className|style|children)$/]",
         "message": "<SortHeader> doesn't accept that prop. Declared props: label, sortKey, sort, onSort, align, style."
       },
@@ -1100,6 +1108,12 @@
         "replaces": []
       },
       "Skeleton": {
+        "replaces": []
+      },
+      "SmartTagScope": {
+        "replaces": []
+      },
+      "SmartTagScopeSyncPrompt": {
         "replaces": []
       },
       "SortHeader": {

@@ -1,0 +1,73 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Components · Smart-tag scope" subtitle="SmartTagScopeField (Match from / Match until, open sides, term-vs-scope strip, relation sentence, Copy the contract term · Remove both limits, 400 bounds + 422 order errors) and SmartTagScopeSyncPrompt (the opt-in 'also update the scope?' band in Edit contract)." viewport="1120x1500" -->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>Odyssey · Smart-tag scope</title>
+<link rel="stylesheet" href="../colors_and_type.css" />
+<link rel="stylesheet" href="../icons.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<style>
+html,body{margin:0;background:var(--mud-palette-background)}
+body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:26px 28px 40px}
+a{color:var(--brand-text)}a:hover{text-decoration:underline}
+.cap{font:var(--fw-medium) var(--fs-overline)/1 var(--font-sans);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--mud-palette-text-secondary);margin:0 0 12px}
+.cap code{font-family:var(--font-mono);text-transform:none;letter-spacing:0;color:var(--brand-text)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.panel{background:var(--mud-palette-surface);border:1px solid var(--mud-palette-divider);border-radius:var(--radius-lg);padding:20px 22px;min-width:0}
+.sub{font:var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);color:var(--mud-palette-text-secondary);margin:-4px 0 14px}
+.note{margin:22px 2px 0;font:var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);color:var(--mud-palette-text-secondary);max-width:96ch}
+.note b{color:var(--mud-palette-text-primary);font-weight:var(--fw-medium)}
+</style>
+</head>
+<body>
+<div class="cap">Smart-tag scope <code>&lt;SmartTagScopeField value term errors onChange /&gt;</code> · <code>&lt;SmartTagScopeSyncPrompt before after scope checked /&gt;</code></div>
+<div class="grid" id="root"></div>
+<p class="note">The scope is a contract's own date range for the smart-tag match, <b>independent of the term</b>: copied from the term on create, then edited only here. An empty side is <b>open</b>. The field never validates against the term — a scope before the start or after the end is the point of the feature — and states the relation in a sentence so the strip is never the only signal. Client checks mirror the server: a date outside <b>1 Jan 1900 – 31 Dec 9999</b> is a 400; a start after the end is a 422 keyed to <b>Match until</b>; the same day on both sides is valid. Days are sent as UTC midnight (<code>2027-06-30T00:00:00Z</code>), never with an offset.</p>
+<script type="text/babel" data-presets="env,react">
+const NS = window.OdysseyDesignSystem_d5aa51 || {};
+const { SmartTagScopeField, SmartTagScopeSyncPrompt } = NS;
+const LEASE = { startDate: '2025-09-01', endDate: '2026-08-31' };
+const JOB = { startDate: '2024-03-01', endDate: null };
+
+function Live({ title, sub, term, init }) {
+  const [v, setV] = React.useState(init);
+  const R = window.OdysseyDesignSystem_d5aa51.SMART_TAG_SCOPE_RULES;
+  return (
+    <div className="panel">
+      <div className="cap">{title}</div>
+      <p className="sub">{sub}</p>
+      <SmartTagScopeField value={v} onChange={setV} term={term} errors={R ? R.validate(v) : {}} />
+    </div>
+  );
+}
+function Sync() {
+  const [on, setOn] = React.useState(false);
+  return (
+    <div className="panel">
+      <div className="cap">Edit contract — end date set on an ongoing contract</div>
+      <p className="sub">Renders only when the term changed and the scope differs from the new term. Unchecked by default.</p>
+      <SmartTagScopeSyncPrompt before={JOB} after={{ startDate: '2024-03-01', endDate: '2026-08-31' }}
+        scope={{ start: '2024-03-01', end: null }} checked={on} onChange={setOn} />
+    </div>
+  );
+}
+function Demo() {
+  return (
+    <React.Fragment>
+      <Live title="Widened past the term — the lease" sub="Final utilities and the deposit refund arrive after 31 Aug 2026." term={LEASE} init={{ start: '2025-09-01', end: '2026-12-31' }} />
+      <Live title="As created — same as the term" sub="POST copies the term (§8 rule 4). Copy the contract term is disabled." term={LEASE} init={{ start: '2025-09-01', end: '2026-08-31' }} />
+      <Live title="Open after the term — ongoing employment, now ended" sub="The motivating case: the end date was added later; the scope stayed open." term={{ startDate: '2024-03-01', endDate: '2026-08-31' }} init={{ start: '2024-03-01', end: null }} />
+      <Live title="422 — start after end" sub="Keyed to Match until. Save stays disabled until it is fixed." term={LEASE} init={{ start: '2026-09-01', end: '2026-08-31' }} />
+      <Live title="One-off contract" sub="No term to compare with; the scope is the only date rule." term={{ completionDate: '2026-03-12' }} init={{ start: '2026-03-01', end: '2026-06-30' }} />
+      <Sync />
+    </React.Fragment>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(SmartTagScopeField && SmartTagScopeSyncPrompt ? <Demo /> : <div className="sub">The component bundle is still compiling — reload in a moment.</div>);
+</script>
+</body>
+</html>

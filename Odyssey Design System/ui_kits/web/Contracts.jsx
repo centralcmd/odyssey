@@ -167,7 +167,9 @@ const PartyTile = ({ party, today, onEdit, onDetach, onNavigate }) => {
    The saved transaction filter a contract carries, resolved SERVER-SIDE and
    scoped to the agreement (*Contract Smart Tags — Scoped Transaction Match*):
    a transaction reads here only if it carries a watched tag, is dated inside
-   the term, and names a contact party as its merchant. One read —
+   the contract's SMART-TAG SCOPE (its own date range, copied from the term on
+   create and edited separately — *Contract Smart-Tag Scope, Draft v5*), and
+   names a contact party as its merchant. One read —
    GET /api/contracts/{id}/smart-tag-transactions — paged, searched and sorted
    on the server with the transactions list's keys. The page restates the
    response's `scope` and maps its `emptyReason` ordinal; it never composes
@@ -182,7 +184,7 @@ const conScopeLastDay = (iso) => {
   const d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);
   return CON_H.conDate(d.toISOString().slice(0, 10));
 };
-const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite = true, cap, limitsDegraded = false, canReadTxns = true, onAddParty, onEditContract, bare = true }) => {
+const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite = true, cap, limitsDegraded = false, canReadTxns = true, onAddParty, onEditScope, bare = true }) => {
   const { useState, useEffect, useRef } = React;
   const DSSection = (window.OdysseyDesignSystem_d5aa51 || {}).AccountSmartTagsSection;
   const allTags = CON_D.tags.filter(t => !t.archived);
@@ -199,7 +201,7 @@ const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite =
   /* Any input to the read — tags, parties, dates, search, sort, page — re-issues
      it. Search is debounced; the table shows the loading state meanwhile. */
   const partyKey = (contract.parties || []).map(p => p.contactId || '').join(',');
-  const reqKey = [tagIds.join(','), partyKey, contract.startDate, contract.endDate, contract.completionDate, search, sort.key, sort.dir, page, pageSize].join('|');
+  const reqKey = [tagIds.join(','), partyKey, contract.smartTagScopeStart, contract.smartTagScopeEnd, search, sort.key, sort.dir, page, pageSize].join('|');
   const first = useRef(true);
   useEffect(() => {
     if (!canReadTxns) return undefined;
@@ -236,14 +238,27 @@ const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite =
   const net = totals.length === 1 ? totals[0] : null;
 
   /* The scope line — the window and the party count straight off the response.
-     toExclusive is the next midnight, so the last covered day is one before. */
+     toExclusive is the next midnight, so the last covered day is one before.
+     The muted note places the window against the term in words, so a widened
+     scope is visible without opening the editor. */
   let windowText = null;
   if (scope) {
     const f = conScopeDay(scope.from), l = conScopeLastDay(scope.toExclusive);
-    windowText = f && l ? `${f} – ${l}` : f ? `from ${f}, no end` : l ? `until ${l}` : (contract.completionDate ? 'any date — one-off contract' : 'any date — no term set');
+    windowText = f && l ? `${f} – ${l}` : f ? `from ${f}, no end` : l ? `until ${l}` : 'any date';
   }
-  const scopeItems = scope && reason !== CON_EMPTY.InvalidTerm ? [
-    { icon: 'date_range', label: 'Dated', value: windowText },
+  const sd = CON_H.conDateOnly(contract.smartTagScopeStart), se = CON_H.conDateOnly(contract.smartTagScopeEnd);
+  const ts = contract.completionDate ? null : CON_H.conDateOnly(contract.startDate);
+  const te = contract.completionDate ? null : CON_H.conDateOnly(contract.endDate);
+  const beyond = [];
+  if (ts && (!sd || sd < ts)) beyond.push('before');
+  if (te && (!se || se > te)) beyond.push('after');
+  const termScope = CON_H.conScopeFromTerm(contract);
+  const sameAsTerm = (termScope.smartTagScopeStart || null) === (contract.smartTagScopeStart || null) && (termScope.smartTagScopeEnd || null) === (contract.smartTagScopeEnd || null);
+  const relation = contract.completionDate ? (sd || se ? 'one-off contract' : 'one-off contract, no date rule')
+    : sameAsTerm ? 'same as the term'
+    : beyond.length ? `includes dates ${beyond.join(' and ')} the term` : 'narrower than the term';
+  const scopeItems = scope ? [
+    { icon: 'date_range', label: 'Dated', value: <React.Fragment>{windowText} <span className="odc-smarttags-scope-note">· {relation}</span></React.Fragment> },
     { icon: 'group', label: 'Merchant', value: scope.partyContactCount === 0 ? 'no contact party' : `one of ${scope.partyContactCount} contact part${scope.partyContactCount === 1 ? 'y' : 'ies'}` },
   ] : null;
 
@@ -255,11 +270,9 @@ const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite =
     blocked = { icon: 'person_off', title: 'No contact is a party yet',
       desc: 'A transaction counts here only when its merchant is a contact that is a party to this contract. Account and property parties are not merchants.',
       actionLabel: canWrite && onAddParty ? 'Add a party' : undefined, actionIcon: 'group_add', onAction: onAddParty };
-  } else if (reason === CON_EMPTY.InvalidTerm) {
-    blocked = { icon: 'event_busy', title: 'The term ends before it starts',
-      desc: `Start date ${conScopeDay(scope.from)} is after end date ${conScopeLastDay(scope.toExclusive)}, so no date can fall inside the term. Correct the dates to see matching transactions.`,
-      actionLabel: canWrite && onEditContract ? 'Edit dates' : undefined, actionIcon: 'edit_calendar', onAction: onEditContract };
   }
+  /* InvalidTerm (3) is no longer emitted — the scope's CHECK constraint makes an
+     inverted range unrepresentable — so this page has no branch for it. */
 
   const toolbar = (
     <div style={{ flex: 1, minWidth: 240 }}>
@@ -279,6 +292,7 @@ const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite =
       netTotal={net ? net.netAmount : undefined}
       formatAmount={(n) => CON_H.signedMoney(n, net ? net.currency : 'USD')}
       scope={canReadTxns ? scopeItems : null}
+      scopeAction={canWrite && onEditScope && canReadTxns ? { label: 'Edit scope', icon: 'edit_calendar', onClick: onEditScope } : null}
       blocked={blocked}
       toolbar={total > 0 || search ? toolbar : null}
       onAddTag={add}
@@ -290,11 +304,11 @@ const ContractSmartTags = ({ contract, tagIds, setTagIds, onNavigate, canWrite =
       addError={addError}
       onDismissAddError={() => setAddError(null)}
       emptyDesc={canWrite
-        ? 'Pin the tags this agreement settles against. Transactions carrying them, dated inside the term and paid to a contact party, read here.'
+        ? 'Pin the tags this agreement settles against. Transactions carrying them, dated inside the smart-tag scope and paid to a contact party, read here.'
         : 'No tags are being watched on this contract.'}
       noMatchDesc={search
         ? `No matching transaction mentions “${search}”.`
-        : 'No transaction inside the term, paid to a contact party, carries the watched tags yet.'}
+        : 'No transaction inside the smart-tag scope, paid to a contact party, carries the watched tags yet.'}
       renderTable={(rows) => (
         <div className="acct-txn-table">
           <TxnTable txns={rows} onNavigate={onNavigate}
@@ -314,7 +328,7 @@ const RefNum = (props) => {
   const C = (window.OdysseyDesignSystem_d5aa51 || {}).ReferenceNumber;
   return C ? <C {...props} /> : <span className="con-ref-inline">{props.value}</span>;
 };
-const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, smartTagIds, setSmartTagIds, smartTagCap, smartTagsDegraded, canWriteSmartTags, canReadTxns, onEditContract, onNavigate, onNewTerm, onEditTerm, onDeleteTerm, events, onEditEvent, onDeleteEvent, onAnnounceEvent }) => {
+const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, onEditParty, onAttach, termCap, smartTagIds, setSmartTagIds, smartTagCap, smartTagsDegraded, canWriteSmartTags, canReadTxns, onEditContract, onEditScope, onNavigate, onNewTerm, onEditTerm, onDeleteTerm, events, onEditEvent, onDeleteEvent, onAnnounceEvent }) => {
   const typeInfo = CON_H.contractTypeInfo(contract.type);
   const parties = contract.parties || [];
   const files = contract.files || [];
@@ -438,7 +452,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
         <ContractSmartTags contract={contract} tagIds={smartTagIds} setTagIds={setSmartTagIds}
           onNavigate={onNavigate} canWrite={canWriteSmartTags} cap={smartTagCap}
           limitsDegraded={smartTagsDegraded} canReadTxns={canReadTxns}
-          onAddParty={onAddParty} onEditContract={onEditContract} />
+          onAddParty={onAddParty} onEditScope={onEditScope} />
       </div>
 
       {/* DOCUMENTS — last section ("Upload document" is in the row menu too).
@@ -447,7 +461,7 @@ const ContractDetail = ({ contract, today, focusDocs, setContract, onAddParty, o
       <div className="con-section">
         <SectionDivider label="Documents" meta={`${files.length} file${files.length === 1 ? '' : 's'}`} />
         {fileRows.length === 0 ? (
-          <EmptyLine>No documents yet — upload the signed agreement, an amendment, or correspondence.</EmptyLine>
+          <EmptyLine>No documents yet — upload a draft, the signed agreement, an amendment, or correspondence.</EmptyLine>
         ) : (
           <div className="con-files con-tbl-frame odc-scroll">
             <ContractFilesTable files={fileRows} onDelete={removeFile} onSave={saveFile} />
@@ -490,6 +504,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
   const open = !!openProp;
   const setOpen = (next) => onToggle(typeof next === 'function' ? next(open) : next);
   const [showEdit, setShowEdit] = useState(false);
+  const [showScope, setShowScope] = useState(false);
   const [focusDocs, setFocusDocs] = useState(false);
   const [modal, setModal] = useState(null); // 'party' | 'file'
   // The party being edited through the new PUT …/parties/{partyId}. The same
@@ -546,8 +561,20 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
          contract back to Draft and drop it out of the run rate. */
       ready: draft.ready || null,
       signed: draft.signed || null,
+      /* Smart-tag scope — carried forward unchanged (full-replacement PUT), the
+         same obligation as the stamps above. Only the dialog's opt-in sync
+         prompt rewrites it, and then from the NEW term (§8 rule 4). */
+      ...(draft.syncScope
+        ? CON_H.conScopeFromTerm({ startDate: draft.mode === 'oneoff' ? null : draft.startDate, endDate: draft.mode === 'oneoff' ? null : draft.endDate, completionDate: draft.mode === 'oneoff' ? draft.completionDate : null })
+        : { smartTagScopeStart: prev.smartTagScopeStart || null, smartTagScopeEnd: prev.smartTagScopeEnd || null }),
     }));
     setShowEdit(false);
+  };
+  const saveScope = (next) => {
+    // PUT /api/contracts/{id} — every other field carried forward from prev.
+    setC(prev => ({ ...prev, ...next }));
+    setShowScope(false);
+    say('Smart-tag scope saved.');
   };
   const addParty = (party) => {
     setC(prev => ({ ...prev, parties: [...(prev.parties || []), party] })); setModal(null); setOpen(true);
@@ -764,7 +791,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
           termCap={termCap}
           smartTagIds={smartTagIds} setSmartTagIds={setSmartTagIds} smartTagCap={smartTagCap}
           smartTagsDegraded={smartTagsDegraded} canWriteSmartTags={canWriteSmartTags} canReadTxns={canReadTxns}
-          onEditContract={() => setShowEdit(true)} onNavigate={onNavigate}
+          onEditContract={() => setShowEdit(true)} onEditScope={() => setShowScope(true)} onNavigate={onNavigate}
           onNewTerm={() => setModal('term')} onEditTerm={(t) => setEditTerm(t)} onDeleteTerm={deleteTerm}
           events={events} onEditEvent={(ev) => setEditEvent(ev)} onDeleteEvent={deleteEvent} onAnnounceEvent={say} />
       </RecordCard>
@@ -772,6 +799,7 @@ const ContractListItem = ({ row, today, endingWindow, termCap, smartTagCap, smar
           delete sentence up to here (Non-Goal 8) instead of mounting one. */}
       <div className="odc-sr-only" role="status" aria-live="polite">{announce}</div>
       {showEdit && <AddContractModal contract={c} onClose={() => setShowEdit(false)} onSave={saveEdit} />}
+      {showScope && <EditSmartTagScopeModal contract={c} onClose={() => setShowScope(false)} onSave={saveScope} />}
 
       {modal === 'party' && <AddContractPartyModal contract={c} onClose={() => setModal(null)} onAdd={addParty} />}
       {editParty && <AddContractPartyModal contract={c} party={editParty} onClose={() => setEditParty(null)} onSave={saveParty} />}

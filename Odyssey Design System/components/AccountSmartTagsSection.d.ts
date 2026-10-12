@@ -72,6 +72,9 @@ export interface AccountSmartTagsSectionProps {
    *  contract host formats `scope.from`/`toExclusive` and the party-contact
    *  count from GET /api/contracts/{id}/smart-tag-transactions. */
   scope?: Array<{ icon?: string; label?: React.ReactNode; value: React.ReactNode }> | null;
+  /** One action at the end of the scope line — on the contract host, "Edit
+   *  scope", which opens the smart-tag scope dialog. Omit for read-only viewers. */
+  scopeAction?: { label?: string; icon?: string; onClick: () => void } | null;
   /** A structural empty result named by the server (`emptyReason` ≠ None):
    *  replaces the body with its own title, sentence and one fixing action. */
   blocked?: { icon?: string; title: React.ReactNode; desc?: React.ReactNode; actionLabel?: string; actionIcon?: string; onAction?: () => void } | null;

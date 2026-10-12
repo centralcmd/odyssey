@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AllocationDonuts","sourcePath":"components/AllocationDonuts.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileTypeMultiSelect","sourcePath":"components/FileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"PROPERTY_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FILE_TYPE_REGISTRIES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileTypeSelect","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"HomeownerAssociationSelect","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"PROPERTY_EVENT_TYPES","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_SYSTEM_ONLY","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_TYPE_MATRIX","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyEventTypeSelect","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TRANSACTION_TAG_ICONS","sourcePath":"components/TagIconPicker.jsx"},{"name":"TRANSACTION_TAG_ICON_DEFAULT","sourcePath":"components/TagIconPicker.jsx"},{"name":"TransactionTagIcons","sourcePath":"components/TagIconPicker.jsx"},{"name":"TagIconPicker","sourcePath":"components/TagIconPicker.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountSmartTagsSection.jsx":"eb82b5c6a04b","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"9f54506f4cf3","components/AccountTypeSelect.jsx":"71a8e6f1f26b","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AllocationDonuts.jsx":"044b0391cba9","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"c39daff274ff","components/BreakdownTile.jsx":"ab8698d79f9d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"ace06e34d445","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"a44940f2426c","components/Combobox.jsx":"4fb765c097aa","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"6bb321aa4df3","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"7707449a38e7","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"fb8d5df00ef8","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileTypeMultiSelect.jsx":"fbaef310b135","components/FileTypeSelect.jsx":"602105962a04","components/FileUpload.jsx":"2a2150aed391","components/FilesTable.jsx":"13b97642e98d","components/FormRow.jsx":"760803e7e9a9","components/HomeownerAssociationSelect.jsx":"4b0af1f20e4a","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"b09819d8e2ef","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"8760b9df36a3","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"eb12efde720d","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/PropertyEventTypeSelect.jsx":"e9232a5f7149","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"a34456c62a15","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"d54e41a6f196","components/RegistrySelect.jsx":"cfdb93825f1e","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"22e374740648","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"352febb04dc1","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagIconPicker.jsx":"0e3a4c3e94ab","components/TagMultiSelect.jsx":"f3075dad69cb","components/TaskBoard.jsx":"543103259e1e","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionTagPicker.jsx":"5724c2548658","components/TxnTable.jsx":"a8d48a29b79d","components/TypeSelect.jsx":"bc0a739e237a","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"ae4664340137","ui_kits/web/AccountEstimates.jsx":"74490c489fc0","ui_kits/web/AccountTerms.jsx":"0221944e1164","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"00b4a63d1b24","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"c7cfdaf2bf79","ui_kits/web/AddContractModal.jsx":"fc668dec68b7","ui_kits/web/AddContractPartyModal.jsx":"5671cc00067f","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"496d5f963e1a","ui_kits/web/AddFileModal.jsx":"9ac67581e94c","ui_kits/web/AddPropertyEventModal.jsx":"7bd99a614e1c","ui_kits/web/AddPropertyFileModal.jsx":"640407cc7d81","ui_kits/web/AddPropertyModal.jsx":"2b9baf5ac130","ui_kits/web/AddTaxStatementModal.jsx":"de9daa8a7bee","ui_kits/web/AddTransactionFileModal.jsx":"1ef4e0bab1e3","ui_kits/web/AddTransactionModal.jsx":"33c1ecb9a73d","ui_kits/web/AnalyzeFileModal.jsx":"79b1f4f7490d","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/AttachDocumentsModal.jsx":"468b57a32347","ui_kits/web/AttachPhotosModal.jsx":"0bd96e8b1977","ui_kits/web/Budgets.jsx":"6775ff33876c","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"4f388f692b7a","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"672a3e086f82","ui_kits/web/ContractEvents.jsx":"5e6987305ced","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"1f4f7a1ffc3c","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"2357237a2a86","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"fe66f3f2766c","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"4660d6913fee","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"1e3b71e0af83","ui_kits/web/PropertyEstimates.jsx":"26ff66003282","ui_kits/web/PropertyEvents.jsx":"661071ddeedc","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"4052ed3cec78","ui_kits/web/TaxStatements.jsx":"0dbe10b334fc","ui_kits/web/TransactionTags.jsx":"4d2ec833a501","ui_kits/web/Transactions.jsx":"710d60a74244","ui_kits/web/Users.jsx":"4ddab8478138","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"b6b90dc34d06","ui_kits/web/contracts-data.js":"60703b10009e","ui_kits/web/data.js":"f3dec75ad47d","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"64839a67d3d5","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"ec78251314db","ui_kits/web/property-events-data.js":"2c6c4672c3ac","ui_kits/web/system-settings-data.js":"c05e455acb51","ui_kits/web/tax-data.js":"a087e9da05a6","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"homeownerAssociationState","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"propertyEventTypeLegality","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"propertyEventTypesFor","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
+/* @ds-bundle: {"format":4,"namespace":"OdysseyDesignSystem_d5aa51","components":[{"name":"AccountSmartTagsSection","sourcePath":"components/AccountSmartTagsSection.jsx"},{"name":"AccountStatusChip","sourcePath":"components/AccountStatusChip.jsx"},{"name":"AccountTypeChip","sourcePath":"components/AccountTypeChip.jsx"},{"name":"ACCOUNT_TYPES","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"AccountTypeSelect","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ACCOUNT_TYPE_GROUPS","sourcePath":"components/AccountTypeSelect.jsx"},{"name":"ActionMenu","sourcePath":"components/ActionMenu.jsx"},{"name":"AddRow","sourcePath":"components/AddRow.jsx"},{"name":"Alert","sourcePath":"components/Alert.jsx"},{"name":"AllocationDonuts","sourcePath":"components/AllocationDonuts.jsx"},{"name":"AmountField","sourcePath":"components/AmountField.jsx"},{"name":"Avatar","sourcePath":"components/Avatar.jsx"},{"name":"Badge","sourcePath":"components/Badge.jsx"},{"name":"BrandMark","sourcePath":"components/BrandMark.jsx"},{"name":"BreakdownTile","sourcePath":"components/BreakdownTile.jsx"},{"name":"BUDGET_CATEGORY_TYPES","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BUDGET_CATEGORY_DIRECTION_OPTIONS","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"BudgetCategoryTypeSelect","sourcePath":"components/BudgetCategoryTypeSelect.jsx"},{"name":"Button","sourcePath":"components/Button.jsx"},{"name":"CalendarGrid","sourcePath":"components/CalendarGrid.jsx"},{"name":"CapacityField","sourcePath":"components/CapacityField.jsx"},{"name":"Card","sourcePath":"components/Card.jsx"},{"name":"CardBody","sourcePath":"components/CardBody.jsx"},{"name":"CardHeader","sourcePath":"components/CardHeader.jsx"},{"name":"CardSelect","sourcePath":"components/CardSelect.jsx"},{"name":"Checkbox","sourcePath":"components/Checkbox.jsx"},{"name":"Chip","sourcePath":"components/Chip.jsx"},{"name":"Collapsible","sourcePath":"components/Collapsible.jsx"},{"name":"CALENDAR_SWATCHES","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"DEFAULT_CALENDAR_COLOR","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"ColorSwatchSelect","sourcePath":"components/ColorSwatchSelect.jsx"},{"name":"Combobox","sourcePath":"components/Combobox.jsx"},{"name":"CONTACT_ALIAS_CAP","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"CONTACT_ALIAS_LABEL_MAX","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactAliases","sourcePath":"components/ContactAliases.jsx"},{"name":"ContactChip","sourcePath":"components/ContactChip.jsx"},{"name":"ADDRESS_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"EMAIL_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"PHONE_LABELS","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactLabelScope","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"ContactMethodLabelSelect","sourcePath":"components/ContactMethodLabelSelect.jsx"},{"name":"CONTACT_CREATE_KINDS","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactSelect","sourcePath":"components/ContactSelect.jsx"},{"name":"ContactTypeMultiSelect","sourcePath":"components/ContactTypeMultiSelect.jsx"},{"name":"CONTACT_TYPES","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"ContactTypeSelect","sourcePath":"components/ContactTypeSelect.jsx"},{"name":"CONTRACT_PARTY_ROLES","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_PARTY_ROLE_MATRIX","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"ContractPartyRoleSelect","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"CONTRACT_STATES","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_STATUS_RANK","sourcePath":"components/ContractStatusChip.jsx"},{"name":"ContractStatusChip","sourcePath":"components/ContractStatusChip.jsx"},{"name":"CONTRACT_TYPES","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"ContractTypeSelect","sourcePath":"components/ContractTypeSelect.jsx"},{"name":"CoordinateField","sourcePath":"components/CoordinateField.jsx"},{"name":"CurrencySelect","sourcePath":"components/CurrencySelect.jsx"},{"name":"CustodianChip","sourcePath":"components/CustodianChip.jsx"},{"name":"CustodianSelect","sourcePath":"components/CustodianSelect.jsx"},{"name":"DateField","sourcePath":"components/DateField.jsx"},{"name":"DatePicker","sourcePath":"components/DatePicker.jsx"},{"name":"DateRangePicker","sourcePath":"components/DateRangePicker.jsx"},{"name":"Delta","sourcePath":"components/Delta.jsx"},{"name":"Donut","sourcePath":"components/Donut.jsx"},{"name":"DonutLegend","sourcePath":"components/Donut.jsx"},{"name":"Drawer","sourcePath":"components/Drawer.jsx"},{"name":"NavItem","sourcePath":"components/Drawer.jsx"},{"name":"EmptyLine","sourcePath":"components/EmptyLine.jsx"},{"name":"EmptyState","sourcePath":"components/EmptyState.jsx"},{"name":"ErrorSummary","sourcePath":"components/ErrorSummary.jsx"},{"name":"EventRail","sourcePath":"components/EventRail.jsx"},{"name":"EventRailMarker","sourcePath":"components/EventRail.jsx"},{"name":"EventRailItem","sourcePath":"components/EventRail.jsx"},{"name":"Field","sourcePath":"components/Field.jsx"},{"name":"FieldShell","sourcePath":"components/FieldShell.jsx"},{"name":"FileTypeMultiSelect","sourcePath":"components/FileTypeMultiSelect.jsx"},{"name":"ACCOUNT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TRANSACTION_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"TAX_STATEMENT_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"PROPERTY_FILE_TYPES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FILE_TYPE_REGISTRIES","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileTypeSelect","sourcePath":"components/FileTypeSelect.jsx"},{"name":"FileUpload","sourcePath":"components/FileUpload.jsx"},{"name":"FilesTable","sourcePath":"components/FilesTable.jsx"},{"name":"FormRow","sourcePath":"components/FormRow.jsx"},{"name":"HomeownerAssociationSelect","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"IconButton","sourcePath":"components/IconButton.jsx"},{"name":"IMAGE_CROP_LIMITS","sourcePath":"components/ImageCropDialog.jsx"},{"name":"ImageCropDialog","sourcePath":"components/ImageCropDialog.jsx"},{"name":"InfoTile","sourcePath":"components/InfoTile.jsx"},{"name":"InfoTileGrid","sourcePath":"components/InfoTileGrid.jsx"},{"name":"JournalPhotoGallery","sourcePath":"components/JournalPhotoGallery.jsx"},{"name":"LineChart","sourcePath":"components/LineChart.jsx"},{"name":"MIcon","sourcePath":"components/MIcon.jsx"},{"name":"MatchIndicator","sourcePath":"components/MatchIndicator.jsx"},{"name":"Menu","sourcePath":"components/Menu.jsx"},{"name":"MetaTile","sourcePath":"components/MetaTile.jsx"},{"name":"Modal","sourcePath":"components/Modal.jsx"},{"name":"MoneyField","sourcePath":"components/MoneyField.jsx"},{"name":"MultiSelect","sourcePath":"components/MultiSelect.jsx"},{"name":"NoteField","sourcePath":"components/NoteField.jsx"},{"name":"NumberField","sourcePath":"components/NumberField.jsx"},{"name":"PageHeader","sourcePath":"components/PageHeader.jsx"},{"name":"PageSizeSelect","sourcePath":"components/PageSizeSelect.jsx"},{"name":"Pager","sourcePath":"components/Pager.jsx"},{"name":"PasswordChangeForm","sourcePath":"components/PasswordChangeForm.jsx"},{"name":"PASSWORD_POLICY","sourcePath":"components/PasswordRules.jsx"},{"name":"PasswordRules","sourcePath":"components/PasswordRules.jsx"},{"name":"ProblemAlert","sourcePath":"components/ProblemAlert.jsx"},{"name":"ProfilePictureField","sourcePath":"components/ProfilePictureField.jsx"},{"name":"PROPERTY_EVENT_TYPES","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_SYSTEM_ONLY","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PROPERTY_EVENT_TYPE_MATRIX","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"PropertyEventTypeSelect","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"RadioGroup","sourcePath":"components/RadioGroup.jsx"},{"name":"RecordBody","sourcePath":"components/RecordBody.jsx"},{"name":"RecordCard","sourcePath":"components/RecordCard.jsx"},{"name":"RecordSection","sourcePath":"components/RecordSection.jsx"},{"name":"RecordTable","sourcePath":"components/RecordTable.jsx"},{"name":"ReferenceNumber","sourcePath":"components/ReferenceNumber.jsx"},{"name":"REFERENCE_NUMBER_RULES","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"ReferenceNumberField","sourcePath":"components/ReferenceNumberField.jsx"},{"name":"RegistryMultiSelect","sourcePath":"components/RegistryMultiSelect.jsx"},{"name":"RegistrySelect","sourcePath":"components/RegistrySelect.jsx"},{"name":"RevealPanel","sourcePath":"components/RevealPanel.jsx"},{"name":"RowActions","sourcePath":"components/RowActions.jsx"},{"name":"SearchField","sourcePath":"components/SearchField.jsx"},{"name":"SecretClearDialog","sourcePath":"components/SecretClearDialog.jsx"},{"name":"SecretClearOnSaveDialog","sourcePath":"components/SecretClearOnSaveDialog.jsx"},{"name":"SecretSettingField","sourcePath":"components/SecretSettingField.jsx"},{"name":"SectionDivider","sourcePath":"components/SectionDivider.jsx"},{"name":"SegmentedControl","sourcePath":"components/SegmentedControl.jsx"},{"name":"Select","sourcePath":"components/Select.jsx"},{"name":"SettingField","sourcePath":"components/SettingField.jsx"},{"name":"SettingRow","sourcePath":"components/SettingRow.jsx"},{"name":"SeverityIcon","sourcePath":"components/SeverityIcon.jsx"},{"name":"Skeleton","sourcePath":"components/Skeleton.jsx"},{"name":"SkeletonRow","sourcePath":"components/Skeleton.jsx"},{"name":"SMART_TAG_SCOPE_RULES","sourcePath":"components/SmartTagScopeField.jsx"},{"name":"SmartTagScopeField","sourcePath":"components/SmartTagScopeField.jsx"},{"name":"SmartTagScopeSyncPrompt","sourcePath":"components/SmartTagScopeSyncPrompt.jsx"},{"name":"SortHeader","sourcePath":"components/SortHeader.jsx"},{"name":"SortHelpers","sourcePath":"components/SortSelect.jsx"},{"name":"SortSelect","sourcePath":"components/SortSelect.jsx"},{"name":"Sparkline","sourcePath":"components/Sparkline.jsx"},{"name":"Spinner","sourcePath":"components/Spinner.jsx"},{"name":"ProgressBar","sourcePath":"components/Spinner.jsx"},{"name":"StatTile","sourcePath":"components/StatTile.jsx"},{"name":"StepChart","sourcePath":"components/StepChart.jsx"},{"name":"StepperField","sourcePath":"components/StepperField.jsx"},{"name":"Switch","sourcePath":"components/Switch.jsx"},{"name":"Table","sourcePath":"components/Table.jsx"},{"name":"Tabs","sourcePath":"components/Tabs.jsx"},{"name":"TagChips","sourcePath":"components/TagChips.jsx"},{"name":"TRANSACTION_TAG_ICONS","sourcePath":"components/TagIconPicker.jsx"},{"name":"TRANSACTION_TAG_ICON_DEFAULT","sourcePath":"components/TagIconPicker.jsx"},{"name":"TransactionTagIcons","sourcePath":"components/TagIconPicker.jsx"},{"name":"TagIconPicker","sourcePath":"components/TagIconPicker.jsx"},{"name":"TagMultiSelect","sourcePath":"components/TagMultiSelect.jsx"},{"name":"TaskBoard","sourcePath":"components/TaskBoard.jsx"},{"name":"TermHistoryChart","sourcePath":"components/TermHistoryChart.jsx"},{"name":"TextInputField","sourcePath":"components/TextInputField.jsx"},{"name":"TimeField","sourcePath":"components/TimeField.jsx"},{"name":"Timeline","sourcePath":"components/Timeline.jsx"},{"name":"TimelineItem","sourcePath":"components/Timeline.jsx"},{"name":"Toast","sourcePath":"components/Toast.jsx"},{"name":"ToastStack","sourcePath":"components/Toast.jsx"},{"name":"TODO_STATUSES","sourcePath":"components/TodoStatusChip.jsx"},{"name":"TodoStatusChip","sourcePath":"components/TodoStatusChip.jsx"},{"name":"Tooltip","sourcePath":"components/Tooltip.jsx"},{"name":"TransactionTagPicker","sourcePath":"components/TransactionTagPicker.jsx"},{"name":"TxnTable","sourcePath":"components/TxnTable.jsx"},{"name":"TypeSelect","sourcePath":"components/TypeSelect.jsx"}],"sourceHashes":{"components/AccountSmartTagsSection.jsx":"fe7077259ee6","components/AccountStatusChip.jsx":"d0dac6995459","components/AccountTypeChip.jsx":"9f54506f4cf3","components/AccountTypeSelect.jsx":"71a8e6f1f26b","components/ActionMenu.jsx":"081a07830034","components/AddRow.jsx":"6f6da8fddfc3","components/Alert.jsx":"4a5b5e0c9387","components/AllocationDonuts.jsx":"044b0391cba9","components/AmountField.jsx":"ab382130242c","components/Avatar.jsx":"78ca52c13d0e","components/Badge.jsx":"490b25d483f5","components/BrandMark.jsx":"c39daff274ff","components/BreakdownTile.jsx":"ab8698d79f9d","components/BudgetCategoryTypeSelect.jsx":"0440b62169e2","components/Button.jsx":"04e1f24d08da","components/CalendarGrid.jsx":"ace06e34d445","components/CapacityField.jsx":"619657f6df82","components/Card.jsx":"d47a05909ad2","components/CardBody.jsx":"b4c1ece29e84","components/CardHeader.jsx":"6debad4cf330","components/CardSelect.jsx":"2024400d917a","components/Checkbox.jsx":"a3e501fa36b5","components/Chip.jsx":"c975430c5f9b","components/Collapsible.jsx":"5c00d131edaf","components/ColorSwatchSelect.jsx":"a44940f2426c","components/Combobox.jsx":"4fb765c097aa","components/ContactAliases.jsx":"501e02b7e122","components/ContactChip.jsx":"6bb321aa4df3","components/ContactMethodLabelSelect.jsx":"ab63f8514826","components/ContactSelect.jsx":"9687a3f79008","components/ContactTypeMultiSelect.jsx":"e82c423ea7c2","components/ContactTypeSelect.jsx":"046183d61946","components/ContractPartyRoleSelect.jsx":"7707449a38e7","components/ContractStatusChip.jsx":"2ca842dd42cf","components/ContractTypeSelect.jsx":"3e106b6e6da3","components/CoordinateField.jsx":"f5fed5385b20","components/CurrencySelect.jsx":"45acb2dde211","components/CustodianChip.jsx":"fb8d5df00ef8","components/CustodianSelect.jsx":"981ab5627106","components/DateField.jsx":"4545adb1e908","components/DatePicker.jsx":"fc8380e2e471","components/DateRangePicker.jsx":"8dc3d4d1a804","components/Delta.jsx":"affe5baa4443","components/Donut.jsx":"3e27ece80b4e","components/Drawer.jsx":"1e8ab9416f6d","components/EmptyLine.jsx":"177a065195b2","components/EmptyState.jsx":"38b2407764b6","components/ErrorSummary.jsx":"4852c545b5e1","components/EventRail.jsx":"effe3cd32875","components/Field.jsx":"7225b361fe49","components/FieldShell.jsx":"935a95ff6009","components/FileTypeMultiSelect.jsx":"fbaef310b135","components/FileTypeSelect.jsx":"602105962a04","components/FileUpload.jsx":"2a2150aed391","components/FilesTable.jsx":"13b97642e98d","components/FormRow.jsx":"760803e7e9a9","components/HomeownerAssociationSelect.jsx":"4b0af1f20e4a","components/IconButton.jsx":"4dc1656c4726","components/ImageCropDialog.jsx":"d4dae602da36","components/InfoTile.jsx":"b09819d8e2ef","components/InfoTileGrid.jsx":"8b3d77257274","components/JournalPhotoGallery.jsx":"8ed0e81c555a","components/LineChart.jsx":"8760b9df36a3","components/MIcon.jsx":"310ef09bd5d1","components/MatchIndicator.jsx":"928b0e80031c","components/Menu.jsx":"a6bc8b3f3e6d","components/MetaTile.jsx":"26dd17966614","components/Modal.jsx":"e0a513ef6ddb","components/MoneyField.jsx":"c71a607630ef","components/MultiSelect.jsx":"eb12efde720d","components/NoteField.jsx":"aac316d43a17","components/NumberField.jsx":"2d3a8c0285d6","components/PageHeader.jsx":"99c431df144d","components/PageSizeSelect.jsx":"28fcea08bc90","components/Pager.jsx":"d2d55307048c","components/PasswordChangeForm.jsx":"e72057667bfb","components/PasswordRules.jsx":"06e6bab03af9","components/ProblemAlert.jsx":"4cf18e886a17","components/ProfilePictureField.jsx":"edfe0da0ca03","components/PropertyEventTypeSelect.jsx":"e9232a5f7149","components/RadioGroup.jsx":"d62b3795dbb9","components/RecordBody.jsx":"89abd7512562","components/RecordCard.jsx":"cf9ef68d0f5c","components/RecordSection.jsx":"41ab42a6fe2e","components/RecordTable.jsx":"a34456c62a15","components/ReferenceNumber.jsx":"671abaff4e69","components/ReferenceNumberField.jsx":"80402ec22979","components/RegistryMultiSelect.jsx":"d54e41a6f196","components/RegistrySelect.jsx":"cfdb93825f1e","components/RevealPanel.jsx":"9fa6f6939002","components/RowActions.jsx":"8dc5f1713c65","components/SearchField.jsx":"26bd9934d5d2","components/SecretClearDialog.jsx":"fdc71811c15c","components/SecretClearOnSaveDialog.jsx":"53c5d783055f","components/SecretSettingField.jsx":"6be65a69ebf7","components/SectionDivider.jsx":"98386ae0dfb9","components/SegmentedControl.jsx":"7bcceb0f5cc2","components/Select.jsx":"22e374740648","components/SettingField.jsx":"72cb26912835","components/SettingRow.jsx":"ee5668c79c6b","components/SeverityIcon.jsx":"236124347317","components/Skeleton.jsx":"1c269b6daf21","components/SmartTagScopeField.jsx":"914e01a8aed2","components/SmartTagScopeSyncPrompt.jsx":"79782d549869","components/SortHeader.jsx":"7718b06162bb","components/SortSelect.jsx":"dcccda7ead6c","components/Sparkline.jsx":"a14b1c2ee0ca","components/Spinner.jsx":"934c9cace156","components/StatTile.jsx":"8f61fedb65bc","components/StepChart.jsx":"352febb04dc1","components/StepperField.jsx":"9a75fe70c95d","components/Switch.jsx":"aa86ebd9be49","components/Table.jsx":"f056cc2254ea","components/Tabs.jsx":"06c7c283eb61","components/TagChips.jsx":"b6b2c3121f1a","components/TagIconPicker.jsx":"0e3a4c3e94ab","components/TagMultiSelect.jsx":"f3075dad69cb","components/TaskBoard.jsx":"543103259e1e","components/TermHistoryChart.jsx":"456cac84dd3f","components/TextInputField.jsx":"eed49f0c0c81","components/TimeField.jsx":"1c4e7b61a098","components/Timeline.jsx":"06192f8dd4f7","components/Toast.jsx":"33aa61d0c14c","components/TodoStatusChip.jsx":"a3c98aaaa43a","components/Tooltip.jsx":"4f92d5f14784","components/TransactionTagPicker.jsx":"5724c2548658","components/TxnTable.jsx":"a8d48a29b79d","components/TypeSelect.jsx":"bc0a739e237a","ui_kits/web/AcceptTerms.jsx":"3636c02acec1","ui_kits/web/Account.jsx":"ae4664340137","ui_kits/web/AccountEstimates.jsx":"74490c489fc0","ui_kits/web/AccountTerms.jsx":"0221944e1164","ui_kits/web/AccountTwoFactor.jsx":"cd5217f52555","ui_kits/web/Accounts.jsx":"00b4a63d1b24","ui_kits/web/AddAccountModal.jsx":"23140d4ffe01","ui_kits/web/AddBudgetItemModal.jsx":"49c5ce3117b4","ui_kits/web/AddBudgetModal.jsx":"b820d437f9f3","ui_kits/web/AddCalendarEventModal.jsx":"f11881d04e4c","ui_kits/web/AddContractEventModal.jsx":"6e7249f604e9","ui_kits/web/AddContractFileModal.jsx":"cc514b13f149","ui_kits/web/AddContractModal.jsx":"44c976c4bb63","ui_kits/web/AddContractPartyModal.jsx":"5671cc00067f","ui_kits/web/AddContractTermModal.jsx":"7e657189b28d","ui_kits/web/AddEstimateModal.jsx":"496d5f963e1a","ui_kits/web/AddFileModal.jsx":"9ac67581e94c","ui_kits/web/AddPropertyEventModal.jsx":"7bd99a614e1c","ui_kits/web/AddPropertyFileModal.jsx":"640407cc7d81","ui_kits/web/AddPropertyModal.jsx":"2b9baf5ac130","ui_kits/web/AddTaxStatementModal.jsx":"de9daa8a7bee","ui_kits/web/AddTransactionFileModal.jsx":"1ef4e0bab1e3","ui_kits/web/AddTransactionModal.jsx":"33c1ecb9a73d","ui_kits/web/AnalyzeFileModal.jsx":"79b1f4f7490d","ui_kits/web/AppShell.jsx":"4277eaa85b92","ui_kits/web/AttachDocumentsModal.jsx":"468b57a32347","ui_kits/web/AttachPhotosModal.jsx":"0bd96e8b1977","ui_kits/web/Budgets.jsx":"6775ff33876c","ui_kits/web/Calendar.jsx":"8aae9fafbb14","ui_kits/web/ChangePasswordRequired.jsx":"709f402d7110","ui_kits/web/Components.jsx":"4f388f692b7a","ui_kits/web/ConfirmEmail.jsx":"1badbd86122e","ui_kits/web/ContactAvatarDialog.jsx":"e742fc6381ce","ui_kits/web/ContactImportModal.jsx":"0ae86d018e7c","ui_kits/web/ContactLinksBlockedModal.jsx":"9390d0a5dbd9","ui_kits/web/Contacts.jsx":"672a3e086f82","ui_kits/web/ContractEvents.jsx":"5e6987305ced","ui_kits/web/ContractTerms.jsx":"057d3b0599f7","ui_kits/web/Contracts.jsx":"5c1fac7d3084","ui_kits/web/Currencies.jsx":"67bf73044c0c","ui_kits/web/Dashboard.jsx":"2357237a2a86","ui_kits/web/ExchangeRates.jsx":"e16a5a2ad3cb","ui_kits/web/ExportCalendarEventsModal.jsx":"9e56c4aba478","ui_kits/web/FileAnalysisLog.jsx":"ee0b8cb3276e","ui_kits/web/FileViewerModal.jsx":"6950de07d0e4","ui_kits/web/Files.jsx":"18c2cfeee9e4","ui_kits/web/ForgotPassword.jsx":"725d6459360a","ui_kits/web/ImportCalendarModal.jsx":"1ad4d9dc008f","ui_kits/web/ImportJournalEntriesModal.jsx":"be819e9fdf7b","ui_kits/web/ImportTasksModal.jsx":"d4430d8cc2dc","ui_kits/web/Journal.jsx":"fe66f3f2766c","ui_kits/web/LegalDocuments.jsx":"c2401ce70229","ui_kits/web/Login.jsx":"0e7d36b93126","ui_kits/web/ManageCalendarsModal.jsx":"48be4302ecb5","ui_kits/web/Onboarding.jsx":"872353d26fbe","ui_kits/web/Photos.jsx":"4660d6913fee","ui_kits/web/Preferences.jsx":"17860a061aa8","ui_kits/web/ProfilePicture.jsx":"4aeb7ca16bc1","ui_kits/web/Properties.jsx":"1e3b71e0af83","ui_kits/web/PropertyEstimates.jsx":"26ff66003282","ui_kits/web/PropertyEvents.jsx":"661071ddeedc","ui_kits/web/ResetPassword.jsx":"b3b7549d502c","ui_kits/web/Roles.jsx":"6f3bf09979eb","ui_kits/web/SystemSettings.jsx":"496ae5cf41da","ui_kits/web/Tasks.jsx":"4052ed3cec78","ui_kits/web/TaxStatements.jsx":"0dbe10b334fc","ui_kits/web/TransactionTags.jsx":"4d2ec833a501","ui_kits/web/Transactions.jsx":"710d60a74244","ui_kits/web/Users.jsx":"4ddab8478138","ui_kits/web/calendar-data.js":"68731c460b50","ui_kits/web/contract-events-data.js":"b6b90dc34d06","ui_kits/web/contracts-data.js":"269391d2ba41","ui_kits/web/data.js":"f3dec75ad47d","ui_kits/web/journal-data.js":"33963ff3ba99","ui_kits/web/legal-data.js":"f2a7bdd92b8a","ui_kits/web/net-worth-data.js":"64839a67d3d5","ui_kits/web/photos-data.js":"37fb0c307496","ui_kits/web/profile-fields.jsx":"7547f9295ced","ui_kits/web/properties-data.js":"ec78251314db","ui_kits/web/property-events-data.js":"2c6c4672c3ac","ui_kits/web/system-settings-data.js":"c05e455acb51","ui_kits/web/tax-data.js":"a087e9da05a6","ui_kits/web/tweaks-panel.jsx":"6591467622ed"},"inlinedExternals":[],"unexposedExports":[{"name":"accountTypeMeta","sourcePath":"components/AccountTypeChip.jsx"},{"name":"aliasEquals","sourcePath":"components/ContactAliases.jsx"},{"name":"canonicalAlias","sourcePath":"components/ContactAliases.jsx"},{"name":"contactTypeMeta","sourcePath":"components/ContactChip.jsx"},{"name":"contractPartyRoleLegality","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractPartyRolesFor","sourcePath":"components/ContractPartyRoleSelect.jsx"},{"name":"contractStatusIsUnsigned","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusMeta","sourcePath":"components/ContractStatusChip.jsx"},{"name":"contractStatusRank","sourcePath":"components/ContractStatusChip.jsx"},{"name":"custodianTypeMeta","sourcePath":"components/CustodianChip.jsx"},{"name":"homeownerAssociationState","sourcePath":"components/HomeownerAssociationSelect.jsx"},{"name":"propertyEventTypeLegality","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"propertyEventTypesFor","sourcePath":"components/PropertyEventTypeSelect.jsx"},{"name":"swatchFor","sourcePath":"components/ColorSwatchSelect.jsx"}]} */
 
 (() => {
 
@@ -275,6 +275,9 @@ function AccountSmartTagsSection({
    *  [{icon, label, value}]. The host formats it from the response; this
    *  component never derives a rule. */
   scope = null,
+  /** One action at the end of the scope line — the contract host's
+   *  "Edit scope" ({label, icon, onClick}). Omit for read-only viewers. */
+  scopeAction = null,
   /** A STRUCTURAL empty result named by the server (the tags exist, but the
    *  record cannot match anything yet): {icon, title, desc, actionLabel,
    *  actionIcon, onAction}. Replaces the body; no table, no toolbar. */
@@ -455,6 +458,7 @@ function AccountSmartTagsSection({
   const scopeItems = hasTags && Array.isArray(scope) ? scope.filter(Boolean) : [];
   const inner = /*#__PURE__*/React.createElement(SmartTagsInner, {
     scopeItems: scopeItems,
+    scopeAction: scopeAction,
     hasTags: hasTags,
     cfg: cfg,
     cfgIds: cfgIds,
@@ -511,6 +515,7 @@ function AccountSmartTagsSection({
 function SmartTagsInner({
   showNetTotal = true,
   scopeItems = [],
+  scopeAction = null,
   hasTags,
   cfg,
   cfgIds,
@@ -595,7 +600,14 @@ function SmartTagsInner({
     className: "odc-smarttags-scope-lab"
   }, it.label) : null, /*#__PURE__*/React.createElement("span", {
     className: "odc-smarttags-scope-val"
-  }, it.value)))) : null, body);
+  }, it.value))), scopeAction && scopeAction.onClick ? /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "odc-smarttags-scope-act",
+    onClick: scopeAction.onClick
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true"
+  }, scopeAction.icon || 'edit_calendar'), scopeAction.label || 'Edit scope') : null) : null, body);
 }
 Object.assign(__ds_scope, { AccountSmartTagsSection });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/AccountSmartTagsSection.jsx", error: String((e && e.message) || e) }); }
@@ -15035,6 +15047,307 @@ function SkeletonRow({
 Object.assign(__ds_scope, { Skeleton, SkeletonRow });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/Skeleton.jsx", error: String((e && e.message) || e) }); }
 
+// components/SmartTagScopeField.jsx
+try { (() => {
+/**
+ * Odyssey DS — SmartTagScopeField (+ SMART_TAG_SCOPE_RULES)
+ * The editor for a contract's SMART-TAG SCOPE: the date range the smart-tag
+ * match uses instead of the contract's term (*Contract Smart-Tag Scope —
+ * Backend, Draft v5*). Two nullable calendar days; an empty side is OPEN.
+ *
+ * The scope is independent of the term on purpose — a final paycheck, next
+ * June's holiday pay or a deposit refund all arrive after the term ends — so
+ * the field never validates against the term. It only SHOWS the relation: a
+ * two-row strip (term above, scope below, open ends drawn dashed to the edge)
+ * and one sentence in words, so the comparison never rests on the drawing.
+ *
+ * SMART_TAG_SCOPE_RULES is the client half of the server's SmartTagScopeRules:
+ *   normalize   rule 2 — a client value → calendar day (offset converted to UTC
+ *               first; a bare day or offset-less time is taken as written)
+ *   fromTerm    rule 4 — the scope a contract is created / seeded / backfilled
+ *               with (one-off → open/open; inverted legacy term → open end)
+ *   validate    rules 1 + 3 — 1900-01-01…9999-12-31, start ≤ end, same day ok
+ *   toWire      a day → "YYYY-MM-DDT00:00:00Z" (UTC midnight, never an offset)
+ */
+const STS_MIN = '1900-01-01';
+const STS_MAX = '9999-12-31';
+const STS_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const stsDay = v => v ? String(v).slice(0, 10) : null;
+const stsFmt = d => {
+  if (!d) return '';
+  const [y, m, dd] = d.split('-').map(Number);
+  return `${dd} ${STS_MONTHS[m - 1]} ${y}`;
+};
+const stsMs = d => Date.parse(d + 'T00:00:00Z');
+const stsGap = (a, b) => {
+  const days = Math.round(Math.abs(stsMs(b) - stsMs(a)) / 86400000);
+  if (days < 62) return `${days} day${days === 1 ? '' : 's'}`;
+  const months = Math.round(days / 30.44);
+  if (months < 24) return `${months} months`;
+  const years = Math.round(months / 12);
+  return `${years} years`;
+};
+const SMART_TAG_SCOPE_RULES = {
+  minDate: STS_MIN,
+  maxDate: STS_MAX,
+  /** Rule 2. Bare day or offset-less time → that day. Z or ±hh:mm → converted
+   *  to UTC, then truncated ("2027-06-30T00:30:00+02:00" → 2027-06-29). */
+  normalize(input) {
+    if (input == null) return null;
+    const s = String(input).trim();
+    if (!s) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    if (/^\d{4}-\d{2}-\d{2}T[\d:.]+$/.test(s)) return s.slice(0, 10);
+    const t = Date.parse(s);
+    return Number.isNaN(t) ? null : new Date(t).toISOString().slice(0, 10);
+  },
+  /** Rule 4 — the stored term's calendar days, no time-zone conversion. */
+  fromTerm(term = {}) {
+    if (term.completionDate) return {
+      start: null,
+      end: null
+    };
+    const start = stsDay(term.startDate),
+      end = stsDay(term.endDate);
+    return {
+      start,
+      end: start && end && start > end ? null : end
+    };
+  },
+  validate(scope = {}) {
+    const errors = {};
+    const range = 'Enter a date between 1 Jan 1900 and 31 Dec 9999.';
+    if (scope.start && (scope.start < STS_MIN || scope.start > STS_MAX)) errors.start = range;
+    if (scope.end && (scope.end < STS_MIN || scope.end > STS_MAX)) errors.end = range;
+    if (!errors.start && !errors.end && scope.start && scope.end && scope.start > scope.end) {
+      errors.end = 'The scope end must not be before its start.';
+    }
+    return errors;
+  },
+  equals(a = {}, b = {}) {
+    return (a.start || null) === (b.start || null) && (a.end || null) === (b.end || null);
+  },
+  toWire(day) {
+    return day ? `${day}T00:00:00Z` : null;
+  },
+  formatDay: stsFmt,
+  /** "1 Sep 2025 – 31 Aug 2026" · "from 1 Sep 2025, no end" · "until …" · "any date". */
+  formatRange(scope = {}) {
+    const {
+      start,
+      end
+    } = scope;
+    if (start && end) return `${stsFmt(start)} – ${stsFmt(end)}`;
+    if (start) return `from ${stsFmt(start)}, no end`;
+    if (end) return `until ${stsFmt(end)}`;
+    return 'any date';
+  },
+  /** The scope against the term, in words. Never a validation. */
+  describe(scope = {}, term = {}) {
+    const {
+      start,
+      end
+    } = scope;
+    if (term.completionDate) {
+      return start || end ? `A one-off contract has no term, so this range is the only date rule.` : 'A one-off contract has no term, so transactions of any date match.';
+    }
+    const ts = stsDay(term.startDate),
+      te = stsDay(term.endDate);
+    let a;
+    if (!start) a = ts ? 'No start limit — transactions before the term match too' : 'No start limit';else if (!ts) a = `Starts ${stsFmt(start)}`;else if (start === ts) a = 'Starts with the term';else if (start < ts) a = `Starts ${stsGap(start, ts)} before the term`;else a = `Starts ${stsGap(ts, start)} after the term starts`;
+    let b;
+    if (!end) b = te ? `stays open after the term ends (${stsFmt(te)})` : 'stays open, like the term';else if (!te) b = `ends ${stsFmt(end)}, while the term has no end`;else if (end === te) b = 'ends with it';else if (end > te) b = `runs ${stsGap(te, end)} past the term’s end (${stsFmt(te)})`;else b = `ends ${stsGap(end, te)} before the term does`;
+    return `${a}, and ${b}.`;
+  }
+};
+
+/* The relation strip. Bars on one shared axis; an open side runs to the track
+   edge and ends dashed. Decorative — the sentence below carries the meaning. */
+function ScopeStrip({
+  scope,
+  term
+}) {
+  const oneOff = !!term.completionDate;
+  const ts = oneOff ? null : stsDay(term.startDate),
+    te = oneOff ? null : stsDay(term.endDate);
+  const pt = oneOff ? stsDay(term.completionDate) : null;
+  const pts = [ts, te, pt, scope.start, scope.end].filter(d => d && d >= STS_MIN && d <= STS_MAX);
+  if (!pts.length) return null;
+  let lo = Math.min(...pts.map(stsMs)),
+    hi = Math.max(...pts.map(stsMs));
+  if (hi - lo < 86400000 * 30) {
+    lo -= 86400000 * 60;
+    hi += 86400000 * 60;
+  }
+  const pad = (hi - lo) * 0.14;
+  lo -= pad;
+  hi += pad;
+  const x = d => (stsMs(d) - lo) / (hi - lo) * 100;
+  const bar = (s, e) => {
+    const l = s ? x(s) : 0,
+      r = e ? x(e) : 100;
+    return {
+      left: `${l}%`,
+      width: `${Math.max(r - l, 0.8)}%`
+    };
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "odc-stscope-strip",
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-stscope-strip-lab"
+  }, "Term"), /*#__PURE__*/React.createElement("div", {
+    className: "odc-stscope-track"
+  }, oneOff ? /*#__PURE__*/React.createElement("span", {
+    className: "odc-stscope-point",
+    style: {
+      left: `${x(pt)}%`
+    }
+  }) : /*#__PURE__*/React.createElement("span", {
+    className: `odc-stscope-bar term${ts ? '' : ' open-l'}${te ? '' : ' open-r'}`,
+    style: bar(ts, te)
+  })), /*#__PURE__*/React.createElement("span", {
+    className: "odc-stscope-strip-lab"
+  }, "Scope"), /*#__PURE__*/React.createElement("div", {
+    className: "odc-stscope-track"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: `odc-stscope-bar scope${scope.start ? '' : ' open-l'}${scope.end ? '' : ' open-r'}`,
+    style: bar(scope.start, scope.end)
+  })));
+}
+function SmartTagScopeField({
+  value = {
+    start: null,
+    end: null
+  },
+  onChange,
+  term = {},
+  errors = {},
+  disabled = false,
+  showStrip = true,
+  showActions = true,
+  className = ''
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const DateField = NS.DateField;
+  const Button = NS.Button;
+  const R = SMART_TAG_SCOPE_RULES;
+  const scope = {
+    start: value.start || null,
+    end: value.end || null
+  };
+  const fromTerm = R.fromTerm(term);
+  const same = R.equals(scope, fromTerm);
+  const set = k => iso => onChange && onChange({
+    ...scope,
+    [k]: R.normalize(iso)
+  });
+  const dateField = (k, label, placeholder, help) => DateField ? /*#__PURE__*/React.createElement(DateField, {
+    label: label,
+    value: scope[k],
+    onChange: set(k),
+    placeholder: placeholder,
+    min: STS_MIN,
+    max: STS_MAX,
+    help: help,
+    error: errors[k],
+    disabled: disabled,
+    align: k === 'end' ? 'end' : 'start'
+  }) : /*#__PURE__*/React.createElement("label", {
+    className: "odc-field"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "odc-field-label"
+  }, label), /*#__PURE__*/React.createElement("input", {
+    className: "odc-input",
+    type: "date",
+    value: scope[k] || '',
+    disabled: disabled,
+    onChange: e => set(k)(e.target.value || null)
+  }));
+  return /*#__PURE__*/React.createElement("div", {
+    className: `odc-stscope${className ? ' ' + className : ''}`
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "odc-stscope-grid"
+  }, dateField('start', 'Match from', 'No start limit', 'Leave empty for no start limit.'), dateField('end', 'Match until', 'No end limit', 'Leave empty to keep matching after the term ends.')), showStrip ? /*#__PURE__*/React.createElement(ScopeStrip, {
+    scope: scope,
+    term: term
+  }) : null, /*#__PURE__*/React.createElement("p", {
+    className: "odc-stscope-summary",
+    "aria-live": "polite"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons",
+    "aria-hidden": "true"
+  }, "compare_arrows"), /*#__PURE__*/React.createElement("span", null, R.describe(scope, term))), showActions && !disabled ? /*#__PURE__*/React.createElement("div", {
+    className: "odc-stscope-actions"
+  }, Button ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+    variant: "text",
+    size: "sm",
+    icon: "event_repeat",
+    disabled: same,
+    onClick: () => onChange && onChange(fromTerm)
+  }, "Copy the contract term"), /*#__PURE__*/React.createElement(Button, {
+    variant: "text",
+    size: "sm",
+    icon: "all_inclusive",
+    disabled: !scope.start && !scope.end,
+    onClick: () => onChange && onChange({
+      start: null,
+      end: null
+    })
+  }, "Remove both limits")) : null) : null);
+}
+Object.assign(__ds_scope, { SMART_TAG_SCOPE_RULES, SmartTagScopeField });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/SmartTagScopeField.jsx", error: String((e && e.message) || e) }); }
+
+// components/SmartTagScopeSyncPrompt.jsx
+try { (() => {
+/**
+ * SmartTagScopeSyncPrompt — the "also update the scope?" band in the Edit
+ * contract dialog. Renders only when the term dates CHANGED in this edit and
+ * the scope differs from what the new term would give. Unchecked by default:
+ * the scope is independent, and the motivating case — setting an end date on
+ * an ongoing contract — must leave it open.
+ */
+function SmartTagScopeSyncPrompt({
+  before = {},
+  after = {},
+  scope = {},
+  checked = false,
+  onChange,
+  className = ''
+}) {
+  const NS = typeof window !== 'undefined' && window.OdysseyDesignSystem_d5aa51 || {};
+  const Checkbox = NS.Checkbox;
+  const R = NS.SMART_TAG_SCOPE_RULES;
+  if (!R) return null;
+  const termChanged = !R.equals(R.fromTerm(before), R.fromTerm(after)) || !!before.completionDate !== !!after.completionDate;
+  const proposed = R.fromTerm(after);
+  if (!termChanged || R.equals(scope, proposed)) return null;
+  const label = `Also set the smart-tag scope to ${R.formatRange(proposed)}`;
+  return /*#__PURE__*/React.createElement("div", {
+    className: `odc-stsync${className ? ' ' + className : ''}`
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-icons odc-stsync-ic",
+    "aria-hidden": "true"
+  }, "sell"), /*#__PURE__*/React.createElement("div", {
+    className: "odc-stsync-main"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "odc-stsync-title"
+  }, "The smart-tag scope does not follow the term"), /*#__PURE__*/React.createElement("div", {
+    className: "odc-stsync-desc"
+  }, "It stays ", /*#__PURE__*/React.createElement("b", null, R.formatRange(scope)), " unless you change it here or from the Smart tags section."), Checkbox ? /*#__PURE__*/React.createElement(Checkbox, {
+    checked: checked,
+    onChange: v => onChange && onChange(v),
+    label: label
+  }) : /*#__PURE__*/React.createElement("label", null, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: checked,
+    onChange: e => onChange && onChange(e.target.checked)
+  }), " ", label)));
+}
+Object.assign(__ds_scope, { SmartTagScopeSyncPrompt });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/SmartTagScopeSyncPrompt.jsx", error: String((e && e.message) || e) }); }
+
 // components/SortHeader.jsx
 try { (() => {
 /**
@@ -25920,11 +26233,16 @@ try { (() => {
    "Add validity" toggle account uploads use (AddFileModal's AfmValidity). All
    four are optional and travel in the attach body; an omitted one is stored
    null. `ValidTo` before `ValidFrom` is refused here as it is by the service,
-   on the "Valid to" control that most likely holds the mistake. */
+   on the "Valid to" control that most likely holds the mistake.
+
+   The type guess never lands on `Draft` from the extension alone — only a
+   filename that says draft/proposal does — and the fallback stays `Signed`,
+   matching the client's explicit picker default. `Draft` is a label only. */
 
 const ACF_GUESS = name => {
   const ext = (name.split('.').pop() || '').toLowerCase();
   if (['eml', 'msg'].includes(ext)) return 'Correspondence';
+  if (/(^|[^a-z])(draft|proposal|redline)([^a-z]|$)/i.test(name)) return 'Draft';
   return 'Signed'; // the signed agreement is the common upload; user can re-tag
 };
 
@@ -25994,7 +26312,7 @@ const AddContractFileModal = ({
 }) => {
   const H = window.OdysseyHelpers;
   return /*#__PURE__*/React.createElement(AttachDocumentsModal, {
-    subtitle: "Keep the signed agreement, an amendment, or correspondence with this contract. Files stay in Files; attaching links them here.",
+    subtitle: "Keep a draft, the signed agreement, an amendment, or correspondence with this contract. Files stay in Files; attaching links them here.",
     kinds: window.OdysseyData.contractFileTypes,
     guessKind: ACF_GUESS,
     validity: true,
@@ -26090,6 +26408,28 @@ const AddContractModal = ({
     signed: contract ? H.conDateOnly(contract.signed) || '' : ''
   });
   const [errors, setErrors] = useState({});
+  /* Smart-tag scope (*Contract Smart-Tag Scope*). Independent of the term after
+     creation: an edit carries the stored scope forward unchanged unless the
+     user ticks the sync prompt, which writes fromTerm(new term) instead. */
+  const [syncScope, setSyncScope] = useState(false);
+  const scopeNow = contract ? {
+    start: H.conDateOnly(contract.smartTagScopeStart),
+    end: H.conDateOnly(contract.smartTagScopeEnd)
+  } : null;
+  const termBefore = contract ? {
+    startDate: contract.startDate,
+    endDate: contract.endDate,
+    completionDate: contract.completionDate
+  } : null;
+  const termAfter = mode === 'oneoff' ? {
+    startDate: null,
+    endDate: null,
+    completionDate: draft.completionDate || 'pending'
+  } : {
+    startDate: draft.startDate || null,
+    endDate: draft.endDate || null,
+    completionDate: null
+  };
   const set = k => v => {
     setDraft(d => ({
       ...d,
@@ -26140,10 +26480,11 @@ const AddContractModal = ({
         ...draft,
         name: draft.name.trim(),
         referenceNumber: normRef(draft.referenceNumber),
-        mode
+        mode,
+        syncScope
       });
     } else {
-      onCreate && onCreate({
+      const created = {
         id: `ct-new-${Date.now()}`,
         name: draft.name.trim(),
         type: draft.type,
@@ -26160,9 +26501,16 @@ const AddContractModal = ({
         createdAtUtc: new Date().toISOString(),
         parties: [],
         files: []
+      };
+      /* POST /api/contracts takes no scope fields: the server copies the term
+         (§8 rule 4) and the 201 body carries the result. */
+      onCreate && onCreate({
+        ...created,
+        ...H.conScopeFromTerm(created)
       });
     }
   };
+  const SyncPrompt = DSNS.SmartTagScopeSyncPrompt;
   return /*#__PURE__*/React.createElement(Modal, {
     title: editing ? 'Edit contract' : 'New contract',
     subtitle: editing ? 'Update the agreement’s name, reference, type, term and signature dates. Parties and documents are managed from the contract.' : 'Record the agreement’s name, type and dates — a term or a one-off. It starts as a draft; mark it ready and signed from the contract itself.',
@@ -26261,7 +26609,13 @@ const AddContractModal = ({
     className: "helper aam-err"
   }, errors.completionDate) : /*#__PURE__*/React.createElement("div", {
     className: "helper"
-  }, "The one-off closing / delivery date \u2014 no ongoing term.")), /*#__PURE__*/React.createElement("div", null)), editing ? /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement("div", {
+  }, "The one-off closing / delivery date \u2014 no ongoing term.")), /*#__PURE__*/React.createElement("div", null)), editing && SyncPrompt ? /*#__PURE__*/React.createElement(SyncPrompt, {
+    before: termBefore,
+    after: termAfter,
+    scope: scopeNow,
+    checked: syncScope,
+    onChange: setSyncScope
+  }) : null, editing ? /*#__PURE__*/React.createElement(FormRow, null, /*#__PURE__*/React.createElement("div", {
     className: "field"
   }, /*#__PURE__*/React.createElement(Field, {
     type: "date",
@@ -26296,6 +26650,74 @@ const AddContractModal = ({
 };
 Object.assign(window, {
   AddContractModal
+});
+
+/* EditSmartTagScopeModal — the scope editor, opened from "Edit scope" on the
+   contract's Smart tags section. Writes ONLY the two scope fields onto the
+   full-replacement PUT (every other field carried forward by the host).
+   Client checks mirror the server: 400 outside 1900-01-01…9999-12-31, 422
+   start after end (keyed smartTagScopeEnd). Never checked against the term. */
+const EditSmartTagScopeModal = ({
+  contract,
+  onClose,
+  onSave
+}) => {
+  const {
+    useState
+  } = React;
+  const H = window.OdysseyHelpers;
+  const NS = window.OdysseyDesignSystem_d5aa51 || {};
+  const R = NS.SMART_TAG_SCOPE_RULES;
+  const ScopeField = NS.SmartTagScopeField;
+  const [scope, setScope] = useState({
+    start: H.conDateOnly(contract.smartTagScopeStart),
+    end: H.conDateOnly(contract.smartTagScopeEnd)
+  });
+  const [tried, setTried] = useState(false);
+  const errors = R ? R.validate(scope) : {};
+  const shown = tried ? errors : errors.end && errors.end.indexOf('before its start') >= 0 ? {
+    end: errors.end
+  } : {};
+  const unchanged = R ? R.equals(scope, {
+    start: H.conDateOnly(contract.smartTagScopeStart),
+    end: H.conDateOnly(contract.smartTagScopeEnd)
+  }) : false;
+  const submit = () => {
+    setTried(true);
+    if (Object.keys(errors).length) return;
+    onSave && onSave({
+      smartTagScopeStart: R.toWire(scope.start),
+      smartTagScopeEnd: R.toWire(scope.end)
+    });
+  };
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: "Edit smart-tag scope",
+    icon: "date_range",
+    onClose: onClose,
+    subtitle: "Smart tags match transactions dated inside this range. It is set separately from the contract\u2019s term, so payments that arrive after the term ends can still count here.",
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Button, {
+      variant: "text",
+      onClick: onClose
+    }, "Cancel"), /*#__PURE__*/React.createElement(Button, {
+      variant: "filled",
+      color: "primary",
+      icon: "check",
+      onClick: submit,
+      disabled: unchanged || Object.keys(shown).length > 0
+    }, "Save scope"))
+  }, ScopeField ? /*#__PURE__*/React.createElement(ScopeField, {
+    value: scope,
+    onChange: setScope,
+    errors: shown,
+    term: {
+      startDate: contract.startDate,
+      endDate: contract.endDate,
+      completionDate: contract.completionDate
+    }
+  }) : null);
+};
+Object.assign(window, {
+  EditSmartTagScopeModal
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/web/AddContractModal.jsx", error: String((e && e.message) || e) }); }
 
@@ -40553,7 +40975,9 @@ const PartyTile = ({
    The saved transaction filter a contract carries, resolved SERVER-SIDE and
    scoped to the agreement (*Contract Smart Tags — Scoped Transaction Match*):
    a transaction reads here only if it carries a watched tag, is dated inside
-   the term, and names a contact party as its merchant. One read —
+   the contract's SMART-TAG SCOPE (its own date range, copied from the term on
+   create and edited separately — *Contract Smart-Tag Scope, Draft v5*), and
+   names a contact party as its merchant. One read —
    GET /api/contracts/{id}/smart-tag-transactions — paged, searched and sorted
    on the server with the transactions list's keys. The page restates the
    response's `scope` and maps its `emptyReason` ordinal; it never composes
@@ -40591,7 +41015,7 @@ const ContractSmartTags = ({
   limitsDegraded = false,
   canReadTxns = true,
   onAddParty,
-  onEditContract,
+  onEditScope,
   bare = true
 }) => {
   const {
@@ -40616,7 +41040,7 @@ const ContractSmartTags = ({
   /* Any input to the read — tags, parties, dates, search, sort, page — re-issues
      it. Search is debounced; the table shows the loading state meanwhile. */
   const partyKey = (contract.parties || []).map(p => p.contactId || '').join(',');
-  const reqKey = [tagIds.join(','), partyKey, contract.startDate, contract.endDate, contract.completionDate, search, sort.key, sort.dir, page, pageSize].join('|');
+  const reqKey = [tagIds.join(','), partyKey, contract.smartTagScopeStart, contract.smartTagScopeEnd, search, sort.key, sort.dir, page, pageSize].join('|');
   const first = useRef(true);
   useEffect(() => {
     if (!canReadTxns) return undefined;
@@ -40671,17 +41095,31 @@ const ContractSmartTags = ({
   const net = totals.length === 1 ? totals[0] : null;
 
   /* The scope line — the window and the party count straight off the response.
-     toExclusive is the next midnight, so the last covered day is one before. */
+     toExclusive is the next midnight, so the last covered day is one before.
+     The muted note places the window against the term in words, so a widened
+     scope is visible without opening the editor. */
   let windowText = null;
   if (scope) {
     const f = conScopeDay(scope.from),
       l = conScopeLastDay(scope.toExclusive);
-    windowText = f && l ? `${f} – ${l}` : f ? `from ${f}, no end` : l ? `until ${l}` : contract.completionDate ? 'any date — one-off contract' : 'any date — no term set';
+    windowText = f && l ? `${f} – ${l}` : f ? `from ${f}, no end` : l ? `until ${l}` : 'any date';
   }
-  const scopeItems = scope && reason !== CON_EMPTY.InvalidTerm ? [{
+  const sd = CON_H.conDateOnly(contract.smartTagScopeStart),
+    se = CON_H.conDateOnly(contract.smartTagScopeEnd);
+  const ts = contract.completionDate ? null : CON_H.conDateOnly(contract.startDate);
+  const te = contract.completionDate ? null : CON_H.conDateOnly(contract.endDate);
+  const beyond = [];
+  if (ts && (!sd || sd < ts)) beyond.push('before');
+  if (te && (!se || se > te)) beyond.push('after');
+  const termScope = CON_H.conScopeFromTerm(contract);
+  const sameAsTerm = (termScope.smartTagScopeStart || null) === (contract.smartTagScopeStart || null) && (termScope.smartTagScopeEnd || null) === (contract.smartTagScopeEnd || null);
+  const relation = contract.completionDate ? sd || se ? 'one-off contract' : 'one-off contract, no date rule' : sameAsTerm ? 'same as the term' : beyond.length ? `includes dates ${beyond.join(' and ')} the term` : 'narrower than the term';
+  const scopeItems = scope ? [{
     icon: 'date_range',
     label: 'Dated',
-    value: windowText
+    value: /*#__PURE__*/React.createElement(React.Fragment, null, windowText, " ", /*#__PURE__*/React.createElement("span", {
+      className: "odc-smarttags-scope-note"
+    }, "\xB7 ", relation))
   }, {
     icon: 'group',
     label: 'Merchant',
@@ -40703,16 +41141,10 @@ const ContractSmartTags = ({
       actionIcon: 'group_add',
       onAction: onAddParty
     };
-  } else if (reason === CON_EMPTY.InvalidTerm) {
-    blocked = {
-      icon: 'event_busy',
-      title: 'The term ends before it starts',
-      desc: `Start date ${conScopeDay(scope.from)} is after end date ${conScopeLastDay(scope.toExclusive)}, so no date can fall inside the term. Correct the dates to see matching transactions.`,
-      actionLabel: canWrite && onEditContract ? 'Edit dates' : undefined,
-      actionIcon: 'edit_calendar',
-      onAction: onEditContract
-    };
   }
+  /* InvalidTerm (3) is no longer emitted — the scope's CHECK constraint makes an
+     inverted range unrepresentable — so this page has no branch for it. */
+
   const toolbar = /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
@@ -40734,6 +41166,11 @@ const ContractSmartTags = ({
     netTotal: net ? net.netAmount : undefined,
     formatAmount: n => CON_H.signedMoney(n, net ? net.currency : 'USD'),
     scope: canReadTxns ? scopeItems : null,
+    scopeAction: canWrite && onEditScope && canReadTxns ? {
+      label: 'Edit scope',
+      icon: 'edit_calendar',
+      onClick: onEditScope
+    } : null,
     blocked: blocked,
     toolbar: total > 0 || search ? toolbar : null,
     onAddTag: add,
@@ -40744,8 +41181,8 @@ const ContractSmartTags = ({
     limitsDegraded: limitsDegraded,
     addError: addError,
     onDismissAddError: () => setAddError(null),
-    emptyDesc: canWrite ? 'Pin the tags this agreement settles against. Transactions carrying them, dated inside the term and paid to a contact party, read here.' : 'No tags are being watched on this contract.',
-    noMatchDesc: search ? `No matching transaction mentions “${search}”.` : 'No transaction inside the term, paid to a contact party, carries the watched tags yet.',
+    emptyDesc: canWrite ? 'Pin the tags this agreement settles against. Transactions carrying them, dated inside the smart-tag scope and paid to a contact party, read here.' : 'No tags are being watched on this contract.',
+    noMatchDesc: search ? `No matching transaction mentions “${search}”.` : 'No transaction inside the smart-tag scope, paid to a contact party, carries the watched tags yet.',
     renderTable: rows => /*#__PURE__*/React.createElement("div", {
       className: "acct-txn-table"
     }, /*#__PURE__*/React.createElement(TxnTable, {
@@ -40793,6 +41230,7 @@ const ContractDetail = ({
   canWriteSmartTags,
   canReadTxns,
   onEditContract,
+  onEditScope,
   onNavigate,
   onNewTerm,
   onEditTerm,
@@ -40948,13 +41386,13 @@ const ContractDetail = ({
     limitsDegraded: smartTagsDegraded,
     canReadTxns: canReadTxns,
     onAddParty: onAddParty,
-    onEditContract: onEditContract
+    onEditScope: onEditScope
   })), /*#__PURE__*/React.createElement("div", {
     className: "con-section"
   }, /*#__PURE__*/React.createElement(SectionDivider, {
     label: "Documents",
     meta: `${files.length} file${files.length === 1 ? '' : 's'}`
-  }), fileRows.length === 0 ? /*#__PURE__*/React.createElement(EmptyLine, null, "No documents yet \u2014 upload the signed agreement, an amendment, or correspondence.") : /*#__PURE__*/React.createElement("div", {
+  }), fileRows.length === 0 ? /*#__PURE__*/React.createElement(EmptyLine, null, "No documents yet \u2014 upload a draft, the signed agreement, an amendment, or correspondence.") : /*#__PURE__*/React.createElement("div", {
     className: "con-files con-tbl-frame odc-scroll"
   }, /*#__PURE__*/React.createElement(ContractFilesTable, {
     files: fileRows,
@@ -41009,6 +41447,7 @@ const ContractListItem = ({
   const open = !!openProp;
   const setOpen = next => onToggle(typeof next === 'function' ? next(open) : next);
   const [showEdit, setShowEdit] = useState(false);
+  const [showScope, setShowScope] = useState(false);
   const [focusDocs, setFocusDocs] = useState(false);
   const [modal, setModal] = useState(null); // 'party' | 'file'
   // The party being edited through the new PUT …/parties/{partyId}. The same
@@ -41062,9 +41501,29 @@ const ContractListItem = ({
          explicitly here — an omitted stamp on this write would flip a signed
          contract back to Draft and drop it out of the run rate. */
       ready: draft.ready || null,
-      signed: draft.signed || null
+      signed: draft.signed || null,
+      /* Smart-tag scope — carried forward unchanged (full-replacement PUT), the
+         same obligation as the stamps above. Only the dialog's opt-in sync
+         prompt rewrites it, and then from the NEW term (§8 rule 4). */
+      ...(draft.syncScope ? CON_H.conScopeFromTerm({
+        startDate: draft.mode === 'oneoff' ? null : draft.startDate,
+        endDate: draft.mode === 'oneoff' ? null : draft.endDate,
+        completionDate: draft.mode === 'oneoff' ? draft.completionDate : null
+      }) : {
+        smartTagScopeStart: prev.smartTagScopeStart || null,
+        smartTagScopeEnd: prev.smartTagScopeEnd || null
+      })
     }));
     setShowEdit(false);
+  };
+  const saveScope = next => {
+    // PUT /api/contracts/{id} — every other field carried forward from prev.
+    setC(prev => ({
+      ...prev,
+      ...next
+    }));
+    setShowScope(false);
+    say('Smart-tag scope saved.');
   };
   const addParty = party => {
     setC(prev => ({
@@ -41450,6 +41909,7 @@ const ContractListItem = ({
     canWriteSmartTags: canWriteSmartTags,
     canReadTxns: canReadTxns,
     onEditContract: () => setShowEdit(true),
+    onEditScope: () => setShowScope(true),
     onNavigate: onNavigate,
     onNewTerm: () => setModal('term'),
     onEditTerm: t => setEditTerm(t),
@@ -41466,6 +41926,10 @@ const ContractListItem = ({
     contract: c,
     onClose: () => setShowEdit(false),
     onSave: saveEdit
+  }), showScope && /*#__PURE__*/React.createElement(EditSmartTagScopeModal, {
+    contract: c,
+    onClose: () => setShowScope(false),
+    onSave: saveScope
   }), modal === 'party' && /*#__PURE__*/React.createElement(AddContractPartyModal, {
     contract: c,
     onClose: () => setModal(null),
@@ -60019,15 +60483,29 @@ try { (() => {
   }];
 
   /* ---- Canonical ContractFileType registry — the documents that attach to a
-     contract. Enum order with `Other` (the default) pulled last. */
+     contract. Reading order, not enum order: `Draft` (ordinal 4, appended to
+     the enum) leads so the list reads draft → signed → amendment →
+     correspondence; `Other` (the attach default) stays LAST because the
+     client's unknown-ordinal fallback is the trailing entry. `Draft` and
+     `Signed` are self-asserted labels — neither drives contract status
+     (ContractStatus.Draft / Ready), the roll-up, validity or permissions,
+     and neither is evidence of execution. */
   D.contractFileTypes = [{
+    key: 'Draft',
+    label: 'Draft',
+    enumValue: 4,
+    icon: 'edit_note',
+    color: 'oklch(0.82 0.035 75)',
+    soft: 'oklch(0.82 0.035 75 / 0.16)',
+    desc: 'A pre-signature version of the agreement — a proposal, negotiation or review draft. A label only; it has no effect on contract status.'
+  }, {
     key: 'Signed',
     label: 'Signed',
     enumValue: 0,
     icon: 'history_edu',
     color: 'oklch(0.72 0.16 295)',
     soft: 'oklch(0.72 0.16 295 / 0.16)',
-    desc: 'The executed, signed agreement — the document of record.'
+    desc: 'The executed, signed agreement — the document of record. Self-asserted by whoever attaches it; not evidence of execution.'
   }, {
     key: 'Amendment',
     label: 'Amendment',
@@ -60340,6 +60818,12 @@ try { (() => {
     size: '96 KB',
     uploaded: '2026-01-08'
   }, {
+    id: 'fm-lease-draft',
+    name: 'maple_st_lease_2026_renewal_draft.pdf',
+    contentType: 'application/pdf',
+    size: '388 KB',
+    uploaded: '2026-07-22'
+  }, {
     id: 'fm-lease-letter',
     name: 'rent_review_notice_2026.pdf',
     contentType: 'application/pdf',
@@ -60507,6 +60991,12 @@ try { (() => {
       validTo: null,
       issuedAt: '2026-01-07',
       issuedBy: 'c9'
+    }, {
+      id: 'cf-lease-4',
+      fileMetadataId: 'fm-lease-draft',
+      kind: 'Draft',
+      attachedByUserId: 'u-owner',
+      attachedAtUtc: '2026-07-22T15:30:00Z'
     }, {
       id: 'cf-lease-3',
       fileMetadataId: 'fm-lease-letter',
@@ -61040,6 +61530,20 @@ try { (() => {
     // The request's UTC "today" as 'YYYY-MM-DD' (a single value per call site).
     conToday() {
       return new Date().toISOString().slice(0, 10);
+    },
+    /* §8 rule 4 — the scope a contract is CREATED with, from its stored term
+       days (no time-zone conversion). Wire form: UTC midnight, trailing Z. */
+    conScopeFromTerm(c) {
+      if (!c || c.completionDate) return {
+        smartTagScopeStart: null,
+        smartTagScopeEnd: null
+      };
+      const sd = c.startDate ? String(c.startDate).slice(0, 10) : null;
+      const ed = c.endDate ? String(c.endDate).slice(0, 10) : null;
+      return {
+        smartTagScopeStart: sd ? sd + 'T00:00:00Z' : null,
+        smartTagScopeEnd: ed && !(sd && sd > ed) ? ed + 'T00:00:00Z' : null
+      };
     },
     conDateOnly(iso) {
       return iso ? String(iso).slice(0, 10) : null;
@@ -61761,8 +62265,28 @@ try { (() => {
     dir: amount < 0 ? 'expense' : 'income'
   });
   const rentMonths = ['2025-08', '2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09'];
-  D.contractScopeExtra = [...rentMonths.map((m, i) => scopeRow(`xs-rent-${i}`, `${m}-01`, 'Michael Chen · Rent', 'c9', ['t4'], m >= '2026-03' ? -2250 : -2150, 'home')), scopeRow('xs-water-1', '2026-01-15', 'Michael Chen · Water share', 'c9', ['t7'], -48.30, 'water_drop'), scopeRow('xs-final', '2026-08-31', 'Michael Chen · Final rent + utilities', 'c9', ['t4', 't7'], -312.40, 'home', 'New'), scopeRow('xs-pge-1', '2025-11-14', 'PG&E · Electric', 'c5', ['t7'], -118.60, 'bolt'), scopeRow('xs-pge-2', '2026-02-14', 'PG&E · Electric', 'c5', ['t7'], -131.05, 'bolt'), scopeRow('xs-lake', '2025-09-03', 'Lakeside Property Mgmt · Rent', null, ['t4'], -2400, 'home'), ...['2025-01', '2025-04', '2025-07', '2025-10', '2026-01', '2026-04', '2026-07', '2026-09'].map((m, i) => scopeRow(`xs-fiber-${i}`, `${m}-22`, 'Spotify · Monthly', 'c3', ['t2'], -9.99, 'subscriptions'))];
+  D.contractScopeExtra = [...rentMonths.map((m, i) => scopeRow(`xs-rent-${i}`, `${m}-01`, 'Michael Chen · Rent', 'c9', ['t4'], m >= '2026-03' ? -2250 : -2150, 'home')), scopeRow('xs-water-1', '2026-01-15', 'Michael Chen · Water share', 'c9', ['t7'], -48.30, 'water_drop'), scopeRow('xs-final', '2026-08-31', 'Michael Chen · Final rent + utilities', 'c9', ['t4', 't7'], -312.40, 'home', 'New'),
+  /* After the lease's 31 Aug 2026 end — matched only because this contract's
+     smart-tag scope was widened past the term (*Contract Smart-Tag Scope*). */
+  scopeRow('xs-water-final', '2026-09-12', 'Michael Chen · Final water reading', 'c9', ['t7'], -38.20, 'water_drop'), scopeRow('xs-deposit', '2026-09-19', 'Michael Chen · Deposit refund', 'c9', ['t4'], 2150.00, 'savings'), scopeRow('xs-pge-1', '2025-11-14', 'PG&E · Electric', 'c5', ['t7'], -118.60, 'bolt'), scopeRow('xs-pge-2', '2026-02-14', 'PG&E · Electric', 'c5', ['t7'], -131.05, 'bolt'), scopeRow('xs-lake', '2025-09-03', 'Lakeside Property Mgmt · Rent', null, ['t4'], -2400, 'home'), ...['2025-01', '2025-04', '2025-07', '2025-10', '2026-01', '2026-04', '2026-07', '2026-09'].map((m, i) => scopeRow(`xs-fiber-${i}`, `${m}-22`, 'Spotify · Monthly', 'c3', ['t2'], -9.99, 'subscriptions'))];
   D.contractScopeLedger = () => D.transactions.concat(D.contractScopeExtra);
+
+  /* SmartTagScopeStart / SmartTagScopeEnd on ExistingContract — the migration
+     backfill (§11): every contract's scope from its stored term days; a one-off
+     is open/open, an inverted legacy term keeps its start and opens its end.
+     Serialised as UTC midnight with a trailing Z. The lease is the one record a
+     user has edited since: its end is widened to 31 Dec 2026, so the final
+     water reading and the deposit refund that arrive after the term still read
+     on the contract. */
+  const scopeDay = v => v ? String(v).slice(0, 10) : null;
+  D.contracts.forEach(c => {
+    const sd = c.completionDate ? null : scopeDay(c.startDate);
+    const ed = c.completionDate ? null : scopeDay(c.endDate);
+    c.smartTagScopeStart = sd ? sd + 'T00:00:00Z' : null;
+    c.smartTagScopeEnd = ed && !(sd && sd > ed) ? ed + 'T00:00:00Z' : null;
+  });
+  const leaseRow = D.contracts.find(c => c.id === 'ct-lease');
+  if (leaseRow) leaseRow.smartTagScopeEnd = '2026-12-31T00:00:00Z';
   D.contractSmartTagSeed = {
     'ct-lease': ['t4', 't7'],
     // Maple St lease — Rent, Utilities
@@ -63003,18 +63527,20 @@ try { (() => {
         x.setUTCDate(x.getUTCDate() + 1);
         return x.toISOString().slice(0, 10);
       };
-      const s = H.conDateOnly(contract.startDate),
-        e = H.conDateOnly(contract.endDate);
-      const oneOff = !!contract.completionDate;
-      const from = oneOff ? null : s;
-      const toExclusive = oneOff ? null : e ? addDay(e) : null;
+      /* R2 reads the SMART-TAG SCOPE only (*Contract Smart-Tag Scope — Backend,
+         Draft v5*) — never StartDate / EndDate / CompletionDate. */
+      const from = H.conDateOnly(contract.smartTagScopeStart);
+      const e = H.conDateOnly(contract.smartTagScopeEnd);
+      const toExclusive = e ? addDay(e) : null;
       const contactIds = [...new Set((contract.parties || []).map(p => p.contactId).filter(Boolean))];
       const scope = {
         from: from ? from + 'T00:00:00Z' : null,
         toExclusive: toExclusive ? toExclusive + 'T00:00:00Z' : null,
         smartTagCount: tagIds.length,
         partyContactCount: contactIds.length,
-        emptyReason: tagIds.length === 0 ? 1 : contactIds.length === 0 ? 2 : !oneOff && s && e && e < s ? 3 : 0
+        // InvalidTerm (3) is reserved and never emitted: the CHECK constraint
+        // makes an inverted scope unrepresentable.
+        emptyReason: tagIds.length === 0 ? 1 : contactIds.length === 0 ? 2 : 0
       };
       const empty = {
         scope,
@@ -71427,6 +71953,12 @@ __ds_ns.SeverityIcon = __ds_scope.SeverityIcon;
 __ds_ns.Skeleton = __ds_scope.Skeleton;
 
 __ds_ns.SkeletonRow = __ds_scope.SkeletonRow;
+
+__ds_ns.SMART_TAG_SCOPE_RULES = __ds_scope.SMART_TAG_SCOPE_RULES;
+
+__ds_ns.SmartTagScopeField = __ds_scope.SmartTagScopeField;
+
+__ds_ns.SmartTagScopeSyncPrompt = __ds_scope.SmartTagScopeSyncPrompt;
 
 __ds_ns.SortHeader = __ds_scope.SortHeader;
 

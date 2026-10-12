@@ -3,12 +3,13 @@
 > Part of the [Odyssey Design System](../README.md) docs. Foundations, tokens and the component catalog live in the README; this file is the per-feature detail.
 
 
-Files attach in **four contexts, each with its own enum** — a distinction worth getting right:
+Files attach in **five contexts, each with its own enum** — a distinction worth getting right:
 
 - **`AccountFileType`** (`Odyssey.Finance.Dtos/AccountFileType.cs`, field `FileType` on `ExistingAccountFile`) — documents filed against an **account**: **Other(0) · Message(1) · Statement(2) · Contract(3) · Tax(4) · Documentation(5) · InsurancePolicy(6) · LoanAgreement(7) · RepaymentSchedule(8) · PurchaseAgreement(9) · Valuation(10) · Warranty(11) · Registration(12) · Prospectus(13)**.
 - **`TransactionFileType`** (`TransactionFileType.cs`, field `Type` on `ExistingTransactionFile`) — proof attached to a single **transaction**: **Receipt(0) · Invoice(1) · Other(2) · CreditNote(3) · Quote(4) · PaymentConfirmation(5) · Documentation(6)**.
 - **`PropertyFileType`** (`Odyssey.Dtos/Finance/PropertyFileType.cs` + its `Odyssey.Context` mirror, field `FileType` on `PropertyFile`) — documents on a **property**: **Other(0) · Deed(1) · PurchaseAgreement(2) · Valuation(3) · Inspection(4) · Registration(5) · Insurance(6) · Warranty(7) · Receipt(8) · Maintenance(9) · Tax(10) · Drawing(11)**. `Other` is ordinal 0 on purpose, so an omitted type degrades to Other and never to Deed.
 - **`TaxStatementFileType`** (`TaxStatementFileType.cs`, field `FileType` on `TaxStatementFile` — newly added) — documents on a **tax statement**: **TaxReturn(0) · TaxAssessment(1) · SupportingDocument(2) · Other(3)**.
+- **`ContractFileType`** (`Odyssey.Dtos.Finance.ContractFileType` + its `Odyssey.Context` mirror, field `FileType` on `ContractFile`) — documents on a **contract**: **Signed(0) · Amendment(1) · Correspondence(2) · Other(3) · Draft(4)**. Registry: `OdysseyData.contractFileTypes` (`ui_kits/web/contracts-data.js`).
 
 So `Receipt` is a real `TransactionFileType` member, not a missing `AccountFileType` value. As with contacts, each enum carries only a name; the **icon** and **color** live in canonical registries — `OdysseyData.accountFileTypes`, `transactionFileTypes`, `taxStatementFileTypes` and `propertyFileTypes` (`ui_kits/web/data.js`), siblings of `accountTypes` and `contactTypes`. Every file surface reads them, so a kind looks identical everywhere; a merged `OdysseyData.fileTypeByKey` lookup renders any kind from any of the four enums (the Files-table avatar, kind chip, the upload picker, the edit-file picker, the file viewer, the account-detail list). Specimen: `preview/34-data-file-types.html`.
 
@@ -69,6 +70,20 @@ So `Receipt` is a real `TransactionFileType` member, not a missing `AccountFileT
 | **Drawing** | 11 | `architecture` | `0.76 0.12 240` (blue) | Floor plan, site plan, technical drawing. |
 | **Other** *(default)* | 0 | `insert_drive_file` | `0.74 0.02 250` (neutral) | Anything else. |
 
+**ContractFileType** — documents on a contract. Listed in **reading order**, which is the registry order the client mirrors:
+
+| Type | Enum | Icon | Color (oklch) | Meaning |
+|---|---|---|---|---|
+| **Draft** | 4 | `edit_note` | `0.82 0.035 75` (warm neutral) | A pre-signature version of the agreement — proposal, negotiation or review draft. **A label only.** |
+| **Signed** | 0 | `history_edu` | `0.72 0.16 295` (violet) | The executed agreement — the document of record. |
+| **Amendment** | 1 | `edit_document` | `0.80 0.13 85` (amber) | An addendum, variation or amendment to the signed contract. |
+| **Correspondence** | 2 | `forum` | `0.77 0.14 205` (cyan) | Letters, notices or email relating to the agreement. |
+| **Other** *(attach default)* | 3 | `insert_drive_file` | `0.74 0.02 250` (neutral) | Anything outside the categories above. |
+
+**Draft is appended, never inserted.** The ordinal is a wire and persistence contract (`int` column, numeric JSON), so `Draft` takes `4` and every existing member keeps its number. The registry puts it **first** for reading order; `Other` stays **last** because the client's unknown-ordinal fallback (`ContractFileTypeOf`) is the trailing entry — an older client receiving `4` renders it as *Other*. Picker defaults are explicit (`Signed` when a file is uploaded, `Other` on the API's attach default), so the order never changes what is pre-selected, and `Draft` is never a default. The upload guess offers `Draft` only when the filename says *draft*, *proposal* or *redline*.
+
+**Draft is a label, not a state.** It is drawn in a low-chroma warm neutral so it sits apart from `Other`'s cool grey without borrowing a status hue. It shares the `edit_note` glyph with the contract's **Draft** status chip, so "draft" has one icon across Odyssey; the colour (and the chip vs. file-avatar shape) keeps the document label distinct from the status — it must never read like the contract's own **Draft / Ready** status chip, which it does not drive. Likewise nothing branches on `Signed`: both are self-asserted by any `contracts.update` holder and are never evidence that the agreement was executed. No validity rule, roll-up or permission changes with either.
+
 > **Notes.** Each list is enum order with `Other` (the default in each) pulled last. The enums share only `Other` — different enum values, identical icon/color. Only account **`Statement`** is analyzable — the server rejects every other type, and `OdysseyHelpers.canAnalyze` keys off the kind, not the icon. Account types **6–13** and the new transaction / tax-statement types were added to cover what property, vehicle, loan, and investment accounts actually file; keep each registry's keys in lockstep with its C# enum. The upload picker is context-aware: `AddFileModal` shows account types, `AddTransactionModal` passes the transaction vocabulary, and the tax-statement upload passes the tax vocabulary.
 
 ### Document validity metadata (`AccountFile`, `ContractFile`, `PropertyFile`)
@@ -92,4 +107,4 @@ Because they're nullable, existing attachments are unaffected — a document att
 
 **A property document's edit is the contract one.** `PUT /api/properties/{id}/files/{fileId}` is a full replacement of type + the four fields, so the table runs `renameable={false}` + `requireType`. Its danger item reads **Detach** (`deleteLabel` / `deleteIcon` on `FilesTable`, here `link_off`): the verb removes the link row and the file stays in Files.
 
-**Typed pickers.** One pair per enum, all thin wrappers over `Select` / `MultiSelect` with each option's icon in its category color: **`FileTypeSelect kind="account"`** / **`FileTypeMultiSelect kind="account"`** (the Files-page filter is wired to the latter), **`FileTypeSelect kind="transaction"`** / **`FileTypeMultiSelect kind="transaction"`**, **`FileTypeSelect kind="taxStatement"`** / **`FileTypeMultiSelect kind="taxStatement"`**, and **`FileTypeSelect kind="property"`** / **`FileTypeMultiSelect kind="property"`**. Value is the enum key; pass `types` to subset. `ACCOUNT_FILE_TYPES`, `TRANSACTION_FILE_TYPES`, `TAX_STATEMENT_FILE_TYPES` and `PROPERTY_FILE_TYPES` are exported on the DS namespace (mirroring the `OdysseyData` registries). Specimen: `preview/27-components-file-type-pickers.html` (live).
+**Typed pickers.** One pair per enum, all thin wrappers over `Select` / `MultiSelect` with each option's icon in its category color: **`FileTypeSelect kind="account"`** / **`FileTypeMultiSelect kind="account"`** (the Files-page filter is wired to the latter), **`FileTypeSelect kind="transaction"`** / **`FileTypeMultiSelect kind="transaction"`**, **`FileTypeSelect kind="taxStatement"`** / **`FileTypeMultiSelect kind="taxStatement"`**, and **`FileTypeSelect kind="property"`** / **`FileTypeMultiSelect kind="property"`**. Value is the enum key; pass `types` to subset. `ACCOUNT_FILE_TYPES`, `TRANSACTION_FILE_TYPES`, `TAX_STATEMENT_FILE_TYPES` and `PROPERTY_FILE_TYPES` are exported on the DS namespace (contract documents use the `contractFileTypes` registry directly as the FileUpload / FilesTable `kinds`, not a typed picker) (mirroring the `OdysseyData` registries). Specimen: `preview/27-components-file-type-pickers.html` (live).

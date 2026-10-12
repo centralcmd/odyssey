@@ -206,6 +206,9 @@ export function AccountSmartTagsSection({
    *  [{icon, label, value}]. The host formats it from the response; this
    *  component never derives a rule. */
   scope = null,
+  /** One action at the end of the scope line — the contract host's
+   *  "Edit scope" ({label, icon, onClick}). Omit for read-only viewers. */
+  scopeAction = null,
   /** A STRUCTURAL empty result named by the server (the tags exist, but the
    *  record cannot match anything yet): {icon, title, desc, actionLabel,
    *  actionIcon, onAction}. Replaces the body; no table, no toolbar. */
@@ -361,7 +364,7 @@ export function AccountSmartTagsSection({
   const scopeItems = hasTags && Array.isArray(scope) ? scope.filter(Boolean) : [];
 
   const inner = (
-    <SmartTagsInner scopeItems={scopeItems} hasTags={hasTags} cfg={cfg} cfgIds={cfgIds} canWrite={canWrite} opts={opts} atCap={atCap}
+    <SmartTagsInner scopeItems={scopeItems} scopeAction={scopeAction} hasTags={hasTags} cfg={cfg} cfgIds={cfgIds} canWrite={canWrite} opts={opts} atCap={atCap}
       onAddTag={onAddTag} onRemoveTag={onRemoveTag} showTotal={showTotal} total={total}
       matchCount={matchCount} fmtAmount={fmtAmount} showNetTotal={showNetTotal} body={body}
       capNote={capNote} addError={addError} onDismissAddError={onDismissAddError} />
@@ -404,7 +407,7 @@ export function AccountSmartTagsSection({
   );
 }
 
-function SmartTagsInner({ showNetTotal = true, scopeItems = [], hasTags, cfg, cfgIds, canWrite, opts, atCap, onAddTag, onRemoveTag, showTotal, total, matchCount, fmtAmount, body, capNote, addError, onDismissAddError }) {
+function SmartTagsInner({ showNetTotal = true, scopeItems = [], scopeAction = null, hasTags, cfg, cfgIds, canWrite, opts, atCap, onAddTag, onRemoveTag, showTotal, total, matchCount, fmtAmount, body, capNote, addError, onDismissAddError }) {
   return (
     <React.Fragment>
           {/* Tag-management bar — shown whenever tags exist (or a writer can add
@@ -484,6 +487,12 @@ function SmartTagsInner({ showNetTotal = true, scopeItems = [], hasTags, cfg, cf
                   <span className="odc-smarttags-scope-val">{it.value}</span>
                 </span>
               ))}
+              {scopeAction && scopeAction.onClick ? (
+                <button type="button" className="odc-smarttags-scope-act" onClick={scopeAction.onClick}>
+                  <span className="material-icons" aria-hidden="true">{scopeAction.icon || 'edit_calendar'}</span>
+                  {scopeAction.label || 'Edit scope'}
+                </button>
+              ) : null}
             </div>
           ) : null}
 

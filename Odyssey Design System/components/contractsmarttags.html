@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- @dsCard group="Components" name="Components · Smart tags (contract host)" subtitle="The same AccountSmartTagsSection on a contract record, fed by the scoped GET /api/contracts/{id}/smart-tag-transactions — scope line, server paging, the three empty reasons, the missing-claim state, and the cap states." viewport="1120x2600" -->
+<!-- @dsCard group="Components" name="Components · Smart tags (contract host)" subtitle="The same AccountSmartTagsSection on a contract record, fed by the scoped GET /api/contracts/{id}/smart-tag-transactions — scope line (smart-tag scope + Edit scope), server paging, the two emitted empty reasons, the missing-claim state, and the cap states." viewport="1120x2600" -->
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8" />
@@ -27,7 +27,7 @@ body{font-family:var(--font-sans);color:var(--mud-palette-text-primary);padding:
 <body>
 <div class="cap">Smart tags · contract host <code>&lt;AccountSmartTagsSection subject="contract" scope blocked totalCount netTotal toolbar /&gt;</code></div>
 <div class="stack" id="root"></div>
-<p class="note">On a contract the match is <b>scoped by the server</b>: a transaction reads here only if it carries a watched tag, is dated inside the term, and names a contact party as its merchant. The section restates the response's <b>scope</b> (the date window and the party-contact count) under the bar and maps <b>emptyReason</b> to a state — <b>NoSmartTags</b> is the existing first-tag empty state; <b>NoContactParties</b> and <b>InvalidTerm</b> use <code>blocked</code>, each with the one action that fixes it. Paging, search and sort go to the server, so the table uses a footer Pager over <code>page.totalCount</code>, and the bar's net total is the server's <code>summary.totals</code> passed as <code>netTotal</code> — every match, never a page sum. Mixed currencies have no single sum, so the host passes none and the bar shows the count only. Without <b>transactions.read</b> the read is never issued: the chips stay, the table is replaced by a sentence naming the claim.</p>
+<p class="note">On a contract the match is <b>scoped by the server</b>: a transaction reads here only if it carries a watched tag, is dated inside the contract's <b>smart-tag scope</b> (its own date range, copied from the term on create and edited separately), and names a contact party as its merchant. The section restates the response's <b>scope</b> (the date window and the party-contact count) under the bar and maps <b>emptyReason</b> to a state — <b>NoSmartTags</b> is the existing first-tag empty state; <b>NoContactParties</b> uses <code>blocked</code> with the one action that fixes it. <b>InvalidTerm</b> (3) is reserved and no longer emitted, so it has no state. The scope line places the window against the term in words and ends in <code>scopeAction</code> — <b>Edit scope</b>, for <code>contracts.update</code> only. Paging, search and sort go to the server, so the table uses a footer Pager over <code>page.totalCount</code>, and the bar's net total is the server's <code>summary.totals</code> passed as <code>netTotal</code> — every match, never a page sum. Mixed currencies have no single sum, so the host passes none and the bar shows the count only. Without <b>transactions.read</b> the read is never issued: the chips stay, the table is replaced by a sentence naming the claim.</p>
 <script type="text/babel" data-presets="env,react">
 const { AccountSmartTagsSection, TxnTable } = window.OdysseyDesignSystem_d5aa51;
 
@@ -55,13 +55,14 @@ const renderTable = (rows) => (
 );
 const CONTRACT_COPY = {
   subject: 'contract',
-  emptyDesc: 'Pin the tags this agreement settles against. Transactions carrying them, dated inside the term and paid to a contact party, read here.',
-  noMatchDesc: 'No transaction inside the term, paid to a contact party, carries the watched tags yet.',
+  emptyDesc: 'Pin the tags this agreement settles against. Transactions carrying them, dated inside the smart-tag scope and paid to a contact party, read here.',
+  noMatchDesc: 'No transaction inside the smart-tag scope, paid to a contact party, carries the watched tags yet.',
 };
 const SCOPE_TERM = [
-  { icon: 'date_range', label: 'Dated', value: '1 Sep 2025 – 31 Aug 2026' },
+  { icon: 'date_range', label: 'Dated', value: <React.Fragment>1 Sep 2025 – 31 Dec 2026 <span className="odc-smarttags-scope-note">· includes dates after the term</span></React.Fragment> },
   { icon: 'group', label: 'Merchant', value: 'one of 1 contact party' },
 ];
+const EDIT_SCOPE = { label: 'Edit scope', icon: 'edit_calendar', onClick: () => {} };
 const WATCHED = [{ id: 't4', label: 'Rent' }, { id: 't7', label: 'Utilities' }];
 const MATCHES = TXNS.filter(t => t.tags.some(id => ['t4', 't7'].includes(id)));
 
@@ -89,7 +90,7 @@ function Live() {
       <div className="cap">Live — emptyReason None, server-paged (3 per page)</div>
       <AccountSmartTagsSection {...CONTRACT_COPY}
         tags={ids.map(id => ({ id, label: LABEL[id] }))} tagOptions={TAGS}
-        transactions={items} totalCount={all.length} netTotal={all.reduce((n, t) => n + t.amount, 0)} formatAmount={money} loading={loading} scope={SCOPE_TERM}
+        transactions={items} totalCount={all.length} netTotal={all.reduce((n, t) => n + t.amount, 0)} formatAmount={money} loading={loading} scope={SCOPE_TERM} scopeAction={EDIT_SCOPE}
         noMatchDesc={q ? `No matching transaction mentions “${q}”.` : CONTRACT_COPY.noMatchDesc}
         toolbar={<div style={{ flex: 1, minWidth: 240 }}>{SearchField
           ? <SearchField placeholder="Search description, account, merchant, tag…" value={q} onChange={setQ} />
@@ -121,11 +122,10 @@ function Demo() {
             renderTable={renderTable} defaultOpen />
         </div>
         <div>
-          <div className="cap">InvalidTerm (3) — legacy row, start after end</div>
-          <AccountSmartTagsSection {...CONTRACT_COPY} tags={WATCHED} tagOptions={TAGS} transactions={[]}
-            blocked={{ icon: 'event_busy', title: 'The term ends before it starts',
-              desc: 'Start date 1 Sep 2026 is after end date 31 Aug 2026, so no date can fall inside the term. Correct the dates to see matching transactions.',
-              actionLabel: 'Edit dates', actionIcon: 'edit_calendar', onAction: () => {} }}
+          <div className="cap">Ongoing contract given an end date — scope stays open</div>
+          <AccountSmartTagsSection {...CONTRACT_COPY} tags={[{ id: 't4', label: 'Rent' }]} tagOptions={TAGS}
+            transactions={[]} totalCount={0} scopeAction={EDIT_SCOPE}
+            scope={[{ icon: 'date_range', label: 'Dated', value: <React.Fragment>from 1 Mar 2024, no end <span className="odc-smarttags-scope-note">· includes dates after the term</span></React.Fragment> }, { icon: 'group', label: 'Merchant', value: 'one of 1 contact party' }]}
             renderTable={renderTable} defaultOpen />
         </div>
       </div>
@@ -138,7 +138,7 @@ function Demo() {
           <div className="cap">None, zero matches — one-off contract, no date bound</div>
           <AccountSmartTagsSection {...CONTRACT_COPY} tags={[{ id: 't13', label: 'Home maintenance' }]} tagOptions={TAGS}
             transactions={[]} totalCount={0}
-            scope={[{ icon: 'date_range', label: 'Dated', value: 'any date — one-off contract' }, { icon: 'group', label: 'Merchant', value: 'one of 2 contact parties' }]}
+            scope={[{ icon: 'date_range', label: 'Dated', value: <React.Fragment>any date <span className="odc-smarttags-scope-note">· one-off contract, no date rule</span></React.Fragment> }, { icon: 'group', label: 'Merchant', value: 'one of 2 contact parties' }]}
             renderTable={renderTable} defaultOpen />
         </div>
       </div>
@@ -147,7 +147,7 @@ function Demo() {
           <div className="cap">Open-ended term — no upper bound</div>
           <AccountSmartTagsSection {...CONTRACT_COPY} tags={[{ id: 't2', label: 'Subscriptions' }]} tagOptions={TAGS}
             transactions={[]} totalCount={0}
-            scope={[{ icon: 'date_range', label: 'Dated', value: 'from 1 Mar 2024, no end' }, { icon: 'group', label: 'Merchant', value: 'one of 1 contact party' }]}
+            scope={[{ icon: 'date_range', label: 'Dated', value: <React.Fragment>from 1 Mar 2024, no end <span className="odc-smarttags-scope-note">· same as the term</span></React.Fragment> }, { icon: 'group', label: 'Merchant', value: 'one of 1 contact party' }]}
             renderTable={renderTable} defaultOpen />
         </div>
         <div>

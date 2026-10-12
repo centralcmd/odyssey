@@ -79,9 +79,16 @@
   ];
 
   /* ---- Canonical ContractFileType registry — the documents that attach to a
-     contract. Enum order with `Other` (the default) pulled last. */
+     contract. Reading order, not enum order: `Draft` (ordinal 4, appended to
+     the enum) leads so the list reads draft → signed → amendment →
+     correspondence; `Other` (the attach default) stays LAST because the
+     client's unknown-ordinal fallback is the trailing entry. `Draft` and
+     `Signed` are self-asserted labels — neither drives contract status
+     (ContractStatus.Draft / Ready), the roll-up, validity or permissions,
+     and neither is evidence of execution. */
   D.contractFileTypes = [
-    { key: 'Signed',         label: 'Signed',         enumValue: 0, icon: 'history_edu',       color: 'oklch(0.72 0.16 295)', soft: 'oklch(0.72 0.16 295 / 0.16)', desc: 'The executed, signed agreement — the document of record.' },
+    { key: 'Draft',          label: 'Draft',          enumValue: 4, icon: 'edit_note',         color: 'oklch(0.82 0.035 75)', soft: 'oklch(0.82 0.035 75 / 0.16)', desc: 'A pre-signature version of the agreement — a proposal, negotiation or review draft. A label only; it has no effect on contract status.' },
+    { key: 'Signed',         label: 'Signed',         enumValue: 0, icon: 'history_edu',       color: 'oklch(0.72 0.16 295)', soft: 'oklch(0.72 0.16 295 / 0.16)', desc: 'The executed, signed agreement — the document of record. Self-asserted by whoever attaches it; not evidence of execution.' },
     { key: 'Amendment',      label: 'Amendment',      enumValue: 1, icon: 'edit_document',     color: 'oklch(0.80 0.13 85)',  soft: 'oklch(0.80 0.13 85 / 0.16)',  desc: 'An addendum, variation, or amendment to the signed contract.' },
     { key: 'Correspondence', label: 'Correspondence', enumValue: 2, icon: 'forum',             color: 'oklch(0.77 0.14 205)', soft: 'oklch(0.77 0.14 205 / 0.16)', desc: 'Letters, notices, or email relating to the agreement.' },
     { key: 'Other',          label: 'Other',          enumValue: 3, icon: 'insert_drive_file', color: 'oklch(0.74 0.02 250)', soft: 'oklch(0.74 0.02 250 / 0.16)', desc: 'The enum default — anything outside the categories above.' },
@@ -172,6 +179,7 @@
     { id: 'fm-emp-handbook',name: 'employee_handbook_v6.pdf',         contentType: 'application/pdf', size: '1.8 MB',  uploaded: '2024-02-20' },
     { id: 'fm-lease-signed',name: 'maple_st_lease_2025.pdf',          contentType: 'application/pdf', size: '402 KB', uploaded: '2025-08-14' },
     { id: 'fm-lease-amend',  name: 'lease_amendment_pets.pdf',         contentType: 'application/pdf', size: '96 KB',  uploaded: '2026-01-08' },
+    { id: 'fm-lease-draft',  name: 'maple_st_lease_2026_renewal_draft.pdf', contentType: 'application/pdf', size: '388 KB', uploaded: '2026-07-22' },
     { id: 'fm-lease-letter', name: 'rent_review_notice_2026.pdf',      contentType: 'application/pdf', size: '54 KB',  uploaded: '2026-05-30' },
     { id: 'fm-fiber-signed', name: 'fiber_service_agreement.pdf',      contentType: 'application/pdf', size: '320 KB', uploaded: '2025-01-22' },
     { id: 'fm-gym-signed',   name: 'fitzone_membership_terms.pdf',     contentType: 'application/pdf', size: '180 KB', uploaded: '2026-06-10' },
@@ -221,6 +229,7 @@
       files: [
         { id: 'cf-lease-1', fileMetadataId: 'fm-lease-signed', kind: 'Signed', attachedByUserId: 'u-owner', attachedAtUtc: '2025-08-14T10:02:00Z', validFrom: '2025-09-01', validTo: '2026-08-31', issuedAt: '2025-08-12', issuedBy: 'c9' },
         { id: 'cf-lease-2', fileMetadataId: 'fm-lease-amend', kind: 'Amendment', attachedByUserId: 'u-owner', attachedAtUtc: '2026-01-08T14:00:00Z', validFrom: '2026-02-01', validTo: null, issuedAt: '2026-01-07', issuedBy: 'c9' },
+        { id: 'cf-lease-4', fileMetadataId: 'fm-lease-draft', kind: 'Draft', attachedByUserId: 'u-owner', attachedAtUtc: '2026-07-22T15:30:00Z' },
         { id: 'cf-lease-3', fileMetadataId: 'fm-lease-letter', kind: 'Correspondence', attachedByUserId: 'u-owner', attachedAtUtc: '2026-05-30T11:00:00Z', validFrom: null, validTo: null, issuedAt: '2026-05-29', issuedBy: 'c9' },
       ],
     },
@@ -437,6 +446,14 @@
 
     // The request's UTC "today" as 'YYYY-MM-DD' (a single value per call site).
     conToday() { return new Date().toISOString().slice(0, 10); },
+    /* §8 rule 4 — the scope a contract is CREATED with, from its stored term
+       days (no time-zone conversion). Wire form: UTC midnight, trailing Z. */
+    conScopeFromTerm(c) {
+      if (!c || c.completionDate) return { smartTagScopeStart: null, smartTagScopeEnd: null };
+      const sd = c.startDate ? String(c.startDate).slice(0, 10) : null;
+      const ed = c.endDate ? String(c.endDate).slice(0, 10) : null;
+      return { smartTagScopeStart: sd ? sd + 'T00:00:00Z' : null, smartTagScopeEnd: ed && !(sd && sd > ed) ? ed + 'T00:00:00Z' : null };
+    },
     conDateOnly(iso) { return iso ? String(iso).slice(0, 10) : null; },
 
     // Whole-day difference dateIso − today (negative = already past).
@@ -938,12 +955,33 @@
     ...rentMonths.map((m, i) => scopeRow(`xs-rent-${i}`, `${m}-01`, 'Michael Chen · Rent', 'c9', ['t4'], m >= '2026-03' ? -2250 : -2150, 'home')),
     scopeRow('xs-water-1', '2026-01-15', 'Michael Chen · Water share', 'c9', ['t7'], -48.30, 'water_drop'),
     scopeRow('xs-final', '2026-08-31', 'Michael Chen · Final rent + utilities', 'c9', ['t4', 't7'], -312.40, 'home', 'New'),
+    /* After the lease's 31 Aug 2026 end — matched only because this contract's
+       smart-tag scope was widened past the term (*Contract Smart-Tag Scope*). */
+    scopeRow('xs-water-final', '2026-09-12', 'Michael Chen · Final water reading', 'c9', ['t7'], -38.20, 'water_drop'),
+    scopeRow('xs-deposit', '2026-09-19', 'Michael Chen · Deposit refund', 'c9', ['t4'], 2150.00, 'savings'),
     scopeRow('xs-pge-1', '2025-11-14', 'PG&E · Electric', 'c5', ['t7'], -118.60, 'bolt'),
     scopeRow('xs-pge-2', '2026-02-14', 'PG&E · Electric', 'c5', ['t7'], -131.05, 'bolt'),
     scopeRow('xs-lake', '2025-09-03', 'Lakeside Property Mgmt · Rent', null, ['t4'], -2400, 'home'),
     ...['2025-01','2025-04','2025-07','2025-10','2026-01','2026-04','2026-07','2026-09'].map((m, i) => scopeRow(`xs-fiber-${i}`, `${m}-22`, 'Spotify · Monthly', 'c3', ['t2'], -9.99, 'subscriptions')),
   ];
   D.contractScopeLedger = () => D.transactions.concat(D.contractScopeExtra);
+
+  /* SmartTagScopeStart / SmartTagScopeEnd on ExistingContract — the migration
+     backfill (§11): every contract's scope from its stored term days; a one-off
+     is open/open, an inverted legacy term keeps its start and opens its end.
+     Serialised as UTC midnight with a trailing Z. The lease is the one record a
+     user has edited since: its end is widened to 31 Dec 2026, so the final
+     water reading and the deposit refund that arrive after the term still read
+     on the contract. */
+  const scopeDay = (v) => (v ? String(v).slice(0, 10) : null);
+  D.contracts.forEach((c) => {
+    const sd = c.completionDate ? null : scopeDay(c.startDate);
+    const ed = c.completionDate ? null : scopeDay(c.endDate);
+    c.smartTagScopeStart = sd ? sd + 'T00:00:00Z' : null;
+    c.smartTagScopeEnd = ed && !(sd && sd > ed) ? ed + 'T00:00:00Z' : null;
+  });
+  const leaseRow = D.contracts.find((c) => c.id === 'ct-lease');
+  if (leaseRow) leaseRow.smartTagScopeEnd = '2026-12-31T00:00:00Z';
 
   D.contractSmartTagSeed = {
     'ct-lease': ['t4', 't7'],     // Maple St lease — Rent, Utilities
@@ -1332,17 +1370,20 @@
       const offset = q.offset || 0;
       const limit = q.limit != null ? q.limit : 25;
       const addDay = (d) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); };
-      const s = H.conDateOnly(contract.startDate), e = H.conDateOnly(contract.endDate);
-      const oneOff = !!contract.completionDate;
-      const from = oneOff ? null : s;
-      const toExclusive = oneOff ? null : (e ? addDay(e) : null);
+      /* R2 reads the SMART-TAG SCOPE only (*Contract Smart-Tag Scope — Backend,
+         Draft v5*) — never StartDate / EndDate / CompletionDate. */
+      const from = H.conDateOnly(contract.smartTagScopeStart);
+      const e = H.conDateOnly(contract.smartTagScopeEnd);
+      const toExclusive = e ? addDay(e) : null;
       const contactIds = [...new Set((contract.parties || []).map(p => p.contactId).filter(Boolean))];
       const scope = {
         from: from ? from + 'T00:00:00Z' : null,
         toExclusive: toExclusive ? toExclusive + 'T00:00:00Z' : null,
         smartTagCount: tagIds.length,
         partyContactCount: contactIds.length,
-        emptyReason: tagIds.length === 0 ? 1 : contactIds.length === 0 ? 2 : (!oneOff && s && e && e < s) ? 3 : 0,
+        // InvalidTerm (3) is reserved and never emitted: the CHECK constraint
+        // makes an inverted scope unrepresentable.
+        emptyReason: tagIds.length === 0 ? 1 : contactIds.length === 0 ? 2 : 0,
       };
       const empty = { scope, page: { items: [], offset, limit, totalCount: 0 }, summary: { totals: [] } };
       if (scope.emptyReason !== 0) return empty;
