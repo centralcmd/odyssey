@@ -509,9 +509,16 @@ public static class OdsTypeRegistries
     }
 
     /// <summary>ContractFileType — the kind of document attached to a contract (issue #174). Mirrors
-    /// the DS contractFileTypes registry and the C# ContractFileType enum.</summary>
+    /// the DS contractFileTypes registry and the C# ContractFileType enum. Listed in reading order, not
+    /// ordinal order: Draft (ordinal 4, issue #309) reads first, and Other must stay LAST because
+    /// <see cref="ContractFileTypeOf"/>'s unknown-ordinal fallback is the trailing entry. Draft is a label
+    /// only — it never drives the contract's own Draft/Ready status, and it is never a picker default.
+    /// Its lightness is 0.80, not the export's 0.82: the export authors it above the design system's own
+    /// registry glyph band (L 0.66–0.80, <c>RegistryGlyphContrastTests</c>), so the client holds the band
+    /// edge until the design system is corrected upstream.</summary>
     public static readonly IReadOnlyList<OdsTypeOption> ContractFileTypes =
     [
+        new() { Key = "Draft",          Label = "Draft",          Icon = "edit_note",         Color = "oklch(0.80 0.035 75)", Soft = "oklch(0.80 0.035 75 / 0.16)" },
         new() { Key = "Signed",         Label = "Signed",         Icon = "history_edu",       Color = "oklch(0.72 0.16 295)", Soft = "oklch(0.72 0.16 295 / 0.16)" },
         new() { Key = "Amendment",      Label = "Amendment",      Icon = "edit_document",     Color = "oklch(0.80 0.13 85)",  Soft = "oklch(0.80 0.13 85 / 0.16)" },
         new() { Key = "Correspondence", Label = "Correspondence", Icon = "forum",             Color = "oklch(0.77 0.14 205)", Soft = "oklch(0.77 0.14 205 / 0.16)" },
