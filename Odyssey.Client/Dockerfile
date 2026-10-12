@@ -31,7 +31,7 @@ RUN dotnet publish Odyssey.Client/Odyssey.Client.csproj -c Release -o /app/publi
 # Unprivileged nginx: runs as the non-root "nginx" user (UID 101) and listens on 8080 instead of
 # 80, so no part of the web tier runs as root. The site config (nginx.conf) listens on 8080 to
 # match; Caddy and the compose port mappings target 8080.
-FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:6a23acdfca2b9cfbcec61419e3f1426bcbedb91362f2f19306a8567423bb4612 AS final
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af AS final
 COPY Odyssey.Client/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/publish/wwwroot /usr/share/nginx/html
 EXPOSE 8080
