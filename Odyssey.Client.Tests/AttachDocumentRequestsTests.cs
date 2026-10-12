@@ -38,6 +38,18 @@ public class AttachDocumentRequestsTests
     [InlineData("export.csv", "Other")]
     public void Transaction_guess(string name, string expected) => Assert.Equal(expected, AttachDocumentRequests.TransactionGuess(name));
 
+    /// <summary>Issue #309 — Draft only from a draft/proposal/redline filename, never the extension alone,
+    /// and never from a word that merely contains one (<c>redrafted</c>).</summary>
+    [Theory]
+    [InlineData("lease-draft-v2.pdf", "Draft")]
+    [InlineData("Proposal.docx", "Draft")]
+    [InlineData("contract_REDLINE.pdf", "Draft")]
+    [InlineData("redrafted-terms.pdf", "Signed")]
+    [InlineData("lease.pdf", "Signed")]
+    [InlineData("reply.eml", "Correspondence")]
+    [InlineData("draft-reply.msg", "Correspondence")]
+    public void Contract_guess(string name, string expected) => Assert.Equal(expected, AttachDocumentRequests.ContractGuess(name));
+
     [Fact]
     public void Account_request_carries_the_type_and_all_four_validity_fields()
     {

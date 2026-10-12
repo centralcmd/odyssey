@@ -391,8 +391,9 @@
 {
     <AttachDocumentsDialog @key="_uploadKey"
                            @bind-Open="_uploadOpen"
-                           Subtitle="Keep the signed agreement, an amendment, or correspondence with this contract. Files stay in Files; attaching links them here."
+                           Subtitle="Keep a draft, the signed agreement, an amendment, or correspondence with this contract. Files stay in Files; attaching links them here."
                            Kinds="OdsTypeRegistries.ContractFileTypes"
+                           GuessKind="AttachDocumentRequests.ContractGuess"
                            DefaultKind="@nameof(ContractFileType.Signed)"
                            Validity="true"
                            RestrictToDocumentTypes="true"

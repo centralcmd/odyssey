@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Attachments;
@@ -33,6 +34,19 @@ public static class AttachDocumentRequests
         ".pdf" => nameof(TransactionFileType.Invoice),
         _ => nameof(TransactionFileType.Other),
     };
+
+    // DS ACF_GUESS: mail is correspondence; a filename that says draft/proposal/redline is a draft (never
+    // the extension alone); anything else is the signed agreement, the dialog's explicit default.
+    public static string ContractGuess(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        if (extension is ".eml" or ".msg")
+            return nameof(ContractFileType.Correspondence);
+        return DraftName.IsMatch(fileName) ? nameof(ContractFileType.Draft) : nameof(ContractFileType.Signed);
+    }
+
+    private static readonly Regex DraftName =
+        new("(^|[^a-z])(draft|proposal|redline)([^a-z]|$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public static AttachAccountFileRequest Account(AttachDocumentItem item) =>
         new AttachAccountFileRequest

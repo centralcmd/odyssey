@@ -237,6 +237,23 @@ public class OdsTypeRegistriesTests
     }
 
     /// <summary>
+    /// Issue #309 — Draft (ordinal 4) reads first and Other stays last, so the positional
+    /// unknown-ordinal fallback of <see cref="OdsTypeRegistries.ContractFileTypeOf"/> still lands on
+    /// Other. The ordinals are pinned too: the registry order deliberately differs from them.
+    /// </summary>
+    [Fact]
+    public void ContractFileTypes_reads_Draft_first_and_Other_last()
+    {
+        Assert.Equal(
+            ["Draft", "Signed", "Amendment", "Correspondence", "Other"],
+            OdsTypeRegistries.ContractFileTypes.Select(t => t.Key).ToList());
+
+        Assert.Equal(3, (int)ContractFileType.Other);
+        Assert.Equal(4, (int)ContractFileType.Draft);
+        Assert.Equal("Draft", OdsTypeRegistries.ContractFileTypeOf(ContractFileType.Draft).Key);
+    }
+
+    /// <summary>
     /// Issue #187 — the contract-type and party-role registries agree with the design system's
     /// <c>CONTRACT_TYPES</c> / <c>CONTRACT_PARTY_ROLES</c> exports on every key, label, glyph, colour,
     /// ordinal and the reading order. The internal-consistency tests above stay green while a hand-copied

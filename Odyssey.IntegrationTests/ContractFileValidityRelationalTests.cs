@@ -191,6 +191,49 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
         }
     }
 
+    /// <summary>
+    /// Issue #309 AC 9 — the appended <c>Draft</c> ordinal round-trips through the real engine with no
+    /// migration: the column is a plain <c>int</c> with no CHECK constraint, so <c>4</c> is stored and
+    /// read back as itself. Read raw as well as through EF, so a value converter cannot be what agrees.
+    /// </summary>
+    [SkippableFact]
+    public async Task The_draft_file_type_round_trips_as_four()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigrateAsync();
+
+        Guid contractFileId;
+
+        await using (var context = NewContext())
+        {
+            await AttributionUsers.EnsureAsync(context, "doc-attacher");
+            var contractId = await SeedContractAsync(context, "Draft lease");
+            var link = new ContractFile
+            {
+                ContractFileId = Guid.NewGuid(),
+                ContractId = contractId,
+                FileMetadataId = await SeedFileMetadataAsync(context, "doc-attacher"),
+                FileType = ContractFileType.Draft,
+                AttachedByUserId = "doc-attacher",
+                AttachedAtUtc = Anchor,
+            };
+            context.ContractFiles.Add(link);
+            await context.SaveChangesAsync();
+            contractFileId = link.ContractFileId;
+        }
+
+        await using (var verify = NewContext())
+        {
+            var row = await verify.ContractFiles.AsNoTracking()
+                .SingleAsync(f => f.ContractFileId == contractFileId);
+            Assert.Equal(ContractFileType.Draft, row.FileType);
+
+            Assert.Equal(4, Convert.ToInt32(await MigrationSeam.ScalarAsync(verify, $"""
+                SELECT `FileType` FROM `ContractFiles` WHERE `ContractFileId` = '{contractFileId}'
+                """), CultureInfo.InvariantCulture));
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static async Task<Guid> SeedContactAsync(OdysseyContext context)

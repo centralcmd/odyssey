@@ -495,7 +495,9 @@ public class DataExportApiTests
         Assert.Equal(JsonValueKind.Null, propertyParty.GetProperty("accountId").ValueKind);
         Assert.Equal(JsonValueKind.Null, propertyParty.GetProperty("contactId").ValueKind);
 
-        Assert.Single(finance.GetProperty("contractFiles").EnumerateArray());
+        var contractFile = Assert.Single(finance.GetProperty("contractFiles").EnumerateArray());
+        // Issue #309 AC 6 — the appended Draft ordinal travels as its wire value.
+        Assert.Equal(4, contractFile.GetProperty("fileType").GetInt32());
     }
 
     /// <summary>
@@ -1472,11 +1474,13 @@ public class DataExportApiTests
             AttachedByUserId = "uploader", AttachedAtUtc = DateTime.UtcNow,
             ValidTo = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         });
+        // Issue #309 AC 6: a Draft-typed row, so the newest ordinal is what the export must carry.
         context.ContractFiles.Add(new ContractFile
         {
             ContractFileId = Guid.NewGuid(),
             ContractId = contractId,
             FileMetadataId = fileMetadataId,
+            FileType = Odyssey.Context.ContractFileType.Draft,
             AttachedByUserId = "uploader",
             AttachedAtUtc = DateTime.UtcNow,
         });
