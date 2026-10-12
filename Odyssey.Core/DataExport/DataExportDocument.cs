@@ -495,6 +495,13 @@ public sealed class ContractExport
     public DateTime? StartDate { get; init; }
     public DateTime? EndDate { get; init; }
     public DateTime? CompletionDate { get; init; }
+
+    /// <summary>
+    /// The contract's smart-tag scope (issue #308) — two calendar days, null = open on that side. A
+    /// stored fact the user chose, so the export carries it like every other contract column.
+    /// </summary>
+    public DateTime? SmartTagScopeStart { get; init; }
+    public DateTime? SmartTagScopeEnd { get; init; }
     public DateTime? Archived { get; init; }
 
     /// <summary>

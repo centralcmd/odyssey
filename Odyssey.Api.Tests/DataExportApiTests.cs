@@ -543,6 +543,37 @@ public class DataExportApiTests
     }
 
     /// <summary>
+    /// Issue #308 AC 16 — the smart-tag scope is a stored fact the user chose, so the export carries
+    /// both bounds, present with their value or present as <c>null</c> (open).
+    /// </summary>
+    [Fact]
+    public async Task Export_IncludesContractSmartTagScope_OrNull()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            context.Contracts.Add(new Contract
+            {
+                Name = "Scoped",
+                Type = Odyssey.Context.ContractType.Employment,
+                SmartTagScopeStart = new DateTime(2021, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+                CreatedAtUtc = DateTime.UtcNow,
+            });
+            await context.SaveChangesAsync();
+        }
+        using var client = factory.CreateClient();
+
+        using var document = await GetExportDocumentAsync(client);
+        var contract = Assert.Single(document.RootElement.GetProperty("databases").GetProperty("finance")
+            .GetProperty("contracts").EnumerateArray());
+
+        Assert.StartsWith("2021-03-01", contract.GetProperty("smartTagScopeStart").GetString(), StringComparison.Ordinal);
+        Assert.True(contract.TryGetProperty("smartTagScopeEnd", out var open));
+        Assert.Equal(JsonValueKind.Null, open.ValueKind);
+    }
+
+    /// <summary>
     /// The contract's author is a stored fact, so it is exported — as the raw column, like every other
     /// attribution column in the document — and as <c>null</c> where none is recorded.
     /// </summary>

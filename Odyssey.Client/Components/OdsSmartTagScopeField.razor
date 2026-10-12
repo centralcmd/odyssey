@@ -1,0 +1,173 @@
+@using System.Globalization
+@using Odyssey.Dtos.Finance
+@inject IJSRuntime Js
+
+@*
+    OdsSmartTagScopeField — the editor for a contract's smart-tag scope (Odyssey Design System ·
+    components/SmartTagScopeField, issue #308): "Match from" + "Match until" date fields where an empty
+    field is an OPEN side, a decorative term-vs-scope strip, one sentence stating the relation in
+    words (the live region that carries the meaning), and two shortcuts — copy the contract term,
+    remove both limits.
+
+    The scope is independent of the term on purpose, so the field NEVER validates against it: a scope
+    before the start or after the end is valid and is the point of the feature. Errors come from the
+    host — the shared bounds/order rules (OdsSmartTagScope.Validate) or the server's 400/422.
+
+    Controlled: Value + ValueChanged, each side reduced to a calendar day.
+*@
+
+<div class="odc-stscope @Class">
+    <div class="odc-stscope-grid">
+        <OdsDateField Id="@_startId" Label="Match from" Value="@Value.Start" ValueChanged="OnStartChanged"
+                      Placeholder="No start limit" Help="Leave empty for no start limit."
+                      Min="@SmartTagScopeRules.MinDate" Max="@SmartTagScopeRules.MaxDate"
+                      Error="@StartError" Disabled="@Disabled" />
+        <OdsDateField Label="Match until" Value="@Value.End" ValueChanged="OnEndChanged"
+                      Placeholder="No end limit" Help="Leave empty to keep matching after the term ends."
+                      Min="@SmartTagScopeRules.MinDate" Max="@SmartTagScopeRules.MaxDate"
+                      Align="OdsAlign.End" Error="@EndError" Disabled="@Disabled" />
+    </div>
+
+    @if (ShowStrip && Strip is { } strip)
+    {
+        @* Decorative: the sentence below carries the same comparison in words. *@
+        <div class="odc-stscope-strip" aria-hidden="true">
+            <span class="odc-stscope-strip-lab">Term</span>
+            <div class="odc-stscope-track">
+                @if (strip.PointStyle is { } pointStyle)
+                {
+                    <span class="odc-stscope-point" style="@pointStyle"></span>
+                }
+                else
+                {
+                    <span class="@strip.TermClass" style="@strip.TermStyle"></span>
+                }
+            </div>
+            <span class="odc-stscope-strip-lab">Scope</span>
+            <div class="odc-stscope-track">
+                <span class="@strip.ScopeClass" style="@strip.ScopeStyle"></span>
+            </div>
+        </div>
+    }
+
+    <p class="odc-stscope-summary" aria-live="polite">
+        <span class="material-icons" aria-hidden="true">compare_arrows</span>
+        <span>@OdsSmartTagScope.Describe(Value, Term)</span>
+    </p>
+
+    @if (ShowActions && !Disabled)
+    {
+        <div class="odc-stscope-actions">
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="event_repeat"
+                       Disabled="@Value.SameAs(OdsSmartTagScope.FromTerm(Term))"
+                       OnClick="CopyTerm">Copy the contract term</OdsButton>
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="all_inclusive"
+                       Disabled="@Value.IsOpen"
+                       OnClick="RemoveLimits">Remove both limits</OdsButton>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public OdsScopeRange Value { get; set; }
+
+    /// <summary>Fires with the next scope, each side already reduced to a calendar day.</summary>
+    [Parameter] public EventCallback<OdsScopeRange> ValueChanged { get; set; }
+
+    /// <summary>The contract's CURRENT term — shown for comparison only, never validated against.</summary>
+    [Parameter] public OdsScopeTerm Term { get; set; }
+
+    [Parameter] public string? StartError { get; set; }
+
+    [Parameter] public string? EndError { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>The term-vs-scope strip. Default true.</summary>
+    [Parameter] public bool ShowStrip { get; set; } = true;
+
+    /// <summary>"Copy the contract term" · "Remove both limits". Default true.</summary>
+    [Parameter] public bool ShowActions { get; set; } = true;
+
+    [Parameter] public string? Class { get; set; }
+
+    private Task OnStartChanged(DateTime? day) => ValueChanged.InvokeAsync(Value with { Start = day?.Date });
+
+    private Task OnEndChanged(DateTime? day) => ValueChanged.InvokeAsync(Value with { End = day?.Date });
+
+    private readonly string _startId = $"odc-stscope-start-{Guid.NewGuid():N}";
+
+    private Task CopyTerm() => ApplyShortcut(OdsSmartTagScope.FromTerm(Term));
+
+    private Task RemoveLimits() => ApplyShortcut(OdsScopeRange.Open);
+
+    // A shortcut disables itself once applied (it would do nothing a second time), and a disabled
+    // button drops keyboard focus to the document. Focus moves to "Match from" instead (WCAG 2.4.3).
+    private async Task ApplyShortcut(OdsScopeRange next)
+    {
+        await ValueChanged.InvokeAsync(next);
+        try { await Js.InvokeVoidAsync("odsFocusById", _startId); }
+        catch (JSException) { /* focus is a courtesy; the value already changed */ }
+        catch (InvalidOperationException) { /* prerender: no JS */ }
+    }
+
+    // ── The strip: bars on one shared axis; an open side runs to the track edge and ends dashed ──
+
+    private sealed record StripModel(
+        string? PointStyle, string TermClass, string TermStyle, string ScopeClass, string ScopeStyle);
+
+    private static double Ms(DateTime day) => (day.Date - DateTime.UnixEpoch.Date).TotalMilliseconds;
+
+    /// <summary>The shared axis: an explicit value, so no position depends on a getter having run.</summary>
+    private readonly record struct Axis(double Lo, double Hi)
+    {
+        public double X(DateTime day) => (Ms(day) - Lo) / (Hi - Lo) * 100;
+    }
+
+    private StripModel? Strip
+    {
+        get
+        {
+            var oneOff = Term.IsOneOff;
+            var ts = oneOff ? null : Term.StartDate?.Date;
+            var te = oneOff ? null : Term.EndDate?.Date;
+            var pt = oneOff ? Term.CompletionDate?.Date : null;
+            var points = new[] { ts, te, pt, Value.Start?.Date, Value.End?.Date }
+                .OfType<DateTime>()
+                .Where(d => !SmartTagScopeRules.IsOutOfRange(d))
+                .ToList();
+            if (points.Count == 0)
+                return null;
+
+            const double Day = 86_400_000;
+            double lo = points.Min(Ms), hi = points.Max(Ms);
+            if (hi - lo < Day * 30)
+            {
+                lo -= Day * 60;
+                hi += Day * 60;
+            }
+            var pad = (hi - lo) * 0.14;
+            var axis = new Axis(lo - pad, hi + pad);
+
+            return new StripModel(
+                pt is { } p && !SmartTagScopeRules.IsOutOfRange(p)
+                    ? string.Create(CultureInfo.InvariantCulture, $"left: {axis.X(p):0.##}%")
+                    : null,
+                BarClass("term", ts, te),
+                BarStyle(axis, ts, te),
+                BarClass("scope", Value.Start, Value.End),
+                BarStyle(axis, Value.Start, Value.End));
+        }
+    }
+
+    private static string BarClass(string kind, DateTime? start, DateTime? end) =>
+        $"odc-stscope-bar {kind}{(start is null ? " open-l" : "")}{(end is null ? " open-r" : "")}";
+
+    private static string BarStyle(Axis axis, DateTime? start, DateTime? end)
+    {
+        var left = start is { } s ? axis.X(s) : 0;
+        var right = end is { } e ? axis.X(e) : 100;
+        var width = Math.Max(right - left, 0.8);
+        return string.Create(CultureInfo.InvariantCulture, $"left: {left:0.##}%; width: {width:0.##}%");
+    }
+}

@@ -7,7 +7,7 @@ namespace Odyssey.Dtos.Finance;
 /// Why a contract's smart-tag transaction match is structurally empty. Crosses the wire as an ORDINAL
 /// (no string-enum converter is registered); ordinals are a wire contract and are never renumbered — a
 /// new reason appends. Precedence when several apply: <see cref="NoSmartTags"/>, then
-/// <see cref="NoContactParties"/>, then <see cref="InvalidTerm"/>.
+/// <see cref="NoContactParties"/>.
 /// </summary>
 public enum ContractSmartTagEmptyReason
 {
@@ -20,7 +20,11 @@ public enum ContractSmartTagEmptyReason
     /// <summary>The contract has no party with a contact, so no merchant can match.</summary>
     NoContactParties = 2,
 
-    /// <summary>The contract's start date falls after its end date, so the term window is empty.</summary>
+    /// <summary>
+    /// RESERVED — no longer emitted (issue #308). It meant "the term ends before it starts"; the match
+    /// now reads the smart-tag scope, whose order a CHECK constraint holds, so an empty window is
+    /// unrepresentable. Kept so the ordinal is never reused.
+    /// </summary>
     InvalidTerm = 3,
 }
 

@@ -1,0 +1,27 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject IContractsApiClient Contracts
+@inject ISnackbar Snackbar
+
+@*
+    EditSmartTagScopeDialog — "Edit smart-tag scope" (Odyssey Design System · ui_kits/web/
+    AddContractModal.jsx EditSmartTagScopeModal, issue #308), opened from "Edit scope" on the
+    contract's Smart tags section.
+
+    Save is a contract PUT that changes ONLY the two scope fields and carries every other field
+    forward from the record — PUT is a full replacement. The client checks mirror the server through
+    the shared rules: bounds on submit (400), the order error live (422, keyed on the end). Neither is
+    ever checked against the term.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged" OnSaved="OnSaved"
+               Icon="date_range" Title="Edit smart-tag scope"
+               Subtitle="Smart tags match transactions dated inside this range. It is set separately from the contract’s term, so payments that arrive after the term ends can still count here."
+               SubmitLabel="Save scope" SubmitIcon="check"
+               SubmitDisabled="@SubmitBlocked"
+               RequiredLegend="false"
+               OnSubmit="SaveAsync">
+    <OdsSmartTagScopeField Value="@_scope" ValueChanged="OnScopeChanged"
+                           Term="@OdsScopeTerm.Of(Contract)"
+                           StartError="@ShownStartError" EndError="@ShownEndError" />
+</OdsFormDialog>

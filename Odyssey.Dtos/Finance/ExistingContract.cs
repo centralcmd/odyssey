@@ -20,6 +20,15 @@ public sealed record ExistingContract
     /// <summary>Completion date of a one-off contract; null for term contracts (issue #174 §6).</summary>
     public DateTime? CompletionDate { get; set; }
 
+    /// <summary>
+    /// First day of the smart-tag scope (issue #308), always UTC midnight; null = open. Unlike the
+    /// term dates, which are returned as entered, the scope is a normalised calendar day.
+    /// </summary>
+    public DateTime? SmartTagScopeStart { get; set; }
+
+    /// <summary>Last day (inclusive) of the smart-tag scope, always UTC midnight; null = open.</summary>
+    public DateTime? SmartTagScopeEnd { get; set; }
+
     /// <summary>Derived, never stored (issue #174 §6).</summary>
     public ContractStatus Status { get; set; }
 

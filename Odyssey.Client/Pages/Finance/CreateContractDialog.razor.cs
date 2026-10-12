@@ -44,6 +44,9 @@ public partial class CreateContractDialog
     private DateTime? _ready;
     private DateTime? _signed;
 
+    /// <summary>The sync prompt's tick (issue #308): write the scope from the NEW term. Off by default.</summary>
+    private bool _syncScope;
+
     private string? _nameError;
     private string? _typeError;
     private string? _endError;
@@ -114,6 +117,27 @@ public partial class CreateContractDialog
         _completionDate = contract.CompletionDate;
         _ready          = contract.Ready;
         _signed         = contract.Signed;
+    }
+
+    /// <summary>
+    /// The term as currently entered. A one-off without its date yet still reads as a one-off — its
+    /// scope is open either way, and the band must not flicker while the date is being picked.
+    /// </summary>
+    private OdsScopeTerm TermAfter => _mode == OneOffMode
+        ? new(null, null, _completionDate ?? DateTime.MinValue)
+        : new(_startDate, _endDate, null);
+
+    /// <summary>
+    /// The scope this edit writes: the stored one, carried forward, unless the sync prompt is both
+    /// showing and ticked. Read through the prompt's own condition, so a tick left from a moment the
+    /// band was visible cannot apply once the term edit that raised it has been undone.
+    /// </summary>
+    private OdsScopeRange ScopeToWrite(ExistingContract contract)
+    {
+        var stored = OdsSmartTagScope.Of(contract);
+        return _syncScope && OdsSmartTagScopeSyncPrompt.ShouldShow(OdsScopeTerm.Of(contract), TermAfter, stored)
+            ? OdsSmartTagScope.FromTerm(TermAfter)
+            : stored;
     }
 
     private void OnModeChanged(string mode)
@@ -219,6 +243,7 @@ public partial class CreateContractDialog
 
         if (IsEdit)
         {
+            var scope = ScopeToWrite(Contract!);
             var update = new UpdateContract
             {
                 Name = name,
@@ -230,6 +255,11 @@ public partial class CreateContractDialog
                 StartDate = startDate,
                 EndDate = endDate,
                 CompletionDate = completionDate,
+                // Full replacement: an omitted scope OPENS the smart-tag match (issue #308). Carried
+                // forward from the record — a term edit never moves the scope by itself — unless the
+                // sync prompt is ticked, which writes the scope the NEW term gives.
+                SmartTagScopeStart = OdsSmartTagScope.ToWire(scope.Start),
+                SmartTagScopeEnd = OdsSmartTagScope.ToWire(scope.End),
                 // Archive/restore and pause/resume are separate row actions, and PUT is a full
                 // replacement — so both stamps are carried forward from the record as it stands.
                 // Omitting either would let an ordinary field edit silently restore or resume it.

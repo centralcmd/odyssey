@@ -1,6 +1,7 @@
 using System.Globalization;
 using Odyssey.Context;
 using Odyssey.TestData.Catalog;
+using SmartTagScopeRules = Odyssey.Dtos.Finance.SmartTagScopeRules;
 using TermLabel = Odyssey.Dtos.Finance.TermLabel;
 using static Odyssey.TestData.DemoDataDefaults;
 
@@ -401,6 +402,8 @@ public static class ContractGenerator
         {
             var contractId = IdFor(spec.Name);
             var (ready, signed) = SignatureStamps(spec, createdAt);
+            // Seeded contracts look like created ones: the scope copied from the term (issue #308).
+            var (scopeStart, scopeEnd) = SmartTagScopeRules.FromTerm(spec.StartDate, spec.EndDate, null);
             contracts.Add(new Contract
             {
                 ContractId = contractId,
@@ -410,6 +413,8 @@ public static class ContractGenerator
                 ReferenceNumber = ReferenceNumbers.GetValueOrDefault(spec.Name),
                 StartDate = spec.StartDate,
                 EndDate = spec.EndDate,
+                SmartTagScopeStart = scopeStart,
+                SmartTagScopeEnd = scopeEnd,
                 Archived = spec.Archived ? createdAt.AddYears(1) : null,
                 // Derived from the anchor, never from the wall clock, so the seed stays deterministic
                 // and re-running it stays idempotent.
@@ -490,6 +495,8 @@ public static class ContractGenerator
             }
 
             var contractId = DeterministicGuid.From($"account-term-contract::{accountName}");
+            DateTime? endDate = account.Closed is { } closed && closed >= account.Opened ? closed : null;
+            var (scopeStart, scopeEnd) = SmartTagScopeRules.FromTerm(account.Opened, endDate, null);
             contracts.Add(new Contract
             {
                 ContractId = contractId,
@@ -498,7 +505,9 @@ public static class ContractGenerator
                 Description = string.IsNullOrEmpty(account.Description) ? null : account.Description,
                 ReferenceNumber = string.IsNullOrEmpty(account.AccountNumber) ? null : account.AccountNumber,
                 StartDate = account.Opened,
-                EndDate = account.Closed is { } closed && closed >= account.Opened ? closed : null,
+                EndDate = endDate,
+                SmartTagScopeStart = scopeStart,
+                SmartTagScopeEnd = scopeEnd,
                 Archived = account.Archived,
                 CreatedAtUtc = createdAt,
             });

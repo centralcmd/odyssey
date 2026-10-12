@@ -625,6 +625,8 @@ public sealed class DataExportService
                 StartDate = contract.StartDate,
                 EndDate = contract.EndDate,
                 CompletionDate = contract.CompletionDate,
+                SmartTagScopeStart = contract.SmartTagScopeStart,
+                SmartTagScopeEnd = contract.SmartTagScopeEnd,
                 Archived = contract.Archived,
                 Paused = contract.Paused,
                 CreatedAtUtc = contract.CreatedAtUtc,

@@ -379,6 +379,9 @@ public partial class ContractSmartTagTransactionsApiTests
             Type = Odyssey.Context.ContractType.Subscription,
             StartDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             EndDate = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
+            // R2 reads the scope (issue #308); set as create would copy it from the term.
+            SmartTagScopeStart = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            SmartTagScopeEnd = new DateTime(2026, 12, 31, 0, 0, 0, DateTimeKind.Utc),
             CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         };
         db.AddRange(account, supplier, landlord, tag, contract);

@@ -79,7 +79,8 @@
    archived contract, like every section above.
 
    The match is scoped by the SERVER (issue #226): a transaction reads here only when it carries a
-   watched tag, is dated inside the term and names a contact party as its merchant. Without
+   watched tag, is dated inside the contract's smart-tag scope (issue #308) and names a contact party
+   as its merchant. Without
    transactions.read the read is never issued — the chips stay and the body names the claim. *@
 <div class="con-section">
     <OdsSectionDivider Label="Smart tags"
@@ -91,10 +92,10 @@
                              Chrome="false"
                              CanWrite="CanWrite"
                              CanReadTransactions="CanReadTransactions"
-                             IsOneOff="@(Contract.CompletionDate is not null)"
                              ScopeKey="@SmartTagScopeKey"
+                             ScopeNote="@SmartTagScopeNote"
                              OnAddParty="OnAddParty"
-                             OnEditContract="OnEditContract"
+                             OnEditScope="OnEditScope"
                              FormatMoney="FormatMoney"
                              EmptyDesc="@ContractSmartTagsEmptyDesc"
                              NoMatchDesc="@SmartTagsNoMatchDesc"

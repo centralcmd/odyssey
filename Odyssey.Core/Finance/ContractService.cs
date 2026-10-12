@@ -263,6 +263,9 @@ public class ContractService
         // The same helper PUT runs, so a rule enforced on one write path and not the other cannot
         // happen — the defect class this codebase keeps closing.
         var (ready, signed) = NormalizeSignature(request.Ready, request.Signed);
+        // NewContract carries no scope: the server always copies the term as stored (issue #308 §8
+        // rule 4), the same reading the migration backfill and the demo seed take.
+        var (scopeStart, scopeEnd) = SmartTagScopeRules.FromTerm(startDate, endDate, completionDate);
 
         var contract = new Contract
         {
@@ -273,6 +276,8 @@ public class ContractService
             StartDate = startDate,
             EndDate = endDate,
             CompletionDate = completionDate,
+            SmartTagScopeStart = scopeStart,
+            SmartTagScopeEnd = scopeEnd,
             Archived = null,
             Paused = null,
             // Both omitted — the normal path — creates the contract in Draft.
@@ -327,6 +332,8 @@ public class ContractService
         await EnsureTypeChangeKeepsPartiesLegalAsync(contract, request.Type, cancellationToken);
 
         var (startDate, endDate, completionDate) = NormalizeDates(request.StartDate, request.EndDate, request.CompletionDate);
+        // Written only from its own fields, never derived from the term (issue #308 Non-Goal 1).
+        var (scopeStart, scopeEnd) = NormalizeSmartTagScope(request.SmartTagScopeStart, request.SmartTagScopeEnd);
         // PUT is a full replacement, so a present value SETS each stamp and an omitted one CLEARS it.
         // Guarded before anything is written back, so "stored" below still means "as of before this
         // call".
@@ -343,6 +350,10 @@ public class ContractService
         contract.StartDate = startDate;
         contract.EndDate = endDate;
         contract.CompletionDate = completionDate;
+        var scopeStartChanged = !Nullable.Equals(contract.SmartTagScopeStart, scopeStart);
+        var scopeEndChanged = !Nullable.Equals(contract.SmartTagScopeEnd, scopeEnd);
+        contract.SmartTagScopeStart = scopeStart;
+        contract.SmartTagScopeEnd = scopeEnd;
         // The lifecycle is ORDERED, not orthogonal: archiving retires a contract that is already
         // over, so only an ended one can be archived. Validated against the request's dates, not the
         // stored ones, so a single PUT may end and archive in one go.
@@ -383,6 +394,7 @@ public class ContractService
         await context.SaveChangesAsync(cancellationToken);
 
         LogStampWrites(id, previousStamps, stamps, userId);
+        LogSmartTagScopeChange(id, scopeStartChanged, scopeEndChanged, userId);
 
         var reloaded = await LoadWithDetails(id, cancellationToken);
         return await ToDto(reloaded!, Today, cancellationToken);
@@ -728,6 +740,35 @@ public class ContractService
     }
 
     /// <summary>
+    /// The smart-tag scope's write rules (issue #308 §8): each bound to its UTC calendar day (rule 2),
+    /// the bounds re-checked AFTER normalisation (an offset input on 1900-01-01 can land on
+    /// 1899-12-31, past the <c>[Range]</c> floor it passed as bound), then start ≤ end (rule 3). The
+    /// scope is never validated against the term — a scope outside it is the point of the feature.
+    /// </summary>
+    private static (DateTime? Start, DateTime? End) NormalizeSmartTagScope(DateTime? start, DateTime? end)
+    {
+        var scopeStart = SmartTagScopeRules.NormalizeDay(start);
+        var scopeEnd = SmartTagScopeRules.NormalizeDay(end);
+        if (SmartTagScopeRules.IsOutOfRange(scopeStart))
+        {
+            throw new DomainValidationException(
+                SmartTagScopeRules.OutOfRangeMessage, null, nameof(UpdateContract.SmartTagScopeStart));
+        }
+        if (SmartTagScopeRules.IsOutOfRange(scopeEnd))
+        {
+            throw new DomainValidationException(
+                SmartTagScopeRules.OutOfRangeMessage, null, nameof(UpdateContract.SmartTagScopeEnd));
+        }
+        // A combination of individually valid values, hence 422 rather than 400.
+        if (SmartTagScopeRules.IsInverted(scopeStart, scopeEnd))
+        {
+            throw new DomainUnprocessableException(
+                SmartTagScopeRules.InvertedMessage, nameof(UpdateContract.SmartTagScopeEnd));
+        }
+        return (scopeStart, scopeEnd);
+    }
+
+    /// <summary>
     /// Normalizes both signature stamps to UTC and runs the three signature guards (issue #145 §8).
     /// Shared verbatim by <c>Create</c> and <c>Update</c>: a rule enforced on one write path and not
     /// the other is the defect class this codebase keeps closing.
@@ -925,6 +966,27 @@ public class ContractService
             userId ?? "(unknown)");
     }
 
+    /// <summary>
+    /// The scope-change audit line (issue #308 §7.7): which bound(s) changed and who changed them,
+    /// never the dates. A scope change records no contract event — like the smart-tag list, it is a
+    /// view configuration and changes no money, term or party. Create does not log: the scope there
+    /// is derived, not chosen.
+    /// </summary>
+    private void LogSmartTagScopeChange(Guid contractId, bool startChanged, bool endChanged, string? userId)
+    {
+        if (!startChanged && !endChanged)
+        {
+            return;
+        }
+
+        var bounds = startChanged && endChanged ? "start, end" : startChanged ? "start" : "end";
+        logger.LogInformation(
+            "Contract smart-tag scope changed: contract {ContractId}, bounds {ScopeBounds}, by user {UserId}.",
+            contractId,
+            bounds,
+            userId ?? "(unknown)");
+    }
+
     /// <summary>What a log slot reads when the stamp is absent on that side of the write.</summary>
     private const string NoValue = "(none)";
 
@@ -984,6 +1046,9 @@ public class ContractService
             StartDate = contract.StartDate,
             EndDate = contract.EndDate,
             CompletionDate = contract.CompletionDate,
+            // Relabelled Utc: EF materialises datetime(6) as Unspecified, and the scope is a UTC day.
+            SmartTagScopeStart = AsUtc(contract.SmartTagScopeStart),
+            SmartTagScopeEnd = AsUtc(contract.SmartTagScopeEnd),
             Status = ContractStatusRules.DeriveStatus(contract, today),
             Parties = contract.Parties
                 .OrderBy(p => p.ContractPartyId)
@@ -1002,4 +1067,7 @@ public class ContractService
             CreatedAtUtc = contract.CreatedAtUtc,
         };
     }
+
+    private static DateTime? AsUtc(DateTime? value) =>
+        value is { } v ? DateTime.SpecifyKind(v, DateTimeKind.Utc) : null;
 }

@@ -124,7 +124,15 @@ public sealed class ContractsController : ControllerBase
     [SwaggerOperation(Summary = "Update a contract's fields, including its archive and pause state (no dedicated archive or pause endpoint).",
         Description = @"422 when the requested type would leave an existing party holding a role that type
 rejects (issue #157). The body names each offending party by id, role and display name, and nothing is
-written — re-role those parties or detach them first.")]
+written — re-role those parties or detach them first.
+
+Full replacement: every field is replaced, and an omitted or null field is cleared. That includes the
+smart-tag scope (issue #308) — an omitted or null smartTagScopeStart / smartTagScopeEnd OPENS that side
+of the scope, widening a narrowed one, so a caller rebuilding this body from a loaded contract must carry
+both forward. Send each scope date as a calendar day with no offset (""2027-06-30"") or as UTC midnight
+(""2027-06-30T00:00:00Z""); a value with an offset is converted to UTC before the time of day is dropped.
+400 when a scope date falls outside 1900-01-01…9999-12-31; 422 (errors.smartTagScopeEnd) when the scope
+ends before it starts.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] UpdateContract request, CancellationToken cancellationToken = default)

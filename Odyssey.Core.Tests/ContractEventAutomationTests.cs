@@ -99,6 +99,9 @@ public class ContractEventAutomationTests
             StartDate = from.StartDate,
             EndDate = endDate ?? from.EndDate,
             CompletionDate = from.CompletionDate,
+            // Carried forward as every client builder does; omitted it would open the scope (#308).
+            SmartTagScopeStart = from.SmartTagScopeStart,
+            SmartTagScopeEnd = from.SmartTagScopeEnd,
             IsPaused = isPaused,
             IsArchived = isArchived,
             Ready = ready,

@@ -204,6 +204,7 @@ public class ContractPauseSurfaceTests
                  {
                      ("ContractsCard.razor.cs", CardSource()),
                      ("CreateContractDialog.razor.cs", Source("CreateContractDialog.razor.cs")),
+                     ("EditSmartTagScopeDialog.razor.cs", Source("EditSmartTagScopeDialog.razor.cs")),
                  })
         {
             var blocks = UpdateContractBlocks(source);
@@ -226,7 +227,14 @@ public class ContractPauseSurfaceTests
     /// signature pair is issue #145's: a write that omits them clears both signature stamps, flips a
     /// signed contract to <c>Draft</c> and drops it out of the run rate — for a reader who only
     /// clicked Archive or Pause. <c>ReferenceNumber</c> is issue #181's: not a stamp, but cleared by
-    /// an omission all the same.
+    /// an omission all the same. The smart-tag scope pair is issue #308's: an omitted bound OPENS
+    /// that side, silently widening a narrowed scope.
+    ///
+    /// <para>
+    /// The lint only recognises the <c>new UpdateContract { … };</c> form in the files it scans.
+    /// A new construction site must use that form — and be added to the scan — or extend the lint;
+    /// a target-typed <c>new()</c> or a <c>with</c> copy would escape it.
+    /// </para>
     /// </summary>
     private static readonly (string Member, string Consequence)[] RequiredStamps =
     [
@@ -235,6 +243,8 @@ public class ContractPauseSurfaceTests
         ("Ready", "clear the ready date"),
         ("Signed", "unsign the contract"),
         ("ReferenceNumber", "clear the reference number"),
+        ("SmartTagScopeStart", "open the smart-tag scope's start"),
+        ("SmartTagScopeEnd", "open the smart-tag scope's end"),
     ];
 
     private static IReadOnlyList<string> UpdateContractBlocks(string source) =>
@@ -258,6 +268,8 @@ public class ContractPauseSurfaceTests
                         Ready = d.Ready,
                         Signed = d.Signed,
                         ReferenceNumber = d.ReferenceNumber,
+                        SmartTagScopeStart = d.SmartTagScopeStart,
+                        SmartTagScopeEnd = d.SmartTagScopeEnd,
                     };
             """;
 

@@ -100,4 +100,37 @@ public sealed record UpdateContract
     /// </para>
     /// </summary>
     public DateTime? Signed { get; set; }
+
+    /// <summary>
+    /// First calendar day of the contract's smart-tag scope (issue #308): the date range the Smart
+    /// tags section matches transactions in, independent of the term. <see langword="null"/> means
+    /// <b>open</b> — no lower bound.
+    ///
+    /// <para>
+    /// <b>Full-replacement semantics</b>, like <see cref="Ready"/> and <see cref="Signed"/>: a present
+    /// value sets the bound, <see langword="null"/> or omitted <b>opens</b> it — so an omitted scope
+    /// widens a narrowed one. Every caller that rebuilds this DTO from a loaded record must carry it
+    /// forward; <c>ContractPauseSurfaceTests.RequiredStamps</c> keeps that a build failure.
+    /// </para>
+    ///
+    /// <para>
+    /// Send a calendar day with no offset (<c>2027-06-30</c>) or UTC midnight
+    /// (<c>2027-06-30T00:00:00Z</c>). A value with an offset is converted to UTC before the time of
+    /// day is dropped, so <c>2027-06-30T00:30:00+02:00</c> is stored as 2027-06-29.
+    /// </para>
+    /// </summary>
+    [Range(typeof(DateTime), SmartTagScopeRules.MinDateText, SmartTagScopeRules.MaxDateText,
+        ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true,
+        ErrorMessage = SmartTagScopeRules.OutOfRangeMessage)]
+    public DateTime? SmartTagScopeStart { get; set; }
+
+    /// <summary>
+    /// Last calendar day of the smart-tag scope (issue #308), inclusive. <see langword="null"/> means
+    /// <b>open</b> — no upper bound. The same full-replacement semantics and input form as
+    /// <see cref="SmartTagScopeStart"/>; it must not fall before the start (<c>422</c>).
+    /// </summary>
+    [Range(typeof(DateTime), SmartTagScopeRules.MinDateText, SmartTagScopeRules.MaxDateText,
+        ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true,
+        ErrorMessage = SmartTagScopeRules.OutOfRangeMessage)]
+    public DateTime? SmartTagScopeEnd { get; set; }
 }

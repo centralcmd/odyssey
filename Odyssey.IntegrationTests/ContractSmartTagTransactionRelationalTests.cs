@@ -308,12 +308,16 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
     private static async Task<Contract> SeedContractAsync(
         OdysseyContext context, DateTime? start = null, DateTime? end = null)
     {
+        // R2 reads the scope (issue #308), so it is set the way create copies it from the term.
+        var (scopeStart, scopeEnd) = SmartTagScopeRules.FromTerm(start ?? TermStart, end ?? TermEnd, null);
         var contract = new Contract
         {
             Name = "Power",
             Type = ContextContractType.Subscription,
             StartDate = start ?? TermStart,
             EndDate = end ?? TermEnd,
+            SmartTagScopeStart = scopeStart,
+            SmartTagScopeEnd = scopeEnd,
             CreatedAtUtc = TermStart,
         };
         context.Contracts.Add(contract);
