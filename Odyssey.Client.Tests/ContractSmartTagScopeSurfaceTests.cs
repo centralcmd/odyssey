@@ -138,6 +138,11 @@ public class ContractSmartTagScopeSurfaceTests
 
         cut.FindAll("button").Single(b => b.TextContent.Contains("Remove both limits", StringComparison.Ordinal)).Click();
         Assert.Equal(OdsScopeRange.Open, raised);
+
+        // The clicked shortcut disables itself, so focus moves to "Match from" rather than dropping
+        // to the document (WCAG 2.4.3).
+        var focused = Assert.Single(ctx.JSInterop.Invocations["odsFocusById"]);
+        Assert.Equal(cut.FindComponents<OdsDateField>()[0].Instance.Id, focused.Arguments[0]);
     }
 
     // ── The sync prompt ──────────────────────────────────────────────────────
@@ -168,6 +173,26 @@ public class ContractSmartTagScopeSurfaceTests
         Assert.Contains("It stays from 1 Mar 2021, no end", cut.Find(".odc-stsync-desc").TextContent, StringComparison.Ordinal);
         Assert.Contains("Also set the smart-tag scope to 1 Mar 2021 – 31 Aug 2026", cut.Markup, StringComparison.Ordinal);
         Assert.False(cut.FindComponent<OdsCheckbox>().Instance.Checked);
+
+        // Announced when it appears (4.1.3), and the checkbox is described by the sentence (1.3.1).
+        Assert.Equal("status", cut.Find(".odc-stsync").ParentElement!.GetAttribute("role"));
+        var descId = cut.Find(".odc-stsync-desc").Id;
+        Assert.Equal(descId, cut.Find("input[type=checkbox]").GetAttribute("aria-describedby"));
+        Assert.Equal(cut.Find(".odc-stsync-title").Id, cut.Find(".odc-stsync").GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public async Task The_sync_prompts_status_region_exists_before_the_band_does()
+    {
+        await using var ctx = NewContext();
+        var unchanged = new OdsScopeTerm(Day(2021, 3, 1), null, null);
+        var cut = ctx.Render<OdsSmartTagScopeSyncPrompt>(p => p
+            .Add(s => s.Before, unchanged)
+            .Add(s => s.After, unchanged)
+            .Add(s => s.Scope, new OdsScopeRange(Day(2021, 3, 1), null)));
+
+        Assert.Empty(cut.FindAll(".odc-stsync"));
+        Assert.Single(cut.FindAll("[role=status]"));
     }
 
     // ── The Edit contract dialog ─────────────────────────────────────────────

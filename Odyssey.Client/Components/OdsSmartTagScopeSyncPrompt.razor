@@ -8,20 +8,27 @@
     host's save writes OdsSmartTagScope.FromTerm(After) as the scope instead of carrying it forward.
 *@
 
-@if (Visible)
-{
-    <div class="odc-stsync @Class">
-        <span class="material-icons odc-stsync-ic" aria-hidden="true">sell</span>
-        <div class="odc-stsync-main">
-            <div class="odc-stsync-title">The smart-tag scope does not follow the term</div>
-            <div class="odc-stsync-desc">
-                It stays <b>@OdsSmartTagScope.FormatRange(Scope)</b> unless you change it here or from the Smart tags section.
+@* The status region is rendered ALWAYS, so a screen reader is told when the band appears mid-edit
+   (WCAG 4.1.3) — a live region inserted together with its content is not reliably announced. The
+   band itself is a group named by its title, and the checkbox is described by the sentence above
+   it (WCAG 1.3.1). *@
+<div role="status">
+    @if (Visible)
+    {
+        <div class="odc-stsync @Class" role="group" aria-labelledby="@TitleId">
+            <span class="material-icons odc-stsync-ic" aria-hidden="true">sell</span>
+            <div class="odc-stsync-main">
+                <div class="odc-stsync-title" id="@TitleId">The smart-tag scope does not follow the term</div>
+                <div class="odc-stsync-desc" id="@DescId">
+                    It stays <b>@OdsSmartTagScope.FormatRange(Scope)</b> unless you change it here or from the Smart tags section.
+                </div>
+                <OdsCheckbox Checked="@Checked" CheckedChanged="CheckedChanged"
+                             aria-describedby="@DescId"
+                             Label="@($"Also set the smart-tag scope to {OdsSmartTagScope.FormatRange(Proposed)}")" />
             </div>
-            <OdsCheckbox Checked="@Checked" CheckedChanged="CheckedChanged"
-                         Label="@($"Also set the smart-tag scope to {OdsSmartTagScope.FormatRange(Proposed)}")" />
         </div>
-    </div>
-}
+    }
+</div>
 
 @code {
     /// <summary>The term as loaded, before this edit.</summary>
@@ -39,6 +46,12 @@
     [Parameter] public EventCallback<bool> CheckedChanged { get; set; }
 
     [Parameter] public string? Class { get; set; }
+
+    private readonly string _idBase = $"odc-stsync-{Guid.NewGuid():N}";
+
+    private string TitleId => $"{_idBase}-title";
+
+    private string DescId => $"{_idBase}-desc";
 
     private OdsScopeRange Proposed => OdsSmartTagScope.FromTerm(After);
 

@@ -372,7 +372,10 @@ public class ContractSmartTagSurfaceTests
 
         var scope = harness.Cut.Find(".odc-smarttags-scope");
         Assert.Contains("any date", scope.TextContent, StringComparison.Ordinal);
-        Assert.Contains("· one-off contract, no date rule", scope.QuerySelector(".odc-smarttags-scope-note")!.TextContent, StringComparison.Ordinal);
+        var note = scope.QuerySelector(".odc-smarttags-scope-note")!;
+        Assert.Contains("one-off contract, no date rule", note.TextContent, StringComparison.Ordinal);
+        // The separator is visual only; a screen reader should not read "middle dot".
+        Assert.Equal("true", note.QuerySelector("span")!.GetAttribute("aria-hidden"));
     }
 
     /// <summary>

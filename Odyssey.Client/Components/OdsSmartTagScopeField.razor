@@ -1,5 +1,6 @@
 @using System.Globalization
 @using Odyssey.Dtos.Finance
+@inject IJSRuntime Js
 
 @*
     OdsSmartTagScopeField — the editor for a contract's smart-tag scope (Odyssey Design System ·
@@ -17,7 +18,7 @@
 
 <div class="odc-stscope @Class">
     <div class="odc-stscope-grid">
-        <OdsDateField Label="Match from" Value="@Value.Start" ValueChanged="OnStartChanged"
+        <OdsDateField Id="@_startId" Label="Match from" Value="@Value.Start" ValueChanged="OnStartChanged"
                       Placeholder="No start limit" Help="Leave empty for no start limit."
                       Min="@SmartTagScopeRules.MinDate" Max="@SmartTagScopeRules.MaxDate"
                       Error="@StartError" Disabled="@Disabled" />
@@ -94,21 +95,34 @@
 
     private Task OnEndChanged(DateTime? day) => ValueChanged.InvokeAsync(Value with { End = day?.Date });
 
-    private Task CopyTerm() => ValueChanged.InvokeAsync(OdsSmartTagScope.FromTerm(Term));
+    private readonly string _startId = $"odc-stscope-start-{Guid.NewGuid():N}";
 
-    private Task RemoveLimits() => ValueChanged.InvokeAsync(OdsScopeRange.Open);
+    private Task CopyTerm() => ApplyShortcut(OdsSmartTagScope.FromTerm(Term));
+
+    private Task RemoveLimits() => ApplyShortcut(OdsScopeRange.Open);
+
+    // A shortcut disables itself once applied (it would do nothing a second time), and a disabled
+    // button drops keyboard focus to the document. Focus moves to "Match from" instead (WCAG 2.4.3).
+    private async Task ApplyShortcut(OdsScopeRange next)
+    {
+        await ValueChanged.InvokeAsync(next);
+        try { await Js.InvokeVoidAsync("odsFocusById", _startId); }
+        catch (JSException) { /* focus is a courtesy; the value already changed */ }
+        catch (InvalidOperationException) { /* prerender: no JS */ }
+    }
 
     // ── The strip: bars on one shared axis; an open side runs to the track edge and ends dashed ──
 
     private sealed record StripModel(
         string? PointStyle, string TermClass, string TermStyle, string ScopeClass, string ScopeStyle);
 
-    private double _lo;
-    private double _hi;
-
-    private double X(DateTime day) => (Ms(day) - _lo) / (_hi - _lo) * 100;
-
     private static double Ms(DateTime day) => (day.Date - DateTime.UnixEpoch.Date).TotalMilliseconds;
+
+    /// <summary>The shared axis: an explicit value, so no position depends on a getter having run.</summary>
+    private readonly record struct Axis(double Lo, double Hi)
+    {
+        public double X(DateTime day) => (Ms(day) - Lo) / (Hi - Lo) * 100;
+    }
 
     private StripModel? Strip
     {
@@ -133,25 +147,26 @@
                 hi += Day * 60;
             }
             var pad = (hi - lo) * 0.14;
-            _lo = lo - pad;
-            _hi = hi + pad;
+            var axis = new Axis(lo - pad, hi + pad);
 
             return new StripModel(
-                pt is { } p ? string.Create(CultureInfo.InvariantCulture, $"left: {X(p):0.##}%") : null,
+                pt is { } p && !SmartTagScopeRules.IsOutOfRange(p)
+                    ? string.Create(CultureInfo.InvariantCulture, $"left: {axis.X(p):0.##}%")
+                    : null,
                 BarClass("term", ts, te),
-                BarStyle(ts, te),
+                BarStyle(axis, ts, te),
                 BarClass("scope", Value.Start, Value.End),
-                BarStyle(Value.Start, Value.End));
+                BarStyle(axis, Value.Start, Value.End));
         }
     }
 
     private static string BarClass(string kind, DateTime? start, DateTime? end) =>
         $"odc-stscope-bar {kind}{(start is null ? " open-l" : "")}{(end is null ? " open-r" : "")}";
 
-    private string BarStyle(DateTime? start, DateTime? end)
+    private static string BarStyle(Axis axis, DateTime? start, DateTime? end)
     {
-        var left = start is { } s ? X(s) : 0;
-        var right = end is { } e ? X(e) : 100;
+        var left = start is { } s ? axis.X(s) : 0;
+        var right = end is { } e ? axis.X(e) : 100;
         var width = Math.Max(right - left, 0.8);
         return string.Create(CultureInfo.InvariantCulture, $"left: {left:0.##}%; width: {width:0.##}%");
     }
