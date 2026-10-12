@@ -244,8 +244,10 @@ public class ContractSmartTagScopeServiceTests
         Assert.Contains(created.ContractId.ToString(), line.Message, StringComparison.Ordinal);
         Assert.Contains(UserId, line.Message, StringComparison.Ordinal);
         Assert.Contains("bounds end", line.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain("2027", line.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain("2026", line.Message, StringComparison.Ordinal);
+        // The GUID is random hex and can contain "2026"/"2027" by chance, so it is removed first.
+        var withoutIds = line.Message.Replace(created.ContractId.ToString(), string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("2027", withoutIds, StringComparison.Ordinal);
+        Assert.DoesNotContain("2026", withoutIds, StringComparison.Ordinal);
     }
 
     [Fact]

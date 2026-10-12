@@ -349,21 +349,16 @@ public class DemoDataSeederTests
         var contracts = await context.Contracts.AsNoTracking().ToListAsync();
 
         Assert.NotEmpty(contracts);
-        Assert.Contains(contracts, c => c.SmartTagScopeStart is not null);
+        // The demo set holds term contracts only (the generator sets no CompletionDate), so each
+        // scope is pinned against the term's own calendar days — independently of the rule the
+        // generator calls — and both open-ended and closed terms must be present to be checked.
+        Assert.All(contracts, c => Assert.Null(c.CompletionDate));
+        Assert.Contains(contracts, c => c.EndDate is null);
+        Assert.Contains(contracts, c => c.EndDate is not null);
         Assert.All(contracts, c =>
         {
-            var (start, end) = Odyssey.Dtos.Finance.SmartTagScopeRules.FromTerm(c.StartDate, c.EndDate, c.CompletionDate);
-            Assert.Equal(start, c.SmartTagScopeStart);
-            Assert.Equal(end, c.SmartTagScopeEnd);
-            if (c.CompletionDate is not null)
-            {
-                Assert.Null(c.SmartTagScopeStart);
-                Assert.Null(c.SmartTagScopeEnd);
-            }
-            else
-            {
-                Assert.Equal(c.StartDate?.Date, c.SmartTagScopeStart);
-            }
+            Assert.Equal(c.StartDate?.Date, c.SmartTagScopeStart);
+            Assert.Equal(c.EndDate?.Date, c.SmartTagScopeEnd);
         });
     }
 

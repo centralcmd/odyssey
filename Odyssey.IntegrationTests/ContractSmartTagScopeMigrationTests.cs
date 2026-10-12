@@ -67,10 +67,11 @@ public class ContractSmartTagScopeMigrationTests(MariaDbFixture fixture)
                 await AssertScopesAsync(context);
 
                 // The CHECK is the backstop for a write that bypasses the service's 422.
-                await Assert.ThrowsAnyAsync<Exception>(() => context.Database.ExecuteSqlRawAsync($"""
+                var refused = await Assert.ThrowsAsync<MySqlConnector.MySqlException>(() => context.Database.ExecuteSqlRawAsync($"""
                     UPDATE `Contracts` SET `SmartTagScopeStart` = '2027-07-01', `SmartTagScopeEnd` = '2027-06-30'
                     WHERE `ContractId` = '{term}'
                     """));
+                Assert.Contains("CK_Contracts_SmartTagScopeOrder", refused.Message, StringComparison.Ordinal);
                 // Same day is a valid one-day window.
                 await context.Database.ExecuteSqlRawAsync($"""
                     UPDATE `Contracts` SET `SmartTagScopeStart` = '2027-06-30', `SmartTagScopeEnd` = '2027-06-30'
