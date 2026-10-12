@@ -54,11 +54,18 @@ public class ContractCreatedByUserIdMigrationTests(MariaDbFixture fixture)
                 await MigrationSeam.MigrateToAsync(context, Subject);
                 Assert.True(await ColumnExistsAsync(context));
 
-                var contract = await context.Contracts.AsNoTracking().SingleAsync(c => c.ContractId == contractId);
-                Assert.Null(contract.CreatedByUserId);
-                Assert.Equal("Pre-existing lease", contract.Name);
-                Assert.Equal(ContextContractType.Rental, contract.Type);
-                Assert.Equal(createdAt, contract.CreatedAtUtc);
+                // Read by raw SQL, not through the entity: the database stops at this migration, and
+                // the CURRENT model maps columns later migrations add (issue #308's smart-tag scope),
+                // so an entity query would select columns that do not exist yet.
+                var contract = await MigrationSeam.RowAsync(context, $"""
+                    SELECT `CreatedByUserId`, `Name`, `Type`, `CreatedAtUtc` FROM `Contracts`
+                    WHERE `ContractId` = '{contractId}'
+                    """);
+                Assert.NotNull(contract);
+                Assert.Null(contract["CreatedByUserId"]);
+                Assert.Equal("Pre-existing lease", contract["Name"]);
+                Assert.Equal((int)ContextContractType.Rental, Convert.ToInt32(contract["Type"]));
+                Assert.Equal(createdAt, DateTime.SpecifyKind((DateTime)contract["CreatedAtUtc"]!, DateTimeKind.Utc));
             }
         }
         finally
