@@ -569,6 +569,29 @@ public partial class ContractsCard
     private Task OnContractEdited() =>
         _editContract is { } contract ? ReloadContract(contract.ContractId) : Task.CompletedTask;
 
+    // ── Smart-tag scope (issue #308): its own dialog, opened from the Smart tags section ──────────
+    private ExistingContract? _scopeContract;
+    private Guid _scopeContractKey;
+    private bool _scopeContractOpen;
+
+    private async Task EditScopeClicked(ContractListItem c)
+    {
+        if (!_canUpdate) return;
+
+        await EnsureDetail(c.ContractId);
+        if (!_details.TryGetValue(c.ContractId, out var detail))
+            return;
+
+        _scopeContract = detail;
+        _scopeContractKey = Guid.NewGuid();
+        _scopeContractOpen = true;
+    }
+
+    // The dialog's own success toast says "Smart-tag scope saved."; a second announcement here would
+    // read the same sentence twice.
+    private Task OnScopeEdited() =>
+        _scopeContract is { } contract ? ReloadContract(contract.ContractId) : Task.CompletedTask;
+
     // ── Archive / unarchive (PUT with IsArchived; archived contracts stay in the list, dimmed,
     //    hidden by default, and drop out of the active summary counts) ──────────────────────
     private async Task ToggleArchive(ContractListItem c)

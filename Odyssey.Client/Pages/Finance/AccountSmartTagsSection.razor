@@ -22,7 +22,8 @@
     On the account and property hosts the match is BY TAG, never by record — a watched tag's
     transactions appear under every record watching it. The CONTRACT host is scoped by the server
     (issue #226): one read, GET /api/contracts/{id}/smart-tag-transactions, returns only the
-    transactions that carry a watched tag, are dated inside the term and name a contact party as
+    transactions that carry a watched tag, are dated inside the contract's smart-tag scope (issue
+    #308) and name a contact party as
     their merchant — paged, searched and sorted server-side. The section restates the response's
     scope and maps its emptyReason to a state; it never composes the rule itself.
 
@@ -128,7 +129,7 @@
         @if (_hasTags && ScopeItems is { Count: > 0 } scopeItems)
         {
             @* tabindex="-1": the landing point for focus when a blocked state clears — the button that
-               fixed it (Add a party / Edit dates) unmounts with that state (WCAG 2.4.3). *@
+               fixed it (Add a party) unmounts with that state (WCAG 2.4.3). *@
             <div class="odc-smarttags-scope" role="group" aria-label="Scope applied" tabindex="-1" @ref="_scopeLine">
                 <span class="odc-smarttags-bar-label">Scope</span>
                 @foreach (var item in scopeItems)
@@ -136,8 +137,21 @@
                     <span class="odc-smarttags-scope-it">
                         <span class="material-icons" aria-hidden="true">@item.Icon</span>
                         <span class="odc-smarttags-scope-lab">@item.Label</span>
-                        <span class="odc-smarttags-scope-val">@item.Value</span>
+                        <span class="odc-smarttags-scope-val">
+                            @item.Value
+                            @if (item.Note is { } note)
+                            {
+                                <span class="odc-smarttags-scope-note">· @note</span>
+                            }
+                        </span>
                     </span>
+                }
+                @if (ShowScopeAction)
+                {
+                    <button type="button" class="odc-smarttags-scope-act" @onclick="@(() => OnEditScope.InvokeAsync())">
+                        <span class="material-icons" aria-hidden="true">edit_calendar</span>
+                        Edit scope
+                    </button>
                 }
             </div>
         }

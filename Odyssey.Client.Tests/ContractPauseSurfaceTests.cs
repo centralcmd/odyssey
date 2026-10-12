@@ -204,6 +204,7 @@ public class ContractPauseSurfaceTests
                  {
                      ("ContractsCard.razor.cs", CardSource()),
                      ("CreateContractDialog.razor.cs", Source("CreateContractDialog.razor.cs")),
+                     ("EditSmartTagScopeDialog.razor.cs", Source("EditSmartTagScopeDialog.razor.cs")),
                  })
         {
             var blocks = UpdateContractBlocks(source);
@@ -230,7 +231,7 @@ public class ContractPauseSurfaceTests
     /// that side, silently widening a narrowed scope.
     ///
     /// <para>
-    /// The lint only recognises the <c>new UpdateContract { … };</c> form in the two files it scans.
+    /// The lint only recognises the <c>new UpdateContract { … };</c> form in the files it scans.
     /// A new construction site must use that form — and be added to the scan — or extend the lint;
     /// a target-typed <c>new()</c> or a <c>with</c> copy would escape it.
     /// </para>

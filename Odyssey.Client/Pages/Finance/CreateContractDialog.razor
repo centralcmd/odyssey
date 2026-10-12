@@ -108,6 +108,16 @@
         </OdsFormRow>
     }
 
+    @* Smart-tag scope (issue #308) — edit only, and only once the term changed in a way that would
+       give a different scope. Unticked by default: the scope is independent of the term, so adding an
+       end date to an ongoing contract leaves it open with no extra step. *@
+    @if (IsEdit)
+    {
+        <OdsSmartTagScopeSyncPrompt Before="@OdsScopeTerm.Of(Contract!)" After="@TermAfter"
+                                    Scope="@OdsSmartTagScope.Of(Contract!)"
+                                    @bind-Checked="_syncScope" />
+    }
+
     @* SIGNATURE — edit only. A brand-new contract always starts as a Draft, so the two stamps are
        set later from the contract itself; on edit they matter, and neither is required. *@
     @if (IsEdit)

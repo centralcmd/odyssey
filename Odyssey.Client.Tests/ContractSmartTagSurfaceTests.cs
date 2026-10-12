@@ -190,15 +190,17 @@ public class ContractSmartTagSurfaceTests
 
     /// <summary>
     /// The contract host's copy states each of the three rules the server applies (issue #226) —
-    /// watched tag, inside the term, contact-party merchant — so a reader knows what will and will not
-    /// read here. The old copy's "no filter to rebuild" framing described the tag-only match.
+    /// watched tag, inside the smart-tag scope (issue #308), contact-party merchant — so a reader
+    /// knows what will and will not read here. The old copy's "no filter to rebuild" framing described
+    /// the tag-only match, and "inside the term" stopped being true when the scope replaced the term.
     /// </summary>
     [Theory]
     [InlineData(ContractDetailView.SmartTagsWritableEmptyDesc)]
     [InlineData(ContractDetailView.SmartTagsNoMatchDesc)]
-    public void The_contract_copy_names_the_term_and_party_rules(string copy)
+    public void The_contract_copy_names_the_scope_and_party_rules(string copy)
     {
-        Assert.Contains("inside the term", copy, StringComparison.Ordinal);
+        Assert.Contains("inside the smart-tag scope", copy, StringComparison.Ordinal);
+        Assert.DoesNotContain("inside the term", copy, StringComparison.Ordinal);
         Assert.Contains("contact party", copy, StringComparison.Ordinal);
         Assert.DoesNotContain("no filter to rebuild", copy, StringComparison.Ordinal);
     }
@@ -363,14 +365,39 @@ public class ContractSmartTagSurfaceTests
         Assert.Contains("one of 3 contact parties", scope, StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData(false, "any date — no term set")]
-    [InlineData(true, "any date — one-off contract")]
-    public void An_unbounded_window_says_why(bool isOneOff, string expected)
+    [Fact]
+    public void An_unbounded_window_reads_any_date_followed_by_the_hosts_note()
     {
-        var harness = Render(scoped: Envelope(unbounded: true), isOneOff: isOneOff);
+        var harness = Render(scoped: Envelope(unbounded: true), scopeNote: "one-off contract, no date rule");
 
-        Assert.Contains(expected, harness.Cut.Find(".odc-smarttags-scope").TextContent, StringComparison.Ordinal);
+        var scope = harness.Cut.Find(".odc-smarttags-scope");
+        Assert.Contains("any date", scope.TextContent, StringComparison.Ordinal);
+        Assert.Contains("· one-off contract, no date rule", scope.QuerySelector(".odc-smarttags-scope-note")!.TextContent, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// "Edit scope" ends the scope line for a writer who can read the match (issue #308), and opens the
+    /// host's scope dialog; a read-only viewer gets no action.
+    /// </summary>
+    [Fact]
+    public void Edit_scope_ends_the_scope_line_for_a_writer()
+    {
+        var opened = false;
+        var harness = Render(scoped: Envelope(partyContacts: 1), onEditScope: () => opened = true);
+
+        var action = harness.Cut.Find(".odc-smarttags-scope .odc-smarttags-scope-act");
+        Assert.Contains("Edit scope", action.TextContent, StringComparison.Ordinal);
+        action.Click();
+        Assert.True(opened);
+    }
+
+    [Fact]
+    public void A_read_only_viewer_gets_no_edit_scope_action()
+    {
+        var harness = Render(scoped: Envelope(partyContacts: 1), canWrite: false);
+
+        Assert.NotEmpty(harness.Cut.FindAll(".odc-smarttags-scope"));
+        Assert.Empty(harness.Cut.FindAll(".odc-smarttags-scope-act"));
     }
 
     /// <summary>No contact party: the body says why nothing can match, and offers the one fix.</summary>
@@ -400,26 +427,18 @@ public class ContractSmartTagSurfaceTests
     }
 
     /// <summary>
-    /// An invalid term names both dates — the end day being the one before the exclusive bound — and
-    /// the scope line is withheld, since its window would read backwards.
+    /// <c>InvalidTerm</c> (3) is reserved and never emitted (issue #308), so the section has no state
+    /// for it: should a stale server send it anyway, nothing reads "The term ends before it starts"
+    /// and nothing offers to edit dates.
     /// </summary>
     [Fact]
-    public void An_invalid_term_names_both_dates_and_offers_to_edit_them()
+    public void The_retired_invalid_term_reason_has_no_state_of_its_own()
     {
-        var edited = false;
-        var harness = Render(
-            scoped: Envelope(ContractSmartTagEmptyReason.InvalidTerm,
-                from: new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-                toExclusive: new DateTime(2026, 3, 2, 0, 0, 0, DateTimeKind.Utc)),
-            onEditContract: () => edited = true);
+        var harness = Render(scoped: Envelope(ContractSmartTagEmptyReason.InvalidTerm));
 
         var markup = harness.Cut.Markup;
-        Assert.Contains("The term ends before it starts", markup, StringComparison.Ordinal);
-        Assert.Contains($"Start date {ScopeDay(new DateTime(2026, 6, 1))} is after end date {ScopeDay(new DateTime(2026, 3, 1))}", markup, StringComparison.Ordinal);
-        Assert.Empty(harness.Cut.FindAll(".odc-smarttags-scope"));
-
-        harness.Cut.FindAll(".odc-smarttags-blocked button").Single(b => b.TextContent.Contains("Edit dates")).Click();
-        Assert.True(edited);
+        Assert.DoesNotContain("The term ends before it starts", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Edit dates", markup, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -667,9 +686,9 @@ public class ContractSmartTagSurfaceTests
         string? noMatchDesc = null,
         ContractSmartTagTransactionsResult? scoped = null,
         bool canReadTransactions = true,
-        bool isOneOff = false,
+        string? scopeNote = null,
         Action? onAddParty = null,
-        Action? onEditContract = null)
+        Action? onEditScope = null)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -747,9 +766,9 @@ public class ContractSmartTagSurfaceTests
             .Add(s => s.EmptyDesc, emptyDesc)
             .Add(s => s.NoMatchDesc, noMatchDesc)
             .Add(s => s.CanReadTransactions, canReadTransactions)
-            .Add(s => s.IsOneOff, isOneOff)
+            .Add(s => s.ScopeNote, scopeNote)
             .Add(s => s.OnAddParty, onAddParty ?? (() => { }))
-            .Add(s => s.OnEditContract, onEditContract ?? (() => { }))
+            .Add(s => s.OnEditScope, onEditScope ?? (() => { }))
             .Add(s => s.FormatMoney, (decimal v, string? code) => $"{v.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)} {code}".TrimEnd()));
 
         // OnInitializedAsync early-returns outside the browser, so the load is driven through the

@@ -44,8 +44,8 @@ public partial class ContractDetailView : IAsyncDisposable
     /// </summary>
     [Parameter] public EventCallback OnAddParty { get; set; }
 
-    /// <summary>The "Edit dates" action on the Smart tags section's invalid-term state.</summary>
-    [Parameter] public EventCallback OnEditContract { get; set; }
+    /// <summary>"Edit scope" on the Smart tags section's scope line — opens the host's smart-tag scope dialog (issue #308).</summary>
+    [Parameter] public EventCallback OnEditScope { get; set; }
 
     /// <summary>
     /// The contract's watched-tag count, for the section divider's meta. It comes from the LIST row
@@ -102,33 +102,37 @@ public partial class ContractDetailView : IAsyncDisposable
 
     /// <summary>
     /// The contract host's empty-state sentence. It states the three rules the server applies
-    /// (issue #226) — watched tag, inside the term, paid to a contact party — so a reader knows what
+    /// (issue #226) — watched tag, inside the smart-tag scope (issue #308), paid to a contact party —
+    /// so a reader knows what
     /// will and will not read here before adding a first tag.
     /// </summary>
     private string ContractSmartTagsEmptyDesc => CanWrite ? SmartTagsWritableEmptyDesc : SmartTagsReadOnlyEmptyDesc;
 
     internal const string SmartTagsWritableEmptyDesc =
-        "Pin the tags this agreement settles against. Transactions carrying them, dated inside the term and paid to a contact party, read here.";
+        "Pin the tags this agreement settles against. Transactions carrying them, dated inside the smart-tag scope and paid to a contact party, read here.";
 
     internal const string SmartTagsReadOnlyEmptyDesc = "No tags are being watched on this contract.";
 
     /// <summary>The contract host's no-match sentence — the three rules, restated.</summary>
     internal const string SmartTagsNoMatchDesc =
-        "No transaction inside the term, paid to a contact party, carries the watched tags yet.";
+        "No transaction inside the smart-tag scope, paid to a contact party, carries the watched tags yet.";
 
     /// <summary>
     /// Every contract input the smart-tag match depends on besides its tags: the contact parties and
-    /// the term dates. When a party is added or a date corrected, the host re-fetches the contract,
-    /// this key changes, and the section re-reads its match.
+    /// the smart-tag scope (issue #308 — the term no longer takes part). When a party is added or the
+    /// scope edited, the host re-fetches the contract, this key changes, and the section re-reads.
     /// </summary>
     private string SmartTagScopeKey => string.Join('|',
         string.Join(',', Contract.Parties
             .Select(p => p.Institution?.ContactId)
             .OfType<Guid>()
             .Order()),
-        Contract.StartDate?.ToString("O"),
-        Contract.EndDate?.ToString("O"),
-        Contract.CompletionDate?.ToString("O"));
+        Contract.SmartTagScopeStart?.ToString("O"),
+        Contract.SmartTagScopeEnd?.ToString("O"));
+
+    /// <summary>The scope line's note: the stored smart-tag scope placed against the term, in words.</summary>
+    private string SmartTagScopeNote =>
+        OdsSmartTagScope.Relation(OdsSmartTagScope.Of(Contract), OdsScopeTerm.Of(Contract));
 
     private IReadOnlyList<ContractFileItem> ContractFiles => [.. Contract.Files.Select(ContractFileItem.From)];
 

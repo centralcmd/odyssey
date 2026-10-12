@@ -4546,3 +4546,30 @@ tr:focus-within > .odc-rowactions.reveal,
 .prop-lib-extra { display: flex; flex-direction: column; gap: 8px; padding: 2px 12px 12px 42px; }
 .prop-lib-type { max-width: 280px; }
 .prop-lib-foot { display: flex; align-items: center; gap: 6px; font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* ---------- SmartTagScopeField / SmartTagScopeSyncPrompt (a contract's smart-tag date range) ---------- */
+.odc-stscope { display: flex; flex-direction: column; gap: var(--space-3); }
+.odc-stscope-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); }
+.odc-stscope-strip { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background-gray, var(--mud-palette-background)); }
+.odc-stscope-strip-lab { font: var(--fw-medium) var(--fs-micro)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.odc-stscope-track { position: relative; height: 10px; border-radius: var(--radius-pill); background: var(--mud-palette-action-default-hover); }
+.odc-stscope-bar { position: absolute; top: 0; bottom: 0; border-radius: var(--radius-pill); border: 2px solid transparent; box-sizing: border-box; }
+.odc-stscope-bar.term { background: var(--mud-palette-text-secondary); }
+.odc-stscope-bar.scope { background: var(--mud-palette-primary); }
+.odc-stscope-bar.open-l { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 2px dashed var(--mud-palette-background-gray, var(--mud-palette-background)); }
+.odc-stscope-bar.open-r { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 2px dashed var(--mud-palette-background-gray, var(--mud-palette-background)); }
+.odc-stscope-point { position: absolute; top: -2px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--mud-palette-text-secondary); }
+.odc-stscope-summary { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans); color: var(--mud-palette-text-primary); text-wrap: pretty; }
+.odc-stscope-summary > .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); margin-top: 1px; }
+.odc-stscope-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-left: calc(-1 * var(--space-2)); }
+.odc-stsync { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background-gray, var(--mud-palette-background)); }
+.odc-stsync-ic { font-size: var(--icon-lg); color: var(--mud-palette-text-secondary); margin-top: 1px; }
+.odc-stsync-main { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.odc-stsync-title { font: var(--fw-medium) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-stsync-desc { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.odc-stsync-desc b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }
+.odc-smarttags-scope-act { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-sm, 4px); background: none; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--brand-text); }
+.odc-smarttags-scope-act:hover { background: var(--mud-palette-action-default-hover); }
+.odc-smarttags-scope-act:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.odc-smarttags-scope-act > .material-icons { font-size: var(--icon-sm); }
+.odc-smarttags-scope-note { color: var(--mud-palette-text-secondary); }

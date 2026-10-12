@@ -1,0 +1,57 @@
+@*
+    OdsSmartTagScopeSyncPrompt — the "also update the scope?" band in the Edit contract dialog
+    (Odyssey Design System · components/SmartTagScopeSyncPrompt, issue #308). Renders nothing unless
+    the term changed in this edit AND the stored scope differs from what the new term would give.
+
+    UNCHECKED by default: the scope is independent of the term, and the motivating case — adding an
+    end date to an ongoing employment contract — must leave it open with no extra step. Ticked, the
+    host's save writes OdsSmartTagScope.FromTerm(After) as the scope instead of carrying it forward.
+*@
+
+@if (Visible)
+{
+    <div class="odc-stsync @Class">
+        <span class="material-icons odc-stsync-ic" aria-hidden="true">sell</span>
+        <div class="odc-stsync-main">
+            <div class="odc-stsync-title">The smart-tag scope does not follow the term</div>
+            <div class="odc-stsync-desc">
+                It stays <b>@OdsSmartTagScope.FormatRange(Scope)</b> unless you change it here or from the Smart tags section.
+            </div>
+            <OdsCheckbox Checked="@Checked" CheckedChanged="CheckedChanged"
+                         Label="@($"Also set the smart-tag scope to {OdsSmartTagScope.FormatRange(Proposed)}")" />
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>The term as loaded, before this edit.</summary>
+    [Parameter] public OdsScopeTerm Before { get; set; }
+
+    /// <summary>The term as currently entered in the dialog.</summary>
+    [Parameter] public OdsScopeTerm After { get; set; }
+
+    /// <summary>The stored scope, carried forward unless <see cref="Checked"/>.</summary>
+    [Parameter] public OdsScopeRange Scope { get; set; }
+
+    /// <summary>True = the save writes the scope from the new term. Default false.</summary>
+    [Parameter] public bool Checked { get; set; }
+
+    [Parameter] public EventCallback<bool> CheckedChanged { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private OdsScopeRange Proposed => OdsSmartTagScope.FromTerm(After);
+
+    /// <summary>
+    /// Whether the band shows. Public so the host's save reads the SAME condition: a tick left over
+    /// from a moment the band was visible must not apply once the term edit has been undone.
+    /// </summary>
+    public static bool ShouldShow(OdsScopeTerm before, OdsScopeTerm after, OdsScopeRange scope)
+    {
+        var termChanged = !OdsSmartTagScope.FromTerm(before).SameAs(OdsSmartTagScope.FromTerm(after))
+            || before.IsOneOff != after.IsOneOff;
+        return termChanged && !scope.SameAs(OdsSmartTagScope.FromTerm(after));
+    }
+
+    private bool Visible => ShouldShow(Before, After, Scope);
+}

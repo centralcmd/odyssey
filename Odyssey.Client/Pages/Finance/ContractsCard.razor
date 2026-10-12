@@ -330,7 +330,7 @@
                                                 CanViewProperties="_canViewProperties"
                                                 OnEditParty="@(p => EditParty(c.ContractId, p))"
                                                 OnAddParty="@(() => AddParty(c.ContractId))"
-                                                OnEditContract="@(() => EditClicked(c))"
+                                                OnEditScope="@(() => EditScopeClicked(c))"
                                                 OnAnnounce="@(m => Announce(m))"
                                                 OnChanged="@(() => ReloadContract(c.ContractId))"
                                                 OnFilesRefreshed="@(files => ApplyContractFiles(c.ContractId, files))" />
@@ -369,6 +369,15 @@
                           @bind-Open="_editContractOpen"
                           Contract="_editContract"
                           OnSaved="OnContractEdited" />
+}
+
+@if (_scopeContract is not null)
+{
+    @* Fresh @key per opening so the dialog re-seeds from the contract as it now stands. *@
+    <EditSmartTagScopeDialog @key="_scopeContractKey"
+                             @bind-Open="_scopeContractOpen"
+                             Contract="_scopeContract"
+                             OnSaved="OnScopeEdited" />
 }
 
 @if (_partyContract is not null)

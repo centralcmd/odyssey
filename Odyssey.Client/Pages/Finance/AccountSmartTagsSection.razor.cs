@@ -74,24 +74,27 @@ public partial class AccountSmartTagsSection
     [Parameter] public bool CanReadTransactions { get; set; } = true;
 
     /// <summary>
-    /// Contract host: the contract is a one-off (<c>CompletionDate</c> set). The response cannot say
-    /// so — an unbounded window reads the same for a one-off and for a contract with no dates — and
-    /// the scope line names the reason.
+    /// Contract host: the muted note after the scope line's window, placing the contract's smart-tag
+    /// scope against its term (issue #308) — "same as the term", "includes dates after the term"… The
+    /// host formats it from the contract; the response cannot say how its window relates to the term.
     /// </summary>
-    [Parameter] public bool IsOneOff { get; set; }
+    [Parameter] public string? ScopeNote { get; set; }
 
     /// <summary>
     /// Contract host: a key over every contract input the match depends on besides its tags — the
-    /// party contacts and the term dates. A change re-issues the read, so adding a party or fixing a
-    /// date updates the section without a reload of the page.
+    /// party contacts and the smart-tag scope. A change re-issues the read, so adding a party or
+    /// editing the scope updates the section without a reload of the page.
     /// </summary>
     [Parameter] public string? ScopeKey { get; set; }
 
     /// <summary>Contract host: the "Add a party" action on the no-contact-party state. Unset hides it.</summary>
     [Parameter] public EventCallback OnAddParty { get; set; }
 
-    /// <summary>Contract host: the "Edit dates" action on the invalid-term state. Unset hides it.</summary>
-    [Parameter] public EventCallback OnEditContract { get; set; }
+    /// <summary>
+    /// Contract host: "Edit scope" at the end of the scope line, which opens the smart-tag scope
+    /// dialog (issue #308). Shown only to a writer who can also read the match; unset hides it.
+    /// </summary>
+    [Parameter] public EventCallback OnEditScope { get; set; }
 
     // The cap was `private const int MaxTags = 20` here, mirroring a server constant. Once the server
     // value became admin-editable (issue #434 key 15) that mirror was the defect class CLAUDE.md names
@@ -186,7 +189,10 @@ public partial class AccountSmartTagsSection
 
     private bool ShowToolbar => IsScoped && Blocked is null && (_totalCount > 0 || _search.Length > 0);
 
-    private sealed record ScopeItem(string Icon, string Label, string Value);
+    private sealed record ScopeItem(string Icon, string Label, string Value, string? Note = null);
+
+    /// <summary>The scope line's one action, per the design system's <c>scopeAction</c>.</summary>
+    private bool ShowScopeAction => IsScoped && CanWrite && CanReadTransactions && OnEditScope.HasDelegate;
 
     private sealed record BlockedState(
         string Icon, string Title, string Description, string? ActionLabel = null, string? ActionIcon = null,
@@ -196,13 +202,14 @@ public partial class AccountSmartTagsSection
 
     /// <summary>
     /// The scope line, straight off the response. <c>toExclusive</c> is the NEXT midnight, so the
-    /// last covered day is the one before it. Withheld for an invalid term, whose own state says it.
+    /// last covered day is the one before it. <c>InvalidTerm</c> (3) is never emitted any more — the
+    /// match reads the smart-tag scope, whose order a CHECK constraint holds (issue #308).
     /// </summary>
     private IReadOnlyList<ScopeItem>? ScopeItems
     {
         get
         {
-            if (!IsScoped || !CanReadTransactions || _scope is null || Reason == ContractSmartTagEmptyReason.InvalidTerm)
+            if (!IsScoped || !CanReadTransactions || _scope is null)
                 return null;
 
             var from = _scope.From is { } f ? ScopeDay(f) : null;
@@ -212,14 +219,14 @@ public partial class AccountSmartTagsSection
                 ({ } a, { } b) => $"{a} – {b}",
                 ({ } a, null) => $"from {a}, no end",
                 (null, { } b) => $"until {b}",
-                _ => IsOneOff ? "any date — one-off contract" : "any date — no term set",
+                _ => "any date",
             };
             var parties = _scope.PartyContactCount;
             var merchant = parties == 0
                 ? "no contact party"
                 : $"one of {parties} contact part{(parties == 1 ? "y" : "ies")}";
 
-            return [new("date_range", "Dated", window), new("group", "Merchant", merchant)];
+            return [new("date_range", "Dated", window, ScopeNote), new("group", "Merchant", merchant)];
         }
     }
 
@@ -244,10 +251,6 @@ public partial class AccountSmartTagsSection
                 ContractSmartTagEmptyReason.NoContactParties => new("person_off", "No contact is a party yet",
                     "A transaction counts here only when its merchant is a contact that is a party to this contract. Account and property parties are not merchants.",
                     CanWrite && OnAddParty.HasDelegate ? "Add a party" : null, "group_add", OnAddParty),
-                ContractSmartTagEmptyReason.InvalidTerm when _scope is { From: { } from, ToExclusive: { } to } =>
-                    new("event_busy", "The term ends before it starts",
-                        $"Start date {ScopeDay(from)} is after end date {ScopeDay(to.AddDays(-1))}, so no date can fall inside the term. Correct the dates to see matching transactions.",
-                        CanWrite && OnEditContract.HasDelegate ? "Edit dates" : null, "edit_calendar", OnEditContract),
                 _ => null,
             };
         }
@@ -468,7 +471,7 @@ public partial class AccountSmartTagsSection
             _transactions = [.. value.Page.Items];
             _totalCount = value.Page.TotalCount;
 
-            // The fixing action (Add a party / Edit dates) unmounted with the blocked state, so focus
+            // The fixing action (Add a party) unmounted with the blocked state, so focus
             // would fall to the page; land it on the scope line, which now states the working scope.
             _focusScopeLine = wasBlocked && Blocked is null;
             _liveMessage = Blocked is { } blocked
