@@ -5,6 +5,19 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.39.0](https://github.com/centralcmd/odyssey/compare/v0.38.1...v0.39.0) (2026-10-13)
+
+
+### Features
+
+* **core:** add the draft contract file type ([#312](https://github.com/centralcmd/odyssey/issues/312)) ([7f9a7b8](https://github.com/centralcmd/odyssey/commit/7f9a7b802f8004aa707d656800d3a4639c3267ce))
+* independent smart-tag scope for contracts ([#313](https://github.com/centralcmd/odyssey/issues/313)) ([2273fbc](https://github.com/centralcmd/odyssey/commit/2273fbccd2552d4ec29f68b7efe9ad30e2b71c2b))
+
+
+### Documentation
+
+* update design system ([f7a4b28](https://github.com/centralcmd/odyssey/commit/f7a4b28085caa06cf1d192707b2edf96f4d57ad2))
+
 ## [0.38.1](https://github.com/centralcmd/odyssey/compare/v0.38.0...v0.38.1) (2026-10-02)
 
 
