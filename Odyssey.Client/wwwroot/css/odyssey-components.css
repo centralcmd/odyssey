@@ -1,7 +1,7 @@
 /* ──────────────────────────────────────────────────────────────────────────
    Odyssey design-system component styles (.odc-*)
 
-   Ported verbatim from "Odyssey Design System/components.css" for the custom /
+   Ported verbatim from the Odyssey Design System (components/bundle.css) for the custom /
    composite Ods* components that MudBlazor can't express on its own (charts,
    stat tile, empty state, segmented control, chip tones, skeletons, toasts,
    pagination, collapsible, tabs, progress bar, badge). Token-driven and
@@ -15,7 +15,7 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 /* ---------- Shared utility ---------- */
-/* The design system's own visually-hidden utility (components.css), kept under
+/* The design system's own visually-hidden utility (components/bundle.css), kept under
    the .odc-* prefix so a ported component's markup transcribes unchanged. Same
    rule as app.css's .sr-only; both exist because the two layers are separate
    vocabularies, not because they differ. */
@@ -260,7 +260,7 @@
     color: var(--mud-palette-text-secondary);
 }
 .odc-recordsection-notice .material-icons { font-size: var(--icon-md); flex: none; color: var(--mud-palette-text-secondary); }
-/* Mirrors the design system's own literal (components.css) for the warning tint, the same
+/* Mirrors the design system's own literal (components/bundle.css) for the warning tint, the same
    deliberate oklch exception the pickers carry — these are not tokenized upstream either.
    --ods-amber is that one authored amber, named once here because three rules paint it as a
    foreground (this glyph, .trm-scheduled, .est-scheduled). It is the dark-tuned L 0.80, so every
@@ -1333,7 +1333,7 @@
 .odc-field-count.over { color: var(--mud-palette-error); }
 
 /* ---------- ReferenceNumberField / ReferenceNumber — a counterparty identifier (issue #181).
-   Mirrors the DS components.css block of the same name, plus the leading-icon input rule
+   Mirrors the DS components/bundle.css block of the same name, plus the leading-icon input rule
    (.odc-input-icon / .has-icon) the field is the first raw-input consumer of. ---------- */
 .odc-input-icon { position: absolute; left: 12px; pointer-events: none; color: var(--mud-palette-text-secondary); font-size: var(--icon-lg); }
 .odc-input.has-icon { padding-left: 38px; }
@@ -1415,7 +1415,7 @@
 .odc-tagms-list::-webkit-scrollbar-track, .odc-ms-list::-webkit-scrollbar-track { background: transparent; }
 
 /* ---------- TypeSelect (shared registry type picker) ----------
-   Mirrors the DS .odc-select chrome (components.css). The trigger is a custom
+   Mirrors the DS .odc-select chrome (components/bundle.css). The trigger is a custom
    button (not a MudBlazor input) shared by every registry-backed type picker;
    the popover is hosted by OdsPopupMenu, its rows styled with .odc-typesel-*. */
 /* The popup box (OdsPopupMenu) defaults to inline-flex, which collapses the
@@ -2301,7 +2301,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .est-err { font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-error); margin-top: 6px; }
 
 /* ---------- AccountSmartTagsSection ----------
-   Mirrors the design system (components.css · .odc-smarttags*). The per-account
+   Mirrors the design system (components/bundle.css · .odc-smarttags*). The per-account
    "Smart tags" disclosure: reuses .odc-collapsible chrome, adds the tag-management
    bar (removable chips + an Add-tag checklist popover) and the empty / loading /
    no-match / error states. */
@@ -3090,7 +3090,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* ============================================================
    Journal module — TodoStatusChip · JournalPhotoGallery · TaskBoard (issue #311)
-   Ported from the design system (components.css).
+   Ported from the design system (components/bundle.css).
    ============================================================ */
 
 /* ---------- OdsTodoStatusChip ---------- */
@@ -3355,7 +3355,7 @@ tr:focus-within > .odc-rowactions.reveal,
 @media (max-width: 600px) { .odc-alias-grid { grid-template-columns: 1fr; } }
 
 /* ── Calendar module (issue #323) ─────────────────────────────────────────────
-   Ported from the DS: the CalendarGrid month atom (.odc-cal-*, DS components.css) and the
+   Ported from the DS: the CalendarGrid month atom (.odc-cal-*, DS components/bundle.css) and the
    /calendar page + event/manage-calendars dialog chrome (.cal-*, DS ui_kits/web/calendar.css).
    Only the rules the Blazor page actually uses are kept — the DS's Week/Day time-grid (.cal-tg-*),
    legend sidebar (.cal-layout/.cal-sidebar/.cal-legend), and standalone agenda (.cal-agenda-*) are
@@ -4150,7 +4150,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 
 /* ---------- RecordCard (OdsRecordCard — the expandable record list item) ----------
-   Mirrors the design system (components.css · .odc-record*). ROW HEIGHT IS ONE NUMBER
+   Mirrors the design system (components/bundle.css · .odc-record*). ROW HEIGHT IS ONE NUMBER
    ACROSS EVERY RECORD LIST: the header is at least 88px, set here rather than left to
    each page's content. Insurance is the reference — its meta line carries linked-record
    pill chips, which are worth the height — and a list of plainer records breathes the
@@ -4433,7 +4433,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-ring, var(--mud-palette-primary)), 0 0 0 6px color-mix(in oklab, var(--mud-palette-primary) 24%, transparent); }
 
 /* ---------- ImageCropDialog: the shared crop + downscale stage ----------
-   (issue #86 §3, issue #94 §5. Odyssey Design System · components.css.)
+   (issue #86 §3, issue #94 §5. Odyssey Design System · components/bundle.css.)
    Extracted from the contact-avatar dialog when the user profile picture
    arrived: ONE cropper, two surfaces. `round` is a circular photo — a person,
    or the signed-in user; `ground` is a contained mark on a neutral ground, for
@@ -4470,7 +4470,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 
 /* ── ProfilePictureField (the /account identity control) ────────────────────
-   Odyssey Design System · components.css · ProfilePictureField. Global rather
+   Odyssey Design System · components/bundle.css · ProfilePictureField. Global rather
    than scoped because the component lives under Components/ and the marks it
    composes are OdsAvatar children — a page's scoped CSS would not reach either. */
 .odc-picfield { display: flex; align-items: flex-start; gap: 18px; }

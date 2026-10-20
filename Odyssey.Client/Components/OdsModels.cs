@@ -9,7 +9,7 @@ namespace Odyssey.Client.Components;
 //  (the Ods* components) that do not belong to a larger family: the chart point
 //  and slice records, the option shapes the form controls take, and the upload /
 //  breakdown records. Each type mirrors the matching design-system contract in
-//  "Odyssey Design System/components/*.d.ts".
+//  the Odyssey Design System's components/<Name>/<Name>.d.ts.
 //
 //  The larger families live beside this file — OdsEnums.cs, OdsTableModels.cs,
 //  OdsSortHelpers.cs, OdsPagerMath.cs and OdsTypeRegistries.cs.

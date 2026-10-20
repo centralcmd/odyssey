@@ -26,9 +26,11 @@ Goals sections, formatting rules, issue creation, cross-linking and the review l
 endpoints the client *consumes* and what it does with each, referencing the backend issue rather than
 restating shapes. If the endpoints don't exist yet, the backend spec is written **first**.
 
-**Ground the UI in the design system.** Before writing §3 and §4, read `Odyssey Design System/SKILL.md`
-and the README's **Quick reference** for the component catalogue and page patterns, and
-`ls Odyssey.Client/Components/Ods*.razor` for what is already built. Specifying a widget that already
+**Ground the UI in the design system.** The design system is a claude.ai artifact
+([`.claude/design-system-artifact.md`](../../design-system-artifact.md) has the URL and layout).
+Before writing §3 and §4, read its `project/README.md` **Quick reference** for the component catalogue
+and page patterns, and run `ls Odyssey.Client/Components/Ods*.razor` for what is already built. If
+the `Artifact` tool is unavailable, say so in the spec rather than guessing at the catalogue. Specifying a widget that already
 exists is the most common waste here.
 
 ---

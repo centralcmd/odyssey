@@ -77,7 +77,8 @@ needs a one-line justification of what no existing component can express — and
 full a11y specification from the checklist.
 
 If the design system already specifies the component but it isn't built yet, say so and link the
-specimen (`Odyssey Design System/components/<name>.html`).
+specimen: `project/components/<Name>/preview.html` in the design-system artifact
+(https://claude.ai/artifact/VkrcragM9HGn1cXKkANizr).
 
 ---
 

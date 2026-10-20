@@ -23,7 +23,7 @@ These come from the Odyssey CLAUDE.md and established patterns — treat violati
 - **Don't `dotnet build/run` Odyssey.Client while the dev server is up** (desyncs blazor.boot hashes).
 - **Accessibility baseline** already established: `.sr-only`/skip-link utils, focus rings, `aria-label`s, reduced-motion guards, semantic landmarks. Hold new code to this baseline.
 
-When in doubt about a standard, consult the repo's `CLAUDE.md`, the relevant project `README.md`, and the design-system source before flagging.
+When in doubt about a standard, consult the repo's `CLAUDE.md`, the relevant project `README.md`, and the design-system source (the claude.ai artifact described in `.claude/design-system-artifact.md`; if you cannot reach it, say so rather than judging design compliance from memory) before flagging.
 
 ## Your Four Modes
 

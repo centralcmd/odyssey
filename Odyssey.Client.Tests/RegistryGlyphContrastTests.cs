@@ -9,7 +9,7 @@ namespace Odyssey.Client.Tests;
 
 /// <summary>
 /// The contrast contract of every <see cref="OdsTypeRegistries"/> colour, across every registry at once
-/// (issue #164; Odyssey Design System · <c>docs/glyph-contrast-decision.md</c>). The registry constants
+/// (issue #164; Odyssey Design System · <c>docs/glyph-contrast.md</c>). The registry constants
 /// are authored ONCE, in a lightness band tuned for the dark surface, and a render site paints them
 /// through <see cref="OdsGlyphInk"/>: on dark the colour passes through unchanged, on light its
 /// lightness is capped — <c>--glyph-l</c> at 0.58 for a glyph, <c>--glyph-text-l</c> at 0.50 for a
@@ -48,7 +48,7 @@ public sealed class RegistryGlyphContrastTests
 
     /// <summary>
     /// The authored band, as the design system states it (handoff/README.md → "Registry glyph
-    /// lightness": "tuned for dark (L 0.66–0.80)"; docs/glyph-contrast-decision.md measures the caps as
+    /// lightness": "tuned for dark (L 0.66–0.80)"; docs/glyph-contrast.md measures the caps as
     /// the worst case "over every hue at C ≤ 0.16"). The caps' measured ratios are only a guarantee
     /// inside this band, so a member authored outside it is outside the design's warranty.
     /// </summary>

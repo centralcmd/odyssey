@@ -22,12 +22,9 @@ namespace Odyssey.Client.Tests;
 /// the schema disagreeing with nothing in the repository to catch it.
 /// </para>
 /// <para>
-/// <c>Odyssey Design System/</c> is excluded. It is vendored, not source: <c>CONTRIBUTING.md</c>
-/// prohibits hand-editing it, so a check demanding an edit there could not be satisfied at all — the
-/// correction is the upstream re-export tracked in issue #54, and nothing in the shipped app loads the
-/// bundle. Belt-and-braces rather than load-bearing, since the design system uses camelCase
-/// <c>relationshipType</c> while this half greps the PascalCase identifier; kept as documentation of
-/// the decision.
+/// The design system is not swept: it is no longer in the repository (it lives in a claude.ai
+/// artifact, <c>.claude/design-system-artifact.md</c>), and nothing in the shipped app loads it. Its
+/// camelCase <c>relationshipType</c> residue is a design-system correction, tracked in issue #54.
 /// </para>
 /// <para>
 /// A lint rather than a behavioural test because the failure mode is <b>reintroduction</b>: nothing

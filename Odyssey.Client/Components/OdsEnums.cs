@@ -4,7 +4,7 @@ namespace Odyssey.Client.Components;
 //  Enum vocabularies for the Odyssey design-system component library (the Ods*
 //  components) — the size steps, tones, variants and directions their parameters
 //  take. Each mirrors the matching design-system contract in
-//  "Odyssey Design System/components/*.d.ts".
+//  the Odyssey Design System's components/<Name>/<Name>.d.ts.
 //
 //  Enums only. A type that carries data belongs with the family it serves:
 //  OdsTableModels.cs (record/files tables), OdsSortHelpers.cs, OdsPagerMath.cs,
@@ -15,7 +15,7 @@ namespace Odyssey.Client.Components;
 //  Shared option / data types for the Odyssey design-system component library
 //  (the Ods* components). One file so the small records stay discoverable and
 //  the components themselves stay focused on markup. Each type mirrors the
-//  matching design-system contract in "Odyssey Design System/components/*.d.ts".
+//  matching design-system contract in the Odyssey Design System's components/<Name>/<Name>.d.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// <summary>Size step shared by Avatar, IconButton and Spinner (sm · md · lg).</summary>

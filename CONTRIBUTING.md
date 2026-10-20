@@ -81,19 +81,23 @@ Two conventions catch people out:
 - **No runtime feature toggles for new features.** Gate capabilities with permission
   claims, not config flags.
 
-### `Odyssey Design System/` is vendored, not source
+### The design system is not in the repository
 
-That directory is an **export** from the tool the design system is authored in, and it is the
-source of truth the Blazor `Ods*` components are reconciled against — not the other way round.
-Two consequences for a pull request:
+The Odyssey Design System lives in a claude.ai artifact. It is the source of truth the Blazor
+`Ods*` components are reconciled against, not the other way round.
+[`.claude/design-system-artifact.md`](.claude/design-system-artifact.md) has the link, its layout
+and how a sync works. Two consequences for a pull request:
 
-- **Don't hand-edit it** to make an implementation look right. If the design is wrong, the fix
-  is a new export; if the implementation is wrong, the fix is in `Odyssey.Client`.
-- **`_ds_bundle.js` is generated but not disposable.** It is the compiled bundle every
-  `preview/*.html` and `components/*.html` page loads (`window.OdysseyDesignSystem_*`), and the
-  repository has no build step that would regenerate it — so it stays tracked despite being 2 MB
-  and churning on each `docs: update design system` commit. `git log -- 'Odyssey Design System'`
-  is noisy for that reason and safe to skip when reading history.
+- **Don't restate a design value in the client** to make an implementation look right. If the
+  design is wrong, the fix is in the artifact; if the implementation is wrong, the fix is in
+  `Odyssey.Client`.
+- **CI does not compare the client with the design system.** The parity tests skip unless
+  `ODYSSEY_DESIGN_SYSTEM_DIR` names a downloaded copy of the artifact, so a design-facing PR should
+  say whether it was checked against the artifact.
+
+Until October 2026 the design system was a Claude Design export committed as
+`Odyssey Design System/`, so older history (`git log -- 'Odyssey Design System'`) and some code
+comments still refer to paths in that folder. The reference doc maps them to the artifact.
 
 ## Database migrations
 

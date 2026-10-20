@@ -13,7 +13,7 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The client half of issue #279 (design system · <c>docs/components-transaction-tag-icons.md</c>): the
+/// The client half of issue #279 (design system · <c>docs/components-transactions.md</c>): the
 /// icon picker, the avatar glyph, the transaction row's icon, the tag-admin write body and the shared
 /// transaction-tag option.
 /// </summary>
