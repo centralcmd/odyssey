@@ -510,6 +510,7 @@ public class PropertyDocumentsSectionTests
         h.Library.Setup(f => f.UpdateMetadataAsync(document.FileMetadata.Id, It.IsAny<string?>(), "deed-2026.pdf", It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<FileMetadataResponse>.Failure(
                 HttpStatusCode.Conflict, new ApiProblem { Detail = FileHostSaveHarness.ServerReason }));
+        h.Properties.Invocations.Clear();
 
         var args = await FileHostSaveHarness.RaiseSaveAsync(
             h.Host, document.FileMetadata.Id.ToString(), new OdsFileEdit("deed-2026.pdf", nameof(PropertyFileType.Valuation)));
@@ -518,6 +519,61 @@ public class PropertyDocumentsSectionTests
         Assert.Contains(FileHostSaveHarness.Toasts(h.Context),
             t => t.Contains(FileHostSaveHarness.ServerReason, StringComparison.Ordinal));
         h.Properties.Verify(p => p.UpdateFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<UpdatePropertyFileRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        h.Properties.Verify(p => p.ListFilesAsync(PropertyId, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private static ApiResult<FileMetadataResponse> RenamedTo(ExistingPropertyFile document, string name) =>
+        ApiResult<FileMetadataResponse>.Success(
+            new FileMetadataResponse(document.FileMetadata.Id, name, "application/pdf", 10, "hash", DateTime.UtcNow, null),
+            HttpStatusCode.OK);
+
+    /// <summary>
+    /// The rename lands and the link PUT is refused: the save fails, but the list is re-read so the row
+    /// shows the name the server now holds.
+    /// </summary>
+    [Fact]
+    public async Task A_partial_failure_fails_the_save_but_re_reads_the_list()
+    {
+        var document = Document("deed.pdf");
+        var h = Render([document]);
+        h.Library.Setup(f => f.UpdateMetadataAsync(document.FileMetadata.Id, It.IsAny<string?>(), "deed-2026.pdf", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(RenamedTo(document, "deed-2026.pdf"));
+        h.Properties.Setup(p => p.UpdateFileAsync(PropertyId, document.FileMetadata.Id, It.IsAny<UpdatePropertyFileRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(FileHostSaveHarness.Refused(HttpStatusCode.UnprocessableEntity));
+        h.Properties.Invocations.Clear();
+
+        var args = await FileHostSaveHarness.RaiseSaveAsync(
+            h.Host, document.FileMetadata.Id.ToString(), new OdsFileEdit("deed-2026.pdf", nameof(PropertyFileType.Valuation)));
+
+        Assert.True(args.Failed);
+        h.Properties.Verify(p => p.ListFilesAsync(PropertyId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>
+    /// A name and a link field changed together: the rename lands first, then the link PUT, then one
+    /// re-read and one success toast.
+    /// </summary>
+    [Fact]
+    public async Task A_rename_with_a_type_change_renames_first_then_updates_the_link_once()
+    {
+        var document = Document("deed.pdf");
+        var h = Render([document]);
+        var calls = new List<string>();
+        h.Library.Setup(f => f.UpdateMetadataAsync(document.FileMetadata.Id, It.IsAny<string?>(), "deed-2026.pdf", It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("rename"))
+            .ReturnsAsync(RenamedTo(document, "deed-2026.pdf"));
+        h.Properties.Setup(p => p.UpdateFileAsync(PropertyId, document.FileMetadata.Id, It.IsAny<UpdatePropertyFileRequest>(), It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("link"))
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        h.Properties.Invocations.Clear();
+
+        var args = await FileHostSaveHarness.RaiseSaveAsync(
+            h.Host, document.FileMetadata.Id.ToString(), new OdsFileEdit("deed-2026.pdf", nameof(PropertyFileType.Valuation)));
+
+        Assert.False(args.Failed);
+        Assert.Equal(["rename", "link"], calls);
+        h.Properties.Verify(p => p.ListFilesAsync(PropertyId, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Single(FileHostSaveHarness.Toasts(h.Context), t => t == "Document updated.");
     }
 
     private sealed class SignedOut : AuthenticationStateProvider

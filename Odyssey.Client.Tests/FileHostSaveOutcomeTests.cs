@@ -475,4 +475,81 @@ public sealed class ContractFilesSaveOutcomeTests : IAsyncDisposable
         Assert.True(args.Failed);
         Assert.Equal(1, changed);
     }
+
+    /// <summary>
+    /// A name and a link field changed together: the rename lands first, then the link PUT, then one
+    /// refresh and one success toast.
+    /// </summary>
+    [Fact]
+    public async Task A_rename_with_a_type_change_renames_first_then_updates_the_link_once()
+    {
+        var calls = new List<string>();
+        files.Setup(f => f.UpdateMetadataAsync(Attachment.FileId, "Countersigned copy", "lease-renamed.pdf", It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("rename"))
+            .ReturnsAsync(Renamed());
+        contracts.Setup(c => c.UpdateFileAsync(ContractId, Attachment.FileId, It.IsAny<UpdateContractFileRequest>(), It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("link"))
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        var table = RenderTable();
+
+        var args = await FileHostSaveHarness.RaiseSaveAsync(table, Attachment.FileId.ToString(),
+            new OdsFileEdit("lease-renamed.pdf", nameof(ContractFileType.Amendment)));
+
+        Assert.False(args.Failed);
+        Assert.Equal(["rename", "link"], calls);
+        Assert.Equal(1, changed);
+        Assert.Single(FileHostSaveHarness.Toasts(ctx), t => t == "Document updated.");
+    }
+
+    /// <summary>
+    /// The comparison is on the trimmed name and ordinal: surrounding whitespace alone is no rename
+    /// and sends nothing, while a case-only change is one.
+    /// </summary>
+    [Theory]
+    [InlineData("  lease-signed.pdf ", false)]
+    [InlineData("Lease-Signed.pdf", true)]
+    public async Task Only_a_real_name_change_is_sent_as_a_rename(string typed, bool renamed)
+    {
+        files.Setup(f => f.UpdateMetadataAsync(Attachment.FileId, It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Renamed());
+        var table = RenderTable();
+
+        var args = await FileHostSaveHarness.RaiseSaveAsync(table, Attachment.FileId.ToString(),
+            new OdsFileEdit(typed, nameof(ContractFileType.Signed)));
+
+        Assert.False(args.Failed);
+        files.Verify(f => f.UpdateMetadataAsync(Attachment.FileId, It.IsAny<string?>(), typed.Trim(), It.IsAny<CancellationToken>()),
+            renamed ? Times.Once() : Times.Never());
+        Assert.Equal(renamed ? 1 : 0, changed);
+    }
+
+    /// <summary>
+    /// The description a rename sends back comes from <see cref="ContractFileItem.From"/>; dropping
+    /// it there would make every contract rename wipe the stored description.
+    /// </summary>
+    [Theory]
+    [InlineData("Countersigned copy")]
+    [InlineData(null)]
+    public void ContractFileItem_carries_the_stored_description(string? description)
+    {
+        var item = ContractFileItem.From(new ExistingContractFile
+        {
+            ContractFileId = Guid.NewGuid(),
+            ContractId = ContractId,
+            AttachedAtUtc = DateTime.UtcNow,
+            FileType = ContractFileType.Signed,
+            FileMetadata = new ExistingFileMetadata
+            {
+                Id = Attachment.FileId,
+                FileName = Attachment.FileName,
+                ContentType = "application/pdf",
+                SizeBytes = 1,
+                FileBlobId = Guid.NewGuid(),
+                UploadedAtUtc = DateTime.UtcNow,
+                Description = description,
+            },
+        });
+
+        Assert.Equal(description, item.Description);
+    }
 }
