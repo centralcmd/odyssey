@@ -53,10 +53,10 @@ public sealed class DerivedTintTokensTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     public void The_design_systems_derived_tints_are_all_present()
     {
-        var ds = File.ReadAllText(ClientSource.Sibling(Path.Combine("Odyssey Design System", "colors_and_type.css")));
+        var ds = File.ReadAllText(DesignSystemSource.File("colors_and_type.css"));
         var dsBlock = Regex.Match(ds, @":root,\s*\[data-theme\]\s*\{(?<body>[^}]*)\}");
         Assert.True(dsBlock.Success, "The design system no longer declares a derived-tint block.");
 

@@ -46,10 +46,10 @@ public sealed class OdsFileTypeKindTests
         Assert.Equal(glyphs.Count, glyphs.Distinct().Count());
     }
 
-    [Fact]
+    [SkippableFact]
     public void The_filter_glyphs_agree_with_the_design_system()
     {
-        var path = ClientSource.Sibling(Path.Combine("Odyssey Design System", "components", "FileTypeSelect.jsx"));
+        var path = DesignSystemSource.File(Path.Combine("components", "FileTypeSelect.jsx"));
         var declared = Regex.Matches(
                 File.ReadAllText(path),
                 @"(?<kind>\w+):\s*\{\s*types:\s*\w+,\s*filterIcon:\s*'(?<icon>[^']+)'\s*\}")

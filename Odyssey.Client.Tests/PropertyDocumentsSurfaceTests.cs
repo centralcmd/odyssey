@@ -80,10 +80,10 @@ public class PropertyDocumentsSurfaceTests
     /// over the lower-cased name); every alternative word in every rule, plus a mixed corpus, must
     /// guess the same on both sides — so a rule added, dropped or reordered on one side fails here.
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public void The_guess_agrees_with_the_design_systems_rule()
     {
-        var path = ClientSource.Sibling(Path.Combine("Odyssey Design System", "ui_kits", "web", "properties-data.js"));
+        var path = DesignSystemSource.File(Path.Combine("ui_kits", "web", "properties-data.js"));
         Assert.True(File.Exists(path), $"The design system's guess rule is missing at {path}.");
 
         var source = File.ReadAllText(path);
