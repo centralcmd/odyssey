@@ -84,6 +84,7 @@ public class ContractDocumentsSectionTests
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<Odyssey.ApiClient.Resources.IContractsApiClient>());
+        ctx.Services.AddSingleton(Mock.Of<Odyssey.ApiClient.Resources.IFilesApiClient>());
         ctx.Services.AddInertSmartTagSection();
         ctx.Services.AddSingleton(TimeProvider.System);
         // The files table resolves the issuer options and the contacts.create claim for its Edit

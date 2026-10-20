@@ -350,15 +350,18 @@ public sealed class ContractFilesSaveOutcomeTests : IAsyncDisposable
 
     private static readonly ContractFileItem Attachment = new(
         Guid.Parse("43434343-0000-0000-0000-000000000002"), "lease-signed.pdf", "application/pdf", 25_800,
-        new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc), ContractFileType.Signed);
+        new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc), ContractFileType.Signed,
+        Description: "Countersigned copy");
 
     private readonly BunitContext ctx = FileHostSaveHarness.NewContext();
     private readonly Mock<IContractsApiClient> contracts = new();
+    private readonly Mock<IFilesApiClient> files = new();
     private int changed;
 
     public ContractFilesSaveOutcomeTests()
     {
         ctx.Services.AddSingleton(contracts.Object);
+        ctx.Services.AddSingleton(files.Object);
         ctx.Services.AddSingleton(FileHostSaveHarness.SignedInWith());
     }
 
@@ -404,5 +407,72 @@ public sealed class ContractFilesSaveOutcomeTests : IAsyncDisposable
         Assert.True(args.Failed);
         Assert.Contains(FileHostSaveHarness.Toasts(ctx), t => t.Contains("no longer listed", StringComparison.Ordinal));
         contracts.Verify(c => c.UpdateFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<UpdateContractFileRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private void RenameReturns(ApiResult<FileMetadataResponse> result) =>
+        files.Setup(f => f.UpdateMetadataAsync(Attachment.FileId, It.IsAny<string?>(), "lease-renamed.pdf", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(result);
+
+    private static ApiResult<FileMetadataResponse> Renamed() => ApiResult<FileMetadataResponse>.Success(
+        new FileMetadataResponse(Attachment.FileId, "lease-renamed.pdf", "application/pdf", 25_800, "hash", DateTime.UtcNow, "Countersigned copy"),
+        HttpStatusCode.OK);
+
+    /// <summary>
+    /// A contract document is renamed through the referenced file's own metadata route — the link's
+    /// PUT carries no name — with the stored description sent back so the rename does not wipe it.
+    /// A name-only edit leaves the link row alone.
+    /// </summary>
+    [Fact]
+    public async Task A_rename_goes_to_the_file_metadata_and_keeps_the_description()
+    {
+        RenameReturns(Renamed());
+        var table = RenderTable();
+
+        var args = await FileHostSaveHarness.RaiseSaveAsync(table, Attachment.FileId.ToString(),
+            new OdsFileEdit("  lease-renamed.pdf ", nameof(ContractFileType.Signed)));
+
+        Assert.False(args.Failed);
+        files.Verify(f => f.UpdateMetadataAsync(Attachment.FileId, "Countersigned copy", "lease-renamed.pdf", It.IsAny<CancellationToken>()), Times.Once);
+        contracts.Verify(c => c.UpdateFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<UpdateContractFileRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(1, changed);
+    }
+
+    [Fact]
+    public async Task A_refused_rename_keeps_the_dialog_open_says_why_and_skips_the_link_update()
+    {
+        RenameReturns(ApiResult<FileMetadataResponse>.Failure(
+            HttpStatusCode.Conflict, new ApiProblem { Detail = FileHostSaveHarness.ServerReason }));
+        var table = RenderTable();
+        FileHostSaveHarness.OpenEdit(ctx, table);
+        var dialog = table.WaitForComponent<OdsFilesEditDialog>();
+
+        var saved = await table.InvokeAsync(() =>
+            dialog.Instance.OnSave!(new OdsFileEdit("lease-renamed.pdf", nameof(ContractFileType.Amendment))));
+
+        Assert.False(saved);
+        Assert.True(table.FindComponent<OdsFilesEditDialog>().Instance.Open);
+        Assert.False(FileHostSaveHarness.ShowsSaved(table));
+        Assert.Contains(FileHostSaveHarness.Toasts(ctx), t => t.Contains(FileHostSaveHarness.ServerReason, StringComparison.Ordinal));
+        contracts.Verify(c => c.UpdateFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<UpdateContractFileRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(0, changed);
+    }
+
+    /// <summary>
+    /// The rename lands and the link update is refused: the save fails, but the host still refreshes
+    /// so the row shows the name the server now holds.
+    /// </summary>
+    [Fact]
+    public async Task A_partial_failure_fails_the_save_but_refreshes()
+    {
+        RenameReturns(Renamed());
+        contracts.Setup(c => c.UpdateFileAsync(ContractId, Attachment.FileId, It.IsAny<UpdateContractFileRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(FileHostSaveHarness.Refused(HttpStatusCode.UnprocessableEntity));
+        var table = RenderTable();
+
+        var args = await FileHostSaveHarness.RaiseSaveAsync(table, Attachment.FileId.ToString(),
+            new OdsFileEdit("lease-renamed.pdf", nameof(ContractFileType.Amendment)));
+
+        Assert.True(args.Failed);
+        Assert.Equal(1, changed);
     }
 }

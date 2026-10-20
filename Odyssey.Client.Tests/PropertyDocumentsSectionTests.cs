@@ -89,7 +89,8 @@ public class PropertyDocumentsSectionTests
         BunitContext Context,
         IRenderedComponent<SectionHost> Host,
         Mock<IPropertiesApiClient> Properties,
-        List<int> Counts)
+        List<int> Counts,
+        Mock<IFilesApiClient> Library)
     {
         public IRenderedComponent<PropertyDocumentsSection> Section => Host.FindComponent<PropertyDocumentsSection>();
 
@@ -140,7 +141,7 @@ public class PropertyDocumentsSectionTests
             .Add(h => h.Token, token)
             .Add(h => h.OnCountChanged, (int n) => counts.Add(n)));
 
-        var harness = new Harness(ctx, cut, properties, counts);
+        var harness = new Harness(ctx, cut, properties, counts, library);
         var section = harness.Section;
 
         // OnInitializedAsync early-returns outside the browser: the two seams are the way in.
@@ -212,8 +213,8 @@ public class PropertyDocumentsSectionTests
     }
 
     /// <summary>
-    /// The table is in the contract configuration: validity columns, no rename (the PUT carries no
-    /// name), a required type (the PUT is a full replacement), and the property vocabulary as its kinds.
+    /// The table is in the contract configuration: validity columns, a required type (the PUT is a
+    /// full replacement), and the property vocabulary as its kinds.
     /// </summary>
     [Fact]
     public void The_table_runs_in_the_link_configuration()
@@ -221,7 +222,6 @@ public class PropertyDocumentsSectionTests
         var table = Render([Document("deed.pdf")]).Section.FindComponent<OdsFilesTable>().Instance;
 
         Assert.True(table.ValidityColumns);
-        Assert.False(table.Renameable);
         Assert.True(table.RequireType);
         Assert.Same(OdsTypeRegistries.PropertyFileOptions, table.Kinds);
         Assert.Equal("Detach", table.DeleteLabel);
@@ -471,6 +471,52 @@ public class PropertyDocumentsSectionTests
 
         Assert.True(args.Failed);
         Assert.Contains(FileHostSaveHarness.Toasts(h.Context), t => t.Contains("no longer listed", StringComparison.Ordinal));
+        h.Properties.Verify(p => p.UpdateFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<UpdatePropertyFileRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ── Rename (the File-name field is offered on every files surface) ─────────
+
+    /// <summary>
+    /// A property document is renamed through the referenced file's own metadata route — the link's
+    /// PUT carries no name — with the stored description sent back so the rename does not wipe it.
+    /// A name-only edit leaves the link row alone, and the list is re-read.
+    /// </summary>
+    [Fact]
+    public async Task A_rename_goes_to_the_file_metadata_and_keeps_the_description()
+    {
+        var document = Document("deed.pdf");
+        document.FileMetadata.Description = "Land registry copy";
+        var h = Render([document]);
+        h.Library.Setup(f => f.UpdateMetadataAsync(document.FileMetadata.Id, It.IsAny<string?>(), "deed-2026.pdf", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<FileMetadataResponse>.Success(
+                new FileMetadataResponse(document.FileMetadata.Id, "deed-2026.pdf", "application/pdf", 10, "hash", DateTime.UtcNow, "Land registry copy"),
+                HttpStatusCode.OK));
+        h.Properties.Invocations.Clear();
+
+        var args = await FileHostSaveHarness.RaiseSaveAsync(
+            h.Host, document.FileMetadata.Id.ToString(), new OdsFileEdit("deed-2026.pdf", document.FileType.ToString()));
+
+        Assert.False(args.Failed);
+        h.Library.Verify(f => f.UpdateMetadataAsync(document.FileMetadata.Id, "Land registry copy", "deed-2026.pdf", It.IsAny<CancellationToken>()), Times.Once);
+        h.Properties.Verify(p => p.UpdateFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<UpdatePropertyFileRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        h.Properties.Verify(p => p.ListFilesAsync(PropertyId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task A_refused_rename_fails_says_why_and_skips_the_link_update()
+    {
+        var document = Document("deed.pdf");
+        var h = Render([document]);
+        h.Library.Setup(f => f.UpdateMetadataAsync(document.FileMetadata.Id, It.IsAny<string?>(), "deed-2026.pdf", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<FileMetadataResponse>.Failure(
+                HttpStatusCode.Conflict, new ApiProblem { Detail = FileHostSaveHarness.ServerReason }));
+
+        var args = await FileHostSaveHarness.RaiseSaveAsync(
+            h.Host, document.FileMetadata.Id.ToString(), new OdsFileEdit("deed-2026.pdf", nameof(PropertyFileType.Valuation)));
+
+        Assert.True(args.Failed);
+        Assert.Contains(FileHostSaveHarness.Toasts(h.Context),
+            t => t.Contains(FileHostSaveHarness.ServerReason, StringComparison.Ordinal));
         h.Properties.Verify(p => p.UpdateFileAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<UpdatePropertyFileRequest>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

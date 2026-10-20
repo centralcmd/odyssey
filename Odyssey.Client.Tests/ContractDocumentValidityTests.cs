@@ -22,8 +22,9 @@ namespace Odyssey.Client.Tests;
 /// </summary>
 /// <remarks>
 /// Three properties are spec rules rather than styling, and each one is a defect if it silently
-/// flips: the dialog offers <b>no rename</b>, because <c>PUT …/files/{fileId}</c> accepts no name and
-/// a field whose value is discarded is worse than no field; the document type is <b>required</b>,
+/// flips: the dialog offers the <b>File-name field</b> as on every files surface — the host sends a
+/// changed name to the file's own metadata route, since <c>PUT …/files/{fileId}</c> accepts none;
+/// the document type is <b>required</b>,
 /// because the verb is a full replacement and <c>ContractFileType.Signed</c> is the enum's zero
 /// member, so an unsent type would be defaulted into a claim that the document is the signed
 /// agreement; and each date is checked against the range its column can store, which is the client
@@ -89,7 +90,6 @@ public class ContractDocumentValidityTests
     public sealed class DialogHost : ComponentBase
     {
         [Parameter] public OdsFilesRow File { get; set; } = default!;
-        [Parameter] public bool Renameable { get; set; }
         [Parameter] public bool RequireType { get; set; }
         [Parameter] public Func<object?, Task<bool>>? OnSave { get; set; }
 
@@ -104,7 +104,6 @@ public class ContractDocumentValidityTests
             builder.AddComponentParameter(4, nameof(OdsFilesEditDialog.Open), true);
             builder.AddComponentParameter(5, nameof(OdsFilesEditDialog.Kinds), Kinds);
             builder.AddComponentParameter(6, nameof(OdsFilesEditDialog.Issuers), Issuers);
-            builder.AddComponentParameter(7, nameof(OdsFilesEditDialog.Renameable), Renameable);
             builder.AddComponentParameter(8, nameof(OdsFilesEditDialog.RequireType), RequireType);
             builder.AddComponentParameter(9, nameof(OdsFilesEditDialog.OnSave), OnSave);
             builder.CloseComponent();
@@ -113,14 +112,12 @@ public class ContractDocumentValidityTests
 
     private static Harness RenderDialog(
         BunitContext ctx,
-        bool renameable = false,
         bool requireType = true,
         OdsFilesRow? file = null)
     {
         var saved = new List<object?>();
         var host = ctx.Render<DialogHost>(p => p
             .Add(h => h.File, file ?? Document)
-            .Add(h => h.Renameable, renameable)
             .Add(h => h.RequireType, requireType)
             .Add(h => h.OnSave, patch =>
             {
@@ -131,40 +128,27 @@ public class ContractDocumentValidityTests
         return new Harness(host, saved);
     }
 
-    // ── No rename (§5.2 — the verb accepts no name) ───────────────────────────
+    // ── Rename (the File-name field is offered on every files surface) ─────────
 
     /// <summary>
-    /// A contract document's name lives on the <c>FileMetadata</c> the link references, so the
-    /// dialog offers no File-name field — and says "Edit document", not "Edit file".
+    /// A contract document is renameable like any other file: the dialog offers the File-name field
+    /// and reads "Edit file". The host sends a changed name to the file's own metadata route, since
+    /// the link's PUT carries no name.
     /// </summary>
     [Fact]
-    public async Task ContractConfiguration_OffersNoRename()
+    public async Task ContractConfiguration_OffersTheRenameFieldAndTitle()
     {
         await using var ctx = NewContext();
         var markup = RenderDialog(ctx).Markup;
 
-        Assert.DoesNotContain("File name", markup, StringComparison.Ordinal);
-        Assert.Contains("Edit document", markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("Edit file", markup, StringComparison.Ordinal);
-    }
-
-    /// <summary>The account configuration is unchanged — the rename field is the default.</summary>
-    [Fact]
-    public async Task AccountConfiguration_KeepsTheRenameFieldAndTitle()
-    {
-        await using var ctx = NewContext();
-        var markup = RenderDialog(ctx, renameable: true, requireType: false).Markup;
-
         Assert.Contains("File name", markup, StringComparison.Ordinal);
         Assert.Contains("Edit file", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Edit document", markup, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// The patch carries the row's existing name back unchanged, so a host comparing it never reads
-    /// the no-rename dialog as a rename.
-    /// </summary>
+    /// <summary>An untouched name comes back as it was, so a host comparing it sees no rename.</summary>
     [Fact]
-    public async Task ContractConfiguration_PatchCarriesTheNameBackUnchanged()
+    public async Task ContractConfiguration_PatchCarriesAnUntouchedNameBackUnchanged()
     {
         await using var ctx = NewContext();
         var harness = RenderDialog(ctx);
@@ -173,6 +157,17 @@ public class ContractDocumentValidityTests
 
         Assert.Equal(Document.Name, patch.Name);
         Assert.Equal(Document.Kind, patch.Kind);
+    }
+
+    /// <summary>A blank name is refused on the field rather than sent.</summary>
+    [Fact]
+    public async Task ContractConfiguration_RefusesABlankName()
+    {
+        await using var ctx = NewContext();
+        var harness = RenderDialog(ctx, file: Document with { Name = "   " });
+
+        Assert.Null(harness.Submit());
+        Assert.Contains("A file needs a name.", harness.Markup, StringComparison.Ordinal);
     }
 
     // ── Required type (§8.1.1 — Signed is the enum's zero member) ─────────────
@@ -197,7 +192,7 @@ public class ContractDocumentValidityTests
     public async Task WithoutRequireType_AnEmptyTypeStillSubmits()
     {
         await using var ctx = NewContext();
-        var harness = RenderDialog(ctx, renameable: true, requireType: false,
+        var harness = RenderDialog(ctx, requireType: false,
             file: Document with { Kind = string.Empty });
 
         Assert.NotNull(harness.Submit());
@@ -306,6 +301,7 @@ public class ContractDocumentValidityTests
     {
         var ctx = NewContext();
         ctx.Services.AddSingleton(Mock.Of<IContractsApiClient>());
+        ctx.Services.AddSingleton(Mock.Of<IFilesApiClient>());
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         ctx.Services.AddSingleton(Mock.Of<IContactQuickCreate>());
