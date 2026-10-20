@@ -1,7 +1,8 @@
 /* ── Odyssey design system supplement ──────────────────────────────────────
    Tokens and overrides that cannot be expressed through MudTheme:
    finance semantics, chart colours, card radius, and light-mode shadows.
-   Source of truth for all hex values: ../colors_and_type.css
+   Source of truth for all hex values: the design-system artifact's tokens.css
+   (.claude/design-system-artifact.md).
    ─────────────────────────────────────────────────────────────────────── */
 
 /* Browser autofill override — Chromium replaces input backgrounds with a
@@ -85,8 +86,8 @@ input:-webkit-autofill:active {
    spacing / density / radius / border scales, and a handful of semantic
    text tokens. MudTheme can't express these, and the client previously only
    defined --mud-palette-*, --finance-*, --chart-* and --status-*. This block
-   ports the rest from the design system's colors_and_type.css so the ported
-   component styles resolve. Source of truth: ../../"Odyssey Design System"/colors_and_type.css.
+   ports the rest from the design system's tokens so the ported component styles
+   resolve. Source of truth: the design-system artifact's tokens.css.
 
    Raw ramps + type/spacing/density/radius/border tokens are mode-independent,
    so they live in a single :root. The semantic text tokens differ per mode
@@ -341,7 +342,7 @@ input:-webkit-autofill:active {
 /* Tabular numbers — MudTheme.Typography has no FontVariantNumeric setting, so amounts
    in <MudTableCell> and <MudText> won't column-align unless forced here.
    If you'd rather be surgical, skip this rule and add class="ods-money" to individual
-   amount cells instead (the .ods-money class in colors_and_type.css does the same thing). */
+   amount cells instead (the design system's .ods-money class, in colors_and_type.css, does the same thing). */
 .mud-table-cell,
 [class*="mud-typography"] {
   font-variant-numeric: tabular-nums;

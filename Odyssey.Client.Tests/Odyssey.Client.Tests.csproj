@@ -13,10 +13,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Shared skip-or-fail rule for the self-skipping tiers (issue #257); linked, not referenced. -->
+    <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="bunit" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Moq" />
     <PackageReference Include="xunit" />
+    <PackageReference Include="Xunit.SkippableFact" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="coverlet.collector" />
   </ItemGroup>

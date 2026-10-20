@@ -61,22 +61,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".claude", ".claude", "{73D4
 		.claude\skills\odyssey-spec-writer\references\spec-template.md = .claude\skills\odyssey-spec-writer\references\spec-template.md
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Odyssey Design System", "Odyssey Design System", "{0BF454BC-0C39-4BB6-89F7-74DE5E9240E2}"
-	ProjectSection(SolutionItems) = preProject
-		Odyssey Design System\README.md = Odyssey Design System\README.md
-		Odyssey Design System\SKILL.md = Odyssey Design System\SKILL.md
-		Odyssey Design System\styles.css = Odyssey Design System\styles.css
-		Odyssey Design System\colors_and_type.css = Odyssey Design System\colors_and_type.css
-		Odyssey Design System\components.css = Odyssey Design System\components.css
-		Odyssey Design System\_ds_manifest.json = Odyssey Design System\_ds_manifest.json
-		Odyssey Design System\_ds_bundle.js = Odyssey Design System\_ds_bundle.js
-		Odyssey Design System\_adherence.oxlintrc.json = Odyssey Design System\_adherence.oxlintrc.json
-		Odyssey Design System\design-canvas.jsx = Odyssey Design System\design-canvas.jsx
-		Odyssey Design System\pickers.jsx = Odyssey Design System\pickers.jsx
-		Odyssey Design System\pickers-doc.jsx = Odyssey Design System\pickers-doc.jsx
-		Odyssey Design System\Data Export Settings.html = Odyssey Design System\Data Export Settings.html
-	EndProjectSection
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Odyssey.TestData", "Odyssey.TestData\Odyssey.TestData.csproj", "{BB993C34-0762-41A1-BEB5-4F2412EC3DBD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Odyssey.MigrationService.Tests", "Odyssey.MigrationService.Tests\Odyssey.MigrationService.Tests.csproj", "{8E963AC4-A52F-438A-84C7-35A1020A3802}"

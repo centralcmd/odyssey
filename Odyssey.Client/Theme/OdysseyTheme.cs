@@ -5,7 +5,7 @@
 //                       @bind-IsDarkMode="_isDarkMode"
 //                       Theme="OdysseyTheme.Theme" />
 //
-// All color values come straight from colors_and_type.css. Names mirror MudBlazor v8's
+// All color values come straight from the design system's tokens.css. Names mirror MudBlazor v8's
 // PaletteLight / PaletteDark property surface 1:1, so any future token edits should be
 // kept in sync between the CSS and this file.
 

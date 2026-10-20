@@ -18,7 +18,7 @@ namespace Odyssey.Client.Tests;
 
 /// <summary>
 /// The contract configuration of <c>OdsFilesTable</c>'s Edit dialog (Odyssey Design System ·
-/// FilesTable, <c>preview/59b-contract-document-validity.html</c>; issue #146 frontend).
+/// FilesTable, <c>components/ContractDocumentValidity/preview.html</c>; issue #146 frontend).
 /// </summary>
 /// <remarks>
 /// Three properties are spec rules rather than styling, and each one is a defect if it silently

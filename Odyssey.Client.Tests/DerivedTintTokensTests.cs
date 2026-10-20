@@ -53,10 +53,12 @@ public sealed class DerivedTintTokensTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     public void The_design_systems_derived_tints_are_all_present()
     {
-        var ds = File.ReadAllText(ClientSource.Sibling(Path.Combine("Odyssey Design System", "colors_and_type.css")));
+        // The derived *-soft / *-border tints use color-mix(), which tokens.json cannot hold, so the
+        // artifact keeps them in colors_and_type.css; every plain token value lives in tokens.css.
+        var ds = File.ReadAllText(DesignSystemSource.File("colors_and_type.css"));
         var dsBlock = Regex.Match(ds, @":root,\s*\[data-theme\]\s*\{(?<body>[^}]*)\}");
         Assert.True(dsBlock.Success, "The design system no longer declares a derived-tint block.");
 

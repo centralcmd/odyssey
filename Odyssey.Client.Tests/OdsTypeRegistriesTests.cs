@@ -264,7 +264,7 @@ public class OdsTypeRegistriesTests
     /// <c>FileTypeSelect.jsx</c> exporting all four registries, so a file-type row names the export it reads
     /// (<paramref name="dsExport"/>) — without that scoping the four arrays would be read as one.
     /// </summary>
-    [Theory]
+    [SkippableTheory]
     [InlineData(nameof(OdsTypeRegistries.ContractTypes), "ContractTypeSelect.jsx", null, typeof(ContractType))]
     [InlineData(nameof(OdsTypeRegistries.ContractPartyRoles), "ContractPartyRoleSelect.jsx", null, typeof(ContractPartyRole))]
     [InlineData(nameof(OdsTypeRegistries.AccountFileTypes), "FileTypeSelect.jsx", "ACCOUNT_FILE_TYPES", typeof(AccountFileType))]
@@ -274,8 +274,7 @@ public class OdsTypeRegistriesTests
     public void Select_backed_registries_agree_with_the_design_system(
         string registryName, string dsFile, string? dsExport, Type enumType)
     {
-        var path = ClientSource.Sibling(Path.Combine("Odyssey Design System", "components", dsFile));
-        Assert.True(File.Exists(path), $"The design system's registry is missing at {path}.");
+        var path = DesignSystemSource.File(Path.Combine("components", dsFile));
 
         var source = File.ReadAllText(path);
         if (dsExport is not null)
@@ -362,12 +361,10 @@ public class OdsTypeRegistriesTests
     /// registry is worth more than a note saying all of them should have one.
     /// </para>
     /// </remarks>
-    [Fact]
+    [SkippableFact]
     public void ContractEventTypes_agrees_with_the_design_systems_registry()
     {
-        var path = ClientSource.Sibling(
-            Path.Combine("Odyssey Design System", "ui_kits", "web", "contract-events-data.js"));
-        Assert.True(File.Exists(path), $"The design system's registry is missing at {path}.");
+        var path = DesignSystemSource.File(Path.Combine("ui_kits", "web", "contract-events-data.js"));
 
         // One object literal per member, in source order — which IS the reading order on both sides.
         var declared = Regex.Matches(

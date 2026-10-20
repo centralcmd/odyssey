@@ -88,15 +88,10 @@ Split license.
 
 ## Design system
 
-The `Odyssey Design System/` directory is first-party material authored for this project
-and is covered by the repository `LICENSE`. It bundles no third-party design kit, and
-`_ds_bundle.js` embeds no third-party library — it is the project's own components compiled
-from `components/*.jsx`.
-
-Its `preview/*.html` and `components/*.html` pages do load React 18.3.1 and Babel Standalone
-from the unpkg CDN at view time, so that a preview page opens in a browser with no build step.
-Both are MIT-licensed. Note what this is and is not: those pages are authoring/reference
-material for the design system, not part of the deployed application. Nothing under
-`Odyssey.Client/` loads them, and the shipped app makes no third-party requests at runtime —
-which is the reason the webfonts above are self-hosted rather than pulled from the Google
-Fonts CDN.
+The Odyssey Design System is first-party material authored for this project. It is no
+longer in this repository; it lives in a claude.ai artifact (see
+`.claude/design-system-artifact.md`), and nothing from it is distributed with the application.
+Its preview pages load React 18.3.1 from a CDN at view time; that happens inside the artifact,
+not in the deployed application. Nothing under `Odyssey.Client/` loads them, and the shipped
+app makes no third-party requests at runtime — which is the reason the webfonts above are
+self-hosted rather than pulled from the Google Fonts CDN.

@@ -24,7 +24,7 @@ If the request is genuinely about a new page or new modal, STOP immediately and 
 
 ## Primary Tool — The Skill
 
-In most cases you MUST use the `odyssey-design-system-changes` skill to discover and understand what changed in the design system. Invoke it early to ground your work in the actual diff/preview rather than guessing. Only skip it if the change is trivially obvious and already fully specified by the user, and even then prefer to confirm against the skill's output.
+The design system is a claude.ai artifact, not a repo folder — `.claude/design-system-artifact.md` has the URL, layout and access rules. In most cases you MUST use the `odyssey-design-system-changes` skill to discover and understand what changed in the design system. Invoke it early to ground your work in the actual diff/preview rather than guessing. Only skip it if the change is trivially obvious and already fully specified by the user, and even then prefer to confirm against the skill's output.
 
 ## Project Conventions and MudBlazor Gotchas
 

@@ -25,10 +25,10 @@ public sealed class OdsCalendarSwatchesTests
         }
     }
 
-    [Fact]
+    [SkippableFact]
     public void The_palette_agrees_with_the_design_system()
     {
-        var path = ClientSource.Sibling(Path.Combine("Odyssey Design System", "components", "ColorSwatchSelect.jsx"));
+        var path = DesignSystemSource.File(Path.Combine("components", "ColorSwatchSelect.jsx"));
         var declared = Regex.Matches(
                 File.ReadAllText(path),
                 @"\{\s*key:\s*'(?<key>\w+)',\s*name:\s*'(?<name>[^']*)',\s*hex:\s*'(?<hex>#[0-9A-Fa-f]{6})',"

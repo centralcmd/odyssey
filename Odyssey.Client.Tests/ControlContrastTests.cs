@@ -42,8 +42,7 @@ public class ControlContrastTests
     private static readonly string ComponentsCss =
         Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css");
 
-    private static readonly string DesignSystemTokens =
-        ClientSource.Sibling(Path.Combine("Odyssey Design System", "colors_and_type.css"));
+    private static string DesignSystemTokens => DesignSystemSource.File("tokens.css");
 
     public enum Theme { Light, Dark }
 
@@ -104,7 +103,7 @@ public class ControlContrastTests
     /// The design system declares the same contrast text for every fill, so a design export cannot
     /// quietly reintroduce white on a fill the client has moved off it.
     /// </summary>
-    [Theory]
+    [SkippableTheory]
     [MemberData(nameof(EveryFill))]
     public void The_design_system_contrast_text_matches_the_client(Theme theme, Fill fill)
     {
@@ -214,7 +213,7 @@ public class ControlContrastTests
         Assert.Contains("var(--control-border)", Rule(file == "app.css" ? AppCss : ComponentsCss, selector));
     }
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(Theme.Light)]
     [InlineData(Theme.Dark)]
     public void The_client_control_border_equals_the_design_systems(Theme theme)
@@ -244,7 +243,7 @@ public class ControlContrastTests
         Assert.Contains("color: var(--error-cta-text)", Rule(ComponentsCss, ".odc-problem.error .odc-problem-cta"));
     }
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(Theme.Light)]
     [InlineData(Theme.Dark)]
     public void The_client_error_cta_text_equals_the_design_systems(Theme theme)
@@ -353,10 +352,14 @@ public class ControlContrastTests
         var previous = css.LastIndexOfAny(['}', ';'], open);
         var selector = css[(previous + 1)..open];
 
-        if (selector.Contains("data-theme='dark'", StringComparison.Ordinal)) return Theme.Dark;
-        if (selector.Contains("data-theme='light'", StringComparison.Ordinal)) return Theme.Light;
+        if (NamesTheme(selector, "dark")) return Theme.Dark;
+        if (NamesTheme(selector, "light")) return Theme.Light;
         return null;
     }
+
+    /// <summary>The design system's token file quotes the attribute value in double quotes, the client in single.</summary>
+    private static bool NamesTheme(string selector, string theme) =>
+        Regex.IsMatch(selector, @"data-theme=['""]" + theme + @"['""]");
 
     /// <summary>
     /// Follows <c>var(--ramp-step)</c> to the ramp's hex literal (the ramps are declared once, in a

@@ -466,7 +466,7 @@ a whole tier while CI stayed green having run none of it. The rule now, shared t
 | Prerequisite **present but broken** — image pull, container start, provisioning SQL; a stack that answers but never turns healthy; an API `/healthz` answering HTML; a Release client calling a same-origin `/api/` that returns HTML | **fail** | **fail** |
 | Healthy | run | run |
 
-`ODYSSEY_REQUIRE_TIER` is a comma-separated list of `integration`, `e2e`, `e2e-api` or `all`; an unknown
+`ODYSSEY_REQUIRE_TIER` is a comma-separated list of `integration`, `e2e`, `e2e-api`, `design-system` or `all`; an unknown
 name fails the run, so a typo cannot silently un-require a tier. A CI job that is *meant* to exercise a
 tier sets it — the main CI job for `integration`, the E2E workflow for `e2e,e2e-api`. Requiring an E2E
 tier also stretches the readiness wait from 10 s to 120 s (`E2E_READY_TIMEOUT_SECONDS` overrides), so a

@@ -1,7 +1,7 @@
 /* =============================================================
    legal.css — License / Terms-of-Service acceptance (issue #354).
 
-   Ported from "Odyssey Design System/ui_kits/web/legal.css". GLOBAL rather than
+   Ported from the Odyssey Design System (ui_kits/web/legal.css). GLOBAL rather than
    Blazor-scoped, for two reasons that both rule scoping out: these classes are
    shared by three components (the /accept-terms interstitial, the /legal-documents
    admin page, and the registration review), and several of them style content

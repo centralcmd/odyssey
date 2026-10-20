@@ -250,7 +250,7 @@ public class ChartPlotWidthTests
     }
 
     /// <summary>
-    /// The CSS half (design-system components.css). Without <c>contain: inline-size</c> the SVG's viewBox
+    /// The CSS half (design-system components/bundle.css). Without <c>contain: inline-size</c> the SVG's viewBox
     /// width feeds back into the plot's min-content width, so a shrinking grid track could not shrink
     /// the chart and a residual scale error would remain. And no chart may go back to a literal width.
     /// </summary>
