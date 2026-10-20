@@ -19,7 +19,8 @@
     </OdsFormRow>
     @if (Message is not null)
     {
-        <div class="odc-field-help" style="margin-top: 6px;">@Message</div>
+        <div class="odc-field-help @(string.IsNullOrEmpty(Error) ? null : "error")" role="@(string.IsNullOrEmpty(Error) ? null : "alert")"
+             style="margin-top: 6px;">@Message</div>
     }
 </div>
 

@@ -55,6 +55,13 @@ Until then, treat **v9** as the truth.
   its failure toast. A surface's differences are parameters (`Kinds`, `GuessKind`, `Validity`,
   `RestrictToDocumentTypes` for the server-enforced `DocumentContentTypes`, `SurfaceMaxMegabytes`),
   and the tabs follow the caller's claims (`files.create` / `files.read`, `photos.read`).
+- **A field shows its help and its error together, and its control is described by both.**
+  `OdsFieldShell` renders the help line, then the error line on its own `{id}-help-error` id when
+  help is present (on `{id}-help` when it is not), so a wrapper that owns its input lists both ids in
+  `aria-describedby` — `OdsMoneyField` is the reference. The two wrappers built on `MudTextField`,
+  `OdsField` and `OdsCurrencySelect`, are the deliberate exception: MudBlazor swaps `HelperText` for
+  `ErrorText`, so there the error replaces the help. Matching the design system would mean drawing
+  both lines outside MudBlazor's helper slot, which was judged not worth it (October 2026).
 - **Foundation tokens:** `Odyssey.Client/wwwroot/css/app.css`. Global component CSS:
   `wwwroot/css/odyssey-components.css`. Palette wiring: `Odyssey.Client/Theme/OdysseyTheme.cs`.
 - **Scoped CSS travels with its component.** Moving markup into a child means moving the matching

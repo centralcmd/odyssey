@@ -200,8 +200,17 @@
     // would override it with a second, competing name.
     private string? EffectiveAriaLabel => string.IsNullOrEmpty(Label) ? AriaLabel : null;
 
-    private string? DescribedBy =>
-        (string.IsNullOrEmpty(Error) && string.IsNullOrEmpty(Help) && HelpContent is null) ? null : $"{FieldId}-help";
+    private string? DescribedBy
+    {
+        get
+        {
+            var hasHelp = HelpContent is not null || !string.IsNullOrEmpty(Help);
+            var hasError = !string.IsNullOrEmpty(Error);
+            if (!hasHelp && !hasError) return null;
+            // OdsFieldShell gives the error its own id only when a help node renders alongside it.
+            return hasHelp && hasError ? $"{FieldId}-help {FieldId}-help-error" : $"{FieldId}-help";
+        }
+    }
 
     private Task OnInput(ChangeEventArgs e)
     {

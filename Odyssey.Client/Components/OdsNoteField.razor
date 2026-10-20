@@ -74,8 +74,17 @@
 
     private int Length => Value?.Length ?? 0;
 
-    private string? DescribedBy =>
-        (string.IsNullOrEmpty(Error) && string.IsNullOrEmpty(Help)) ? null : $"{FieldId}-help";
+    private string? DescribedBy
+    {
+        get
+        {
+            var hasHelp = !string.IsNullOrEmpty(Help);
+            var hasError = !string.IsNullOrEmpty(Error);
+            if (!hasHelp && !hasError) return null;
+            // OdsFieldShell gives the error its own id only when a help node renders alongside it.
+            return hasHelp && hasError ? $"{FieldId}-help {FieldId}-help-error" : $"{FieldId}-help";
+        }
+    }
 
     private RenderFragment? Counter => Counted
         ? @<span class="odc-field-count @(Length >= MaxLength ? "over" : null)" aria-hidden="true">@Length/@MaxLength</span>
