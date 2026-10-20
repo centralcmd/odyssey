@@ -44,15 +44,16 @@ public class ChartAxisGeometryTests
         Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css");
 
     /// <summary>
-    /// Each informational selector with the design-system file that owns its width. The zero baseline
-    /// is a design-system component; the two "now" markers belong to their pages' web kits.
+    /// Each informational selector with the design-system file that owns its width, relative to the
+    /// design system's root. The zero baseline is a design-system component; the two "now" markers
+    /// belong to their pages' web kits.
     /// </summary>
     public static TheoryData<string, string> InformationalRules() =>
         new()
         {
-            { ".odc-lc-zero", Path.Combine("Odyssey Design System", "components.css") },
-            { ".trm-chart .nowline", Path.Combine("Odyssey Design System", "ui_kits", "web", "account-terms.css") },
-            { ".est-chart .nowline", Path.Combine("Odyssey Design System", "ui_kits", "web", "account-estimates.css") },
+            { ".odc-lc-zero", DesignSystemSource.ComponentsCss },
+            { ".trm-chart .nowline", Path.Combine("ui_kits", "web", "account-terms.css") },
+            { ".est-chart .nowline", Path.Combine("ui_kits", "web", "account-estimates.css") },
         };
 
     [Theory]
@@ -91,7 +92,7 @@ public class ChartAxisGeometryTests
     public void The_client_stroke_geometry_equals_the_design_systems(string selector, string designSystemCss)
     {
         var client = RuleFor(File.ReadAllText(ComponentsCss), selector);
-        var design = RuleFor(File.ReadAllText(ClientSource.Sibling(designSystemCss)), selector);
+        var design = RuleFor(File.ReadAllText(DesignSystemSource.File(designSystemCss)), selector);
 
         Assert.Equal(StrokeWidthOf(design, selector), StrokeWidthOf(client, selector));
         Assert.Equal(

@@ -37,7 +37,7 @@ public class ChartAxisContrastTests
         Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css");
 
     private static readonly string DesignSystemCss =
-        ClientSource.Sibling(Path.Combine("Odyssey Design System", "colors_and_type.css"));
+        DesignSystemSource.File(DesignSystemSource.TokensCss);
 
     /// <summary>The selectors whose stroke is read rather than decorative.</summary>
     public static TheoryData<string> InformationalRules() =>
@@ -168,10 +168,14 @@ public class ChartAxisContrastTests
         var previous = css.LastIndexOfAny(['}', ';'], open);
         var selector = css[(previous + 1)..open];
 
-        if (selector.Contains("data-theme='dark'", StringComparison.Ordinal)) return Theme.Dark;
-        if (selector.Contains("data-theme='light'", StringComparison.Ordinal)) return Theme.Light;
+        if (NamesTheme(selector, "dark")) return Theme.Dark;
+        if (NamesTheme(selector, "light")) return Theme.Light;
         return null;
     }
+
+    /// <summary>The design system's token file quotes the attribute value in double quotes, the rest in single.</summary>
+    private static bool NamesTheme(string selector, string theme) =>
+        Regex.IsMatch(selector, @"data-theme=['""]" + theme + @"['""]");
 
     private static Rgba ParseRgba(string value)
     {
