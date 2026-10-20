@@ -43,7 +43,7 @@ public class ControlContrastTests
         Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css");
 
     private static readonly string DesignSystemTokens =
-        DesignSystemSource.File(DesignSystemSource.TokensCss);
+        ClientSource.Sibling(Path.Combine("Odyssey Design System", "colors_and_type.css"));
 
     public enum Theme { Light, Dark }
 
@@ -353,14 +353,10 @@ public class ControlContrastTests
         var previous = css.LastIndexOfAny(['}', ';'], open);
         var selector = css[(previous + 1)..open];
 
-        if (NamesTheme(selector, "dark")) return Theme.Dark;
-        if (NamesTheme(selector, "light")) return Theme.Light;
+        if (selector.Contains("data-theme='dark'", StringComparison.Ordinal)) return Theme.Dark;
+        if (selector.Contains("data-theme='light'", StringComparison.Ordinal)) return Theme.Light;
         return null;
     }
-
-    /// <summary>The design system's token file quotes the attribute value in double quotes, the rest in single.</summary>
-    private static bool NamesTheme(string selector, string theme) =>
-        Regex.IsMatch(selector, @"data-theme=['""]" + theme + @"['""]");
 
     /// <summary>
     /// Follows <c>var(--ramp-step)</c> to the ramp's hex literal (the ramps are declared once, in a
