@@ -38,7 +38,7 @@
          Keep this on the same version as the other three EF entries. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.20" />
     <PackageVersion Include="Microsoft.NET.Sdk.WebAssembly.Pack" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="MySqlConnector" Version="2.6.2" />
     <PackageVersion Include="MudBlazor" Version="9.11.0" />
     <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
