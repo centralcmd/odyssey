@@ -31,7 +31,7 @@
     border-radius: 8px;
     display: grid;
     place-items: center;
-    background: var(--mud-palette-action-disabled-background);
+    background: var(--mud-palette-action-default-hover);
     color: var(--mud-palette-text-secondary);
 }
 

@@ -19,7 +19,7 @@
 *@
 
 <OdsFieldShell Label="@Label" HtmlFor="@FieldId"
-               Help="@(string.IsNullOrEmpty(ShownError) ? Help : null)" Error="@ShownError"
+               Help="@Help" Error="@ShownError"
                Class="@ShellClass" Aside="@Counter">
     <div class="odc-refnum-field">
         <div class="odc-input-wrap">
@@ -34,7 +34,7 @@
                    spellcheck="false"
                    autocomplete="off"
                    aria-invalid="@(string.IsNullOrEmpty(ShownError) ? null : "true")"
-                   aria-describedby="@($"{FieldId}-help")"
+                   aria-describedby="@DescribedBy"
                    @oninput="OnInput"
                    @onblur="OnBlur" />
         </div>
@@ -79,6 +79,19 @@
     private OdsReferenceNumberRules.Violation? Live => OdsReferenceNumberRules.Validate(Value);
 
     private string? ShownError => !string.IsNullOrEmpty(Error) ? Error : Live?.Message;
+
+    // The help stays visible beside an error (Odyssey Design System · ReferenceNumberField), and
+    // OdsFieldShell gives the error its own id only when a help node renders alongside it.
+    private string? DescribedBy
+    {
+        get
+        {
+            var hasHelp = !string.IsNullOrEmpty(Help);
+            var hasError = !string.IsNullOrEmpty(ShownError);
+            if (!hasHelp && !hasError) return null;
+            return hasHelp && hasError ? $"{FieldId}-help {FieldId}-help-error" : $"{FieldId}-help";
+        }
+    }
 
     private int Length => (Value ?? string.Empty).Trim().Length;
 

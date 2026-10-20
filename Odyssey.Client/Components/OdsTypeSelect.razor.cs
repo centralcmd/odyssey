@@ -77,9 +77,13 @@ public partial class OdsTypeSelect
     {
         get
         {
+            var hasHelp = !string.IsNullOrEmpty(Help);
+            var hasError = !string.IsNullOrEmpty(Error);
+            // OdsFieldShell gives the error its own id only when a help node renders alongside it.
             var ids = string.Join(' ', new[]
             {
-                string.IsNullOrEmpty(Error) && string.IsNullOrEmpty(Help) ? null : $"{FieldId}-help",
+                hasHelp || hasError ? $"{FieldId}-help" : null,
+                hasHelp && hasError ? $"{FieldId}-help-error" : null,
                 Required ? RequiredId : null,
             }.Where(id => id is not null));
             return ids.Length == 0 ? null : ids;
