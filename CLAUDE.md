@@ -597,7 +597,8 @@ Four things follow from that:
 - **CI cannot read the design system.** The eleven tests that compare the client with it
   (`ControlContrastTests`, `ChartAxisContrastTests`, `OdsTypeRegistriesTests` and others, all through
   `DesignSystemSource`) **skip** unless `ODYSSEY_DESIGN_SYSTEM_DIR` names a downloaded copy of the
-  artifact's `project/` folder. Drift is caught when a sync runs that check, not on every PR —
+  artifact's `project/` folder. That is the `design-system` tier, so a sync also sets
+  `ODYSSEY_REQUIRE_TIER=design-system` and a missing copy fails rather than skips. Drift is caught when a sync runs that check, not on every PR —
   a deliberate trade-off. Don't remove the skip to "make them run": with no copy there is nothing to
   compare against. And don't replace them with the artifact's current values pinned as literals in
   the test, which only duplicates the client.
@@ -990,7 +991,7 @@ Full plan and rationale: `docs/test-environment-and-e2e-spec.md`.
 
 **Only an ABSENT prerequisite self-skips** (issue #257): no Docker daemon, or nothing listening. A
 prerequisite that is present but broken — image pull, provisioning, a stack that answers but never
-turns healthy — always **fails**. `ODYSSEY_REQUIRE_TIER=integration,e2e,e2e-api` (or `all`) makes the
+turns healthy — always **fails**. `ODYSSEY_REQUIRE_TIER=integration,e2e,e2e-api,design-system` (or `all`) makes the
 absent case fail too; a CI job meant to run a tier must set it, or a green run can mean nothing ran.
 Rule and rationale: `TestShared/TestTierGate.cs` and `docs/test-environment-and-e2e-spec.md` §4.4.
 

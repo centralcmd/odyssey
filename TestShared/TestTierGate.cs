@@ -1,5 +1,6 @@
-// Linked (not referenced) into Odyssey.IntegrationTests, Odyssey.E2ETests and Odyssey.E2ETests.Api, so
-// the three self-skipping fixtures share one decision rule without a project any of them must depend on.
+// Linked (not referenced) into Odyssey.IntegrationTests, Odyssey.E2ETests, Odyssey.E2ETests.Api and
+// Odyssey.Client.Tests, so the self-skipping tiers share one decision rule without a project any of them
+// must depend on.
 // Every type here is internal: each test assembly compiles its own copy.
 
 namespace Odyssey.Testing;
@@ -51,7 +52,7 @@ internal sealed class TestTierUnavailableException(string message, Exception? in
 /// </para>
 /// <para>
 /// <c>ODYSSEY_REQUIRE_TIER</c> is the opt-in that turns the absent case into a failure too. It is a
-/// comma-separated list of tier names — <c>integration</c>, <c>e2e</c>, <c>e2e-api</c>, or <c>all</c> —
+/// comma-separated list of tier names — <c>integration</c>, <c>e2e</c>, <c>e2e-api</c>, <c>design-system</c>, or <c>all</c> —
 /// and an unknown name is itself an error, so a typo in a workflow cannot silently leave a tier
 /// unrequired.
 /// </para>
@@ -69,10 +70,16 @@ internal static class TestTierGate
     /// <summary><c>Odyssey.E2ETests.Api</c> — the API-over-HTTP tier.</summary>
     public const string E2EApi = "e2e-api";
 
+    /// <summary>
+    /// The design-system parity checks in <c>Odyssey.Client.Tests</c>, which need a downloaded copy of the
+    /// design-system artifact (<c>ODYSSEY_DESIGN_SYSTEM_DIR</c>). CI cannot fetch one; a sync run requires it.
+    /// </summary>
+    public const string DesignSystem = "design-system";
+
     /// <summary>Shorthand for every tier above.</summary>
     public const string All = "all";
 
-    public static readonly IReadOnlyList<string> KnownTiers = [Integration, E2E, E2EApi];
+    public static readonly IReadOnlyList<string> KnownTiers = [Integration, E2E, E2EApi, DesignSystem];
 
     /// <summary>
     /// Parses an <c>ODYSSEY_REQUIRE_TIER</c> value. Blank means nothing is required. Throws on an unknown

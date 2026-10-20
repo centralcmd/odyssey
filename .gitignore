@@ -495,7 +495,6 @@ $RECYCLE.BIN/
 
 *.csproj.lscache
 
-*Odyssey Design System/scraps/*
 
 # Per-developer agent memory — keep locally, never commit (each dev's is their own)
 .claude/agent-memory/

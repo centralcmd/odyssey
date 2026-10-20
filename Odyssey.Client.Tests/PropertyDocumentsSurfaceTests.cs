@@ -84,7 +84,6 @@ public class PropertyDocumentsSurfaceTests
     public void The_guess_agrees_with_the_design_systems_rule()
     {
         var path = DesignSystemSource.File(Path.Combine("ui_kits", "web", "properties-data.js"));
-        Assert.True(File.Exists(path), $"The design system's guess rule is missing at {path}.");
 
         var source = File.ReadAllText(path);
         var body = source[source.IndexOf("propGuessFileType", StringComparison.Ordinal)..];

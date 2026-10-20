@@ -35,6 +35,13 @@ public sealed class TestTierGateTests
         Assert.True(TestTierGate.ParseRequiredTiers("all").SetEquals(TestTierGate.KnownTiers));
     }
 
+    [Fact]
+    public void The_design_system_parity_checks_are_a_tier_all_requires()
+    {
+        Assert.True(TestTierGate.IsRequired(TestTierGate.DesignSystem, "design-system"));
+        Assert.Contains(TestTierGate.DesignSystem, TestTierGate.ParseRequiredTiers("all"));
+    }
+
     [Theory]
     [InlineData("integraton")]
     [InlineData("e2e_api")]

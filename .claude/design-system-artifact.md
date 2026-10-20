@@ -98,9 +98,12 @@ a SHA-256 for every file. It replaces `git log -- "Odyssey Design System/"` as t
 changed since the last sync":
 
 ```bash
-python3 .claude/skills/odyssey-design-system-changes/ds-sync.py diff <download-root>
-python3 .claude/skills/odyssey-design-system-changes/ds-sync.py record <download-root> --version <version>
+python3 -I .claude/skills/odyssey-design-system-changes/ds-sync.py diff <download-root>
+python3 -I .claude/skills/odyssey-design-system-changes/ds-sync.py record <download-root> --version <version>
 ```
+
+The download is untrusted: the script skips symbolic links and paths outside the root, prints names
+escaped, and refuses to record a download of fewer than 500 files.
 
 - `diff` lists the files added, removed and changed since the record. It also lists any `pending`
   files: ones recorded at their current version whose changes the frontend has not caught up with
@@ -122,15 +125,19 @@ Eleven tests in `Odyssey.Client.Tests` compare the client with design-system fil
 - the contract-type, party-role, file-type and contract-event registries;
 - the file-type filter glyphs, the calendar swatches and the property file-type guess.
 
-They **skip** unless `ODYSSEY_DESIGN_SYSTEM_DIR` names a downloaded `project/` folder:
+They **skip** unless `ODYSSEY_DESIGN_SYSTEM_DIR` names a downloaded `project/` folder. That absent
+copy is the `design-system` tier of `TestShared/TestTierGate.cs`, so a run meant to compare sets both
+variables, and a missing copy then fails instead of skipping:
 
 ```bash
-ODYSSEY_DESIGN_SYSTEM_DIR=<download-root>/project dotnet test Odyssey.Client.Tests
+ODYSSEY_DESIGN_SYSTEM_DIR=<download-root>/project ODYSSEY_REQUIRE_TIER=design-system \
+  dotnet test Odyssey.Client.Tests
 ```
 
 CI never sets it, so design-system drift is caught when a sync runs, not on every PR. That trade-off
-was accepted when the repo copy was retired. A run with the variable set must show **0 skipped**. A
-named folder that is missing a file fails rather than skips, so a renamed artifact file surfaces.
+was accepted when the repo copy was retired. The WCAG ratio checks that read only the client's own
+CSS still run on every PR. A named folder that is missing a file always fails, so a renamed artifact
+file surfaces.
 
 ## Changing the design system
 

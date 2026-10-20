@@ -12,7 +12,9 @@ frontend has not caught up with yet. They are listed by every diff and cleared b
 
 <download-root> is the folder the Artifact tool saved into: it holds SKILL.md, index.html
 and project/. Files under artifact-type/ belong to the artifact type, not the design
-system, and are never recorded.
+system, and are never recorded. The download is untrusted, so run this with `python3 -I`:
+symbolic links and anything resolving outside the root are skipped and reported, and file
+names are printed escaped.
 """
 
 import argparse
@@ -24,14 +26,21 @@ from pathlib import Path
 
 RECORD = Path(__file__).resolve().parents[2] / "design-system-sync.json"
 ARTIFACT_URL = "https://claude.ai/artifact/VkrcragM9HGn1cXKkANizr"
+# A full download is ~930 files; far fewer means an incomplete fan-out, not a smaller system.
+MIN_RECORDED_FILES = 500
 
 
 def tracked_files(root: Path) -> dict[str, str]:
-    files = {}
+    root = root.resolve()
+    files, skipped = {}, []
     for path in sorted(root.rglob("*")):
         rel = path.relative_to(root).as_posix()
-        if path.is_file() and not rel.startswith("artifact-type/"):
+        if path.is_symlink() or not path.resolve().is_relative_to(root):
+            skipped.append(rel)
+        elif path.is_file() and not rel.startswith("artifact-type/"):
             files[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+    for rel in skipped:
+        print(f"skipped (link or outside the root): {rel!r}", file=sys.stderr)
     return files
 
 
@@ -49,7 +58,7 @@ def diff(root: Path) -> int:
                          ("pending from an earlier sync", pending)):
         print(f"\n{label} ({len(paths)})")
         for p in paths:
-            print(f"  {p}")
+            print(f"  {p!r}")
     return 0
 
 
@@ -57,6 +66,8 @@ def write_record(root: Path, version: str) -> int:
     files = tracked_files(root)
     if "project/README.md" not in files:
         sys.exit(f"{root} does not look like an artifact download (no project/README.md).")
+    if len(files) < MIN_RECORDED_FILES:
+        sys.exit(f"Only {len(files)} files under {root}; a full download has ~930. Finish the download first.")
     RECORD.write_text(json.dumps(
         {"artifact": ARTIFACT_URL, "version": version, "syncedOn": date.today().isoformat(), "files": files},
         indent=1) + "\n")

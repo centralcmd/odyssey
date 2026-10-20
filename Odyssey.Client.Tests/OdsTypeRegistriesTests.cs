@@ -275,7 +275,6 @@ public class OdsTypeRegistriesTests
         string registryName, string dsFile, string? dsExport, Type enumType)
     {
         var path = DesignSystemSource.File(Path.Combine("components", dsFile));
-        Assert.True(File.Exists(path), $"The design system's registry is missing at {path}.");
 
         var source = File.ReadAllText(path);
         if (dsExport is not null)
@@ -366,7 +365,6 @@ public class OdsTypeRegistriesTests
     public void ContractEventTypes_agrees_with_the_design_systems_registry()
     {
         var path = DesignSystemSource.File(Path.Combine("ui_kits", "web", "contract-events-data.js"));
-        Assert.True(File.Exists(path), $"The design system's registry is missing at {path}.");
 
         // One object literal per member, in source order — which IS the reading order on both sides.
         var declared = Regex.Matches(
