@@ -532,9 +532,14 @@ public partial class JournalCard
         _editPhotoId = id;
     }
 
-    private async Task OnPhotoSaved()
+    // The edit dialog may have created tags or people inline; drop the cached photo lookups and reload
+    // them so the detail rail names them rather than showing "—".
+    internal async Task OnPhotoSaved()
     {
         _editPhotoId = null;
+        _photoRefsLoaded = false;
+        await LoadContacts();
+        await EnsurePhotoRefsAsync();
         await RefreshOpenEntryAsync();
     }
 
@@ -598,13 +603,13 @@ public partial class JournalCard
         await LoadEntries();
     }
 
-    private string PhotoTagName(Guid id) => _photoTagNames.GetValueOrDefault(id, "—");
+    internal string PhotoTagName(Guid id) => _photoTagNames.GetValueOrDefault(id, "—");
     private string PhotoAlbumName(Guid id) => _photoAlbumNames.GetValueOrDefault(id, "—");
     private string PhotoPersonName(Guid id) => _contactById.GetValueOrDefault(id)?.ResolvedDisplayName ?? "—";
 
-    // Tag/album names + edit-dialog option lists for the detail rail — loaded once, lazily, on first
-    // open. People resolve from the contacts already loaded for the entry chips.
-    private async Task EnsurePhotoRefsAsync()
+    // Tag/album names + edit-dialog option lists for the detail rail — loaded lazily on first open
+    // and again after a photo save. People resolve from the contacts already loaded for the entry chips.
+    internal async Task EnsurePhotoRefsAsync()
     {
         if (_photoRefsLoaded)
         {

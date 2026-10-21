@@ -403,7 +403,15 @@ public partial class PhotosCard
         (await Photos.UpdateAsync(id, body)).Toast(Snackbar, "Update failed");
     }
 
-    private async Task OnPhotoSaved() { _editId = null; await RefreshAsync(); }
+    // The edit dialog may have created tags or people inline; reload the name lookups so the detail
+    // view names them rather than showing "—".
+    internal async Task OnPhotoSaved()
+    {
+        _editId = null;
+        await LoadOptionsAsync();
+        await RefreshAsync();
+    }
+
     /// <summary>
     /// The library upload's own, tighter product limit — kept from the retired UploadPhotosDialog. The
     /// effective cap is the smaller of it and the instance-wide one; a surface may tighten, never loosen.
