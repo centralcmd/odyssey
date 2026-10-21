@@ -70,6 +70,11 @@
                     <Sub>@($"Assessed tax · all years · {cur}")</Sub>
                 </OdsLineChart>
             </div>
+            @* Every statement on file, archived included: archiving outranks the review status, so
+               the four buckets partition the file and the total is the statement count. *@
+            <div class="odc-summary-grid tx-summary">
+                <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No tax statements." />
+            </div>
         </OverviewContent>
 
         <SearchContent>

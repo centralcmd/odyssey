@@ -21,6 +21,7 @@
 
     <PageHeader Title="Budgets"
                 Icon="@Icons.Material.Filled.PieChart"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
                 PrimaryActionText="New budget"
                 OnPrimaryAction="AddClicked"
@@ -29,6 +30,11 @@
             @ActiveCount active · planned balance
             <span style="color:@BalanceColor(PlannedBalance);">@FormatMoney(PlannedBalance, null)</span>
         </SubLine>
+        <OverviewContent>
+            <div class="odc-summary-grid">
+                <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No budgets." />
+            </div>
+        </OverviewContent>
         <SearchContent>
             <div class="ph-filter-bar">
                         <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"

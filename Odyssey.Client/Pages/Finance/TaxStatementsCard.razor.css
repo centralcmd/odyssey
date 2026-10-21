@@ -13,8 +13,13 @@
 }
 
 
-/* ── Year-over-year overview charts ── */
+/* ── Year-over-year overview charts ──
+   The chart cards sit on the recessed well like every other Overview card (the breakdown tiles,
+   the contracts run-rate tiles), not on a raised surface. OdsLineChart renders the card, so it is
+   reached through ::deep. */
 .tx-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.tx-overview ::deep .odc-lc { background: var(--mud-palette-background); box-shadow: none; }
+.tx-summary { margin-top: 16px; }
 
 /* ── Derivation tags — three role wells (tax-payment / income / settlement) ──
    The wells are OdsInfoTiles now, so the well's own frame, label and figure come from

@@ -27,12 +27,28 @@ public sealed record TaxStatementYearFigures
 }
 
 /// <summary>
+/// How many statements sit in each review state. Archiving outranks the review status, so an archived
+/// statement counts under <see cref="Archived"/> only and the four buckets partition the whole file.
+/// </summary>
+public sealed record TaxStatementStatusCounts
+{
+    public int New { get; set; }
+
+    public int Approved { get; set; }
+
+    public int Flagged { get; set; }
+
+    public int Archived { get; set; }
+}
+
+/// <summary>
 /// Summary rollup for the tax-statements page header (issue #372): the years-on-file count, the
 /// first/latest assessed year, and the per-year declared series behind the overview charts. Replaces
 /// the page's former whole-table fetch.
 /// </summary>
 /// <remarks>
-/// Archived statements are counted in <see cref="TotalStatements"/> only — <see cref="ActiveCount"/>,
+/// Archived statements are counted in <see cref="TotalStatements"/> and
+/// <see cref="CountsByStatus"/> only — <see cref="ActiveCount"/>,
 /// the year bounds and <see cref="Years"/> all cover the live set, mirroring the page's rule that an
 /// archived year drops out of the header and the charts.
 /// </remarks>
@@ -48,6 +64,9 @@ public sealed record TaxStatementSummary
 
     /// <summary>The earliest live fiscal year — the baseline the charts compare against.</summary>
     public int? FirstFiscalYear { get; set; }
+
+    /// <summary>The "By status" breakdown, over every statement on file — archived ones included.</summary>
+    public TaxStatementStatusCounts CountsByStatus { get; set; } = new();
 
     /// <summary>Live statements' declared figures, oldest fiscal year first.</summary>
     public List<TaxStatementYearFigures> Years { get; set; } = new();

@@ -85,6 +85,20 @@ public partial class TaxStatementsCard
     // than the server-filtered display list.
     private int ActiveCount => _summary?.ActiveCount ?? 0;
 
+    // Overview "By status" — the same labels, tones and glyphs as TaxStatementStatusVisuals.
+    private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.CountedStatusRows<string>(
+        key => _summary?.CountsByStatus is not { } c ? 0 : key switch
+        {
+            "Approved" => c.Approved,
+            "Flagged" => c.Flagged,
+            "Archived" => c.Archived,
+            _ => c.New,
+        },
+        new OdsBreakdownDef<string>("New", "New", "info", "fiber_new"),
+        new OdsBreakdownDef<string>("Approved", "Approved", "income", "check_circle"),
+        new OdsBreakdownDef<string>("Flagged", "Flagged", "expense", "flag"),
+        new OdsBreakdownDef<string>("Archived", "Archived", "outline", "inventory_2"));
+
 
     // ── Lifecycle ──────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
