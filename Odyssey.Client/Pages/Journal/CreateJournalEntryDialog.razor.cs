@@ -92,7 +92,12 @@ public partial class CreateJournalEntryDialog
     {
         var option = TagCreator.Begin(text);
         if (option is not null)
+        {
             _createdTags.Add(option);
+            // The picker's ValueChanged re-renders only JournalEntryFields, which would keep the
+            // stale option list and render the new member as "Unknown".
+            StateHasChanged();
+        }
         return option;
     }
 
@@ -100,7 +105,10 @@ public partial class CreateJournalEntryDialog
     {
         var option = ContactCreator.Begin(text, kind);
         if (option is not null)
+        {
             _createdContacts.Add(option);
+            StateHasChanged();
+        }
         return option;
     }
 

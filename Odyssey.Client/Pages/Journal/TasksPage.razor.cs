@@ -489,6 +489,8 @@ public partial class TasksPage
     private async Task OnTaskSaved()
     {
         _details.Clear();
+        // The dialog may have minted tags inline; reload them so the saved task's chips resolve.
+        await LoadTags();
         await LoadTasks();
     }
 

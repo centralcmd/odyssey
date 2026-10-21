@@ -650,6 +650,7 @@ public partial class JournalCard
         if (_editEntry is not null)
         {
             _announce = "Entry updated.";
+            await Task.WhenAll(LoadTags(), LoadContacts());
             await ReloadEntry(_editEntry.JournalEntryId);
         }
     }
@@ -708,7 +709,12 @@ public partial class JournalCard
         _createOpen = true;
     }
 
-    private Task OnEntryCreated() => LoadEntries();
+    // The dialog may have minted tags or contacts inline; reload them so the new entry's chips resolve.
+    private async Task OnEntryCreated()
+    {
+        await Task.WhenAll(LoadTags(), LoadContacts());
+        await LoadEntries();
+    }
 
     // ── VJOURNAL export / import (issue #339) ────────────────────────────────────
     private bool _canImport => _canCreate && _canUpdate;
