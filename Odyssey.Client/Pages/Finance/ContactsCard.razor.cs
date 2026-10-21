@@ -241,6 +241,16 @@ public partial class ContactsCard
         if (_canUpdate)
         {
             items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit contact", OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)) });
+
+            // Conversion names its TARGET, so the menu only ever offers the one that exists for this
+            // contact (issue #335). It lives here, never in the edit dialog, and is offered on an
+            // archived contact too — converting leaves the archive state unchanged.
+            items.Add(new OdsMenuItem
+            {
+                Icon = "swap_horiz",
+                Label = c.Type == ContactType.Person ? "Convert to organization" : "Convert to person",
+                OnClick = EventCallback.Factory.Create(this, () => ConvertClicked(c)),
+            });
         }
 
         // The contact's image lives entirely in this menu (issue #86 §3, Odyssey Design System ·
@@ -344,6 +354,10 @@ public partial class ContactsCard
     private Guid _editKey;
     private ExistingContact? _editTarget;
 
+    private bool _convertOpen;
+    private Guid _convertKey;
+    private ExistingContact? _convertTarget;
+
     private void AddClicked()
     {
         if (!_canCreate)
@@ -363,6 +377,23 @@ public partial class ContactsCard
         _editTarget = contact;
         _editKey = Guid.NewGuid();
         _editOpen = true;
+    }
+
+    private void ConvertClicked(ExistingContact contact)
+    {
+        if (!_canUpdate)
+            return;
+
+        _convertTarget = contact;
+        _convertKey = Guid.NewGuid();
+        _convertOpen = true;
+    }
+
+    private async Task OnConverted(ExistingContact converted)
+    {
+        await RefreshContactAsync(converted.ContactId);
+        _allContacts = (await Contacts.ListAllAsync()).ItemsOrToast(Snackbar, "contacts");
+        Announce($"{converted.ResolvedDisplayName} converted to {(converted.Type == ContactType.Person ? "a person" : "an organization")}.");
     }
 
     private async Task OnEditSaved()

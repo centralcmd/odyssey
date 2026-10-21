@@ -1,7 +1,7 @@
 @*
     Create / edit dialog for a contact (Odyssey Design System · Contacts AddContactModal).
-    Create mode shows the Type selector; edit mode locks Type behind a chip ("can't be changed after
-    creation") and prefills the fields. Both edit the DisplayName override, the Notes, and the
+    Create mode shows the Type selector; edit mode shows Type as a read-only chip pointing at the row's
+    ⋯ menu, where Convert changes it (issue #335), and prefills the fields. Both edit the DisplayName override, the Notes, and the
     Person/Organization sub-fields — the contact METHODS (addresses, emails, phone numbers) are managed
     separately on the record card.
 *@
@@ -21,7 +21,7 @@
 
     @if (IsEdit)
     {
-        <OdsFieldShell Label="Type" Help="Type can't be changed after creation.">
+        <OdsFieldShell Label="Type" Help="To change the type, use Convert in the contact's ⋯ menu.">
             <OdsChip Tone="OdsChipTone.Outline" Icon="@_typeMeta.Icon">@_typeMeta.Label</OdsChip>
         </OdsFieldShell>
     }
