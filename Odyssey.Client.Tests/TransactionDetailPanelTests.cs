@@ -112,6 +112,15 @@ public sealed class TransactionDetailPanelTests : IAsyncLifetime
     }
 
     [Fact]
+    public void An_empty_documents_section_shows_its_line_without_the_table_frame()
+    {
+        var cut = Render(Transaction());
+
+        Assert.Contains("No files attached to this transaction yet.", cut.Find(".odc-empty.line").TextContent);
+        Assert.Empty(cut.FindAll(".acct-table-frame"));
+    }
+
+    [Fact]
     public void A_transaction_with_no_ids_or_extra_data_renders_the_base_tile_set()
     {
         var cut = Render(Transaction());
