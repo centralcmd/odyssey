@@ -45,11 +45,7 @@
     // ── Overview breakdown tiles (By type / By status) ──────────────────────────
     // Both read counts the API already computed: "By type" covers the live (non-archived) set, "By
     // status" spans every account so an archived one still shows up in its own bucket.
-    private IReadOnlyList<OdsBreakdownRow> TypeRows => OdsBreakdown.CountedTypeRows(
-        (Summary?.CountsByType ?? []).ToDictionary(c => c.Type, c => c.Count),
-        [.. AccountTypeVisuals.Selectable, AccountType.Unknown],
-        t => (AccountTypeVisuals.MaterialIcon(t), AccountTypeVisuals.FgColor(t),
-              t == AccountType.Unknown ? "Unclassified" : AccountTypeVisuals.Label(t)));
+    private IReadOnlyList<OdsBreakdownRow> TypeRows => OverviewBreakdowns.AccountTypeRows(Summary);
 
     private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.CountedStatusRows<string>(
         key => Summary?.CountsByStatus is not { } c ? 0 : key switch

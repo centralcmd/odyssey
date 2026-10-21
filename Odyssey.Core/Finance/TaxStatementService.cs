@@ -84,13 +84,13 @@ public class TaxStatementService
     /// </summary>
     public async Task<TaxStatementSummary> GetSummary(CancellationToken cancellationToken = default)
     {
-        var total = await context.TaxStatements.CountAsync(cancellationToken);
-
         var byStatus = await context.TaxStatements
             .AsNoTracking()
             .GroupBy(s => new { IsArchived = s.Archived != null, s.Status })
             .Select(g => new { g.Key.IsArchived, g.Key.Status, Count = g.Count() })
             .ToListAsync(cancellationToken);
+        // The total comes from the same read as the buckets, so they always sum to it.
+        var total = byStatus.Sum(g => g.Count);
         int Live(TaxStatementStatus status) =>
             byStatus.Where(g => !g.IsArchived && g.Status == status).Sum(g => g.Count);
 

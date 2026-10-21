@@ -328,8 +328,9 @@ public class SummaryEndpointsApiTests
             context.TaxStatements.Add(TaxStatement(2024, netWorth: 1m, assessedTax: 1m, status: TaxStatementStatus.Approved));
             context.TaxStatements.Add(TaxStatement(2023, netWorth: 1m, assessedTax: 1m, status: TaxStatementStatus.Approved));
             context.TaxStatements.Add(TaxStatement(2022, netWorth: 1m, assessedTax: 1m, status: TaxStatementStatus.Flagged));
-            // Archived and approved: counts as Archived only.
+            // Archived and approved / archived and flagged: both count as Archived only.
             context.TaxStatements.Add(TaxStatement(2021, netWorth: 1m, assessedTax: 1m, archived: true, status: TaxStatementStatus.Approved));
+            context.TaxStatements.Add(TaxStatement(2020, netWorth: 1m, assessedTax: 1m, archived: true, status: TaxStatementStatus.Flagged));
         });
         using var client = factory.CreateClient();
 
@@ -339,7 +340,7 @@ public class SummaryEndpointsApiTests
         Assert.Equal(1, counts.New);
         Assert.Equal(2, counts.Approved);
         Assert.Equal(1, counts.Flagged);
-        Assert.Equal(1, counts.Archived);
+        Assert.Equal(2, counts.Archived);
         Assert.Equal(summary.TotalStatements, counts.New + counts.Approved + counts.Flagged + counts.Archived);
     }
 
@@ -352,6 +353,7 @@ public class SummaryEndpointsApiTests
         var summary = await client.GetFromJsonAsync<TaxStatementSummary>("/api/tax-statements/summary");
 
         Assert.Equal(0, summary!.ActiveCount);
+        Assert.Equal(new TaxStatementStatusCounts(), summary.CountsByStatus);
         Assert.Null(summary.FirstFiscalYear);
         Assert.Null(summary.LatestFiscalYear);
         Assert.Empty(summary.Years);

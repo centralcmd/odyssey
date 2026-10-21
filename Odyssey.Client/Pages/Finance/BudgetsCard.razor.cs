@@ -137,7 +137,7 @@ public partial class BudgetsCard
         await GetBudgets();
     }
 
-    private sealed class BudgetsPageState
+    internal sealed class BudgetsPageState
     {
         public bool OverviewOpen { get; set; } = true;
         public bool SearchOpen { get; set; } = true;
@@ -310,12 +310,7 @@ public partial class BudgetsCard
     private int ActiveCount => _summary?.ActiveCount ?? 0;
     private decimal PlannedBalance => _summary?.PlannedBalance ?? 0m;
 
-    // Overview "By status": Active and Archived partition the whole file, so the total is the
-    // budget count.
-    private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.CountedStatusRows<string>(
-        key => key == "archived" ? _summary?.ArchivedCount ?? 0 : ActiveCount,
-        new OdsBreakdownDef<string>("active", "Active", "income", "task_alt"),
-        new OdsBreakdownDef<string>("archived", "Archived", "outline", "inventory_2"));
+    private IReadOnlyList<OdsBreakdownRow> StatusRows => OverviewBreakdowns.BudgetStatusRows(_summary);
 
 
     // Per-budget signed actual sums keyed by transaction-tag id, derived from its report.
