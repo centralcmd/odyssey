@@ -486,7 +486,7 @@ public partial class TasksPage
         return [.. detail.Attachments.Select(a => _fileMeta.GetValueOrDefault(a.FileId)).OfType<FileMetadataResponse>()];
     }
 
-    private async Task OnTaskSaved()
+    internal async Task OnTaskSaved()
     {
         _details.Clear();
         // The dialog may have minted tags inline; reload them so the saved task's chips resolve.

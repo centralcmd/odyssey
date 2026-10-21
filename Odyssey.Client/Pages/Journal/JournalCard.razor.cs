@@ -710,7 +710,7 @@ public partial class JournalCard
     }
 
     // The dialog may have minted tags or contacts inline; reload them so the new entry's chips resolve.
-    private async Task OnEntryCreated()
+    internal async Task OnEntryCreated()
     {
         await Task.WhenAll(LoadTags(), LoadContacts());
         await LoadEntries();
