@@ -79,7 +79,7 @@ public sealed class PhotoEditTagRefreshTests
         await cut.InvokeAsync(() => tile.OnOpen.InvokeAsync(PhotoId));
 
         dialogs.WaitForAssertion(() => Assert.Contains(
-            dialogs.FindAll(".pl-vchips .odc-chip, .pl-vchips *"), e => e.TextContent.Trim() == "Hiking"));
+            dialogs.FindAll(".pl-vchips > *"), e => e.TextContent.Trim() == "Hiking"));
     }
 
     [Fact]
@@ -94,6 +94,25 @@ public sealed class PhotoEditTagRefreshTests
         await cut.InvokeAsync(cut.Instance.EnsurePhotoRefsAsync);
         Assert.Equal("—", cut.Instance.PhotoTagName(HikingId));
 
+        await cut.InvokeAsync(cut.Instance.OnPhotoSaved);
+
+        Assert.Equal("Hiking", cut.Instance.PhotoTagName(HikingId));
+    }
+
+    [Fact]
+    public async Task Journal_a_failed_reload_after_a_save_keeps_the_names_already_loaded()
+    {
+        await using var ctx = PageTestContext.Create(PermissionClaims.JournalRead, PermissionClaims.PhotosUpdate);
+        var tags = new Mock<IPhotoTagsApiClient> { DefaultValueProvider = new PageTestContext.EmptySuccess() };
+        tags.SetupSequence(t => t.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<List<ExistingPhotoTag>>.Success(
+                [new ExistingPhotoTag { PhotoTagId = HikingId, Name = "Hiking" }], HttpStatusCode.OK))
+            .ReturnsAsync(ApiResult<List<ExistingPhotoTag>>.Failure(
+                HttpStatusCode.InternalServerError, new ApiProblem { Title = "Server error" }));
+        ctx.Services.AddSingleton(tags.Object);
+
+        var cut = ctx.Render<JournalCard>();
+        await cut.InvokeAsync(cut.Instance.EnsurePhotoRefsAsync);
         await cut.InvokeAsync(cut.Instance.OnPhotoSaved);
 
         Assert.Equal("Hiking", cut.Instance.PhotoTagName(HikingId));

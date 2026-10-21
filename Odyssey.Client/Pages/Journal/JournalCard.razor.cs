@@ -538,6 +538,7 @@ public partial class JournalCard
     {
         _editPhotoId = null;
         _photoRefsLoaded = false;
+        // Sequential: the photo refs build their people options from the reloaded contacts.
         await LoadContacts();
         await EnsurePhotoRefsAsync();
         await RefreshOpenEntryAsync();
@@ -616,20 +617,29 @@ public partial class JournalCard
             return;
         }
 
-        var tags = (await PhotoTags.ListAllAsync()).ItemsOrToast(Snackbar, "photo tags");
-        _photoTagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
-        _photoTagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
+        // A failed fetch keeps the names already held, so a reload after a save never blanks them.
+        var tagsResult = await PhotoTags.ListAllAsync();
+        var tags = tagsResult.ItemsOrToast(Snackbar, "photo tags");
+        if (tagsResult.IsSuccess)
+        {
+            _photoTagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
+            _photoTagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
+        }
 
-        var albums = (await Albums.ListAllAsync()).ItemsOrToast(Snackbar, "albums");
-        _photoAlbumNames = albums.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
-        _photoAlbumOptions = [.. albums.Select(a => new OdsOption(a.PhotoAlbumId.ToString(), a.Name))];
+        var albumsResult = await Albums.ListAllAsync();
+        var albums = albumsResult.ItemsOrToast(Snackbar, "albums");
+        if (albumsResult.IsSuccess)
+        {
+            _photoAlbumNames = albums.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
+            _photoAlbumOptions = [.. albums.Select(a => new OdsOption(a.PhotoAlbumId.ToString(), a.Name))];
+        }
 
         // Active Person contacts for the people picker — reuse the entry's already-loaded set.
         _photoPeopleOptions = OdsContactOptions.Active(
             _contactById.Values.Where(c => c.Type == ContactType.Person));
 
         // Set only after the fetches succeed, so a transient failure retries on the next open.
-        _photoRefsLoaded = true;
+        _photoRefsLoaded = tagsResult.IsSuccess && albumsResult.IsSuccess;
     }
 
     // ── Contact chip helper (rendered inline in the markup) ─────────────────
