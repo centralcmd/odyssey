@@ -8,11 +8,10 @@
     grows the document-validity fields — a Valid from / Valid to period, the
     issue date, and the issuing contact.
 
-    Renameable=false drops the File-name field on surfaces whose update verb does
-    not accept one — a contract document's name belongs to the FileMetadata the
-    link references, and PUT /api/contracts/{id}/files/{fileId} carries the
-    document type and the four validity fields only. The dialog then reads
-    "Edit document" and the patch carries the name back unchanged.
+    The File-name field is offered on every surface, contract and property
+    documents included. Where the surface's own update verb takes no name (a
+    link row's PUT carries the type and the four validity fields only), the host
+    sends a changed name to PUT /api/files/{id}/metadata beside it.
 
     RequireType marks the type picker with the obligation * and refuses an empty
     submit — for a full-replacement update whose enum has no "leave unchanged"
@@ -35,14 +34,11 @@
 *@
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged"
-               Icon="edit" Title="@(Renameable ? "Edit file" : "Edit document")" Subtitle="@File.Name"
+               Icon="edit" Title="Edit file" Subtitle="@File.Name"
                SubmitLabel="Save changes" SubmitIcon="check"
                OnSubmit="SubmitAsync">
-    @if (Renameable)
-    {
-        <OdsField Label="File name" @bind-Value="_name" Required="true" AutoFocus="true"
-                  Error="@(_touched && !_valid ? "A file needs a name." : null)" />
-    }
+    <OdsField Label="File name" @bind-Value="_name" Required="true" AutoFocus="true"
+              Error="@(_touched && !_valid ? "A file needs a name." : null)" />
     <OdsSelect Label="Document type" @bind-Value="_kind" Options="Kinds" Placeholder="Select type…"
                Required="RequireType"
                Error="@(_touched && _typeMissing ? "Pick the document type." : null)" />
@@ -76,13 +72,6 @@
 
     /// <summary>Document-type options for the picker.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<OdsOption> Kinds { get; set; } = [];
-
-    /// <summary>
-    /// Whether the dialog offers the File-name field. Default <see langword="true"/>. Set false on a
-    /// surface whose update verb takes no name; the patch then carries <see cref="OdsFilesRow.Name"/>
-    /// back unchanged, so a host comparing it sees no rename.
-    /// </summary>
-    [Parameter] public bool Renameable { get; set; } = true;
 
     /// <summary>
     /// Mark the document-type picker with the obligation <c>*</c> and refuse an empty submit.
@@ -132,7 +121,7 @@
         return option;
     }
 
-    private bool _valid => !Renameable || !string.IsNullOrWhiteSpace(_name);
+    private bool _valid => !string.IsNullOrWhiteSpace(_name);
 
     private bool _typeMissing => RequireType && string.IsNullOrWhiteSpace(_kind);
 
@@ -174,7 +163,7 @@
         if (!_valid || _typeMissing || _rangeBad || _anyYearBad)
             return false;
 
-        var patch = new OdsFileEdit(Renameable ? _name.Trim() : File.Name, _kind)
+        var patch = new OdsFileEdit(_name.Trim(), _kind)
         {
             ValidFrom = _validFrom,
             ValidTo = _validTo,

@@ -145,8 +145,9 @@ public partial class ContractFilesTable
 
     /// <summary>
     /// <c>PUT …/files/{fileId}</c> — a <b>full replacement</b> of the link row's type and validity,
-    /// so a date the dialog left empty clears the stored value. The patch is applied to the
-    /// <c>ContractFile</c>, never to the <c>FileMetadata</c> it references: this verb accepts no name.
+    /// so a date the dialog left empty clears the stored value. That verb accepts no name: a changed
+    /// name goes to the referenced <c>FileMetadata</c> through <c>PUT /api/files/{id}/metadata</c>
+    /// first, which renames the stored file everywhere it is attached.
     /// </summary>
     private async Task HandleSaveAsync(OdsRecordSaveEventArgs args)
     {
@@ -174,30 +175,50 @@ public partial class ContractFilesTable
             ? issuer
             : (Guid?)null;
 
+        var newName = patch.Name.Trim();
         var newType = Enum.TryParse<ContractFileType>(patch.Kind, out var parsed) ? parsed : file.FileType;
-        var unchanged =
-            newType == file.FileType && patch.ValidFrom == file.ValidFrom && patch.ValidTo == file.ValidTo
-            && patch.IssuedAt == file.IssuedAt && issuedBy == file.IssuedBy;
+        var nameChanged = !string.Equals(newName, file.FileName, StringComparison.Ordinal);
+        var linkChanged =
+            newType != file.FileType || patch.ValidFrom != file.ValidFrom || patch.ValidTo != file.ValidTo
+            || patch.IssuedAt != file.IssuedAt || issuedBy != file.IssuedBy;
 
-        if (unchanged)
+        if (!nameChanged && !linkChanged)
             return;
 
-        var result = await Contracts.UpdateFileAsync(ContractId, file.FileId, new UpdateContractFileRequest
-        {
-            FileType = newType,
-            ValidFrom = patch.ValidFrom,
-            ValidTo = patch.ValidTo,
-            IssuedAt = patch.IssuedAt,
-            IssuedBy = issuedBy,
-        });
-
-        // Fail() keeps the edit dialog open with what the user typed (issue #252).
-        if (!result.Toast(Snackbar, "Unable to update document", "Document updated."))
+        // The existing description is sent back unchanged so a rename doesn't wipe it (the service
+        // overwrites it). Fail() keeps the edit dialog open with what the user typed (issue #252).
+        if (nameChanged
+            && (await FilesApi.UpdateMetadataAsync(file.FileId, file.Description, newName))
+                .OrToast(Snackbar, "Unable to rename document") is null)
         {
             args.Fail();
             return;
         }
 
+        if (linkChanged
+            && !(await Contracts.UpdateFileAsync(ContractId, file.FileId, new UpdateContractFileRequest
+            {
+                FileType = newType,
+                ValidFrom = patch.ValidFrom,
+                ValidTo = patch.ValidTo,
+                IssuedAt = patch.IssuedAt,
+                IssuedBy = issuedBy,
+            })).Toast(Snackbar, "Unable to update document"))
+        {
+            args.Fail();
+            // A rename in the same save has already landed; re-read so the row shows it while the
+            // dialog stays open for the part that did not.
+            if (nameChanged)
+                await RefreshFilesAsync();
+            return;
+        }
+
+        Snackbar.Add("Document updated.", Severity.Success);
+        await RefreshFilesAsync();
+    }
+
+    private async Task RefreshFilesAsync()
+    {
         // The targeted refresh. A failed re-read falls back to the whole-contract refetch rather
         // than leaving the table showing what the user typed as though it were what was stored.
         if (OnFilesRefreshed.HasDelegate

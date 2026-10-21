@@ -23,10 +23,11 @@ public sealed record ContractFileItem(
     DateTime? ValidFrom = null,
     DateTime? ValidTo = null,
     DateTime? IssuedAt = null,
-    Guid? IssuedBy = null)
+    Guid? IssuedBy = null,
+    string? Description = null)
 {
     public static ContractFileItem From(ExistingContractFile f) => new(
         f.FileMetadata.Id, f.FileMetadata.FileName, f.FileMetadata.ContentType,
         f.FileMetadata.SizeBytes, f.FileMetadata.UploadedAtUtc, f.FileType,
-        f.ValidFrom, f.ValidTo, f.IssuedAt, f.IssuedBy);
+        f.ValidFrom, f.ValidTo, f.IssuedAt, f.IssuedBy, f.FileMetadata.Description);
 }

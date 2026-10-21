@@ -6,8 +6,9 @@
     PropertyDocuments). GET /api/properties/{id}/files (properties.read) — unpaged, oldest attachment
     first, metadata only — drawn with the shared OdsFilesTable in its contract configuration:
 
-      • Validity columns, and no rename — the name belongs to the FileMetadata, and the PUT carries the
-        type and the four validity fields only.
+      • Validity columns, and the File-name field like every files surface — the name belongs to the
+        FileMetadata and the PUT carries the type and the four validity fields only, so a changed name
+        goes to PUT /api/files/{id}/metadata beside it.
       • RequireType — the PUT is a full replacement, so an unsent type is refused rather than reset.
       • The danger item reads Detach · link_off: DELETE removes the link only; the file stays in Files.
       • Edit and Detach need properties.update; Download is a read.
@@ -50,7 +51,6 @@
                                Issuers="@(CanUpdate ? _issuerOptions : null)"
                                IssuerFor="@(row => IssuerName(FileById(row.Id).IssuedBy))"
                                OnCreateContact="@(CanUpdate && _canCreateContact ? CreateContactOption : null)"
-                               Renameable="false"
                                RequireType="true"
                                OnSave="@SaveAction"
                                OnDelete="@DetachAction"

@@ -8,6 +8,7 @@
 @inject IContactQuickCreate ContactCreator
 @inject AuthenticationStateProvider AuthenticationState
 @inject IContractsApiClient Contracts
+@inject IFilesApiClient FilesApi
 
 @*
     ContractFilesTable — the attachments table for a contract (issue #174 §7, extended by #146).
@@ -16,10 +17,10 @@
     never a generic by-file-id route. Attach is owned by the host's "Attach documents" action
     (the shared AttachDocumentsDialog).
 
-    Three things differ from the account files table:
-      • Renameable=false — a contract document's name lives on the FileMetadata it references, and
-        PUT …/files/{fileId} carries the document type and the four validity fields only, so the
-        dialog reads "Edit document" and offers no rename.
+    The File-name field is offered here as on every files surface. A contract document's name lives
+    on the FileMetadata it references and PUT …/files/{fileId} carries the type and validity only, so
+    a changed name goes to PUT /api/files/{id}/metadata — which renames the stored file everywhere it
+    is attached. Two things differ from the account files table:
       • RequireType — the update is a full replacement and ContractFileType.Signed is the enum's
         zero member, so an unsent type is refused rather than defaulted into a claim that the
         document is the signed agreement.
@@ -43,7 +44,6 @@
                    Issuers="_issuerOptions"
                    IssuerFor="@(row => IssuerName(FileById(row.Id).IssuedBy))"
                    OnCreateContact="@(_canCreateContact ? CreateContactOption : null)"
-                   Renameable="false"
                    RequireType="true"
                    OnSave="@SaveAction"
                    OnDelete="@DeleteAction"

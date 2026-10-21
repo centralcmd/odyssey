@@ -37,14 +37,6 @@ public partial class OdsFilesTable
     [Parameter] public IReadOnlyList<OdsOption>? Kinds { get; set; }
 
     /// <summary>
-    /// Whether the default Edit dialog offers the File-name field. Default <see langword="true"/>.
-    /// Set false on a surface whose update verb takes no name — a contract document's name lives on
-    /// the <c>FileMetadata</c> the link references, so its <c>PUT</c> carries the document type and
-    /// the four validity fields only.
-    /// </summary>
-    [Parameter] public bool Renameable { get; set; } = true;
-
-    /// <summary>
     /// Mark the default Edit dialog's type picker with the obligation <c>*</c> and refuse an empty
     /// submit. Default <see langword="false"/>. Set on a full-replacement update whose enum has no
     /// "leave unchanged" value and whose zero member is meaningful (<c>ContractFileType.Signed</c>),

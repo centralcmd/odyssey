@@ -18,6 +18,7 @@ namespace Odyssey.Client.Pages.Finance;
 public partial class PropertyDocumentsSection
 {
     [Inject] private IPropertiesApiClient Properties { get; set; } = default!;
+    [Inject] private IFilesApiClient FilesApi { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
     [Inject] private IClipboardService Clipboard { get; set; } = default!;
@@ -229,7 +230,9 @@ public partial class PropertyDocumentsSection
 
     /// <summary>
     /// <c>PUT …/files/{fileId}</c> — a full replacement of the link's type and validity, so a date the
-    /// dialog left empty clears the stored value. Nothing here touches the FileMetadata.
+    /// dialog left empty clears the stored value. That verb accepts no name: a changed name goes to the
+    /// FileMetadata through <c>PUT /api/files/{id}/metadata</c> first, which renames the stored file
+    /// everywhere it is attached.
     /// </summary>
     private async Task HandleSaveAsync(OdsRecordSaveEventArgs args)
     {
@@ -256,29 +259,44 @@ public partial class PropertyDocumentsSection
             ? issuer
             : (Guid?)null;
 
+        var newName = patch.Name.Trim();
         var newType = Enum.TryParse<PropertyFileType>(patch.Kind, out var parsed) ? parsed : file.FileType;
-        var unchanged =
-            newType == file.FileType && patch.ValidFrom == file.ValidFrom && patch.ValidTo == file.ValidTo
-            && patch.IssuedAt == file.IssuedAt && issuedBy == file.IssuedBy;
-        if (unchanged)
+        var nameChanged = !string.Equals(newName, file.FileMetadata.FileName, StringComparison.Ordinal);
+        var linkChanged =
+            newType != file.FileType || patch.ValidFrom != file.ValidFrom || patch.ValidTo != file.ValidTo
+            || patch.IssuedAt != file.IssuedAt || issuedBy != file.IssuedBy;
+        if (!nameChanged && !linkChanged)
             return;
 
-        var result = await Properties.UpdateFileAsync(Property.PropertyId, file.FileMetadata.Id, new UpdatePropertyFileRequest
-        {
-            FileType = newType,
-            ValidFrom = patch.ValidFrom,
-            ValidTo = patch.ValidTo,
-            IssuedAt = patch.IssuedAt,
-            IssuedBy = issuedBy,
-        });
-
-        // Fail() keeps the edit dialog open with what the user typed (issue #252).
-        if (!result.Toast(Snackbar, "Unable to update document", "Document updated."))
+        // The existing description is sent back unchanged so a rename doesn't wipe it (the service
+        // overwrites it). Fail() keeps the edit dialog open with what the user typed (issue #252).
+        if (nameChanged
+            && (await FilesApi.UpdateMetadataAsync(file.FileMetadata.Id, file.FileMetadata.Description, newName))
+                .OrToast(Snackbar, "Unable to rename document") is null)
         {
             args.Fail();
             return;
         }
 
+        if (linkChanged
+            && !(await Properties.UpdateFileAsync(Property.PropertyId, file.FileMetadata.Id, new UpdatePropertyFileRequest
+            {
+                FileType = newType,
+                ValidFrom = patch.ValidFrom,
+                ValidTo = patch.ValidTo,
+                IssuedAt = patch.IssuedAt,
+                IssuedBy = issuedBy,
+            })).Toast(Snackbar, "Unable to update document"))
+        {
+            args.Fail();
+            // A rename in the same save has already landed; re-read so the row shows it while the
+            // dialog stays open for the part that did not.
+            if (nameChanged)
+                await LoadAsync();
+            return;
+        }
+
+        Snackbar.Add("Document updated.", Severity.Success);
         await LoadAsync();
     }
 
