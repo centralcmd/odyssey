@@ -110,8 +110,13 @@ public sealed class TransactionFilesSectionFrameTests : IAsyncLifetime
         Listing(File());
 
         var cut = Render(chrome: true);
+        cut.Find(".odc-collapsible-head button[aria-expanded]").Click();
 
-        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".acct-table-frame")));
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(cut.Find(".odc-collapsible-body table"));
+            Assert.Empty(cut.FindAll(".acct-table-frame"));
+        });
     }
 
     [Fact]
