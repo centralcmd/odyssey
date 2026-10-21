@@ -76,16 +76,15 @@
     <Sections>
         <div class="acct-section">
             <OdsSectionDivider Label="Documents" Meta="@FilesMeta" />
-            <div class="acct-table-frame odc-scroll">
-                @* Keyed on the attached ids, so an attach from the row menu (which reloads the row)
-                   re-reads the section rather than leaving its first load in place. *@
-                <TransactionFilesSection @key="FilesKey"
-                                         TransactionId="@Transaction.TransactionId"
-                                         Chrome="false"
-                                         CanUpload="false"
-                                         CanDownload="@CanDownloadFiles"
-                                         CanDelete="@CanDeleteFiles" />
-            </div>
+            @* Keyed on the attached ids, so an attach from the row menu (which reloads the row)
+               re-reads the section rather than leaving its first load in place. The section frames
+               its own table, leaving an empty line unframed. *@
+            <TransactionFilesSection @key="FilesKey"
+                                     TransactionId="@Transaction.TransactionId"
+                                     Chrome="false"
+                                     CanUpload="false"
+                                     CanDownload="@CanDownloadFiles"
+                                     CanDelete="@CanDeleteFiles" />
         </div>
     </Sections>
 </OdsRecordBody>

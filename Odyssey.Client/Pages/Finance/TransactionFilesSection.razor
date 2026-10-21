@@ -48,15 +48,17 @@
         {
             <OdsEmptyLine Text="No files attached to this transaction yet." />
         }
+        else if (Chrome)
+        {
+            @FilesTableFragment
+        }
         else
         {
-            <OdsInlinePager Items="FileRows.ToList()" Context="pageRows">
-                <OdsFilesTable Files="pageRows"
-                               Kinds="OdsTypeRegistries.TransactionFileOptions"
-                               TypeFor="@(row => KindMeta(FileById(row.Id).Type))"
-                               Actions="@(row => BuildMenu(FileById(row.Id)))"
-                               OnDelete="@DeleteAction" />
-            </OdsInlinePager>
+            @* The bare form frames the table alone, so an empty section shows its line unframed —
+               as a contract's Documents section does — including after the last file is detached. *@
+            <div class="acct-table-frame odc-scroll">
+                @FilesTableFragment
+            </div>
         }
     </ChildContent>
 </OdsCollapsible>
@@ -103,6 +105,14 @@
     }
 
     private void ToggleOpen() => _isOpen = !_isOpen;
+
+    private RenderFragment FilesTableFragment => @<OdsInlinePager Items="FileRows.ToList()" Context="pageRows">
+        <OdsFilesTable Files="pageRows"
+                       Kinds="OdsTypeRegistries.TransactionFileOptions"
+                       TypeFor="@(row => KindMeta(FileById(row.Id).Type))"
+                       Actions="@(row => BuildMenu(FileById(row.Id)))"
+                       OnDelete="@DeleteAction" />
+    </OdsInlinePager>;
 
     private PreviewState? _preview;
     private Guid _previewKey;
