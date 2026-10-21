@@ -26,11 +26,11 @@
 </OdsAllocationDonuts>
 
 <div class="odc-summary-grid">
-    @* No total on By type: the rows cover AccountTypeVisuals.Selectable, which excludes
-       AccountType.Unknown — a real, persistable state the domain calls Unclassified and excludes
-       from its totals. So the rows partition what the tile renders but not what the file holds, and
-       a total would read as the account count while quietly disagreeing with it. *@
-    <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No accounts." Total="false" />
+    @* Both tiles close with a total. By type counts the live (non-archived) set, so an
+       AccountType.Unknown account gets its own "Unclassified" row (only when there is one) —
+       without it the rows would leave out a bucket the file holds and the total would quietly
+       disagree with the account count. *@
+    <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No accounts." />
     <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No accounts." />
 </div>
 </MudStack>
@@ -45,10 +45,7 @@
     // ── Overview breakdown tiles (By type / By status) ──────────────────────────
     // Both read counts the API already computed: "By type" covers the live (non-archived) set, "By
     // status" spans every account so an archived one still shows up in its own bucket.
-    private IReadOnlyList<OdsBreakdownRow> TypeRows => OdsBreakdown.CountedTypeRows(
-        (Summary?.CountsByType ?? []).ToDictionary(c => c.Type, c => c.Count),
-        AccountTypeVisuals.Selectable,
-        t => (AccountTypeVisuals.MaterialIcon(t), AccountTypeVisuals.FgColor(t), AccountTypeVisuals.Label(t)));
+    private IReadOnlyList<OdsBreakdownRow> TypeRows => OverviewBreakdowns.AccountTypeRows(Summary);
 
     private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.CountedStatusRows<string>(
         key => Summary?.CountsByStatus is not { } c ? 0 : key switch

@@ -44,6 +44,12 @@ public static class AccountTypeVisuals
         _ => AccountGroup.Asset,
     };
 
+    /// <summary>
+    /// What an overview breakdown calls <see cref="AccountType.Unknown"/> — the domain's name for an
+    /// account with no recognised type, which <see cref="Label"/> leaves as "Unknown".
+    /// </summary>
+    public const string UnclassifiedLabel = "Unclassified";
+
     public static string Label(AccountType type) => type switch
     {
         // Assets

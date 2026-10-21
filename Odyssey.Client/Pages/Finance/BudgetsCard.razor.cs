@@ -49,6 +49,7 @@ public partial class BudgetsCard
     private int _batch = OdsPageSizes.Batch[0];
 
     private const string PageStateKey = "budgets-page";
+    private bool _overviewOpen = true;
     private bool _searchOpen = true;
     private string _searchString = string.Empty;
     private IReadOnlyCollection<string> _statusFilter = [];
@@ -100,6 +101,7 @@ public partial class BudgetsCard
 
     private void ApplyPageState(BudgetsPageState state)
     {
+        _overviewOpen = state.OverviewOpen;
         _searchOpen   = state.SearchOpen;
         _searchString = state.Search ?? string.Empty;
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
@@ -109,6 +111,7 @@ public partial class BudgetsCard
 
     private BudgetsPageState BuildPageState() => new()
     {
+        OverviewOpen  = _overviewOpen,
         SearchOpen    = _searchOpen,
         Search        = _searchString,
         StatusFilter  = [.. _statusFilter],
@@ -119,6 +122,7 @@ public partial class BudgetsCard
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());
 
+    private void OnOverviewToggled(bool open) { _overviewOpen = open; PersistPageState(); }
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
     private void OnSearchChanged(string value) { _searchString = value ?? string.Empty; PersistPageState(); }
     private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await GetBudgets(); }
@@ -133,8 +137,9 @@ public partial class BudgetsCard
         await GetBudgets();
     }
 
-    private sealed class BudgetsPageState
+    internal sealed class BudgetsPageState
     {
+        public bool OverviewOpen { get; set; } = true;
         public bool SearchOpen { get; set; } = true;
         public string Search { get; set; } = string.Empty;
         public List<string> StatusFilter { get; set; } = [];
@@ -304,6 +309,8 @@ public partial class BudgetsCard
     // across the whole set, not the filtered display list.
     private int ActiveCount => _summary?.ActiveCount ?? 0;
     private decimal PlannedBalance => _summary?.PlannedBalance ?? 0m;
+
+    private IReadOnlyList<OdsBreakdownRow> StatusRows => OverviewBreakdowns.BudgetStatusRows(_summary);
 
 
     // Per-budget signed actual sums keyed by transaction-tag id, derived from its report.

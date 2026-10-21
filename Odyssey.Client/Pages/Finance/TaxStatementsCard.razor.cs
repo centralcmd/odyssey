@@ -85,6 +85,8 @@ public partial class TaxStatementsCard
     // than the server-filtered display list.
     private int ActiveCount => _summary?.ActiveCount ?? 0;
 
+    private IReadOnlyList<OdsBreakdownRow> StatusRows => OverviewBreakdowns.TaxStatementStatusRows(_summary);
+
 
     // ── Lifecycle ──────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()

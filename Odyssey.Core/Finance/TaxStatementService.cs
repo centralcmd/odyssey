@@ -84,7 +84,15 @@ public class TaxStatementService
     /// </summary>
     public async Task<TaxStatementSummary> GetSummary(CancellationToken cancellationToken = default)
     {
-        var total = await context.TaxStatements.CountAsync(cancellationToken);
+        var byStatus = await context.TaxStatements
+            .AsNoTracking()
+            .GroupBy(s => new { IsArchived = s.Archived != null, s.Status })
+            .Select(g => new { g.Key.IsArchived, g.Key.Status, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+        // The total comes from the same read as the buckets, so they always sum to it.
+        var total = byStatus.Sum(g => g.Count);
+        int Live(TaxStatementStatus status) =>
+            byStatus.Where(g => !g.IsArchived && g.Status == status).Sum(g => g.Count);
 
         // Archived statements drop out of the header count and the charts, matching the page's rule.
         var years = await context.TaxStatements
@@ -108,6 +116,13 @@ public class TaxStatementService
         {
             TotalStatements = total,
             ActiveCount = years.Count,
+            CountsByStatus = new TaxStatementStatusCounts
+            {
+                New = Live(TaxStatementStatus.New),
+                Approved = Live(TaxStatementStatus.Approved),
+                Flagged = Live(TaxStatementStatus.Flagged),
+                Archived = byStatus.Where(g => g.IsArchived).Sum(g => g.Count),
+            },
             FirstFiscalYear = years.Count == 0 ? null : years[0].FiscalYear,
             LatestFiscalYear = years.Count == 0 ? null : years[^1].FiscalYear,
             Years = years,

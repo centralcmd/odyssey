@@ -319,6 +319,32 @@ public class SummaryEndpointsApiTests
     }
 
     [Fact]
+    public async Task TaxStatementSummary_CountsByStatus_PartitionsTheFile_WithArchivedOutrankingStatus()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.TaxesRead]);
+        await SeedAsync(factory, context =>
+        {
+            context.TaxStatements.Add(TaxStatement(2025, netWorth: 1m, assessedTax: 1m));
+            context.TaxStatements.Add(TaxStatement(2024, netWorth: 1m, assessedTax: 1m, status: TaxStatementStatus.Approved));
+            context.TaxStatements.Add(TaxStatement(2023, netWorth: 1m, assessedTax: 1m, status: TaxStatementStatus.Approved));
+            context.TaxStatements.Add(TaxStatement(2022, netWorth: 1m, assessedTax: 1m, status: TaxStatementStatus.Flagged));
+            // Archived and approved / archived and flagged: both count as Archived only.
+            context.TaxStatements.Add(TaxStatement(2021, netWorth: 1m, assessedTax: 1m, archived: true, status: TaxStatementStatus.Approved));
+            context.TaxStatements.Add(TaxStatement(2020, netWorth: 1m, assessedTax: 1m, archived: true, status: TaxStatementStatus.Flagged));
+        });
+        using var client = factory.CreateClient();
+
+        var summary = await client.GetFromJsonAsync<TaxStatementSummary>("/api/tax-statements/summary");
+
+        var counts = summary!.CountsByStatus;
+        Assert.Equal(1, counts.New);
+        Assert.Equal(2, counts.Approved);
+        Assert.Equal(1, counts.Flagged);
+        Assert.Equal(2, counts.Archived);
+        Assert.Equal(summary.TotalStatements, counts.New + counts.Approved + counts.Flagged + counts.Archived);
+    }
+
+    [Fact]
     public async Task TaxStatementSummary_YearBoundsAreNull_WhenNothingIsOnFile()
     {
         await using var factory = new ApiFactory([PermissionClaims.TaxesRead]);
@@ -327,6 +353,7 @@ public class SummaryEndpointsApiTests
         var summary = await client.GetFromJsonAsync<TaxStatementSummary>("/api/tax-statements/summary");
 
         Assert.Equal(0, summary!.ActiveCount);
+        Assert.Equal(new TaxStatementStatusCounts(), summary.CountsByStatus);
         Assert.Null(summary.FirstFiscalYear);
         Assert.Null(summary.LatestFiscalYear);
         Assert.Empty(summary.Years);
@@ -367,7 +394,9 @@ public class SummaryEndpointsApiTests
         TransactionTagId = Guid.NewGuid(),
     };
 
-    private static TaxStatement TaxStatement(int year, decimal netWorth, decimal assessedTax, bool archived = false) => new()
+    private static TaxStatement TaxStatement(
+        int year, decimal netWorth, decimal assessedTax, bool archived = false,
+        TaxStatementStatus status = TaxStatementStatus.New) => new()
     {
         TaxStatementId = Guid.NewGuid(),
         Name = $"Tax year {year}",
@@ -379,6 +408,7 @@ public class SummaryEndpointsApiTests
         AssessedTax = assessedTax,
         CreatedAtUtc = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         Archived = archived ? new DateTime(year, 6, 1, 0, 0, 0, DateTimeKind.Utc) : null,
+        Status = status,
     };
 
     private static async Task<Guid> SeedAccountAsync(
