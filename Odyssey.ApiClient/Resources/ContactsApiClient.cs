@@ -57,6 +57,22 @@ public interface IContactsApiClient
     /// </summary>
     Task<ApiResult<DetachedContactLinks>> DeleteWithDetachAsync(Guid id, CancellationToken ct = default);
 
+    // ── Type conversion (issue #335) ─────────────────────────────────────────────
+
+    /// <summary>
+    /// The read-only dry run of converting a contact to <paramref name="targetType"/>: derived details,
+    /// lost and carried fields, label remaps and blockers. Echo its <c>UpdatedAt</c> verbatim as the
+    /// conversion's <c>ExpectedUpdatedAt</c>.
+    /// </summary>
+    Task<ApiResult<ContactConversionPreview>> PreviewConversionAsync(
+        Guid id, ContactType targetType, bool carryLifecycleDates, CancellationToken ct = default);
+
+    /// <summary>
+    /// Converts the contact. Returns the raw result and never toasts: a <c>409</c> (blocked or stale) and a
+    /// <c>422</c> keyed on a name field belong in the dialog, where the user can act on them.
+    /// </summary>
+    Task<ApiResult<ExistingContact>> ConvertAsync(Guid id, ContactConversionRequest request, CancellationToken ct = default);
+
     // ── Contact image (issue #86 §5.8) ───────────────────────────────────────────
 
     /// <summary>
@@ -182,6 +198,15 @@ public sealed class ContactsApiClient(IOdysseyApi api) : IContactsApiClient
     public Task<ApiResult<DetachedContactLinks>> DeleteWithDetachAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync<DetachedContactLinks>(
             HttpMethod.Delete, $"{Base}/{id}?detachBlockingLinks=true", null, ct);
+
+    public Task<ApiResult<ContactConversionPreview>> PreviewConversionAsync(
+        Guid id, ContactType targetType, bool carryLifecycleDates, CancellationToken ct = default) =>
+        api.GetAsync<ContactConversionPreview>(
+            $"{Base}/{id}/conversion-preview?targetType={targetType}&carryLifecycleDates={(carryLifecycleDates ? "true" : "false")}",
+            ct);
+
+    public Task<ApiResult<ExistingContact>> ConvertAsync(Guid id, ContactConversionRequest request, CancellationToken ct = default) =>
+        api.SendAsync<ExistingContact>(HttpMethod.Post, $"{Base}/{id}/conversion", request, ct);
 
     // ── Aliases (issue #48 §7) ───────────────────────────────────────────────────
 

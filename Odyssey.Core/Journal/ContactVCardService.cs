@@ -442,8 +442,19 @@ public class ContactVCardService
     // ---------------------------------------------------------------- Import
 
     public async Task<VCardImportResult> ImportAsync(
+        Stream file, long contentLength, string? contentType, CancellationToken cancellationToken = default) =>
+        (await ImportWithOutcomeAsync(file, contentLength, contentType, cancellationToken)).Result;
+
+    /// <summary>
+    /// <see cref="ImportAsync"/>, plus the ids of the contacts whose type the import changed and of
+    /// those whose type change was refused (issue #335 §7.5). The ids ride a Core-internal wrapper, never
+    /// <see cref="VCardImportResult"/>: that is the wire type, and the lists exist only so the controller —
+    /// which holds the principal — can write the actor-bearing audit lines.
+    /// </summary>
+    public async Task<VCardImportOutcome> ImportWithOutcomeAsync(
         Stream file, long contentLength, string? contentType, CancellationToken cancellationToken = default)
     {
+        var typeChanges = new TypeChangeIds();
         if (!IsAcceptedContentType(contentType))
         {
             throw new DomainValidationException("The uploaded file must be a vCard file (text/vcard).");
@@ -484,7 +495,7 @@ public class ContactVCardService
             var props = ParseProperties(block);
             var (sampleName, outcome, reason) = await ImportOneAsync(
                 props, skipped, cap.ContactVCardMaxRepeatablePropertiesPerEntry, effectiveMaxAvatarBytes,
-                cancellationToken);
+                typeChanges, cancellationToken);
             switch (outcome)
             {
                 case ImportOutcome.Created:
@@ -504,7 +515,7 @@ public class ContactVCardService
             throw new DomainValidationException("The file could not be parsed as a valid vCard (.vcf) file.");
         }
 
-        return new VCardImportResult
+        var result = new VCardImportResult
         {
             CreatedCount = created,
             UpdatedCount = updated,
@@ -515,13 +526,30 @@ public class ContactVCardService
                 SampleNames = samples,
             }),
         };
+
+        return new VCardImportOutcome(result, typeChanges.Converted, typeChanges.Blocked);
     }
+
+    /// <summary>
+    /// The fixed skip reason for an entry whose type change a type-restricted link refused (issue #335
+    /// §5.4). Never the exception's message: skips group by reason, so a per-entry count would split the
+    /// groups, and it would disclose link counts to the importer.
+    /// </summary>
+    internal const string TypeChangeBlockedReason = "Contact type change blocked by existing links.";
 
     private enum ImportOutcome { Created, Updated, Skipped }
 
+    private sealed class TypeChangeIds
+    {
+        public List<Guid> Converted { get; } = [];
+
+        public List<Guid> Blocked { get; } = [];
+    }
+
     private async Task<(string SampleName, ImportOutcome Outcome, string? Reason)> ImportOneAsync(
         Dictionary<string, List<VCardProperty>> props, ImportSkipCollector skipped,
-        int maxRepeatableProperties, long effectiveMaxAvatarBytes, CancellationToken cancellationToken)
+        int maxRepeatableProperties, long effectiveMaxAvatarBytes, TypeChangeIds typeChanges,
+        CancellationToken cancellationToken)
     {
         var uid = TextValue(props, "UID");
         var nRaw = RawValue(props, "N");
@@ -627,6 +655,7 @@ public class ContactVCardService
             // because OdysseyContext runs with EnableRetryOnFailure() in production — an ambient
             // transaction opened without it throws there (see DatabaseExtension.cs).
             var strategy = context.Database.CreateExecutionStrategy();
+            var typeChanged = false;
             var (contactId, isUpdate) = await strategy.ExecuteAsync(async () =>
             {
                 await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
@@ -637,6 +666,7 @@ public class ContactVCardService
                 {
                     var existingRow = (await contactService.Get(existing, cancellationToken))!;
                     newContact.Archived = existingRow.Archived is not null; // vCard import never touches Archived (§9)
+                    typeChanged = existingRow.Type != newContact.Type;
                     await contactService.Update(existing, newContact, cancellationToken);
                     id = existing;
                     updated = true;
@@ -665,7 +695,18 @@ public class ContactVCardService
                 return (id, updated);
             });
 
+            if (typeChanged)
+            {
+                typeChanges.Converted.Add(contactId);
+            }
+
             return (sampleName, isUpdate ? ImportOutcome.Updated : ImportOutcome.Created, null);
+        }
+        catch (ContactTypeChangeBlockedException)
+        {
+            context.ChangeTracker.Clear();
+            typeChanges.Blocked.Add(existingId!.Value);
+            return (sampleName, ImportOutcome.Skipped, TypeChangeBlockedReason);
         }
         // DomainException, not DomainValidationException: the contact-method label scope check rejects
         // with DomainUnprocessableException (issue #47 §9), which would otherwise escape this catch and
@@ -1622,3 +1663,10 @@ public class ContactVCardService
 }
 
 public sealed record VCardExport(string FileName, string Content);
+
+/// <summary>
+/// A vCard import's wire result plus the contact ids whose type it changed or was refused to change
+/// (issue #335 §7.5). Core-internal to the API: the id lists are never serialized.
+/// </summary>
+public sealed record VCardImportOutcome(
+    VCardImportResult Result, IReadOnlyList<Guid> TypeConvertedContactIds, IReadOnlyList<Guid> TypeChangeBlockedContactIds);

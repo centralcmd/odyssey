@@ -238,7 +238,12 @@ public class PhotoService
 
         ValidateCoordinates(request.CapturedLatitude, request.CapturedLongitude);
         var takenAt = NormalizeTakenAt(request.TakenAt, fromCaller: true);
-        var links = await ValidateLinks(request.TagIds, request.PersonContactIds, request.AlbumIds, cancellationToken);
+        // Person links are validated change-only (issue #335 §7.6): a tag the photo already holds is
+        // never re-checked, so one left behind by a contact converted to an Organization concurrently
+        // with its creation never makes the photo un-editable. A newly added id must still be a Person.
+        var keptPersonIds = photo.People.Select(p => p.ContactId).ToHashSet();
+        var links = await ValidateLinks(
+            request.TagIds, request.PersonContactIds, request.AlbumIds, cancellationToken, keptPersonIds);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
 
@@ -391,7 +396,8 @@ public class PhotoService
     }
 
     private async Task<ValidatedLinks> ValidateLinks(
-        Guid[] tagIds, Guid[] personIds, Guid[] albumIds, CancellationToken cancellationToken)
+        Guid[] tagIds, Guid[] personIds, Guid[] albumIds, CancellationToken cancellationToken,
+        IReadOnlySet<Guid>? keptPersonIds = null)
     {
         var limits = await journalLimits.GetAsync(cancellationToken);
         var tags = DistinctCapped(tagIds, "tag", limits.PhotoMaxLinksPerKind);
@@ -399,7 +405,9 @@ public class PhotoService
         var albums = DistinctCapped(albumIds, "album", limits.PhotoMaxLinksPerKind);
 
         await EnsureTagsExist(tags, cancellationToken);
-        await EnsurePersonsExist(persons, cancellationToken);
+        await EnsurePersonsExist(
+            keptPersonIds is null ? persons : [.. persons.Where(id => !keptPersonIds.Contains(id))],
+            cancellationToken);
         await EnsureAlbumsExist(albums, cancellationToken);
 
         return new ValidatedLinks(tags, persons, albums);

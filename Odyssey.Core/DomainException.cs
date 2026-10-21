@@ -1,4 +1,5 @@
 using System.Net;
+using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Core;
 
@@ -194,5 +195,46 @@ public sealed class DomainUnprocessableException : DomainException
     public DomainUnprocessableException(string message, string field) : base(message)
     {
         Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { [field] = [message] };
+    }
+}
+
+/// <summary>
+/// A contact's type change is refused while a link that only the current type may hold exists — a
+/// photo person tag (Person → Organization) or a homeowner-association link (Organization → Person),
+/// issue #335 §8.3. Maps to <c>409 Conflict</c> with code <see cref="ContactConversionCodes.Blocked"/>.
+/// </summary>
+/// <remarks>
+/// Carries the blocker record read inside the type change's own transaction, so the controller shapes
+/// its claim-conditional payload from the same snapshot the refusal was decided on — never from a
+/// second, pre-flight query (§3.1). The message names the blocker class only, never a count, a photo
+/// title or a property name; those belong to the claim-gated payload.
+/// </remarks>
+public sealed class ContactTypeChangeBlockedException : DomainException
+{
+    public override int StatusCode => (int)HttpStatusCode.Conflict;
+
+    public override string? Code => ContactConversionCodes.Blocked;
+
+    public ContactTypeChangeBlockers Blockers { get; }
+
+    public ContactTypeChangeBlockedException(string message, ContactTypeChangeBlockers blockers) : base(message)
+    {
+        Blockers = blockers;
+    }
+}
+
+/// <summary>
+/// A conversion whose <c>expectedUpdatedAt</c> no longer matches the stored contact (issue #335 §5.2):
+/// the user decided from a preview of a record that has since changed. Maps to <c>409 Conflict</c>
+/// with code <see cref="ContactConversionCodes.Stale"/>.
+/// </summary>
+public sealed class ContactConversionStaleException : DomainException
+{
+    public override int StatusCode => (int)HttpStatusCode.Conflict;
+
+    public override string? Code => ContactConversionCodes.Stale;
+
+    public ContactConversionStaleException(string message) : base(message)
+    {
     }
 }
