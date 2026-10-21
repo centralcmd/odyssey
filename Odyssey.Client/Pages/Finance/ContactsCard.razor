@@ -214,7 +214,8 @@
     <ContactConvertDialog @key="_convertKey"
                           @bind-Open="_convertOpen"
                           Contact="convertTarget"
-                          OnConverted="OnConverted" />
+                          OnConverted="OnConverted"
+                          OnRefused="RefreshContactAsync" />
 }
 
 @if (_avatarContact is { } avatarTarget)

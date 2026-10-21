@@ -189,7 +189,7 @@ public class ContactConversionTests
 
     [Theory]
     [InlineData("Line\nbreak")]
-    [InlineData("Tab\u0007bell")]
+    [InlineData("Bell\u0007character")]
     public async Task Convert_OverrideWithControlCharacter_Is400KeyedOnTheField(string legalName)
     {
         await using var context = TestContextFactory.CreateJournal();
@@ -199,6 +199,72 @@ public class ContactConversionTests
         var ex = await Assert.ThrowsAsync<DomainValidationException>(
             () => service.ConvertAsync(created.ContactId, Request(ContactType.Organization, created.UpdatedAt) with { LegalName = legalName }));
         Assert.True(ex.Errors!.ContainsKey(Fields.LegalName));
+    }
+
+    [Fact]
+    public async Task Convert_OverLongDerivedLegalName_Is422OnLegalName()
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var service = Service(context);
+        var created = await service.Create(new NewContact
+        {
+            Type = ContactType.Person,
+            Archived = false,
+            PersonDetails = new PersonDetailsDto { FirstName = new string('a', 128), MiddleName = new string('b', 10), LastName = new string('c', 128) },
+        });
+
+        var ex = await Assert.ThrowsAsync<DomainUnprocessableException>(
+            () => service.ConvertAsync(created.ContactId, Request(ContactType.Organization, created.UpdatedAt)));
+
+        Assert.True(ex.Errors!.ContainsKey(Fields.LegalName));
+    }
+
+    [Fact]
+    public async Task Preview_SameType_Is422OnTargetType()
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var service = Service(context);
+        var created = await service.Create(Person("Ada", "Lovelace"));
+
+        var ex = await Assert.ThrowsAsync<DomainUnprocessableException>(
+            () => service.PreviewConversionAsync(created.ContactId, ContactType.Person, true));
+
+        Assert.True(ex.Errors!.ContainsKey("targetType"));
+    }
+
+    [Fact]
+    public async Task Convert_PersonToOrganization_WithoutCarry_DropsTheDates()
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var service = Service(context);
+        var created = await service.Create(new NewContact
+        {
+            Type = ContactType.Person,
+            Archived = false,
+            PersonDetails = new PersonDetailsDto { FirstName = "Ada", LastName = "Lovelace", DateOfBirth = new DateTime(1815, 12, 10), DateOfDeath = new DateTime(1852, 11, 27) },
+        });
+
+        var preview = await service.PreviewConversionAsync(created.ContactId, ContactType.Organization, carryLifecycleDates: false);
+        var result = await service.ConvertAsync(created.ContactId,
+            Request(ContactType.Organization, created.UpdatedAt) with { CarryLifecycleDates = false });
+
+        Assert.Contains(Fields.DateOfBirth, preview!.LostFields);
+        Assert.Contains(Fields.DateOfDeath, preview.LostFields);
+        Assert.Null(result!.Contact.OrganizationDetails!.EstablishedDate);
+        Assert.Null(result.Contact.OrganizationDetails.DissolvedDate);
+    }
+
+    [Fact]
+    public async Task Convert_StaleIsCheckedBeforeTheBlockers()
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var service = Service(context);
+        var created = await service.Create(Person("Diego", "Ramos"));
+        context.PhotoPeople.Add(new PhotoPerson { PhotoId = Guid.NewGuid(), ContactId = created.ContactId });
+        await context.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ContactConversionStaleException>(
+            () => service.ConvertAsync(created.ContactId, Request(ContactType.Organization, created.UpdatedAt.AddTicks(-1))));
     }
 
     [Fact]
@@ -288,6 +354,28 @@ public class ContactConversionTests
 
         Assert.Equal(1, ex.Blockers.HomeownerAssociations.Count);
         Assert.Equal("Maple St house", Assert.Single(ex.Blockers.HomeownerAssociations.Properties).Name);
+    }
+
+    [Fact]
+    public async Task Convert_TaggedOnAnArchivedPhoto_IsStillBlocked()
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var service = Service(context);
+        var created = await service.Create(Person("Diego", "Ramos"));
+        var photoId = Guid.NewGuid();
+        context.Photos.Add(new Photo
+        {
+            PhotoId = photoId,
+            FileId = Guid.NewGuid(),
+            Archived = DateTime.UtcNow,
+            People = [new PhotoPerson { PhotoId = photoId, ContactId = created.ContactId }],
+        });
+        await context.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<ContactTypeChangeBlockedException>(
+            () => service.ConvertAsync(created.ContactId, Request(ContactType.Organization, created.UpdatedAt)));
+
+        Assert.Equal([photoId], ex.Blockers.PhotoPersonTags.PhotoIds);
     }
 
     [Fact]

@@ -12,6 +12,9 @@ public class ContactsApiClientTests
     {
         public HttpRequestMessage? LastRequest { get; private set; }
 
+        /// <summary>The request body, read before the client disposes the content.</summary>
+        public string? LastBody { get; private set; }
+
         public HttpResponseMessage Response { get; set; } =
             new(HttpStatusCode.OK)
             {
@@ -19,10 +22,11 @@ public class ContactsApiClientTests
                                             System.Text.Encoding.UTF8, "application/json"),
             };
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             LastRequest = request;
-            return Task.FromResult(Response);
+            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
+            return Response;
         }
     }
 
@@ -143,4 +147,69 @@ public class ContactsApiClientTests
                      handler.LastRequest!.RequestUri!.AbsolutePath);
         Assert.Equal(HttpMethod.Delete, handler.LastRequest.Method);
     }
+
+    // ── Type conversion (issue #335) ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task PreviewConversionAsync_gets_the_preview_with_target_and_carry_flag()
+    {
+        var (client, handler) = Create();
+        handler.Response = Json("""{"currentType":1,"targetType":2,"updatedAt":"2026-10-21T09:12:44.1234567Z","canConvert":true}""");
+        var id = Guid.NewGuid();
+
+        var result = await client.PreviewConversionAsync(id, ContactType.Organization, carryLifecycleDates: false);
+
+        Assert.Equal(HttpMethod.Get, handler.LastRequest!.Method);
+        Assert.Equal($"/api/contacts/{id}/conversion-preview", handler.LastRequest.RequestUri!.AbsolutePath);
+        Assert.Contains("targetType=Organization", handler.LastRequest.RequestUri.Query);
+        Assert.Contains("carryLifecycleDates=false", handler.LastRequest.RequestUri.Query);
+        Assert.Equal(new DateTime(2026, 10, 21, 9, 12, 44, DateTimeKind.Utc).AddTicks(1_234_567), result.Value!.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task ConvertAsync_posts_the_request_body()
+    {
+        var (client, handler) = Create();
+        handler.Response = Json("""{"contactId":"00000000-0000-0000-0000-000000000001","externalUid":"u","normalizedName":"N","resolvedDisplayName":"N","type":2}""");
+        var id = Guid.NewGuid();
+
+        await client.ConvertAsync(id, new ContactConversionRequest
+        {
+            TargetType = ContactType.Organization,
+            ExpectedUpdatedAt = new DateTime(2026, 10, 21, 9, 12, 44, DateTimeKind.Utc),
+            LegalName = "Acme",
+        });
+
+        Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
+        Assert.Equal($"/api/contacts/{id}/conversion", handler.LastRequest.RequestUri!.AbsolutePath);
+        var body = handler.LastBody!;
+        Assert.Contains("\"legalName\":\"Acme\"", body);
+        Assert.Contains("\"expectedUpdatedAt\"", body);
+    }
+
+    // The dialog decides what a 409 means, so the raw code and extensions must survive the client.
+    [Fact]
+    public async Task ConvertAsync_passes_a_blocked_409_through_with_code_and_extensions()
+    {
+        var (client, handler) = Create();
+        handler.Response = new HttpResponseMessage(HttpStatusCode.Conflict)
+        {
+            Content = new StringContent(
+                """{"status":409,"code":"contact-type-change-blocked","photoPersonTags":{"count":2,"photoIds":[],"truncated":false}}""",
+                System.Text.Encoding.UTF8, "application/problem+json"),
+        };
+
+        var result = await client.ConvertAsync(Guid.NewGuid(), new ContactConversionRequest
+        {
+            TargetType = ContactType.Organization,
+            ExpectedUpdatedAt = DateTime.UtcNow,
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, result.Status);
+        Assert.Equal(ContactConversionCodes.Blocked, result.Problem!.Code);
+        Assert.Equal(2, result.Problem.Extension<ContactPhotoTagBlocker>("photoPersonTags")!.Count);
+    }
+
+    private static HttpResponseMessage Json(string json) =>
+        new(HttpStatusCode.OK) { Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json") };
 }

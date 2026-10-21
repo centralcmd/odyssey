@@ -774,6 +774,8 @@ public class ContactService
         {
             // The scoped context survives a retry: without a reset, the attempt's first read would return
             // the already-tracked, already-mutated entity instead of re-reading the row (issue #335 N1).
+            // The reset also discards anything a caller staged on the context and did not save — no
+            // caller does, and one that needs to must open the transaction itself so this joins it.
             if (resetTrackerPerAttempt)
             {
                 context.ChangeTracker.Clear();

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Client.Services;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 using Fields = Odyssey.Dtos.Journal.ContactConversionFields;
@@ -48,8 +49,18 @@ public partial class ContactConvertDialog
     /// <summary>Raised with the converted contact. The host refreshes its row and announces it.</summary>
     [Parameter] public EventCallback<ExistingContact> OnConverted { get; set; }
 
+    /// <summary>
+    /// Raised when the server refused the conversion as stale or blocked: the row the host shows is out
+    /// of date (its type may even have changed), so the host re-reads it and its menu follows.
+    /// </summary>
+    [Parameter] public EventCallback<Guid> OnRefused { get; set; }
+
     private ContactConversionPreview? _preview;
     private bool _loadFailed;
+    private bool _reloading;
+    private bool _reloadFailed;
+    private int _previewVersion;
+    private string _statusMessage = string.Empty;
     private bool _carryDates = true;
     private bool _stale;
     private ContactTypeChangeBlockers _blockers = new();
@@ -135,16 +146,28 @@ public partial class ContactConvertDialog
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadPreviewAsync(seedNames: true);
-    }
-
-    private async Task LoadPreviewAsync(bool seedNames)
-    {
-        var result = await Contacts.PreviewConversionAsync(Contact.ContactId, TargetType, _carryDates);
-        if (!result.IsSuccess || result.Value is null)
+        if (!await LoadPreviewAsync(seedNames: true))
         {
             _loadFailed = true;
-            return;
+        }
+    }
+
+    /// <summary>
+    /// Loads the preview for the current options. Returns false when the request failed or a newer
+    /// request superseded it — a slow response is never applied over a faster, later one.
+    /// </summary>
+    private async Task<bool> LoadPreviewAsync(bool seedNames)
+    {
+        var version = ++_previewVersion;
+        var result = await Contacts.PreviewConversionAsync(Contact.ContactId, TargetType, _carryDates);
+        if (version != _previewVersion)
+        {
+            return false;
+        }
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            return false;
         }
 
         _preview = result.Value;
@@ -163,6 +186,7 @@ public partial class ContactConvertDialog
             .ToDictionary(g => g.Key, g => g.First().Message, StringComparer.OrdinalIgnoreCase);
 
         await LoadPhotoTitlesAsync();
+        return true;
     }
 
     /// <summary>
@@ -185,13 +209,45 @@ public partial class ContactConvertDialog
         var titles = list.IsSuccess && list.Value is not null
             ? list.Value.Items.ToDictionary(p => p.PhotoId, p => string.IsNullOrWhiteSpace(p.Title) ? "Untitled photo" : p.Title!)
             : [];
-        _photoTitles = ids.Select(id => titles.GetValueOrDefault(id, "Archived or untitled photo")).ToList();
+        // An id the active list did not return is archived or beyond its first page; it is named
+        // generically rather than guessed at.
+        _photoTitles = ids.Select(id => titles.GetValueOrDefault(id, "Photo")).ToList();
     }
 
+    /// <summary>
+    /// Re-reads the preview for the new date option. The form stays as it is while the request runs
+    /// (the checkbox is disabled, so requests cannot overlap), and a failure keeps the previous preview
+    /// and option with an inline note instead of replacing the dialog — the user's typed names survive.
+    /// The outcome is announced, since the lists below change without the focus moving.
+    /// </summary>
     private async Task CarryDatesChangedAsync(bool carry)
     {
+        var previous = _carryDates;
         _carryDates = carry;
-        await LoadPreviewAsync(seedNames: false);
+        _reloading = true;
+        _reloadFailed = false;
+
+        // Render the busy state (checkbox disabled, option as clicked) before the request. Besides
+        // showing it, this keeps the parent's rendered value in step with OdsCheckbox's own: without an
+        // intermediate render, reverting the option after a failure would not reach the checkbox.
+        StateHasChanged();
+        await Task.Yield();
+
+        var loaded = await LoadPreviewAsync(seedNames: false);
+
+        _reloading = false;
+        if (!loaded)
+        {
+            _carryDates = previous;
+            _reloadFailed = true;
+            _statusMessage = "The preview could not be updated. The dates setting was left as it was.";
+            return;
+        }
+
+        var moved = DateMoves.Count;
+        var removed = _preview!.LostFields.Count;
+        _statusMessage = $"Preview updated: {moved} date{(moved == 1 ? "" : "s")} carried over, "
+                         + $"{removed} field{(removed == 1 ? "" : "s")} removed.";
     }
 
     private async Task<bool> SubmitAsync()
@@ -265,6 +321,7 @@ public partial class ContactConvertDialog
         if (result.Status == HttpStatusCode.Conflict && problem?.Code == ContactConversionCodes.Stale)
         {
             _stale = true;
+            await OnRefused.InvokeAsync(Contact.ContactId);
             return;
         }
 
@@ -276,22 +333,31 @@ public partial class ContactConvertDialog
                 HomeownerAssociations = problem.Extension<ContactHomeownerAssociationBlocker>("homeownerAssociations") ?? new(),
             };
             await LoadPhotoTitlesAsync();
+            await OnRefused.InvokeAsync(Contact.ContactId);
             return;
         }
 
-        // A 400 / 422 keyed on a name or date field belongs on that field, not in a toast.
-        if (problem is not null && problem.Errors.Count > 0
-            && problem.Errors.Keys.Any(key => FieldLabels.ContainsKey(char.ToLowerInvariant(key[0]) + key[1..])))
+        // A 400 / 422 keyed on a name or date field belongs on that field; anything the dialog cannot
+        // place is toasted, so a rejection never vanishes (the ToastOrFields contract).
+        ApiResult.Failure(result.Status, problem ?? new ApiProblem { Detail = result.Error })
+            .ToastOrFields(Snackbar, "Unable to convert the contact", AssignFieldError);
+    }
+
+    private bool AssignFieldError(string field, string message)
+    {
+        if (string.IsNullOrEmpty(field))
         {
-            foreach (var (key, messages) in problem.Errors)
-            {
-                if (messages.Length > 0)
-                    _errors[char.ToLowerInvariant(key[0]) + key[1..]] = messages[0];
-            }
-
-            return;
+            return false;
         }
 
-        Snackbar.Add($"Unable to convert the contact: {result.Error}", Severity.Error);
+        // Model validation keys by property (PascalCase), the service by the camelCase field name.
+        var key = char.ToLowerInvariant(field[0]) + field[1..];
+        if (!FieldLabels.ContainsKey(key))
+        {
+            return false;
+        }
+
+        _errors[key] = message;
+        return true;
     }
 }

@@ -145,6 +145,38 @@ public class ContactConversionApiTests
         var converted = await response.Content.ReadFromJsonAsync<ExistingContact>();
         Assert.Null(converted!.OrganizationDetails!.OrganizationNumber);
         Assert.Null(converted.OrganizationDetails.Website);
+        Assert.Null(converted.OrganizationDetails.EstablishedDate);
+    }
+
+    [Fact]
+    public async Task Convert_SingleWordLegalName_Is422KeyedOnLastName()
+    {
+        await using var factory = new ApiFactory(ContactsOnly);
+        var contact = await SeedOrgAsync(factory, "Equinor");
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync($"/api/contacts/{contact.Id}/conversion", Request(ContactType.Person, contact.UpdatedAt));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.True(problem!.Errors.ContainsKey(ContactConversionFields.LastName));
+    }
+
+    [Theory]
+    [InlineData("Line\nbreak")]
+    [InlineData("Carriage\rreturn")]
+    public async Task Convert_OverrideWithALineBreak_Is400KeyedOnTheField(string lastName)
+    {
+        await using var factory = new ApiFactory(ContactsOnly);
+        var contact = await SeedOrgAsync(factory, "Equinor");
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync($"/api/contacts/{contact.Id}/conversion",
+            Request(ContactType.Person, contact.UpdatedAt) with { LastName = lastName });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.True(problem!.Errors.ContainsKey(ContactConversionFields.LastName));
     }
 
     [Fact]
@@ -192,6 +224,7 @@ public class ContactConversionApiTests
         var root = body.RootElement;
         Assert.Equal(ContactConversionCodes.Blocked, root.GetProperty("code").GetString());
         Assert.Equal(1, root.GetProperty("photoPersonTags").GetProperty("count").GetInt32());
+        Assert.DoesNotContain("Diego", root.GetProperty("detail").GetString()!);
         Assert.Equal(0, root.GetProperty("photoPersonTags").GetProperty("photoIds").GetArrayLength());
         Assert.DoesNotMatch("[0-9]", root.GetProperty("detail").GetString()!);
     }
@@ -313,13 +346,12 @@ public class ContactConversionApiTests
     [Fact]
     public void EveryRoleHoldingContactsUpdate_AlsoHoldsPhotosReadAndPropertiesRead()
     {
-        foreach (var role in RolePermissions.RoleClaimMap)
-        {
-            if (!role.Claims.Contains(PermissionClaims.ContactsUpdate))
-            {
-                continue;
-            }
+        var converters = RolePermissions.RoleClaimMap.Where(role => role.Claims.Contains(PermissionClaims.ContactsUpdate)).ToList();
 
+        // Non-empty, or the guard would pass vacuously.
+        Assert.NotEmpty(converters);
+        foreach (var role in converters)
+        {
             Assert.Contains(PermissionClaims.PhotosRead, role.Claims);
             Assert.Contains(PermissionClaims.PropertiesRead, role.Claims);
         }
@@ -366,7 +398,9 @@ public class ContactConversionApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
         contact.ContactId = Guid.NewGuid();
-        contact.UpdatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc);
+        // Sub-second ticks: the precondition compares exactly, so this proves the value survives the JSON
+        // round trip the client makes when it echoes it back.
+        contact.UpdatedAt = new DateTime(2026, 10, 1, 12, 0, 0, DateTimeKind.Utc).AddTicks(1_234_567);
         context.Contacts.Add(contact);
         await context.SaveChangesAsync();
         return (contact.ContactId, contact.UpdatedAt);

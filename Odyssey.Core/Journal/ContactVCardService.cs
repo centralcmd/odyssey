@@ -658,6 +658,11 @@ public class ContactVCardService
             var typeChanged = false;
             var (contactId, isUpdate) = await strategy.ExecuteAsync(async () =>
             {
+                // This transaction is the owner ContactService.Update joins, so the retry is ours: start
+                // each attempt from a clean tracker, or a retry would re-enter Update with the contact a
+                // failed attempt already re-typed, see no type change, and skip the blocker check
+                // (issue #335 §3.2). Earlier entries have committed, so nothing staged is lost.
+                context.ChangeTracker.Clear();
                 await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
                 Guid id;
@@ -698,6 +703,10 @@ public class ContactVCardService
             if (typeChanged)
             {
                 typeChanges.Converted.Add(contactId);
+
+                // Written at commit, so a later entry or a cancellation that aborts the import cannot
+                // leave this committed change without a record. Ids only; the controller adds the actor.
+                logger.LogInformation("vCard import changed the type of contact {ContactId}.", contactId);
             }
 
             return (sampleName, isUpdate ? ImportOutcome.Updated : ImportOutcome.Created, null);

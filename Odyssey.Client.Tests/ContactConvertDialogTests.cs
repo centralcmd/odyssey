@@ -146,6 +146,183 @@ public class ContactConvertDialogTests : IAsyncLifetime
         Assert.DoesNotContain("aria-invalid=\"true\"", dialog.Markup);
     }
 
+    [Fact]
+    public async Task AnEditedLegalName_IsSentAsTheOverride()
+    {
+        SetupPreview(PersonToOrgPreview());
+        ContactConversionRequest? sent = null;
+        SetupConvert(r => sent = r);
+
+        var dialog = Render(Person());
+        dialog.Find("input").Input("Lovelace Analytical Engines");
+        dialog.Find("input").Blur();
+        await dialog.InvokeAsync(() => ClickSubmit(dialog));
+
+        dialog.WaitForAssertion(() => Assert.NotNull(sent));
+        Assert.Equal("Lovelace Analytical Engines", sent!.LegalName);
+    }
+
+    [Fact]
+    public async Task OneWordLegalName_SendsBothNameParts_OnceALastNameIsTyped()
+    {
+        SetupPreview(OneWordPreview(), ContactType.Person);
+        ContactConversionRequest? sent = null;
+        SetupConvert(r => sent = r);
+
+        var dialog = Render(Organization());
+        dialog.FindAll("input")[1].Input("ASA");
+        dialog.FindAll("input")[1].Blur();
+        await dialog.InvokeAsync(() => ClickSubmit(dialog));
+
+        dialog.WaitForAssertion(() => Assert.NotNull(sent));
+        Assert.Equal("Equinor", sent!.FirstName);
+        Assert.Equal("ASA", sent.LastName);
+        Assert.Null(sent.LegalName);
+    }
+
+    [Fact]
+    public async Task UncheckingTheDates_RePreviews_Announces_AndSubmitsFalse()
+    {
+        SetupPreview(PersonToOrgPreview());
+        contacts.Setup(c => c.PreviewConversionAsync(It.IsAny<Guid>(), ContactType.Organization, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ContactConversionPreview>.Success(new ContactConversionPreview
+            {
+                CurrentType = ContactType.Person,
+                TargetType = ContactType.Organization,
+                UpdatedAt = UpdatedAt,
+                CanConvert = true,
+                OrganizationDetails = new OrganizationDetailsDto { LegalName = "Ada Lovelace" },
+                LostFields = [ContactConversionFields.Title, ContactConversionFields.DateOfBirth],
+            }, HttpStatusCode.OK));
+        ContactConversionRequest? sent = null;
+        SetupConvert(r => sent = r);
+
+        var dialog = Render(Person());
+        await dialog.InvokeAsync(() => dialog.Find("input[type=checkbox]").Change(false));
+
+        dialog.WaitForAssertion(() => Assert.Contains("Preview updated: 0 dates carried over, 2 fields removed.", dialog.Markup));
+        await dialog.InvokeAsync(() => ClickSubmit(dialog));
+        dialog.WaitForAssertion(() => Assert.NotNull(sent));
+        Assert.False(sent!.CarryLifecycleDates);
+    }
+
+    [Fact]
+    public async Task AFailedRePreview_KeepsTheFormAndTheOption()
+    {
+        SetupPreview(PersonToOrgPreview());
+        contacts.Setup(c => c.PreviewConversionAsync(It.IsAny<Guid>(), ContactType.Organization, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ContactConversionPreview>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Status = 500 }));
+
+        var dialog = Render(Person());
+        dialog.Find("input").Input("Typed by the user");
+        dialog.Find("input").Blur();
+        await dialog.InvokeAsync(() => dialog.Find("input[type=checkbox]").Change(false));
+
+        dialog.WaitForAssertion(() => Assert.Contains("the dates setting was left as it was", dialog.Markup));
+        Assert.Equal("Typed by the user", dialog.Find("input").GetAttribute("value"));
+        Assert.True(dialog.Find("input[type=checkbox]").HasAttribute("checked"));
+    }
+
+    [Fact]
+    public async Task A422OnSubmit_LandsOnTheField()
+    {
+        SetupPreview(PersonToOrgPreview());
+        contacts.Setup(c => c.ConvertAsync(It.IsAny<Guid>(), It.IsAny<ContactConversionRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ExistingContact>.Failure(HttpStatusCode.UnprocessableEntity, new ApiProblem
+            {
+                Status = 422,
+                Errors = new Dictionary<string, string[]> { ["legalName"] = ["The derived legal name is too long."] },
+            }));
+
+        var dialog = Render(Person());
+        await dialog.InvokeAsync(() => ClickSubmit(dialog));
+
+        dialog.WaitForAssertion(() => Assert.Contains("The derived legal name is too long.", dialog.Markup));
+        Assert.Contains("aria-invalid=\"true\"", dialog.Markup);
+    }
+
+    [Fact]
+    public void AFailedPreview_ShowsAnErrorAndOnlyClose()
+    {
+        contacts.Setup(c => c.PreviewConversionAsync(It.IsAny<Guid>(), It.IsAny<ContactType>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ContactConversionPreview>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Status = 500 }));
+
+        var dialog = Render(Person());
+
+        Assert.Contains("The conversion preview could not be loaded", dialog.Markup);
+        var footer = dialog.FindAll("button").Select(b => b.TextContent.Trim()).Where(t => t.Length > 0).ToList();
+        Assert.Contains("Close", footer);
+        Assert.DoesNotContain("Cancel", footer);
+    }
+
+    [Fact]
+    public void AMultiWordLegalName_ShowsTheLowConfidenceHint()
+    {
+        SetupPreview(new ContactConversionPreview
+        {
+            CurrentType = ContactType.Organization,
+            TargetType = ContactType.Person,
+            UpdatedAt = UpdatedAt,
+            CanConvert = true,
+            PersonDetails = new PersonDetailsDto { FirstName = "Acme Holding", LastName = "Ltd" },
+            Notes = [new ContactConversionNote { Code = ContactConversionCodes.NameSplitLowConfidence, Field = ContactConversionFields.FirstName }],
+        }, ContactType.Person);
+
+        var dialog = Render(Organization());
+
+        Assert.Contains("Check the split", dialog.Markup);
+    }
+
+    [Fact]
+    public void AnOrganizationBlockedByAnAssociation_NamesTheProperties()
+    {
+        SetupPreview(new ContactConversionPreview
+        {
+            CurrentType = ContactType.Organization,
+            TargetType = ContactType.Person,
+            UpdatedAt = UpdatedAt,
+            PersonDetails = new PersonDetailsDto { FirstName = "Maple", LastName = "HOA" },
+            Blockers = new ContactTypeChangeBlockers
+            {
+                HomeownerAssociations = new ContactHomeownerAssociationBlocker
+                {
+                    Count = 1,
+                    Properties = [new ContactBlockingProperty { Id = Guid.NewGuid(), Name = "Maple Street House" }],
+                },
+            },
+        }, ContactType.Person);
+
+        var dialog = Render(Organization());
+
+        Assert.Contains("Unable to convert to person", dialog.Markup);
+        Assert.Contains("Homeowner association", dialog.Markup);
+        Assert.Contains("Maple Street House", dialog.Markup);
+        Assert.Contains("1 link", dialog.Markup);
+    }
+
+    [Fact]
+    public void BlockingPhotos_AreNamedFromTheList_AndAnUnlistedOneGenerically()
+    {
+        var listed = Guid.NewGuid();
+        var unlisted = Guid.NewGuid();
+        var preview = PersonToOrgPreview();
+        preview.Blockers.PhotoPersonTags = new ContactPhotoTagBlocker { Count = 2, PhotoIds = [listed, unlisted] };
+        SetupPreview(preview);
+        photos.Setup(p => p.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(),
+                It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(),
+                It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<PagedResult<PhotoSummary>>.Success(new PagedResult<PhotoSummary>
+            {
+                Items = [new PhotoSummary { PhotoId = listed, FileId = Guid.NewGuid(), Title = "Everyone in one frame", PersonCount = 1, AlbumCount = 0 }],
+                TotalCount = 1,
+            }, HttpStatusCode.OK));
+
+        var dialog = Render(Person());
+
+        dialog.WaitForAssertion(() => Assert.Contains("Everyone in one frame", dialog.Markup));
+        Assert.Equal(2, dialog.FindAll(".cpl-policy").Count);
+    }
+
     /// <summary>
     /// The edit dialog no longer claims the type is fixed, and the row menu carries the one conversion
     /// that exists for the contact — the conversion lives in the menu, never in the edit dialog.
@@ -184,6 +361,20 @@ public class ContactConvertDialogTests : IAsyncLifetime
 
     private static void ClickSubmit(IRenderedComponent<MudDialogProvider> dialog) =>
         dialog.FindAll("button").Last(b => b.TextContent.Contains("Convert to")).Click();
+
+    private void SetupConvert(Action<ContactConversionRequest> capture) =>
+        contacts.Setup(c => c.ConvertAsync(It.IsAny<Guid>(), It.IsAny<ContactConversionRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<Guid, ContactConversionRequest, CancellationToken>((_, request, _) => capture(request))
+            .ReturnsAsync(ApiResult<ExistingContact>.Success(Organization(), HttpStatusCode.OK));
+
+    private static ContactConversionPreview OneWordPreview() => new()
+    {
+        CurrentType = ContactType.Organization,
+        TargetType = ContactType.Person,
+        UpdatedAt = UpdatedAt,
+        PersonDetails = new PersonDetailsDto { FirstName = "Equinor", LastName = "" },
+        DerivationIssues = [new ContactConversionIssue { Field = ContactConversionFields.LastName, Message = "single word" }],
+    };
 
     private void SetupPreview(ContactConversionPreview preview, ContactType target = ContactType.Organization) =>
         contacts.Setup(c => c.PreviewConversionAsync(It.IsAny<Guid>(), target, It.IsAny<bool>(), It.IsAny<CancellationToken>()))

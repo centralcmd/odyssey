@@ -24,10 +24,9 @@
                IconTone="@(IsBlocked ? OdsModalTone.Error : OdsModalTone.Warning)"
                Title="@(IsBlocked ? $"Unable to convert to {TargetNoun}" : $"Convert to {TargetNoun}")"
                Subtitle="@SubtitleText"
-               RequiredLegend="@(!IsBlocked && !_stale)"
-               ShowCancel="@(!IsBlocked && !_stale)"
+               RequiredLegend="@(!IsBlocked && !_stale && !_loadFailed)"
+               ShowCancel="@(!IsBlocked && !_stale && !_loadFailed)"
                ShowSubmit="@(_preview is not null || _loadFailed)"
-               SubmitDisabled="@(_preview is null && !_loadFailed)"
                SubmitLabel="@(IsBlocked || _stale || _loadFailed ? "Close" : $"Convert to {TargetNoun}")"
                SubmitIcon="@(IsBlocked || _stale || _loadFailed ? null : "swap_horiz")"
                OnSubmit="SubmitAsync">
@@ -50,14 +49,15 @@
         </OdsAlert>
 
         @* Which KIND blocks, always in text — the count is the part no claim withholds. *@
-        <ul class="cpl-kinds">
+        <ul class="cpl-kinds ccv-wrap">
             @if (ToOrganization)
             {
                 <li>
                     <span class="material-icons" aria-hidden="true">photo_library</span>
                     <span class="cpl-kind-name">Person tag on a photo</span>
                     <span class="cpl-kind-note">only people are tagged in photos</span>
-                    <span class="cpl-kind-count">@_blockers.PhotoPersonTags.Count</span>
+                    <span class="cpl-kind-count" aria-hidden="true">@_blockers.PhotoPersonTags.Count</span>
+                    <span class="sr-only">@_blockers.PhotoPersonTags.Count link@(_blockers.PhotoPersonTags.Count == 1 ? "" : "s")</span>
                 </li>
             }
             else
@@ -66,7 +66,8 @@
                     <span class="material-icons" aria-hidden="true">holiday_village</span>
                     <span class="cpl-kind-name">Homeowner association</span>
                     <span class="cpl-kind-note">only organizations hold this role</span>
-                    <span class="cpl-kind-count">@_blockers.HomeownerAssociations.Count</span>
+                    <span class="cpl-kind-count" aria-hidden="true">@_blockers.HomeownerAssociations.Count</span>
+                    <span class="sr-only">@_blockers.HomeownerAssociations.Count link@(_blockers.HomeownerAssociations.Count == 1 ? "" : "s")</span>
                 </li>
             }
         </ul>
@@ -114,6 +115,10 @@
             </OdsAlert>
         }
 
+        @* The date option re-reads the preview and the lists below change without the focus moving,
+           so the outcome is announced. *@
+        <div class="sr-only" role="status" aria-live="polite">@_statusMessage</div>
+
         <OdsSectionDivider Label="@($"New {TargetNoun} details")" HeadingLevel="0" />
         <div class="ccv-fields">
             @if (ToOrganization)
@@ -140,7 +145,7 @@
             @if (HasLifecycleDates)
             {
                 <div class="ccv-dates">
-                    <OdsCheckbox Checked="_carryDates" CheckedChanged="CarryDatesChangedAsync" Disabled="_stale"
+                    <OdsCheckbox Checked="_carryDates" CheckedChanged="CarryDatesChangedAsync" Disabled="@(_stale || _reloading)"
                                  Label="@(ToOrganization ? "Keep the dates as established and dissolved dates" : "Keep the dates as birth and death dates")" />
                     @if (_carryDates && DateMoves.Count > 0)
                     {
@@ -156,6 +161,10 @@
                             }
                         </ul>
                     }
+                    @if (_reloadFailed)
+                    {
+                        <OdsAlert Severity="Severity.Warning">The preview could not be updated, so the dates setting was left as it was. Try again.</OdsAlert>
+                    }
                     @if (FieldError(ContactConversionFields.DateOfBirth, ContactConversionFields.DateOfDeath,
                              ContactConversionFields.EstablishedDate, ContactConversionFields.DissolvedDate) is { } dateError)
                     {
@@ -170,7 +179,7 @@
                            HeadingLevel="0" />
         @if (_preview.LostFields.Count > 0)
         {
-            <ul class="cpl-kinds">
+            <ul class="cpl-kinds ccv-wrap">
                 @foreach (var field in _preview.LostFields)
                 {
                     <li>
