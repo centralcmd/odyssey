@@ -219,11 +219,21 @@
                         @* The unit carries its own label, and the non-periodic branch's guidance
                            rides its Help slot rather than a loose sibling — MudSelect wires that
                            into aria-describedby, which a bare <div> beside the control is not. *@
-                        <OdsSelect Label="Interval" Help="@IntervalHelp"
-                                   Value="@_interval" ValueChanged="OnIntervalChanged" Options="_intervalOptions" />
+                        @* The echo sits in the Interval cell as its helper line, so it lines up with
+                           Every's help rather than trailing the whole row. *@
+                        <div class="trm-interval">
+                            <OdsSelect Label="Interval" Help="@IntervalHelp"
+                                       Value="@_interval" ValueChanged="OnIntervalChanged" Options="_intervalOptions" />
+                            @* The cadence echoed in words, from the one helper every surface reads — so
+                               what the dialog promises and what the tile later shows cannot diverge. *@
+                            @if (ShowsCadenceEcho)
+                            {
+                                <div class="trm-cadence-echo" id="@CadenceEchoId">Applies @CadenceEcho.</div>
+                            }
+                        </div>
                         @if (IsPeriodicInterval)
                         {
-                            @* The echo below is named here, not left beside the field: it is what the
+                            @* The echo under Interval is named here too: it is what the
                                typed count MEANS, so a screen-reader user landing on this control has
                                to receive it the same way a sighted one sees it appear (WCAG 1.3.1).
                                AriaDescribedBy appends to the field's own help and unit ids. *@
@@ -236,13 +246,6 @@
                                             Error="@(_errors.TryGetValue("intervalCount", out var countErr) ? countErr : null)" />
                         }
                     </OdsFormRow>
-
-                    @* The cadence echoed in words, from the one helper every surface reads — so what
-                       the dialog promises and what the tile later shows cannot diverge. *@
-                    @if (ShowsCadenceEcho)
-                    {
-                        <div class="trm-cadence-echo" id="@CadenceEchoId">Applies @CadenceEcho.</div>
-                    }
 
                     <OdsDatePicker Value="_anchorDate" ValueChanged="OnAnchorDateChanged"
                                    Label="First billed on" Clearable="true"

@@ -765,7 +765,9 @@
    own `.mud-input-error` !important rule. */
 .mud-input-control > .mud-input-control-input-container > .mud-input-label.mud-input-label-outlined {
   position: static; transform: none !important; order: -1;
-  margin: 0 0 6px; padding: 0; max-width: none; pointer-events: auto;
+  /* MudBlazor pads .mud-input-label-outlined `0 5px !important` to clear the legend notch, which no
+     longer exists; without the !important here every Mud label sits 5px right of a DS label. */
+  margin: 0 0 6px; padding: 0 !important; max-width: none; pointer-events: auto;
   font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans);
   color: var(--mud-palette-text-primary);
 }
@@ -1363,9 +1365,14 @@
 /* MudBlazor's dense fields carry an 8px top margin that the DS field wrappers
    (.odc-field / .aam-field) don't, so a MudBlazor cell sits 8px below a DS cell
    in the same row (e.g. Policy number vs the Policy type picker). Zero it inside
-   the paired-field grids so every cell starts at the row top, regardless of type. */
+   the paired-field grids so every cell starts at the row top, regardless of type.
+
+   MudSelect and MudDatePicker wrap their control in a .mud-select / .mud-picker div, so the
+   control is a grandchild of the cell and needs its own selector (e.g. Interval vs Every). */
 .odc-form-row > .mud-input-control,
-.edit-grid > .mud-input-control { margin-top: 0 !important; }
+.odc-form-row > :is(.mud-select, .mud-picker) > .mud-input-control,
+.edit-grid > .mud-input-control,
+.edit-grid > :is(.mud-select, .mud-picker) > .mud-input-control { margin-top: 0 !important; }
 
 /* ---------- Form grid (two-column form layout for large dialogs / panels) ----------
    Direct children are cells; add `.odc-form-grid-wide` to any child that should
@@ -1380,7 +1387,8 @@
 .odc-form-grid-wide { grid-column: 1 / -1; }
 /* MudBlazor's dense fields carry an 8px top margin the DS wrappers don't; zero it
    so every cell starts at the row top regardless of control type (as in .odc-form-row). */
-.odc-form-grid > .mud-input-control { margin-top: 0 !important; }
+.odc-form-grid > .mud-input-control,
+.odc-form-grid > :is(.mud-select, .mud-picker) > .mud-input-control { margin-top: 0 !important; }
 @media (max-width: 640px) {
   .odc-form-grid { grid-template-columns: 1fr; }
 }
@@ -2073,7 +2081,11 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-dir-refused b { color: var(--mud-palette-text-primary); font-weight: 500; }
 
 .trm-cadence { display: flex; flex-direction: column; gap: var(--space-2); }
-.trm-cadence-echo { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: -2px; }
+/* The Interval cell: the picker with the cadence echo as its helper line, laid out like an .odc-field
+   so the echo sits under the picker exactly where "Leave blank for …" sits under Every. */
+.trm-interval { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.trm-interval > .mud-select > .mud-input-control { margin: 0 !important; }
+.trm-cadence-echo { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 /* ---- HISTORY — as a table ---- */
 .trm-history { display: flex; flex-direction: column; gap: 20px; }
