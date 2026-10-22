@@ -5,6 +5,28 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.40.0](https://github.com/centralcmd/odyssey/compare/v0.39.0...v0.40.0) (2026-10-22)
+
+
+### Features
+
+* **client:** add by-status totals to accounts, tax and budgets overviews ([#338](https://github.com/centralcmd/odyssey/issues/338)) ([09508dc](https://github.com/centralcmd/odyssey/commit/09508dc7a17d0b81b42e2e28d405ad81b5ad5446))
+* **client:** rename contract and property documents from the edit dialog ([#333](https://github.com/centralcmd/odyssey/issues/333)) ([5390c07](https://github.com/centralcmd/odyssey/commit/5390c07057e7af091b9281c0a07d75c7001f4aea))
+* convert a contact between person and organization ([#337](https://github.com/centralcmd/odyssey/issues/337)) ([83ab156](https://github.com/centralcmd/odyssey/commit/83ab156b1024d77233912c58a639f056dfaaef28))
+* flag missing exchange rates on contracts and properties ([#342](https://github.com/centralcmd/odyssey/issues/342)) ([905c1cd](https://github.com/centralcmd/odyssey/commit/905c1cdecef01ecc76dc5b3e3e95dc7c1d042d85))
+* icons for journal, task and photo tags ([#347](https://github.com/centralcmd/odyssey/issues/347)) ([8f4eb6d](https://github.com/centralcmd/odyssey/commit/8f4eb6dd66783e317fc024087e40c9f777fbe6af))
+
+
+### Bug Fixes
+
+* **client:** align every control in the page-header filter bar ([#344](https://github.com/centralcmd/odyssey/issues/344)) ([86ca53a](https://github.com/centralcmd/odyssey/commit/86ca53a98fdd1941171bf376e46b77e24a7da273))
+* **client:** align term, smart-tag and settings icons with the design system ([#343](https://github.com/centralcmd/odyssey/issues/343)) ([0282fce](https://github.com/centralcmd/odyssey/commit/0282fce53a99a28547c868b6709ee206f94a5b17))
+* **client:** align the term dialog's interval and every fields ([95bfcd1](https://github.com/centralcmd/odyssey/commit/95bfcd1e28f3730aced3f11ea3e12ed3c8c592b9))
+* **client:** name tags created in the photo edit dialog on save ([#339](https://github.com/centralcmd/odyssey/issues/339)) ([b785160](https://github.com/centralcmd/odyssey/commit/b78516064807697a4a5dbdde5561ddf6a11838f5))
+* **client:** render an empty transaction documents line without a frame ([#336](https://github.com/centralcmd/odyssey/issues/336)) ([fe27930](https://github.com/centralcmd/odyssey/commit/fe279307c106dda3ee2c9aa7ab025131591352a8))
+* **client:** resolve inline-created journal tags in dialog and list ([#334](https://github.com/centralcmd/odyssey/issues/334)) ([f959a70](https://github.com/centralcmd/odyssey/commit/f959a70304af23e0805253d49a64425e7a9345f9))
+* **client:** sync field help and error wiring to the design system ([7868ed1](https://github.com/centralcmd/odyssey/commit/7868ed153e7a0a37031b743187352606c33f4a1b))
+
 ## [0.39.0](https://github.com/centralcmd/odyssey/compare/v0.38.1...v0.39.0) (2026-10-20)
 
 
