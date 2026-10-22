@@ -396,7 +396,7 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("taskIcsMaxExportMegabytes", dto.TaskIcsMaxExportMegabytes), Write: (p, req) => req.TaskIcsMaxExportMegabytes = p.IntRequest("taskIcsMaxExportMegabytes")),
         ],
         RoundTrip: new RoundTripPair("taskIcsMaxExportTasks", "taskIcsMaxImportTasks")),
-        new("Journal import & export", Icons.Material.Filled.MenuBook,
+        new("Journal import & export", Icons.Material.Filled.ImportContacts,
         [
             new("journalIcsMaxExportRows", "file_download", "Maximum entries per export",
                 "Upper limit on the VJOURNALs an iCalendar (.ics) export may produce.",
@@ -439,7 +439,7 @@ public partial class Settings
             // SECURITY claim, so all three are audited by the derived rule — the switch authorises
             // transferring personal data to a third party, the model is stamped on every job, and the
             // base URL is where the document and the configured API key actually go.
-            new("fileAnalysisEnabled", "power_settings_new", "AI document analysis",
+            new("fileAnalysisEnabled", "verified_user", "AI document analysis",
                 "When off, no document is sent for analysis and every analysis endpoint answers 503. "
                 + "Turning it on does not by itself transfer anything: each analysis still requires the "
                 + "user's per-document consent.",
@@ -463,13 +463,13 @@ public partial class Settings
                 Load: (p, dto) => p.SetTextLoaded("fileAnalysisBaseUrl", dto.FileAnalysisBaseUrl),
                 Write: (p, req) => req.FileAnalysisBaseUrl = p.TextRequest("fileAnalysisBaseUrl"),
                 InputMode: "url", Placeholder: "https://…"),
-            new("fileAnalysisProcessor", "apartment", "Data processor",
+            new("fileAnalysisProcessor", "corporate_fare", "Data processor",
                 "The third party uploaded documents are sent to for analysis. Shown in the consent gate before every transfer.",
                 SettingClaim.Security, SettingControl.Text, Max: 128,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisProcessor),
                 Load: (p, dto) => p.SetTextLoaded("fileAnalysisProcessor", dto.FileAnalysisProcessor),
                 Write: (p, req) => req.FileAnalysisProcessor = p.TextRequest("fileAnalysisProcessor")),
-            new("fileAnalysisProcessorRegion", "location_on", "Processor region",
+            new("fileAnalysisProcessorRegion", "public", "Processor region",
                 "Where that processing happens. This is the disclosure that decides adequacy versus standard contractual clauses under GDPR Chapter V — and it cannot be verified automatically, so check it against your processor's terms.",
                 SettingClaim.Security, SettingControl.Text, Max: 128,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisProcessorRegion),
@@ -488,14 +488,14 @@ public partial class Settings
                 Load: (p, dto) => p.SetTextLoaded("fileAnalysisPrivacyNoticeUrl", dto.FileAnalysisPrivacyNoticeUrl),
                 Write: (p, req) => req.FileAnalysisPrivacyNoticeUrl = p.TextRequest("fileAnalysisPrivacyNoticeUrl"),
                 InputMode: "url", Placeholder: "https://…"),
-            new("fileAnalysisMaxFutureTransactionDays", "event_available", "Future-dated transaction window",
+            new("fileAnalysisMaxFutureTransactionDays", "update", "Future-dated transaction window",
                 "How many days ahead of today an extracted transaction date may fall before it is discarded as a misread.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 3650,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisMaxFutureTransactionDays),
                 Load: (p, dto) => p.SetIntLoaded("fileAnalysisMaxFutureTransactionDays", dto.FileAnalysisMaxFutureTransactionDays),
                 Write: (p, req) => req.FileAnalysisMaxFutureTransactionDays = p.IntRequest("fileAnalysisMaxFutureTransactionDays"),
                 Unit: "days"),
-            new("fileAnalysisMatchAutoLinkThreshold", "percent", "Auto-link confidence threshold",
+            new("fileAnalysisMatchAutoLinkThreshold", "join_inner", "Auto-link confidence threshold",
                 "Matches at or above this confidence are linked automatically; below it they are suggestions only. Raising it links less and asks more. Analyses already completed keep the threshold they ran under.",
                 // Percent, not Decimal: the value is STORED as a 0.0-1.0 fraction but entered as a
                 // whole percent (Odyssey Design System · NumberField). "0.62" gives the reader no clue
@@ -582,7 +582,7 @@ public partial class Settings
                 Placeholder: "https://odyssey.example.net",
                 AllowEmpty: true,
                 Rule: EmailClientBaseUrlRule.Validate),
-            new("emailFromAddress", "mail", "From address",
+            new("emailFromAddress", "alternate_email", "From address",
                 "The envelope sender on every confirmation and password-reset email. Must remain an address your mail relay is authorised to send as, or delivery fails silently.",
                 SettingClaim.Security, SettingControl.Text, Max: 256,
                 Field: nameof(SystemSettingsUpdate.EmailFromAddress),
@@ -595,13 +595,13 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.EmailFromName),
                 Load: (p, dto) => p.SetTextLoaded("emailFromName", dto.EmailFromName),
                 Write: (p, req) => req.EmailFromName = p.TextRequest("emailFromName")),
-            new("emailPerRecipientLimit", "send", "Messages per recipient",
+            new("emailPerRecipientLimit", "filter_list", "Messages per recipient",
                 "How many transactional emails one address may receive per window. This is what stops a rotating-IP source mailbombing a single mailbox, so lowering it takes effect on the very next send.",
                 SettingClaim.Security, SettingControl.Number, Min: 1, Max: 1000,
                 Field: nameof(SystemSettingsUpdate.EmailPerRecipientLimit),
                 Load: (p, dto) => p.SetIntLoaded("emailPerRecipientLimit", dto.EmailPerRecipientLimit),
                 Write: (p, req) => req.EmailPerRecipientLimit = p.IntRequest("emailPerRecipientLimit")),
-            new("emailPerRecipientWindowMinutes", "history_toggle_off", "Recipient window",
+            new("emailPerRecipientWindowMinutes", "timelapse", "Recipient window",
                 "The length of that window, in minutes. A longer window is a tighter limit.",
                 SettingClaim.Security, SettingControl.Number, Min: 1, Max: 1440,
                 Field: nameof(SystemSettingsUpdate.EmailPerRecipientWindowMinutes),
@@ -628,7 +628,7 @@ public partial class Settings
         // appsettings entry at all, and the two journal caps were `private const` in their services.
         new("Contracts", Icons.Material.Filled.Description,
         [
-            new("contractMaxPartiesPerContract", "group_add", "Max parties per contract",
+            new("contractMaxPartiesPerContract", "groups", "Max parties per contract",
                 "Upper limit on parties linked to one contract. A request over the cap is rejected.",
                 SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.ContractMaxPartiesPerContractMin, Max: SystemSettingsBounds.ContractMaxPartiesPerContractMax,
                 Field: nameof(SystemSettingsUpdate.ContractMaxPartiesPerContract),
@@ -640,7 +640,7 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.ContractMaxFilesPerContract),
                 Load: (p, dto) => p.SetIntLoaded("contractMaxFilesPerContract", dto.ContractMaxFilesPerContract),
                 Write: (p, req) => req.ContractMaxFilesPerContract = p.IntRequest("contractMaxFilesPerContract")),
-            new("contractMaxTermsPerContract", "sell", "Max terms per contract",
+            new("contractMaxTermsPerContract", "gavel", "Max terms per contract",
                 "Upper limit on term (rate/fee) entries recorded against one contract. Higher than the "
                 + "parties and files caps because a term series grows by supersession over the life of "
                 + "the agreement — each price change is a new entry, not an edit.",
@@ -660,7 +660,7 @@ public partial class Settings
                     "contractMaxSmartTagsPerContract", dto.ContractMaxSmartTagsPerContract),
                 Write: (p, req) => req.ContractMaxSmartTagsPerContract =
                     p.IntRequest("contractMaxSmartTagsPerContract")),
-            new("contractMaxSummaryContracts", "list_alt", "Max contracts in summary",
+            new("contractMaxSummaryContracts", "format_list_numbered", "Max contracts in summary",
                 "Safety ceiling on how many contracts the dashboard summary aggregates over.",
                 SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.ContractMaxSummaryContractsMin, Max: SystemSettingsBounds.ContractMaxSummaryContractsMax,
                 Field: nameof(SystemSettingsUpdate.ContractMaxSummaryContracts),
@@ -689,7 +689,7 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("contractChargeWindowDays", dto.ContractChargeWindowDays),
                 Write: (p, req) => req.ContractChargeWindowDays = p.IntRequest("contractChargeWindowDays"),
                 Unit: "days"),
-            new("contractMaxSummaryCharges", "format_list_numbered", "Max upcoming transactions shown per direction",
+            new("contractMaxSummaryCharges", "receipt_long", "Max upcoming transactions shown per direction",
                 "Upper limit on the next-movement rows listed in the page-header panel. It applies to "
                 + "outgoing charges and incoming receipts SEPARATELY, so a file with many charges "
                 + "cannot starve the receipts — the panel can therefore list up to twice this number "
@@ -733,7 +733,7 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("photoMaxLinksPerKind", dto.PhotoMaxLinksPerKind),
                 Write: (p, req) => req.PhotoMaxLinksPerKind = p.IntRequest("photoMaxLinksPerKind"),
                 MaxFrom: dto => dto.PhotoMaxLinksPerKindCeiling),
-            new("photoMaxAlbumMembers", "photo_album", "Max photos per album",
+            new("photoMaxAlbumMembers", "collections", "Max photos per album",
                 "Upper limit on photos in one album. The same limit is enforced by request validation.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 1000,
                 Field: nameof(SystemSettingsUpdate.PhotoMaxAlbumMembers),
@@ -769,7 +769,7 @@ public partial class Settings
         // be refused by Kestrel before the setting was ever read.
         new("Storage", Icons.Material.Filled.Storage,
         [
-            new("fileStorageMaxUploadMegabytes", "cloud_upload", "Maximum upload size",
+            new("fileStorageMaxUploadMegabytes", "sd_storage", "Maximum upload size",
                 "Largest file accepted by any upload surface. Can be lowered freely; raising it needs the server's transport limit raised first.",
                 SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
                 Field: nameof(SystemSettingsUpdate.FileStorageMaxUploadMegabytes),
@@ -785,7 +785,7 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.JournalEntryMaxLinksPerKind),
                 Load: (p, dto) => p.SetIntLoaded("journalEntryMaxLinksPerKind", dto.JournalEntryMaxLinksPerKind),
                 Write: (p, req) => req.JournalEntryMaxLinksPerKind = p.IntRequest("journalEntryMaxLinksPerKind")),
-            new("journalTaskMaxLinksPerKind", "checklist", "Max links per task",
+            new("journalTaskMaxLinksPerKind", "link", "Max links per task",
                 "Upper limit on tags or attachments linked to one task.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 100000,
                 Field: nameof(SystemSettingsUpdate.JournalTaskMaxLinksPerKind),
