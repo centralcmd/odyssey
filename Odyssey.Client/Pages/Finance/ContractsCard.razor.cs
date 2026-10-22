@@ -1118,7 +1118,7 @@ public partial class ContractsCard
 
             items.Add(new OdsMenuItem
             {
-                Icon = "sell",
+                Icon = "§",
                 Label = "New term",
                 OnClick = EventCallback.Factory.Create(this, () => AddTerm(c.ContractId)),
             });

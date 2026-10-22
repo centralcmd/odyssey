@@ -45,9 +45,9 @@ public partial class AccountSmartTagsSection
     [Parameter] public bool Chrome { get; set; } = true;
 
     /// <summary>
-    /// The section's leading glyph. <c>sell</c> on an account; the contract host passes
-    /// <c>local_offer</c>, because <c>sell</c> already denotes Terms on a contract record and one
-    /// glyph meaning two things in one counts strip is worse than two glyphs meaning one thing each.
+    /// The section's leading glyph. <c>sell</c> is the smart-tag glyph on every host — account,
+    /// contract and property alike — and terms carry the typeset <c>§</c>, so the two never share a
+    /// glyph in a record's counts strip.
     /// </summary>
     [Parameter] public string Icon { get; set; } = "sell";
 
