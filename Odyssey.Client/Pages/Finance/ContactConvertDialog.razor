@@ -1,0 +1,210 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos
+@using Odyssey.Dtos.Journal
+
+@*
+    ContactConvertDialog — Convert to organization / Convert to person (issue #335,
+    Odyssey Design System · ContactConvertModal).
+
+    Opened from the contact row's ⋯ menu, never from the edit dialog. It renders the server's
+    conversion PREVIEW, so the dialog and the write cannot disagree: the derived name (editable), the
+    lifecycle dates that move (with an opt-out), the fields that will be removed and the labels that
+    clamp to Other. It submits with the preview's UpdatedAt echoed verbatim, so a record that changed
+    meanwhile is refused rather than converted from a stale picture.
+
+    Two links can only be held by one type and refuse the conversion. The dialog then becomes a
+    refusal laid out like the blocked contact delete: the COUNT always, the photo or property names
+    only when the server sent them (photos.read / properties.read), and a sentence saying why when it
+    did not.
+*@
+
+<OdsFormDialog Open="Open"
+               OpenChanged="OpenChanged"
+               Icon="@(IsBlocked ? "block" : "swap_horiz")"
+               IconTone="@(IsBlocked ? OdsModalTone.Error : OdsModalTone.Warning)"
+               Title="@(IsBlocked ? $"Unable to convert to {TargetNoun}" : $"Convert to {TargetNoun}")"
+               Subtitle="@SubtitleText"
+               RequiredLegend="@(!IsBlocked && !_stale && !_loadFailed)"
+               ShowCancel="@(!IsBlocked && !_stale && !_loadFailed)"
+               ShowSubmit="@(_preview is not null || _loadFailed)"
+               SubmitLabel="@(IsBlocked || _stale || _loadFailed ? "Close" : $"Convert to {TargetNoun}")"
+               SubmitIcon="@(IsBlocked || _stale || _loadFailed ? null : "swap_horiz")"
+               OnSubmit="SubmitAsync">
+
+    @if (_preview is null && !_loadFailed)
+    {
+        <div class="ccv-loading">
+            <OdsSpinner AriaLabel="Loading the conversion preview" />
+        </div>
+    }
+    else if (_loadFailed)
+    {
+        <OdsAlert Severity="Severity.Error">The conversion preview could not be loaded. Close this dialog and try again.</OdsAlert>
+    }
+    else if (IsBlocked)
+    {
+        <OdsAlert Severity="Severity.Error">
+            <strong>@Contact.ResolvedDisplayName</strong> has @BlockingCount
+            link@(BlockingCount == 1 ? "" : "s") that only @(ToOrganization ? "a person" : "an organization") can hold.
+        </OdsAlert>
+
+        @* Which KIND blocks, always in text — the count is the part no claim withholds. *@
+        <ul class="cpl-kinds ccv-wrap">
+            @if (ToOrganization)
+            {
+                <li>
+                    <span class="material-icons" aria-hidden="true">photo_library</span>
+                    <span class="cpl-kind-name">Person tag on a photo</span>
+                    <span class="cpl-kind-note">only people are tagged in photos</span>
+                    <span class="cpl-kind-count" aria-hidden="true">@_blockers.PhotoPersonTags.Count</span>
+                    <span class="sr-only">@_blockers.PhotoPersonTags.Count link@(_blockers.PhotoPersonTags.Count == 1 ? "" : "s")</span>
+                </li>
+            }
+            else
+            {
+                <li>
+                    <span class="material-icons" aria-hidden="true">holiday_village</span>
+                    <span class="cpl-kind-name">Homeowner association</span>
+                    <span class="cpl-kind-note">only organizations hold this role</span>
+                    <span class="cpl-kind-count" aria-hidden="true">@_blockers.HomeownerAssociations.Count</span>
+                    <span class="sr-only">@_blockers.HomeownerAssociations.Count link@(_blockers.HomeownerAssociations.Count == 1 ? "" : "s")</span>
+                </li>
+            }
+        </ul>
+
+        @if (BlockingNames.Count > 0)
+        {
+            <OdsSectionDivider Label="@(ToOrganization ? "Tagged photos" : "Properties")"
+                               Meta="@($"{BlockingCount} record{(BlockingCount == 1 ? "" : "s")}")"
+                               HeadingLevel="0" />
+            <ul class="cpl-policies">
+                @foreach (var name in BlockingNames)
+                {
+                    <li class="cpl-policy">
+                        <span class="material-icons" aria-hidden="true">@(ToOrganization ? "image" : "home_work")</span>
+                        <span class="cpl-policy-name">@name</span>
+                    </li>
+                }
+            </ul>
+            @if (BlockingTruncated)
+            {
+                <p class="cpl-note">Showing the first @ContactConversionLimits.MaxBlockerItems.</p>
+            }
+        }
+        else if (!BlockingListed)
+        {
+            @* The server withheld the identifiers because the caller cannot read those records. *@
+            <p class="cpl-note">
+                Which @(ToOrganization ? "photos" : "properties") these are is not shown, because you do not
+                have access to @(ToOrganization ? "photos" : "property records"). Ask someone who does to
+                remove the link.
+            </p>
+        }
+
+        <p class="cpl-note">
+            Nothing was changed. Archived @(ToOrganization ? "photos" : "properties") count too, because
+            restoring one would bring the link back.
+        </p>
+    }
+    else
+    {
+        @if (_stale)
+        {
+            <OdsAlert Severity="Severity.Error">
+                This contact changed since you opened this dialog. Close it and review the conversion again.
+            </OdsAlert>
+        }
+
+        @* The date option re-reads the preview and the lists below change without the focus moving,
+           so the outcome is announced. *@
+        <div class="sr-only" role="status" aria-live="polite">@_statusMessage</div>
+
+        <OdsSectionDivider Label="@($"New {TargetNoun} details")" HeadingLevel="0" />
+        <div class="ccv-fields">
+            @if (ToOrganization)
+            {
+                <OdsField Label="Legal name" @bind-Value="_legalName" Required="true" MaxLength="256"
+                          Disabled="_stale"
+                          Error="@FieldError(ContactConversionFields.LegalName)"
+                          Help="@(string.IsNullOrWhiteSpace(Contact.DisplayName) ? "Taken from the first, middle and last name." : "Taken from the display name.")" />
+            }
+            else
+            {
+                <OdsFormRow>
+                    <OdsField Label="First name" @bind-Value="_firstName" Required="true" MaxLength="128"
+                              Disabled="_stale"
+                              Error="@FieldError(ContactConversionFields.FirstName)"
+                              Help="@(LowConfidenceSplit ? "Check the split — the legal name has more than two words." : "Taken from the legal name.")" />
+                    <OdsField Label="Last name" @bind-Value="_lastName" Required="true" MaxLength="128"
+                              Disabled="_stale"
+                              Error="@FieldError(ContactConversionFields.LastName)"
+                              Help="@(OneWordLegalName ? "The legal name is one word, so enter a last name." : "The last word of the legal name.")" />
+                </OdsFormRow>
+            }
+
+            @if (HasLifecycleDates)
+            {
+                <div class="ccv-dates">
+                    <OdsCheckbox Checked="_carryDates" CheckedChanged="CarryDatesChangedAsync" Disabled="@(_stale || _reloading)"
+                                 Label="@(ToOrganization ? "Keep the dates as established and dissolved dates" : "Keep the dates as birth and death dates")" />
+                    @if (_carryDates && DateMoves.Count > 0)
+                    {
+                        <ul class="ccv-moves">
+                            @foreach (var move in DateMoves)
+                            {
+                                <li>
+                                    @FieldLabel(move.From)
+                                    <span class="material-icons" aria-hidden="true">arrow_forward</span>
+                                    <span class="odc-sr-only">becomes</span>
+                                    @FieldLabel(move.To)
+                                </li>
+                            }
+                        </ul>
+                    }
+                    @if (_reloadFailed)
+                    {
+                        <OdsAlert Severity="Severity.Warning">The preview could not be updated, so the dates setting was left as it was. Try again.</OdsAlert>
+                    }
+                    @if (FieldError(ContactConversionFields.DateOfBirth, ContactConversionFields.DateOfDeath,
+                             ContactConversionFields.EstablishedDate, ContactConversionFields.DissolvedDate) is { } dateError)
+                    {
+                        <OdsAlert Severity="Severity.Warning">@dateError</OdsAlert>
+                    }
+                </div>
+            }
+        </div>
+
+        <OdsSectionDivider Label="Removed"
+                           Meta="@(_preview!.LostFields.Count > 0 ? $"{_preview.LostFields.Count} field{(_preview.LostFields.Count == 1 ? "" : "s")}" : null)"
+                           HeadingLevel="0" />
+        @if (_preview.LostFields.Count > 0)
+        {
+            <ul class="cpl-kinds ccv-wrap">
+                @foreach (var field in _preview.LostFields)
+                {
+                    <li>
+                        <span class="material-icons" aria-hidden="true">remove_circle_outline</span>
+                        <span class="cpl-kind-name">@FieldLabel(field)</span>
+                        <span class="cpl-kind-note">no @TargetNoun field holds it</span>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="cpl-note">Nothing is removed.</p>
+        }
+
+        @if (RemappedTotal > 0)
+        {
+            <p class="cpl-note">
+                <strong>@RemappedTotal contact-method label@(RemappedTotal == 1 ? "" : "s")</strong>
+                change@(RemappedTotal == 1 ? "s" : "") to <em>Other</em>, because @(RemappedTotal == 1 ? "it is" : "they are")
+                not used for @(ToOrganization ? "organizations" : "people"). The addresses, emails and phone
+                numbers themselves are kept.
+            </p>
+        }
+
+        <p class="cpl-note">Removed fields are deleted, not hidden. Converting back does not restore them.</p>
+    }
+</OdsFormDialog>

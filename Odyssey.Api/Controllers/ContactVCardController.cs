@@ -181,8 +181,21 @@ truncated response reports itself rather than returning a silently short documen
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await vCardService.ImportAsync(stream, file.Length, file.ContentType, cancellationToken);
-        return Ok(result);
+        var outcome = await vCardService.ImportWithOutcomeAsync(stream, file.Length, file.ContentType, cancellationToken);
+
+        // The service holds no principal, so the actor-bearing audit lines for type changes are written
+        // here from the ids it returns (issue #335 §7.5). The ids never reach the response body.
+        foreach (var contactId in outcome.TypeConvertedContactIds)
+        {
+            audit.ContactChanged(User, contactId, "type.converted");
+        }
+
+        foreach (var contactId in outcome.TypeChangeBlockedContactIds)
+        {
+            audit.ContactChanged(User, contactId, "type.blocked");
+        }
+
+        return Ok(outcome.Result);
     }
 
     private static bool HasAnyFilter(ContactsQueryParams query) =>

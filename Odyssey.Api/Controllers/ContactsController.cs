@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
 using Swashbuckle.AspNetCore.Annotations;
+using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Avatar;
@@ -93,11 +94,17 @@ public sealed class ContactsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Update the details for a contact.",
         Description = @"Update the details for a contact. Not an upsert: an unknown ID is a 404 and
-                        nothing is created. Use POST to create.")]
+                        nothing is created. Use POST to create. A changed Type converts the contact
+                        with the supplied details; 409 (code contact-type-change-blocked) while the
+                        contact is tagged as a person on a photo (to Organization) or is a property's
+                        homeowner association (to Person). 422 when a contact-method label is out of
+                        scope for the type.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the contact to update.")] Guid id,
@@ -107,9 +114,19 @@ public sealed class ContactsController : ControllerBase
         // Read BEFORE the write: the audit event distinguishes recording a death from clearing one,
         // and only the prior value can say which happened (§10.9). Value-free either way — the event
         // names the transition, never the date.
-        var before = (await contactService.Get(id, cancellationToken))?.PersonDetails?.DateOfDeath;
+        var beforeContact = await contactService.Get(id, cancellationToken);
+        var before = beforeContact?.PersonDetails?.DateOfDeath;
 
-        var contact = await contactService.Update(id, newContact, cancellationToken);
+        ExistingContact? contact;
+        try
+        {
+            contact = await contactService.Update(id, newContact, cancellationToken);
+        }
+        catch (ContactTypeChangeBlockedException blocked)
+        {
+            return TypeChangeBlocked(id, blocked);
+        }
+
         if (contact is null)
         {
             return this.NotFoundProblem($"Contact ID {id} not found.");
@@ -121,8 +138,107 @@ public sealed class ContactsController : ControllerBase
             audit.ContactChanged(User, id, after is null ? "dateOfDeath.cleared" : "dateOfDeath.set");
         }
 
+        if (beforeContact is not null && beforeContact.Type != contact.Type)
+        {
+            audit.ContactChanged(User, id, "type.converted");
+        }
+
         return NoContent();
     }
+
+    [HttpGet("{id}/conversion-preview", Name = "GetContactConversionPreview")]
+    [Authorize(Policy = PermissionClaims.ContactsRead)]
+    [Authorize(Policy = PermissionClaims.ContactsUpdate)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ContactConversionPreview))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Preview converting a contact between Person and Organization.",
+        Description = @"A read-only dry run (issue #335): the derived target details, the fields that
+would be lost or carried over, the contact-method labels that would clamp to Other, and any blockers.
+Writes nothing. Echo updatedAt as expectedUpdatedAt on the conversion. Needs contacts.read and
+contacts.update; blocker photo ids need photos.read and property names properties.read.")]
+    public async Task<IActionResult> PreviewConversion(
+        [FromRoute(Name = "id")] Guid id,
+        [FromQuery] ContactConversionPreviewQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var preview = await contactService.PreviewConversionAsync(
+            id, query.TargetType!.Value, query.CarryLifecycleDates, cancellationToken);
+        if (preview is null)
+        {
+            return this.NotFoundProblem($"Contact ID {id} not found.");
+        }
+
+        preview.Blockers = VisibleBlockers(preview.Blockers);
+        return Ok(preview);
+    }
+
+    [HttpPost("{id}/conversion", Name = "PostContactConversion")]
+    [Authorize(Policy = PermissionClaims.ContactsUpdate)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingContact))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Convert a contact between Person and Organization.",
+        Description = @"Converts the contact in one transaction, deriving the target details from the
+stored row (issue #335); its id and its links are kept. 409 with code contact-conversion-stale when
+expectedUpdatedAt no longer matches, or contact-type-change-blocked while a photo person tag (to
+Organization) or a homeowner-association link (to Person) exists. 422 for the current type, or for a
+derived name that needs an override.")]
+    public async Task<IActionResult> Convert(
+        [FromRoute(Name = "id")] Guid id,
+        [FromBody] ContactConversionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ContactConversionResult? result;
+        try
+        {
+            result = await contactService.ConvertAsync(id, request, cancellationToken);
+        }
+        catch (ContactTypeChangeBlockedException blocked)
+        {
+            return TypeChangeBlocked(id, blocked);
+        }
+
+        if (result is null)
+        {
+            return this.NotFoundProblem($"Contact ID {id} not found.");
+        }
+
+        audit.ContactChanged(User, id, "type.converted");
+        return Ok(result.Contact);
+    }
+
+    /// <summary>
+    /// The blocked type change's <c>409</c>, shaped from the record the refusal was decided on — the same
+    /// snapshot, never a pre-flight (issue #335 §3.1). The counts are unconditional; the ids follow the
+    /// read claim of the records they name, as the contact-delete <c>409</c> does for contract names.
+    /// </summary>
+    private ObjectResult TypeChangeBlocked(Guid id, ContactTypeChangeBlockedException blocked)
+    {
+        var visible = VisibleBlockers(blocked.Blockers);
+        audit.ContactTypeChangeBlocked(User, id, visible.PhotoPersonTags.Count, visible.HomeownerAssociations.Count);
+
+        return this.ConflictProblem(blocked.Message, new Dictionary<string, object?>
+        {
+            // ConflictProblem adds no code of its own; set here so this matches the handler's fallback.
+            ["code"] = blocked.Code,
+            ["photoPersonTags"] = visible.PhotoPersonTags,
+            ["homeownerAssociations"] = visible.HomeownerAssociations,
+        });
+    }
+
+    private ContactTypeChangeBlockers VisibleBlockers(ContactTypeChangeBlockers blockers) => new()
+    {
+        PhotoPersonTags = User.HasPermission(PermissionClaims.PhotosRead)
+            ? blockers.PhotoPersonTags
+            : blockers.PhotoPersonTags with { PhotoIds = [] },
+        HomeownerAssociations = User.HasPermission(PermissionClaims.PropertiesRead)
+            ? blockers.HomeownerAssociations
+            : blockers.HomeownerAssociations with { Properties = [] },
+    };
 
     [HttpDelete("{id}", Name = "DeleteContact")]
     [Authorize(Policy = PermissionClaims.ContactsDelete)]

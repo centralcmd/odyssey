@@ -208,6 +208,16 @@
                         OnSaved="OnEditSaved" />
 }
 
+@if (_convertKey != Guid.Empty && _convertTarget is { } convertTarget)
+{
+    @* Keyed so each opening re-reads the preview for the chosen row. *@
+    <ContactConvertDialog @key="_convertKey"
+                          @bind-Open="_convertOpen"
+                          Contact="convertTarget"
+                          OnConverted="OnConverted"
+                          OnRefused="RefreshContactAsync" />
+}
+
 @if (_avatarContact is { } avatarTarget)
 {
     @* Keyed on the contact so a second contact's dialog never opens on the previous one's crop. *@

@@ -32,6 +32,16 @@ public sealed class ContactAuditLog(ILogger<ContactAuditLog> logger)
             "Contact {ContactId} {Action} by {ActorUserId}.", contactId, action, actor.ActingUserId() ?? NoActor);
 
     /// <summary>
+    /// A type change refused by a type-restricted link (issue #335 §7.5). Counts only — never a photo
+    /// or property id, which the actor may not be entitled to see.
+    /// </summary>
+    public void ContactTypeChangeBlocked(ClaimsPrincipal actor, Guid contactId, int photoPersonTags, int homeownerAssociations) =>
+        logger.LogInformation(
+            "Contact {ContactId} type change blocked for {ActorUserId}: {PhotoPersonTagCount} photo person tag(s), "
+            + "{HomeownerAssociationCount} homeowner association link(s).",
+            contactId, actor.ActingUserId() ?? NoActor, photoPersonTags, homeownerAssociations);
+
+    /// <summary>
     /// The bulk-read counterpart (§10.11). A <c>contacts.read</c> holder — <b>Guest included</b> — can
     /// download the whole corpus, maiden names and dates of death with it, in one request. Row count
     /// and whether filters were applied; no names, no values.

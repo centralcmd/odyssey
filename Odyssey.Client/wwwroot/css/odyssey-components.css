@@ -4401,6 +4401,20 @@ tr:focus-within > .odc-rowactions.reveal,
 .cpl-note { margin: 14px 0 0; font: var(--fw-regular) var(--fs-body2)/1.6 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .cpl-note strong { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
 
+/* ---------- Convert contact type (Person ⇄ Organization, issue #335) ----------
+   Odyssey Design System · ui_kits/web/contacts.css (ccv-*). The blocked state and the "Removed"
+   list reuse the cpl-* rows above, so a refusal reads like the blocked delete it sits beside. */
+.ccv-fields { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.ccv-dates { display: flex; flex-direction: column; gap: 8px; }
+.ccv-moves { list-style: none; margin: 0; padding: 0 0 0 30px; display: flex; flex-direction: column; gap: 4px; }
+.ccv-moves li { display: flex; align-items: center; gap: 6px; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.ccv-moves .material-icons { font-size: var(--icon-xs); color: var(--mud-palette-text-secondary); flex: none; }
+.ccv-loading { display: flex; justify-content: center; padding: 32px 0; }
+/* Here the note carries the reason ("no organization field holds it"), so it wraps instead of
+   clipping at narrow widths and high zoom (WCAG 1.4.10). */
+.ccv-wrap li { flex-wrap: wrap; }
+.ccv-wrap .cpl-kind-note { white-space: normal; overflow: visible; }
+
 /* ---------- Avatar image + fit (Odyssey Design System · components/Avatar) ----------
    OdsAvatar keeps MudAvatar as its frame, so these rules target the <img> the
    component renders inside it rather than restating the frame's own sizing. */
