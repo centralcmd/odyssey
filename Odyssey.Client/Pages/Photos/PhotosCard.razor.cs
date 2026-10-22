@@ -110,18 +110,32 @@ public partial class PhotosCard
 
     private async Task LoadOptionsAsync()
     {
-        var tags = (await PhotoTags.ListAllAsync()).ItemsOrToast(Snackbar, "photo tags");
-        _tagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
-        _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
+        // A failed fetch keeps the lookups already held, so a reload after a save never blanks them.
+        var tagsResult = await PhotoTags.ListAllAsync();
+        var tags = tagsResult.ItemsOrToast(Snackbar, "photo tags");
+        if (tagsResult.IsSuccess)
+        {
+            _tagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
+            _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
+        }
 
-        _albumSummaries = (await Albums.ListAllAsync()).ItemsOrToast(Snackbar, "albums");
-        _albumOptions = [.. _albumSummaries.Select(a => new OdsOption(a.PhotoAlbumId.ToString(), a.Name))];
-        _albumNames = _albumSummaries.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
+        var albumsResult = await Albums.ListAllAsync();
+        var albums = albumsResult.ItemsOrToast(Snackbar, "albums");
+        if (albumsResult.IsSuccess)
+        {
+            _albumSummaries = albums;
+            _albumOptions = [.. _albumSummaries.Select(a => new OdsOption(a.PhotoAlbumId.ToString(), a.Name))];
+            _albumNames = _albumSummaries.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
+        }
 
         // People come from the caller's Person contacts (requires contacts.read; degrades to empty).
-        var people = (await Contacts.ListAllAsync(types: ["Person"])).ItemsOrToast(Snackbar, "people");
-        _peopleOptions = OdsContactOptions.Active(people);
-        _personNames = people.ToDictionary(c => c.ContactId, c => c.ResolvedDisplayName);
+        var peopleResult = await Contacts.ListAllAsync(types: ["Person"]);
+        var people = peopleResult.ItemsOrToast(Snackbar, "people");
+        if (peopleResult.IsSuccess)
+        {
+            _peopleOptions = OdsContactOptions.Active(people);
+            _personNames = people.ToDictionary(c => c.ContactId, c => c.ResolvedDisplayName);
+        }
     }
 
     // Null when a newer fetch (a reload, or a load-more) superseded this one: the caller must return
@@ -403,7 +417,15 @@ public partial class PhotosCard
         (await Photos.UpdateAsync(id, body)).Toast(Snackbar, "Update failed");
     }
 
-    private async Task OnPhotoSaved() { _editId = null; await RefreshAsync(); }
+    // The edit dialog may have created tags or people inline; reload the name lookups so the detail
+    // view names them rather than showing "—".
+    internal async Task OnPhotoSaved()
+    {
+        _editId = null;
+        await LoadOptionsAsync();
+        await RefreshAsync();
+    }
+
     /// <summary>
     /// The library upload's own, tighter product limit — kept from the retired UploadPhotosDialog. The
     /// effective cap is the smaller of it and the instance-wide one; a surface may tighten, never loosen.
