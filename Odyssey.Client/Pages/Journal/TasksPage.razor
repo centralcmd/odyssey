@@ -1,3 +1,4 @@
+@using Odyssey.Dtos
 @page "/tasks"
 @using Odyssey.Client.Authorization
 @using Odyssey.Client.Components
@@ -78,6 +79,11 @@
                                   Style="@($"grid-template-columns: repeat({BoardColumns.Count}, minmax(0, 1fr));")">
                         <RenderCard Context="t">
                             <div class="tk-card-head">
+                                @* The task's display icon (issue #345), only when a tag chose one. *@
+                                @if (TagIcons.IsKnown(t.DisplayIcon))
+                                {
+                                    <span class="tk-card-glyph material-icons" aria-hidden="true">@t.DisplayIcon</span>
+                                }
                                 <span class="tk-card-title">@t.Title</span>
                                 <div @onclick:stopPropagation="true">
                                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Color="Color.Default"

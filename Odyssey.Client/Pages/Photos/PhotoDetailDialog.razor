@@ -1,3 +1,4 @@
+@using Odyssey.Dtos
 @*
     PhotoDetailDialog — the library lightbox (Odyssey Design System · Photos · detail). Built on the
     standard modal (OdsModal): a wide frame whose body is a two-column grid — an image stage with
@@ -11,7 +12,7 @@
 @inject IJSRuntime Js
 
 <OdsModal Open="true" OpenChanged="OnOpenChanged" Class="pl-ods-wide" AriaLabel="@Label(Current)"
-          Icon="photo_library" OnClose="OnClose"
+          Icon="@LeadIcon" OnClose="OnClose"
           Title="@TitleFragment" Subtitle="@SubFragment"
           HeaderActions="@HeaderActionsFragment" Footer="@FooterFragment">
     <div class="odc-modal-body pl-ods2" tabindex="-1" @ref="_body" @onkeydown="OnKeyDown">
@@ -128,6 +129,9 @@
     private bool _focused;
 
     private PhotoSummary? Current => Index >= 0 && Index < Photos.Count ? Photos[Index] : null;
+
+    // The lead glyph is the photo's display icon (issue #345) when a tag chose one, else the library glyph.
+    private string LeadIcon => Current is { DisplayIcon: var icon } && TagIcons.IsKnown(icon) ? icon : "photo_library";
 
     private string Label(PhotoSummary? p) => p is null ? "Photo" : (string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!);
 

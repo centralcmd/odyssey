@@ -70,6 +70,10 @@
 /* -4px centres the 32px action button on the title's first line; -6px pulls its box out so the glyph
    sits optically on the padding edge. */
 .tk-list-top .je-cardmenu { margin: -4px -6px 0 0; }
+.tk-list-glyph {
+    flex: none; font-size: var(--icon-md); line-height: 1; margin-top: calc(var(--space-1) / 2);
+    color: var(--mud-palette-text-secondary);
+}
 .tk-list-title {
     margin: 0; flex: 1; min-width: 0;
     font: var(--fw-medium) var(--fs-h6)/var(--lh-snug) var(--font-sans);

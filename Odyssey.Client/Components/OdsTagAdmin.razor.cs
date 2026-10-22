@@ -31,11 +31,13 @@ public partial class OdsTagAdmin<TRow>
     [Parameter, EditorRequired] public Func<TRow, DateTime?> Archived { get; set; } = default!;
 
     /// <summary>
-    /// The tag's icon key — set only by the transaction-tag page (issue #279). When present, the
-    /// leading avatar draws the tag's icon, the dialog offers the icon picker, and every write
-    /// carries the icon so nothing resets it. Journal, task and photo tags leave it unset.
+    /// The tag's icon key (issues #279, #345). When present, the leading avatar draws the tag's icon,
+    /// the dialog offers the icon picker, and every write carries the icon so nothing resets it.
     /// </summary>
     [Parameter] public Func<TRow, string?>? IconOf { get; set; }
+
+    /// <summary>The icon field's helper line, naming the records the icon is shown on.</summary>
+    [Parameter] public string IconHelp { get; set; } = "Shown for this tag and on every transaction carrying it. Default keeps the tag icon.";
 
     // ── State ────────────────────────────────────────────────────────────────────
     private List<TRow> _tags = [];
