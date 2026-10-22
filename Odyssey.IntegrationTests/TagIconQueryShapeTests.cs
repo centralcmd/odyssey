@@ -74,6 +74,74 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
         }
     }
 
+    /// <summary>
+    /// Issue #345 AC 17, the write half: a create or update response carries the display icon through
+    /// one batched tag lookup, so it may issue at most one command more than it did before — never one
+    /// per tag.
+    /// </summary>
+    [SkippableFact]
+    public async Task Create_and_update_responses_add_at_most_one_command()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await RecreateAsync();
+
+        try
+        {
+            var seeded = await SeedAsync();
+            await using (var users = NewContext(null))
+            {
+                await AttributionUsers.EnsureAsync(users, Author);
+            }
+
+            var journalTagIds = await TagIdsAsync(context => context.JournalTags.Select(t => t.JournalTagId));
+            var taskTagIds = await TagIdsAsync(context => context.JournalTaskTags.Select(t => t.JournalTaskTagId));
+
+            var entry = await CountAsync(context => Entries(context).Create(new NewJournalEntry
+            {
+                Title = "New", Content = "Dear journal.", EntryDate = DateTime.UtcNow, TagIds = journalTagIds,
+            }, Author));
+            Assert.Equal("beach_access", entry.Result.DisplayIcon);
+            Assert.Equal([seeded.Art, seeded.Trip, seeded.Zoo], entry.Result.TagIds);
+            Assert.InRange(entry.Commands, CreateEntryCommandsBefore, CreateEntryCommandsBefore + 1);
+
+            var updatedEntry = await CountAsync(context => Entries(context).Update(entry.Result.JournalEntryId, new UpdateJournalEntry
+            {
+                Title = "New", Content = "Dear journal.", EntryDate = DateTime.UtcNow, TagIds = [seeded.Zoo],
+            }, Author));
+            Assert.Equal("pets", updatedEntry.Result!.DisplayIcon);
+            Assert.InRange(updatedEntry.Commands, UpdateEntryCommandsBefore, UpdateEntryCommandsBefore + 1);
+
+            var task = await CountAsync(context => Tasks(context).Create(new NewJournalTask { Title = "New", TagIds = taskTagIds }, Author));
+            Assert.Equal("beach_access", task.Result.DisplayIcon);
+            Assert.InRange(task.Commands, CreateTaskCommandsBefore, CreateTaskCommandsBefore + 1);
+
+            var updatedTask = await CountAsync(context => Tasks(context).Update(task.Result.JournalTaskId, new UpdateJournalTask
+            {
+                Title = "New", TagIds = [taskTagIds[0]],
+            }, Author));
+            Assert.NotNull(updatedTask.Result);
+            Assert.InRange(updatedTask.Commands, UpdateTaskCommandsBefore, UpdateTaskCommandsBefore + 1);
+        }
+        finally
+        {
+            await DropAsync();
+        }
+    }
+
+    private const string Author = "tag-icon-shape-author";
+
+    private async Task<Guid[]> TagIdsAsync(Func<OdysseyContext, IQueryable<Guid>> query)
+    {
+        await using var context = NewContext(null);
+        return await query(context).ToArrayAsync();
+    }
+
+    // Measured against the services before issue #345 (the write-path rows by the same method).
+    private const int CreateEntryCommandsBefore = 3;
+    private const int UpdateEntryCommandsBefore = 3;
+    private const int CreateTaskCommandsBefore = 4;
+    private const int UpdateTaskCommandsBefore = 3;
+
     // Measured against the services before issue #345. Each list is ToPagedResultAsync's count plus the
     // window query (the entry list's photo-link lookup is skipped when no entry carries a photo); each
     // detail read was the one Include query.

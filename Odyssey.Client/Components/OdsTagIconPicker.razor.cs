@@ -1,7 +1,7 @@
-using Odyssey.Dtos;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Components;

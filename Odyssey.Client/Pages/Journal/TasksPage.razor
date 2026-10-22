@@ -1,7 +1,7 @@
-@using Odyssey.Dtos
 @page "/tasks"
 @using Odyssey.Client.Authorization
 @using Odyssey.Client.Components
+@using Odyssey.Dtos
 @attribute [Authorize(Policy = PermissionClaims.TasksRead)]
 @implements IAsyncDisposable
 @inject ITaskApiClient Tasks

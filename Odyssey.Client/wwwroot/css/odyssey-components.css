@@ -3245,8 +3245,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-swatch:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 3px; }
 .odc-swatch:disabled { cursor: not-allowed; opacity: 0.5; }
 
-/* TagIconPicker — the transaction-tag icon chooser (issue #279): a radiogroup grid of the
-   TransactionTagIcons catalogue, a dashed Default cell first, and a caption naming the selection. */
+/* TagIconPicker — the tag icon chooser for all four tag types (issues #279, #345): a radiogroup grid
+   of the TagIcons catalogue, a dashed Default cell first, and a caption naming the selection. */
 .odc-iconpick { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); overflow: hidden; }
 .odc-iconpick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: var(--space-1); padding: var(--space-2); }
 .odc-iconpick-cell { appearance: none; position: relative; height: 40px; min-width: 40px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer; padding: 0; }

@@ -1,5 +1,5 @@
-using Odyssey.Dtos;
 using System.Text.RegularExpressions;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Xunit;
 
@@ -236,6 +236,33 @@ public class TagIconsTests
             .Select(Path.GetFileName)
             .ToList();
         Assert.Empty(tagSorters);
+    }
+
+    /// <summary>
+    /// Issue #345 AC 13: the catalogue was renamed from its transaction-only name when four tag types
+    /// came to share it. No type, reference or comment under the old names survives in shipped code —
+    /// a second catalogue under the old name is exactly the drift the rename exists to prevent.
+    /// (Applied migrations and their tests are history and keep the names they were written with.)
+    /// </summary>
+    [Fact]
+    public void No_transaction_only_catalogue_name_survives()
+    {
+        var root = SolutionRoot();
+        var files = new[] { "Odyssey.Dtos", "Odyssey.Core", "Odyssey.Context", "Odyssey.Api", "Odyssey.ApiClient", "Odyssey.Client" }
+            .SelectMany(project => Directory.EnumerateFiles(Path.Combine(root, project), "*.*", SearchOption.AllDirectories))
+            .Where(path => path.EndsWith(".cs", StringComparison.Ordinal) || path.EndsWith(".razor", StringComparison.Ordinal) || path.EndsWith(".css", StringComparison.Ordinal))
+            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                && !path.Contains($"{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}"))
+            .ToList();
+
+        Assert.True(files.Count > 200, $"Scan set unexpectedly small ({files.Count} files) under {root}.");
+
+        var survivors = files
+            .Where(path => Regex.IsMatch(File.ReadAllText(path), @"\bTransactionTagIcon(s|Option|Attribute)?\b"))
+            .Select(path => Path.GetRelativePath(root, path))
+            .ToList();
+        Assert.Empty(survivors);
     }
 
     private static TagIconCandidate Tag(string name, string? icon = null, Guid? id = null) =>

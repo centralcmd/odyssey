@@ -1,6 +1,6 @@
-using Odyssey.Dtos;
 using System.Net;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Xunit;
 

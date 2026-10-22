@@ -1,10 +1,10 @@
-using Odyssey.Dtos;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Services;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 
@@ -36,8 +36,11 @@ public partial class OdsTagAdmin<TRow>
     /// </summary>
     [Parameter] public Func<TRow, string?>? IconOf { get; set; }
 
-    /// <summary>The icon field's helper line, naming the records the icon is shown on.</summary>
-    [Parameter] public string IconHelp { get; set; } = "Shown for this tag and on every transaction carrying it. Default keeps the tag icon.";
+    /// <summary>
+    /// The icon field's helper line, naming the records the icon is shown on. Every page that passes
+    /// <see cref="IconOf"/> names its own records; the default only avoids naming the wrong ones.
+    /// </summary>
+    [Parameter] public string IconHelp { get; set; } = "Shown for this tag and on every record carrying it. Default keeps the tag icon.";
 
     // ── State ────────────────────────────────────────────────────────────────────
     private List<TRow> _tags = [];

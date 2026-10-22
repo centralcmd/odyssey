@@ -1,4 +1,3 @@
-using Odyssey.Dtos;
 using System.Text.RegularExpressions;
 using Bunit;
 using Microsoft.AspNetCore.Components;
@@ -7,6 +6,7 @@ using MudBlazor;
 using MudBlazor.Services;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 using Xunit;

@@ -1,4 +1,3 @@
-using Odyssey.Dtos;
 using System.Net;
 using Bunit;
 using Microsoft.AspNetCore.Components;
@@ -14,6 +13,7 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Client.Services;
 using Odyssey.Client.Theme;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Xunit;
 

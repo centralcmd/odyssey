@@ -1,4 +1,3 @@
-@using Odyssey.Dtos
 @*
     PhotoDetailDialog — the library lightbox (Odyssey Design System · Photos · detail). Built on the
     standard modal (OdsModal): a wide frame whose body is a two-column grid — an image stage with
@@ -7,6 +6,7 @@
     in the header beside close; Edit / Download / Archive / Delete are the footer actions. Full metadata
     is fetched per-photo; ids are hydrated to names by the page. Escape closes; ←/→ navigate.
 *@
+@using Odyssey.Dtos
 @inject IFilesApiClient Files
 @inject IPhotosApiClient Api
 @inject IJSRuntime Js

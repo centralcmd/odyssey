@@ -89,10 +89,11 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
     /// <c>createTagsPage</c> with <c>icons: true</c>), and each helper names the records its icon is drawn on.
     /// </summary>
     [Theory]
+    [InlineData("Pages/Finance/TransactionTagsPage.razor", "transaction")]
     [InlineData("Pages/Journal/JournalTagsPage.razor", "journal entry")]
     [InlineData("Pages/Journal/TaskTagsPage.razor", "task")]
     [InlineData("Pages/Photos/PhotoTagsPage.razor", "photo")]
-    public void Every_journal_side_tag_page_turns_icons_on_and_names_its_records(string page, string noun)
+    public void Every_tag_page_turns_icons_on_and_names_its_records(string page, string noun)
     {
         var source = File.ReadAllText(Path.Combine(ClientSource.Root, page));
 

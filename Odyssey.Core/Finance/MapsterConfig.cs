@@ -1,4 +1,3 @@
-using Odyssey.Dtos;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Mapster;
@@ -25,6 +24,7 @@ using ContextTransactionTag = Odyssey.Context.TransactionTag;
 using DtoExistingTransaction = Odyssey.Dtos.Finance.ExistingTransaction;
 using DtoExistingTransactionTag = Odyssey.Dtos.Finance.ExistingTransactionTag;
 using TagIcons = Odyssey.Dtos.TagIcons;
+using Odyssey.Dtos;
 
 namespace Odyssey.Core.Finance;
 
