@@ -62,7 +62,7 @@ public class ContractSignalPanelTests
         return ctx.Render<PageHeader>(p => p
             .Add(h => h.Title, "Contracts")
             .Add(h => h.Problems, [.. problems])
-            .Add(h => h.ProblemsLabel, "Upcoming")
+            .Add(h => h.ProblemsLabel, "Attention")
             .Add(h => h.ProblemsOpen, true));
     }
 
@@ -203,6 +203,45 @@ public class ContractSignalPanelTests
         var movements = ContractsCard.UpcomingMovements(summary, new HashSet<Guid> { ContractId }).ToList();
 
         Assert.Equal(["Shown"], movements.Select(m => m.Row.Name));
+    }
+
+    // ── Missing exchange rate ────────────────────────────────────────────────
+
+    /// <summary>
+    /// The missing-rate group reads the run rate's unconverted contracts and, like every other group,
+    /// drops one the filtered list is not showing — its View would otherwise scroll to nothing.
+    /// </summary>
+    [Fact]
+    public void Rate_gaps_keep_only_contracts_the_list_is_showing()
+    {
+        var summary = Summary([], []);
+        summary.RunRate.UnconvertedContracts =
+        [
+            new UnconvertedContract { ContractId = ContractId, Name = "Streaming", CurrencyCodes = ["EUR"] },
+            new UnconvertedContract { ContractId = OtherContractId, Name = "Hidden", CurrencyCodes = ["GBP"] },
+        ];
+
+        var gaps = ContractsCard.RateGaps(summary, new HashSet<Guid> { ContractId }).ToList();
+
+        Assert.Equal(["Streaming"], gaps.Select(g => g.Name));
+        Assert.Empty(ContractsCard.RateGaps(null, new HashSet<Guid> { ContractId }));
+    }
+
+    /// <summary>
+    /// The row names every unrated currency and the base, and the record alert names what was left
+    /// out — the copy is the only thing that tells a reader which figure on the page is partial.
+    /// </summary>
+    [Fact]
+    public void Rate_gap_copy_names_the_pair_and_what_was_left_out()
+    {
+        var gap = new UnconvertedContract { ContractId = ContractId, Name = "Streaming", CurrencyCodes = ["EUR", "GBP"] };
+
+        Assert.Equal(
+            "No EUR, GBP → NOK rate, so this contract is left out of the run rate.",
+            ContractsCard.RateGapSummary(gap, "NOK"));
+        var detail = ContractsCard.RateGapDetail(gap, "NOK");
+        Assert.Contains("main currency (NOK)", detail, StringComparison.Ordinal);
+        Assert.Contains("EUR and GBP fees are left out of the run rate and the net", detail, StringComparison.Ordinal);
     }
 
     /// <summary>No summary yet, or nothing due in the window: the group simply has no rows.</summary>

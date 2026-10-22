@@ -16,6 +16,7 @@
 @inject IAccountsApiClient Accounts
 @inject IPropertiesApiClient PropertiesApi
 @inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
+@inject NavigationManager NavigationManager
 
 <PageTitle>Contracts</PageTitle>
 
@@ -30,7 +31,7 @@
     <PageHeader Title="Contracts"
                 Icon="@Icons.Material.Filled.Handshake"
                 Problems="HeaderProblems"
-                ProblemsLabel="Upcoming"
+                ProblemsLabel="Attention"
                 ProblemsOpen="_problemsOpen" ProblemsOpenChanged="OnProblemsToggled"
                 OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
@@ -82,6 +83,7 @@
                     var unsigned = ContractStatusOrder.IsUnsigned(c.Status);
                     var typeInfo = OdsTypeRegistries.ContractTypeOf(c.Type);
                     var headline = Headline(c);
+                    var rateGap = RateGapFor(c.ContractId);
                     var detail = _details.GetValueOrDefault(c.ContractId);
 
                     @* The meta line: type · the contact this contract is with · "Money in" when any
@@ -155,6 +157,13 @@
 
                     <Chips>
                         <OdsContractStatusChip Status="c.Status" Compact="true" />
+                        @if (rateGap is not null)
+                        {
+                            @* The Accounts "No rate" chip: a fee is left out of the run rate. *@
+                            <span class="acct-flag warning">
+                                <span class="material-icons" aria-hidden="true">warning_amber</span>No rate
+                            </span>
+                        }
                     </Chips>
 
                     <Figure>@headline.Value</Figure>
@@ -162,6 +171,16 @@
                     <Actions>
                         <OdsMenu Items="RowActions(c, archived)" AriaLabel="@($"Actions for {c.Name}")" />
                     </Actions>
+
+                    <Alert>
+                        @* The problem and its contextual fix first — it is why the card was opened. *@
+                        @if (rateGap is not null)
+                        {
+                            <OdsProblemAlert Severity="OdsSeverity.Warning" Title="Missing exchange rate"
+                                             Detail="@RateGapDetail(rateGap, _summary!.RunRate.BaseCurrency)"
+                                             ActionLabel="Set exchange rate" OnAction="GoToExchangeRates" />
+                        }
+                    </Alert>
 
                     <Details>
                         @if (detail is null)
