@@ -131,7 +131,9 @@
     flex-wrap: wrap;
 }
 
-.ph-root ::deep .ph-filter-bar > * {
+/* Beats OdsPopupMenu's zero-specificity `:where(.odc-popmenu) { align-self: center }`;
+   scoped to that one wrapper so a child that wants its own align-self keeps it. */
+.ph-root ::deep .ph-filter-bar > .odc-popmenu {
     align-self: flex-start;
 }
 

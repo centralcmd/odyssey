@@ -835,16 +835,16 @@
    body is a checkbox list with a Clear / Done footer. The trigger fills its slot
    (.ph-select gives it a 170px floor) but collapses to content width when
    unconstrained, so it matches the DS compact pill outside a filter bar. */
-/* Height is the DS --control-h (40px), the same box the dense outlined MudTextField
-   search field, the sort select, the page-size select and the date-range picker
-   render at, so every control in a .ph-filter-bar shares one top and one bottom
-   edge. It was 42px, which left the trigger 2px taller than its neighbours. */
 /* Used as a genuine form field (inside a field shell / form row, e.g. the tax
    statement derivation-tags fields) rather than a filter-bar pill: stretch the
    whole control to fill its column instead of collapsing to the label's content
    width. Filter-bar usages stay untouched — they aren't nested in either. */
 .odc-field .odc-ms, .odc-form-row .odc-ms { width: 100%; }
 
+/* Height is the DS --control-h (40px), the same box the dense outlined MudTextField
+   search field, the sort select, the page-size select and the date-range picker
+   render at, so every control in a .ph-filter-bar shares one top and one bottom
+   edge. It was 42px, which left the trigger 2px taller than its neighbours. */
 .odc-ms-trigger {
   display: inline-flex; align-items: center; gap: 8px; width: 100%; height: var(--control-h);
   box-sizing: border-box;
