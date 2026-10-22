@@ -46,8 +46,8 @@ public partial class AccountSmartTagsSection
 
     /// <summary>
     /// The section's leading glyph. <c>sell</c> is the smart-tag glyph on every host — account,
-    /// contract and property alike. Terms carry the typeset <c>§</c> and transaction tags
-    /// <c>local_offer</c>, so none of the three shares a glyph with another.
+    /// contract and property alike — and terms carry the typeset <c>§</c>, so the two never share a
+    /// glyph in a record's counts strip.
     /// </summary>
     [Parameter] public string Icon { get; set; } = "sell";
 

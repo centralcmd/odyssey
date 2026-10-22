@@ -130,6 +130,30 @@ public class ContractsCardRowActionTests
     }
 
     /// <summary>
+    /// A contract's smart tags read under <c>sell</c>, as on accounts and properties: the counts strip
+    /// names it, and the section takes <c>AccountSmartTagsSection</c>'s default rather than overriding
+    /// it. The override to <c>local_offer</c> existed only because "New term" held <c>sell</c>.
+    /// </summary>
+    [Fact]
+    public void Smart_tags_carry_the_smart_tag_glyph()
+    {
+        var card = RazorSource("ContractsCard.razor");
+        Assert.Matches(new Regex(@"new OdsRecordCount\(""sell"",\s*c\.SmartTagCount"), card);
+
+        var detail = RazorSource("ContractDetailView.razor");
+        var section = Regex.Match(detail, @"<AccountSmartTagsSection\b[^>]*>");
+        Assert.True(section.Success, "ContractDetailView no longer renders AccountSmartTagsSection.");
+        Assert.DoesNotMatch(new Regex(@"\bIcon\s*="), section.Value);
+    }
+
+    /// <summary>A Razor file under <c>Pages/Finance</c> with its <c>@* … *@</c> comments stripped.</summary>
+    private static string RazorSource(string file)
+    {
+        var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", file));
+        return Regex.Replace(source, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline);
+    }
+
+    /// <summary>
     /// The reason an unavailable action cannot be taken is never carried as a menu row. The four
     /// write actions above are ungated outright; the two lifecycle items that CAN be unavailable
     /// (Pause on an unsigned contract, Archive before it has ended) are simply absent when they are,
