@@ -118,6 +118,26 @@ public class PropertyEstimateGatingApiTests
         Assert.Equal(450_000m, Assert.Single(value.ByCurrency).Total);
     }
 
+    /// <summary>
+    /// A property whose currency has no rate to the requested base is left out of the total and named
+    /// on the wire — the id, the name and the code, nothing else — so the page can point at it.
+    /// </summary>
+    [Fact]
+    public async Task Summary_NamesTheOwnedPropertyLeftOutForWantOfARate()
+    {
+        await using var factory = new ApiFactory(ReadAndEstimates);
+        var propertyId = await SeedValuedPropertyAsync(factory);
+        using var client = factory.CreateClient();
+
+        var value = (await client.GetFromJsonAsync<PropertySummary>($"{SummaryPath}?baseCurrency=SEK"))!.Value!;
+
+        Assert.Null(value.Total);
+        var gap = Assert.Single(value.UnconvertedProperties);
+        Assert.Equal(propertyId, gap.PropertyId);
+        Assert.Equal("Storgata 14", gap.Name);
+        Assert.Equal(Assert.Single(value.UnconvertedCurrencies), gap.CurrencyCode);
+    }
+
     [Fact]
     public async Task Summary_WithoutTheEstimatesClaim_KeepsTheCountsAndDropsTheValue()
     {

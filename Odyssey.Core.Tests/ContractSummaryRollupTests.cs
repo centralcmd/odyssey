@@ -162,6 +162,22 @@ public class ContractSummaryRollupTests
         Assert.Equal(105m, runRate.Monthly);
     }
 
+    /// <summary>Two contracts sharing a name keep a stable order, by id, so the panel does not reshuffle.</summary>
+    [Fact]
+    public async Task RunRate_OrdersUnconvertedContractsWithEqualNamesById()
+    {
+        await using var context = TestContextFactory.Create();
+        var start = FixedToday.AddMonths(-6);
+        var first = SeedContract(context, "Streaming", start);
+        var second = SeedContract(context, "streaming", start);
+        SeedFee(context, first, 10m, start, currency: "EUR");
+        SeedFee(context, second, 10m, start, currency: "EUR");
+
+        var runRate = (await Summarise(context)).RunRate;
+
+        Assert.Equal(new[] { first, second }.Order(), runRate.UnconvertedContracts.Select(c => c.ContractId));
+    }
+
     /// <summary>
     /// The cadence multiplier is a DIVISOR, not a factor: a 300 charge every three months is 100 a
     /// month, not 900. Reading it the other way triples every quarterly line in the roll-up.

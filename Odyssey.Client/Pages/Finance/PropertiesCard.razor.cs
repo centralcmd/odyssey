@@ -496,21 +496,25 @@ public partial class PropertiesCard
     // without properties.estimates.read, so a caller who cannot see values is never told one is
     // missing. Intersected with the loaded list, which is server-filtered, so View never jumps to a
     // record the filters hide.
-    private List<PageHeaderProblem> HeaderProblems
-    {
-        get
+    private List<PageHeaderProblem> HeaderProblems =>
+        [.. RateGapProblems(
+            _summary,
+            _properties.Select(p => p.PropertyId).ToHashSet(),
+            id => EventCallback.Factory.Create(this, () => JumpTo(id)))];
+
+    /// <summary>
+    /// One warning row per gap the list shows, led by the property's name and ungrouped — it is the only
+    /// kind this panel carries — its View bound by <paramref name="onView"/>.
+    /// </summary>
+    internal static IEnumerable<PageHeaderProblem> RateGapProblems(
+        PropertySummary? summary, IReadOnlySet<Guid> listed, Func<Guid, EventCallback> onView) =>
+        RateGaps(summary, listed).Select(gap => new PageHeaderProblem
         {
-            var listed = _properties.Select(p => p.PropertyId).ToHashSet();
-            var baseCurrency = _summary?.Value?.BaseCurrency ?? string.Empty;
-            return [.. RateGaps(_summary, listed).Select(gap => new PageHeaderProblem
-            {
-                Severity = PageHeaderSeverity.Warning,
-                Lead = gap.Name,
-                Message = RateGapSummary(gap, baseCurrency),
-                OnView = EventCallback.Factory.Create(this, () => JumpTo(gap.PropertyId)),
-            })];
-        }
-    }
+            Severity = PageHeaderSeverity.Warning,
+            Lead = gap.Name,
+            Message = RateGapSummary(gap, summary!.Value!.BaseCurrency),
+            OnView = onView(gap.PropertyId),
+        });
 
     /// <summary>The summary's unconverted properties that the loaded list also shows, in the server's order.</summary>
     internal static IEnumerable<UnconvertedProperty> RateGaps(PropertySummary? summary, IReadOnlySet<Guid> listed) =>

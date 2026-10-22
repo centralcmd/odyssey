@@ -343,7 +343,7 @@ public class ContractSummaryService
         runRate.UnconvertedContracts =
         [
             .. unconvertedByContract
-                .OrderBy(kv => kv.Value.Name, StringComparer.CurrentCulture)
+                .OrderBy(kv => kv.Value.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ThenBy(kv => kv.Key)
                 .Select(kv => new UnconvertedContract
                 {

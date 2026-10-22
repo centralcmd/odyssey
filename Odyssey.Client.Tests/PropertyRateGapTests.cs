@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Components;
+using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -47,6 +49,59 @@ public class PropertyRateGapTests
 
         Assert.Empty(PropertiesCard.RateGaps(new PropertySummary { Value = null }, listed));
         Assert.Empty(PropertiesCard.RateGaps(null, listed));
+    }
+
+    /// <summary>
+    /// Each gap becomes one ungrouped WARNING row — the only kind this panel carries — led by the
+    /// property's name, with the base-currency copy and a View bound to that property's id.
+    /// </summary>
+    [Fact]
+    public async Task Rate_gap_problems_are_ungrouped_warning_rows()
+    {
+        Guid? viewed = null;
+
+        var row = Assert.Single(PropertiesCard.RateGapProblems(
+            Summary(Gap(Cabin, "Cabin", "NOK")), new HashSet<Guid> { Cabin },
+            id => EventCallback.Factory.Create(this, () => viewed = id)));
+
+        Assert.Null(row.Group);
+        Assert.Equal(PageHeaderSeverity.Warning, row.Severity);
+        Assert.Equal("Cabin", row.Lead);
+        Assert.Equal("No NOK → USD rate, so this property is left out of the estimated value total.", row.Message);
+        await row.OnView.InvokeAsync();
+        Assert.Equal(Cabin, viewed);
+    }
+
+    /// <summary>
+    /// The page composes the signal: an "Attention" button whose open state persists with the rest of
+    /// the page state, a View that opens and scrolls to the record, and the chip and alert on the record
+    /// with the fix routed to Exchange rates. Read from source because the page needs a full service
+    /// graph to render.
+    /// </summary>
+    [Fact]
+    public void The_properties_page_wires_the_missing_rate_signal_chip_and_alert()
+    {
+        var finance = Path.Combine(ClientSource.Root, "Pages", "Finance");
+        var markup = File.ReadAllText(Path.Combine(finance, "PropertiesCard.razor"));
+        var code = File.ReadAllText(Path.Combine(finance, "PropertiesCard.razor.cs"));
+
+        Assert.Contains("Problems=\"HeaderProblems\"", markup, StringComparison.Ordinal);
+        Assert.Contains("ProblemsLabel=\"Attention\"", markup, StringComparison.Ordinal);
+        Assert.Contains("ProblemsOpenChanged=\"OnProblemsToggled\"", markup, StringComparison.Ordinal);
+        Assert.Contains("ProblemsOpen = _problemsOpen", code, StringComparison.Ordinal);
+        Assert.Contains("_problemsOpen = state.ProblemsOpen", code, StringComparison.Ordinal);
+
+        var jump = code[code.IndexOf("private async Task JumpTo(Guid id)", StringComparison.Ordinal)..];
+        jump = jump[..jump.IndexOf("private async Task Flash", StringComparison.Ordinal)];
+        Assert.Contains("_expandedId = id", jump, StringComparison.Ordinal);
+        Assert.Contains("$\"#prop-{id}\"", jump, StringComparison.Ordinal);
+        Assert.Contains("Id=\"@($\"prop-{p.PropertyId}\")\"", markup, StringComparison.Ordinal);
+
+        var chips = markup[markup.IndexOf("<Chips>", StringComparison.Ordinal)..markup.IndexOf("</Chips>", StringComparison.Ordinal)];
+        Assert.Contains("No rate", chips, StringComparison.Ordinal);
+        var alert = markup[markup.IndexOf("<Alert>", StringComparison.Ordinal)..markup.IndexOf("</Alert>", StringComparison.Ordinal)];
+        Assert.Contains("ActionLabel=\"Set exchange rate\" OnAction=\"GoToExchangeRates\"", alert, StringComparison.Ordinal);
+        Assert.Contains("NavigationManager.NavigateTo(\"exchange-rates\")", code, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -145,7 +145,7 @@ public class PropertySummaryService
             [
                 .. current
                     .Where(c => unconverted.Contains(c.Currency))
-                    .OrderBy(c => c.Name, StringComparer.CurrentCulture)
+                    .OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase)
                     .ThenBy(c => c.PropertyId)
                     .Select(c => new UnconvertedProperty
                     {

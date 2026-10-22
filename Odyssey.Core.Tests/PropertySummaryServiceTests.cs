@@ -126,6 +126,19 @@ public class PropertySummaryServiceTests
         Assert.Equal(["EUR", "USD"], value.UnconvertedProperties.Select(p => p.CurrencyCode));
     }
 
+    /// <summary>Two properties sharing a name keep a stable order, by id, so the panel does not reshuffle.</summary>
+    [Fact]
+    public async Task Value_OrdersUnconvertedPropertiesWithEqualNamesById()
+    {
+        await using var context = TestContextFactory.Create();
+        var first = await PropertyAsync(context, PropertyTestData.House("Cabin", "EUR"), estimate: 1m);
+        var second = await PropertyAsync(context, PropertyTestData.House("cabin", "EUR"), estimate: 1m);
+
+        var value = (await Summary(context).GetAsync("SEK", includeValue: true)).Value!;
+
+        Assert.Equal(new[] { first, second }.Order(), value.UnconvertedProperties.Select(p => p.PropertyId));
+    }
+
     [Fact]
     public async Task Value_BlankBase_PicksTheCurrencyMostOwnedPropertiesUse()
     {

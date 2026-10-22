@@ -360,14 +360,8 @@ public partial class ContractsCard
             // on this page is partial until the rate exists — placed after the error group and before
             // the dated warnings. Intersected with the list for the same reason as the transaction rows
             // below: the summary is unfiltered, and a jump to a record the list hides scrolls nowhere.
-            problems.AddRange(RateGaps(_summary, listed).Select(gap => new PageHeaderProblem
-            {
-                Group = "Missing exchange rate",
-                Severity = PageHeaderSeverity.Warning,
-                Lead = gap.Name,
-                Message = RateGapSummary(gap, _summary!.RunRate.BaseCurrency),
-                OnView = EventCallback.Factory.Create(this, () => JumpTo(gap.ContractId)),
-            }));
+            problems.AddRange(RateGapProblems(
+                _summary, listed, id => EventCallback.Factory.Create(this, () => JumpTo(id))));
 
             problems.AddRange(live
                 .Where(c => c.Status == ContractStatus.Active
@@ -442,6 +436,21 @@ public partial class ContractsCard
     /// </summary>
     internal static IEnumerable<UnconvertedContract> RateGaps(ContractSummary? summary, IReadOnlySet<Guid> listed) =>
         (summary?.RunRate.UnconvertedContracts ?? []).Where(gap => listed.Contains(gap.ContractId));
+
+    /// <summary>
+    /// The "Missing exchange rate" group: one warning row per gap the list shows, led by the contract's
+    /// name, its View bound by <paramref name="onView"/>.
+    /// </summary>
+    internal static IEnumerable<PageHeaderProblem> RateGapProblems(
+        ContractSummary? summary, IReadOnlySet<Guid> listed, Func<Guid, EventCallback> onView) =>
+        RateGaps(summary, listed).Select(gap => new PageHeaderProblem
+        {
+            Group = "Missing exchange rate",
+            Severity = PageHeaderSeverity.Warning,
+            Lead = gap.Name,
+            Message = RateGapSummary(gap, summary!.RunRate.BaseCurrency),
+            OnView = onView(gap.ContractId),
+        });
 
     /// <summary>The run rate's gap for one contract, or null when every fee it carries converted.</summary>
     private UnconvertedContract? RateGapFor(Guid contractId) =>
