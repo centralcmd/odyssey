@@ -835,18 +835,18 @@
    body is a checkbox list with a Clear / Done footer. The trigger fills its slot
    (.ph-select gives it a 170px floor) but collapses to content width when
    unconstrained, so it matches the DS compact pill outside a filter bar. */
-/* Height matches the dense outlined MudTextField search box so the two line up:
-   body2 line (14px × 1.5 = 21px) + dense slot padding (2 × 10.5px) = 42px.
-   .ph-filter-bar top-aligns the row, so the two agree at the label line even if
-   one control grows taller. */
 /* Used as a genuine form field (inside a field shell / form row, e.g. the tax
    statement derivation-tags fields) rather than a filter-bar pill: stretch the
    whole control to fill its column instead of collapsing to the label's content
    width. Filter-bar usages stay untouched — they aren't nested in either. */
 .odc-field .odc-ms, .odc-form-row .odc-ms { width: 100%; }
 
+/* Height is the DS --control-h (40px), the same box the dense outlined MudTextField
+   search field, the sort select, the page-size select and the date-range picker
+   render at, so every control in a .ph-filter-bar shares one top and one bottom
+   edge. It was 42px, which left the trigger 2px taller than its neighbours. */
 .odc-ms-trigger {
-  display: inline-flex; align-items: center; gap: 8px; width: 100%; height: 42px;
+  display: inline-flex; align-items: center; gap: 8px; width: 100%; height: var(--control-h);
   box-sizing: border-box;
   background: var(--mud-palette-surface);
   border: 1px solid var(--control-border);
@@ -3817,7 +3817,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* ---- Toolbar buttons in the header search row (PhotosCard, AlbumsPage) ---- */
 .pl-toolbtn {
-  display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px;
+  display: inline-flex; align-items: center; gap: 6px; height: var(--control-h); padding: 0 14px;
   border-radius: var(--radius-sm, 4px); cursor: pointer;
   border: 1px solid var(--control-border);
   background: transparent; color: var(--mud-palette-text-secondary, #9aa3b2);

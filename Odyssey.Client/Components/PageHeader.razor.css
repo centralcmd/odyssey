@@ -116,8 +116,12 @@
    markup they pass into SearchContent.
 
    flex-start wins the alignment question: every control in the bar is height-matched
-   at 42px, so it is a no-op today, but when one grows (a validation line, a wrapped
-   multiselect trigger) the rest stay pinned to the label line instead of drifting.
+   at --control-h (40px), so when one grows (a validation line, a wrapped sort select)
+   the rest stay pinned to the top edge instead of drifting. Two things used to defeat
+   it and are neutralised below: the search field's MudBlazor dense margin (4px above
+   and below), and OdsPopupMenu's global `align-self: center`, which centred the
+   multiselect and page-size triggers in whatever height the row had taken — together
+   they left the sort select 3–4px higher than everything beside it.
    The min-widths are floors, not caps — a longer filter label still widens its
    control — so the values only set the wrap rhythm. */
 .ph-root ::deep .ph-filter-bar {
@@ -125,6 +129,17 @@
     gap: 12px;
     align-items: flex-start;
     flex-wrap: wrap;
+}
+
+/* Beats OdsPopupMenu's zero-specificity `:where(.odc-popmenu) { align-self: center }`;
+   scoped to that one wrapper so a child that wants its own align-self keeps it. */
+.ph-root ::deep .ph-filter-bar > .odc-popmenu {
+    align-self: flex-start;
+}
+
+.ph-root ::deep .ph-filter-bar > .mud-input-control {
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
 .ph-root ::deep .ph-search {
