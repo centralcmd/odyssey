@@ -19,11 +19,10 @@ namespace Odyssey.ApiClient.Resources;
 /// that.
 ///
 /// <para>
-/// <see cref="Icon"/> is the one transaction-tag-only member (issue #279). It is omitted from the wire
-/// when <c>null</c>, so the journal, task and photo resources never see it. For transaction tags an
-/// omitted icon and an explicit <c>null</c> mean the same thing — <c>PUT</c> is full replacement and
-/// both reset the tag to the default — so a writer that knows the tag's icon must always pass it, or
-/// an edit or an archive would silently clear it.
+/// <see cref="Icon"/> is accepted by all four resources (issues #279, #345). It is omitted from the wire
+/// when <c>null</c>, and for every resource an omitted icon and an explicit <c>null</c> mean the same
+/// thing — <c>PUT</c> is full replacement and both reset the tag to the default — so a writer that knows
+/// the tag's icon must always pass it, or an edit or an archive would silently clear it.
 /// </para>
 /// </remarks>
 public sealed record TagWrite(
@@ -33,7 +32,7 @@ public sealed record TagWrite(
     [property: StringLength(TagWrite.MaxDescriptionLength)]
     string? Description,
     bool Archived,
-    [property: StringLength(TransactionTagIcons.MaxKeyLength)]
+    [property: StringLength(TagIcons.MaxKeyLength)]
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? Icon = null)
 {

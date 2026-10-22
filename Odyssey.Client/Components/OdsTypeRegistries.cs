@@ -70,7 +70,7 @@ public static class OdsTransactionTagOptions
     public static OdsOption From(Odyssey.Dtos.Finance.ExistingTransactionTag tag) =>
         new(tag.TransactionTagId.ToString(), tag.Name)
         {
-            Icon = Odyssey.Dtos.Finance.TransactionTagIcons.Glyph(tag.Icon),
+            Icon = TagIcons.Glyph(tag.Icon),
         };
 }
 

@@ -77,6 +77,36 @@ public class TagsApiClientTests
         Assert.Equal(HttpMethod.Delete, handler.LastRequest.Method);
     }
 
+    /// <summary>
+    /// Issue #345: journal, task and photo tags carry an icon too, so the shared write sends it to every
+    /// route and every row type reads it back. An omitted icon is still left off the wire.
+    /// </summary>
+    [Theory]
+    [InlineData("api/journal-tags")]
+    [InlineData("api/task-tags")]
+    [InlineData("api/photo-tags")]
+    public async Task The_icon_round_trips_on_every_journal_side_tag_route(string basePath)
+    {
+        var (client, handler) = Create<ExistingPhotoTag>(basePath);
+
+        handler.Response = new HttpResponseMessage(HttpStatusCode.Created);
+        await client.CreateAsync(new TagWrite("Holidays", null, Archived: false, Icon: "beach_access"));
+        Assert.Contains("\"icon\":\"beach_access\"", handler.LastBody);
+
+        handler.Response = new HttpResponseMessage(HttpStatusCode.OK);
+        await client.UpdateAsync(Guid.NewGuid(), new TagWrite("Holidays", null, Archived: true));
+        Assert.DoesNotContain("icon", handler.LastBody);
+
+        handler.Response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                """{"items":[{"photoTagId":"11111111-1111-1111-1111-111111111111","name":"Holidays","icon":"beach_access"}],"offset":0,"limit":50,"totalCount":1}""",
+                System.Text.Encoding.UTF8, "application/json"),
+        };
+        var tags = (await client.ListAllAsync()).ValueOr([]);
+        Assert.Equal("beach_access", Assert.Single(tags).Icon);
+    }
+
     [Fact]
     public async Task ListAllAsync_requests_the_full_window()
     {

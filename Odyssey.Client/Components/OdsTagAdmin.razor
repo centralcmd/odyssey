@@ -1,3 +1,4 @@
+@using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
 @using Odyssey.Client.Authorization
 @typeparam TRow
@@ -114,7 +115,7 @@
                         Actions="BuildActions"
                         OnDelete="HandleDelete">
             <Leading Context="t">
-                <OdsAvatar Icon="@(IconOf is null ? TransactionTagIcons.Default : TransactionTagIcons.Glyph(IconOf(t)))"
+                <OdsAvatar Icon="@(IconOf is null ? TagIcons.Default : TagIcons.Glyph(IconOf(t)))"
                            Bg="var(--tag-soft)" Fg="var(--tag-text)" />
             </Leading>
             <CreateAction>

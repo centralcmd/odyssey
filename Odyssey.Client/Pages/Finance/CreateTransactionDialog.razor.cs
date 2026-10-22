@@ -259,7 +259,7 @@ public partial class CreateTransactionDialog
 
     // ── Row-icon preview (issue #279) ───────────────────────────────────────────
     // A live preview of the row icon the server will resolve for the chosen tags — the client copy of
-    // the rule is the shared TransactionTagIcons, so the two cannot drift. Empty selection keeps the
+    // the rule is the shared TagIcons, so the two cannot drift. Empty selection keeps the
     // plain hint. A tag created inline here has no icon yet, so it never wins.
     internal (string Glyph, string? From, int Count)? RowIcon
     {
@@ -272,9 +272,9 @@ public partial class CreateTransactionDialog
             if (chosen.Count == 0)
                 return null;
 
-            var glyph = TransactionTagIcons.Resolve(chosen);
-            var from = TransactionTagIcons.Order(chosen)
-                .FirstOrDefault(tag => TransactionTagIcons.IsKnown(tag.Icon) && tag.Icon == glyph);
+            var glyph = TagIcons.Resolve(chosen, tag => tag.AsIconCandidate());
+            var from = TagIcons.Order(chosen, tag => tag.AsIconCandidate())
+                .FirstOrDefault(tag => TagIcons.IsKnown(tag.Icon) && tag.Icon == glyph);
             return (glyph, from?.Name, chosen.Count);
         }
     }

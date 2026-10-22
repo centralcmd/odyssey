@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Odyssey.Dtos.Journal;
 
 /// <summary>Full task read model. Attachments are returned as ids/metadata only; the client hydrates file names.</summary>
-public sealed record ExistingJournalTask
+public sealed record ExistingJournalTask : ITagIconRecord
 {
     public required Guid JournalTaskId { get; set; }
 
@@ -49,7 +49,11 @@ public sealed record ExistingJournalTask
     /// <summary>Soft-archive timestamp; non-null means the item is Archived.</summary>
     public DateTime? Archived { get; set; }
 
+    /// <summary>Tag ids in <see cref="TagIcons.Comparer"/> order — by tag name, case-insensitive (issue #345).</summary>
     public List<Guid> TagIds { get; set; } = [];
+
+    /// <summary>The icon resolved from the record's tags; <see cref="TagIcons.Default"/> with none. Never <c>null</c>.</summary>
+    public string DisplayIcon { get; set; } = TagIcons.Default;
 
     public List<JournalTaskAttachmentDto> Attachments { get; set; } = [];
 }

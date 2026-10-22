@@ -1,3 +1,4 @@
+using Odyssey.Dtos;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
@@ -294,7 +295,7 @@ public partial class OdsTagAdmin<TRow>
         _draftDescription = Description(tag);
         _draftNameError = null;
         // An unknown stored key opens as Default, as the server projects it.
-        _draftIcon = IconOf is null ? null : TransactionTagIcons.Normalize(IconOf(tag));
+        _draftIcon = IconOf is null ? null : TagIcons.Normalize(IconOf(tag));
         _draftIconError = null;
         _formKey = Guid.NewGuid();
         _formOpen = true;
@@ -356,7 +357,7 @@ public partial class OdsTagAdmin<TRow>
         WriteFor(IconOf is not null, name, description, archived, icon);
 
     internal static TagWrite WriteFor(bool hasIcons, string name, string? description, bool archived, string? icon) =>
-        new(name, description, archived, hasIcons ? TransactionTagIcons.Normalize(icon) : null);
+        new(name, description, archived, hasIcons ? TagIcons.Normalize(icon) : null);
 
     private void OnDraftIconChanged(string? value)
     {

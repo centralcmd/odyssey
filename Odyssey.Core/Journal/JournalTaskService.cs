@@ -68,11 +68,16 @@ public class JournalTaskService
             i.StartedAt,
             i.CompletedAt,
             i.Archived,
-            TagIds = i.ItemTags.Select(t => t.JournalTaskTagId).ToList(),
+            Tags = i.ItemTags
+                .Select(t => new TagIconCandidate(
+                    t.JournalTaskTagId,
+                    t.JournalTaskTag == null ? null : t.JournalTaskTag.Name,
+                    t.JournalTaskTag == null ? null : t.JournalTaskTag.Icon))
+                .ToList(),
             AttachmentCount = i.Attachments.Count,
         });
 
-        return await rows.ToPagedResultAsync(query.Offset, query.Limit, row => new JournalTaskSummary
+        return await rows.ToPagedResultAsync(query.Offset, query.Limit, row => TagIconProjection.Apply(new JournalTaskSummary
         {
             JournalTaskId = row.JournalTaskId,
             Title = row.Title,
@@ -84,15 +89,14 @@ public class JournalTaskService
             StartedAt = row.StartedAt,
             CompletedAt = row.CompletedAt,
             Archived = row.Archived,
-            TagIds = row.TagIds,
             AttachmentCount = row.AttachmentCount,
-        }, cancellationToken);
+        }, row.Tags), cancellationToken);
     }
 
     public async Task<ExistingJournalTask?> Get(Guid id, CancellationToken cancellationToken = default)
     {
         var item = await LoadWithDetails(id, cancellationToken);
-        return item is null ? null : ToDto(item);
+        return item is null ? null : await ToDtoAsync(item, cancellationToken);
     }
 
     public async Task<ExistingJournalTask> Create(NewJournalTask request, string userId, CancellationToken cancellationToken = default)
@@ -139,7 +143,7 @@ public class JournalTaskService
         context.JournalTasks.Add(item);
         await context.SaveChangesAsync(cancellationToken);
 
-        return ToDto(item);
+        return await ToDtoAsync(item, cancellationToken);
     }
 
     public async Task<ExistingJournalTask?> Update(Guid id, UpdateJournalTask request, string userId, CancellationToken cancellationToken = default)
@@ -210,7 +214,7 @@ public class JournalTaskService
             await context.SaveChangesAsync(cancellationToken);
         }
 
-        return ToDto(item);
+        return await ToDtoAsync(item, cancellationToken);
     }
 
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
@@ -477,11 +481,12 @@ public class JournalTaskService
         }
     }
 
-    private static ExistingJournalTask ToDto(JournalTask item)
+    private async Task<ExistingJournalTask> ToDtoAsync(JournalTask item, CancellationToken cancellationToken)
     {
         var dto = item.Adapt<ExistingJournalTask>();
         dto.Status = DeriveStatus(item.Archived, item.CompletedAt, item.StartedAt);
-        dto.TagIds = item.ItemTags.Select(t => t.JournalTaskTagId).ToList();
+        var tagIds = item.ItemTags.Select(t => t.JournalTaskTagId).ToList();
+        TagIconProjection.Apply(dto, tagIds, await TagIconProjection.TaskTagsAsync(context, tagIds, cancellationToken));
         dto.Attachments = item.Attachments
             .OrderBy(a => a.CreatedAt)
             .Select(a => new JournalTaskAttachmentDto

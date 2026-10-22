@@ -238,6 +238,124 @@ public class AuthorizationPolicyTests
             + "that do: " + string.Join(", ", gaps));
     }
 
+    public static TheoryData<string, string, string, string> TagIconModules => new()
+    {
+        { PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate, PermissionClaims.JournalTagsRead },
+        { PermissionClaims.TasksRead, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate, PermissionClaims.TaskTagsRead },
+        { PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate, PermissionClaims.PhotoTagsRead },
+    };
+
+    /// <summary>
+    /// Issue #345 §7.3. A journal entry, task or photo response carries <c>displayIcon</c> — an attribute of
+    /// its tags, which <c>X.tags.read</c> otherwise gates — and <c>tagIds</c> in tag-name order. Both reach
+    /// the record's read claim and, through the <c>POST</c>/<c>PUT</c> bodies, its write claims. That is
+    /// harmless only while no role holds any of those without <c>X.tags.read</c>; this pins it.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(TagIconModules))]
+    public void No_role_holds_a_record_claim_without_its_tag_read_claim(string read, string create, string update, string tagsRead)
+    {
+        var gaps = MappedRoles()
+            .SelectMany(role => new[] { read, create, update }
+                .Where(claim => role.Claims.Contains(claim, StringComparer.Ordinal))
+                .Where(_ => !role.Claims.Contains(tagsRead, StringComparer.Ordinal))
+                .Select(claim => $"{role.Role} ({claim})"))
+            .ToList();
+
+        Assert.True(gaps.Count == 0,
+            $"Issue #345 §7.3 serves displayIcon and name-ordered tagIds without {tagsRead} because no "
+            + "shipped role holds a record claim without it. Null displayIcon and id-order tagIds for such "
+            + "a caller before granting them apart. Roles that do: " + string.Join(", ", gaps));
+    }
+
+    /// <summary>
+    /// Issue #345 §7.3, the endpoint half of the pin above: the role pin guards the role map, not the
+    /// endpoints. Every action that returns a journal entry, task or photo read model must be gated by
+    /// exactly that module's read, create or update claim — so an endpoint returning one under another
+    /// claim (even a sibling such as <c>photos.albums.read</c>) fails the build.
+    /// </summary>
+    [Fact]
+    public void Every_action_returning_a_tag_icon_record_is_gated_by_its_own_module()
+    {
+        var allowed = new Dictionary<Type, string[]>
+        {
+            [typeof(Odyssey.Dtos.Journal.ExistingJournalEntry)] = [PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate],
+            [typeof(Odyssey.Dtos.Journal.JournalEntrySummary)] = [PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate],
+            [typeof(Odyssey.Dtos.Journal.ExistingJournalTask)] = [PermissionClaims.TasksRead, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate],
+            [typeof(Odyssey.Dtos.Journal.JournalTaskSummary)] = [PermissionClaims.TasksRead, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate],
+            [typeof(Odyssey.Dtos.Journal.ExistingPhoto)] = [PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate],
+            [typeof(Odyssey.Dtos.Journal.PhotoSummary)] = [PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate],
+        };
+
+        var controllers = typeof(Program).Assembly.GetTypes()
+            .Where(type => type is { IsClass: true, IsAbstract: false } && typeof(ControllerBase).IsAssignableFrom(type));
+
+        var found = 0;
+        var violations = new List<string>();
+        foreach (var controller in controllers)
+        {
+            var classPolicies = controller.GetCustomAttributes<AuthorizeAttribute>(inherit: true)
+                .Select(authorize => authorize.Policy).OfType<string>().ToArray();
+
+            foreach (var method in controller.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                var declared = method.GetCustomAttributes<ProducesResponseTypeAttribute>(inherit: true)
+                    .Select(produces => produces.Type)
+                    .Append(method.ReturnType)
+                    .SelectMany(Unwrap)
+                    .Where(allowed.ContainsKey)
+                    .Distinct()
+                    .ToList();
+                if (declared.Count == 0)
+                {
+                    continue;
+                }
+
+                found++;
+                var policies = classPolicies
+                    .Concat(method.GetCustomAttributes<AuthorizeAttribute>(inherit: true)
+                        .Select(authorize => authorize.Policy).OfType<string>())
+                    .ToArray();
+                foreach (var type in declared)
+                {
+                    if (policies.Length == 0 || !policies.All(policy => allowed[type].Contains(policy, StringComparer.Ordinal)))
+                    {
+                        violations.Add($"{controller.Name}.{method.Name} returns {type.Name} under [{string.Join(", ", policies)}]");
+                    }
+                }
+            }
+        }
+
+        // A reflection lint whose scan set silently empties keeps passing after a rename.
+        Assert.True(found >= 6, $"Expected the journal, task and photo read/write actions; found {found}.");
+        Assert.True(violations.Count == 0, string.Join(Environment.NewLine, violations));
+
+        static IEnumerable<Type> Unwrap(Type? type)
+        {
+            if (type is null)
+            {
+                yield break;
+            }
+
+            yield return type;
+            if (type.IsGenericType)
+            {
+                foreach (var argument in type.GetGenericArguments().SelectMany(Unwrap))
+                {
+                    yield return argument;
+                }
+            }
+
+            if (type.IsArray)
+            {
+                foreach (var element in Unwrap(type.GetElementType()))
+                {
+                    yield return element;
+                }
+            }
+        }
+    }
+
     /// <summary>
     /// Issue #217 §7.2 lets <c>properties.create</c>/<c>.update</c> set a homeowner association without
     /// also requiring <c>contacts.read</c>, and the 400/422 split answers whether a GUID names an

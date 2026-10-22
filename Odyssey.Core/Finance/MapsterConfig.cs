@@ -24,7 +24,7 @@ using ContextTransaction = Odyssey.Context.Transaction;
 using ContextTransactionTag = Odyssey.Context.TransactionTag;
 using DtoExistingTransaction = Odyssey.Dtos.Finance.ExistingTransaction;
 using DtoExistingTransactionTag = Odyssey.Dtos.Finance.ExistingTransactionTag;
-using TransactionTagIcons = Odyssey.Dtos.Finance.TransactionTagIcons;
+using TagIcons = Odyssey.Dtos.TagIcons;
 
 namespace Odyssey.Core.Finance;
 
@@ -113,19 +113,19 @@ public static class MapsterConfig
             // null. Explicit rather than convention-mapped so the raw column can never leak through.
             TypeAdapterConfig<ContextTransactionTag, DtoExistingTransactionTag>
                 .NewConfig()
-                .Map(dest => dest.Icon, src => TransactionTagIcons.Normalize(src.Icon));
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
 
             // Issue #279. The tag order and the display icon are computed after materialisation from the
             // already-projected tags, so every producer of ExistingTransaction (the transaction list and
             // detail, an account's transactions, the budget report, the contract smart-tag list) gets
             // both, the EF InMemory tier runs the same code, and OrdinalIgnoreCase needs no translation.
-            // TransactionTagIcons is the only implementation of either rule; a source-lint pins that.
+            // TagIcons is the only implementation of either rule; a source-lint pins that.
             TypeAdapterConfig<ContextTransaction, DtoExistingTransaction>
                 .NewConfig()
                 .AfterMapping((_, dest) =>
                 {
-                    dest.TransactionTags = TransactionTagIcons.Order(dest.TransactionTags);
-                    dest.DisplayIcon = TransactionTagIcons.Resolve(dest.TransactionTags);
+                    dest.TransactionTags = TagIcons.Order(dest.TransactionTags, tag => tag.AsIconCandidate());
+                    dest.DisplayIcon = TagIcons.Resolve(dest.TransactionTags, tag => tag.AsIconCandidate());
                 });
 
             // (The former Account→ExistingAccount Ignore(Custodian) pin was removed with the Contact

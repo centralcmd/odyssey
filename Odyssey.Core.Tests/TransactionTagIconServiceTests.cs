@@ -1,3 +1,4 @@
+using Odyssey.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
@@ -77,8 +78,8 @@ public class TransactionTagIconServiceTests
 
         foreach (var exception in new[] { onCreate, onUpdate })
         {
-            Assert.Equal(TransactionTagIcons.InvalidIconMessage, exception.Message);
-            Assert.Equal([TransactionTagIcons.InvalidIconMessage], exception.Errors!["Icon"]);
+            Assert.Equal(TagIcons.InvalidIconMessage, exception.Message);
+            Assert.Equal([TagIcons.InvalidIconMessage], exception.Errors!["Icon"]);
         }
 
         var stored = await context.TransactionTags.AsNoTracking().ToListAsync();
@@ -199,7 +200,7 @@ public class TransactionTagIconServiceTests
     private static void AssertUntagged(ExistingTransaction transaction)
     {
         Assert.Empty(transaction.TransactionTags);
-        Assert.Equal(TransactionTagIcons.Default, transaction.DisplayIcon);
+        Assert.Equal(TagIcons.Default, transaction.DisplayIcon);
     }
 
     private sealed record Seeded(Guid AccountId, Guid Mixed, Guid Untagged, TransactionTag Food, TransactionTag Legacy);

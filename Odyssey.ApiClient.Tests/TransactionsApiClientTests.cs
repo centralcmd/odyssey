@@ -1,3 +1,4 @@
+using Odyssey.Dtos;
 using System.Net;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
@@ -145,7 +146,7 @@ public class TransactionsApiClientTests
 
         Assert.Equal("restaurant", items[0].DisplayIcon);
         Assert.Equal("restaurant", Assert.Single(items[0].TransactionTags).Icon);
-        Assert.Equal(TransactionTagIcons.Default, items[1].DisplayIcon);
+        Assert.Equal(TagIcons.Default, items[1].DisplayIcon);
     }
 
     /// <summary>

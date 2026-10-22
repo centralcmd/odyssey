@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Mapster;
 using Odyssey.Context;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Core.Journal;
@@ -61,6 +62,21 @@ public static class JournalMapsterConfig
                 .NewConfig()
                 .Ignore(dest => dest.ItemTags)
                 .Ignore(dest => dest.Attachments);
+
+            // Issue #345. Every tag read is projected through these, so an unknown stored key (a hand
+            // edit, a restore, a key retired from the catalogue) reaches no client as anything but null.
+            // Explicit rather than convention-mapped so the raw column can never leak through.
+            TypeAdapterConfig<JournalTag, ExistingJournalTag>
+                .NewConfig()
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
+
+            TypeAdapterConfig<JournalTaskTag, ExistingJournalTaskTag>
+                .NewConfig()
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
+
+            TypeAdapterConfig<PhotoTag, ExistingPhotoTag>
+                .NewConfig()
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
 
             configured = true;
         }

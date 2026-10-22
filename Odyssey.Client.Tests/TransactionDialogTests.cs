@@ -1,3 +1,4 @@
+using Odyssey.Dtos;
 using System.Net;
 using Bunit;
 using Microsoft.AspNetCore.Components;
@@ -213,7 +214,7 @@ public sealed class TransactionDialogTests : IAsyncLifetime
         cut.WaitForAssertion(() =>
         {
             var preview = cut.Find(".odc-rowicon");
-            Assert.Equal(TransactionTagIcons.Default, preview.QuerySelector(".material-icons")!.TextContent);
+            Assert.Equal(TagIcons.Default, preview.QuerySelector(".material-icons")!.TextContent);
             Assert.Contains("default — none of these tags has an icon", preview.TextContent, StringComparison.Ordinal);
         });
     }

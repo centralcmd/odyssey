@@ -7,7 +7,7 @@ namespace Odyssey.Dtos.Journal;
 /// names (tag ids → tag names, person ids → contact names, album ids → album names). The image
 /// bytes are served separately via the existing authenticated <c>GET /api/files/{FileId}/content</c>.
 /// </summary>
-public sealed record ExistingPhoto
+public sealed record ExistingPhoto : ITagIconRecord
 {
     public required Guid PhotoId { get; set; }
 
@@ -59,7 +59,11 @@ public sealed record ExistingPhoto
 
     public required DateTime UpdatedAt { get; set; }
 
+    /// <summary>Tag ids in <see cref="TagIcons.Comparer"/> order — by tag name, case-insensitive (issue #345).</summary>
     public List<Guid> TagIds { get; set; } = [];
+
+    /// <summary>The icon resolved from the record's tags; <see cref="TagIcons.Default"/> with none. Never <c>null</c>.</summary>
+    public string DisplayIcon { get; set; } = TagIcons.Default;
 
     public List<Guid> PersonContactIds { get; set; } = [];
 
