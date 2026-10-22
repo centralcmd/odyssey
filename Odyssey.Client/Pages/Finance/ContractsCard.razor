@@ -115,12 +115,12 @@
                            values" rule the insurance link counts follow, so a busy price history
                            never reads as empty. *@
                         new OdsRecordCount("§", c.TermCount.ToString(CultureInfo.CurrentCulture), "Terms"),
-                        @* Watched tags (issue #166), under `local_offer`. Terms carry the typeset
-                           `§` the term dialog already uses, so no glyph in the strip means two
-                           things. It
+                        @* Watched tags (issue #166), under `sell` — the smart-tag glyph on every
+                           host. Terms carry the typeset `§` the term dialog already uses, so no
+                           glyph in the strip means two things. It
                            counts LINK ROWS, including a link whose tag has since been archived —
                            the row is the configuration. *@
-                        new OdsRecordCount("local_offer", c.SmartTagCount.ToString(CultureInfo.CurrentCulture), "Smart tags"),
+                        new OdsRecordCount("sell", c.SmartTagCount.ToString(CultureInfo.CurrentCulture), "Smart tags"),
                         new OdsRecordCount("description", c.FileCount.ToString(CultureInfo.CurrentCulture), "Documents"),
                         @* The event log's size, last — the same order the body's sections run in.
                            Archival does not lock the log, so this count is live on an archived

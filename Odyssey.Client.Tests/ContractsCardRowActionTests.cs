@@ -118,6 +118,18 @@ public class ContractsCardRowActionTests
     }
 
     /// <summary>
+    /// "New term" leads with the typeset <c>§</c> the term dialog and the record's Terms count carry
+    /// (Contracts.jsx), never <c>sell</c>, which is the smart-tag glyph.
+    /// </summary>
+    [Fact]
+    public void New_term_carries_the_term_glyph()
+    {
+        Assert.Matches(
+            new Regex(@"new OdsMenuItem\s*\{\s*Icon\s*=\s*""§""\s*,\s*Label\s*=\s*""New term"""),
+            CardSource());
+    }
+
+    /// <summary>
     /// The reason an unavailable action cannot be taken is never carried as a menu row. The four
     /// write actions above are ungated outright; the two lifecycle items that CAN be unavailable
     /// (Pause on an unsigned contract, Archive before it has ended) are simply absent when they are,

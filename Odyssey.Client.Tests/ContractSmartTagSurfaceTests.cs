@@ -764,7 +764,6 @@ public class ContractSmartTagSurfaceTests
             .Add(s => s.Host, SmartTagHost.Contract)
             .Add(s => s.SubjectId, ContractId)
             .Add(s => s.Chrome, false)
-            .Add(s => s.Icon, "local_offer")
             .Add(s => s.CanWrite, canWrite)
             .Add(s => s.EmptyDesc, emptyDesc)
             .Add(s => s.NoMatchDesc, noMatchDesc)
