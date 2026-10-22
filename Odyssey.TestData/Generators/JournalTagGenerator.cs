@@ -10,17 +10,17 @@ namespace Odyssey.TestData.Generators;
 /// </summary>
 public static class JournalTagGenerator
 {
-    private sealed record TagSpec(string Name, string? Description, bool Archived);
+    private sealed record TagSpec(string Name, string? Description, bool Archived, string? Icon = null);
 
     private static readonly TagSpec[] Definitions =
     [
-        new("Personal", "Everyday personal notes", false),
+        new("Personal", "Everyday personal notes", false, "person"),
         new("Finance", "Money, budgeting and planning", false),
-        new("Travel", "Trips and journeys", false),
-        new("Home", "House and household", false),
-        new("Health", "Wellbeing and appointments", false),
-        new("Ideas", "Things to remember or explore", false),
-        new("Milestones", "Notable events worth recording", false),
+        new("Travel", "Trips and journeys", false, "beach_access"),
+        new("Home", "House and household", false, "home"),
+        new("Health", "Wellbeing and appointments", false, "self_improvement"),
+        new("Ideas", "Things to remember or explore", false, "lightbulb"),
+        new("Milestones", "Notable events worth recording", false, "celebration"),
         new("Old Notes", "Superseded notes, kept for the record", true),
     ];
 
@@ -37,6 +37,7 @@ public static class JournalTagGenerator
                 JournalTagId = IdFor(spec.Name),
                 Name = spec.Name,
                 Description = spec.Description,
+                Icon = spec.Icon,
                 Archived = spec.Archived ? anchor.AddMonths(-6) : null,
             })
             .ToList();

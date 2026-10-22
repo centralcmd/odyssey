@@ -1,4 +1,5 @@
 @using Odyssey.Client.Components
+@using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
 @using Odyssey.Dtos.Journal
 @implements IAsyncDisposable
@@ -28,6 +29,12 @@
 
     <div class="jec-body">
         <div class="jec-head">
+            @* The entry's display icon (issue #345): the server's DisplayIcon, drawn only when a tag chose
+               one — an untagged card carries no placeholder. Decorative: the tag chips name the tags. *@
+            @if (TagIcons.IsKnown(Entry.DisplayIcon))
+            {
+                <span class="jec-glyph material-icons" aria-hidden="true">@Entry.DisplayIcon</span>
+            }
             <h3 class="jec-title">@Entry.Title</h3>
             <span class="je-cardmenu">
                 <OdsMenu Items="Actions" AriaLabel="@($"Actions for {Entry.Title}")" />

@@ -10,16 +10,16 @@ namespace Odyssey.TestData.Generators;
 /// </summary>
 public static class JournalTaskTagGenerator
 {
-    private sealed record TagSpec(string Name, string? Description, bool Archived);
+    private sealed record TagSpec(string Name, string? Description, bool Archived, string? Icon = null);
 
     private static readonly TagSpec[] Definitions =
     [
-        new("Urgent", "Needs attention soon", false),
+        new("Urgent", "Needs attention soon", false, "priority_high"),
         new("Finance", "Money-related to-dos", false),
-        new("Home", "House and household chores", false),
-        new("Errands", "Out-and-about tasks", false),
+        new("Home", "House and household chores", false, "cleaning_services"),
+        new("Errands", "Out-and-about tasks", false, "shopping_bag"),
         new("Waiting", "Blocked on someone else", false),
-        new("Someday", "Nice to do eventually", true),
+        new("Someday", "Nice to do eventually", true, "flag"),
     ];
 
     public static Guid IdFor(string name) => DeterministicGuid.From($"task-tag::{name}");
@@ -35,6 +35,7 @@ public static class JournalTaskTagGenerator
                 JournalTaskTagId = IdFor(spec.Name),
                 Name = spec.Name,
                 Description = spec.Description,
+                Icon = spec.Icon,
                 Archived = spec.Archived ? anchor.AddMonths(-6) : null,
             })
             .ToList();

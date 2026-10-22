@@ -13,6 +13,7 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Client.Services;
 using Odyssey.Client.Theme;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Xunit;
 
@@ -213,7 +214,7 @@ public sealed class TransactionDialogTests : IAsyncLifetime
         cut.WaitForAssertion(() =>
         {
             var preview = cut.Find(".odc-rowicon");
-            Assert.Equal(TransactionTagIcons.Default, preview.QuerySelector(".material-icons")!.TextContent);
+            Assert.Equal(TagIcons.Default, preview.QuerySelector(".material-icons")!.TextContent);
             Assert.Contains("default — none of these tags has an icon", preview.TextContent, StringComparison.Ordinal);
         });
     }

@@ -24,7 +24,7 @@ public static class PhotoGenerator
         IReadOnlyList<FileBlob> FileBlobs,
         IReadOnlyList<FileMetadata> FileMetadata);
 
-    private sealed record TagSpec(string Name, string? Description, bool Archived);
+    private sealed record TagSpec(string Name, string? Description, bool Archived, string? Icon = null);
 
     private sealed record PhotoSpec(
         string Key,
@@ -42,9 +42,9 @@ public static class PhotoGenerator
 
     private static readonly TagSpec[] TagDefinitions =
     [
-        new("Landscape", "Scenery and nature", false),
-        new("Family", "People and gatherings", false),
-        new("Travel", "Trips and journeys", false),
+        new("Landscape", "Scenery and nature", false, "landscape"),
+        new("Family", "People and gatherings", false, "family_restroom"),
+        new("Travel", "Trips and journeys", false, "flight"),
         new("Architecture", "Buildings and structures", false),
         new("Unsorted", "Not yet filed", true),
     ];
@@ -82,6 +82,7 @@ public static class PhotoGenerator
                 PhotoTagId = TagIdFor(spec.Name),
                 Name = spec.Name,
                 Description = spec.Description,
+                Icon = spec.Icon,
                 Archived = spec.Archived ? anchor.AddMonths(-9) : null,
             })
             .ToList();

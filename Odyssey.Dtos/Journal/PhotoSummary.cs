@@ -7,7 +7,7 @@ namespace Odyssey.Dtos.Journal;
 /// the image URL), tag ids, and link counts. People/album names are not included — the read stays
 /// link-ids-only (§10.5).
 /// </summary>
-public sealed record PhotoSummary
+public sealed record PhotoSummary : ITagIconRecord
 {
     public required Guid PhotoId { get; set; }
 
@@ -37,7 +37,11 @@ public sealed record PhotoSummary
     [StringLength(256)]
     public string? CreatedByName { get; set; }
 
+    /// <summary>Tag ids in <see cref="TagIcons.Comparer"/> order — by tag name, case-insensitive (issue #345).</summary>
     public List<Guid> TagIds { get; set; } = [];
+
+    /// <summary>The icon resolved from the record's tags; <see cref="TagIcons.Default"/> with none. Never <c>null</c>.</summary>
+    public string DisplayIcon { get; set; } = TagIcons.Default;
 
     public List<Guid> PersonContactIds { get; set; } = [];
 

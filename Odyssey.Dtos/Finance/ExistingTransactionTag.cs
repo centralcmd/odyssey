@@ -8,8 +8,11 @@ public sealed record ExistingTransactionTag
     public required DateTime? Archived { get; set; }
 
     /// <summary>
-    /// The tag's <see cref="TransactionTagIcons"/> key, or <c>null</c> for the default (issue #279). A
+    /// The tag's <see cref="TagIcons"/> key, or <c>null</c> for the default (issue #279). A
     /// stored key the catalogue no longer has is projected as <c>null</c>, never echoed.
     /// </summary>
     public string? Icon { get; set; }
+
+    /// <summary>What <see cref="TagIcons"/>' ordering and display-icon rules read from this tag (issue #345).</summary>
+    public TagIconCandidate AsIconCandidate() => new(TransactionTagId, Name, Icon);
 }

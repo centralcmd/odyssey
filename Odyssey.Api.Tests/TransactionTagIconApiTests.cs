@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -79,7 +80,7 @@ public class TransactionTagIconApiTests
         "Shopping_Cart",
         "<svg>",
         "not_an_icon_zq",
-        new string('q', TransactionTagIcons.MaxKeyLength + 1),
+        new string('q', TagIcons.MaxKeyLength + 1),
     };
 
     [Theory]
@@ -101,7 +102,7 @@ public class TransactionTagIconApiTests
             var raw = await response.Content.ReadAsStringAsync();
             using var body = JsonDocument.Parse(raw);
             var errors = body.RootElement.GetProperty("errors").GetProperty("Icon");
-            Assert.Equal([TransactionTagIcons.InvalidIconMessage], errors.EnumerateArray().Select(e => e.GetString()));
+            Assert.Equal([TagIcons.InvalidIconMessage], errors.EnumerateArray().Select(e => e.GetString()));
             if (!string.IsNullOrWhiteSpace(icon))
             {
                 Assert.DoesNotContain(icon, raw, StringComparison.Ordinal);
@@ -182,7 +183,7 @@ public class TransactionTagIconApiTests
 
         using var body = JsonDocument.Parse(await client.GetStringAsync($"/api/transactions/{transactionId}"));
 
-        Assert.Equal(TransactionTagIcons.Default, body.RootElement.GetProperty("displayIcon").GetString());
+        Assert.Equal(TagIcons.Default, body.RootElement.GetProperty("displayIcon").GetString());
     }
 
     [Fact]

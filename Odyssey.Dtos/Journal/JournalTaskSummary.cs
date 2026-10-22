@@ -7,7 +7,7 @@ namespace Odyssey.Dtos.Journal;
 /// the task's content in full rather than a truncated snippet; the board card clamps the same text to
 /// two lines in CSS. Attachments stay a count — the card shows the count and nothing else.
 /// </summary>
-public sealed record JournalTaskSummary
+public sealed record JournalTaskSummary : ITagIconRecord
 {
     public required Guid JournalTaskId { get; set; }
 
@@ -37,7 +37,11 @@ public sealed record JournalTaskSummary
 
     public DateTime? Archived { get; set; }
 
+    /// <summary>Tag ids in <see cref="TagIcons.Comparer"/> order — by tag name, case-insensitive (issue #345).</summary>
     public List<Guid> TagIds { get; set; } = [];
+
+    /// <summary>The icon resolved from the record's tags; <see cref="TagIcons.Default"/> with none. Never <c>null</c>.</summary>
+    public string DisplayIcon { get; set; } = TagIcons.Default;
 
     public required int AttachmentCount { get; set; }
 }

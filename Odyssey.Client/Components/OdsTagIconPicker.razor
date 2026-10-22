@@ -1,9 +1,11 @@
+@using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
 
 @*
-    OdsTagIconPicker — the transaction-tag icon chooser (Odyssey Design System · components/TagIconPicker).
+    OdsTagIconPicker — the tag icon chooser for transaction, journal, task and photo tags (Odyssey Design
+    System · components/TagIconPicker).
 
-    A closed grid of the TransactionTagIcons catalogue, not a search over the Material set: a tag's
+    A closed grid of the TagIcons catalogue, not a search over the Material set: a tag's
     icon is a key from the fixed list the API validates against, so the picker offers exactly that
     list and nothing the server would refuse. The catalogue is the shared Odyssey.Dtos declaration,
     never a client copy.
@@ -46,7 +48,7 @@
                     @onmouseenter="() => _peek = index"
                     @onfocus="() => OnCellFocus(index)"
                     @onblur="OnCellBlur">
-                <span class="material-icons" aria-hidden="true">@(cell.Key ?? TransactionTagIcons.Default)</span>
+                <span class="material-icons" aria-hidden="true">@(cell.Key ?? TagIcons.Default)</span>
                 @if (active)
                 {
                     <span class="odc-iconpick-check" aria-hidden="true"><span class="material-icons">check</span></span>
@@ -56,7 +58,7 @@
     </div>
     <div class="odc-iconpick-caption" aria-hidden="true">
         <span class="odc-iconpick-sel">
-            <span class="material-icons">@(Selected.Key ?? TransactionTagIcons.Default)</span>
+            <span class="material-icons">@(Selected.Key ?? TagIcons.Default)</span>
             <span>@(Selected.Key is null ? "Default" : Selected.Label)</span>
             @if (Selected.Key is null)
             {
@@ -66,7 +68,7 @@
         @if (Peeked is { } peeked)
         {
             <span class="odc-iconpick-peek">
-                <span class="material-icons">@(peeked.Key ?? TransactionTagIcons.Default)</span>
+                <span class="material-icons">@(peeked.Key ?? TagIcons.Default)</span>
                 <span>@(peeked.Key is null ? "Default" : peeked.Label)</span>
             </span>
         }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Components;
@@ -37,7 +38,7 @@ public partial class OdsTagIconPicker : IAsyncDisposable
     private sealed record Cell(string? Key, string Label);
 
     private static readonly IReadOnlyList<Cell> Cells =
-        [new Cell(null, "Default"), .. TransactionTagIcons.All.Select(option => new Cell(option.Key, option.Label))];
+        [new Cell(null, "Default"), .. TagIcons.All.Select(option => new Cell(option.Key, option.Label))];
 
     private readonly IReadOnlyList<Cell> _cells = Cells;
     private readonly ElementReference[] _buttons = new ElementReference[Cells.Count];
@@ -59,7 +60,7 @@ public partial class OdsTagIconPicker : IAsyncDisposable
     {
         get
         {
-            var key = TransactionTagIcons.Normalize(Value);
+            var key = TagIcons.Normalize(Value);
             if (key is null)
             {
                 return 0;

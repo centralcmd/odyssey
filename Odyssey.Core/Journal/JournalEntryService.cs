@@ -81,7 +81,12 @@ public class JournalEntryService
                 CreatedAt = e.CreatedAt,
                 UpdatedAt = e.UpdatedAt,
                 Archived = e.Archived,
-                TagIds = e.EntryTags.Select(t => t.JournalTagId).ToList(),
+                Tags = e.EntryTags
+                    .Select(t => new TagIconCandidate(
+                        t.JournalTagId,
+                        t.JournalTag == null ? null : t.JournalTag.Name,
+                        t.JournalTag == null ? null : t.JournalTag.Icon))
+                    .ToList(),
                 ContactIds = e.Contacts.Select(c => c.ContactId).ToList(),
                 PhotoLinks = e.Photos
                     .OrderBy(p => p.Position)
@@ -103,7 +108,7 @@ public class JournalEntryService
         var page = await rows.ToPagedResultAsync(query.Offset, query.Limit, row =>
         {
             linkRows[row.JournalEntryId] = row.PhotoLinks;
-            return new JournalEntrySummary
+            return TagIconProjection.Apply(new JournalEntrySummary
             {
                 JournalEntryId = row.JournalEntryId,
                 Title = row.Title,
@@ -115,10 +120,9 @@ public class JournalEntryService
                 CreatedAt = row.CreatedAt,
                 UpdatedAt = row.UpdatedAt,
                 Archived = row.Archived,
-                TagIds = row.TagIds,
                 ContactIds = row.ContactIds,
                 AttachmentCount = row.AttachmentCount,
-            };
+            }, row.Tags);
         }, cancellationToken);
 
         await AttachPhotoLinksAsync(page.Items, linkRows, cancellationToken);
@@ -601,7 +605,8 @@ public class JournalEntryService
     private async Task<ExistingJournalEntry> ToDtoAsync(JournalEntry entry, CancellationToken cancellationToken)
     {
         var dto = entry.Adapt<ExistingJournalEntry>();
-        dto.TagIds = entry.EntryTags.Select(t => t.JournalTagId).ToList();
+        var tagIds = entry.EntryTags.Select(t => t.JournalTagId).ToList();
+        TagIconProjection.Apply(dto, tagIds, await TagIconProjection.JournalTagsAsync(context, tagIds, cancellationToken));
         dto.ContactIds = entry.Contacts.Select(c => c.ContactId).ToList();
 
         // Enrich each photo link with its library Photo's FileId in one batched lookup (§5 v4). A link
@@ -661,7 +666,7 @@ public class JournalEntryService
 
         public DateTime? Archived { get; set; }
 
-        public List<Guid> TagIds { get; set; } = [];
+        public List<TagIconCandidate> Tags { get; set; } = [];
 
         public List<Guid> ContactIds { get; set; } = [];
 

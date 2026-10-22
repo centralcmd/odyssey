@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace Odyssey.Dtos.Journal;
 
 /// <summary>Full journal-entry read model. Cross-module links are returned as ids only (§10.2); the client hydrates names.</summary>
-public sealed record ExistingJournalEntry
+public sealed record ExistingJournalEntry : ITagIconRecord
 {
     public required Guid JournalEntryId { get; set; }
 
@@ -42,7 +42,11 @@ public sealed record ExistingJournalEntry
 
     public DateTime? Archived { get; set; }
 
+    /// <summary>Tag ids in <see cref="TagIcons.Comparer"/> order — by tag name, case-insensitive (issue #345).</summary>
     public List<Guid> TagIds { get; set; } = [];
+
+    /// <summary>The icon resolved from the record's tags; <see cref="TagIcons.Default"/> with none. Never <c>null</c>.</summary>
+    public string DisplayIcon { get; set; } = TagIcons.Default;
 
     public List<Guid> ContactIds { get; set; } = [];
 

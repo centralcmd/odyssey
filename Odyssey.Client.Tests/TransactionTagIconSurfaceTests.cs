@@ -6,6 +6,7 @@ using MudBlazor;
 using MudBlazor.Services;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 using Xunit;
@@ -44,14 +45,14 @@ public class TransactionTagIconSurfaceTests : IAsyncLifetime
         var cut = Picker(null);
 
         var cells = cut.FindAll("[role=radio]");
-        Assert.Equal(TransactionTagIcons.All.Count + 1, cells.Count);
+        Assert.Equal(TagIcons.All.Count + 1, cells.Count);
         Assert.Equal("Default (tag icon)", cells[0].GetAttribute("aria-label"));
-        Assert.Equal(TransactionTagIcons.Default, cells[0].QuerySelector(".material-icons")!.TextContent);
+        Assert.Equal(TagIcons.Default, cells[0].QuerySelector(".material-icons")!.TextContent);
         Assert.Equal(
-            TransactionTagIcons.All.Select(o => o.Label),
+            TagIcons.All.Select(o => o.Label),
             cells.Skip(1).Select(c => c.GetAttribute("aria-label")));
         Assert.Equal(
-            TransactionTagIcons.All.Select(o => o.Key),
+            TagIcons.All.Select(o => o.Key),
             cells.Skip(1).Select(c => c.QuerySelector(".material-icons")!.TextContent));
     }
 
@@ -113,8 +114,8 @@ public class TransactionTagIconSurfaceTests : IAsyncLifetime
         Press("Tab");         // not the grid's key
 
         Assert.Equal(
-            [null, TransactionTagIcons.All[0].Key, TransactionTagIcons.All[OdsTagIconPicker.FallbackColumns].Key,
-             TransactionTagIcons.All[^1].Key, null],
+            [null, TagIcons.All[0].Key, TagIcons.All[OdsTagIconPicker.FallbackColumns].Key,
+             TagIcons.All[^1].Key, null],
             emitted);
     }
 
@@ -233,7 +234,7 @@ public class TransactionTagIconSurfaceTests : IAsyncLifetime
 
         Assert.Equal(new TagWrite("Rent", null, true, "home"), Write("home"));
         Assert.Null(Write("retired_key").Icon);
-        Assert.Null(Write(TransactionTagIcons.Default).Icon);
+        Assert.Null(Write(TagIcons.Default).Icon);
         Assert.Null(Write(null).Icon);
     }
 

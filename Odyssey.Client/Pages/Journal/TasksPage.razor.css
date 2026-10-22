@@ -8,6 +8,10 @@
 
 /* ── Board card body (OdsTaskBoard supplies the card shell + move buttons) ── */
 .tk-card-head { display: flex; align-items: flex-start; gap: 8px; }
+.tk-card-glyph {
+    flex: none; font-size: var(--icon-sm); line-height: 1; margin-top: calc(var(--space-1) / 4);
+    color: var(--mud-palette-text-secondary);
+}
 .tk-card-title { flex: 1; min-width: 0; font-weight: 500; font-size: 0.8125rem; line-height: 1.35; color: var(--mud-palette-text-primary); }
 .tk-card-note {
     color: var(--mud-palette-text-secondary); font-size: 0.75rem; line-height: 1.5;

@@ -59,6 +59,7 @@ public class PhotoTagService(OdysseyContext context, TimeProvider? timeProvider 
 
     public async Task<ExistingPhotoTag> Create(NewPhotoTag request, CancellationToken cancellationToken = default)
     {
+        TagIconGuard.EnsureKnown(request.Icon);
         var name = request.Name.Trim();
         await EnsureNameAvailable(name, null, cancellationToken);
 
@@ -67,6 +68,7 @@ public class PhotoTagService(OdysseyContext context, TimeProvider? timeProvider 
             Name = name,
             Description = request.Description,
             Archived = null,
+            Icon = request.Icon,
         };
 
         context.PhotoTags.Add(tag);
@@ -77,6 +79,8 @@ public class PhotoTagService(OdysseyContext context, TimeProvider? timeProvider 
 
     public async Task<ExistingPhotoTag?> Update(Guid id, UpdatePhotoTag request, CancellationToken cancellationToken = default)
     {
+        TagIconGuard.EnsureKnown(request.Icon);
+
         var tag = await context.PhotoTags.FirstOrDefaultAsync(t => t.PhotoTagId == id, cancellationToken);
         if (tag is null)
         {
@@ -88,6 +92,8 @@ public class PhotoTagService(OdysseyContext context, TimeProvider? timeProvider 
 
         tag.Name = name;
         tag.Description = request.Description;
+        // Full replacement: an omitted or null icon resets the tag to the default.
+        tag.Icon = request.Icon;
         ApplyArchiveTransition(tag, request.Archived);
 
         await context.SaveChangesAsync(cancellationToken);

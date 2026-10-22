@@ -40,6 +40,11 @@
 /* -4px centres the 32px action button on the title's first line; -6px pulls its box out so the 20px
    glyph sits optically on the padding edge. */
 .jec-head .je-cardmenu { margin: -4px -6px 0 0; }
+/* The display icon (issue #345): decorative, muted, optically centred on the title's first line. */
+.jec-glyph {
+    flex: none; font-size: var(--icon-lg); line-height: 1; margin-top: calc(var(--space-1) / 2);
+    color: var(--mud-palette-text-secondary);
+}
 .jec-title {
     margin: 0; flex: 1; min-width: 0;
     font: var(--fw-medium) var(--fs-h5)/var(--lh-snug) var(--font-sans);

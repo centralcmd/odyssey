@@ -1,4 +1,5 @@
 @using Odyssey.Client.Components
+@using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
 @*
     TaskListRow — a task as the purpose-built list card (the flat List view + the Archived section).
@@ -50,6 +51,11 @@
 
     <div class="tk-list-body">
         <div class="tk-list-top">
+            @* The task's display icon (issue #345), only when a tag chose one. *@
+            @if (TagIcons.IsKnown(Task.DisplayIcon))
+            {
+                <span class="tk-list-glyph material-icons" aria-hidden="true">@Task.DisplayIcon</span>
+            }
             <h3 class="tk-list-title">@Task.Title</h3>
             <div class="je-cardmenu">
                 <OdsMenu Items="BuildActions()" AriaLabel="@($"Actions for {Task.Title}")" />

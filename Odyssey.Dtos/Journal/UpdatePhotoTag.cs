@@ -14,4 +14,13 @@ public sealed record UpdatePhotoTag
 
     /// <summary>Desired archived state: true archives, false restores.</summary>
     public bool Archived { get; set; }
+
+    /// <summary>
+    /// A <see cref="TagIcons"/> key, or <c>null</c> for the default icon (issue #345). The default key
+    /// itself is rejected — send <c>null</c>. <c>PUT</c> is full replacement, so an omitted icon resets
+    /// the tag to the default.
+    /// </summary>
+    [StringLength(TagIcons.MaxKeyLength, ErrorMessage = TagIcons.InvalidIconMessage)]
+    [TagIcon]
+    public string? Icon { get; set; }
 }

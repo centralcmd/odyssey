@@ -114,25 +114,34 @@ public class PhotoService
 
         var rows = sorted
             .ThenBy(p => p.PhotoId)
-            .Select(p => new PhotoSummary
+            .Select(p => new
             {
-                PhotoId = p.PhotoId,
-                FileId = p.FileId,
-                Title = p.Title,
-                TakenAt = p.TakenAt,
-                LocationName = p.LocationName,
-                PixelWidth = p.PixelWidth,
-                PixelHeight = p.PixelHeight,
-                Archived = p.Archived,
-                Favourited = p.Favourited,
-                CreatedByUserId = p.CreatedByUserId,
-                TagIds = p.Tags.Select(t => t.PhotoTagId).ToList(),
-                PersonContactIds = p.People.Select(pp => pp.ContactId).ToList(),
-                PersonCount = p.People.Count,
-                AlbumCount = p.Albums.Count,
+                Summary = new PhotoSummary
+                {
+                    PhotoId = p.PhotoId,
+                    FileId = p.FileId,
+                    Title = p.Title,
+                    TakenAt = p.TakenAt,
+                    LocationName = p.LocationName,
+                    PixelWidth = p.PixelWidth,
+                    PixelHeight = p.PixelHeight,
+                    Archived = p.Archived,
+                    Favourited = p.Favourited,
+                    CreatedByUserId = p.CreatedByUserId,
+                    PersonContactIds = p.People.Select(pp => pp.ContactId).ToList(),
+                    PersonCount = p.People.Count,
+                    AlbumCount = p.Albums.Count,
+                },
+                Tags = p.Tags
+                    .Select(t => new TagIconCandidate(
+                        t.PhotoTagId,
+                        t.PhotoTag == null ? null : t.PhotoTag.Name,
+                        t.PhotoTag == null ? null : t.PhotoTag.Icon))
+                    .ToList(),
             });
 
-        return await rows.ToPagedResultAsync(query.Offset, query.Limit, cancellationToken);
+        return await rows.ToPagedResultAsync(
+            query.Offset, query.Limit, row => TagIconProjection.Apply(row.Summary, row.Tags), cancellationToken);
     }
 
     /// <summary>Aggregate counters for the Overview panel, computed over the active (non-archived) library
@@ -173,7 +182,7 @@ public class PhotoService
             return null;
         }
 
-        var dto = ToDto(photo);
+        var dto = await ToDtoAsync(photo, cancellationToken);
         dto.PersonContactIds = await ResolveExistingPersonsAsync(dto.PersonContactIds, cancellationToken);
         return dto;
     }
@@ -224,7 +233,7 @@ public class PhotoService
         await AddToAlbumsAsync(photo.PhotoId, links.AlbumIds, now, cancellationToken);
 
         var created = await LoadWithDetails(photo.PhotoId, cancellationToken);
-        return ToDto(created!);
+        return await ToDtoAsync(created!, cancellationToken);
     }
 
     public async Task<ExistingPhoto?> Update(
@@ -268,7 +277,7 @@ public class PhotoService
         await context.SaveChangesAsync(cancellationToken);
 
         var reloaded = await LoadWithDetails(id, cancellationToken);
-        var dto = ToDto(reloaded!);
+        var dto = await ToDtoAsync(reloaded!, cancellationToken);
         dto.PersonContactIds = await ResolveExistingPersonsAsync(dto.PersonContactIds, cancellationToken);
         return dto;
     }
@@ -695,28 +704,33 @@ public class PhotoService
     private static string? Clamp(string? value, int maxLength) =>
         value is null || value.Length <= maxLength ? value : value[..maxLength];
 
-    private static ExistingPhoto ToDto(Photo photo) => new()
+    private async Task<ExistingPhoto> ToDtoAsync(Photo photo, CancellationToken cancellationToken)
     {
-        PhotoId = photo.PhotoId,
-        FileId = photo.FileId,
-        Title = photo.Title,
-        Caption = photo.Caption,
-        TakenAt = photo.TakenAt,
-        CapturedLatitude = photo.CapturedLatitude,
-        CapturedLongitude = photo.CapturedLongitude,
-        LocationName = photo.LocationName,
-        PixelWidth = photo.PixelWidth,
-        PixelHeight = photo.PixelHeight,
-        Archived = photo.Archived,
-        Favourited = photo.Favourited,
-        CreatedByUserId = photo.CreatedByUserId,
-        UpdatedByUserId = photo.UpdatedByUserId,
-        CreatedAt = photo.CreatedAt,
-        UpdatedAt = photo.UpdatedAt,
-        TagIds = photo.Tags.Select(t => t.PhotoTagId).ToList(),
-        PersonContactIds = photo.People.Select(p => p.ContactId).ToList(),
-        AlbumIds = photo.Albums.Select(a => a.PhotoAlbumId).ToList(),
-    };
+        var dto = new ExistingPhoto
+        {
+            PhotoId = photo.PhotoId,
+            FileId = photo.FileId,
+            Title = photo.Title,
+            Caption = photo.Caption,
+            TakenAt = photo.TakenAt,
+            CapturedLatitude = photo.CapturedLatitude,
+            CapturedLongitude = photo.CapturedLongitude,
+            LocationName = photo.LocationName,
+            PixelWidth = photo.PixelWidth,
+            PixelHeight = photo.PixelHeight,
+            Archived = photo.Archived,
+            Favourited = photo.Favourited,
+            CreatedByUserId = photo.CreatedByUserId,
+            UpdatedByUserId = photo.UpdatedByUserId,
+            CreatedAt = photo.CreatedAt,
+            UpdatedAt = photo.UpdatedAt,
+            PersonContactIds = photo.People.Select(p => p.ContactId).ToList(),
+            AlbumIds = photo.Albums.Select(a => a.PhotoAlbumId).ToList(),
+        };
+
+        var tagIds = photo.Tags.Select(t => t.PhotoTagId).ToList();
+        return TagIconProjection.Apply(dto, tagIds, await TagIconProjection.PhotoTagsAsync(context, tagIds, cancellationToken));
+    }
 
     private sealed record ValidatedLinks(List<Guid> TagIds, List<Guid> PersonIds, List<Guid> AlbumIds);
 }

@@ -4,6 +4,7 @@ using MudBlazor;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Services;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 
@@ -30,11 +31,16 @@ public partial class OdsTagAdmin<TRow>
     [Parameter, EditorRequired] public Func<TRow, DateTime?> Archived { get; set; } = default!;
 
     /// <summary>
-    /// The tag's icon key — set only by the transaction-tag page (issue #279). When present, the
-    /// leading avatar draws the tag's icon, the dialog offers the icon picker, and every write
-    /// carries the icon so nothing resets it. Journal, task and photo tags leave it unset.
+    /// The tag's icon key (issues #279, #345). When present, the leading avatar draws the tag's icon,
+    /// the dialog offers the icon picker, and every write carries the icon so nothing resets it.
     /// </summary>
     [Parameter] public Func<TRow, string?>? IconOf { get; set; }
+
+    /// <summary>
+    /// The icon field's helper line, naming the records the icon is shown on. Every page that passes
+    /// <see cref="IconOf"/> names its own records; the default only avoids naming the wrong ones.
+    /// </summary>
+    [Parameter] public string IconHelp { get; set; } = "Shown for this tag and on every record carrying it. Default keeps the tag icon.";
 
     // ── State ────────────────────────────────────────────────────────────────────
     private List<TRow> _tags = [];
@@ -294,7 +300,7 @@ public partial class OdsTagAdmin<TRow>
         _draftDescription = Description(tag);
         _draftNameError = null;
         // An unknown stored key opens as Default, as the server projects it.
-        _draftIcon = IconOf is null ? null : TransactionTagIcons.Normalize(IconOf(tag));
+        _draftIcon = IconOf is null ? null : TagIcons.Normalize(IconOf(tag));
         _draftIconError = null;
         _formKey = Guid.NewGuid();
         _formOpen = true;
@@ -356,7 +362,7 @@ public partial class OdsTagAdmin<TRow>
         WriteFor(IconOf is not null, name, description, archived, icon);
 
     internal static TagWrite WriteFor(bool hasIcons, string name, string? description, bool archived, string? icon) =>
-        new(name, description, archived, hasIcons ? TransactionTagIcons.Normalize(icon) : null);
+        new(name, description, archived, hasIcons ? TagIcons.Normalize(icon) : null);
 
     private void OnDraftIconChanged(string? value)
     {

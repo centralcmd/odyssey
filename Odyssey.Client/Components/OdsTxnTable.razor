@@ -1,3 +1,4 @@
+@using Odyssey.Dtos
 @*
     OdsTxnTable — the transactions ledger (Odyssey Design System · components/TxnTable).
 
@@ -56,7 +57,7 @@
     // Decorative: the Tag column names the tags in text and the signed amount carries the direction.
     // Glyph() treats a key this client's catalogue lacks (a newer server, a stale cache) as default.
     private RenderFragment<ExistingTransaction> LeadingTemplate => t =>
-        @<OdsAvatar Icon="@TransactionTagIcons.Glyph(t.DisplayIcon)"
+        @<OdsAvatar Icon="@TagIcons.Glyph(t.DisplayIcon)"
                     Bg="@(t.Amount >= 0 ? "var(--finance-income-soft)" : "var(--finance-expense-soft)")"
                     Fg="@(t.Amount >= 0 ? "var(--finance-income)" : "var(--finance-expense)")" />;
 
