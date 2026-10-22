@@ -51,6 +51,13 @@ public sealed record PropertyValueSummary
     public decimal? Total { get; set; }
 
     public List<string> UnconvertedCurrencies { get; set; } = new();
+
+    /// <summary>
+    /// The owned properties behind <see cref="UnconvertedCurrencies"/> — each one whose in-force estimate
+    /// was left out of <see cref="Total"/> — in name order. The minimal <see cref="UnconvertedProperty"/>
+    /// projection net worth already uses: no address, registration, VIN or estimate value.
+    /// </summary>
+    public List<UnconvertedProperty> UnconvertedProperties { get; set; } = new();
 }
 
 /// <summary>The header overview of <c>/properties</c>.</summary>

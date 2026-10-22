@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Odyssey.Dtos.Finance;
 
 /// <summary>Contract counts bucketed by derived status (issue #174 §7).</summary>
@@ -141,6 +143,30 @@ public sealed record ContractRunRate
     /// the net, never folded in at 1:1.
     /// </summary>
     public List<string> UnconvertedCurrencies { get; set; } = new();
+
+    /// <summary>
+    /// The Active contracts behind <see cref="UnconvertedCurrencies"/>: each one that has at least one
+    /// in-force periodic fee left out of the run rate for want of a rate to <see cref="BaseCurrency"/>,
+    /// in name order. It is what lets the page name the <i>contract</i>, the way the accounts page names
+    /// the account (<see cref="UnconvertedAccount"/>), rather than only the currency.
+    /// </summary>
+    public List<UnconvertedContract> UnconvertedContracts { get; set; } = new();
+}
+
+/// <summary>
+/// A contract with in-force fees left out of <see cref="ContractRunRate"/> because no rate to its base
+/// currency exists. A minimal projection like <see cref="UnconvertedAccount"/>: the id, the name and the
+/// currency codes — no amount, no term label.
+/// </summary>
+public sealed record UnconvertedContract
+{
+    public required Guid ContractId { get; set; }
+
+    [StringLength(256)]
+    public required string Name { get; set; }
+
+    /// <summary>The codes with no rate to base, sorted ordinally; never empty.</summary>
+    public List<string> CurrencyCodes { get; set; } = new();
 }
 
 /// <summary>

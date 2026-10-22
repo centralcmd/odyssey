@@ -130,6 +130,39 @@ public class ContractSummaryRollupTests
     }
 
     /// <summary>
+    /// A fee with no rate to base is named per CONTRACT as well as per currency, so the page can point
+    /// at the record. One contract with two unrated currencies is one row carrying both codes; a
+    /// contract whose fees all converted is absent; and a paused contract is never named, because it
+    /// carries no run rate and so nothing was left out of one.
+    /// </summary>
+    [Fact]
+    public async Task RunRate_NamesEachActiveContractWithAnUnconvertedFee()
+    {
+        await using var context = TestContextFactory.Create();
+        var start = FixedToday.AddMonths(-6);
+        var zebra = SeedContract(context, "Zebra streaming", start);
+        SeedFee(context, zebra, 10m, start, label: "Plan", currency: "EUR");
+        SeedFee(context, zebra, 20m, start, label: "Add-on", currency: "GBP");
+        SeedFee(context, zebra, 5m, start, label: "Local", currency: "USD");
+        var alpha = SeedContract(context, "Alpha gym", start);
+        SeedFee(context, alpha, 30m, start, currency: "SEK");
+        var domestic = SeedContract(context, "Domestic", start);
+        SeedFee(context, domestic, 100m, start);
+        var paused = SeedContract(context, "Paused abroad", start, paused: true);
+        SeedFee(context, paused, 50m, start, currency: "NOK");
+
+        var runRate = (await Summarise(context)).RunRate;
+
+        Assert.Equal(["EUR", "GBP", "SEK"], runRate.UnconvertedCurrencies);
+        Assert.Equal([alpha, zebra], runRate.UnconvertedContracts.Select(c => c.ContractId));
+        Assert.Equal("Zebra streaming", runRate.UnconvertedContracts[1].Name);
+        Assert.Equal(["EUR", "GBP"], runRate.UnconvertedContracts[1].CurrencyCodes);
+        Assert.Equal(["SEK"], runRate.UnconvertedContracts[0].CurrencyCodes);
+        // The converted fees still count: 5 from Zebra plus 100 from Domestic.
+        Assert.Equal(105m, runRate.Monthly);
+    }
+
+    /// <summary>
     /// The cadence multiplier is a DIVISOR, not a factor: a 300 charge every three months is 100 a
     /// month, not 900. Reading it the other way triples every quarterly line in the roll-up.
     /// </summary>

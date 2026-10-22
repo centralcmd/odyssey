@@ -53,7 +53,7 @@ public class PropertySummaryService
 
         var rows = await context.Properties
             .AsNoTracking()
-            .Select(p => new { p.PropertyId, p.Type, p.Archived, p.DisposedDate, p.CurrencyCode })
+            .Select(p => new { p.PropertyId, p.Name, p.Type, p.Archived, p.DisposedDate, p.CurrencyCode })
             .ToListAsync(cancellationToken);
 
         var statusById = rows.ToDictionary(
@@ -89,11 +89,15 @@ public class PropertySummaryService
             .Where(e => ownedIds.Contains(e.PropertyId) && e.EffectiveFrom <= now)
             .ToListAsync(cancellationToken);
 
-        var currencyById = owned.ToDictionary(r => r.PropertyId, r => CurrencyValidationService.Normalize(r.CurrencyCode));
+        var ownedById = owned.ToDictionary(r => r.PropertyId);
         var current = estimates
             .GroupBy(e => e.PropertyId)
             .Select(g => g.MostEffective()!)
-            .Select(e => (Currency: currencyById[e.PropertyId], e.Value))
+            .Select(e => (
+                e.PropertyId,
+                ownedById[e.PropertyId].Name,
+                Currency: CurrencyValidationService.Normalize(ownedById[e.PropertyId].CurrencyCode),
+                e.Value))
             .ToList();
 
         var byCurrency = current
@@ -134,6 +138,22 @@ public class PropertySummaryService
             ByCurrency = byCurrency,
             Total = total is { } t ? Math.Round(t, 2, MidpointRounding.AwayFromZero) : null,
             UnconvertedCurrencies = unconverted,
+            // The properties behind each unconverted currency, so the page can name the PROPERTY the way
+            // the accounts page names the account. Only owned ones with an estimate in force — exactly
+            // the set the total left out — and only the UnconvertedProperty projection, never a value.
+            UnconvertedProperties =
+            [
+                .. current
+                    .Where(c => unconverted.Contains(c.Currency))
+                    .OrderBy(c => c.Name, StringComparer.CurrentCulture)
+                    .ThenBy(c => c.PropertyId)
+                    .Select(c => new UnconvertedProperty
+                    {
+                        PropertyId = c.PropertyId,
+                        Name = c.Name,
+                        CurrencyCode = c.Currency,
+                    }),
+            ],
         };
 
         return summary;

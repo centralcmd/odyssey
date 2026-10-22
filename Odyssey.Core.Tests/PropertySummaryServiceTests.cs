@@ -103,6 +103,29 @@ public class PropertySummaryServiceTests
         Assert.Equal(400_000m, value.ByCurrency.Single(c => c.CurrencyCode == "USD").Total);
     }
 
+    /// <summary>
+    /// The properties behind an unconverted currency are named, so the page can point at the record.
+    /// Only the set the total actually left out: an owned property with an estimate in force. A disposed
+    /// one in the same currency was never in the total, and one without an estimate has no value.
+    /// </summary>
+    [Fact]
+    public async Task Value_NamesEachOwnedPropertyLeftOutOfTheTotal()
+    {
+        await using var context = TestContextFactory.Create();
+        await PropertyAsync(context, PropertyTestData.House("Home", "SEK"), estimate: 1_000_000m);
+        var cabin = await PropertyAsync(context, PropertyTestData.House("Cabin", "USD"), estimate: 900_000m);
+        var boat = await PropertyAsync(context, PropertyTestData.Car("Boat", "EUR"), estimate: 30_000m);
+        await PropertyAsync(context, PropertyTestData.House("Sold flat", "USD"), estimate: 2_000_000m, disposed: Utc(2025, 1, 1));
+        await PropertyAsync(context, PropertyTestData.Car("Unvalued", "USD"));
+
+        var value = (await Summary(context).GetAsync("SEK", includeValue: true)).Value!;
+
+        Assert.Equal(["EUR", "USD"], value.UnconvertedCurrencies);
+        Assert.Equal([boat, cabin], value.UnconvertedProperties.Select(p => p.PropertyId));
+        Assert.Equal(["Boat", "Cabin"], value.UnconvertedProperties.Select(p => p.Name));
+        Assert.Equal(["EUR", "USD"], value.UnconvertedProperties.Select(p => p.CurrencyCode));
+    }
+
     [Fact]
     public async Task Value_BlankBase_PicksTheCurrencyMostOwnedPropertiesUse()
     {

@@ -274,6 +274,7 @@ public class ContractSummaryService
 
         var runRate = new ContractRunRate { BaseCurrency = baseCode };
         var unconverted = new SortedSet<string>(StringComparer.Ordinal);
+        var unconvertedByContract = new Dictionary<Guid, (string Name, SortedSet<string> Codes)>();
 
         // One accumulator per direction. The two are summed independently and NEVER mixed: the only
         // figure that crosses them is the net, which says so in its name.
@@ -298,6 +299,13 @@ public class ContractSummaryService
                 // net — so the net is partial exactly when the grosses are, which is the existing
                 // legibility contract extended rather than a new one.
                 unconverted.Add(code);
+                if (!unconvertedByContract.TryGetValue(p.Contract.ContractId, out var gap))
+                {
+                    gap = (p.Contract.Name, new SortedSet<string>(StringComparer.Ordinal));
+                    unconvertedByContract[p.Contract.ContractId] = gap;
+                }
+
+                gap.Codes.Add(code);
                 continue;
             }
 
@@ -329,6 +337,21 @@ public class ContractSummaryService
         runRate.NetYearly = Net(incoming.Yearly, outgoing.Yearly);
 
         runRate.UnconvertedCurrencies = [.. unconverted];
+
+        // Named per contract as well, from the same pass, so the list and the currency set cannot
+        // disagree. Ordered by name with the id as a tie-break, so equal names keep a stable order.
+        runRate.UnconvertedContracts =
+        [
+            .. unconvertedByContract
+                .OrderBy(kv => kv.Value.Name, StringComparer.CurrentCulture)
+                .ThenBy(kv => kv.Key)
+                .Select(kv => new UnconvertedContract
+                {
+                    ContractId = kv.Key,
+                    Name = kv.Value.Name,
+                    CurrencyCodes = [.. kv.Value.Codes],
+                }),
+        ];
 
         return runRate;
     }

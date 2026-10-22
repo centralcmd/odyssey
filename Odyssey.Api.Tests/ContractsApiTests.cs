@@ -977,6 +977,13 @@ public class ContractsApiTests
         Assert.Equal(3840m, summary.RunRate.Yearly);
         Assert.Equal(["SEK"], summary.RunRate.UnconvertedCurrencies);
 
+        // The contract behind it is named too, so the page can point at the record rather than at a
+        // bare currency code. A contract whose fees all converted is not listed.
+        var gap = Assert.Single(summary.RunRate.UnconvertedContracts);
+        Assert.Equal(unrated, gap.ContractId);
+        Assert.Equal("Service contract", gap.Name);
+        Assert.Equal(["SEK"], gap.CurrencyCodes);
+
         // The excluded currency is excluded from the per-type split too, so the rows still sum.
         Assert.Equal(summary.RunRate.Monthly, summary.RunRate.ByType.Sum(r => r.Monthly));
         Assert.DoesNotContain(summary.RunRate.ByType, r => r.Type == ContractType.Service);
