@@ -143,9 +143,7 @@
                         @if (problems.Count > 0)
                         {
                             var top = problems.MaxBy(p => (int)p.Severity)!;
-                            <span class="acct-flag @FlagClass(top.Severity)">
-                                <span class="material-icons" aria-hidden="true">@FlagGlyph(top.Severity)</span>@(problems.Count == 1 ? problems[0].Chip : "Attention")
-                            </span>
+                            <OdsProblemFlag Severity="top.Severity">@(problems.Count == 1 ? problems[0].Chip : "Attention")</OdsProblemFlag>
                         }
                     </Chips>
 

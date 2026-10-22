@@ -314,13 +314,14 @@ public partial class ContractsCard
         return units;
     }
 
-    // ── Header signal: "Upcoming" ─────────────────────────────────────────────────
+    // ── Header signal: "Attention" ────────────────────────────────────────────────
     //
-    // Four groups under one button, one count and one worst-severity reading, because they answer one
-    // question — what is coming? — and a reader checking for a renewal cliff is checking for a charge
-    // in the same breath.
+    // Several groups under one button, one count and one worst-severity reading, because a reader
+    // checking for a renewal cliff is checking for a charge in the same breath. It was labelled
+    // "Upcoming" until it also carried the missing-rate group, which is not a date at all.
     //
     //   Recently expired  a term that ran out and was never archived: the decision still outstanding
+    //   Missing exchange rate  an Active contract with a fee left out of the run rate (no rate to base)
     //   Ending soon       the cliff itself
     //   Starting soon     its mirror — signed, not yet in force
     //   Upcoming transactions  what falls due or arrives, derived from the fee terms in force
@@ -345,6 +346,7 @@ public partial class ContractsCard
         {
             var problems = new List<PageHeaderProblem>();
             var live = _contracts.Where(c => c.Archived is null).ToList();
+            var listed = live.Select(c => c.ContractId).ToHashSet();
 
             problems.AddRange(live
                 .Where(c => c.Status == ContractStatus.Expired
@@ -353,6 +355,13 @@ public partial class ContractsCard
                 .Take(MaxDatedSignalRows)
                 .Select(c => Dated(c, "Recently expired", PageHeaderSeverity.Error,
                     $"Term expired {OdsRelativeDay.Ago(DaysSince(c.EndDate!.Value))}.")));
+
+            // Missing exchange rate: the Accounts problem, applied to the run rate. A WARNING — a figure
+            // on this page is partial until the rate exists — placed after the error group and before
+            // the dated warnings. Intersected with the list for the same reason as the transaction rows
+            // below: the summary is unfiltered, and a jump to a record the list hides scrolls nowhere.
+            problems.AddRange(RateGapProblems(
+                _summary, listed, id => EventCallback.Factory.Create(this, () => JumpTo(id))));
 
             problems.AddRange(live
                 .Where(c => c.Status == ContractStatus.Active
@@ -407,7 +416,6 @@ public partial class ContractsCard
             // cannot starve the receipts. A contract that pays a salary on the 25th and deducts a fee
             // on the 1st appears twice — the server collapses per (contract, direction), so neither
             // movement hides the other.
-            var listed = live.Select(c => c.ContractId).ToHashSet();
             problems.AddRange(UpcomingMovements(_summary, listed).Select(movement => new PageHeaderProblem
             {
                 Group = "Upcoming transactions",
@@ -421,6 +429,46 @@ public partial class ContractsCard
             return problems;
         }
     }
+
+    /// <summary>
+    /// The run rate's unconverted contracts that the loaded list also shows, in the server's name
+    /// order. Empty without a summary.
+    /// </summary>
+    internal static IEnumerable<UnconvertedContract> RateGaps(ContractSummary? summary, IReadOnlySet<Guid> listed) =>
+        (summary?.RunRate.UnconvertedContracts ?? []).Where(gap => listed.Contains(gap.ContractId));
+
+    /// <summary>
+    /// The "Missing exchange rate" group: one warning row per gap the list shows, led by the contract's
+    /// name, its View bound by <paramref name="onView"/>.
+    /// </summary>
+    internal static IEnumerable<PageHeaderProblem> RateGapProblems(
+        ContractSummary? summary, IReadOnlySet<Guid> listed, Func<Guid, EventCallback> onView) =>
+        RateGaps(summary, listed).Select(gap => new PageHeaderProblem
+        {
+            Group = "Missing exchange rate",
+            Severity = PageHeaderSeverity.Warning,
+            Lead = gap.Name,
+            Message = RateGapSummary(gap, summary!.RunRate.BaseCurrency),
+            OnView = onView(gap.ContractId),
+        });
+
+    /// <summary>The run rate's gap for one contract, or null when every fee it carries converted.</summary>
+    private UnconvertedContract? RateGapFor(Guid contractId) =>
+        _summary?.RunRate.UnconvertedContracts.FirstOrDefault(gap => gap.ContractId == contractId);
+
+    /// <summary>The header row: one line, the pair and what was left out of what.</summary>
+    internal static string RateGapSummary(UnconvertedContract gap, string baseCurrency) =>
+        $"No {string.Join(", ", gap.CurrencyCodes)} → {baseCurrency} rate, so this contract is left out of the run rate.";
+
+    /// <summary>The record alert's detail: why conversion matters here and where the fix is.</summary>
+    internal static string RateGapDetail(UnconvertedContract gap, string baseCurrency) =>
+        $"Odyssey converts every fee into your main currency ({baseCurrency}) to total the run rate. "
+        + $"There’s no {string.Join(", ", gap.CurrencyCodes)} → {baseCurrency} rate stored, so this contract’s "
+        + $"{string.Join(" and ", gap.CurrencyCodes)} fees are left out of the run rate and the net. "
+        + "Add the rate on the Exchange rates page to include them.";
+
+    // The contextual fix for a missing-rate problem: the Exchange rates page, as on Accounts.
+    private void GoToExchangeRates() => NavigationManager.NavigateTo("exchange-rates");
 
     /// <summary>
     /// The summary's upcoming charges and receipts as ONE list, earliest first, keeping only the
@@ -458,21 +506,14 @@ public partial class ContractsCard
         _flashId = id;
         StateHasChanged();
 
-        try
-        {
-            await ScrollManager.ScrollIntoViewAsync($"#con-{id}", ScrollBehavior.Smooth);
-        }
-        catch (Exception)
-        {
-            // Best-effort scroll; the record is already expanded.
-        }
+        await OdsRecordReveal.ScrollIntoViewAsync(ScrollManager, $"#con-{id}");
+        await OdsRecordReveal.EndFlashAsync(() => _flashId == id, EndFlash);
+    }
 
-        await Task.Delay(OdsTiming.RowFlashMs);
-        if (_flashId == id)
-        {
-            _flashId = null;
-            StateHasChanged();
-        }
+    private void EndFlash()
+    {
+        _flashId = null;
+        StateHasChanged();
     }
 
     // ── Expand / detail load ─────────────────────────────────────────────────────

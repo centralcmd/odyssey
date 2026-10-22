@@ -314,21 +314,14 @@ public partial class TaxStatementsCard
         _flashId = id;
         StateHasChanged();
 
-        try
-        {
-            await ScrollManager.ScrollIntoViewAsync($"#tax-{id}", ScrollBehavior.Smooth);
-        }
-        catch (Exception)
-        {
-            // Best-effort scroll; the record is already expanded.
-        }
+        await OdsRecordReveal.ScrollIntoViewAsync(ScrollManager, $"#tax-{id}");
+        await OdsRecordReveal.EndFlashAsync(() => _flashId == id, EndFlash);
+    }
 
-        await Task.Delay(OdsTiming.RowFlashMs);
-        if (_flashId == id)
-        {
-            _flashId = null;
-            StateHasChanged();
-        }
+    private void EndFlash()
+    {
+        _flashId = null;
+        StateHasChanged();
     }
 
     private void GoTo(string target) => NavigationManager.NavigateTo(target);
@@ -635,20 +628,6 @@ public partial class TaxStatementsCard
         OdsSeverity.Error => PageHeaderSeverity.Error,
         OdsSeverity.Warning => PageHeaderSeverity.Warning,
         _ => PageHeaderSeverity.Information,
-    };
-
-    private static string FlagClass(OdsSeverity s) => s switch
-    {
-        OdsSeverity.Error => "error",
-        OdsSeverity.Warning => "warning",
-        _ => "info",
-    };
-
-    private static string FlagGlyph(OdsSeverity s) => s switch
-    {
-        OdsSeverity.Error => "error_outline",
-        OdsSeverity.Warning => "warning_amber",
-        _ => "info",
     };
 
     // A data condition needing the user's attention: a severity, a short chip, a

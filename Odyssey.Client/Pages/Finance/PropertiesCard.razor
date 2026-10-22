@@ -12,6 +12,8 @@
 @inject Odyssey.Client.Services.IPageStateService PageState
 @inject IReferenceDataCache ReferenceData
 @inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
+@inject NavigationManager NavigationManager
+@inject IScrollManager ScrollManager
 
 @*
     /properties (issue #167; design system · Properties.jsx). A sibling of Accounts and Contracts: the
@@ -30,6 +32,9 @@
 <MudStack Spacing="4">
     <PageHeader Title="Properties"
                 Icon="@Icons.Material.Filled.HomeWork"
+                Problems="HeaderProblems"
+                ProblemsLabel="Attention"
+                ProblemsOpen="_problemsOpen" ProblemsOpenChanged="OnProblemsToggled"
                 OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
                 PrimaryActionText="New property"
@@ -80,6 +85,7 @@
                 @{
                     var typeInfo = OdsTypeRegistries.PropertyTypeOf(p.Type);
                     var kind = PropertyVisuals.KindOf(p);
+                    var rateGap = RateGapFor(p.PropertyId);
                 }
                 @* One accent per record, taken from its TYPE; the header glyph is the KIND, so a cabin and
                    a house read apart at a glance while sharing the real-estate hue. *@
@@ -103,6 +109,11 @@
                             var status = PropertyVisuals.StatusOf(p.Status);
                             <OdsChip Tone="status.Tone" Dot="status.Dot" Class="sm">@status.Label</OdsChip>
                         }
+                        @if (rateGap is not null)
+                        {
+                            @* The Accounts "No rate" chip: left out of the estimated value total. *@
+                            <OdsProblemFlag>No rate</OdsProblemFlag>
+                        }
                     </Chips>
 
                     <Figure>
@@ -115,6 +126,16 @@
                     <Actions>
                         <OdsMenu Items="RowActions(p)" AriaLabel="@($"Actions for {p.Name}")" />
                     </Actions>
+
+                    <Alert>
+                        @* The problem and its contextual fix first — it is why the card was opened. *@
+                        @if (rateGap is not null)
+                        {
+                            <OdsProblemAlert Severity="OdsSeverity.Warning" Title="Missing exchange rate"
+                                             Detail="@RateGapDetail(rateGap, _summary!.Value!.BaseCurrency)"
+                                             ActionLabel="Set exchange rate" OnAction="GoToExchangeRates" />
+                        }
+                    </Alert>
 
                     <Details>
                         @{

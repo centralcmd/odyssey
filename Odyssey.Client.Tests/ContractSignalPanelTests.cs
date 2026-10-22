@@ -62,7 +62,7 @@ public class ContractSignalPanelTests
         return ctx.Render<PageHeader>(p => p
             .Add(h => h.Title, "Contracts")
             .Add(h => h.Problems, [.. problems])
-            .Add(h => h.ProblemsLabel, "Upcoming")
+            .Add(h => h.ProblemsLabel, "Attention")
             .Add(h => h.ProblemsOpen, true));
     }
 
@@ -203,6 +203,98 @@ public class ContractSignalPanelTests
         var movements = ContractsCard.UpcomingMovements(summary, new HashSet<Guid> { ContractId }).ToList();
 
         Assert.Equal(["Shown"], movements.Select(m => m.Row.Name));
+    }
+
+    // ── Missing exchange rate ────────────────────────────────────────────────
+
+    /// <summary>
+    /// The missing-rate group reads the run rate's unconverted contracts and, like every other group,
+    /// drops one the filtered list is not showing — its View would otherwise scroll to nothing.
+    /// </summary>
+    [Fact]
+    public void Rate_gaps_keep_only_contracts_the_list_is_showing()
+    {
+        var summary = Summary([], []);
+        summary.RunRate.UnconvertedContracts =
+        [
+            new UnconvertedContract { ContractId = ContractId, Name = "Streaming", CurrencyCodes = ["EUR"] },
+            new UnconvertedContract { ContractId = OtherContractId, Name = "Hidden", CurrencyCodes = ["GBP"] },
+        ];
+
+        var gaps = ContractsCard.RateGaps(summary, new HashSet<Guid> { ContractId }).ToList();
+
+        Assert.Equal(["Streaming"], gaps.Select(g => g.Name));
+        Assert.Empty(ContractsCard.RateGaps(null, new HashSet<Guid> { ContractId }));
+    }
+
+    /// <summary>
+    /// The row names every unrated currency and the base, and the record alert names what was left
+    /// out — the copy is the only thing that tells a reader which figure on the page is partial.
+    /// </summary>
+    [Fact]
+    public void Rate_gap_copy_names_the_pair_and_what_was_left_out()
+    {
+        var gap = new UnconvertedContract { ContractId = ContractId, Name = "Streaming", CurrencyCodes = ["EUR", "GBP"] };
+
+        Assert.Equal(
+            "No EUR, GBP → NOK rate, so this contract is left out of the run rate.",
+            ContractsCard.RateGapSummary(gap, "NOK"));
+        var detail = ContractsCard.RateGapDetail(gap, "NOK");
+        Assert.Contains("main currency (NOK)", detail, StringComparison.Ordinal);
+        Assert.Contains("EUR and GBP fees are left out of the run rate and the net", detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Each gap becomes one WARNING row in the "Missing exchange rate" group, led by the contract's
+    /// name, with the base-currency copy and a View bound to that contract's id.
+    /// </summary>
+    [Fact]
+    public async Task Rate_gap_problems_are_warning_rows_in_their_own_group()
+    {
+        var summary = Summary([], []);
+        summary.RunRate.BaseCurrency = "NOK";
+        summary.RunRate.UnconvertedContracts =
+            [new UnconvertedContract { ContractId = ContractId, Name = "Streaming", CurrencyCodes = ["EUR"] }];
+        Guid? viewed = null;
+
+        var row = Assert.Single(ContractsCard.RateGapProblems(
+            summary, new HashSet<Guid> { ContractId },
+            id => EventCallback.Factory.Create(this, () => viewed = id)));
+
+        Assert.Equal("Missing exchange rate", row.Group);
+        Assert.Equal(PageHeaderSeverity.Warning, row.Severity);
+        Assert.Equal("Streaming", row.Lead);
+        Assert.Equal("No EUR → NOK rate, so this contract is left out of the run rate.", row.Message);
+        await row.OnView.InvokeAsync();
+        Assert.Equal(ContractId, viewed);
+    }
+
+    /// <summary>
+    /// The page composes the panel: the button reads "Attention", the missing-rate group sits after the
+    /// one error group and before the dated warnings, and the record carries the chip and the alert with
+    /// its fix routed to Exchange rates. Read from source because the page needs a full service graph
+    /// to render.
+    /// </summary>
+    [Fact]
+    public void The_contracts_page_wires_the_missing_rate_signal_chip_and_alert()
+    {
+        var finance = Path.Combine(ClientSource.Root, "Pages", "Finance");
+        var markup = File.ReadAllText(Path.Combine(finance, "ContractsCard.razor"));
+        var code = File.ReadAllText(Path.Combine(finance, "ContractsCard.razor.cs"));
+
+        Assert.Contains("ProblemsLabel=\"Attention\"", markup, StringComparison.Ordinal);
+        var problems = code[code.IndexOf("private List<PageHeaderProblem> HeaderProblems", StringComparison.Ordinal)..];
+        var expired = problems.IndexOf("\"Recently expired\"", StringComparison.Ordinal);
+        var gaps = problems.IndexOf("RateGapProblems(", StringComparison.Ordinal);
+        var ending = problems.IndexOf("\"Ending soon\"", StringComparison.Ordinal);
+        Assert.True(expired >= 0 && expired < gaps && gaps < ending, "Missing exchange rate must sit between Recently expired and Ending soon.");
+
+        var chips = markup[markup.IndexOf("<Chips>", StringComparison.Ordinal)..markup.IndexOf("</Chips>", StringComparison.Ordinal)];
+        Assert.Contains("<OdsProblemFlag>No rate</OdsProblemFlag>", chips, StringComparison.Ordinal);
+        var alert = markup[markup.IndexOf("<Alert>", StringComparison.Ordinal)..markup.IndexOf("</Alert>", StringComparison.Ordinal)];
+        Assert.Contains("OdsProblemAlert", alert, StringComparison.Ordinal);
+        Assert.Contains("ActionLabel=\"Set exchange rate\" OnAction=\"GoToExchangeRates\"", alert, StringComparison.Ordinal);
+        Assert.Contains("NavigationManager.NavigateTo(\"exchange-rates\")", code, StringComparison.Ordinal);
     }
 
     /// <summary>No summary yet, or nothing due in the window: the group simply has no rows.</summary>

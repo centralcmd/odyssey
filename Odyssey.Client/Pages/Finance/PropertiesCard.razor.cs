@@ -50,6 +50,7 @@ public partial class PropertiesCard
 
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "properties-page";
+    private bool _problemsOpen = true;
     private bool _overviewOpen = true;
     private bool _searchOpen = true;
     private string _searchString = string.Empty;
@@ -149,6 +150,7 @@ public partial class PropertiesCard
 
     private void ApplyPageState(PropertiesPageState state)
     {
+        _problemsOpen = state.ProblemsOpen;
         _overviewOpen = state.OverviewOpen;
         _searchOpen = state.SearchOpen;
         _searchString = state.Search ?? string.Empty;
@@ -162,6 +164,7 @@ public partial class PropertiesCard
 
     private PropertiesPageState BuildPageState() => new()
     {
+        ProblemsOpen = _problemsOpen,
         OverviewOpen = _overviewOpen,
         SearchOpen = _searchOpen,
         Search = _searchString,
@@ -174,6 +177,7 @@ public partial class PropertiesCard
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());
 
+    private void OnProblemsToggled(bool open) { _problemsOpen = open; PersistPageState(); }
     private void OnOverviewToggled(bool open) { _overviewOpen = open; PersistPageState(); }
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
     private void OnSearchChanged(string value) { _searchString = value ?? string.Empty; PersistPageState(); }
@@ -193,6 +197,7 @@ public partial class PropertiesCard
 
     private sealed class PropertiesPageState
     {
+        public bool ProblemsOpen { get; set; } = true;
         public bool OverviewOpen { get; set; } = true;
         public bool SearchOpen { get; set; } = true;
         public string Search { get; set; } = string.Empty;
@@ -482,16 +487,77 @@ public partial class PropertiesCard
         await LoadSummary();
     }
 
+    // ── Header signal: "Attention" — missing exchange rates ─────────────────────
+    //
+    // The Accounts rollup applied to the estimated-value total: one warning row per owned property
+    // whose estimate is in a currency with no rate to the main one. The server names them
+    // (PropertyValueSummary.UnconvertedProperties); the value block — and with it this list — is null
+    // without properties.estimates.read, so a caller who cannot see values is never told one is
+    // missing. Intersected with the loaded list, which is server-filtered, so View never jumps to a
+    // record the filters hide.
+    private List<PageHeaderProblem> HeaderProblems =>
+        [.. RateGapProblems(
+            _summary,
+            _properties.Select(p => p.PropertyId).ToHashSet(),
+            id => EventCallback.Factory.Create(this, () => JumpTo(id)))];
+
+    /// <summary>
+    /// One warning row per gap the list shows, led by the property's name and ungrouped — it is the only
+    /// kind this panel carries — its View bound by <paramref name="onView"/>.
+    /// </summary>
+    internal static IEnumerable<PageHeaderProblem> RateGapProblems(
+        PropertySummary? summary, IReadOnlySet<Guid> listed, Func<Guid, EventCallback> onView) =>
+        RateGaps(summary, listed).Select(gap => new PageHeaderProblem
+        {
+            Severity = PageHeaderSeverity.Warning,
+            Lead = gap.Name,
+            Message = RateGapSummary(gap, summary!.Value!.BaseCurrency),
+            OnView = onView(gap.PropertyId),
+        });
+
+    /// <summary>The summary's unconverted properties that the loaded list also shows, in the server's order.</summary>
+    internal static IEnumerable<UnconvertedProperty> RateGaps(PropertySummary? summary, IReadOnlySet<Guid> listed) =>
+        (summary?.Value?.UnconvertedProperties ?? []).Where(gap => listed.Contains(gap.PropertyId));
+
+    private UnconvertedProperty? RateGapFor(Guid propertyId) =>
+        _summary?.Value?.UnconvertedProperties.FirstOrDefault(gap => gap.PropertyId == propertyId);
+
+    /// <summary>The header row: the pair and what the property was left out of.</summary>
+    internal static string RateGapSummary(UnconvertedProperty gap, string baseCurrency) =>
+        $"No {gap.CurrencyCode} → {baseCurrency} rate, so this property is left out of the estimated value total.";
+
+    /// <summary>The record alert's detail: why conversion matters here and where the fix is.</summary>
+    internal static string RateGapDetail(UnconvertedProperty gap, string baseCurrency) =>
+        $"Odyssey converts every property’s estimated value into your main currency ({baseCurrency}) to total "
+        + $"what the owned properties are worth. There’s no {gap.CurrencyCode} → {baseCurrency} rate stored, so "
+        + "this property is left out of that total. Add the rate on the Exchange rates page to include it.";
+
+    // The contextual fix for a missing-rate problem: the Exchange rates page, as on Accounts.
+    private void GoToExchangeRates() => NavigationManager.NavigateTo("exchange-rates");
+
+    // Header-rollup → property: open the record, scroll it into view, flash the attention ring.
+    private async Task JumpTo(Guid id)
+    {
+        _expandedId = id;
+        _flashId = id;
+        StateHasChanged();
+
+        await OdsRecordReveal.ScrollIntoViewAsync(ScrollManager, $"#prop-{id}");
+        await OdsRecordReveal.EndFlashAsync(() => _flashId == id, EndFlash);
+    }
+
+    private void EndFlash()
+    {
+        _flashId = null;
+        StateHasChanged();
+    }
+
+    // Flash without a scroll: the record the action just created or changed is already in view.
     private async Task Flash(Guid id)
     {
         _flashId = id;
         StateHasChanged();
-        await Task.Delay(OdsTiming.RowFlashMs);
-        if (_flashId == id)
-        {
-            _flashId = null;
-            StateHasChanged();
-        }
+        await OdsRecordReveal.EndFlashAsync(() => _flashId == id, EndFlash);
     }
 
     // ── Card header ────────────────────────────────────────────────────────────────

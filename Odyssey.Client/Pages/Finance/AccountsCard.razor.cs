@@ -260,21 +260,14 @@ public partial class AccountsCard
         _flashId = accountId;
         StateHasChanged();
 
-        try
-        {
-            await ScrollManager.ScrollIntoViewAsync($"#acct-{accountId}", ScrollBehavior.Smooth);
-        }
-        catch (Exception)
-        {
-            // Scrolling is best-effort; the record is already expanded if the scroll fails.
-        }
+        await OdsRecordReveal.ScrollIntoViewAsync(ScrollManager, $"#acct-{accountId}");
+        await OdsRecordReveal.EndFlashAsync(() => _flashId == accountId, EndFlash);
+    }
 
-        await Task.Delay(OdsTiming.RowFlashMs);
-        if (_flashId == accountId)
-        {
-            _flashId = null;
-            StateHasChanged();
-        }
+    private void EndFlash()
+    {
+        _flashId = null;
+        StateHasChanged();
     }
 
     // The contextual fix for a missing-rate problem: the Exchange rates page.
