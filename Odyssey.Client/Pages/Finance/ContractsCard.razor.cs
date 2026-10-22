@@ -506,21 +506,14 @@ public partial class ContractsCard
         _flashId = id;
         StateHasChanged();
 
-        try
-        {
-            await ScrollManager.ScrollIntoViewAsync($"#con-{id}", ScrollBehavior.Smooth);
-        }
-        catch (Exception)
-        {
-            // Best-effort scroll; the record is already expanded.
-        }
+        await OdsRecordReveal.ScrollIntoViewAsync(ScrollManager, $"#con-{id}");
+        await OdsRecordReveal.EndFlashAsync(() => _flashId == id, EndFlash);
+    }
 
-        await Task.Delay(OdsTiming.RowFlashMs);
-        if (_flashId == id)
-        {
-            _flashId = null;
-            StateHasChanged();
-        }
+    private void EndFlash()
+    {
+        _flashId = null;
+        StateHasChanged();
     }
 
     // ── Expand / detail load ─────────────────────────────────────────────────────

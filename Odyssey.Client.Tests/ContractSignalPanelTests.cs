@@ -290,8 +290,7 @@ public class ContractSignalPanelTests
         Assert.True(expired >= 0 && expired < gaps && gaps < ending, "Missing exchange rate must sit between Recently expired and Ending soon.");
 
         var chips = markup[markup.IndexOf("<Chips>", StringComparison.Ordinal)..markup.IndexOf("</Chips>", StringComparison.Ordinal)];
-        Assert.Contains("acct-flag warning", chips, StringComparison.Ordinal);
-        Assert.Contains("No rate", chips, StringComparison.Ordinal);
+        Assert.Contains("<OdsProblemFlag>No rate</OdsProblemFlag>", chips, StringComparison.Ordinal);
         var alert = markup[markup.IndexOf("<Alert>", StringComparison.Ordinal)..markup.IndexOf("</Alert>", StringComparison.Ordinal)];
         Assert.Contains("OdsProblemAlert", alert, StringComparison.Ordinal);
         Assert.Contains("ActionLabel=\"Set exchange rate\" OnAction=\"GoToExchangeRates\"", alert, StringComparison.Ordinal);

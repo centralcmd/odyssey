@@ -1,0 +1,35 @@
+@*
+    OdsProblemFlag — the per-record problem chip in a record card's name row (Odyssey Design System ·
+    the row half of the problem/signal system; the kit draws it as a Chip in the severity's tone with a
+    SeverityIcon). The PageHeader signal rollup and OdsProblemAlert in the expanded record are the
+    other two halves.
+
+    The meaning rides in the visible label — "No rate", "Attention" — so the glyph is decorative and
+    severity is never carried by colour alone. Styled by .acct-flag in the global sheet.
+*@
+
+<span class="acct-flag @SeverityClass(Severity)">
+    <span class="material-icons" aria-hidden="true">@Glyph(Severity)</span>@ChildContent
+</span>
+
+@code {
+    /// <summary>Warning (amber) · Error (coral) · Info (sea). Default Warning.</summary>
+    [Parameter] public OdsSeverity Severity { get; set; } = OdsSeverity.Warning;
+
+    /// <summary>The chip's label; it carries the meaning.</summary>
+    [Parameter, EditorRequired] public RenderFragment? ChildContent { get; set; }
+
+    internal static string SeverityClass(OdsSeverity severity) => severity switch
+    {
+        OdsSeverity.Error => "error",
+        OdsSeverity.Warning => "warning",
+        _ => "info",
+    };
+
+    internal static string Glyph(OdsSeverity severity) => severity switch
+    {
+        OdsSeverity.Error => "error_outline",
+        OdsSeverity.Warning => "warning_amber",
+        _ => "info",
+    };
+}

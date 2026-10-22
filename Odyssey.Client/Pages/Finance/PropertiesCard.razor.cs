@@ -1,7 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
@@ -543,33 +542,22 @@ public partial class PropertiesCard
         _flashId = id;
         StateHasChanged();
 
-        try
-        {
-            await ScrollManager.ScrollIntoViewAsync($"#prop-{id}", ScrollBehavior.Smooth);
-        }
-        catch (Exception)
-        {
-            // Best-effort scroll; the record is already expanded.
-        }
-
-        await Task.Delay(OdsTiming.RowFlashMs);
-        if (_flashId == id)
-        {
-            _flashId = null;
-            StateHasChanged();
-        }
+        await OdsRecordReveal.ScrollIntoViewAsync(ScrollManager, $"#prop-{id}");
+        await OdsRecordReveal.EndFlashAsync(() => _flashId == id, EndFlash);
     }
 
+    private void EndFlash()
+    {
+        _flashId = null;
+        StateHasChanged();
+    }
+
+    // Flash without a scroll: the record the action just created or changed is already in view.
     private async Task Flash(Guid id)
     {
         _flashId = id;
         StateHasChanged();
-        await Task.Delay(OdsTiming.RowFlashMs);
-        if (_flashId == id)
-        {
-            _flashId = null;
-            StateHasChanged();
-        }
+        await OdsRecordReveal.EndFlashAsync(() => _flashId == id, EndFlash);
     }
 
     // ── Card header ────────────────────────────────────────────────────────────────

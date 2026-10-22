@@ -130,9 +130,7 @@
                         <OdsAccountStatusChip Label="@GetStatusLabel(account)" Tone="@GetStatusChipTone(account)" Compact="true" />
                         @if (problem is not null)
                         {
-                            <span class="acct-flag @problem.Severity">
-                                <span class="material-icons" aria-hidden="true">warning_amber</span>@problem.Chip
-                            </span>
+                            <OdsProblemFlag Severity="@(problem.Severity == "error" ? OdsSeverity.Error : OdsSeverity.Warning)">@problem.Chip</OdsProblemFlag>
                         }
                     </Chips>
 

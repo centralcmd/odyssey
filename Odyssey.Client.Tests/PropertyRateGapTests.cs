@@ -98,7 +98,7 @@ public class PropertyRateGapTests
         Assert.Contains("Id=\"@($\"prop-{p.PropertyId}\")\"", markup, StringComparison.Ordinal);
 
         var chips = markup[markup.IndexOf("<Chips>", StringComparison.Ordinal)..markup.IndexOf("</Chips>", StringComparison.Ordinal)];
-        Assert.Contains("No rate", chips, StringComparison.Ordinal);
+        Assert.Contains("<OdsProblemFlag>No rate</OdsProblemFlag>", chips, StringComparison.Ordinal);
         var alert = markup[markup.IndexOf("<Alert>", StringComparison.Ordinal)..markup.IndexOf("</Alert>", StringComparison.Ordinal)];
         Assert.Contains("ActionLabel=\"Set exchange rate\" OnAction=\"GoToExchangeRates\"", alert, StringComparison.Ordinal);
         Assert.Contains("NavigationManager.NavigateTo(\"exchange-rates\")", code, StringComparison.Ordinal);
