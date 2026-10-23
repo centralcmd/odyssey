@@ -265,7 +265,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     /// <summary>The user-attribution columns, all <c>SET NULL</c> to <c>AspNetUsers</c>.</summary>
     private static void ConfigureUserAttribution(ModelBuilder modelBuilder)
     {
-        // Twenty-five columns across eighteen entities, naming the user who created, updated,
+        // Twenty-eight columns across twenty entities, naming the user who created, updated,
         // attached, uploaded, requested or reviewed a row. They were bare strings for as long as identity lived in its own context, so
         // deleting a user left every one of them pointing at an account that no longer existed — the
         // gap UserAdministrationService.DeleteAsync used to record as "data in the other contexts".
@@ -302,6 +302,10 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<FileMetadata>(modelBuilder, nameof(Odyssey.Context.FileMetadata.UploadedByUserId));
         DeclareUserAttribution<FileAnalysisJob>(modelBuilder, nameof(FileAnalysisJob.RequestedByUserId));
         DeclareUserAttribution<FileAnalysisCandidateTransaction>(modelBuilder, nameof(FileAnalysisCandidateTransaction.ReviewedByUserId));
+
+        // Exchange-rate sync (issue #349): who last changed a currency's sync, and who started a run.
+        DeclareUserAttribution<ExchangeRateSyncCurrency>(modelBuilder, nameof(ExchangeRateSyncCurrency.UpdatedByUserId));
+        DeclareUserAttribution<ExchangeRateSyncRun>(modelBuilder, nameof(ExchangeRateSyncRun.RequestedByUserId));
     }
 
     /// <summary>
@@ -358,6 +362,8 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<TransactionTagLink> TransactionTagLinks { get; set; }
     public DbSet<Currency> Currencies { get; set; }
     public DbSet<ExchangeRate> ExchangeRates { get; set; }
+    public DbSet<ExchangeRateSyncCurrency> ExchangeRateSyncCurrencies { get; set; }
+    public DbSet<ExchangeRateSyncRun> ExchangeRateSyncRuns { get; set; }
     public DbSet<TransactionFile> TransactionFiles { get; set; }
     public DbSet<AccountFile> AccountFiles { get; set; }
     public DbSet<FileMetadata> FileMetadata { get; set; }

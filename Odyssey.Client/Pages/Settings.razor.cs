@@ -863,6 +863,32 @@ public partial class Settings
                 Write: (p, req) => req.AccountMaxSmartTagsPerAccount =
                     p.IntRequest("accountMaxSmartTagsPerAccount")),
         ]),
+        // The two global exchange-rate sync settings (issue #349 §8). The per-currency panel, status
+        // and run history are the frontend issue (#351); these rows ship with the backend so every
+        // writable field stays claimed by exactly one row.
+        new("Exchange-rate sync", Icons.Material.Filled.CurrencyExchange,
+        [
+            new("exchangeRateHistoryStartDate", "history", "History start date",
+                "The earliest date rates are fetched from, as yyyy-MM-dd, for every synced currency without "
+                + "its own start date. Empty means 1 January of the current year: on 1 January the default "
+                + "start moves forward a year, and nothing already fetched is deleted.",
+                SettingClaim.Count, SettingControl.Text, Max: ExchangeRateHistoryStartDateRule.MaxLength,
+                Field: nameof(SystemSettingsUpdate.ExchangeRateHistoryStartDate),
+                Load: (p, dto) => p.SetTextLoaded("exchangeRateHistoryStartDate", dto.ExchangeRateHistoryStartDate),
+                Write: (p, req) => req.ExchangeRateHistoryStartDate = p.TextRequest("exchangeRateHistoryStartDate"),
+                Placeholder: ExchangeRateHistoryStartDateRule.Format,
+                AllowEmpty: true,
+                Rule: ExchangeRateHistoryStartDateRule.Validate),
+            new("exchangeRateSyncIntervalHours", "schedule", "Sync interval (hours)",
+                "How long the sync waits after a finished run before the next one, once every currency has "
+                + "caught up. Norges Bank publishes once per business day.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.ExchangeRateSyncIntervalHoursMin,
+                Max: SystemSettingsBounds.ExchangeRateSyncIntervalHoursMax,
+                Field: nameof(SystemSettingsUpdate.ExchangeRateSyncIntervalHours),
+                Load: (p, dto) => p.SetIntLoaded("exchangeRateSyncIntervalHours", dto.ExchangeRateSyncIntervalHours),
+                Write: (p, req) => req.ExchangeRateSyncIntervalHours = p.IntRequest("exchangeRateSyncIntervalHours")),
+        ]),
     ];
 
     private bool Editable(SettingClaim claim) => claim switch

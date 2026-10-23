@@ -501,6 +501,51 @@ builder.Services.AddTransient<Odyssey.Core.Journal.Geocoding.ILocationSearchSour
     new Odyssey.Core.Journal.Geocoding.OpenMeteoLocationSearch(sp.GetRequiredService<IHttpClientFactory>()
         .CreateClient(nameof(Odyssey.Core.Journal.Geocoding.OpenMeteoLocationSearch))));
 
+// Exchange-rate sync (issue #349). The Norges Bank client has a COMPILE-TIME base address that no setting
+// or input can change, does not follow redirects (a 3xx is ProviderMalformed), decompresses only
+// gzip/deflate/brotli (the 10 MB cap in NorgesBankClient counts inflated bytes) and has its loggers
+// removed. A plain HttpClient: no resilience handler, whose own timeouts and retries would compound with
+// the client's 15 s timeout and single retry. The User-Agent names no version, so a request does not
+// disclose the build.
+builder.Services.AddHttpClient(nameof(Odyssey.Core.Finance.ExchangeRateSync.Providers.NorgesBankClient), http =>
+    {
+        http.BaseAddress = new Uri(Odyssey.Core.Finance.ExchangeRateSync.Providers.NorgesBankClient.BaseAddress);
+        // The client's own linked token enforces the 15 s; this is only a backstop.
+        http.Timeout = TimeSpan.FromSeconds(60);
+        http.DefaultRequestHeaders.UserAgent.ParseAdd(Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncConstants.UserAgent);
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+    {
+        AllowAutoRedirect = false,
+        AutomaticDecompression = System.Net.DecompressionMethods.GZip
+            | System.Net.DecompressionMethods.Deflate
+            | System.Net.DecompressionMethods.Brotli,
+    })
+    .RemoveAllLoggers();
+builder.Services.AddSingleton(Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncPacing.Default);
+builder.Services.AddTransient(sp => new Odyssey.Core.Finance.ExchangeRateSync.Providers.NorgesBankClient(
+    sp.GetRequiredService<IHttpClientFactory>()
+        .CreateClient(nameof(Odyssey.Core.Finance.ExchangeRateSync.Providers.NorgesBankClient)),
+    sp.GetRequiredService<Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncPacing>()));
+// A singleton: the 24 h provider list and its single-flight gate must outlive a request.
+builder.Services.AddSingleton<Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSupportedListCache>();
+builder.Services.AddScoped<Odyssey.Core.Finance.ExchangeRateSync.IExchangeRateSyncSettingsLookup, Odyssey.Api.SystemSettings.ExchangeRateSyncSettingsLookup>();
+builder.Services.AddScoped<Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncService>();
+builder.Services.AddScoped<Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncCurrencyService>();
+// The scheduler is NOT registered under Testing (issue #349 §3): the fast tiers drive the sync service
+// directly, and run-now executes inline so no test leaves a Running row holding the guard.
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddSingleton<Odyssey.Api.ExchangeRateSync.IExchangeRateSyncDispatcher, Odyssey.Api.ExchangeRateSync.InlineExchangeRateSyncDispatcher>();
+}
+else
+{
+    builder.Services.AddSingleton<Odyssey.Api.ExchangeRateSync.ChannelExchangeRateSyncDispatcher>();
+    builder.Services.AddSingleton<Odyssey.Api.ExchangeRateSync.IExchangeRateSyncDispatcher>(sp =>
+        sp.GetRequiredService<Odyssey.Api.ExchangeRateSync.ChannelExchangeRateSyncDispatcher>());
+    builder.Services.AddHostedService<Odyssey.Api.ExchangeRateSync.ExchangeRateSyncScheduler>();
+}
+
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<DataExportService>();
 

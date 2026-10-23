@@ -259,6 +259,12 @@ public sealed class ExchangeRateExport
     public decimal Rate { get; init; }
     public DateTime AsOf { get; init; }
     public DateTime CreatedAt { get; init; }
+
+    /// <summary>
+    /// Which provider a fetched row came from; null for a hand-entered rate (issue #349 §7.10). A future
+    /// import must carry it across rather than defaulting every row to manual.
+    /// </summary>
+    public ExchangeRateProvider? Provider { get; init; }
 }
 
 public sealed class TransactionExport

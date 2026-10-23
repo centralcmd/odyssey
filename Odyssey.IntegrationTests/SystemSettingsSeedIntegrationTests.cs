@@ -60,6 +60,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             $"{SystemSettingsDefaults.ContractMaxSmartTagsPerContract}"),
         (SystemSettingsKeys.PropertyMaxSmartTagsPerProperty,
             $"{SystemSettingsDefaults.PropertyMaxSmartTagsPerProperty}"),
+        (SystemSettingsKeys.ExchangeRateHistoryStartDate, SystemSettingsDefaults.ExchangeRateHistoryStartDate),
+        (SystemSettingsKeys.ExchangeRateSyncIntervalHours,
+            $"{SystemSettingsDefaults.ExchangeRateSyncIntervalHours}"),
     ];
 
     [SkippableFact]
@@ -83,8 +86,8 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             // cap (issue #166), then -3 when the standalone subscriptions feature was removed and its
             // migration deleted the three summary-limit rows, and -5 when the standalone
             // insurance-policy feature went the same way, then +1 for the per-property smart-tag cap
-            // (issue #167).
-            Assert.Equal(65, rows.Count);
+            // (issue #167), then +2 for the exchange-rate sync start date and interval (issue #349).
+            Assert.Equal(67, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)

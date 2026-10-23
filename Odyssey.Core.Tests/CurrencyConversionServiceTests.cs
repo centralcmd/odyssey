@@ -190,8 +190,9 @@ public class CurrencyConversionServiceTests
         var timeline = await new CurrencyConversionService(context)
             .GetRateTimelineToAsync("USD", ["EUR"], windowStart, windowStart.AddDays(100));
 
-        // Both tied rows come back; the 17:00 entry sorts last, so a forward walk lands on it.
-        Assert.Equal([7m, 8m], timeline["EUR"].Select(point => point.Rate));
+        // The merged step series (issue #349) carries one point per instant, the tie resolved by the
+        // shared ordering: the 17:00 entry wins, so a forward walk lands on it.
+        Assert.Equal([8m], timeline["EUR"].Select(point => point.Rate));
     }
 
     /// <summary>A currency with nothing before the window gets no carry-in rather than someone else's.</summary>

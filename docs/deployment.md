@@ -1001,6 +1001,46 @@ overwrites in place and keeps no previous value anywhere in the application, so 
 
 Deleting a user leaves every location they created; only the attribution is cleared.
 
+## Exchange-rate sync: what leaves the deployment, and what changes for existing rates
+
+Issue #349 added a scheduled sync of exchange rates from **Norges Bank** (`data.norges-bank.no`).
+It is off until an Admin enables a currency under *System settings*.
+
+### Release note
+
+- **Existing direct rates can lose to a NOK hop.** A pair with no direct rate now converts through NOK
+  (`A → NOK → B`), and when both exist the one dated later wins — the direct rate keeps the tie on the
+  same UTC date. So a hand-entered `USD → EUR` dated 2025 stops being used once USD and EUR sync. That
+  is intended.
+- **A date-only manual rate loses to the same day's fetched rate.** Fetched rates are stamped at 16:00
+  Norwegian time (14:00 or 15:00 UTC); a manual rate entered for a date is stamped 00:00. To override a
+  fetched day, enter a manual rate with a later time.
+- **Future-dated rates now count only from their date** and list with the status *Upcoming*. Before,
+  a rate dated next week was already used for conversions.
+- **Fetched rates cannot be edited.** `PUT /api/exchange-rates/{id}` on one is a `422`; deleting one
+  needs `system-settings.update` as well as `exchangerates.delete` (Admin). Owner keeps editing and
+  deleting manual rates.
+- **Rolling back the migration** (`AddExchangeRateSync`) keeps the rows but drops the column that says
+  they were fetched, so they then read as manual. `Down()` restores schema, not provenance.
+- **No new claims**, so nobody needs to sign out. No new configuration: the start date and interval are
+  System settings, and nothing is carried over from the environment (both keys are new).
+- **The runtime image needs `tzdata`** for `Europe/Oslo`, which the API Dockerfile already installs.
+  Without it the sync runs fail with *Time zone unavailable*; the API still starts.
+
+### The data flow
+
+The scheduler runs inside the API process, wakes every minute and starts a run when one is due (after
+the configured interval, or 5 minutes later while history is still being backfilled). A run sends
+Norges Bank only **currency codes and dates** — no user, account, amount or other household data, and
+no API key. The enabled set does reveal which currencies the household cares about. The host is a
+compile-time constant, redirects are not followed, responses are capped at 10 MB, and each run makes at
+most 10 requests at least 1 s apart. Rates are published under NLOD 2.0; Odyssey shows the credit
+*Source: Norges Bank (NLOD 2.0)* wherever fetched rates appear.
+
+The run log (`ExchangeRateSyncRuns`, newest 500 kept) records each run's trigger, status, error kind,
+span, currencies and row counts. Per-currency changes, manual runs and purges are also written to the
+application log under the System settings audit category, with the acting user's id.
+
 ## Security checklist
 
 - [ ] `ASPNETCORE_ENVIRONMENT=Production` (Swagger off; set in the overlay) — and **not**

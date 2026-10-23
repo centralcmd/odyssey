@@ -260,4 +260,9 @@ public static class SystemSettingsBounds
     /// The identical constraint as <see cref="ContractMaxSmartTagsPerContractMax"/>.
     /// </summary>
     public const int PropertyMaxSmartTagsPerPropertyMax = ListDefaults.MaxFilterArrayLength;
+
+    /// <summary>One hour to one week (issue #349 §8). Below six hours the advisory says why it buys nothing.</summary>
+    public const int ExchangeRateSyncIntervalHoursMin = 1;
+
+    public const int ExchangeRateSyncIntervalHoursMax = 168;
 }

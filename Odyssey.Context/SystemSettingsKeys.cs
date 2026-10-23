@@ -196,6 +196,15 @@ public static class SystemSettingsKeys
     public const string FileAnalysisModel = "FileAnalysisModel";
     public const string FileAnalysisBaseUrl = "FileAnalysisBaseUrl";
 
+    // ---------------------------------------------------------------------------------------------
+    // Exchange-rate sync (issue #349). The global history start date is a string so that EMPTY can
+    // mean "1 January of the current UTC year", resolved at run time; the interval is how long the
+    // scheduler waits after a finished run when nothing is left to catch up on.
+    // ---------------------------------------------------------------------------------------------
+
+    public const string ExchangeRateHistoryStartDate = "ExchangeRateHistoryStartDate";
+    public const string ExchangeRateSyncIntervalHours = "ExchangeRateSyncIntervalHours";
+
     public static readonly string[] AllKeys =
     [
         RequireTwoFactor,
@@ -263,6 +272,8 @@ public static class SystemSettingsKeys
         FileAnalysisEnabled,
         FileAnalysisModel,
         FileAnalysisBaseUrl,
+        ExchangeRateHistoryStartDate,
+        ExchangeRateSyncIntervalHours,
     ];
 
     /// <summary>

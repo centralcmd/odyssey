@@ -25,6 +25,10 @@ public class DomainExceptionHierarchyGuardTests
         // Internal to the geocoding clients and never escapes them: each client turns it into a
         // GeocodingUnavailableException (a 503) or a partial result (issue #350).
         "Odyssey.Core.Journal.Geocoding.GeocodingProviderException",
+        // A Norges Bank request failure (issue #349): recorded on the sync run as its ErrorKind, never
+        // shaped for a client. The one path that surfaces it — enabling a currency while the provider
+        // list is down — raises ExchangeRateSupportedListUnavailableException (a 503) instead.
+        "Odyssey.Core.Finance.ExchangeRateSync.Providers.ExchangeRateProviderException",
     ];
 
     [Fact]

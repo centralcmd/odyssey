@@ -1,19 +1,39 @@
 using Odyssey.Context;
+using Odyssey.Core.Finance.ExchangeRateSync;
 using Microsoft.EntityFrameworkCore;
 
 namespace Odyssey.Core.Finance;
 
 /// <summary>
-/// Converts amounts between currencies using the latest manually-entered <see cref="ExchangeRate"/>.
-/// v1 rules: a same-currency conversion is 1:1; otherwise the newest direct (from, to) rate is used.
-/// There is no inversion or triangulation — a (to, from) rate does not satisfy a (from, to) request.
-/// A missing rate yields <c>null</c> so callers can flag the amount as unconvertible.
+/// Converts amounts between currencies using the latest <see cref="ExchangeRate"/> in force.
 /// </summary>
-public class CurrencyConversionService(OdysseyContext context)
+/// <remarks>
+/// <para>
+/// Every method resolves <c>A → B</c> the same way (issue #349 §3): the same currency is 1:1; the
+/// <b>direct</b> candidate is the latest <c>A → B</c> row; the <b>hop</b> candidate — when neither side is
+/// the hub — is the latest <c>A → NOK</c> times the latest <c>NOK → B</c>, effective from the OLDER leg's
+/// instant. When both exist the later UTC calendar date wins and the same date goes to the direct one,
+/// so a stale hand-entered direct rate does not beat today's fetched data and a direct rate entered the
+/// same day is not beaten by the hop. There is still no inversion: a <c>(B, A)</c> row never satisfies
+/// <c>(A, B)</c> — the sync stores both directions. A missing rate yields <c>null</c> so callers can flag
+/// the amount as unconvertible.
+/// </para>
+/// <para>
+/// "Latest" is <see cref="ExchangeRateOrdering"/>, and it is bounded: the unbounded lookups take
+/// <c>AsOf ≤ now</c>, so a future-dated rate is ignored until its date arrives; the bounded ones keep
+/// their exclusive <c>AsOf &lt; bound</c> (issue #90 AC2). The hop is never stored, and its composite is
+/// the unrounded product of its legs.
+/// </para>
+/// </remarks>
+public class CurrencyConversionService(OdysseyContext context, TimeProvider? injectedTimeProvider = null)
 {
+    private const string Hub = ExchangeRateSyncConstants.BaseCurrencyCode;
+
+    private readonly TimeProvider timeProvider = injectedTimeProvider ?? TimeProvider.System;
+
     /// <summary>
-    /// Converts <paramref name="amount"/> from one currency to another using the latest rate.
-    /// Returns <c>null</c> when no direct rate exists (and the currencies differ).
+    /// Converts <paramref name="amount"/> from one currency to another using the latest rate in force.
+    /// Returns <c>null</c> when neither a direct rate nor a NOK hop exists (and the currencies differ).
     /// </summary>
     public async Task<decimal?> ConvertAsync(decimal amount, string fromCurrencyCode, string toCurrencyCode, CancellationToken cancellationToken = default)
     {
@@ -25,28 +45,22 @@ public class CurrencyConversionService(OdysseyContext context)
             return amount;
         }
 
-        var rate = await context.ExchangeRates
-            .Where(value => value.FromCurrencyCode == from && value.ToCurrencyCode == to)
-            .OrderByDescending(value => value.AsOf)
-            .ThenByDescending(value => value.UpdatedAt ?? value.CreatedAt)
-            .Select(value => (decimal?)value.Rate)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return rate is null ? null : amount * rate.Value;
+        var rates = await GetLatestRatesToAsync(to, [from], cancellationToken: cancellationToken);
+        return rates.TryGetValue(from, out var rate) ? amount * rate : null;
     }
 
     /// <summary>
     /// Resolves the latest rate from each of <paramref name="fromCurrencyCodes"/> into
-    /// <paramref name="toCurrencyCode"/> in a single query. The map only contains pairs that
-    /// have a rate; the same-currency case is intentionally omitted (callers treat it as 1:1).
+    /// <paramref name="toCurrencyCode"/>, direct or through the hub, in one query. The map only contains
+    /// currencies that resolve; the same-currency case is intentionally omitted (callers treat it as 1:1).
     /// Used by the totals computation to avoid one query per account.
     /// </summary>
     /// <param name="asOfExclusive">
     /// When given, only rates with <c>AsOf &lt;</c> this instant are considered — "latest as of then"
-    /// rather than "latest outright" (issue #90 G7). Exclusive on purpose: the net-worth history
+    /// rather than "latest in force now" (issue #90 G7). Exclusive on purpose: the net-worth history
     /// measures each point at its period's exclusive upper bound, and a rate stamped exactly on a
     /// bound that counted here but not there would make the two disagree at the one point AC2
-    /// requires to be equal.
+    /// requires to be equal. Without it the bound is <c>AsOf ≤ now</c>.
     /// </param>
     public async Task<IReadOnlyDictionary<string, decimal>> GetLatestRatesToAsync(
         string toCurrencyCode,
@@ -55,32 +69,38 @@ public class CurrencyConversionService(OdysseyContext context)
         CancellationToken cancellationToken = default)
     {
         var to = CurrencyValidationService.Normalize(toCurrencyCode);
-        var fromCodes = fromCurrencyCodes
-            .Select(CurrencyValidationService.Normalize)
-            .Where(code => !string.Equals(code, to, StringComparison.Ordinal))
-            .Distinct()
-            .ToList();
+        var fromCodes = NormalizeFrom(fromCurrencyCodes, to);
 
         if (fromCodes.Count == 0)
         {
             return new Dictionary<string, decimal>();
         }
 
-        // The composite (From, To, AsOf) index serves this Where; the per-pair "latest"
-        // pick is done in memory after materializing only the relevant pairs' rows.
-        var rates = await context.ExchangeRates
-            .Where(value => value.ToCurrencyCode == to && fromCodes.Contains(value.FromCurrencyCode))
-            .Where(value => asOfExclusive == null || value.AsOf < asOfExclusive)
-            .ToListAsync(cancellationToken);
+        var bounded = asOfExclusive is { } exclusive
+            ? Candidates(fromCodes, to).Where(rate => rate.AsOf < exclusive)
+            : Candidates(fromCodes, to).Where(rate => rate.AsOf <= Now);
 
-        return rates
-            .GroupBy(value => value.FromCurrencyCode)
-            .ToDictionary(
-                group => group.Key,
-                group => group
-                    .OrderByDescending(value => value.AsOf)
-                    .ThenByDescending(value => value.UpdatedAt ?? value.CreatedAt)
-                    .First().Rate);
+        var latest = await LatestPerPairAsync(bounded, cancellationToken);
+
+        var result = new Dictionary<string, decimal>(StringComparer.Ordinal);
+        foreach (var from in fromCodes)
+        {
+            Point? direct = latest.TryGetValue((from, to), out var found) ? found : null;
+            Point? hop = null;
+            if (!IsHub(from) && !IsHub(to)
+                && latest.TryGetValue((from, Hub), out var first)
+                && latest.TryGetValue((Hub, to), out var second))
+            {
+                hop = Compose(first, second);
+            }
+
+            if (Choose(direct, hop) is { } chosen)
+            {
+                result[from] = chosen.Rate;
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -115,8 +135,11 @@ public class CurrencyConversionService(OdysseyContext context)
     /// test tiers use as well as on MariaDB.
     /// </para>
     /// <para>
-    /// Same v1 rules as everything else here: direct <c>(from, to)</c> pairs only, no inversion and no
-    /// triangulation, and the same-currency case is omitted because callers treat it as 1:1.
+    /// The same resolution as everything else here (issue #349 §3 "Timeline merge"): three step series
+    /// are loaded — direct <c>A → B</c>, <c>A → NOK</c> and <c>NOK → B</c> — and merged into one, with a
+    /// point at every instant where any of them changes carrying rule 4's winner. So a series can switch
+    /// between direct and hop over time while the caller still walks an ordinary step series. No
+    /// inversion, and the same-currency case is omitted because callers treat it as 1:1.
     /// </para>
     /// </remarks>
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<RatePoint>>> GetRateTimelineToAsync(
@@ -127,63 +150,203 @@ public class CurrencyConversionService(OdysseyContext context)
         CancellationToken cancellationToken = default)
     {
         var to = CurrencyValidationService.Normalize(toCurrencyCode);
-        var fromCodes = fromCurrencyCodes
-            .Select(CurrencyValidationService.Normalize)
-            .Where(code => !string.Equals(code, to, StringComparison.Ordinal))
-            .Distinct()
-            .ToList();
+        var fromCodes = NormalizeFrom(fromCurrencyCodes, to);
 
         if (fromCodes.Count == 0)
         {
             return new Dictionary<string, IReadOnlyList<RatePoint>>();
         }
 
-        // Everything that falls inside the window.
-        var inWindow = context.ExchangeRates
-            .Where(rate => rate.ToCurrencyCode == to
-                && fromCodes.Contains(rate.FromCurrencyCode)
-                && rate.AsOf >= fromBound
-                && rate.AsOf < toBound);
+        var candidates = Candidates(fromCodes, to);
 
-        // The instant of each currency's latest rate before the window: one grouped MAX, which the
-        // (From, To, AsOf) index answers with a loose index scan rather than a row-by-row search.
-        var carryInInstants = context.ExchangeRates
-            .Where(rate => rate.ToCurrencyCode == to
-                && fromCodes.Contains(rate.FromCurrencyCode)
-                && rate.AsOf < fromBound)
-            .GroupBy(rate => rate.FromCurrencyCode)
-            .Select(group => new { FromCurrencyCode = group.Key, AsOf = group.Max(rate => rate.AsOf) });
+        // Everything that falls inside the window.
+        var inWindow = candidates.Where(rate => rate.AsOf >= fromBound && rate.AsOf < toBound);
+
+        // The instant of each pair's latest rate before the window: one grouped MAX, which the
+        // (From, To, AsOf) index prefix answers with a loose index scan rather than a row-by-row search.
+        var carryInInstants = candidates
+            .Where(rate => rate.AsOf < fromBound)
+            .GroupBy(rate => new { rate.FromCurrencyCode, rate.ToCurrencyCode })
+            .Select(group => new
+            {
+                group.Key.FromCurrencyCode,
+                group.Key.ToCurrencyCode,
+                AsOf = group.Max(rate => rate.AsOf),
+            });
 
         // …joined back to the rows sitting at those instants. A tie on AsOf yields both rows, which
-        // the (AsOf, Tiebreak) ordering below resolves exactly as it does anywhere else.
+        // the ordering below resolves exactly as it does anywhere else.
         var carryIn =
-            from rate in context.ExchangeRates
+            from rate in candidates
             join instant in carryInInstants
-                on new { rate.FromCurrencyCode, rate.AsOf } equals new { instant.FromCurrencyCode, instant.AsOf }
-            where rate.ToCurrencyCode == to && rate.AsOf < fromBound
+                on new { rate.FromCurrencyCode, rate.ToCurrencyCode, rate.AsOf }
+                equals new { instant.FromCurrencyCode, instant.ToCurrencyCode, instant.AsOf }
+            where rate.AsOf < fromBound
             select rate;
 
         var rows = await inWindow
             .Concat(carryIn)
-            .Select(rate => new
+            .Select(rate => new Row(
+                rate.FromCurrencyCode, rate.ToCurrencyCode, rate.AsOf, rate.UpdatedAt ?? rate.CreatedAt,
+                rate.ExchangeRateId, rate.Rate))
+            .ToListAsync(cancellationToken);
+
+        var series = rows
+            .GroupBy(row => (row.From, row.To))
+            .ToDictionary(group => group.Key, group => StepSeries(group));
+
+        var result = new Dictionary<string, IReadOnlyList<RatePoint>>(StringComparer.Ordinal);
+        foreach (var from in fromCodes)
+        {
+            var direct = series.GetValueOrDefault((from, to));
+            var first = !IsHub(from) && !IsHub(to) ? series.GetValueOrDefault((from, Hub)) : null;
+            var second = !IsHub(from) && !IsHub(to) ? series.GetValueOrDefault((Hub, to)) : null;
+
+            var merged = Merge(direct, first, second);
+            if (merged.Count > 0)
             {
-                rate.FromCurrencyCode,
-                rate.AsOf,
-                Tiebreak = rate.UpdatedAt ?? rate.CreatedAt,
-                rate.Rate,
-            })
+                result[from] = merged;
+            }
+        }
+
+        return result;
+    }
+
+    private DateTime Now => timeProvider.GetUtcNow().UtcDateTime;
+
+    private static bool IsHub(string code) => string.Equals(code, Hub, StringComparison.Ordinal);
+
+    private static List<string> NormalizeFrom(IEnumerable<string> fromCurrencyCodes, string to) =>
+        fromCurrencyCodes
+            .Select(CurrencyValidationService.Normalize)
+            .Where(code => !string.Equals(code, to, StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
+    /// Every row any of the requested resolutions can use: the direct pairs and both hop legs. A superset
+    /// of the needed pairs (a <c>NOK → NOK</c> row cannot exist), which the per-pair dictionary ignores.
+    /// </summary>
+    private IQueryable<ExchangeRate> Candidates(IReadOnlyCollection<string> fromCodes, string to)
+    {
+        var froms = fromCodes.Append(Hub).Distinct(StringComparer.Ordinal).ToList();
+        var tos = new[] { to, Hub }.Distinct(StringComparer.Ordinal).ToList();
+        return context.ExchangeRates.AsNoTracking()
+            .Where(rate => froms.Contains(rate.FromCurrencyCode) && tos.Contains(rate.ToCurrencyCode));
+    }
+
+    /// <summary>
+    /// The latest row per pair inside <paramref name="bounded"/>, resolved in SQL as a grouped
+    /// <c>MAX(AsOf)</c> joined back to its rows — never by materialising a pair's history (issue #349
+    /// §10). Only the few rows sharing the maximum instant reach memory, where the tiebreak applies.
+    /// </summary>
+    private static async Task<Dictionary<(string From, string To), Point>> LatestPerPairAsync(
+        IQueryable<ExchangeRate> bounded, CancellationToken cancellationToken)
+    {
+        var instants = bounded
+            .GroupBy(rate => new { rate.FromCurrencyCode, rate.ToCurrencyCode })
+            .Select(group => new
+            {
+                group.Key.FromCurrencyCode,
+                group.Key.ToCurrencyCode,
+                AsOf = group.Max(rate => rate.AsOf),
+            });
+
+        var rows = await (
+                from rate in bounded
+                join instant in instants
+                    on new { rate.FromCurrencyCode, rate.ToCurrencyCode, rate.AsOf }
+                    equals new { instant.FromCurrencyCode, instant.ToCurrencyCode, instant.AsOf }
+                select new Row(
+                    rate.FromCurrencyCode, rate.ToCurrencyCode, rate.AsOf, rate.UpdatedAt ?? rate.CreatedAt,
+                    rate.ExchangeRateId, rate.Rate))
             .ToListAsync(cancellationToken);
 
         return rows
-            .GroupBy(row => row.FromCurrencyCode, StringComparer.Ordinal)
+            .GroupBy(row => (row.From, row.To))
             .ToDictionary(
                 group => group.Key,
-                group => (IReadOnlyList<RatePoint>)group
-                    .OrderBy(row => row.AsOf)
-                    .ThenBy(row => row.Tiebreak)
-                    .Select(row => new RatePoint(row.AsOf, row.Rate))
-                    .ToList(),
-                StringComparer.Ordinal);
+                group => ExchangeRateOrdering.Newest(group)!.ToPoint());
+    }
+
+    /// <summary>One pair's rows as a step series: one point per instant, the newest row at it winning.</summary>
+    private static List<Point> StepSeries(IEnumerable<Row> rows) =>
+        rows.GroupBy(row => row.AsOf)
+            .Select(group => ExchangeRateOrdering.Newest(group)!.ToPoint())
+            .OrderBy(point => point.AsOf)
+            .ToList();
+
+    private static Point Compose(Point first, Point second) =>
+        new(first.AsOf < second.AsOf ? first.AsOf : second.AsOf, first.Rate * second.Rate);
+
+    /// <summary>Rule 4: the later UTC calendar date wins; the same date goes to the direct candidate.</summary>
+    private static Point? Choose(Point? direct, Point? hop) =>
+        (direct, hop) switch
+        {
+            ({ } d, { } h) => h.AsOf.Date > d.AsOf.Date ? h : d,
+            ({ } d, null) => d,
+            (null, { } h) => h,
+            _ => null,
+        };
+
+    /// <summary>
+    /// Merges the direct series and the two hop legs into one step series: a point at every instant
+    /// where any of the three changes, carrying the rule-4 winner of the values in force then.
+    /// Consecutive equal rates collapse, so the caller sees an ordinary step series.
+    /// </summary>
+    private static List<RatePoint> Merge(List<Point>? direct, List<Point>? first, List<Point>? second)
+    {
+        var instants = new SortedSet<DateTime>();
+        foreach (var point in (direct ?? []).Concat(first ?? []).Concat(second ?? []))
+        {
+            instants.Add(point.AsOf);
+        }
+
+        var merged = new List<RatePoint>();
+        int di = -1, fi = -1, si = -1;
+        foreach (var instant in instants)
+        {
+            di = Advance(direct, di, instant);
+            fi = Advance(first, fi, instant);
+            si = Advance(second, si, instant);
+
+            Point? d = di >= 0 ? direct![di] : null;
+            Point? h = fi >= 0 && si >= 0 ? Compose(first![fi], second![si]) : null;
+            if (Choose(d, h) is not { } winner)
+            {
+                continue;
+            }
+
+            if (merged.Count == 0 || merged[^1].Rate != winner.Rate)
+            {
+                merged.Add(new RatePoint(instant, winner.Rate));
+            }
+        }
+
+        return merged;
+    }
+
+    private static int Advance(List<Point>? series, int index, DateTime instant)
+    {
+        if (series is null)
+        {
+            return -1;
+        }
+
+        while (index + 1 < series.Count && series[index + 1].AsOf <= instant)
+        {
+            index++;
+        }
+
+        return index;
+    }
+
+    private readonly record struct Point(DateTime AsOf, decimal Rate);
+
+    private sealed record Row(string From, string To, DateTime AsOf, DateTime Tiebreak, Guid ExchangeRateId, decimal Rate)
+        : IRateCandidate
+    {
+        public Point ToPoint() => new(AsOf, Rate);
     }
 
     /// <summary>
