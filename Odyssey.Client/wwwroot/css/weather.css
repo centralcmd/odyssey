@@ -5,7 +5,7 @@
    needs them. Tokens only; the design's odd sizes snap to the nearest step of each scale. */
 
 .wx-muted { color: var(--mud-palette-text-secondary); }
-.wx-attr { color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.wx-attr { color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
 .wx-attr a { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; }
 .wx-attr a:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
 
@@ -120,3 +120,10 @@
 .odc-sfield-ctrl .mud-select .mud-input-outlined-border { border: 0 !important; }
 .odc-sfield-ctrl .mud-select .mud-input.mud-input-outlined { background: transparent; }
 .odc-sfield-ctrl .mud-select .mud-input-slot { padding-left: 0; padding-right: 0; }
+
+/* A failure's explanation travels with its label (WCAG 1.4.13: not a hover-only title). */
+.wx-fail { flex-wrap: wrap; }
+.wx-fail-help { color: var(--mud-palette-text-secondary); }
+
+/* The day strip is focusable because it scrolls; show where focus is. */
+.wx-days:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-md); }

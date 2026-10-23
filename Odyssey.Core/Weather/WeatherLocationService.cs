@@ -104,7 +104,7 @@ public sealed class WeatherLocationService
         var created = false;
         var changes = new List<string>();
 
-        var found = await InTransactionAsync(async () =>
+        var found = await FencedAsync(() => InTransactionAsync(async () =>
         {
             changes.Clear();
             var location = await context.Locations.FirstOrDefaultAsync(l => l.LocationId == locationId, cancellationToken);
@@ -225,7 +225,7 @@ public sealed class WeatherLocationService
 
             await context.SaveChangesAsync(cancellationToken);
             return true;
-        }, cancellationToken);
+        }, cancellationToken));
 
         if (!found)
         {
@@ -246,7 +246,7 @@ public sealed class WeatherLocationService
     {
         var previous = 0;
         var changed = new List<string>();
-        var found = await InTransactionAsync(async () =>
+        var found = await FencedAsync(() => InTransactionAsync(async () =>
         {
             changed.Clear();
             var weather = await context.WeatherLocations.FirstOrDefaultAsync(w => w.LocationId == locationId, cancellationToken);
@@ -320,7 +320,7 @@ public sealed class WeatherLocationService
 
             await context.SaveChangesAsync(cancellationToken);
             return true;
-        }, cancellationToken);
+        }, cancellationToken));
 
         if (!found)
         {
@@ -546,6 +546,24 @@ public sealed class WeatherLocationService
     private static DateTime Utc(DateTime value) => DateTime.SpecifyKind(value, DateTimeKind.Utc);
 
     private static DateTime? Utc(DateTime? value) => value is { } v ? Utc(v) : null;
+
+    /// <summary>
+    /// An Admin write rotates the schedule's <c>Version</c>, so it loses to a fetch claim or a purge fence
+    /// that rotated it first. That is a 409 the client can retry, the same answer a purge gives, never a 500.
+    /// </summary>
+    private async Task<bool> FencedAsync(Func<Task<bool>> work)
+    {
+        try
+        {
+            return await work();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            context.ChangeTracker.Clear();
+            throw Conflict(WeatherConflictException.FetchInProgress,
+                "This location's weather is changing right now. Try again in a minute.");
+        }
+    }
 
     /// <summary>
     /// Runs <paramref name="work"/> in one transaction inside the execution strategy (a retrying strategy

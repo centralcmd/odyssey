@@ -67,7 +67,7 @@
                         {
                             <OdsChip Tone="OdsChipTone.Outline" Icon="inventory_2" Class="sm">Archived</OdsChip>
                         }
-                        @if (_canReadWeather && WeatherRow(l) is { } wx)
+                        @if (ShowWeather && WeatherRow(l) is { } wx)
                         {
                             @WeatherChip(wx, l)
                         }
@@ -129,7 +129,7 @@
                                 </OdsInfoTile>
                             </OdsInfoTileGrid>
                         }
-                        @if (_canReadWeather)
+                        @if (ShowWeather)
                         {
                             <LocationWeatherSection Location="l" Row="WeatherRow(l)" CanUpdate="_canUpdateWeather"
                                                     CanPurge="_canPurgeWeather"

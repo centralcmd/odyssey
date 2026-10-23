@@ -401,15 +401,43 @@ public sealed class WeatherReadService
     }
 
     /// <summary><c>stale: true</c> — a refresh was due and failed, so what is shown is older than it should be.</summary>
-    private async Task<bool> StaleAsync(Resolution resolution, Guid locationId, CancellationToken cancellationToken) =>
-        resolution.Selectable
-        && await context.WeatherLocationSchedules.AsNoTracking()
-            .AnyAsync(s => s.LocationId == locationId && s.ForecastFailureKind != null, cancellationToken);
+    /// <summary>
+    /// Stale: the last refresh failed, OR the newest forecast is older than three refresh intervals (never
+    /// under 3 h). The age half covers what a recorded failure cannot: a scheduled place paused past a
+    /// lowered cap, or a scheduler that is not running, would otherwise serve a frozen forecast as current.
+    /// </summary>
+    private async Task<bool> StaleAsync(Resolution resolution, Guid locationId, CancellationToken cancellationToken)
+    {
+        if (!resolution.Selectable)
+        {
+            return false;
+        }
+
+        var schedule = await context.WeatherLocationSchedules.AsNoTracking()
+            .Where(s => s.LocationId == locationId)
+            .Select(s => new { s.ForecastFailureKind, s.LastForecastSuccessUtc })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (schedule is null)
+        {
+            return false;
+        }
+
+        if (schedule.ForecastFailureKind is not null)
+        {
+            return true;
+        }
+
+        var interval = TimeSpan.FromMinutes((await settings.GetAsync(cancellationToken)).RefreshIntervalMinutes);
+        var staleAfter = interval * 3 > StaleFloor ? interval * 3 : StaleFloor;
+        return schedule.LastForecastSuccessUtc is { } last && Now - last > staleAfter;
+    }
+
+    private static readonly TimeSpan StaleFloor = TimeSpan.FromHours(3);
 
     private async Task<List<WeatherForecastStep>> EffectiveStepsAsync(
         Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken) =>
-        WeatherComposer.EffectiveSteps(await context.WeatherForecastSteps.AsNoTracking()
-            .Where(s => s.LocationId == locationId && s.TimeUtc >= fromUtc && s.TimeUtc < toUtc)
+        WeatherComposer.EffectiveSteps(await WeatherComposer
+            .EffectiveStepsQuery(context.WeatherForecastSteps.AsNoTracking(), locationId, fromUtc, toUtc)
             .ToListAsync(cancellationToken));
 
     private async Task<List<WeatherDaySummary>> DaysAsync(

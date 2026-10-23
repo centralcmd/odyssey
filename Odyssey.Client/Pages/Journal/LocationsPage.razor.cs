@@ -250,7 +250,7 @@ public partial class LocationsPage
         copyCoordinates: EventCallback.Factory.Create(this, () => CopyAsync(LocationVisuals.FormatPair(l.Latitude, l.Longitude), "Coordinates copied.")),
         copyId: EventCallback.Factory.Create(this, () => CopyAsync(l.LocationId.ToString(), "ID copied.")),
         toggleArchive: EventCallback.Factory.Create(this, () => SetArchived(l, l.Archived is null)),
-        weather: _canReadWeather ? WeatherActions(l) : null);
+        weather: ShowWeather ? WeatherActions(l) : null);
 
     /// <summary>
     /// The row menu: Edit and Archive / Restore need <c>locations.update</c> and are ABSENT without it;
@@ -412,6 +412,11 @@ public partial class LocationsPage
 
     private bool _canReadSettings;
     private Dictionary<Guid, ExistingWeatherLocation> _weatherRows = [];
+    private bool _weatherLoaded;
+    private readonly HashSet<Guid> _refreshing = [];
+
+    /// <summary>Weather shows only once its rows are known — never a guess from an empty list.</summary>
+    private bool ShowWeather => _canReadWeather && _weatherLoaded;
     private int? _weatherCap;
     private Guid _wxKey;
     private ExistingLocation? _wxSettingsLocation;
@@ -436,7 +441,16 @@ public partial class LocationsPage
             _weatherCap = settings.WeatherMaxTrackedLocations;
         var result = await rows;
         if (result.IsSuccess && result.Value is { } list)
+        {
             _weatherRows = list.ToDictionary(r => r.LocationId);
+            _weatherLoaded = true;
+        }
+        else
+        {
+            // Keep whatever was known. With nothing known, the weather surfaces stay hidden rather than
+            // offering "Turn on weather" on places that already have it (a create would then PUT defaults).
+            Snackbar.Add("Weather settings couldn’t be loaded.", Severity.Warning);
+        }
         StateHasChanged();
     }
 
@@ -547,6 +561,20 @@ public partial class LocationsPage
 
     private async Task RefreshWeatherAsync(ExistingLocation l)
     {
+        if (!_refreshing.Add(l.LocationId))
+            return;
+        try
+        {
+            await RefreshWeatherCoreAsync(l);
+        }
+        finally
+        {
+            _refreshing.Remove(l.LocationId);
+        }
+    }
+
+    private async Task RefreshWeatherCoreAsync(ExistingLocation l)
+    {
         var result = await Weather.RefreshAsync(l.LocationId);
         if (result.IsSuccess && result.Value is { } refreshed)
         {
@@ -557,6 +585,14 @@ public partial class LocationsPage
                     : refreshed.ForecastFailureKind is { } kind
                         ? $"The forecast for {l.Name} couldn’t be refreshed: {WeatherVisuals.FailureOf(kind)!.Label.ToLowerInvariant()}."
                         : $"MET Norway has nothing newer for {l.Name} yet.");
+            await LoadWeatherAsync();
+            return;
+        }
+
+        if (result.Status is System.Net.HttpStatusCode.GatewayTimeout or 0)
+        {
+            // The fetch may still be running server-side: say so and re-read rather than report a failure.
+            Announce($"The refresh for {l.Name} is taking longer than usual and may still finish. Its status updates here.");
             await LoadWeatherAsync();
             return;
         }

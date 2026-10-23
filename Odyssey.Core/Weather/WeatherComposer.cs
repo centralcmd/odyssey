@@ -13,6 +13,23 @@ namespace Odyssey.Core.Weather;
 /// </summary>
 public static class WeatherComposer
 {
+    /// <summary>
+    /// The effective steps of a location in <c>[fromUtc, toUtc)</c>, picked IN THE DATABASE: a step is kept
+    /// only when no step at the same instant outranks it by the same total order <see cref="EffectiveSteps"/>
+    /// uses. Superseded runs are never pruned (they are history), so selecting every candidate and ranking in
+    /// memory would materialise one row per stored run per hour on every read — a cost any reader could
+    /// multiply. The anti-join walks the <c>(LocationId, TimeUtc, SiteVersion, RunProviderUpdatedAt,
+    /// RunFetchedAtUtc)</c> index, so the result is one row per hour however many runs exist.
+    /// </summary>
+    public static IQueryable<WeatherForecastStep> EffectiveStepsQuery(
+        IQueryable<WeatherForecastStep> steps, Guid locationId, DateTime fromUtc, DateTime toUtc) =>
+        steps.Where(s => s.LocationId == locationId && s.TimeUtc >= fromUtc && s.TimeUtc < toUtc
+            && !steps.Any(t => t.LocationId == s.LocationId && t.TimeUtc == s.TimeUtc
+                && (t.SiteVersion > s.SiteVersion
+                    || (t.SiteVersion == s.SiteVersion && (t.RunProviderUpdatedAt > s.RunProviderUpdatedAt
+                        || (t.RunProviderUpdatedAt == s.RunProviderUpdatedAt && (t.RunFetchedAtUtc > s.RunFetchedAtUtc
+                            || (t.RunFetchedAtUtc == s.RunFetchedAtUtc && t.WeatherForecastStepId > s.WeatherForecastStepId))))))));
+
     /// <summary>One effective step per distinct <see cref="WeatherForecastStep.TimeUtc"/>, ascending.</summary>
     public static List<WeatherForecastStep> EffectiveSteps(IEnumerable<WeatherForecastStep> candidates) =>
         candidates

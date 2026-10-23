@@ -56,9 +56,18 @@ public partial class WeatherWidget
         await LoadAsync();
     }
 
-    private async Task LoadAsync()
+    /// <param name="quiet">
+    /// Reload in place, keeping the current body and the picker mounted — used after the picker saves, so
+    /// the control the viewer is on is not unmounted under their focus (WCAG 2.4.3).
+    /// </param>
+    private async Task LoadAsync(bool quiet = false)
     {
-        _phase = Phase.Loading;
+        if (!quiet)
+        {
+            _phase = Phase.Loading;
+            _announce = "Loading weather.";
+        }
+
         StateHasChanged();
 
         var options = Weather.OptionsAsync();
@@ -86,7 +95,9 @@ public partial class WeatherWidget
         var dailyResult = await daily;
         _days = dailyResult.IsSuccess && dailyResult.Value is { } d && d.Location?.LocationId == _resolved?.LocationId ? d.Days : [];
         _phase = Phase.Ready;
-        _announce = _current.Status == WeatherStatus.Ok && _resolved is { } place ? $"Weather for {place.Name} loaded." : "";
+        _announce = _current.Status == WeatherStatus.Ok && _resolved is { } place
+            ? _current.Stale ? $"Weather for {place.Name} is not up to date: MET Norway didn't answer the last refresh." : $"Weather for {place.Name} loaded."
+            : "";
         StateHasChanged();
     }
 
@@ -146,7 +157,7 @@ public partial class WeatherWidget
         }
 
         var name = next is { } chosen ? _options.Locations.FirstOrDefault(l => l.LocationId == chosen)?.Name : HouseholdDefault?.Name;
-        await LoadAsync();
+        await LoadAsync(quiet: true);
         _announce = next is not null
             ? $"Weather now shows {name}. This is saved for you only."
             : $"Weather follows the household default{(name is not null ? $", {name}" : "")}.";

@@ -364,20 +364,293 @@ public class WeatherApiTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    // ── Success paths ─────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Hourly_and_daily_return_the_fetched_forecast()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var location = await CreateLocationAsync(client);
+        await EnableAsync(client, location);
+        var from = DateTime.UtcNow;
+
+        var hourly = await client.GetFromJsonAsync<WeatherHourlyResponse>(
+            $"/api/weather/hourly?locationId={location.LocationId}&fromUtc={from:yyyy-MM-ddTHH:mm:ssZ}&toUtc={from.AddHours(6):yyyy-MM-ddTHH:mm:ssZ}", Json);
+        Assert.Equal(WeatherStatus.Ok, hourly!.Status);
+        Assert.InRange(hourly.Steps.Count, 5, 7);
+        Assert.All(hourly.Steps, step => Assert.Equal(7.5m, step.AirTemperatureC));
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var daily = await client.GetFromJsonAsync<WeatherDailyResponse>(
+            $"/api/weather/daily?locationId={location.LocationId}&from={today.AddDays(-1):yyyy-MM-dd}&to={today.AddDays(3):yyyy-MM-dd}", Json);
+        Assert.Equal(WeatherStatus.Ok, daily!.Status);
+        Assert.NotEmpty(daily.Days);
+        Assert.All(daily.Days, day => Assert.Equal(7.5m, day.Forecast!.MaxTempC));
+    }
+
+    [Fact]
+    public async Task Event_and_entry_weather_return_200_for_a_real_record()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var location = await CreateLocationAsync(client);
+        await EnableAsync(client, location);
+        await client.GetAsync($"/api/weather/current?locationId={location.LocationId}");
+
+        var start = DateTime.UtcNow.AddHours(1);
+        var eventId = Guid.NewGuid();
+        var entryId = Guid.NewGuid();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            context.CalendarEvents.Add(new CalendarEvent
+            {
+                CalendarEventId = eventId, CalendarId = Guid.NewGuid(), Title = "Walk",
+                StartDateTime = start, EndDateTime = start.AddHours(2),
+            });
+            context.JournalEntries.Add(new JournalEntry
+            {
+                JournalEntryId = entryId, ExternalUid = "e1", Title = "Today", Content = "…", EntryDate = DateTime.UtcNow,
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var forEvent = await client.GetFromJsonAsync<CalendarEventWeatherResponse>(
+            $"/api/calendar-events/{eventId}/weather?locationId={location.LocationId}", Json);
+        Assert.Equal(WeatherStatus.Ok, forEvent!.Status);
+        Assert.False(forEvent.IsAllDay);
+        Assert.NotEmpty(forEvent.Steps);
+
+        var forEntry = await client.GetFromJsonAsync<JournalEntryWeatherResponse>(
+            $"/api/journal-entries/{entryId}/weather?locationId={location.LocationId}", Json);
+        Assert.Equal(WeatherStatus.Ok, forEntry!.Status);
+        Assert.NotNull(forEntry.Day);
+    }
+
+    [Fact]
+    public async Task Apply_after_a_move_appends_site_two()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var location = await CreateLocationAsync(client);
+        await EnableAsync(client, location);
+
+        var moved = await client.PutAsJsonAsync($"/api/locations/{location.LocationId}", new UpdateLocation
+        {
+            Name = location.Name, Latitude = 60.39299m, Longitude = location.Longitude, AltitudeMeters = location.AltitudeMeters,
+            TimeZoneId = location.TimeZoneId, Source = location.Source,
+        });
+        Assert.Equal(HttpStatusCode.OK, moved.StatusCode);
+        var live = (await moved.Content.ReadFromJsonAsync<ExistingLocation>())!;
+
+        var row = await client.GetFromJsonAsync<ExistingWeatherLocation>($"/api/weather/locations/{location.LocationId}", Json);
+        Assert.True(row!.LocationMoved);
+
+        var applied = await client.PostAsJsonAsync($"/api/weather/locations/{location.LocationId}/apply-location",
+            new ApplyWeatherLocation { ExpectedLocationFingerprint = Fingerprint(live) });
+        Assert.Equal(HttpStatusCode.OK, applied.StatusCode);
+        var after = (await applied.Content.ReadFromJsonAsync<ExistingWeatherLocation>(Json))!;
+        Assert.Equal(2, after.Site.Version);
+        Assert.Equal(60.393m, after.Site.Latitude);
+        Assert.False(after.LocationMoved);
+    }
+
+    // ── Rate limits ───────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Reads_are_limited_per_user()
+    {
+        await using var factory = new WeatherFactory(Reader, configuration: new Dictionary<string, string?>
+        {
+            ["RateLimiting:WeatherRead:PermitLimit"] = "2",
+            ["RateLimiting:WeatherRead:WindowSeconds"] = "3600",
+        });
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/weather/current")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/weather/locations/options")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.GetAsync("/api/weather/preferences")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Apply_refresh_and_delete_share_one_admin_budget()
+    {
+        await using var factory = new WeatherFactory(Admin, configuration: new Dictionary<string, string?>
+        {
+            ["RateLimiting:WeatherRefresh:PermitLimit"] = "2",
+            ["RateLimiting:WeatherRefresh:WindowSeconds"] = "3600",
+        });
+        using var client = factory.CreateClient();
+        var location = await CreateLocationAsync(client);
+        await EnableAsync(client, location, tracked: true);
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"/api/weather/locations/{location.LocationId}/refresh", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"/api/weather/locations/{location.LocationId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests,
+            (await client.PostAsJsonAsync($"/api/weather/locations/{location.LocationId}/apply-location",
+                new ApplyWeatherLocation { ExpectedLocationFingerprint = Fingerprint(location) })).StatusCode);
+    }
+
+    // ── Scheduler ─────────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task The_scheduler_fetches_only_the_first_places_within_the_cap()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        foreach (var name in new[] { "One", "Two", "Three" })
+        {
+            await EnableAsync(client, await CreateLocationAsync(client, name), tracked: true);
+        }
+
+        // Lowered below the three already scheduled: only the first two by enable order refresh.
+        await factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherMaxTrackedLocations, "2");
+        Evict(factory);
+        await Scheduler(factory).RunOnceAsync(CancellationToken.None);
+
+        Assert.Equal(2, factory.Forecasts.Calls);
+        var rows = (await client.GetFromJsonAsync<PagedResult<ExistingWeatherLocation>>("/api/weather/locations", Json))!.Items;
+        Assert.Equal(["Three"], rows.Where(r => r.TrackingSuspended).Select(r => r.Name));
+    }
+
+    [Fact]
+    public async Task The_scheduler_sends_nothing_without_a_contact()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        await EnableAsync(client, await CreateLocationAsync(client), tracked: true);
+        await factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherUserAgentContact, "");
+        Evict(factory);
+
+        await Scheduler(factory).RunOnceAsync(CancellationToken.None);
+
+        Assert.Equal(0, factory.Forecasts.Calls);
+    }
+
+    [Fact]
+    public async Task The_scheduler_makes_no_frost_request_while_the_secret_is_not_set()
+    {
+        var observations = new CountingObservations();
+        await using var factory = new WeatherFactory(Admin, observations: observations);
+        using var client = factory.CreateClient();
+        await EnableAsync(client, await CreateLocationAsync(client), tracked: false);
+
+        await Scheduler(factory).RunOnceAsync(CancellationToken.None);
+
+        Assert.Equal(0, observations.Calls);
+        Assert.Equal(0, factory.Forecasts.Calls);
+    }
+
+    /// <summary>A row written directly bypasses the save path's eviction; the lookup caches for 30 s.</summary>
+    private static void Evict(WeatherFactory factory) =>
+        factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>()
+            .Remove(Odyssey.Api.SystemSettings.WeatherSettingsLookup.CacheKey);
+
+    private static Odyssey.Api.Weather.WeatherScheduler Scheduler(WeatherFactory factory) => new(
+        factory.Services.GetRequiredService<IServiceScopeFactory>(),
+        TimeProvider.System,
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<Odyssey.Api.Weather.WeatherScheduler>.Instance);
+
+    // ── Settings lookup ───────────────────────────────────────────────────────────────────────────
+
+    public static TheoryData<string, string, string?, int, int> LookupRows => new()
+    {
+        // contact, interval, default → expected interval, expected cap
+        { "ops@example.org", "120", null, 120, 5 },
+        { "ops@example.org", "9999", null, 360, 5 },
+        { "ops@example.org", "not-a-number", null, 60, 5 },
+    };
+
+    [Theory]
+    [MemberData(nameof(LookupRows))]
+    public async Task The_lookup_clamps_and_degrades_the_interval_toward_fewer_requests(
+        string contact, string interval, string? unused, int expectedInterval, int expectedCap)
+    {
+        await using var factory = new WeatherFactory(Reader, contact);
+        factory.CreateClient().Dispose();
+        await factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherRefreshIntervalMinutes, interval);
+        Evict(factory);
+
+        using var scope = factory.Services.CreateScope();
+        var settings = await scope.ServiceProvider.GetRequiredService<IWeatherSettingsLookup>().GetAsync();
+
+        Assert.Equal(expectedInterval, settings.RefreshIntervalMinutes);
+        Assert.Equal(expectedCap, settings.MaxTrackedLocations);
+        Assert.Equal(interval == "not-a-number", settings.IsDegraded);
+        Assert.Null(unused);
+    }
+
+    [Theory]
+    [InlineData("ops@example.org\r\nX-Injected: 1")]
+    [InlineData("http://example.org")]
+    [InlineData("not an address")]
+    public async Task A_stored_contact_the_rule_rejects_reads_as_not_configured(string stored)
+    {
+        await using var factory = new WeatherFactory(Reader, contact: null);
+        factory.CreateClient().Dispose();
+        await factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherUserAgentContact, stored);
+        Evict(factory);
+
+        using var scope = factory.Services.CreateScope();
+        var settings = await scope.ServiceProvider.GetRequiredService<IWeatherSettingsLookup>().GetAsync();
+
+        Assert.Null(settings.Contact);
+        Assert.False(settings.IsConfigured);
+        Assert.True(settings.IsDegraded);
+    }
+
+    [Fact]
+    public async Task An_unparseable_household_default_is_none_and_degraded()
+    {
+        await using var factory = new WeatherFactory(Reader);
+        factory.CreateClient().Dispose();
+        await factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultLocationId, "not-a-guid");
+        Evict(factory);
+
+        using var scope = factory.Services.CreateScope();
+        var settings = await scope.ServiceProvider.GetRequiredService<IWeatherSettingsLookup>().GetAsync();
+
+        Assert.Null(settings.HouseholdDefaultLocationId);
+        Assert.True(settings.IsDegraded);
+    }
+
+    private sealed class CountingObservations : IWeatherObservationSource
+    {
+        public int Calls;
+
+        public Task<StationLookupResult> FindStationAsync(WeatherSiteQuery site, string contact, string clientId, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref Calls);
+            return Task.FromResult(new StationLookupResult(true, null));
+        }
+
+        public Task<ObservationFetchResult> FetchDailyAsync(
+            string stationId, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref Calls);
+            return Task.FromResult(new ObservationFetchResult(true, []));
+        }
+    }
+
     private sealed class WeatherFactory : OdysseyApiFactory
     {
-        public WeatherFactory(IReadOnlyCollection<string> permissions, string? contact = "ops@example.org")
-            : this(permissions, contact, new StubForecasts())
+        public WeatherFactory(
+            IReadOnlyCollection<string> permissions, string? contact = "ops@example.org",
+            IReadOnlyDictionary<string, string?>? configuration = null, IWeatherObservationSource? observations = null)
+            : this(permissions, contact, new StubForecasts(), configuration, observations ?? new NoObservations())
         {
         }
 
-        private WeatherFactory(IReadOnlyCollection<string> permissions, string? contact, StubForecasts forecasts)
-            : base(permissions, "weather-actor", configureServices: services =>
+        private WeatherFactory(
+            IReadOnlyCollection<string> permissions, string? contact, StubForecasts forecasts,
+            IReadOnlyDictionary<string, string?>? configuration, IWeatherObservationSource observations)
+            : base(permissions, "weather-actor", configuration, services =>
             {
                 services.RemoveAll<IWeatherForecastSource>();
                 services.AddSingleton<IWeatherForecastSource>(forecasts);
                 services.RemoveAll<IWeatherObservationSource>();
-                services.AddSingleton<IWeatherObservationSource, NoObservations>();
+                services.AddSingleton(observations);
             })
         {
             Forecasts = forecasts;

@@ -80,6 +80,8 @@ public partial class WeatherSettingsDialog
 
     private async Task SaveAsync()
     {
+        if (_saving)
+            return;
         _saving = true;
         _conflict = null;
         _trackedError = null;
@@ -92,14 +94,15 @@ public partial class WeatherSettingsDialog
             HistoryFrom = _historyFrom is { } from ? DateOnly.FromDateTime(from) : null,
             ExpectedLocationFingerprint = Creating ? WeatherVisuals.Fingerprint(_preview) : null,
         });
-        _saving = false;
-
         if (result.IsSuccess && result.Value is { } saved)
         {
-            await OnSaved.InvokeAsync(saved);
+            // Still "saving" until the dialog has closed, so a second click cannot submit again.
             await CloseAsync();
+            await OnSaved.InvokeAsync(saved);
             return;
         }
+
+        _saving = false;
 
         var problem = result.Problem;
         if (result.Status == HttpStatusCode.Conflict && problem?.Code == "location-changed")

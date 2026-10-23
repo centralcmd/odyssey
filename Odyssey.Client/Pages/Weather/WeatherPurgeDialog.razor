@@ -11,10 +11,13 @@
     (architect N3): the row is re-read, and with purgeInProgress the dialog offers to continue.
 *@
 
-<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="delete_forever" IconTone="OdsModalTone.Error" RequiredLegend="false"
+@* While the purge runs the dialog cannot be dismissed: OdsModal derives Esc, scrim and the close button
+   from OnClose having a delegate, so it is withheld, and an OpenChanged(false) arriving anyway is refused. *@
+<OdsModal Open="Open" OpenChanged="OnOpenChanged" OnClose="@(_running ? default : EventCallback.Factory.Create(this, CloseAsync))" Icon="delete_forever" IconTone="OdsModalTone.Error" RequiredLegend="false"
           Title="@(b => b.AddContent(0, Resuming ? "Finish deleting weather history" : "Delete weather history"))"
           Subtitle="@(b => b.AddContent(0, Location.Name))">
     <ChildContent>
+        <OdsLiveAnnouncer Message="@_announce" />
         <div class="ods-modal-body wx-form">
             @if (_busy)
             {
@@ -61,6 +64,7 @@
     [Parameter] public EventCallback<ExistingWeatherLocation?> OnInterrupted { get; set; }
 
     private string _typed = "";
+    private string _announce = "";
     private bool _running;
     private bool _busy;
     private bool _interrupted;
@@ -75,6 +79,7 @@
         _running = true;
         _busy = false;
         _error = null;
+        _announce = "Deleting weather history. This can take up to a minute.";
         StateHasChanged();
 
         var result = await Weather.PurgeAsync(Location.LocationId);
@@ -109,10 +114,13 @@
         }
 
         _interrupted = reread.Value is { PurgeInProgress: true };
+        _announce = _interrupted ? "The deletion was interrupted. Continue to delete the rest." : "Weather history couldn't be deleted.";
         if (!_interrupted)
             _error = result.Problem?.Message ?? "Weather history couldn’t be deleted. Try again.";
         await OnInterrupted.InvokeAsync(reread.Value);
     }
 
     private Task CloseAsync() => _running ? Task.CompletedTask : OpenChanged.InvokeAsync(false);
+
+    private Task OnOpenChanged(bool open) => open || !_running ? OpenChanged.InvokeAsync(open) : Task.CompletedTask;
 }
