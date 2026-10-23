@@ -140,15 +140,18 @@ public partial class WeatherWidget
     /// <summary>Saves the caller's own default; the empty choice follows the household default.</summary>
     private async Task ChooseAsync(string value)
     {
+        if (_saving)
+            return;
+
         Guid? next = Guid.TryParse(value, out var id) ? id : null;
         _saving = true;
         _prefError = null;
         StateHasChanged();
 
         var result = await Weather.SetPreferenceAsync(next);
-        _saving = false;
         if (!result.IsSuccess)
         {
+            _saving = false;
             _prefError = result.Status == HttpStatusCode.BadRequest
                 ? "That location no longer has weather. Choose another one."
                 : "Your choice couldn't be saved. Try again.";
@@ -158,6 +161,7 @@ public partial class WeatherWidget
 
         var name = next is { } chosen ? _options.Locations.FirstOrDefault(l => l.LocationId == chosen)?.Name : HouseholdDefault?.Name;
         await LoadAsync(quiet: true);
+        _saving = false;
         _announce = next is not null
             ? $"Weather now shows {name}. This is saved for you only."
             : $"Weather follows the household default{(name is not null ? $", {name}" : "")}.";
