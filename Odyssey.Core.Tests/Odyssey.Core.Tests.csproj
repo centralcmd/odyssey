@@ -21,6 +21,7 @@
     <None Include="Fixtures\Weather\*.json" CopyToOutputDirectory="PreserveNewest" />
     <!-- MET's full symbol legend, shared with Odyssey.Client.Tests. -->
     <None Include="..\TestShared\Fixtures\met-symbol-codes.txt" Link="Fixtures\met-symbol-codes.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\NorgesBank\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

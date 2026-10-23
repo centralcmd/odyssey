@@ -254,6 +254,12 @@ public sealed record SystemSettingsDto
 
     /// <summary>The household default weather location id, or empty for none.</summary>
     public string WeatherDefaultLocationId { get; set; } = string.Empty;
+    // ── Exchange-rate sync (issue #349) ──────────────────────────────────────────────────────────
+
+    /// <summary><c>yyyy-MM-dd</c>, or empty for 1 January of the current UTC year.</summary>
+    public string ExchangeRateHistoryStartDate { get; set; } = string.Empty;
+
+    public int ExchangeRateSyncIntervalHours { get; set; }
 
     // ── The six bound projections (issue #434 §6) ────────────────────────────────────────────────
     //

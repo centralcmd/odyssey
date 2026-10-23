@@ -12,6 +12,10 @@ internal sealed class ExchangeRateConfiguration : IEntityTypeConfiguration<Excha
         entity.Property(rate => rate.Rate)
             .HasPrecision(18, 8);
 
+        // NULL is a manual row. Widened by the migration that adds a provider (issue #349 §4).
+        entity.ToTable(tb => tb.HasCheckConstraint(
+            "CK_ExchangeRates_Provider", "`Provider` IS NULL OR `Provider` IN (1)"));
+
         // FK to the currency table for both ends of the pair. No cascade delete: rate rows are
         // never removed as a side effect of another change (only in-place Rate/AsOf corrections
         // or an explicit delete), so a currency should not be removable out from under them by

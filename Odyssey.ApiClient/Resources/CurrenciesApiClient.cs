@@ -71,11 +71,17 @@ public sealed class CurrenciesApiClient(IOdysseyApi api) : ICurrenciesApiClient
 /// <summary>Typed client for the exchange-rate endpoints.</summary>
 public interface IExchangeRatesApiClient
 {
-    /// <summary>One page of rates with search, target-currency and current/historical filters.</summary>
+    /// <summary>
+    /// One page of rates with search, target-currency, status and source filters. Status and source each
+    /// take several values; empty means all.
+    /// </summary>
     Task<ApiResult<PagedResult<ExistingExchangeRate>>> ListAsync(
         int page, int pageSize, string? search = null, IReadOnlyCollection<string>? toCurrencies = null,
         IReadOnlyCollection<string>? status = null, string? sortBy = null, string? sortDir = null,
-        CancellationToken ct = default);
+        CancellationToken ct = default, IReadOnlyCollection<string>? source = null);
+
+    /// <summary>The unfiltered counts, currencies and attribution (issue #349 §5.10).</summary>
+    Task<ApiResult<ExchangeRateSummary>> GetSummaryAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Every rate in one window. The card's summary tiles are derived from the whole set, so they are
@@ -98,13 +104,14 @@ public sealed class ExchangeRatesApiClient(IOdysseyApi api) : IExchangeRatesApiC
     public Task<ApiResult<PagedResult<ExistingExchangeRate>>> ListAsync(
         int page, int pageSize, string? search = null, IReadOnlyCollection<string>? toCurrencies = null,
         IReadOnlyCollection<string>? status = null, string? sortBy = null, string? sortDir = null,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default, IReadOnlyCollection<string>? source = null) =>
         api.GetPagedAsync<ExistingExchangeRate>(
             PagedQuery.For(Base)
                 .Window(page, pageSize)
                 .Add("search", search)
                 .AddMany("toCurrencies", toCurrencies)
-                .AddSingle("status", status)
+                .AddMany("status", status)
+                .AddMany("source", source)
                 .Add("sortBy", sortBy)
                 .Add("sortDir", sortDir)
                 .Build(),
@@ -112,6 +119,9 @@ public sealed class ExchangeRatesApiClient(IOdysseyApi api) : IExchangeRatesApiC
 
     public Task<ApiResult<List<ExistingExchangeRate>>> ListAllAsync(CancellationToken ct = default) =>
         api.GetAllAsync<ExistingExchangeRate>(PagedQuery.For(Base).Build(), ct);
+
+    public Task<ApiResult<ExchangeRateSummary>> GetSummaryAsync(CancellationToken ct = default) =>
+        api.GetAsync<ExchangeRateSummary>($"{Base}/summary", ct);
 
     public Task<ApiResult> CreateAsync(NewExchangeRate rate, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, Base, rate, ct);

@@ -316,4 +316,14 @@ public static class SystemSettingsDefaults
 
     /// <summary>Empty: no household default weather location.</summary>
     public const string WeatherDefaultLocationId = "";
+    // ── Exchange-rate sync (issue #349) ─────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Empty: the sync starts at 1 January of the current UTC year, resolved at run time. On 1 January
+    /// the default moves forward a year; nothing already fetched is deleted.
+    /// </summary>
+    public const string ExchangeRateHistoryStartDate = "";
+
+    /// <summary>Hours between scheduled runs once nothing is left to catch up on.</summary>
+    public const int ExchangeRateSyncIntervalHours = 24;
 }

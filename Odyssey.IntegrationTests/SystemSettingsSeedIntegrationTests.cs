@@ -65,6 +65,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
         (SystemSettingsKeys.WeatherRefreshIntervalMinutes, $"{SystemSettingsDefaults.WeatherRefreshIntervalMinutes}"),
         (SystemSettingsKeys.WeatherMaxTrackedLocations, $"{SystemSettingsDefaults.WeatherMaxTrackedLocations}"),
         (SystemSettingsKeys.WeatherDefaultLocationId, SystemSettingsDefaults.WeatherDefaultLocationId),
+        (SystemSettingsKeys.ExchangeRateHistoryStartDate, SystemSettingsDefaults.ExchangeRateHistoryStartDate),
+        (SystemSettingsKeys.ExchangeRateSyncIntervalHours,
+            $"{SystemSettingsDefaults.ExchangeRateSyncIntervalHours}"),
     ];
 
     [SkippableFact]
@@ -88,8 +91,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             // cap (issue #166), then -3 when the standalone subscriptions feature was removed and its
             // migration deleted the three summary-limit rows, and -5 when the standalone
             // insurance-policy feature went the same way, then +1 for the per-property smart-tag cap
-            // (issue #167), then +4 for weather (issue #348).
-            Assert.Equal(69, rows.Count);
+            // (issue #167), then +4 for weather (issue #348), then +2 for the exchange-rate sync start
+            // date and interval (issue #349).
+            Assert.Equal(71, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)

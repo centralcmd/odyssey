@@ -553,6 +553,23 @@ into two tables. What contains it, and must not be loosened:
   event is read under `properties.read`, and an "estimate added" line would disclose what
   `properties.estimates.read` withholds.
 
+**Exchange rates sync from Norges Bank, stored as currency ↔ NOK only, and every other pair converts
+through NOK** (issue #349). `ExchangeRate.Provider` is `NULL` for a manual row and `NorgesBank` for a
+fetched one; there is no separate source column. Four rules are easy to get backwards:
+
+- **The newest-rate ordering is written once, in `ExchangeRateOrdering`** — `AsOf`, then
+  `UpdatedAt ?? CreatedAt`, then the id — and source plays no part. `CurrencyConversionService` (direct
+  vs. hop: the later UTC date wins, the same date goes to direct) and every status rule in
+  `ExchangeRateService` read it; a source-lint fails on a second copy in `Odyssey.Core`.
+- **"In force" means `AsOf ≤ now`.** A future-dated row is `Upcoming` and converts nothing until its
+  date; the bounded lookups keep their exclusive `AsOf < bound`.
+- **The run guard is the `RunningGuard` generated column's unique index**, real MariaDB only; a purge
+  takes it too, through a `Purge` run row. The scheduler (`ExchangeRateSyncScheduler`, the first
+  `BackgroundService` in `Odyssey.Api`) keeps no schedule in memory and is **not registered under
+  `Testing`**, where run-now executes inline.
+- **A fetched row is never edited in place** (`422` keyed `source`), and deleting one needs
+  `system-settings.update` on top of `exchangerates.delete` — decided in the service from the row.
+
 **`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed to serialize a
 write path against a contact delete; once that path's call sites were gone it was a mutex with no
 counterparty, still taking a pinned connection and a blocking ten-second acquire on every contact

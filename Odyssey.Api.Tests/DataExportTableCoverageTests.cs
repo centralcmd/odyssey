@@ -90,6 +90,10 @@ public class DataExportTableCoverageTests
         ["UserProfileImageBlobs"] = "Application/Identity: out of scope",
         ["SystemSettings"] = "Application: instance policy, not subject data",
         ["SystemSettingSecrets"] = "Application: encrypted secrets, never exported",
+        // Exchange-rate sync (issue #349 §7.10): per-currency sync configuration is instance policy like
+        // SystemSettings, and the run log is operational. The fetched RATES are exported, with Provider.
+        ["ExchangeRateSyncCurrencies"] = "Application: exchange-rate sync configuration, instance policy",
+        ["ExchangeRateSyncRuns"] = "Application: exchange-rate sync run log, operational",
         ["LicenseAcceptances"] = "Application/Legal: out of scope",
         ["TermsOfServiceVersions"] = "Application/Legal: out of scope",
         ["TermsOfServiceAcceptances"] = "Application/Legal: out of scope",

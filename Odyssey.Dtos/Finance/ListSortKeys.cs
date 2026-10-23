@@ -147,3 +147,17 @@ public enum FileAnalysisAuditSortBy
     At,
     Status,
 }
+
+/// <summary>Sortable keys for the per-currency exchange-rate sync configuration list.</summary>
+public enum ExchangeRateSyncCurrencySortBy
+{
+    Code,
+    Name,
+    Enabled,
+}
+
+/// <summary>Sortable keys for the exchange-rate sync run log.</summary>
+public enum ExchangeRateSyncRunSortBy
+{
+    StartedAt,
+}

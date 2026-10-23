@@ -207,6 +207,13 @@ public static class SystemSettingsKeys
     public const string WeatherRefreshIntervalMinutes = "WeatherRefreshIntervalMinutes";
     public const string WeatherMaxTrackedLocations = "WeatherMaxTrackedLocations";
     public const string WeatherDefaultLocationId = "WeatherDefaultLocationId";
+    // Exchange-rate sync (issue #349). The global history start date is a string so that EMPTY can
+    // mean "1 January of the current UTC year", resolved at run time; the interval is how long the
+    // scheduler waits after a finished run when nothing is left to catch up on.
+    // ---------------------------------------------------------------------------------------------
+
+    public const string ExchangeRateHistoryStartDate = "ExchangeRateHistoryStartDate";
+    public const string ExchangeRateSyncIntervalHours = "ExchangeRateSyncIntervalHours";
 
     public static readonly string[] AllKeys =
     [
@@ -279,6 +286,8 @@ public static class SystemSettingsKeys
         WeatherRefreshIntervalMinutes,
         WeatherMaxTrackedLocations,
         WeatherDefaultLocationId,
+        ExchangeRateHistoryStartDate,
+        ExchangeRateSyncIntervalHours,
     ];
 
     /// <summary>
