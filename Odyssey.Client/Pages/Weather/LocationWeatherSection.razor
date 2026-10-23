@@ -100,5 +100,5 @@ else
             : Row.LastObservationSuccessUtc is { } at ? $"last fetched {WeatherVisuals.Stamp(at)}" : "not fetched yet");
 
     private static RenderFragment Failure(WeatherFailureInfo fail) =>
-        @<span class="wx-fail" title="@fail.Help"><OdsMIcon Name="error_outline" Size="14" />@fail.Label</span>;
+        @<span class="wx-fail"><OdsMIcon Name="error_outline" Size="14" />@fail.Label<span class="wx-fail-help">@(string.IsNullOrEmpty(fail.Help) ? null : $" — {fail.Help}")</span></span>;
 }

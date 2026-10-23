@@ -1347,7 +1347,10 @@ public partial class Settings
         builder.AddComponentParameter(3, nameof(OdsSelect.Options), item.OptionsFrom!(this));
         builder.AddComponentParameter(4, nameof(OdsSelect.Disabled), IsRowDisabled(item));
         builder.AddComponentParameter(5, nameof(OdsSelect.Error), FieldStateFor(item));
-        builder.AddAttribute(6, "id", ControlId(item.Key));
+        // Named and described through aria-*, which MudSelect forwards to its visible combobox. An `id`
+        // would land on its hidden input, leaving the frame's <label for> pointing at nothing focusable —
+        // so a select row takes no `for` (HasFocusableControl).
+        builder.AddAttribute(6, "aria-labelledby", TitleId(item.Key));
         builder.AddAttribute(7, "aria-describedby", DescribedBy(item));
         builder.CloseComponent();
     };
@@ -1371,7 +1374,8 @@ public partial class Settings
     /// names itself through <c>aria-labelledby</c> on the title instead.
     /// </summary>
     private static bool HasFocusableControl(SettingItem item) =>
-        item.Control is not (SettingControl.Capacity or SettingControl.Toggle or SettingControl.Export);
+        item.Control is not (SettingControl.Capacity or SettingControl.Toggle or SettingControl.Export)
+        && item.OptionsFrom is null;
 
     /// <summary>
     /// The always-visible helper line: what the setting does, then the bound that qualifies it, then

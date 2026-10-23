@@ -607,8 +607,12 @@ public sealed class WeatherFetchService
     /// Upserts <see cref="WeatherDay"/> for <paramref name="dates"/> from the append-only tables (§4). A date
     /// with neither half is removed, so the derived table never holds an empty row.
     /// </summary>
-    public async Task RebuildDaysAsync(
-        Guid locationId, WeatherSiteTimeline timeline, IEnumerable<DateOnly> dates, CancellationToken cancellationToken)
+    public Task RebuildDaysAsync(
+        Guid locationId, WeatherSiteTimeline timeline, IEnumerable<DateOnly> dates, CancellationToken cancellationToken) =>
+        RebuildDaysAsync(locationId, timeline, dates, retried: false, cancellationToken);
+
+    private async Task RebuildDaysAsync(
+        Guid locationId, WeatherSiteTimeline timeline, IEnumerable<DateOnly> dates, bool retried, CancellationToken cancellationToken)
     {
         var now = Now;
         foreach (var date in dates.Distinct().Order())
@@ -618,8 +622,8 @@ public sealed class WeatherFetchService
             // From one longest period (12 h) before the day: a step that starts earlier can still cover its
             // first hours, which is all it contributes (the coverage); its values belong to its own day.
             var reachFrom = fromUtc.AddHours(-12);
-            var candidates = await context.WeatherForecastSteps.AsNoTracking()
-                .Where(s => s.LocationId == locationId && s.TimeUtc >= reachFrom && s.TimeUtc < toUtc)
+            var candidates = await WeatherComposer
+                .EffectiveStepsQuery(context.WeatherForecastSteps.AsNoTracking(), locationId, reachFrom, toUtc)
                 .ToListAsync(cancellationToken);
             var effective = WeatherComposer.EffectiveSteps(candidates);
             var half = WeatherComposer.ForecastHalf(
@@ -672,11 +676,12 @@ public sealed class WeatherFetchService
         {
             await context.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException ex) when (DbErrors.IsDuplicateKey(ex))
+        catch (DbUpdateException ex) when (!retried && DbErrors.IsDuplicateKey(ex))
         {
-            // A concurrent rebuild inserted the same (location, date) first: retry once as an update.
+            // A concurrent rebuild inserted the same (location, date) first: retry ONCE, as an update. A
+            // second collision is left to the next fetch's rebuild — the summary is derived, not lost.
             context.ChangeTracker.Clear();
-            await RebuildDaysAsync(locationId, timeline, dates, cancellationToken);
+            await RebuildDaysAsync(locationId, timeline, dates, retried: true, cancellationToken);
         }
     }
 

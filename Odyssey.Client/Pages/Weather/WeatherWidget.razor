@@ -11,7 +11,7 @@
 <OdsCard Class="ods-outline wx-card" aria-busy="@(_phase == Phase.Loading || _saving ? "true" : null)">
     <OdsCardHeader>
         <div class="odc-card-header-ttl">
-            <span class="wx-ttl">
+            <span class="wx-ttl" role="heading" aria-level="2">
                 <OdsMIcon Name="wb_sunny" Size="20" />
                 <span>Weather<span class="wx-ttl-loc">@TitlePlace</span></span>
             </span>
@@ -34,7 +34,7 @@
 </OdsCard>
 
 @code {
-    private RenderFragment Skeleton => @<div class="wx-skel" aria-label="Loading weather">
+    private RenderFragment Skeleton => @<div class="wx-skel" role="status" aria-label="Loading weather">
         <OdsSkeleton Variant="OdsSkeletonVariant.Block" Width="14rem" Height="5.25rem" />
         <div class="wx-skel-days">
             @for (var i = 0; i < 7; i++)
@@ -87,15 +87,16 @@
 
         @if (coming.Count > 0)
         {
-            <ol class="wx-days" aria-label="@($"Forecast for {place.Name}, next {coming.Count} days")">
+            @* tabindex: the strip scrolls sideways on narrow screens, so it must be reachable by keyboard. *@
+            <ol class="wx-days" role="list" tabindex="0" aria-label="@($"Forecast for {place.Name}, next {coming.Count} days")">
                 @foreach (var day in coming)
                 {
                     var f = day.Forecast!;
                     <li class="wx-day">
                         <span class="wx-day-name" title="@WeatherVisuals.DayLong(day.Date)">@WeatherVisuals.DayShort(day.Date, Today)</span>
-                        <WeatherGlyph Code="@f.SymbolCode" Size="28" />
+                        <span aria-hidden="true"><WeatherGlyph Code="@f.SymbolCode" Size="28" /></span>
                         <span class="wx-day-temp">
-                            <span class="wx-hi">@WeatherVisuals.Temp(f.MaxTempC)</span><span class="wx-lo"> / @WeatherVisuals.Temp(f.MinTempC)</span>
+                            <span class="wx-hi" aria-hidden="true">@WeatherVisuals.Temp(f.MaxTempC)</span><span class="wx-lo" aria-hidden="true"> / @WeatherVisuals.Temp(f.MinTempC)</span>
                             <span class="sr-only">@DaySentence(day)</span>
                         </span>
                         <span class="wx-day-precip @(f.PrecipitationMm > 0 ? null : "none")"><OdsMIcon Name="water_drop" Size="14" />@WeatherVisuals.Mm(f.PrecipitationMm)</span>
@@ -120,7 +121,7 @@
         <div class="wx-foot">
             @if (_current!.Stale)
             {
-                <span class="wx-stale" role="status">
+                <span class="wx-stale">
                     <OdsMIcon Name="cloud_off" Size="16" />
                     Not up to date — MET Norway didn’t answer the last refresh. Showing the forecast issued @WeatherVisuals.Clock(step.IssuedAtUtc) (your time).
                 </span>

@@ -57,14 +57,14 @@
                         </div>
                         @if (_trackedError is not null)
                         {
-                            <div class="wx-toggle-error" role="alert"><OdsMIcon Name="error_outline" Size="16" />@_trackedError</div>
+                            <div class="wx-toggle-error" id="wx-tr-e" role="alert"><OdsMIcon Name="error_outline" Size="16" />@_trackedError</div>
                         }
                     </div>
-                    <OdsSwitch Checked="_tracked" CheckedChanged="OnTrackedChanged" AriaLabel="Refresh on a schedule" AriaDescribedBy="wx-tr-h" />
+                    <OdsSwitch Checked="_tracked" CheckedChanged="OnTrackedChanged" AriaLabel="Refresh on a schedule" AriaDescribedBy="@(_trackedError is null ? "wx-tr-h" : "wx-tr-h wx-tr-e")" />
                 </div>
                 @if (_tracked && AtCap && _trackedError is null)
                 {
-                    <div class="wx-note"><OdsMIcon Name="info" Size="16" /><span>All @Cap scheduled places are in use. Saving will be refused unless another place stops refreshing on a schedule.</span></div>
+                    <div class="wx-note" role="status"><OdsMIcon Name="info" Size="16" /><span>All @Cap scheduled places are in use. Saving will be refused unless another place stops refreshing on a schedule.</span></div>
                 }
 
                 <OdsDateField Label="Keep measured history from" Value="_historyFrom" ValueChanged="@(v => _historyFrom = v)"

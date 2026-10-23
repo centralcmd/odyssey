@@ -203,6 +203,82 @@ public class WeatherServiceTests
         Assert.Equal(1, h.Forecasts.Calls);
     }
 
+    [Fact]
+    public async Task Reads_pick_one_step_per_hour_in_the_database_however_many_runs_are_stored()
+    {
+        using var h = new WeatherTestHarness();
+        var location = await h.EnableAsync(tracked: false);
+        // Twenty stored runs over the same 24 hours, each issued later and one degree warmer.
+        for (var i = 0; i < 20; i++)
+        {
+            var issued = Noon.AddMinutes(-60 + i);
+            var run = new Odyssey.Context.WeatherForecastRun
+            {
+                WeatherForecastRunId = Guid.NewGuid(), LocationId = location.LocationId, SiteVersion = 1,
+                Provider = WeatherProvider.MetNorway, ProviderUpdatedAt = issued, FetchedAtUtc = issued,
+            };
+            for (var hour = 0; hour < 24; hour++)
+            {
+                run.Steps.Add(new Odyssey.Context.WeatherForecastStep
+                {
+                    WeatherForecastRunId = run.WeatherForecastRunId, LocationId = location.LocationId, SiteVersion = 1,
+                    RunProviderUpdatedAt = issued, RunFetchedAtUtc = issued, TimeUtc = Noon.AddHours(hour),
+                    PeriodHours = 1, AirTemperatureC = i, SymbolCode = "cloudy",
+                });
+            }
+
+            h.Context.WeatherForecastRuns.Add(run);
+        }
+
+        await h.Context.SaveChangesAsync();
+        h.Context.ChangeTracker.Clear();
+
+        var query = WeatherComposer.EffectiveStepsQuery(h.Context.WeatherForecastSteps, location.LocationId, Noon, Noon.AddHours(24));
+        var picked = await query.ToListAsync();
+
+        Assert.Equal(24, picked.Count);
+        Assert.All(picked, step => Assert.Equal(19, step.AirTemperatureC));
+    }
+
+    [Fact]
+    public async Task An_admin_write_that_loses_the_version_race_is_a_409_not_a_500()
+    {
+        using var h = new WeatherTestHarness();
+        var location = await h.EnableAsync();
+
+        // A fetch claims between the Admin's read and its save: simulated by rotating the version from
+        // another context while the Admin's own tracked schedule still holds the old one.
+        var adminContext = h.NewContext();
+        var service = h.Admin(adminContext);
+        // Tracked now, so the service's own read resolves to this stale instance.
+        await adminContext.WeatherLocationSchedules.SingleAsync();
+        await using (var other = h.NewContext())
+        {
+            var schedule = await other.WeatherLocationSchedules.SingleAsync();
+            schedule.Version = Guid.NewGuid();
+            await other.SaveChangesAsync();
+        }
+
+        var error = await Assert.ThrowsAsync<WeatherConflictException>(() => service.UpsertAsync(location.LocationId,
+            new UpsertWeatherLocation { Enabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
+        Assert.Equal(WeatherConflictException.FetchInProgress, error.Code);
+    }
+
+    [Fact]
+    public async Task A_forecast_older_than_three_intervals_is_stale_even_with_no_failure()
+    {
+        using var h = new WeatherTestHarness();
+        var cabin = await h.EnableAsync("Cabin", tracked: true);
+        h.Forecasts.Respond = _ => Task.FromResult(WeatherTestHarness.Run(Noon.AddMinutes(-30), Noon, 48, 7));
+        await h.Fetch().FetchForecastAsync(cabin.LocationId, WeatherFetchMode.Scheduled, CancellationToken.None);
+
+        Assert.False((await h.Read(h.NewContext()).CurrentAsync(cabin.LocationId, "u1", CancellationToken.None)).Stale);
+
+        // The scheduler stops (or the place is paused past the cap): no failure is ever recorded.
+        h.Time.Advance(TimeSpan.FromHours(3) + TimeSpan.FromMinutes(1));
+        Assert.True((await h.Read(h.NewContext()).CurrentAsync(cabin.LocationId, "u1", CancellationToken.None)).Stale);
+    }
+
     // ── Observations ──────────────────────────────────────────────────────────────────────────────
 
     [Fact]

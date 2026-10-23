@@ -12,7 +12,7 @@
     <span>
         @WeatherVisuals.Mps(Speed)@if (WeatherVisuals.CompassOf(Degrees) is { } point)
         {
-            <text> from <abbr title="@WeatherVisuals.CompassWordsOf(Degrees)">@point</abbr></text>
+            <text> from <abbr title="@WeatherVisuals.CompassWordsOf(Degrees)"><span aria-hidden="true">@point</span><span class="sr-only">@WeatherVisuals.CompassWordsOf(Degrees)</span></abbr></text>
         }@(Gust is { } g ? $", gusts {Math.Round(g, MidpointRounding.AwayFromZero):0}" : "")
     </span>
 </span>

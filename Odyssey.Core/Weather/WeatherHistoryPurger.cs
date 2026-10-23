@@ -33,8 +33,9 @@ public sealed class RelationalWeatherHistoryPurger(OdysseyContext context) : IWe
 
     public async Task<WeatherPurgeCounts> PurgeAsync(Guid locationId, CancellationToken cancellationToken)
     {
-        // Steps go by run, each run's steps in one statement: a step row has no index on LocationId alone
-        // that a LIMITed DELETE could walk cheaply, while its run FK is indexed. The runs themselves follow.
+        // Steps go run by run, in id batches of at most BatchSize, so every statement is bounded however
+        // large one run is; the run's own steps are found through its indexed (RunId, TimeUtc) key. The
+        // runs themselves follow.
         var steps = 0;
         var runs = 0;
         while (true)

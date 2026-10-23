@@ -20,8 +20,10 @@ namespace Odyssey.Client.Tests;
 /// units, the Admin menu by claim and state, and the dashboard card's states.
 /// </summary>
 [Collection(nameof(WeatherWidgetSeam))]
-public class WeatherClientTests
+public class WeatherClientTests : IDisposable
 {
+    public void Dispose() => WeatherWidget.InteractiveCheck = OperatingSystem.IsBrowser;
+
     // ── Symbols and units ────────────────────────────────────────────────────────────────────────
 
     [Theory]
@@ -135,7 +137,7 @@ public class WeatherClientTests
         card.WaitForAssertion(() => Assert.Contains("−3°", card.Markup));
         Assert.Contains("Weather · Home", card.Find(".wx-ttl").TextContent.Replace(" ", " "));
         Assert.Contains("Rain", card.Markup);
-        Assert.Contains("from <abbr title=\"south-west\">SW</abbr>", card.Markup);
+        Assert.Contains("from <abbr title=\"south-west\"><span aria-hidden=\"true\">SW</span><span class=\"sr-only\">south-west</span></abbr>", card.Markup);
         Assert.Contains("Rain, high 11°, low 4°", card.Markup);
         Assert.Contains("14 h of forecast", card.Markup);
         Assert.Equal(2, card.FindAll(".wx-day").Count);
