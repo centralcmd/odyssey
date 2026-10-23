@@ -19,6 +19,8 @@ public class LocationRulesTests
     [InlineData("Europe/../Oslo", false)]
     [InlineData("/etc/passwd", false)]
     [InlineData("posixrules", false)]
+    [InlineData("posix/Europe/Oslo", false)]
+    [InlineData("right/Europe/Oslo", false)]
     [InlineData("Local", false)]
     [InlineData("", false)]
     [InlineData(null, false)]

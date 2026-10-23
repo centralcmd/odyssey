@@ -281,6 +281,60 @@ public class LocationsApiTests
         Assert.Contains(field, problem!.Errors.Keys, StringComparer.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [MemberData(nameof(InvalidBodies))]
+    public async Task An_invalid_update_body_is_400_keyed_on_the_field(string field, object body)
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var created = await CreateAsync(client, Cabin("Target"));
+
+        var response = await client.PutAsJsonAsync($"{Path}/{created.LocationId}", body);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.Contains(field, problem!.Errors.Keys, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public static TheoryData<string, object> BoundaryBodies() => new()
+    {
+        { "north pole", Body(name: "a", latitude: 90m) },
+        { "south pole", Body(name: "b", latitude: -90m) },
+        { "east antimeridian", Body(name: "c", longitude: 180m) },
+        { "west antimeridian", Body(name: "d", longitude: -180m) },
+        { "lowest altitude", Body(name: "e", altitude: -500) },
+        { "highest altitude", Body(name: "f", altitude: 9000) },
+        { "longest name", Body(name: new string('n', 100)) },
+        { "longest description", Body(name: "g", description: new string('d', 1000)) },
+    };
+
+    [Theory]
+    [MemberData(nameof(BoundaryBodies))]
+    public async Task A_value_exactly_at_a_limit_is_accepted(string because, object body)
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(Path, body);
+
+        Assert.True(response.StatusCode == HttpStatusCode.Created, $"{because}: {response.StatusCode}");
+    }
+
+    [Fact]
+    public async Task Renaming_onto_another_locations_name_is_a_409_keyed_name()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await CreateAsync(client, Cabin());
+        var home = await CreateAsync(client, Cabin("Home"));
+
+        var response = await client.PutAsJsonAsync($"{Path}/{home.LocationId}", Update(home) with { Name = "CABIN" });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.Contains("name", problem!.Errors.Keys, StringComparer.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public async Task An_out_of_range_limit_is_400()
     {
@@ -432,6 +486,32 @@ public class LocationsApiTests
         var rejected = await SearchAsUser(client, "user-new", "query x");
         Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
         Assert.True(rejected.Headers.RetryAfter is not null);
+    }
+
+    /// <summary>
+    /// The instance-wide budget protects the providers' fair-use limits, and a cache hit never reaches a
+    /// provider — so repeating a search spends nothing from it, while a new one still does.
+    /// </summary>
+    [Fact]
+    public async Task A_cache_hit_spends_none_of_the_instance_wide_budget()
+    {
+        var sources = new FakeSources();
+        await using var factory = new ApiFactory(ReadWrite, sources, new Dictionary<string, string?>
+        {
+            ["RateLimiting:LocationSearchGlobal:PermitLimit"] = "2",
+            ["RateLimiting:LocationSearchGlobal:WindowSeconds"] = "3600",
+        });
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await SearchAsUser(client, "user-0", "storgata 1")).StatusCode);
+        for (var i = 1; i < 6; i++)
+        {
+            Assert.Equal(HttpStatusCode.OK, (await SearchAsUser(client, $"user-{i}", "storgata 1")).StatusCode);
+        }
+
+        Assert.Single(sources.WorldQueries);
+        Assert.Equal(HttpStatusCode.OK, (await SearchAsUser(client, "user-7", "fjellveien")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await SearchAsUser(client, "user-8", "ringebu")).StatusCode);
     }
 
     /// <summary>

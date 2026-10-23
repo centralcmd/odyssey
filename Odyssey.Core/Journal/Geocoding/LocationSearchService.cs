@@ -23,7 +23,30 @@ public sealed class LocationSearchService
         this.cache = cache;
     }
 
+    /// <summary>
+    /// A complete result already cached for this search, without calling a provider. The controller asks
+    /// first, so a cache hit spends none of the instance-wide budget — that budget protects the providers'
+    /// fair-use limits, and a cache hit never reaches them.
+    /// </summary>
+    public bool TryGetCached(LocationSearchRequest request, out LocationSearchResponse? response)
+    {
+        var (_, _, key) = Resolve(request);
+        return cache.TryGet(key, out response) && response is not null;
+    }
+
     public async Task<LocationSearchResponse> SearchAsync(LocationSearchRequest request, CancellationToken cancellationToken = default)
+    {
+        var (region, query, key) = Resolve(request);
+        if (cache.TryGet(key, out var cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        // The shared call runs on no caller's token; each caller stops waiting on its own.
+        return await cache.Join(key, () => RunAsync(key, region, query)).WaitAsync(cancellationToken);
+    }
+
+    private static (LocationSearchRegion Region, string Query, string Key) Resolve(LocationSearchRequest request)
     {
         var region = request.Region ?? throw new DomainValidationException("A region is required.", code: null, field: "region");
         var query = LocationRules.NormalizeQuery(request.Query);
@@ -32,14 +55,7 @@ public sealed class LocationSearchService
             throw new DomainValidationException("The search text is too short or too long.", code: null, field: "query");
         }
 
-        var key = $"{region}:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(query)))}";
-        if (cache.TryGet(key, out var cached) && cached is not null)
-        {
-            return cached;
-        }
-
-        // The shared call runs on no caller's token; each caller stops waiting on its own.
-        return await cache.Join(key, () => RunAsync(key, region, query)).WaitAsync(cancellationToken);
+        return (region, query, $"{region}:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(query)))}");
     }
 
     private async Task<LocationSearchResponse> RunAsync(string key, LocationSearchRegion region, string query)

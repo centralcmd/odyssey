@@ -130,6 +130,89 @@ public class LocationRelationalTests(MariaDbFixture fixture)
         Assert.Equal(1, await verify.Locations.CountAsync());
     }
 
+    /// <summary>
+    /// The duplicate-key path made deterministic: the interceptor inserts the clashing row after the
+    /// service's pre-check has passed and before its own INSERT, so the 409 can only come from the 1062
+    /// mapping in <c>SaveAsync</c> — the race test above may be answered by the pre-check instead.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_duplicate_key_on_create_after_the_pre_check_passed_is_a_409_keyed_name()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        await using (var seed = NewContext())
+        {
+            await AttributionUsers.EnsureAsync(seed, "race-user");
+        }
+
+        var interceptor = new InsertBeforeSave(this, "cabín");
+        await using var context = NewContext(interceptor);
+
+        var ex = await Assert.ThrowsAsync<DomainConflictException>(
+            () => new LocationService(context).Create(New("Cabin"), "race-user"));
+
+        Assert.True(interceptor.Fired);
+        Assert.Contains("name", ex.Errors!.Keys);
+        await using var verify = NewContext();
+        Assert.Equal(["cabín"], await verify.Locations.Select(l => l.Name).ToListAsync());
+    }
+
+    [SkippableFact]
+    public async Task A_duplicate_key_on_rename_after_the_pre_check_passed_is_a_409_keyed_name()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        Guid homeId;
+        await using (var seed = NewContext())
+        {
+            await AttributionUsers.EnsureAsync(seed, "race-user");
+            homeId = (await new LocationService(seed).Create(New("Home"), "race-user")).LocationId;
+        }
+
+        var interceptor = new InsertBeforeSave(this, "Cabin");
+        await using var context = NewContext(interceptor);
+        var service = new LocationService(context);
+        var home = (await service.Get(homeId))!;
+
+        var ex = await Assert.ThrowsAsync<DomainConflictException>(() => service.Update(homeId, new UpdateLocation
+        {
+            Name = "CABIN",
+            Latitude = home.Latitude,
+            Longitude = home.Longitude,
+            TimeZoneId = home.TimeZoneId,
+            Source = home.Source,
+            SourceReference = home.SourceReference,
+        }, "race-user"));
+
+        Assert.True(interceptor.Fired);
+        Assert.Contains("name", ex.Errors!.Keys);
+        await using var verify = NewContext();
+        Assert.Equal("Home", (await verify.Locations.SingleAsync(l => l.LocationId == homeId)).Name);
+    }
+
+    /// <summary>Inserts a row named <paramref name="name"/> from a second connection, once, just before the save.</summary>
+    private sealed class InsertBeforeSave(LocationRelationalTests owner, string name)
+        : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
+    {
+        public bool Fired { get; private set; }
+
+        public override async ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int>> SavingChangesAsync(
+            Microsoft.EntityFrameworkCore.Diagnostics.DbContextEventData eventData,
+            Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (!Fired)
+            {
+                Fired = true;
+                await using var other = owner.NewContext();
+                other.Locations.Add(Row(name));
+                await other.SaveChangesAsync(cancellationToken);
+            }
+
+            return result;
+        }
+    }
+
     [SkippableFact]
     public async Task The_service_round_trips_decimals_at_five_places_on_the_real_engine()
     {
@@ -204,10 +287,17 @@ public class LocationRelationalTests(MariaDbFixture fixture)
         await context.Database.MigrateAsync();
     }
 
-    private OdysseyContext NewContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
+    private OdysseyContext NewContext(Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor? interceptor = null)
+    {
+        var options = new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString));
+        if (interceptor is not null)
+        {
+            options.AddInterceptors(interceptor);
+        }
+
+        return new OdysseyContext(options.Options);
+    }
 
     private async Task RecreateAsync()
     {

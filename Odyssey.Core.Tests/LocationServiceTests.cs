@@ -118,6 +118,67 @@ public class LocationServiceTests
     }
 
     [Fact]
+    public async Task Renaming_onto_another_locations_name_is_a_409_keyed_name()
+    {
+        using var context = TestContextFactory.CreateJournal();
+        var service = new LocationService(context);
+        await service.Create(Cabin(), UserId);
+        var home = await service.Create(Cabin("Home"), UserId);
+
+        var ex = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Update(home.LocationId, AsUpdate(home) with { Name = "cabín" }, UserId));
+
+        Assert.Equal("A location with this name already exists.", ex.Message);
+        Assert.Contains("name", ex.Errors!.Keys);
+        Assert.Equal("Home", (await service.Get(home.LocationId))!.Name);
+    }
+
+    [Fact]
+    public async Task Renaming_onto_an_archived_locations_name_says_it_is_archived()
+    {
+        using var context = TestContextFactory.CreateJournal();
+        var service = new LocationService(context);
+        var cabin = await service.Create(Cabin(), UserId);
+        await service.Update(cabin.LocationId, AsUpdate(cabin, archived: true), UserId);
+        var home = await service.Create(Cabin("Home"), UserId);
+
+        var ex = await Assert.ThrowsAsync<DomainConflictException>(
+            () => service.Update(home.LocationId, AsUpdate(home) with { Name = "Cabin" }, UserId));
+
+        Assert.Equal("An archived location with this name exists — restore it or choose another name.", ex.Message);
+    }
+
+    [Fact]
+    public async Task A_save_that_changes_nothing_leaves_the_edit_stamp_alone()
+    {
+        using var context = TestContextFactory.CreateJournal();
+        var service = new LocationService(context, new StepClock(new DateTimeOffset(2026, 10, 1, 8, 0, 0, TimeSpan.Zero)));
+        var cabin = await service.Create(Cabin(), UserId);
+
+        var saved = await service.Update(cabin.LocationId, AsUpdate(cabin), "someone-else");
+
+        Assert.Equal(cabin.UpdatedAt, saved!.UpdatedAt);
+        var entity = context.Locations.Single();
+        Assert.Equal(UserId, entity.UpdatedByUserId);
+    }
+
+    [Fact]
+    public async Task An_edit_by_another_member_stamps_the_editor_and_keeps_the_creator()
+    {
+        using var context = TestContextFactory.CreateJournal();
+        var service = new LocationService(context, new StepClock(new DateTimeOffset(2026, 10, 1, 8, 0, 0, TimeSpan.Zero)));
+        var cabin = await service.Create(Cabin(), UserId);
+
+        var saved = await service.Update(cabin.LocationId, AsUpdate(cabin) with { Description = "New key spot" }, "someone-else");
+
+        Assert.True(saved!.UpdatedAt > cabin.UpdatedAt);
+        Assert.Equal(cabin.CreatedAt, saved.CreatedAt);
+        var entity = context.Locations.Single();
+        Assert.Equal(UserId, entity.CreatedByUserId);
+        Assert.Equal("someone-else", entity.UpdatedByUserId);
+    }
+
+    [Fact]
     public async Task Archive_hides_from_Active_shows_under_Archived_and_restore_brings_it_back()
     {
         using var context = TestContextFactory.CreateJournal();
@@ -165,22 +226,27 @@ public class LocationServiceTests
         Assert.Equal(["Home"], (await service.ListAsync(new LocationsQueryParams { Search = "hom" })).Items.Select(l => l.Name));
     }
 
+    // Created Bravo, Charlie, Alpha in that order, then Bravo edited last — so the creation order and the
+    // edit order differ, and swapping the CreatedAt and UpdatedAt expressions fails a row.
     [Theory]
     [InlineData(LocationSortBy.Name, SortDirection.Asc, new[] { "Alpha", "Bravo", "Charlie" })]
     [InlineData(LocationSortBy.Name, SortDirection.Desc, new[] { "Charlie", "Bravo", "Alpha" })]
     [InlineData(LocationSortBy.CreatedAt, SortDirection.Asc, new[] { "Bravo", "Charlie", "Alpha" })]
     [InlineData(LocationSortBy.CreatedAt, SortDirection.Desc, new[] { "Alpha", "Charlie", "Bravo" })]
-    [InlineData(LocationSortBy.UpdatedAt, SortDirection.Asc, new[] { "Bravo", "Charlie", "Alpha" })]
-    [InlineData(LocationSortBy.UpdatedAt, SortDirection.Desc, new[] { "Alpha", "Charlie", "Bravo" })]
+    [InlineData(LocationSortBy.UpdatedAt, SortDirection.Asc, new[] { "Charlie", "Alpha", "Bravo" })]
+    [InlineData(LocationSortBy.UpdatedAt, SortDirection.Desc, new[] { "Bravo", "Alpha", "Charlie" })]
     public async Task Sorts_by_each_key_in_both_directions(LocationSortBy sortBy, SortDirection dir, string[] expected)
     {
         using var context = TestContextFactory.CreateJournal();
         var clock = new StepClock(new DateTimeOffset(2026, 10, 1, 8, 0, 0, TimeSpan.Zero));
         var service = new LocationService(context, clock);
+        var created = new List<ExistingLocation>();
         foreach (var name in new[] { "Bravo", "Charlie", "Alpha" })
         {
-            await service.Create(Cabin(name), UserId);
+            created.Add(await service.Create(Cabin(name), UserId));
         }
+
+        await service.Update(created[0].LocationId, AsUpdate(created[0]) with { Description = "Edited" }, UserId);
 
         var rows = await service.ListAsync(new LocationsQueryParams { SortBy = sortBy, SortDir = dir });
 

@@ -235,34 +235,77 @@ public class LocationSearchTests
         Assert.Equal(2, openMeteo.Requests.Count);
     }
 
+    private static async Task<HttpResponseMessage> Hang(HttpRequestMessage request)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(30), CancellationToken.None).WaitAsync(request.Options.TryGetValue(
+            new HttpRequestOptionsKey<CancellationToken>("ct"), out var ct) ? ct : CancellationToken.None);
+        return Json("{}");
+    }
+
+    // The 3 s budget is the contract: the lower bound proves the call was not abandoned early for some
+    // other reason, the upper one that it was not left to the 30 s the stub would take.
     [Fact]
     public async Task A_provider_that_does_not_answer_in_three_seconds_is_geocoding_unavailable()
     {
-        var (service, _, _) = Build(openMeteo: async request =>
-        {
-            await Task.Delay(TimeSpan.FromSeconds(30), CancellationToken.None).WaitAsync(request.Options.TryGetValue(
-                new HttpRequestOptionsKey<CancellationToken>("ct"), out var ct) ? ct : CancellationToken.None);
-            return Json("{}");
-        });
+        var (service, _, _) = Build(openMeteo: Hang);
 
-        var started = DateTime.UtcNow;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         await Assert.ThrowsAsync<GeocodingUnavailableException>(() => service.SearchAsync(World("lisbon")));
 
-        Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(10));
+        Assert.InRange(clock.Elapsed, TimeSpan.FromSeconds(2.5), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task Kartverket_not_answering_in_three_seconds_is_geocoding_unavailable()
+    {
+        var (service, _, _) = Build(kartverket: Hang);
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        await Assert.ThrowsAsync<GeocodingUnavailableException>(() => service.SearchAsync(Norway("storgata 1")));
+
+        Assert.InRange(clock.Elapsed, TimeSpan.FromSeconds(2.5), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
     public async Task A_redirect_is_a_failure_not_followed()
     {
-        var (service, _, openMeteo) = Build(openMeteo: _ =>
-        {
-            var redirect = new HttpResponseMessage(HttpStatusCode.TemporaryRedirect);
-            redirect.Headers.Location = new Uri("https://evil.example/");
-            return Task.FromResult(redirect);
-        });
+        var (service, _, openMeteo) = Build(openMeteo: _ => Task.FromResult(Redirect()));
 
         await Assert.ThrowsAsync<GeocodingUnavailableException>(() => service.SearchAsync(World("lisbon")));
         Assert.Single(openMeteo.Requests);
+    }
+
+    [Fact]
+    public async Task A_Kartverket_redirect_is_a_failure_not_followed()
+    {
+        var (service, kartverket, _) = Build(kartverket: _ => Task.FromResult(Redirect()));
+
+        await Assert.ThrowsAsync<GeocodingUnavailableException>(() => service.SearchAsync(Norway("storgata 1")));
+        Assert.Equal(2, kartverket.Requests.Count);
+        Assert.All(kartverket.Requests, uri => Assert.Equal("ws.geonorge.no", uri.Host));
+    }
+
+    private static HttpResponseMessage Redirect()
+    {
+        var redirect = new HttpResponseMessage(HttpStatusCode.TemporaryRedirect);
+        redirect.Headers.Location = new Uri("https://evil.example/");
+        return redirect;
+    }
+
+    [Fact]
+    public async Task A_two_character_Norway_search_maps_the_recorded_Al_responses()
+    {
+        var (service, _, _) = Build(kartverket: request => Task.FromResult(Json(
+            request.RequestUri!.AbsolutePath.StartsWith("/adresser", StringComparison.Ordinal)
+                ? Fixture("kartverket-adresser-al.json")
+                : Fixture("kartverket-stedsnavn-al.json"))));
+
+        var response = await service.SearchAsync(Norway("Ål"));
+
+        Assert.False(response.Partial);
+        Assert.Contains(response.Candidates, c => c.Kind == LocationCandidateKind.Address && c.Name == "Ål idrettspark 1");
+        Assert.Contains(response.Candidates, c => c.Kind == LocationCandidateKind.PlaceName && c.Name == "Ål");
+        Assert.All(response.Candidates, c => Assert.Equal(LocationSource.Kartverket, c.Source));
     }
 
     [Fact]
@@ -377,20 +420,28 @@ public class LocationSearchTests
     [InlineData("""{"results":["a string",42,null,[1]]}""")]
     [InlineData("""{"results":[{"name":"Far","latitude":1e300,"longitude":2}]}""")]
     [InlineData("""{"results":[{"name":"Far","latitude":91,"longitude":2}]}""")]
-    [InlineData("""{"results":[{"name":"High","latitude":1,"longitude":2,"elevation":1e300}]}""")]
     [InlineData("""{"results":{"not":"an array"}}""")]
     [InlineData("""[1,2,3]""")]
-    public async Task A_body_of_the_wrong_shape_yields_no_bad_rows_and_no_exception(string body)
+    public async Task A_body_of_the_wrong_shape_yields_no_rows_and_no_exception(string body)
     {
         var (service, _, _) = Build(openMeteo: _ => Task.FromResult(Json(body)));
 
         var response = await service.SearchAsync(World("shape test"));
 
-        Assert.All(response.Candidates, c =>
-        {
-            Assert.InRange(c.Latitude, -90m, 90m);
-            Assert.Null(c.AltitudeMeters);
-        });
+        Assert.Empty(response.Candidates);
+    }
+
+    [Fact]
+    public async Task An_altitude_beyond_range_is_dropped_but_the_place_kept()
+    {
+        var (service, _, _) = Build(openMeteo: _ => Task.FromResult(Json(
+            """{"results":[{"name":"High","latitude":1,"longitude":2,"elevation":1e300,"timezone":"UTC"}]}""")));
+
+        var response = await service.SearchAsync(World("shape test"));
+
+        var candidate = Assert.Single(response.Candidates);
+        Assert.Equal("High", candidate.Name);
+        Assert.Null(candidate.AltitudeMeters);
     }
 
     [Theory]

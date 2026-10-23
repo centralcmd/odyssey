@@ -32,8 +32,17 @@ public sealed class LocationSearchCache : IDisposable
     /// <summary>Joins the in-flight call for <paramref name="key"/>, or starts one.</summary>
     public Task<LocationSearchResponse> Join(string key, Func<Task<LocationSearchResponse>> start)
     {
-        var flight = flights.GetOrAdd(key, k => new Lazy<Task<LocationSearchResponse>>(() => RunAndForget(k, start)));
+        var flight = flights.GetOrAdd(key, k => new Lazy<Task<LocationSearchResponse>>(() => Observed(RunAndForget(k, start))));
         return flight.Value;
+    }
+
+    // Every waiter may have stopped waiting (each on its own token) by the time a shared call fails, so
+    // the fault is observed here once — otherwise it surfaces as an UnobservedTaskException.
+    private static Task<LocationSearchResponse> Observed(Task<LocationSearchResponse> task)
+    {
+        _ = task.ContinueWith(t => _ = t.Exception, CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        return task;
     }
 
     private async Task<LocationSearchResponse> RunAndForget(string key, Func<Task<LocationSearchResponse>> start)

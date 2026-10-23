@@ -110,8 +110,14 @@ public sealed class LocationsController : ControllerBase
         [FromServices] LocationSearchGlobalLimiter globalLimiter,
         CancellationToken cancellationToken = default)
     {
-        // The per-user policy has already admitted this request; the instance-wide budget is checked after
-        // it, never before (see LocationSearchRateLimiting).
+        // The per-user policy has already admitted this request. A cached result reaches no provider, so it
+        // spends nothing from the instance-wide budget, which is checked only on a miss — and after the
+        // per-user check, never before (see LocationSearchRateLimiting).
+        if (search.TryGetCached(request, out var cached))
+        {
+            return Ok(cached);
+        }
+
         using var lease = globalLimiter.Acquire();
         if (!lease.IsAcquired)
         {

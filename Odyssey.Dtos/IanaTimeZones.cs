@@ -15,7 +15,8 @@ namespace Odyssey.Dtos;
 /// <c>-</c> in at most three <c>/</c>-separated segments, so path characters and <c>..</c> never reach
 /// the filesystem-backed <see cref="TimeZoneInfo.TryFindSystemTimeZoneById"/>. An id must also contain a
 /// <c>/</c> or be the literal <c>UTC</c>, which keeps out Windows ids and <c>posixrules</c>-style
-/// aliases a host might otherwise resolve.
+/// aliases a host might otherwise resolve, and must not sit under the <c>posix/</c> or <c>right/</c>
+/// copies of the database that some tzdata packages install.
 /// </para>
 /// <para>
 /// <b>No enumeration.</b> <c>TimeZoneInfo.GetSystemTimeZones()</c> is host-dependent — on Linux it omits
@@ -46,7 +47,9 @@ public static partial class IanaTimeZones
             return known;
         }
 
-        var valid = (id.Contains('/') || id == "UTC") && TimeZoneInfo.TryFindSystemTimeZoneById(id, out _);
+        var valid = (id.Contains('/') || id == "UTC")
+            && !IsDatabaseSubtree(id)
+            && TimeZoneInfo.TryFindSystemTimeZoneById(id, out _);
         if (Cache.Count < CacheCapacity)
         {
             Cache.TryAdd(id, valid);
@@ -54,6 +57,12 @@ public static partial class IanaTimeZones
 
         return valid;
     }
+
+    // Some tzdata packages ship the whole database again under posix/ and right/ (the latter counting leap
+    // seconds). Those resolve on such a host but are not IANA ids, and would not resolve elsewhere.
+    private static bool IsDatabaseSubtree(string id) =>
+        id.StartsWith("posix/", StringComparison.OrdinalIgnoreCase)
+        || id.StartsWith("right/", StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>An IANA time-zone id this host can resolve — see <see cref="IanaTimeZones"/>.</summary>

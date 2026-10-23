@@ -974,7 +974,8 @@ appears.
 
 **Logging.** The search text travels in a `POST` body, so it is in no URL, and the API never logs it.
 The outbound clients have their HTTP loggers removed, because their URLs do carry it. The bundled
-nginx turns its access log off for every `/locations` request. **Any other proxy in front of
+nginx turns its access log off for the location API (`/api/api/locations…`, the path the browser
+calls); the `/locations` page itself is an ordinary SPA route and is logged like any other. **Any other proxy in front of
 Odyssey** — Caddy in the production overlay, or your own — logs only the URL, which carries no search
 text; if yours is configured to log request bodies, exclude `/api/api/locations` from it.
 
