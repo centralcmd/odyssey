@@ -163,6 +163,38 @@ public class WeatherClientTests : IDisposable
     }
 
     [Fact]
+    public async Task Choosing_a_place_saves_it_and_keeps_the_picker_mounted_and_enabled()
+    {
+        var home = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Home" };
+        var cabin = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Cabin" };
+        Mock<IWeatherApiClient>? client = null;
+        await using var ctx = Context(weather =>
+        {
+            client = weather;
+            weather.Setup(w => w.OptionsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Ok(new WeatherLocationOptions { Locations = [home, cabin], HouseholdDefaultLocationId = home.LocationId }));
+            weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherCurrentResponse
+            {
+                Location = home, Status = WeatherStatus.NoData,
+            }));
+            weather.Setup(w => w.SetPreferenceAsync(cabin.LocationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        });
+
+        var card = ctx.Render<WeatherWidget>();
+        card.WaitForAssertion(() => Assert.Single(card.FindComponents<Odyssey.Client.Components.OdsSelect>()));
+        var picker = card.FindComponent<Odyssey.Client.Components.OdsSelect>();
+
+        await card.InvokeAsync(() => picker.Instance.ValueChanged.InvokeAsync(cabin.LocationId.ToString("D")));
+
+        card.WaitForAssertion(() => client!.Verify(w => w.SetPreferenceAsync(cabin.LocationId, It.IsAny<CancellationToken>()), Times.Once));
+        // The same component instance survives the reload, never disabled: focus has nowhere to fall.
+        Assert.Same(picker.Instance, card.FindComponent<Odyssey.Client.Components.OdsSelect>().Instance);
+        Assert.False(picker.Instance.Disabled);
+        Assert.Empty(card.FindAll(".wx-skel"));
+    }
+
+    [Fact]
     public void A_429_rests_with_try_again()
     {
         using var ctx = Context(weather => weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>()))

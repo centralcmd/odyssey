@@ -14,6 +14,9 @@ public sealed class WeatherReadService
     /// <summary>How far ahead Locationforecast reaches; a window wholly beyond it is <c>OutOfRange</c>.</summary>
     public static readonly TimeSpan Horizon = TimeSpan.FromDays(10);
 
+    /// <summary>The least age at which a forecast reads as stale, however short the refresh interval.</summary>
+    private static readonly TimeSpan StaleFloor = TimeSpan.FromHours(3);
+
     private const int AllDayMaxDays = 31;
 
     private readonly OdysseyContext context;
@@ -400,7 +403,6 @@ public sealed class WeatherReadService
         return (await settings.GetAsync(cancellationToken)).IsConfigured ? WeatherStatus.NoData : WeatherStatus.NotConfigured;
     }
 
-    /// <summary><c>stale: true</c> — a refresh was due and failed, so what is shown is older than it should be.</summary>
     /// <summary>
     /// Stale: the last refresh failed, OR the newest forecast is older than three refresh intervals (never
     /// under 3 h). The age half covers what a recorded failure cannot: a scheduled place paused past a
@@ -432,7 +434,6 @@ public sealed class WeatherReadService
         return schedule.LastForecastSuccessUtc is { } last && Now - last > staleAfter;
     }
 
-    private static readonly TimeSpan StaleFloor = TimeSpan.FromHours(3);
 
     private async Task<List<WeatherForecastStep>> EffectiveStepsAsync(
         Guid locationId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken) =>
