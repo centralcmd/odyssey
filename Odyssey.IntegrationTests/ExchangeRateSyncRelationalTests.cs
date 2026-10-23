@@ -263,7 +263,10 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         var status = await sync.GetStatusAsync();
         Assert.Equal(1, status.EnabledCount);
         var list = await currencies.ListAsync(new ExchangeRateSyncCurrenciesQueryParams { Search = "USD" });
-        Assert.Equal(DateOnly.FromDateTime(now.AddDays(-1)), Assert.Single(list.Items, item => item.CurrencyCode == "USD").NewestFetchedDate);
+        // Fetched extents are Oslo calendar dates: near UTC midnight, day −1 can already be "today" in Oslo.
+        Assert.Equal(
+            ExchangeRateSyncClock.DateIn(ExchangeRateSyncClock.Oslo, now.AddDays(-1)),
+            Assert.Single(list.Items, item => item.CurrencyCode == "USD").NewestFetchedDate);
     }
 
     /// <summary>The two services wired to a provider that refuses every request: none of these paths may call out.</summary>
