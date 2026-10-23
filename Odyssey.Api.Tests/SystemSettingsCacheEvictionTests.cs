@@ -35,6 +35,7 @@ public class SystemSettingsCacheEvictionTests
         (JournalLimitsLookup.CacheKey, KeysOf<JournalLimitsLookup>("Keys")),
         (ImportExportLimitsLookup.CacheKey, KeysOf<ImportExportLimitsLookup>("Keys")),
         (FileAnalysisSettingsLookup.CacheKey, KeysOf<FileAnalysisSettingsLookup>("Keys")),
+        (WeatherSettingsLookup.CacheKey, KeysOf<WeatherSettingsLookup>("Keys")),
 
         // These three resolve a single key inline rather than from an array, so there is nothing to
         // reflect. Naming the constant still fails if the lookup is repointed at a different key.

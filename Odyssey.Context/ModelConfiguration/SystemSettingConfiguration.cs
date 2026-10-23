@@ -109,6 +109,13 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             new SystemSetting { Key = SystemSettingsKeys.AccountMaxSmartTagsPerAccount, Value = "20", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.ContractMaxSmartTagsPerContract, Value = "20", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.PropertyMaxSmartTagsPerProperty, Value = "20", UpdatedAt = seededAt },
+            // Weather (issue #348). New keys, not moved ones, so they seed the shipped defaults: no
+            // contact (nothing is fetched until an administrator sets one), hourly refresh, five
+            // scheduled places, no household default.
+            new SystemSetting { Key = SystemSettingsKeys.WeatherUserAgentContact, Value = SystemSettingsDefaults.WeatherUserAgentContact, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.WeatherRefreshIntervalMinutes, Value = "60", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.WeatherMaxTrackedLocations, Value = "5", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.WeatherDefaultLocationId, Value = SystemSettingsDefaults.WeatherDefaultLocationId, UpdatedAt = seededAt },
             // The file-analysis kill switch, model and destination (issue #439). Seeded to today's
             // effective values, so a default install is behaviourally identical: analysis OFF,
             // claude-sonnet-5, api.anthropic.com.

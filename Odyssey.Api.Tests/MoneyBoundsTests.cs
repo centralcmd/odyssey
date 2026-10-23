@@ -85,7 +85,23 @@ public class MoneyBoundsTests
         // and by CHECK constraints in the database (issue #350).
         (typeof(Context.Location), nameof(Context.Location.Latitude)),
         (typeof(Context.Location), nameof(Context.Location.Longitude)),
+        // Weather (issue #348): never written from a request body. Site coordinates are rounded copies of a
+        // Location's; the run, step, observation and day values are parsed from MET/Frost responses and
+        // range-checked by the parsers (WeatherHttp.InRange) before they are stored.
+        (typeof(Context.WeatherLocationSite), nameof(Context.WeatherLocationSite.Latitude)),
+        (typeof(Context.WeatherLocationSite), nameof(Context.WeatherLocationSite.Longitude)),
+        (typeof(Context.WeatherForecastRun), nameof(Context.WeatherForecastRun.Latitude)),
+        (typeof(Context.WeatherForecastRun), nameof(Context.WeatherForecastRun.Longitude)),
+        ..WeatherValueColumns(typeof(Context.WeatherForecastStep)),
+        ..WeatherValueColumns(typeof(Context.WeatherObservation)),
+        ..WeatherValueColumns(typeof(Context.WeatherDay)),
     ];
+
+    /// <summary>Every decimal property of a weather value table — all provider measurements, none money.</summary>
+    private static IEnumerable<(Type Entity, string Property)> WeatherValueColumns(Type entity) =>
+        entity.GetProperties()
+            .Where(p => p.PropertyType == typeof(decimal) || p.PropertyType == typeof(decimal?))
+            .Select(p => (entity, p.Name));
 
     private static OdysseyContext CreateContext() => new(
         new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase(nameof(MoneyBoundsTests)).Options);

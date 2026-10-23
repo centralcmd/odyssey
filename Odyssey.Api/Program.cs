@@ -312,6 +312,8 @@ builder.Services.AddAdminActionRateLimiter(builder.Configuration);
 builder.Services.AddProfileImageRateLimiter(builder.Configuration);
 // The geocoding search proxy's per-user and instance-wide limits (issue #350). Same composition rules.
 builder.Services.AddLocationSearchRateLimiter(builder.Configuration);
+// The weather read and Admin-action limits (issue #348). Same composition rules.
+builder.Services.AddWeatherRateLimiter(builder.Configuration);
 
 // The instance-wide half of the export concurrency control (issue #343 §5) — a singleton so every
 // request's ExportConcurrencyFilter instance (one per request, via [TypeFilter]) shares the same
@@ -500,6 +502,57 @@ builder.Services.AddTransient<Odyssey.Core.Journal.Geocoding.ILocationSearchSour
 builder.Services.AddTransient<Odyssey.Core.Journal.Geocoding.ILocationSearchSource>(sp =>
     new Odyssey.Core.Journal.Geocoding.OpenMeteoLocationSearch(sp.GetRequiredService<IHttpClientFactory>()
         .CreateClient(nameof(Odyssey.Core.Journal.Geocoding.OpenMeteoLocationSearch))));
+
+// Weather (issue #348). No feature toggle — gated by the weather.* claims, and nothing is fetched until an
+// Admin sets the MET contact. The two MET clients follow the geocoding clients exactly: a compile-time base
+// address, no redirects, gzip/deflate/brotli only (the size caps in WeatherHttp count inflated bytes), and
+// every HttpClient logger removed — the outbound URL carries the coordinates (§7.7). The User-Agent carries
+// the admin's contact and is set per request; the Frost credential is attached per request too.
+builder.Services.AddScoped<Odyssey.Core.Weather.IWeatherSettingsLookup, Odyssey.Api.SystemSettings.WeatherSettingsLookup>();
+builder.Services.AddSingleton<Odyssey.Core.Weather.IWeatherLocationRules, Odyssey.Core.Weather.WeatherLocationRules>();
+builder.Services.AddScoped<Odyssey.Core.Weather.WeatherFetchService>();
+builder.Services.AddScoped<Odyssey.Core.Weather.WeatherReadService>();
+builder.Services.AddScoped<Odyssey.Core.Weather.WeatherLocationService>();
+foreach (var (client, baseAddress) in new[]
+{
+    (nameof(Odyssey.Core.Weather.MetNorwayForecastSource), Odyssey.Core.Weather.MetNorwayForecastSource.BaseAddress),
+    (nameof(Odyssey.Core.Weather.FrostObservationSource), Odyssey.Core.Weather.FrostObservationSource.BaseAddress),
+})
+{
+    builder.Services.AddHttpClient(client, http =>
+        {
+            http.BaseAddress = new Uri(baseAddress);
+            // Each call enforces its own budget (5 s on demand, 10 s per scheduled attempt); this is a backstop.
+            http.Timeout = TimeSpan.FromSeconds(30);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip
+                | System.Net.DecompressionMethods.Deflate
+                | System.Net.DecompressionMethods.Brotli,
+        })
+        .RemoveAllLoggers();
+}
+
+builder.Services.AddTransient<Odyssey.Core.Weather.IWeatherForecastSource>(sp =>
+    new Odyssey.Core.Weather.MetNorwayForecastSource(sp.GetRequiredService<IHttpClientFactory>()
+        .CreateClient(nameof(Odyssey.Core.Weather.MetNorwayForecastSource))));
+builder.Services.AddTransient<Odyssey.Core.Weather.IWeatherObservationSource>(sp =>
+    new Odyssey.Core.Weather.FrostObservationSource(sp.GetRequiredService<IHttpClientFactory>()
+        .CreateClient(nameof(Odyssey.Core.Weather.FrostObservationSource))));
+
+// The purge (N2): bulk ExecuteDelete on a real engine, tracked RemoveRange on the EF InMemory provider,
+// where ExecuteDelete throws. The scheduler is not registered there at all, so no test tier calls MET.
+if (builder.Configuration.GetValue<bool>("UseInMemoryDatabase") || builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddScoped<Odyssey.Core.Weather.IWeatherHistoryPurger, Odyssey.Core.Weather.TrackedWeatherHistoryPurger>();
+}
+else
+{
+    builder.Services.AddScoped<Odyssey.Core.Weather.IWeatherHistoryPurger, Odyssey.Core.Weather.RelationalWeatherHistoryPurger>();
+    builder.Services.AddHostedService<Odyssey.Api.Weather.WeatherScheduler>();
+}
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<DataExportService>();

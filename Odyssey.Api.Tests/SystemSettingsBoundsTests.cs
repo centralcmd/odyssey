@@ -89,13 +89,14 @@ public class SystemSettingsBoundsTests
     /// Contracts summary gained its two windows and its next-charge row cap, 48 once issue #166 added
     /// the per-contract smart-tag cap, 45 once the standalone subscriptions feature was removed and
     /// took its three summary limits with it, and 40 once the standalone insurance-policy feature went
-    /// and took its five, and 41 once issue #167 added the per-property smart-tag cap.
+    /// and took its five, 41 once issue #167 added the per-property smart-tag cap, and 43 once issue
+    /// #348 added the weather refresh interval and tracked-location cap.
     /// </summary>
     [Fact]
-    public void The_int_key_census_is_forty_one()
+    public void The_int_key_census_is_forty_three()
     {
-        Assert.Equal(41, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
-        Assert.Equal(41, IntProperties.Count);
+        Assert.Equal(43, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
+        Assert.Equal(43, IntProperties.Count);
 
         // …and the whole registry equals the persisted key catalogue, which is the check that the
         // per-kind counts are right rather than merely consistent with each other. Issue #8 added four:
@@ -103,11 +104,13 @@ public class SystemSettingsBoundsTests
         // Issue #135 added one more int, ContractMaxTermsPerContract; the Contracts summary windows
         // added three more; issue #166 the per-contract smart-tag cap. Removing the subscriptions
         // feature took three int keys back out, and removing the standalone insurance-policy feature
-        // took five more. Issue #167 added one int, the per-property smart-tag cap.
-        Assert.Equal(65, SystemSettingsRegistry.All.Count);
+        // took five more. Issue #167 added one int, the per-property smart-tag cap. Issue #348 added
+        // four: two ints (the refresh interval and the tracked cap) and two strings (the contact and the
+        // household default).
+        Assert.Equal(69, SystemSettingsRegistry.All.Count);
         Assert.Equal(5, SystemSettingsRegistry.All.OfType<BoolSetting>().Count());
         Assert.Equal(8, SystemSettingsRegistry.All.OfType<CapacitySetting>().Count());
-        Assert.Equal(10, SystemSettingsRegistry.All.OfType<StringSetting>().Count());
+        Assert.Equal(12, SystemSettingsRegistry.All.OfType<StringSetting>().Count());
         Assert.Single(SystemSettingsRegistry.All.OfType<DecimalSetting>());
     }
 

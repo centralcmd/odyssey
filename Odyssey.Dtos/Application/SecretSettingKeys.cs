@@ -95,6 +95,13 @@ public static class SecretSettingKeys
     /// </summary>
     public const string LegalPseudonymizationSecret = "LegalPseudonymizationSecret";
 
+    /// <summary>
+    /// The MET Norway Frost client id (issue #348 §7.9), sent to <c>frost.met.no</c> only and never to the
+    /// forecast host. Rotatable: registered for free at frost.met.no and re-pasted. Unset means measured
+    /// history is not collected, which is a supported configuration.
+    /// </summary>
+    public const string WeatherFrostClientId = "WeatherFrostClientId";
+
     /// <summary>Every declared secret key. The client catalogue is asserted against this.</summary>
     public static readonly IReadOnlyList<string> AllKeys =
     [
@@ -104,6 +111,7 @@ public static class SecretSettingKeys
         EmailPassword,
         EmailRecipientHashKey,
         LegalPseudonymizationSecret,
+        WeatherFrostClientId,
     ];
 
     /// <summary>

@@ -990,7 +990,10 @@ There is **no delete** in this version — a product decision, recorded in issue
 overwrites in place and keeps no previous value anywhere in the application, so erasure is an edit:
 
 1. As **Admin**, find the row on the Locations page (turn on *Archived* in the status filter if it is
-   already archived).
+   already archived). **If the location has weather** (issue #348), turn weather off for it and then
+   **Delete weather history** first — the weather tables hold their own copies of the coordinates (the
+   frozen sites and every forecast run), and an edit of the location does not reach them. See
+   [Weather](#weather-what-leaves-the-deployment-and-how-to-erase-it).
 2. **Edit** it: replace the name with something neutral (it must stay unique, e.g. `Erased 2026-10-23`),
    clear the address and the description, and replace the coordinates with a coarse value (e.g. `0, 0`).
    Save, then **Archive** it.
@@ -1000,6 +1003,57 @@ overwrites in place and keeps no previous value anywhere in the application, so 
 5. Record the request, the date and the backup retention that still applies.
 
 Deleting a user leaves every location they created; only the attribution is cleared.
+
+## Weather: what leaves the deployment, and how to erase it
+
+Issue #348 added **weather** for the household's locations, from MET Norway: the forecast from
+Locationforecast (`api.met.no`) and, optionally, measured days from Frost (`frost.met.no`).
+
+### Release note
+
+- **New claims.** `weather.read` and `weather.preferences.update` (every role, Guest included);
+  `weather.locations.read`, `weather.locations.update` and `weather.history.delete` (Admin only).
+  **Every user must sign out and back in** before the weather widget and the Admin controls appear.
+- **Nothing is fetched until an administrator sets it up.** MET's terms require a contact in the
+  `User-Agent`, so set **`/settings` → Weather → Contact for MET Norway** (an email address or an
+  `https://` URL). Until then every weather read reports *not configured* and no request leaves the
+  deployment. Then turn weather on per place on the Locations page.
+- **Observations are optional.** They need a Frost client id (free, from `frost.met.no`), entered in
+  **`/settings` → Weather** as a secret. Without it, past days show the forecast only. An id that
+  cannot be decrypted (a lost Data Protection key ring) stops observations and logs an error hourly.
+- Four new settings: the contact, the refresh interval (default 60 min, 30–360), the cap on scheduled
+  places (default 5, 1–20) and the household default place. No configuration keys are added or moved.
+- Two new deploy-time limits: `RateLimiting:WeatherRead` (per user, default 120 per 60 s) and
+  `RateLimiting:WeatherRefresh` (per user, default 6 per 300 s, covering apply, refresh and delete).
+- The scheduler runs inside the API, once a minute, at most one MET request per second. Every replica
+  runs one; a lease on each place keeps two from fetching the same one.
+
+### The data flow
+
+Only an **Admin** can cause coordinates to be sent. Turning weather on copies the location's position,
+rounded to **3 decimals (≈ 100 m)**, and its time zone into a frozen *site*; every request uses that
+site. Editing the location later changes nothing until an Admin *applies* the move. A read for a place
+nobody schedules may fetch on demand, but still only for its frozen site.
+
+What MET receives: the rounded latitude and longitude, the altitude, the contact address in the
+`User-Agent` and, for Frost, the client id. No user id, place name or address is sent. The outbound
+HTTP clients log nothing, and audit lines carry the location id and the actor — never coordinates.
+
+Weather is shown with MET's attribution (*Weather data from MET Norway*, NLOD 2.0 / CC BY 4.0) on
+every surface that displays it.
+
+### Erasing a location's weather
+
+1. As **Admin**, on the Locations page, turn weather **off** for the place. A household default cannot
+   be turned off: choose another default in `/settings` first.
+2. Choose **Delete weather history** and type the place's name to confirm. This removes every weather
+   row of that place — the sites, every forecast and observation, the day summaries and the schedule —
+   and leaves the location itself untouched.
+3. A large history is deleted in batches. If the request is interrupted, the place shows *deleting* and
+   stays blocked; run **Delete weather history** again to finish it.
+4. Then erase the location itself as in the previous section.
+5. Copies outside the live rows age out with your backup retention. The Admin data export carries only
+   the per-place weather *settings*, never coordinates or history.
 
 ## Security checklist
 

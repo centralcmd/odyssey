@@ -162,6 +162,7 @@ public sealed class DataExportService
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyFiles), PropertyFilesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyEvents), PropertyEventsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Locations), LocationsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.WeatherLocations), WeatherLocationsQuery(), cancellationToken);
     }
 
     /// <summary>
@@ -540,6 +541,24 @@ public sealed class DataExportService
                 Archived = location.Archived,
                 CreatedAt = location.CreatedAt,
                 UpdatedAt = location.UpdatedAt,
+            });
+
+    // ── Issue #348 ────────────────────────────────────────────────────────────
+
+    private IQueryable<WeatherLocationExport> WeatherLocationsQuery() =>
+        context.WeatherLocations.AsNoTracking()
+            .OrderBy(weather => weather.LocationId)
+            .Select(weather => new WeatherLocationExport
+            {
+                LocationId = weather.LocationId,
+                Enabled = weather.Enabled,
+                IsTracked = weather.IsTracked,
+                HistoryFrom = weather.HistoryFrom,
+                EnabledAt = weather.EnabledAt,
+                CurrentSiteVersion = weather.CurrentSiteVersion,
+                PurgeStartedAt = weather.PurgeStartedAt,
+                CreatedAt = weather.CreatedAt,
+                UpdatedAt = weather.UpdatedAt,
             });
 
     private IQueryable<PropertyExport> PropertiesQuery() =>

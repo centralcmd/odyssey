@@ -100,6 +100,16 @@ public sealed class SecretSettingsRegistry
             RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
             Kind = SecretKind.DerivationKey,
         },
+
+        // Issue #348. The Frost client id, sent to frost.met.no only. NotSet is healthy — forecasts work
+        // and measured history is simply not collected; Unreadable fails closed (no Frost request) and
+        // logs an error hourly, so it is never mistaken for the healthy unset state.
+        new SecretSettingDescriptor
+        {
+            Key = SecretSettingKeys.WeatherFrostClientId,
+            RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
+            Kind = SecretKind.RotatableCredential,
+        },
     ];
 
     private readonly IReadOnlyList<SecretSettingDescriptor> descriptors;
