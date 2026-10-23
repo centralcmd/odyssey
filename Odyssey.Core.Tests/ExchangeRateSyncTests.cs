@@ -641,6 +641,29 @@ public class ExchangeRateSyncTests
     }
 
     [Fact]
+    public async Task A_provider_outage_longer_than_the_gap_does_not_loop_on_the_catch_up_delay()
+    {
+        await using var harness = await CaughtUpAsync();
+        harness.Clock.Advance(TimeSpan.FromDays(20));
+        var finished = harness.Clock.UtcNow.AddMinutes(-1);
+
+        // The newest fetched date is 20 days behind and the last run found nothing: an outage, not a
+        // capped forward fill, so the ordinary interval applies.
+        harness.Context.ExchangeRateSyncRuns.Add(FinishedRun(ExchangeRateSyncRunStatus.Succeeded, finished));
+        await harness.Context.SaveChangesAsync();
+        var outage = await harness.Sync.GetStatusAsync();
+        Assert.Equal(ExchangeRateSyncState.Scheduled, outage.State);
+        Assert.Equal(finished.AddHours(24), outage.NextRunAtUtc);
+
+        // The same gap after a run that DID insert rows is a capped forward fill: catch up in 5 minutes.
+        var capped = FinishedRun(ExchangeRateSyncRunStatus.Succeeded, finished.AddSeconds(30));
+        capped.RowsInserted = 10;
+        harness.Context.ExchangeRateSyncRuns.Add(capped);
+        await harness.Context.SaveChangesAsync();
+        Assert.Equal(ExchangeRateSyncState.CatchingUp, (await harness.Sync.GetStatusAsync()).State);
+    }
+
+    [Fact]
     public async Task One_currency_failing_does_not_hold_back_another()
     {
         await using var harness = await Harness.CreateAsync();
