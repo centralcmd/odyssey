@@ -30,7 +30,8 @@ public static class ExchangeRateSyncConstants
 
     /// <summary>
     /// A currency whose newest fetched date is further behind today than this is still forward filling
-    /// (a run capped at <see cref="ForwardFillRequestsPerRun"/> left a gap), so the catch-up delay applies.
+    /// (a run capped at <see cref="ForwardFillRequestsPerRun"/> left a gap), so the catch-up delay applies —
+    /// but only while the last run still inserted rows, so a publication outage does not loop every 5 min.
     /// Ten days clears the longest run of Norwegian non-business days (Easter: Thursday to Monday) with margin.
     /// </summary>
     public const int ForwardFillCaughtUpDays = 10;

@@ -542,7 +542,7 @@ public sealed class ExchangeRateSyncService(
             .Where(run => run.Trigger != ExchangeRateSyncTrigger.Purge && run.Status != ExchangeRateSyncRunStatus.Running)
             .OrderByDescending(run => run.StartedAtUtc)
             .Take(ExchangeRateSyncConstants.RunRetention)
-            .Select(run => new { run.Status, run.FinishedAtUtc })
+            .Select(run => new { run.Status, run.FinishedAtUtc, run.RowsInserted })
             .ToListAsync(cancellationToken);
         var failures = recentSync
             .Where(run => run.Status != ExchangeRateSyncRunStatus.Skipped)
@@ -550,6 +550,10 @@ public sealed class ExchangeRateSyncService(
             .Count();
         var lastFinished = recentSync.FirstOrDefault()?.FinishedAtUtc;
 
+        // A gap only means "forward fill unfinished" while the last sync run is still finding rows. A run
+        // capped by the forward-fill budget inserts some and leaves the gap; a provider that has stopped
+        // publishing inserts none, and re-asking every catch-up delay would only repeat the empty answer.
+        forwardIncomplete &= recentSync.FirstOrDefault() is { RowsInserted: > 0 };
         var catchingUp = enabled.Count > 0 && (!backfillComplete || forwardIncomplete);
         var intervalHours = settings.IntervalHours;
         var delay = catchingUp && failures < ExchangeRateSyncConstants.BackoffAfterFailures
