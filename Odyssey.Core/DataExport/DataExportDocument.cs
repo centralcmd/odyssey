@@ -1,5 +1,6 @@
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Core.DataExport;
 
@@ -78,8 +79,8 @@ public sealed class DataExportExclusions
     public IReadOnlyList<string> OutOfScopeDatabases { get; init; } =
         [
             "Application (Identity: users, roles, profiles, preferences, system settings)",
-            "Journal (journal entries, tasks, photos, albums, calendars, tags) — except Contacts, " +
-            "which is exported below under \"finance\" for backward compatibility even though the " +
+            "Journal (journal entries, tasks, photos, albums, calendars, tags) — except Contacts and " +
+            "Locations, which are exported below under \"finance\" (Contacts for backward compatibility) even though the " +
             "Contact entity itself now lives in Journal (issue #325 follow-up). Only the Contact " +
             "row itself is exported: its detail tables (PersonDetails, OrganizationDetails, " +
             "ContactAliases, Addresses, EmailAddresses, PhoneNumbers) are served by the vCard " +
@@ -147,6 +148,29 @@ public sealed class FinanceDatabaseExport
     // Issue #209 — a property's event log, exported like the rest of the finance domain. Stored in the
     // shared Events table beside contract events but exported as its own section.
     public IReadOnlyList<PropertyEventExport> PropertyEvents { get; init; } = [];
+
+    // Issue #350 §7.12 — household locations. Placed in this section on the Contacts precedent although
+    // the entity is a Journal one. Addresses and coordinates are personal data, but the bulk export is
+    // Admin-only (data.export) and Admin reads them live under locations.read. The attribution columns are
+    // not exported, the same rule the read path follows.
+    public IReadOnlyList<LocationExport> Locations { get; init; } = [];
+}
+
+public sealed class LocationExport
+{
+    public Guid LocationId { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public string? AddressText { get; init; }
+    public decimal Latitude { get; init; }
+    public decimal Longitude { get; init; }
+    public int? AltitudeMeters { get; init; }
+    public string TimeZoneId { get; init; } = string.Empty;
+    public LocationSource Source { get; init; }
+    public string? SourceReference { get; init; }
+    public DateTime? Archived { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime UpdatedAt { get; init; }
 }
 
 public sealed class AccountExport

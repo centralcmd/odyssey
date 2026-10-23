@@ -938,6 +938,68 @@ invariant globalization, which is the alpine runtime's default. The API asserts 
 refuses to serve rather than accept an alias the index will then reject. If you build your own image,
 keep both.
 
+## Household locations: what leaves the deployment, and how to erase one
+
+Issue #350 added **locations** — the household's places, each with a name, an address line,
+coordinates to about 1 m, a time zone and a free-text description. Three things about them are an
+operator's concern.
+
+### Release note
+
+- **New claims.** `locations.read` (every role, Guest included), `locations.create` and
+  `locations.update` (Admin, Owner, User). There is no `locations.delete`. Claims are baked into the
+  auth cookie, so **every user must sign out and back in** before the Locations page appears.
+- **Address search sends text to a third party** (below).
+- **The runtime image needs `tzdata`.** The API Dockerfile installs it, and the API refuses to start
+  if `Europe/Oslo`, `Europe/Kyiv`, `America/New_York` or `Etc/UTC` does not resolve. If you build your
+  own image, keep it.
+- Two new deploy-time limits: `RateLimiting:LocationSearch` (per user, default 30 per 60 s) and
+  `RateLimiting:LocationSearchGlobal` (whole instance, default 120 per 60 s).
+
+### The geocoding data flow
+
+Saving, reading and editing a location never leaves the deployment. **Only the address search does**,
+and only when a user types into it:
+
+| Region chosen | Receives the search text | Who |
+|---|---|---|
+| Norway | `ws.geonorge.no` (two requests: addresses and place names) | Kartverket, the Norwegian Mapping Authority (a state agency) |
+| Worldwide | `geocoding-api.open-meteo.com` | Open-Meteo, Switzerland (EU adequacy decision) |
+
+Never both. No user id, name or stored location is sent, and no API key is used. Both hosts are
+compile-time constants and redirects are not followed. Searches need at least 2 characters (Norway) or
+3 (worldwide), and the client waits until typing pauses, so prefixes are not sent one keystroke at a
+time. Results from both providers are CC BY 4.0, and Odyssey shows the credit wherever their data
+appears.
+
+**Logging.** The search text travels in a `POST` body, so it is in no URL, and the API never logs it.
+The outbound clients have their HTTP loggers removed, because their URLs do carry it. The bundled
+nginx turns its access log off for every `/locations` request. **Any other proxy in front of
+Odyssey** — Caddy in the production overlay, or your own — logs only the URL, which carries no search
+text; if yours is configured to log request bodies, exclude `/api/api/locations` from it.
+
+**Privacy notice.** Odyssey ships no privacy notice of its own. If you publish one for your household,
+it should say: locations (addresses, coordinates and descriptions) are visible to every household
+member including guests; address searches are sent to Kartverket or Open-Meteo as described above;
+and locations are kept until someone overwrites them (next section).
+
+### Erasing a location (data-subject requests)
+
+There is **no delete** in this version — a product decision, recorded in issue #350 §7.8. An update
+overwrites in place and keeps no previous value anywhere in the application, so erasure is an edit:
+
+1. As **Admin**, find the row on the Locations page (turn on *Archived* in the status filter if it is
+   already archived).
+2. **Edit** it: replace the name with something neutral (it must stay unique, e.g. `Erased 2026-10-23`),
+   clear the address and the description, and replace the coordinates with a coarse value (e.g. `0, 0`).
+   Save, then **Archive** it.
+3. The audit log records who made the change and which fields changed — never the old values.
+4. Copies outside the live row are **not** purged by the edit: the Admin data export (which includes
+   locations) and database backups age out under your existing export and backup retention.
+5. Record the request, the date and the backup retention that still applies.
+
+Deleting a user leaves every location they created; only the attribution is cleared.
+
 ## Security checklist
 
 - [ ] `ASPNETCORE_ENVIRONMENT=Production` (Swagger off; set in the overlay) — and **not**

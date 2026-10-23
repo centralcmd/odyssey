@@ -81,6 +81,10 @@ public class MoneyBoundsTests
         // Areas, decimal(18,2), already bounded by [Range(0, 1_000_000)] on RealEstateDetailsDto.
         (typeof(Context.RealEstateDetails), nameof(Context.RealEstateDetails.LivingAreaSqm)),
         (typeof(Context.RealEstateDetails), nameof(Context.RealEstateDetails.PlotAreaSqm)),
+        // Coordinates in degrees, decimal(7,5)/decimal(8,5), bounded by [Range] on NewLocation/UpdateLocation
+        // and by CHECK constraints in the database (issue #350).
+        (typeof(Context.Location), nameof(Context.Location.Latitude)),
+        (typeof(Context.Location), nameof(Context.Location.Longitude)),
     ];
 
     private static OdysseyContext CreateContext() => new(
@@ -210,6 +214,14 @@ public class MoneyBoundsTests
             "An area in square metres, decimal(18,2); bounded by its own [Range(0, 1_000_000)].",
         [$"{nameof(Odyssey.Dtos.Application.SystemSettingsUpdate)}.{nameof(Odyssey.Dtos.Application.SystemSettingsUpdate.FileAnalysisMatchAutoLinkThreshold)}"] =
             "A confidence threshold in [0, 1], stored as a setting string; bounded by its own [Range].",
+        [$"{nameof(Odyssey.Dtos.Journal.NewLocation)}.{nameof(Odyssey.Dtos.Journal.NewLocation.Latitude)}"] =
+            "A latitude in degrees, decimal(7,5); bounded by its own [Range(-90, 90)] (issue #350).",
+        [$"{nameof(Odyssey.Dtos.Journal.NewLocation)}.{nameof(Odyssey.Dtos.Journal.NewLocation.Longitude)}"] =
+            "A longitude in degrees, decimal(8,5); bounded by its own [Range(-180, 180)] (issue #350).",
+        [$"{nameof(Odyssey.Dtos.Journal.UpdateLocation)}.{nameof(Odyssey.Dtos.Journal.UpdateLocation.Latitude)}"] =
+            "A latitude in degrees, decimal(7,5); bounded by its own [Range(-90, 90)] (issue #350).",
+        [$"{nameof(Odyssey.Dtos.Journal.UpdateLocation)}.{nameof(Odyssey.Dtos.Journal.UpdateLocation.Longitude)}"] =
+            "A longitude in degrees, decimal(8,5); bounded by its own [Range(-180, 180)] (issue #350).",
     };
 
     private sealed record DecimalMember(string Name, RangeAttribute? Range);

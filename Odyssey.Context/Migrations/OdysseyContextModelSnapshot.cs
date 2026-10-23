@@ -2737,6 +2737,88 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("LicenseAcceptances");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.Location", b =>
+                {
+                    b.Property<Guid>("LocationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("AddressText")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<int?>("AltitudeMeters")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("Archived")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<decimal>("Latitude")
+                        .HasPrecision(7, 5)
+                        .HasColumnType("decimal(7,5)");
+
+                    b.Property<decimal>("Longitude")
+                        .HasPrecision(8, 5)
+                        .HasColumnType("decimal(8,5)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceReference")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("LocationId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("Archived", "Name");
+
+                    b.ToTable("Locations", t =>
+                        {
+                            t.HasCheckConstraint("CK_Locations_AltitudeRange", "`AltitudeMeters` IS NULL OR `AltitudeMeters` BETWEEN -500 AND 9000");
+
+                            t.HasCheckConstraint("CK_Locations_LatitudeRange", "`Latitude` BETWEEN -90 AND 90");
+
+                            t.HasCheckConstraint("CK_Locations_LongitudeRange", "`Longitude` BETWEEN -180 AND 180");
+
+                            t.HasCheckConstraint("CK_Locations_ManualHasNoReference", "`Source` <> 1 OR `SourceReference` IS NULL");
+
+                            t.HasCheckConstraint("CK_Locations_SourceKnown", "`Source` IN (1, 2, 3)");
+                        });
+                });
+
             modelBuilder.Entity("Odyssey.Context.OrganizationDetails", b =>
                 {
                     b.Property<Guid>("ContactId")
@@ -5049,6 +5131,19 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("JournalTask");
 
                     b.Navigation("JournalTaskTag");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.Location", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Odyssey.Context.OrganizationDetails", b =>

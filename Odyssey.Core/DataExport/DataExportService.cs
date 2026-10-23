@@ -161,6 +161,7 @@ public sealed class DataExportService
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertySmartTags), PropertySmartTagsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyFiles), PropertyFilesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyEvents), PropertyEventsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Locations), LocationsQuery(), cancellationToken);
     }
 
     /// <summary>
@@ -517,6 +518,29 @@ public sealed class DataExportService
 
     // ── Issue #167 ────────────────────────────────────────────────────────────
     // The three property enums have no Odyssey.Context copy, so there is nothing to cast across.
+
+    // ── Issue #350 ────────────────────────────────────────────────────────────
+    // LocationSource is a Dtos enum the entity uses directly, so there is nothing to cast across.
+
+    private IQueryable<LocationExport> LocationsQuery() =>
+        context.Locations.AsNoTracking()
+            .OrderBy(location => location.LocationId)
+            .Select(location => new LocationExport
+            {
+                LocationId = location.LocationId,
+                Name = location.Name,
+                Description = location.Description,
+                AddressText = location.AddressText,
+                Latitude = location.Latitude,
+                Longitude = location.Longitude,
+                AltitudeMeters = location.AltitudeMeters,
+                TimeZoneId = location.TimeZoneId,
+                Source = location.Source,
+                SourceReference = location.SourceReference,
+                Archived = location.Archived,
+                CreatedAt = location.CreatedAt,
+                UpdatedAt = location.UpdatedAt,
+            });
 
     private IQueryable<PropertyExport> PropertiesQuery() =>
         context.Properties.AsNoTracking()

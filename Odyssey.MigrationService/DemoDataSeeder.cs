@@ -54,6 +54,7 @@ public sealed class DemoDataSeeder(
         await SeedPhotosAsync(context, data, cancellationToken);
         await SeedJournalAsync(context, data, cancellationToken);
         await SeedCalendarAsync(context, data, cancellationToken);
+        await SeedLocationsAsync(context, data, cancellationToken);
         // Last, and not part of the demo DATASET: the one settings row a dev stack cannot function
         // without and cannot be seeded with a fixed value. See its own remarks.
         await SeedClientBaseUrlAsync(context, cancellationToken);
@@ -628,6 +629,26 @@ public sealed class DemoDataSeeder(
         logger.LogInformation(
             "Seeded {Entries} journal entries, {Tasks} tasks, {JournalTags} journal tags, {JournalTaskTags} task tags.",
             data.JournalEntries.Count, data.JournalTasks.Count, data.JournalTags.Count, data.JournalTaskTags.Count);
+    }
+
+    private async Task SeedLocationsAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)
+    {
+        if (data.Locations.Count == 0)
+        {
+            return;
+        }
+
+        var sentinelId = data.Locations[0].LocationId;
+        if (await context.Locations.AnyAsync(location => location.LocationId == sentinelId, cancellationToken))
+        {
+            logger.LogInformation("Demo locations already present; skipping location seed.");
+            return;
+        }
+
+        await context.Locations.AddRangeAsync(data.Locations, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation("Seeded {Locations} locations.", data.Locations.Count);
     }
 
     private async Task SeedCalendarAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)

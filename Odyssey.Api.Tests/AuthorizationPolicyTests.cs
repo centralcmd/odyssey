@@ -69,11 +69,12 @@ public class AuthorizationPolicyTests
     /// <c>subscriptions.*</c> claims with it, and 98 before the standalone insurance-policy feature
     /// went the same way with its four <c>insurance.*</c> claims, and 94 before issue #190 moved
     /// account terms onto contracts and deleted the account-term read/write claim pair. 98 once issue
-    /// #167 added the six <c>properties.*</c> claims.
+    /// #167 added the six <c>properties.*</c> claims. 101 once issue #350 added <c>locations.read</c>,
+    /// <c>.create</c> and <c>.update</c> (deliberately no delete).
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(98, DeclaredClaims().Count());
+        Assert.Equal(101, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).
@@ -213,6 +214,41 @@ public class AuthorizationPolicyTests
             "Issue #146 §7.3 accepts returning a contract document's issuedBy as a bare contact id "
             + "because no shipped role reaches contracts.read without contacts.read. Re-make that "
             + "argument before granting them apart. Roles that do: " + string.Join(", ", gaps));
+    }
+
+    /// <summary>
+    /// Issue #350 §7.12 adds locations to the whole-database export, which is gated on <c>data.export</c>
+    /// alone. That only discloses nothing new while every holder of <c>data.export</c> can already read
+    /// locations live — so a role granted the export without <c>locations.read</c> fails the build.
+    /// </summary>
+    [Fact]
+    public void No_role_holds_DataExport_without_LocationsRead()
+    {
+        var gaps = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.DataExport, StringComparer.Ordinal))
+            .Where(role => !role.Claims.Contains(PermissionClaims.LocationsRead, StringComparer.Ordinal))
+            .Select(role => role.Role)
+            .ToList();
+
+        Assert.True(gaps.Count == 0,
+            "The data export carries every location; a role that can export must be able to read them. Roles that do not: "
+            + string.Join(", ", gaps));
+    }
+
+    /// <summary>
+    /// Issue #350 §7.2/§7.3: Guest reads the household's locations — a product decision — and writes none
+    /// of them, and no location delete claim exists for anyone to hold.
+    /// </summary>
+    [Fact]
+    public void Guest_holds_exactly_locations_read_among_the_location_claims()
+    {
+        var guestLocationClaims = RolePermissions.GuestClaims
+            .Where(claim => claim.StartsWith("locations.", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal([PermissionClaims.LocationsRead], guestLocationClaims);
+        Assert.DoesNotContain(DeclaredClaims(), claim => claim == "locations.delete");
     }
 
     /// <summary>

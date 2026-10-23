@@ -310,6 +310,8 @@ builder.Services.AddAdminActionRateLimiter(builder.Configuration);
 // A THIRD AddRateLimiter call, again setting neither OnRejected nor GlobalLimiter so it cannot clobber
 // the per-IP mail window (issue #94 §10.12).
 builder.Services.AddProfileImageRateLimiter(builder.Configuration);
+// The geocoding search proxy's per-user and instance-wide limits (issue #350). Same composition rules.
+builder.Services.AddLocationSearchRateLimiter(builder.Configuration);
 
 // The instance-wide half of the export concurrency control (issue #343 §5) — a singleton so every
 // request's ExportConcurrencyFilter instance (one per request, via [TypeFilter]) shares the same
@@ -458,6 +460,46 @@ builder.Services.AddScoped<Odyssey.Core.Journal.CalendarService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.CalendarEventService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.RecurrencePatternService>();
 builder.Services.AddScoped<Odyssey.Core.Journal.CalendarIcsService>();
+
+// Household locations (issue #350). No feature toggle — gated by the locations.* claims only.
+builder.Services.AddScoped<Odyssey.Core.Journal.LocationService>();
+builder.Services.AddScoped<Odyssey.Core.Journal.Geocoding.LocationSearchService>();
+// A singleton: the dedicated, size-limited search cache and the single-flight table must outlive a request.
+builder.Services.AddSingleton<Odyssey.Core.Journal.Geocoding.LocationSearchCache>();
+// The two geocoding clients (§3, §7.6, §7.7). Each has a COMPILE-TIME base address that no setting or input
+// can change, does not follow redirects, decompresses only gzip/deflate/brotli (the 256 KB response cap in
+// GeocodingHttp counts inflated bytes), and has every HttpClient logger removed — the outbound URL carries
+// the query, and the default handler logs would write it at Information. No retries and no resilience
+// handler: a 3 s budget per provider is enforced in the client, and a miss is a 503.
+foreach (var (client, baseAddress) in new[]
+{
+    (typeof(Odyssey.Core.Journal.Geocoding.KartverketLocationSearch), Odyssey.Core.Journal.Geocoding.KartverketLocationSearch.BaseAddress),
+    (typeof(Odyssey.Core.Journal.Geocoding.OpenMeteoLocationSearch), Odyssey.Core.Journal.Geocoding.OpenMeteoLocationSearch.BaseAddress),
+})
+{
+    builder.Services.AddHttpClient(client.Name, http =>
+        {
+            http.BaseAddress = new Uri(baseAddress);
+            // The client's own linked token enforces the 3 s; this is only a backstop.
+            http.Timeout = TimeSpan.FromSeconds(10);
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("Odyssey/1.0 (+https://github.com/centralcmd/odyssey)");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            AutomaticDecompression = System.Net.DecompressionMethods.GZip
+                | System.Net.DecompressionMethods.Deflate
+                | System.Net.DecompressionMethods.Brotli,
+        })
+        .RemoveAllLoggers();
+}
+
+builder.Services.AddTransient<Odyssey.Core.Journal.Geocoding.ILocationSearchSource>(sp =>
+    new Odyssey.Core.Journal.Geocoding.KartverketLocationSearch(sp.GetRequiredService<IHttpClientFactory>()
+        .CreateClient(nameof(Odyssey.Core.Journal.Geocoding.KartverketLocationSearch))));
+builder.Services.AddTransient<Odyssey.Core.Journal.Geocoding.ILocationSearchSource>(sp =>
+    new Odyssey.Core.Journal.Geocoding.OpenMeteoLocationSearch(sp.GetRequiredService<IHttpClientFactory>()
+        .CreateClient(nameof(Odyssey.Core.Journal.Geocoding.OpenMeteoLocationSearch))));
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<DataExportService>();
@@ -610,6 +652,9 @@ TestingEnvironmentGuard.Validate(
 // is the alpine runtime image's default (issue #48 §5). Refuse to serve rather than let contact-alias
 // uniqueness disagree with the database's own index — a condition no test tier can reproduce.
 GlobalizationGuard.EnsureIcuAvailable();
+
+// Location time zones need a time-zone database, which the alpine image ships only with tzdata (issue #350).
+TimeZoneDataGuard.EnsureTimeZoneDataAvailable();
 
 // Key-ring diagnostics (issue #444 §10). The DETECTED REPOSITORY TYPE is logged, not the config key:
 // the config key is the cause, the repository type is the actual condition, and the durability check

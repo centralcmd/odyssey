@@ -23,6 +23,12 @@ public sealed class TestAuthHandler(
     public const string SchemeName = "OdysseyTestAuth";
     public const string DefaultActorUserId = "test-actor-id";
 
+    /// <summary>
+    /// Optional request header overriding the actor id for one request, so a single host can serve two
+    /// principals — what a per-user rate-limit partition can only be exercised with.
+    /// </summary>
+    public const string ActorOverrideHeader = "X-Test-Actor-Id";
+
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (claimsProvider.Permissions is null)
@@ -32,7 +38,10 @@ public sealed class TestAuthHandler(
 
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, claimsProvider.ActorUserId),
+            new(ClaimTypes.NameIdentifier,
+                Request.Headers.TryGetValue(ActorOverrideHeader, out var actor) && !string.IsNullOrEmpty(actor)
+                    ? actor.ToString()
+                    : claimsProvider.ActorUserId),
             new(ClaimTypes.Name, "actor@example.com"),
         };
         claims.AddRange(claimsProvider.Permissions.Select(permission => new Claim(PermissionClaims.Type, permission)));
