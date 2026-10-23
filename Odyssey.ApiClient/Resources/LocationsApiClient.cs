@@ -27,6 +27,14 @@ public interface ILocationsApiClient
         string? sortDir = null,
         CancellationToken ct = default);
 
+    /// <summary>Every location matching the filters, fetched page by page — the page's infinite list.</summary>
+    Task<ApiResult<List<ExistingLocation>>> ListAllAsync(
+        string? search = null,
+        IReadOnlyCollection<string>? statuses = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        CancellationToken ct = default);
+
     Task<ApiResult<ExistingLocation>> GetAsync(Guid id, CancellationToken ct = default);
 
     Task<ApiResult<ExistingLocation>> CreateAsync(NewLocation location, CancellationToken ct = default);
@@ -50,15 +58,23 @@ public sealed class LocationsApiClient(IOdysseyApi api) : ILocationsApiClient
         string? sortBy = null,
         string? sortDir = null,
         CancellationToken ct = default) =>
-        api.GetPagedAsync<ExistingLocation>(
-            PagedQuery.For(Base)
-                .Add("search", search)
-                .AddSingle("status", statuses)
-                .Add("sortBy", sortBy)
-                .Add("sortDir", sortDir)
-                .Window(page, pageSize)
-                .Build(),
-            ct);
+        api.GetPagedAsync<ExistingLocation>(Query(search, statuses, sortBy, sortDir).Window(page, pageSize).Build(), ct);
+
+    public Task<ApiResult<List<ExistingLocation>>> ListAllAsync(
+        string? search = null,
+        IReadOnlyCollection<string>? statuses = null,
+        string? sortBy = null,
+        string? sortDir = null,
+        CancellationToken ct = default) =>
+        api.GetAllAsync<ExistingLocation>(Query(search, statuses, sortBy, sortDir).Build(), ct);
+
+    // Status is a single value on LocationsQueryParams, so exactly one selection sends it.
+    private static PagedQuery Query(string? search, IReadOnlyCollection<string>? statuses, string? sortBy, string? sortDir) =>
+        PagedQuery.For(Base)
+            .Add("search", search)
+            .AddSingle("status", statuses)
+            .Add("sortBy", sortBy)
+            .Add("sortDir", sortDir);
 
     public Task<ApiResult<ExistingLocation>> GetAsync(Guid id, CancellationToken ct = default) =>
         api.GetAsync<ExistingLocation>($"{Base}/{id}", ct);

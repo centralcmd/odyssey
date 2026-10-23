@@ -168,6 +168,22 @@
             const el = document.activeElement;
             return el && el.id ? el.id : null;
         };
+        window.odsEscapeClearsInput = function (id) {
+            // The first Esc in a filled search input clears it; only the next one reaches the dialog
+            // and closes it (DS AddLocationModal). MudDialog closes on its own Esc listener before any
+            // Blazor handler runs, so the stop has to happen here, at the input. The cleared value is
+            // handed back to Blazor through an ordinary input event.
+            const el = document.getElementById(id);
+            if (!el || el.dataset.odsEscClears) return;
+            el.dataset.odsEscClears = '1';
+            el.addEventListener('keydown', function (e) {
+                if (e.key !== 'Escape' || !el.value) return;
+                e.stopPropagation();
+                e.preventDefault();
+                el.value = '';
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        };
         window.odsSetIndeterminate = function (el, value) {
             // The checkbox "mixed" (select-all) state is a DOM property, not an attribute, so Blazor
             // can't set it declaratively — reflect it here so assistive tech announces "mixed".

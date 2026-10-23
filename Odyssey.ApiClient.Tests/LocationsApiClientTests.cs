@@ -86,6 +86,22 @@ public class LocationsApiClientTests
     }
 
     [Fact]
+    public async Task ListAll_carries_the_same_filters_as_one_page()
+    {
+        string[] statuses = ["Archived"];
+        var handler = new RecordingHandler("""{"items":[],"offset":0,"limit":100,"totalCount":0}""");
+
+        var result = await CreateClient(handler).ListAllAsync(search: "cabin", statuses: statuses, sortBy: "Name", sortDir: "asc");
+
+        Assert.True(result.IsSuccess);
+        var query = handler.LastRequest!.RequestUri!.Query;
+        Assert.StartsWith("/api/locations?", handler.LastRequest.RequestUri.PathAndQuery);
+        Assert.Contains("search=cabin", query);
+        Assert.Contains("status=Archived", query);
+        Assert.Contains("sortBy=Name", query);
+    }
+
+    [Fact]
     public async Task Update_is_a_PUT_to_the_location_route()
     {
         var handler = new RecordingHandler("""{"locationId":"00000000-0000-0000-0000-000000000001","name":"Cabin","timeZoneId":"Europe/Oslo"}""");
