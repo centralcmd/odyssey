@@ -5,6 +5,13 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.41.0](https://github.com/centralcmd/odyssey/compare/v0.40.0...v0.41.0) (2026-10-23)
+
+
+### Features
+
+* household locations with a geocoding search proxy ([#352](https://github.com/centralcmd/odyssey/issues/352)) ([7bb6ed8](https://github.com/centralcmd/odyssey/commit/7bb6ed80edf8590d8f48e3084e6ab25c6d99f604))
+
 ## [0.40.0](https://github.com/centralcmd/odyssey/compare/v0.39.0...v0.40.0) (2026-10-22)
 
 
