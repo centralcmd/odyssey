@@ -1,0 +1,104 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    LocationWeatherSection — the Weather band in a location's expanded record, Admin only (issue #348;
+    design system · Weather.jsx LocationWeatherSection). It carries NO action buttons beyond the ones a
+    notice names: Weather settings and Refresh forecast live in the row's ⋯ menu only.
+*@
+
+@if (Row is null)
+{
+    <OdsRecordSection Class="acct-section wx-section" Label="Weather" Empty="true"
+                      Notice="@(Location.Archived is not null ? Text("Restore the location to turn on weather for it.") : null)"
+                      NoticeTone="OdsRecordSectionTone.Warning"
+                      EmptyText="@EmptyLine" />
+}
+else
+{
+    <OdsRecordSection Class="acct-section wx-section" Label="Weather" Meta="@($"position v{Row.Site.Version}")"
+                      Notice="@Notice" NoticeTone="@NoticeTone" NoticeIconName="@NoticeIcon">
+        <OdsInfoTileGrid>
+            <OdsInfoTile Icon="@(Row.Enabled ? "wb_sunny" : "cloud_off")" Label="Weather" ValueVariant="OdsInfoTileVariant.Text"
+                         Foot="@OdsInfoTile.Caption(Row.Enabled ? $"on since {WeatherVisuals.Date(Row.EnabledAt)}" : "history kept")">
+                <Value>@(Row.PurgeInProgress ? "Deleting history" : Row.Enabled ? "On" : "Off")</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="update" Label="Forecast" ValueVariant="OdsInfoTileVariant.Text" Foot="@ForecastFoot">
+                <Value>@ForecastValue</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="history" Label="Measured history" ValueVariant="OdsInfoTileVariant.Sm" Foot="@HistoryFoot">
+                <Value>From @WeatherVisuals.Date(Row.HistoryFrom)</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="my_location" Label="Weather position" ValueVariant="OdsInfoTileVariant.Sm"
+                         Foot="@OdsInfoTile.Caption($"{Row.Site.TimeZoneId}{(Row.Site.AltitudeMeters is { } a ? $" · {a} m" : "")} · copied {WeatherVisuals.Date(Row.Site.AppliedAt)}")">
+                <Value>@WeatherVisuals.Pair3(Row.Site.Latitude, Row.Site.Longitude)</Value>
+            </OdsInfoTile>
+            @if (Row.IsHouseholdDefault)
+            {
+                <OdsInfoTile Icon="home" Label="Household default" ValueVariant="OdsInfoTileVariant.Text"
+                             Foot="@OdsInfoTile.Caption("shown to anyone who hasn’t picked a location")">
+                    <Value>Yes</Value>
+                </OdsInfoTile>
+            }
+        </OdsInfoTileGrid>
+    </OdsRecordSection>
+}
+
+@code {
+    [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
+    [Parameter] public ExistingWeatherLocation? Row { get; set; }
+    [Parameter] public bool CanUpdate { get; set; }
+    [Parameter] public EventCallback OnEnable { get; set; }
+    [Parameter] public EventCallback OnApply { get; set; }
+    [Parameter] public EventCallback OnPurge { get; set; }
+
+    private static RenderFragment Text(string text) => b => b.AddContent(0, text);
+
+    private RenderFragment EmptyLine => Location.Archived is not null || !CanUpdate
+        ? Text("Weather is off for this place.")
+        : @<span class="wx-sec-empty">
+              Weather is off for this place. Turn it on to keep a forecast and a measured history here.
+              <OdsButton Variant="OdsButtonVariant.Outlined" Icon="wb_sunny" OnClick="OnEnable">Turn on weather</OdsButton>
+          </span>;
+
+    private bool Moved => Row is not null && WeatherVisuals.Moved(Row, Location);
+
+    // One notice at a time, in this order: an interrupted purge, an archived location, a move.
+    private RenderFragment? Notice => Row switch
+    {
+        { PurgeInProgress: true } => @<span>Deleting this place’s weather history was interrupted. Weather stays paused until it completes. @if (CanPurge) {<button type="button" class="loc-link" @onclick="OnPurge">Continue deleting</button>}</span>,
+        _ when Location.Archived is not null || Row!.LocationArchived => Text("The location is archived, so weather fetching is paused. Restoring it resumes fetching."),
+        { Enabled: true } when Moved => @<span>The location has moved since weather copied its position. Weather keeps using the old position until you apply the move. @if (CanUpdate) {<button type="button" class="loc-link" @onclick="OnApply">Apply new position</button>}</span>,
+        _ when Moved => Text("The location has moved since weather copied its position. Turn weather back on to apply the move."),
+        _ => null,
+    };
+
+    [Parameter] public bool CanPurge { get; set; }
+
+    private OdsRecordSectionTone NoticeTone =>
+        Row is { PurgeInProgress: true } || Location.Archived is not null || Row is { LocationArchived: true } || Row is { Enabled: true } && Moved
+            ? OdsRecordSectionTone.Warning
+            : OdsRecordSectionTone.Default;
+
+    private string? NoticeIcon =>
+        Row is { PurgeInProgress: true } ? "delete_sweep" : Moved && Location.Archived is null ? "wrong_location" : null;
+
+    private string ForecastValue =>
+        !Row!.Enabled ? "Not fetched"
+        : Row.TrackingSuspended ? "Paused — schedule full"
+        : Row.IsTracked ? "On a schedule" : "When someone looks";
+
+    private RenderFragment? ForecastFoot => WeatherVisuals.FailureOf(Row!.ForecastFailureKind) is { } fail
+        ? Failure(fail)
+        : OdsInfoTile.Caption(Row.TrackingSuspended
+            ? "Only the first scheduled places refresh. Raise the limit in System settings."
+            : Row.LastForecastSuccessUtc is { } at ? $"last fetched {WeatherVisuals.Stamp(at)}" : "not fetched yet");
+
+    private RenderFragment? HistoryFoot => WeatherVisuals.FailureOf(Row!.ObservationFailureKind) is { } fail
+        ? Failure(fail)
+        : OdsInfoTile.Caption(!Row.HasObservationStation
+            ? "no MET station within 25 km"
+            : Row.LastObservationSuccessUtc is { } at ? $"last fetched {WeatherVisuals.Stamp(at)}" : "not fetched yet");
+
+    private static RenderFragment Failure(WeatherFailureInfo fail) =>
+        @<span class="wx-fail" title="@fail.Help"><OdsMIcon Name="error_outline" Size="14" />@fail.Label</span>;
+}

@@ -42,6 +42,7 @@ public partial class Home
 
     // ── Permissions ──
     private bool _canReadAccounts;
+    private bool _canReadWeather;
     private bool _canReadTransactions;
 
     private string _firstName = string.Empty;
@@ -88,6 +89,7 @@ public partial class Home
         var user = await AuthenticationStateProvider.GetUserAsync();
 
         _canReadAccounts = user.HasPermission(PermissionClaims.AccountsRead);
+        _canReadWeather = user.HasPermission(PermissionClaims.WeatherRead);
         _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
 
         var name = user.FindFirst(ClaimTypes.Name)?.Value ?? user.Identity?.Name ?? string.Empty;

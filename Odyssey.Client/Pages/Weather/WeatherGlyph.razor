@@ -1,0 +1,35 @@
+@using Odyssey.Client.Components
+@*
+    WeatherGlyph — one MET symbol (design system · Weather.jsx). The glyph only echoes the words:
+    Material Icons cannot tell light rain from heavy, or sleet from snow. With Labelled the words render
+    beside it; otherwise they are its accessible name.
+*@
+
+@if (_symbol is { } symbol)
+{
+    <span class="wx-glyph @(Labelled ? "labelled" : null) @Class">
+        @if (Labelled)
+        {
+            <span class="wx-glyph-ic" aria-hidden="true"><OdsMIcon Name="@symbol.Icon" Size="@Size" /></span>
+            <span class="wx-glyph-label">@symbol.Label</span>
+        }
+        else
+        {
+            <span class="wx-glyph-ic" role="img" aria-label="@symbol.Label"><OdsMIcon Name="@symbol.Icon" Size="@Size" /></span>
+        }
+    </span>
+}
+
+@code {
+    [Parameter] public string? Code { get; set; }
+
+    [Parameter] public int Size { get; set; } = 24;
+
+    [Parameter] public bool Labelled { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private WeatherSymbolInfo? _symbol;
+
+    protected override void OnParametersSet() => _symbol = WeatherVisuals.SymbolOf(Code);
+}

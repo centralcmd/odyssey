@@ -59,6 +59,12 @@
         <SubLine>@HeaderSubLine</SubLine>
     </PageHeader>
 
+    @* Weather for the caller's place (issue #348) — every role holds weather.read; dropped without it. *@
+    @if (_canReadWeather)
+    {
+        <Odyssey.Client.Pages.Weather.WeatherWidget />
+    }
+
     @* 2 · Net worth chart (the design-system LineChart), with its period settings *@
     @if (_canReadAccounts)
     {
