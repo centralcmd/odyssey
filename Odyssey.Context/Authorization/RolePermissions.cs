@@ -59,6 +59,9 @@ public static class RolePermissions
         TaskTagsRead,
         TaskTagsUpdate,
         TaskTagsDelete,
+        LocationsCreate,
+        LocationsRead,
+        LocationsUpdate,
     ];
 
     public static readonly string[] AllClaims =
@@ -254,6 +257,10 @@ public static class RolePermissions
         AccountsEstimatesRead,
         PropertiesRead,
         PropertiesEstimatesRead,
+        // Household locations (issue #350 §7.3): Guest is an invited member of the household and the list
+        // is the household's own, so Guest reads it — addresses and descriptions included. Narrowing that
+        // later is a change here, not in code.
+        LocationsRead,
         // Granted to Guest too (issue #94 §10.5). The picture identifies a person the caller already
         // meets by name on shared records, and the point of the claim is that it is REVOCABLE per role
         // without a code change — not that it narrows anything today.

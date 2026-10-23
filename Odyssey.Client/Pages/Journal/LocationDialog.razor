@@ -1,0 +1,156 @@
+@using Odyssey.Dtos.Journal
+
+@*
+    LocationDialog — New / Edit location (issue #350; design system · AddLocationModal.jsx). Mirrors
+    NewLocation / UpdateLocation.
+
+    CREATE is two steps in one dialog: FIND (region + geocoding search, or "Enter by hand") and DETAILS.
+    EDIT opens on DETAILS; "Search for a new address" replaces address, coordinates, altitude and time
+    zone, never the name or description.
+
+    Provenance is advisory and client-asserted (§7.4), so the dialog keeps it honest: the provider stays
+    the source only while the coordinates equal the picked candidate's after 5-dp rounding. The
+    candidate's description is display-only and never copied into Description. Archived is not edited
+    here — PUT is a full replacement, so the stored flag is round-tripped.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="@(IsEdit ? "edit" : "add_location_alt")" Class="loc-dialog"
+          RequiredLegend="@(_step == Step.Details)"
+          Title="@TitleFragment" Subtitle="@SubtitleFragment">
+    <ChildContent>
+        <OdsLiveAnnouncer Message="@_announce" />
+        <div class="ods-modal-body">
+            @if (_step == Step.Search)
+            {
+                @SearchPanel
+            }
+            else
+            {
+                @if (_researching)
+                {
+                    <div class="loc-research">
+                        @SearchPanel
+                        <div>
+                            <OdsButton Variant="OdsButtonVariant.Text" Icon="close" OnClick="KeepCurrentAddress">Keep the current address</OdsButton>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    @* tabindex=-1: where focus lands when a step change removes the control that had it. *@
+                    <div id="@PickedId" tabindex="-1" class="loc-picked" style="@($"--rec:{LocationVisuals.Accent};--rec-soft:{LocationVisuals.AccentSoft}")">
+                        <span class="loc-picked-glyph"><span class="material-icons" aria-hidden="true">@PickedGlyph</span></span>
+                        <div class="loc-picked-text">
+                            @if (_pick is { } pick && !IsEdit)
+                            {
+                                <div class="loc-picked-name">@pick.Name</div>
+                                <div class="loc-picked-meta">@PickedMeta(pick)</div>
+                            }
+                            else
+                            {
+                                <div class="loc-picked-name">@ProvenanceTitle</div>
+                            }
+                            <div class="loc-picked-src">
+                                @if (Diverged)
+                                {
+                                    <span class="loc-prov-warn">
+                                        <span class="material-icons" aria-hidden="true">edit_location_alt</span>
+                                        You changed the coordinates, so this place will be saved as entered by hand.
+                                    </span>
+                                }
+                                else if (Source == LocationSource.Manual)
+                                {
+                                    @("No third-party data — the coordinates are yours.")
+                                }
+                                else
+                                {
+                                    @($"Coordinates as {LocationVisuals.SourceOf(Source).Label} returned them · ")
+                                    <LocationAttributionLink Attribution="_pick?.Attribution" />
+                                }
+                            </div>
+                            @if (Diverged)
+                            {
+                                <button type="button" class="loc-link" @onclick="RestoreProviderCoordinates">Use @PickLabel’s coordinates</button>
+                            }
+                        </div>
+                        @if (CanSearch)
+                        {
+                            <OdsButton Variant="OdsButtonVariant.Text" Icon="search" OnClick="SearchAgain">
+                                @(IsEdit ? "Search for a new address" : "Search again")
+                            </OdsButton>
+                        }
+                    </div>
+                }
+
+                @if (_replacedNote)
+                {
+                    <div class="loc-note">
+                        <span class="material-icons" aria-hidden="true">info</span>
+                        Address, coordinates, altitude and time zone were replaced from @PickLabel. The name and description are unchanged.
+                    </div>
+                }
+                @if (Location?.Archived is not null)
+                {
+                    <div class="loc-note">
+                        <span class="material-icons" aria-hidden="true">inventory_2</span>
+                        This location is archived. Saving keeps it archived — restore it from the row menu.
+                    </div>
+                }
+
+                <OdsField Label="Name" Required="true" MaxLength="LocationRules.NameMaxLength"
+                          Value="@_name" ValueChanged="@(v => Set(ref _name, v, "name"))" Error="@Err("name")"
+                          Placeholder="e.g. Home, Cabin, School"
+                          Help="Unique across the household’s locations, archived ones included." />
+
+                <OdsField Label="Address" MaxLength="LocationRules.AddressTextMaxLength"
+                          Value="@_address" ValueChanged="@(v => Set(ref _address, v, "addressText"))" Error="@Err("addressText")"
+                          Placeholder="Street and number, postcode and town" Help="@AddressHelp" />
+
+                <OdsCoordinateField Required="true" Lat="_lat" LatChanged="OnLatChanged" Lng="_lng" LngChanged="OnLngChanged"
+                                    Help="@CoordinatesHelp" Error="@CoordinatesError" />
+
+                <OdsFormRow>
+                    <OdsNumberField Label="Altitude" Unit="m" Min="LocationRules.AltitudeMin" Max="LocationRules.AltitudeMax" Step="1"
+                                    Value="_altitude" ValueChanged="@(v => { _altitude = v; _errors.Remove("altitudeMeters"); })"
+                                    Error="@Err("altitudeMeters")" Help="Above sea level. Leave empty if you don’t know." />
+                    <OdsFieldShell Label="Time zone" HtmlFor="@TimeZoneInputId" Required="true"
+                                   Help="@(Err("timeZoneId") is null ? TimeZoneHelp : null)" Error="@Err("timeZoneId")">
+                        <OdsCombobox InputId="@TimeZoneInputId" Value="@_timeZone" ValueChanged="OnTimeZoneChanged"
+                                     Options="TimeZoneOptions" Placeholder="Search, e.g. Oslo or Lisbon"
+                                     EmptyText="No time zone matches" Clearable="true" Required="true"
+                                     Error="@(Err("timeZoneId") is not null)" AriaDescribedBy="@($"{TimeZoneInputId}-help")" />
+                    </OdsFieldShell>
+                </OdsFormRow>
+
+                <OdsNoteField Label="Description" MaxLength="LocationRules.DescriptionMaxLength"
+                              Value="@_description" ValueChanged="@(v => Set(ref _description, v, "description"))" Error="@Err("description")"
+                              Placeholder="Anything worth knowing — directions, parking, who to call."
+                              Help="Every household member can read this, guests included." />
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        @if (_step == Step.Search)
+        {
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="edit_location_alt" OnClick="EnterByHand">Enter by hand</OdsButton>
+        }
+        else
+        {
+            <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(IsEdit ? "check" : "add")" Loading="_saving" OnClick="SubmitAsync">
+                @(IsEdit ? "Save changes" : "Create location")
+            </OdsButton>
+        }
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment TitleFragment => @<text>@(IsEdit ? "Edit location" : "New location")</text>;
+
+    private RenderFragment SubtitleFragment => @<text>@SubtitleText</text>;
+
+    private RenderFragment SearchPanel => @<LocationSearch Region="Region" RegionChanged="OnRegionChanged" OnPick="ApplyPick"
+                                                           AutoFocus="true"
+                                                           OnManual="@(IsEdit ? default : EventCallback.Factory.Create(this, EnterByHand))" />;
+}

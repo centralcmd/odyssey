@@ -791,6 +791,39 @@ public class DemoDataSeederTests
             again.PropertyEstimates.Select(e => (e.PropertyEstimateId, e.Value)));
     }
 
+    /// <summary>
+    /// Issue #350 AC 21 — the demo locations land once: one per source, one archived, every row valid by
+    /// the same rules a request is held to, and every name distinct under the service's folding.
+    /// </summary>
+    [Fact]
+    public async Task Seeds_the_demo_locations_once_one_per_source_and_one_archived()
+    {
+        await using var provider = BuildProvider(out var seeder);
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var expected = DemoDataSet.Build();
+        var rows = await context.Locations.AsNoTracking().ToListAsync();
+
+        Assert.Equal(expected.Locations.Count, rows.Count);
+        Assert.Equal(
+            [LocationSource.Manual, LocationSource.Kartverket, LocationSource.OpenMeteo],
+            rows.Select(l => l.Source).Distinct().OrderBy(s => s));
+        Assert.Single(rows, l => l.Archived is not null);
+        Assert.All(rows, l =>
+        {
+            Assert.True(Odyssey.Dtos.IanaTimeZones.IsValid(l.TimeZoneId));
+            Assert.True(LocationRules.IsValidReference(l.Source, l.SourceReference));
+            Assert.Equal(Math.Round(l.Latitude, 5), l.Latitude);
+            Assert.Equal(Math.Round(l.Longitude, 5), l.Longitude);
+        });
+        Assert.Equal(rows.Count, rows.Select(l => l.Name.ToUpperInvariant()).Distinct().Count());
+        Assert.Equal(expected.Locations.Select(l => l.LocationId), DemoDataSet.Build().Locations.Select(l => l.LocationId));
+    }
+
     [Fact]
     public async Task Is_idempotent_across_repeated_runs()
     {

@@ -265,7 +265,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     /// <summary>The user-attribution columns, all <c>SET NULL</c> to <c>AspNetUsers</c>.</summary>
     private static void ConfigureUserAttribution(ModelBuilder modelBuilder)
     {
-        // Twenty-three columns across seventeen entities, naming the user who created, updated,
+        // Twenty-five columns across eighteen entities, naming the user who created, updated,
         // attached, uploaded, requested or reviewed a row. They were bare strings for as long as identity lived in its own context, so
         // deleting a user left every one of them pointing at an account that no longer existed — the
         // gap UserAdministrationService.DeleteAsync used to record as "data in the other contexts".
@@ -283,6 +283,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         // The columns are un-annotated for length so EF takes 255 from AspNetUsers.Id; a mismatched
         // width is refused outright by MariaDB (errno 150), which is why the previous 450 had to go.
         DeclareUserAttribution<Calendar>(modelBuilder, nameof(Calendar.CreatedByUserId), nameof(Calendar.UpdatedByUserId));
+        DeclareUserAttribution<Location>(modelBuilder, nameof(Location.CreatedByUserId), nameof(Location.UpdatedByUserId));
         DeclareUserAttribution<CalendarEvent>(modelBuilder, nameof(CalendarEvent.CreatedByUserId), nameof(CalendarEvent.UpdatedByUserId));
         DeclareUserAttribution<JournalEntry>(modelBuilder, nameof(JournalEntry.CreatedByUserId), nameof(JournalEntry.UpdatedByUserId));
         DeclareUserAttribution<JournalTask>(modelBuilder, nameof(JournalTask.CreatedByUserId), nameof(JournalTask.UpdatedByUserId));
@@ -404,6 +405,9 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
     // Calendar (issue #330), merged in.
     public DbSet<Calendar> Calendars { get; set; }
+
+    // Household locations (issue #350).
+    public DbSet<Location> Locations { get; set; }
     public DbSet<CalendarEvent> CalendarEvents { get; set; }
     public DbSet<RecurrencePattern> RecurrencePatterns { get; set; }
 

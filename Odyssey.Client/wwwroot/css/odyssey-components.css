@@ -1339,6 +1339,18 @@
    (.odc-input-icon / .has-icon) the field is the first raw-input consumer of. ---------- */
 .odc-input-icon { position: absolute; left: 12px; pointer-events: none; color: var(--mud-palette-text-secondary); font-size: var(--icon-lg); }
 .odc-input.has-icon { padding-left: 38px; }
+/* The inline clear button (DS bundle.css · .odc-input-clear), for a raw input inside .odc-input-wrap. */
+.odc-input.has-clear { padding-right: 38px; }
+.odc-input-clear {
+  position: absolute; right: var(--space-2); top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 24px; height: 24px;
+  border: none; border-radius: var(--radius-sm); background: transparent;
+  color: var(--mud-palette-text-secondary); cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.odc-input-clear:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-input-clear .material-icons { font-size: var(--icon-sm); }
+.odc-input-clear:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 1px; }
 .odc-refnum-field { display: flex; flex-direction: column; gap: var(--space-2); }
 .odc-refnum-input { font-family: var(--font-mono); letter-spacing: 0.02em; }
 .odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--control-border); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
@@ -4599,3 +4611,73 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-smarttags-scope-act:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .odc-smarttags-scope-act > .material-icons { font-size: var(--icon-sm); }
 .odc-smarttags-scope-note { color: var(--mud-palette-text-secondary); }
+
+/* ── Locations (/locations, issue #350) — page-specific bits only; the list is the shared record
+   scaffold (design system · ui_kits/web/locations.css). `loc-` is kit-local: promote a piece to
+   `.odc-*` once a second feature (weather is next) needs it. ──────────────────────────────────── */
+.loc-meta-muted { color: var(--mud-palette-text-secondary); font-style: italic; }
+
+/* List credits — the attribution for the rows on screen (§5, N6). */
+.loc-credits { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-1) 0; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.loc-credits .material-icons { flex: none; font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
+.loc-attr { color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.loc-attr a { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; }
+.loc-attr a:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
+
+/* Search — region toggle + input on one row, wrapping on narrow widths. */
+.loc-search { display: flex; flex-direction: column; gap: var(--space-3); }
+.loc-search-bar { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; }
+.loc-search-input { flex: 1 1 260px; min-width: 0; }
+.loc-search-input .odc-input { width: 100%; }
+.loc-search-spin { position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); display: inline-flex; }
+.loc-search-help { display: flex; gap: var(--space-2); align-items: flex-start; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.loc-search-help .material-icons { flex: none; margin-top: 1px; font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
+.loc-search-state { padding: var(--space-3) var(--space-1); font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.loc-search-state.error { color: var(--mud-palette-error); }
+.loc-search-alert { margin: 0; }
+.loc-search-empty { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: 1px dashed var(--mud-palette-divider); border-radius: var(--radius-md); font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+.loc-search-empty-acts { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-left: calc(-1 * var(--space-2)); }
+
+/* Results — an inline listbox: two-line rows, the kind as a trailing word. */
+.loc-results-wrap { display: flex; flex-direction: column; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); overflow: hidden; }
+.loc-results-partial { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--mud-palette-divider); background: var(--finance-pending-soft); font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
+.loc-results-partial .material-icons { flex: none; margin-top: 1px; font-size: var(--icon-sm); color: var(--finance-pending); }
+.loc-results { list-style: none; margin: 0; padding: var(--space-1); max-height: 288px; overflow-y: auto; }
+.loc-result { display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); cursor: pointer; }
+.loc-result.active, .loc-result:hover { background: var(--mud-palette-action-default-hover); }
+.loc-result.active { box-shadow: inset 2px 0 0 var(--focus-ring); }
+.loc-result-ic { flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-md); background: color-mix(in oklab, var(--mud-palette-text-secondary) 12%, transparent); color: var(--mud-palette-text-secondary); }
+.loc-result-ic .material-icons { font-size: var(--icon-md); }
+.loc-result-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.loc-result-name { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loc-result-desc { font: var(--fw-regular) var(--fs-caption)/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loc-result-kind { flex: none; font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.loc-results-foot { display: flex; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-2) var(--space-3); border-top: 1px solid var(--mud-palette-divider); font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* The picked / stored provenance card — the property dialog's locked-type shape. */
+.loc-picked { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-lines-default); border-radius: 10px; background: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent)); }
+.loc-picked-glyph { flex: none; width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: var(--mud-palette-surface); color: oklch(from var(--rec, var(--brand-text)) var(--glyph-l, l) c h); }
+.loc-picked-glyph .material-icons { font-size: var(--icon-lg); }
+.loc-picked-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; }
+.loc-picked-name { font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+.loc-picked-meta { font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.loc-picked-src { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.loc-prov-warn { display: inline-flex; gap: var(--space-1); align-items: flex-start; color: var(--mud-palette-text-primary); }
+.loc-prov-warn .material-icons { flex: none; margin-top: 2px; font-size: var(--icon-xs); color: var(--finance-pending); }
+.loc-research { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--mud-palette-divider); border-radius: 10px; }
+
+.loc-note { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mud-palette-action-default-hover); font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.loc-note .material-icons { flex: none; margin-top: 1px; font-size: var(--icon-sm); color: var(--brand-text); }
+
+/* An inline text action inside a sentence; ≥24px target via padding. */
+.loc-link { all: unset; cursor: pointer; display: inline-block; padding: 3px 0; font: var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans); color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; }
+.loc-link:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
+
+@media (max-width: 560px) {
+  .loc-search-bar > :first-child { width: 100%; }
+  .loc-result { flex-wrap: wrap; }
+  .loc-result-kind { margin-left: 44px; }
+  /* At phone width a truncated name is the whole difference between two results — let it wrap (1.4.10). */
+  .loc-result-name, .loc-result-desc { white-space: normal; overflow-wrap: anywhere; }
+}
+.loc-picked:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; }

@@ -39,6 +39,8 @@ COPY --from=build /app/publish .
 # reject it: a 500-shaped failure on an ordinary write, reproducible nowhere else — a dev box and both
 # fast test tiers have ICU. Installed here, asserted at startup by GlobalizationGuard, and the
 # environment variable is pinned false so a base-image change cannot silently re-enable invariant mode.
+# tzdata (issue #350): the image also ships no time-zone database, so every IANA id a location carries
+# would fail to resolve. Asserted at startup by TimeZoneDataGuard.
 # The same optional CA as the restore above, for the same reason — apk speaks TLS too, and an
 # intercepted egress fails this with `TLS: server certificate not trusted`, which apk then reports
 # as `unable to select packages` (a missing-package error for a trust problem).
@@ -54,7 +56,7 @@ RUN --mount=type=secret,id=proxy_ca \
         cat /etc/ssl/certs/ca-certificates.crt /run/secrets/proxy_ca > /tmp/ca/bundle.crt && \
         export SSL_CERT_FILE=/tmp/ca/bundle.crt; \
     fi; \
-    apk add --no-cache icu-libs icu-data-full
+    apk add --no-cache icu-libs icu-data-full tzdata
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
 # The Data Protection key ring lives here (issue #444). Created at BUILD TIME with the right owner

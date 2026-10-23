@@ -1,0 +1,39 @@
+@using Odyssey.Dtos.Journal
+
+@*
+    The credit for source-derived place data (issue #350 §5, N6; design system · AddLocationModal.jsx
+    LocationAttribution). The text, licence and URL are the SERVER's — derived from the source on every
+    read — so the client restates none of them. Kit-local for now: weather (#348) is the expected second
+    consumer, and that is the point to promote it.
+*@
+
+@if (Attribution is { } a)
+{
+    <span class="loc-attr">
+        @if (!string.IsNullOrEmpty(Prefix))
+        {
+            @($"{Prefix} ")
+        }
+        @if (IsSafeUrl(a.Url))
+        {
+            <a href="@a.Url" target="_blank" rel="noopener noreferrer">@a.Text<span class="odc-sr-only"> (opens in a new tab)</span></a>
+        }
+        else
+        {
+            @a.Text
+        }
+        @(" · ")@a.License
+    </span>
+}
+
+@code {
+    [Parameter] public LocationAttribution? Attribution { get; set; }
+
+    /// <summary>A word before the credit — "Results" on the search footer.</summary>
+    [Parameter] public string? Prefix { get; set; }
+
+    // The URL is server-derived, never user text; this only refuses to turn anything but an https
+    // link into an href, so a future change upstream cannot hand the page a javascript: URL.
+    internal static bool IsSafeUrl(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps;
+}

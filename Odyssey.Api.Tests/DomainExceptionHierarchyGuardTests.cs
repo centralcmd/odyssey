@@ -22,6 +22,9 @@ public class DomainExceptionHierarchyGuardTests
         // A third-party provider failure, recorded on the analysis job rather than shaped for a client.
         "Odyssey.Core.Finance.FileAnalysisProviderException",
         "Odyssey.Core.Finance.FileAnalysisCredentialException",
+        // Internal to the geocoding clients and never escapes them: each client turns it into a
+        // GeocodingUnavailableException (a 503) or a partial result (issue #350).
+        "Odyssey.Core.Journal.Geocoding.GeocodingProviderException",
     ];
 
     [Fact]

@@ -82,6 +82,7 @@ public static class NavModel
                 new("albums", "Albums", "photo_album", "albums", PermissionClaims.PhotoAlbumsRead),
                 new("tasks", "Tasks", "checklist", "tasks", PermissionClaims.TasksRead),
                 new("contacts", "Contacts", "groups", "contacts", PermissionClaims.ContactsRead),
+                new("locations", "Locations", "place", "locations", PermissionClaims.LocationsRead),
                 new("journal-tags", "Journal Tags", "local_offer", "journal-tags", PermissionClaims.JournalTagsRead),
                 new("task-tags", "Task Tags", "local_offer", "task-tags", PermissionClaims.TaskTagsRead),
                 new("photo-tags", "Photo Tags", "local_offer", "photo-tags", PermissionClaims.PhotoTagsRead),

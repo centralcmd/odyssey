@@ -72,6 +72,9 @@ public sealed class DemoDataSet
     public required IReadOnlyList<CalendarEvent> CalendarEvents { get; init; }
     public required IReadOnlyList<RecurrencePattern> RecurrencePatterns { get; init; }
 
+    // Household locations (issue #350): one per source, one archived.
+    public required IReadOnlyList<Location> Locations { get; init; }
+
     /// <summary>
     /// Builds the full dataset. Pass a different <paramref name="anchorDate"/> only when a
     /// test needs to reanchor "today"; the default keeps the dataset deterministic.
@@ -155,6 +158,7 @@ public sealed class DemoDataSet
             Calendars = calendar.Calendars,
             CalendarEvents = calendar.CalendarEvents,
             RecurrencePatterns = calendar.RecurrencePatterns,
+            Locations = LocationGenerator.Generate(anchor),
         };
     }
 }

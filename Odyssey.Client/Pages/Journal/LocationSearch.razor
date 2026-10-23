@@ -1,0 +1,124 @@
+@using Odyssey.Dtos.Journal
+
+@*
+    LocationSearch — region + debounced geocoding search (issue #350; design system ·
+    AddLocationModal.jsx LocationSearch). A combobox over an INLINE listbox, not a popover, so the
+    two-line rows, the partial notice and the attribution sit together in the dialog body.
+
+    Only the selected region's provider ever sees the query, it is sent in a POST body (never a URL),
+    nothing goes out below the region's minimum or above the maximum, and only the latest response
+    renders. Every candidate string is provider text and renders as plain text.
+*@
+
+<div class="loc-search">
+    <div class="loc-search-bar">
+        <OdsSegmentedControl AriaLabel="Search in" Value="@Region.ToString()" ValueChanged="OnRegionChanged"
+                             Options="RegionOptions" />
+        <div class="odc-input-wrap loc-search-input">
+            <span class="material-icons odc-input-icon" aria-hidden="true">search</span>
+            <input id="@InputId" class="odc-input has-icon has-clear" type="text"
+                   role="combobox" aria-label="@($"Search {RegionInfo.Phrase} by address or place name")"
+                   aria-expanded="@(IsOpen ? "true" : "false")" aria-controls="@ListId" aria-autocomplete="list"
+                   aria-activedescendant="@(IsOpen && _active >= 0 ? OptionId(_active) : null)"
+                   aria-describedby="@DescribedBy" aria-invalid="@(_state == SearchState.Long ? "true" : null)"
+                   autocomplete="off" spellcheck="false"
+                   placeholder="@(Region == LocationSearchRegion.Norway ? "Address or place name, e.g. Storgata 1" : "Town or area, e.g. Lisbon")"
+                   value="@_query" @oninput="OnInput" @onkeydown="OnKeyDown" />
+            @if (_state == SearchState.Loading)
+            {
+                <span class="loc-search-spin"><OdsSpinner Size="OdsSize.Sm" AriaLabel="@($"Searching {ProviderLabel}")" /></span>
+            }
+            else if (_query.Length > 0)
+            {
+                <button type="button" class="odc-input-clear" aria-label="Clear search" @onclick="ClearAsync">
+                    <span class="material-icons" aria-hidden="true">close</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    @* The data-flow disclosure (§7.5) — always visible, naming the one provider this region sends to. *@
+    <div id="@HelpId" class="loc-search-help">
+        <span class="material-icons" aria-hidden="true">travel_explore</span>
+        <span>What you type here is sent to @LocationVisuals.SourceOf(RegionInfo.Source).Provider to find matches. Nothing else leaves Odyssey.</span>
+    </div>
+
+    <OdsLiveAnnouncer Message="@_announce" />
+
+    @switch (_state)
+    {
+        case SearchState.Short:
+            <div id="@StateId" class="loc-search-state">@ShortText</div>
+            break;
+        case SearchState.Long:
+            <div id="@StateId" class="loc-search-state error">@LongText</div>
+            break;
+        case SearchState.Loading:
+            <div class="loc-search-state" aria-hidden="true">Searching @ProviderLabel…</div>
+            break;
+        case SearchState.Failed:
+            <OdsProblemAlert Severity="OdsSeverity.Warning" Class="loc-search-alert"
+                             Detail="@FailureText" ActionLabel="Try again" ActionIcon="refresh" OnAction="RunAsync" />
+            break;
+        case SearchState.Done when Candidates.Count == 0:
+            <div class="loc-search-empty">
+                <span>No matches @RegionInfo.Phrase for “@_query.Trim()”.</span>
+                <span class="loc-search-empty-acts">
+                    <OdsButton Variant="OdsButtonVariant.Text" Icon="@OtherRegion.Icon"
+                               OnClick="@(() => OnRegionChanged(OtherRegion.Region.ToString()))">Search @OtherRegion.Phrase</OdsButton>
+                    @if (OnManual.HasDelegate)
+                    {
+                        <OdsButton Variant="OdsButtonVariant.Text" Icon="edit_location_alt" OnClick="OnManual">Enter by hand</OdsButton>
+                    }
+                </span>
+            </div>
+            break;
+    }
+
+    @if (!IsOpen)
+    {
+        @* aria-controls always names a real element; the empty list is hidden until there are results. *@
+        <ul id="@ListId" role="listbox" aria-label="@($"Results from {ProviderLabel}")" hidden></ul>
+    }
+    else
+    {
+        <div class="loc-results-wrap">
+            @if (_response!.Partial)
+            {
+                <div class="loc-results-partial">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>
+                        Some results may be missing — one of Kartverket’s two services didn’t answer.
+                        <button type="button" class="loc-link" @onclick="RunAsync">Search again</button>
+                    </span>
+                </div>
+            }
+            <ul class="loc-results" id="@ListId" role="listbox" aria-label="@($"Results from {ProviderLabel}")">
+                @for (var i = 0; i < Candidates.Count; i++)
+                {
+                    var index = i;
+                    var c = Candidates[index];
+                    var kind = LocationVisuals.KindOf(c.Kind);
+                    <li id="@OptionId(index)" role="option" aria-selected="@(index == _active ? "true" : "false")"
+                        class="@(index == _active ? "loc-result active" : "loc-result")"
+                        @onmouseenter="@(() => { _active = index; })"
+                        @onmousedown="@(() => PickAsync(c))" @onmousedown:preventDefault="true">
+                        <span class="loc-result-ic"><span class="material-icons" aria-hidden="true">@kind.Icon</span></span>
+                        <span class="loc-result-text">
+                            <span class="loc-result-name">@c.Name</span>
+                            @if (!string.IsNullOrEmpty(c.Description))
+                            {
+                                <span class="loc-result-desc">@c.Description</span>
+                            }
+                        </span>
+                        <span class="loc-result-kind">@kind.Label</span>
+                    </li>
+                }
+            </ul>
+            <div class="loc-results-foot">
+                <span>@Candidates.Count @(Candidates.Count == 1 ? "result" : "results")</span>
+                <LocationAttributionLink Attribution="_response.Attribution" Prefix="Results" />
+            </div>
+        </div>
+    }
+</div>

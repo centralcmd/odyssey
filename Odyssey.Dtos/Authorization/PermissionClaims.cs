@@ -148,6 +148,12 @@ public static class PermissionClaims
     public const string CalendarUpdate = "calendar.update";
     public const string CalendarDelete = "calendar.delete";
 
+    // Household locations (issue #350). There is deliberately no delete claim: a location is archived,
+    // never deleted. Read is granted to Guest as well — see RolePermissions.GuestClaims.
+    public const string LocationsCreate = "locations.create";
+    public const string LocationsRead = "locations.read";
+    public const string LocationsUpdate = "locations.update";
+
     /// <summary>
     /// Read another user's profile picture (issue #94 §10.5). A deliberately <b>low-tier</b> claim,
     /// granted to <b>every</b> role including Guest, so its effective reach equals "any authenticated

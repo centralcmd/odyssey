@@ -1,0 +1,181 @@
+@page "/locations"
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@attribute [Authorize(Policy = PermissionClaims.LocationsRead)]
+@implements IDisposable
+
+@*
+    /locations (issue #350; design system · Locations.jsx). The household's important places — home, the
+    cabin, school — on the shared PageHeader + expandable OdsRecordCard list, one card open at a time.
+    Household-shared: no owner, access by claim. A location has no sub-collections in v1, so the card
+    carries no counts and no figure (the record-card rule is "never invent one"), and the page has no
+    Overview region. There is no delete: the row menu offers Archive / Restore, a PUT with `archived`.
+*@
+
+<PageTitle>Locations</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<MudStack Spacing="4">
+    <PageHeader Title="Locations"
+                Icon="@Icons.Material.Filled.Place"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New location"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@SubLineText</SubLine>
+
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="LoadLocations"
+                                Placeholder="Search name, address or description…"
+                                Class="ph-search" />
+                <OdsMultiSelect Label="Any status" Icon="check_circle" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="LocationVisuals.StatusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="ExistingLocation" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Locations per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    <div class="acct-list">
+        <OdsInfiniteList TItem="ExistingLocation" Items="_locations" BatchSize="_batch"
+                         ItemKey="@(l => (object)l.LocationId)" Noun="locations" RevealKey="_flashId"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="LoadLocations"
+                         HasFilters="ShowFilteredEmpty" OnClearFilters="ClearFilters"
+                         Empty="ArchivedMatchLine"
+                         EmptyIcon="place"
+                         EmptyTitle="@EmptyTitle"
+                         EmptyDescription="@EmptyDescription">
+            <RenderItem Context="l">
+                <OdsRecordCard Id="@($"loc-{l.LocationId}")"
+                               Icon="place"
+                               Accent="@LocationVisuals.Accent"
+                               AccentSoft="@LocationVisuals.AccentSoft"
+                               Name="@l.Name"
+                               Meta="MetaFor(l)"
+                               Dimmed="@(l.Archived is not null)"
+                               Highlight="@(_flashId == l.LocationId)"
+                               Open="IsExpanded(l.LocationId)"
+                               OnToggle="@(_ => ToggleExpand(l.LocationId))">
+                    <Chips>
+                        @if (l.Archived is not null)
+                        {
+                            <OdsChip Tone="OdsChipTone.Outline" Icon="inventory_2" Class="sm">Archived</OdsChip>
+                        }
+                    </Chips>
+
+                    <Actions>
+                        <OdsMenu Items="RowActions(l)" AriaLabel="@($"Actions for {l.Name}")" />
+                    </Actions>
+
+                    <Details>
+                        @{
+                            var source = LocationVisuals.SourceOf(l.Source);
+                            var edited = l.UpdatedAt != l.CreatedAt;
+                        }
+                        <OdsInfoTileGrid>
+                            @if (!string.IsNullOrWhiteSpace(l.AddressText))
+                            {
+                                @* The address tile wears the address hue, as on a contact or property. *@
+                                <OdsInfoTile Icon="location_on" IconColor="@LocationVisuals.Accent" IconSoft="@LocationVisuals.AccentSoft"
+                                             Label="Address" Wide="true" WrapValue="true" ValueVariant="OdsInfoTileVariant.Text">
+                                    <Value>@l.AddressText</Value>
+                                </OdsInfoTile>
+                            }
+                            <OdsInfoTile Icon="my_location" Label="Coordinates" ValueVariant="OdsInfoTileVariant.Sm"
+                                         Foot="@OdsInfoTile.Caption(LocationVisuals.FormatHemispheres(l.Latitude, l.Longitude))">
+                                <Value>@LocationVisuals.FormatPair(l.Latitude, l.Longitude)</Value>
+                            </OdsInfoTile>
+                            @if (l.AltitudeMeters is { } altitude)
+                            {
+                                <OdsInfoTile Icon="terrain" Label="Altitude" Foot="@OdsInfoTile.Caption("above sea level")">
+                                    <Value>@($"{altitude.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)} m")</Value>
+                                </OdsInfoTile>
+                            }
+                            <OdsInfoTile Icon="schedule" Label="Time zone" ValueVariant="OdsInfoTileVariant.Text"
+                                         Foot="@OdsInfoTile.Caption(LocationVisuals.NowThere(l.TimeZoneId, DateTime.UtcNow))">
+                                <Value>@l.TimeZoneId</Value>
+                            </OdsInfoTile>
+                            <OdsInfoTile Icon="@source.Icon" Label="Source" ValueVariant="OdsInfoTileVariant.Text"
+                                         Foot="@SourceFoot(l)">
+                                <Value>@source.Label</Value>
+                            </OdsInfoTile>
+                            @if (l.Archived is { } archivedAt)
+                            {
+                                <OdsInfoTile Icon="inventory_2" Label="Archived" ValueVariant="OdsInfoTileVariant.Sm"
+                                             Tone="OdsInfoTileTone.Muted" Foot="@OdsInfoTile.Caption("hidden from the default list")">
+                                    <Value>@LocationVisuals.LongDate(archivedAt)</Value>
+                                </OdsInfoTile>
+                            }
+                            <OdsInfoTile Icon="history" Label="@(edited ? "Last edited" : "Added")" ValueVariant="OdsInfoTileVariant.Sm"
+                                         Foot="@OdsInfoTile.Caption(edited ? $"added {LocationVisuals.LongDate(l.CreatedAt)}" : null)">
+                                <Value>@LocationVisuals.LongDate(edited ? l.UpdatedAt : l.CreatedAt)</Value>
+                            </OdsInfoTile>
+                        </OdsInfoTileGrid>
+                        @if (!string.IsNullOrWhiteSpace(l.Description))
+                        {
+                            <OdsInfoTileGrid>
+                                <OdsInfoTile Icon="sticky_note_2" Label="Description" Wide="true" WrapValue="true" ValueVariant="OdsInfoTileVariant.Text">
+                                    <Value>@l.Description</Value>
+                                </OdsInfoTile>
+                            </OdsInfoTileGrid>
+                        }
+                    </Details>
+                </OdsRecordCard>
+            </RenderItem>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add_location_alt" OnClick="AddClicked">New location</OdsButton>
+                }
+            </CreateAction>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New location"
+                               Sub="Search an address or place name — Kartverket for Norway, Open-Meteo for the rest of the world."
+                               OnClick="AddClicked" />
+                }
+            </Trailing>
+        </OdsInfiniteList>
+
+        @if (Credits.Count > 0)
+        {
+            @* The credit for the rows on screen (§5, N6): only the sources among them, gone when every
+               row was entered by hand. *@
+            <div class="loc-credits">
+                <span class="material-icons" aria-hidden="true">info</span>
+                <span>
+                    Place data
+                    @for (var i = 0; i < Credits.Count; i++)
+                    {
+                        @(i > 0 ? " and " : " ")<LocationAttributionLink Attribution="Credits[i]" />
+                    }.
+                </span>
+            </div>
+        }
+    </div>
+</MudStack>
+
+@if (_createKey != Guid.Empty)
+{
+    <LocationDialog @key="_createKey" @bind-Open="_createOpen" CanSearch="_canCreate" OnSaved="OnLocationCreated" />
+}
+
+@if (_editLocation is not null)
+{
+    <LocationDialog @key="_editKey" @bind-Open="_editOpen" Location="_editLocation" CanSearch="_canCreate"
+                    OnSaved="OnLocationSaved" />
+}
+
+@code {
+    // When a search matches only archived rows and the filter hides them, say so — otherwise a household
+    // member who archived "Cabin" would conclude it is gone.
+    private RenderFragment? ArchivedMatchLine => _archivedMatch
+        ? @<OdsEmptyLine Align="OdsEmptyLineAlign.Center" Pad="OdsSize.Lg">No active locations match. An archived one does — add Archived to the status filter to see it.</OdsEmptyLine>
+        : null;
+}
