@@ -869,8 +869,8 @@ public partial class Settings
         new("Exchange-rate sync", Icons.Material.Filled.CurrencyExchange,
         [
             new("exchangeRateHistoryStartDate", "history", "History start date",
-                "The earliest date rates are fetched from, as yyyy-MM-dd, for every synced currency without "
-                + "its own start date. Empty means 1 January of the current year: on 1 January the default "
+                "The earliest date rates are fetched from, as yyyy-MM-dd and no later than today, for every "
+                + "synced currency without its own start date. Empty means 1 January of the current year: on 1 January the default "
                 + "start moves forward a year, and nothing already fetched is deleted.",
                 SettingClaim.Count, SettingControl.Text, Max: ExchangeRateHistoryStartDateRule.MaxLength,
                 Field: nameof(SystemSettingsUpdate.ExchangeRateHistoryStartDate),

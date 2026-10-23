@@ -77,8 +77,8 @@ public interface IExchangeRatesApiClient
     /// </summary>
     Task<ApiResult<PagedResult<ExistingExchangeRate>>> ListAsync(
         int page, int pageSize, string? search = null, IReadOnlyCollection<string>? toCurrencies = null,
-        IReadOnlyCollection<string>? status = null, string? sortBy = null, string? sortDir = null,
-        CancellationToken ct = default, IReadOnlyCollection<string>? source = null);
+        IReadOnlyCollection<string>? status = null, IReadOnlyCollection<string>? source = null,
+        string? sortBy = null, string? sortDir = null, CancellationToken ct = default);
 
     /// <summary>The unfiltered counts, currencies and attribution (issue #349 §5.10).</summary>
     Task<ApiResult<ExchangeRateSummary>> GetSummaryAsync(CancellationToken ct = default);
@@ -103,8 +103,8 @@ public sealed class ExchangeRatesApiClient(IOdysseyApi api) : IExchangeRatesApiC
 
     public Task<ApiResult<PagedResult<ExistingExchangeRate>>> ListAsync(
         int page, int pageSize, string? search = null, IReadOnlyCollection<string>? toCurrencies = null,
-        IReadOnlyCollection<string>? status = null, string? sortBy = null, string? sortDir = null,
-        CancellationToken ct = default, IReadOnlyCollection<string>? source = null) =>
+        IReadOnlyCollection<string>? status = null, IReadOnlyCollection<string>? source = null,
+        string? sortBy = null, string? sortDir = null, CancellationToken ct = default) =>
         api.GetPagedAsync<ExistingExchangeRate>(
             PagedQuery.For(Base)
                 .Window(page, pageSize)

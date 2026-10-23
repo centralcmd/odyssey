@@ -11,39 +11,42 @@ public sealed class ExchangeRateSupportedListCache(TimeProvider timeProvider)
 {
     private readonly SemaphoreSlim gate = new(1, 1);
 
-    private IReadOnlyList<ProviderSeries>? series;
-
-    private DateTimeOffset expiresAt = DateTimeOffset.MinValue;
+    /// <summary>
+    /// The list and its expiry as ONE immutable snapshot behind a volatile reference, so a reader outside
+    /// the gate never pairs a new expiry with an old list (or the reverse).
+    /// </summary>
+    private volatile Snapshot current = new(null, DateTimeOffset.MinValue);
 
     /// <summary>The cached list, or null while it is unavailable (the last fetch failed).</summary>
     public async Task<IReadOnlyList<ProviderSeries>?> GetAsync(
         Func<CancellationToken, Task<IReadOnlyList<ProviderSeries>>> fetch, CancellationToken cancellationToken)
     {
-        if (timeProvider.GetUtcNow() < expiresAt)
+        var snapshot = current;
+        if (timeProvider.GetUtcNow() < snapshot.ExpiresAt)
         {
-            return series;
+            return snapshot.Series;
         }
 
         await gate.WaitAsync(cancellationToken);
         try
         {
-            if (timeProvider.GetUtcNow() < expiresAt)
+            snapshot = current;
+            if (timeProvider.GetUtcNow() < snapshot.ExpiresAt)
             {
-                return series;
+                return snapshot.Series;
             }
 
             try
             {
-                series = await fetch(cancellationToken);
-                expiresAt = timeProvider.GetUtcNow() + ExchangeRateSyncConstants.SupportedListTtl;
+                var fetched = await fetch(cancellationToken);
+                current = new Snapshot(fetched, timeProvider.GetUtcNow() + ExchangeRateSyncConstants.SupportedListTtl);
             }
             catch (ExchangeRateProviderException)
             {
-                series = null;
-                expiresAt = timeProvider.GetUtcNow() + ExchangeRateSyncConstants.SupportedListFailureTtl;
+                current = new Snapshot(null, timeProvider.GetUtcNow() + ExchangeRateSyncConstants.SupportedListFailureTtl);
             }
 
-            return series;
+            return current.Series;
         }
         finally
         {
@@ -52,9 +55,15 @@ public sealed class ExchangeRateSupportedListCache(TimeProvider timeProvider)
     }
 
     /// <summary>The cached list without fetching; null when unknown or unavailable.</summary>
-    public IReadOnlyList<ProviderSeries>? Peek() => timeProvider.GetUtcNow() < expiresAt ? series : null;
+    public IReadOnlyList<ProviderSeries>? Peek()
+    {
+        var snapshot = current;
+        return timeProvider.GetUtcNow() < snapshot.ExpiresAt ? snapshot.Series : null;
+    }
 
     /// <summary>Whether a series is offered: published within the last 30 days.</summary>
     public static bool IsFresh(ProviderSeries series, DateOnly todayUtc) =>
         series.NewestObservation >= todayUtc.AddDays(-ExchangeRateSyncConstants.SupportedFreshnessDays);
+
+    private sealed record Snapshot(IReadOnlyList<ProviderSeries>? Series, DateTimeOffset ExpiresAt);
 }

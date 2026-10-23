@@ -10,7 +10,7 @@ namespace Odyssey.Core.Finance;
 /// <c>UpdatedAt ?? CreatedAt</c> newest first, then <c>ExchangeRateId</c>. Source plays no part — a
 /// fetched row and a manual row compete on <c>AsOf</c> alone. Those readers must agree with each other
 /// and with the NOK-hop selection, which is why none of them may restate the ordering;
-/// <c>ExchangeRateOrderingTests</c> fails on a second copy in <c>Odyssey.Core</c>.
+/// a source-lint in <c>ExchangeRateHopAndStatusTests</c> fails on a second copy in <c>Odyssey.Core</c>.
 /// </summary>
 /// <remarks>
 /// The SQL predicates stop at the <c>UpdatedAt ?? CreatedAt</c> key: a <see cref="Guid"/> has no

@@ -1038,8 +1038,10 @@ most 10 requests at least 1 s apart. Rates are published under NLOD 2.0; Odyssey
 *Source: Norges Bank (NLOD 2.0)* wherever fetched rates appear.
 
 The run log (`ExchangeRateSyncRuns`, newest 500 kept) records each run's trigger, status, error kind,
-span, currencies and row counts. Per-currency changes, manual runs and purges are also written to the
-application log under the System settings audit category, with the acting user's id.
+span, currencies and row counts. Per-currency changes and purges are also written to the application
+log under the System settings audit category (`Odyssey.Api.SystemSettings.SystemSettingsService`), and
+manual runs under `Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncService`, each with the acting
+user's id.
 
 ## Security checklist
 

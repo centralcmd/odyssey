@@ -68,15 +68,19 @@
             new()
             {
                 Key = "status", HeaderText = "Status", Sortable = true, SortType = OdsSortType.Status,
-                SortValue = r => _currentIds.Contains(r.ExchangeRateId) ? 0 : 1,
+                SortValue = r => (int)r.Status,
                 Cell = (r, ctx) => @<text>
-                    @if (_currentIds.Contains(r.ExchangeRateId))
+                    @switch (r.Status)
                     {
-                        <OdsChip Tone="OdsChipTone.Info" Dot="true">Current</OdsChip>
-                    }
-                    else
-                    {
-                        <OdsChip Dot="true">Historical</OdsChip>
+                        case ExchangeRateStatus.Current:
+                            <OdsChip Tone="OdsChipTone.Info" Dot="true">Current</OdsChip>
+                            break;
+                        case ExchangeRateStatus.Upcoming:
+                            <OdsChip Tone="OdsChipTone.Pending" Dot="true">Upcoming</OdsChip>
+                            break;
+                        default:
+                            <OdsChip Dot="true">Historical</OdsChip>
+                            break;
                     }
                 </text>
             },

@@ -50,7 +50,8 @@ public sealed partial class ExchangeRateSyncCurrencyService(
 
         var series = await supportedList.GetAsync(client.GetSeriesAsync, cancellationToken);
         var settings = await settingsLookup.GetAsync(cancellationToken);
-        var extents = await sync.FetchedExtentsAsync(ExchangeRateSyncClock.Oslo, cancellationToken);
+        // Only a currency that was ever configured can have fetched rows.
+        var extents = await sync.FetchedExtentsAsync(ExchangeRateSyncClock.Oslo, configured.Keys.ToList(), cancellationToken);
         var anyEnabled = configured.Values.Any(row => row.Enabled && row.CurrencyCode != Hub
             && currencies.Any(currency => currency.CurrencyCode == row.CurrencyCode));
 
@@ -192,7 +193,7 @@ public sealed partial class ExchangeRateSyncCurrencyService(
 
         series ??= supportedList.Peek();
         var settings = await settingsLookup.GetAsync(cancellationToken);
-        var extents = await sync.FetchedExtentsAsync(ExchangeRateSyncClock.Oslo, cancellationToken);
+        var extents = await sync.FetchedExtentsAsync(ExchangeRateSyncClock.Oslo, [code], cancellationToken);
         var item = Project(code, currency.Name, row, series, settings, extents, anyEnabled: enable);
         item.FetchedRowCount = await context.ExchangeRates.AsNoTracking()
             .CountAsync(rate => rate.Provider != null && (rate.FromCurrencyCode == code || rate.ToCurrencyCode == code), cancellationToken);

@@ -171,6 +171,9 @@ public class ExchangeRateSyncTests
     [InlineData(null, "0")]
     // Rounds to zero at 8 dp, outside the stored bounds.
     [InlineData("0.000000001", "0")]
+    // Below decimal's reciprocal range once scaled: 10 / 1e-28 would overflow rather than reject.
+    [InlineData("0.0000000000000000000000000001", "1")]
+    [InlineData("0.0000000000000000000000000001", "6")]
     public void Normalise_rejects_a_structurally_unusable_observation(string? value, string? unitMult)
     {
         Assert.False(ExchangeRateSyncService.TryNormalise(new ProviderObservation("USD", new DateOnly(2026, 10, 15), value, unitMult), out _, out _));
@@ -487,6 +490,422 @@ public class ExchangeRateSyncTests
         await Assert.ThrowsAsync<DomainConflictException>(() => harness.Currencies.PurgeAsync("USD", "admin"));
     }
 
+    // ── Review round 1: recovery, faults and the run's limits ────────────────────────────────────
+
+    [Fact]
+    public async Task The_scheduler_abandons_a_stale_running_row_and_runs()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+        await harness.EnableAsync("USD");
+        harness.Context.ExchangeRateSyncRuns.Add(new ExchangeRateSyncRun
+        {
+            Trigger = ExchangeRateSyncTrigger.Scheduled,
+            Provider = ExchangeRateProvider.NorgesBank,
+            Status = ExchangeRateSyncRunStatus.Running,
+            StartedAtUtc = Now.AddMinutes(-(2 * ExchangeRateSyncConstants.RunTimeoutMinutes) - 1),
+        });
+        await harness.Context.SaveChangesAsync();
+        harness.Context.ChangeTracker.Clear();
+
+        var ran = await harness.Sync.RunScheduledIfDueAsync();
+
+        Assert.NotNull(ran);
+        var runs = await harness.Context.ExchangeRateSyncRuns.AsNoTracking().ToListAsync();
+        Assert.Contains(runs, run => run.ErrorKind == ExchangeRateSyncErrorKind.Abandoned && run.Status == ExchangeRateSyncRunStatus.Failed);
+        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, runs.Single(run => run.ExchangeRateSyncRunId == ran).Status);
+    }
+
+    [Fact]
+    public async Task A_fresh_running_row_is_left_alone_by_the_scheduler()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+        await harness.EnableAsync("USD");
+        await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Manual, "admin");
+
+        Assert.Null(await harness.Sync.RunScheduledIfDueAsync());
+    }
+
+    [Fact]
+    public async Task An_unforeseen_fault_finishes_the_run_as_internal_and_releases_the_guard()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+        await harness.EnableAsync("USD");
+        harness.Settings.ThrowOnRead = true;
+
+        var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
+
+        Assert.Equal(ExchangeRateSyncRunStatus.Failed, run.Status);
+        Assert.Equal(ExchangeRateSyncErrorKind.Internal, run.ErrorKind);
+        Assert.NotNull(run.FinishedAtUtc);
+        Assert.NotNull(await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Scheduled, null));
+    }
+
+    [Fact]
+    public async Task A_settings_read_failure_fails_the_run_as_settings_unusable()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+        await harness.EnableAsync("USD");
+        harness.Settings.ReadFailed = true;
+
+        var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
+
+        Assert.Equal(ExchangeRateSyncRunStatus.Failed, run.Status);
+        Assert.Equal(ExchangeRateSyncErrorKind.SettingsUnusable, run.ErrorKind);
+        Assert.Empty(harness.Provider.DataRequests);
+    }
+
+    [Fact]
+    public async Task A_shutdown_mid_run_ends_it_failed_and_cancelled()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+        await harness.EnableAsync("USD");
+        harness.Provider.Hang = true;
+        using var stopping = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+
+        var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled, stopping.Token);
+
+        Assert.Equal(ExchangeRateSyncRunStatus.Failed, run.Status);
+        Assert.Equal(ExchangeRateSyncErrorKind.Cancelled, run.ErrorKind);
+        Assert.NotNull(await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Scheduled, null));
+    }
+
+    [Fact]
+    public async Task A_failed_chunk_stops_the_watermark_at_the_last_committed_one_and_the_next_run_resumes()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2024, 1, 1));
+        await harness.EnableAsync("USD");
+        harness.Provider.FailWhen = uri => uri.Contains("endPeriod=2025-10-23");
+
+        var first = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
+
+        Assert.Equal(ExchangeRateSyncRunStatus.PartiallySucceeded, first.Status);
+        Assert.Equal(ExchangeRateSyncErrorKind.ProviderUnavailable, first.ErrorKind);
+        Assert.Equal(new DateOnly(2025, 10, 24), await WatermarkAsync(harness, "USD"));
+        // The chunk after the failed one was never asked for: the watermark cannot jump a hole.
+        Assert.DoesNotContain(harness.Provider.DataRequests, uri => uri.Contains("endPeriod=2024-10-23"));
+
+        harness.Provider.FailWhen = null;
+        harness.Provider.DataRequests.Clear();
+        var second = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
+
+        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, second.Status);
+        Assert.Equal(new DateOnly(2025, 10, 23), Span(harness.Provider.DataRequests[0]).To);
+        Assert.Equal(new DateOnly(2024, 1, 1), await WatermarkAsync(harness, "USD"));
+    }
+
+    [Fact]
+    public async Task A_run_makes_at_most_ten_requests_and_the_status_reports_catching_up()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(1990, 1, 1));
+        await harness.EnableAsync("USD");
+
+        var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
+
+        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, run.Status);
+        Assert.Equal(ExchangeRateSyncConstants.RequestsPerRun, harness.Provider.DataRequests.Count);
+        var today = new DateOnly(2026, 10, 23);
+        Assert.Equal(today.AddDays(-(ExchangeRateSyncConstants.RequestsPerRun * ExchangeRateSyncConstants.DaysPerRequest) + 1),
+            await WatermarkAsync(harness, "USD"));
+
+        var status = await harness.Sync.GetStatusAsync();
+        Assert.Equal(ExchangeRateSyncState.CatchingUp, status.State);
+        Assert.False(status.BackfillComplete);
+        Assert.Equal(run.FinishedAtUtc!.Value.AddMinutes(ExchangeRateSyncConstants.CatchUpDelayMinutes), status.NextRunAtUtc);
+    }
+
+    [Fact]
+    public async Task Forward_fill_uses_at_most_five_requests_oldest_first_and_keeps_catching_up()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2019, 1, 1));
+        await harness.EnableAsync("USD", backfilledFrom: new DateOnly(2019, 1, 1));
+        harness.Context.ExchangeRates.Add(new ExchangeRate
+        {
+            FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 10m, CreatedAt = Now,
+            AsOf = ExchangeRateSyncClock.FetchedAsOf(new DateOnly(2019, 1, 2), ExchangeRateSyncClock.Oslo!),
+            Provider = ExchangeRateProvider.NorgesBank,
+        });
+        await harness.Context.SaveChangesAsync();
+        harness.Context.ChangeTracker.Clear();
+
+        await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
+
+        var spans = harness.Provider.DataRequests.Select(Span).ToList();
+        Assert.Equal(ExchangeRateSyncConstants.ForwardFillRequestsPerRun, spans.Count);
+        Assert.Equal(new DateOnly(2019, 1, 3), spans[0].From);
+        for (var i = 1; i < spans.Count; i++)
+        {
+            Assert.Equal(spans[i - 1].To.AddDays(1), spans[i].From);
+        }
+
+        Assert.Equal(ExchangeRateSyncState.CatchingUp, (await harness.Sync.GetStatusAsync()).State);
+    }
+
+    [Fact]
+    public async Task One_currency_failing_does_not_hold_back_another()
+    {
+        await using var harness = await Harness.CreateAsync();
+        await harness.EnableAsync("USD", start: new DateOnly(2026, 10, 19));
+        await harness.EnableAsync("EUR", start: new DateOnly(2026, 10, 12));
+        harness.Provider.FailWhen = uri => uri.Contains("EUR");
+
+        var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
+
+        Assert.Equal(ExchangeRateSyncRunStatus.PartiallySucceeded, run.Status);
+        Assert.Equal(new DateOnly(2026, 10, 19), await WatermarkAsync(harness, "USD"));
+        Assert.Null(await WatermarkAsync(harness, "EUR"));
+        Assert.Equal(10, run.RowsInserted);
+    }
+
+    [Fact]
+    public async Task Currencies_sharing_a_span_share_one_request()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 19));
+        await harness.EnableAsync("USD");
+        await harness.EnableAsync("EUR");
+
+        var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
+
+        Assert.Contains("EXR/B.EUR+USD.NOK.SP", Assert.Single(harness.Provider.DataRequests));
+        Assert.Equal(20, run.RowsInserted);
+    }
+
+    [Theory]
+    // A start before the series begins completes once the watermark reaches the first observation.
+    [InlineData("1999-01-04", "1990-01-01", "1999-01-04", true)]
+    [InlineData("1999-01-04", "1990-01-01", "1999-01-05", false)]
+    [InlineData(null, "2020-01-01", "2020-01-01", true)]
+    [InlineData(null, "2020-01-01", "2020-01-02", false)]
+    [InlineData("1999-01-04", "2020-01-01", "2019-12-31", true)]
+    [InlineData("1999-01-04", "2020-01-01", null, false)]
+    public void Backfill_completion_reaches_the_later_of_the_start_and_the_first_observation(
+        string? first, string start, string? watermark, bool complete)
+    {
+        static DateOnly? Date(string? value) => value is null ? null : DateOnly.Parse(value, CultureInfo.InvariantCulture);
+
+        Assert.Equal(complete, ExchangeRateSyncService.IsBackfillComplete(Date(watermark), Date(start)!.Value, Date(first)));
+    }
+
+    [Fact]
+    public async Task A_scheduled_run_waits_for_the_interval_after_a_success()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+        await harness.EnableAsync("USD");
+        Assert.NotNull(await harness.Sync.RunScheduledIfDueAsync());
+
+        harness.Clock.Advance(TimeSpan.FromHours(23));
+        Assert.Null(await harness.Sync.RunScheduledIfDueAsync());
+
+        harness.Clock.Advance(TimeSpan.FromHours(1));
+        Assert.NotNull(await harness.Sync.RunScheduledIfDueAsync());
+    }
+
+    [Theory]
+    [InlineData(2, 24, 24, false)]
+    [InlineData(3, 24, 48, true)]
+    [InlineData(4, 24, 96, true)]
+    [InlineData(6, 24, 168, true)]
+    [InlineData(3, 168, 168, true)]
+    public async Task Consecutive_failures_back_off_doubling_to_the_cap(int failures, int interval, int expectedHours, bool backingOff)
+    {
+        await using var harness = await CaughtUpAsync();
+        harness.Settings.IntervalHours = interval;
+        var finished = Now.AddHours(-1);
+        for (var i = 0; i < failures; i++)
+        {
+            harness.Context.ExchangeRateSyncRuns.Add(FinishedRun(ExchangeRateSyncRunStatus.Failed, finished.AddMinutes(-i)));
+        }
+
+        await harness.Context.SaveChangesAsync();
+
+        var status = await harness.Sync.GetStatusAsync();
+
+        Assert.Equal(failures, status.ConsecutiveFailures);
+        Assert.Equal(backingOff ? ExchangeRateSyncState.BackingOff : ExchangeRateSyncState.Scheduled, status.State);
+        Assert.Equal(finished.AddHours(expectedHours), status.NextRunAtUtc);
+    }
+
+    [Fact]
+    public async Task A_success_breaks_the_failure_streak_and_skipped_runs_and_purges_do_not_count()
+    {
+        await using var harness = await CaughtUpAsync();
+        var at = Now.AddHours(-1);
+        harness.Context.ExchangeRateSyncRuns.AddRange(
+            FinishedRun(ExchangeRateSyncRunStatus.Failed, at),
+            FinishedRun(ExchangeRateSyncRunStatus.Skipped, at.AddMinutes(-1)),
+            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-2), ExchangeRateSyncTrigger.Purge),
+            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-3)),
+            FinishedRun(ExchangeRateSyncRunStatus.PartiallySucceeded, at.AddMinutes(-4)),
+            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-5)),
+            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-6)));
+        await harness.Context.SaveChangesAsync();
+
+        Assert.Equal(2, (await harness.Sync.GetStatusAsync()).ConsecutiveFailures);
+    }
+
+    [Fact]
+    public async Task The_run_log_is_newest_first_filterable_and_capped_at_a_hundred_a_page()
+    {
+        await using var harness = await Harness.CreateAsync();
+        for (var i = 0; i < 150; i++)
+        {
+            harness.Context.ExchangeRateSyncRuns.Add(FinishedRun(
+                i % 3 == 0 ? ExchangeRateSyncRunStatus.Failed : ExchangeRateSyncRunStatus.Succeeded, Now.AddMinutes(-i)));
+        }
+
+        await harness.Context.SaveChangesAsync();
+
+        var page = await harness.Sync.ListRunsAsync(new ExchangeRateSyncRunsQueryParams { Limit = 500 });
+        Assert.Equal(ExchangeRateSyncService.MaxRunsPageSize, page.Items.Count);
+        Assert.Equal(150, page.TotalCount);
+        Assert.Equal(page.Items.Select(r => r.StartedAtUtc).OrderByDescending(t => t), page.Items.Select(r => r.StartedAtUtc));
+
+        var failed = await harness.Sync.ListRunsAsync(new ExchangeRateSyncRunsQueryParams { Status = ExchangeRateSyncRunStatus.Failed });
+        Assert.Equal(50, failed.TotalCount);
+        Assert.All(failed.Items, r => Assert.Equal(ExchangeRateSyncRunStatus.Failed, r.Status));
+    }
+
+    [Fact]
+    public async Task A_purge_larger_than_one_batch_deletes_every_fetched_row()
+    {
+        await using var harness = await Harness.CreateAsync();
+        var start = new DateTime(2000, 1, 1, 14, 0, 0, DateTimeKind.Utc);
+        var count = ExchangeRateSyncConstants.PurgeBatchSize + 250;
+        for (var i = 0; i < count; i++)
+        {
+            harness.Context.ExchangeRates.Add(new ExchangeRate
+            {
+                FromCurrencyCode = i % 2 == 0 ? "USD" : "NOK", ToCurrencyCode = i % 2 == 0 ? "NOK" : "USD",
+                Rate = 1m, AsOf = start.AddDays(i / 2), CreatedAt = Now, Provider = ExchangeRateProvider.NorgesBank,
+            });
+        }
+
+        await harness.Context.SaveChangesAsync();
+        harness.Context.ChangeTracker.Clear();
+
+        var result = await harness.Currencies.PurgeAsync("USD", "admin");
+
+        Assert.Equal(count, result.RowsDeleted);
+        Assert.Empty(await harness.Context.ExchangeRates.ToListAsync());
+    }
+
+    // ── Norwegian time ────────────────────────────────────────────────────────────────────────────
+
+    [Theory]
+    // Summer (CEST, UTC+2), winter (CET, UTC+1), and the DST change itself: on 2026-10-25 the clocks go
+    // back at 03:00, so 16:00 that afternoon is already CET.
+    [InlineData("2026-10-22", "2026-10-22T14:00:00Z")]
+    [InlineData("2026-01-15", "2026-01-15T15:00:00Z")]
+    [InlineData("2026-10-25", "2026-10-25T15:00:00Z")]
+    [InlineData("2026-03-29", "2026-03-29T14:00:00Z")]
+    public void A_fetched_rate_takes_effect_at_16_Oslo_in_any_season(string date, string expectedUtc)
+    {
+        var asOf = ExchangeRateSyncClock.FetchedAsOf(DateOnly.Parse(date, CultureInfo.InvariantCulture), ExchangeRateSyncClock.Oslo!);
+
+        Assert.Equal(DateTime.Parse(expectedUtc, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal), asOf);
+        Assert.Equal(DateTimeKind.Utc, asOf.Kind);
+    }
+
+    [Fact]
+    public void Today_is_the_Oslo_date_even_when_the_UTC_date_is_still_yesterday()
+    {
+        var lateEvening = new DateTime(2026, 10, 23, 22, 30, 0, DateTimeKind.Utc);
+
+        Assert.Equal(new DateOnly(2026, 10, 24), ExchangeRateSyncClock.TodayIn(ExchangeRateSyncClock.Oslo!, lateEvening));
+        Assert.Equal(new DateOnly(2026, 10, 23), ExchangeRateSyncClock.DateIn(null, lateEvening));
+    }
+
+    // ── The adapter's remaining failure shapes ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task A_404_is_a_span_with_no_observations_not_a_failure()
+    {
+        var client = Client(new StubProvider { Respond = _ => new HttpResponseMessage(HttpStatusCode.NotFound) });
+
+        Assert.Empty(await client.GetObservationsAsync(["USD"], new DateOnly(2026, 10, 24), new DateOnly(2026, 10, 25), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task A_short_retry_after_is_honoured_once()
+    {
+        var calls = 0;
+        var provider = new StubProvider
+        {
+            Respond = _ =>
+            {
+                if (++calls == 1)
+                {
+                    var limited = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+                    limited.Headers.TryAddWithoutValidation("Retry-After", "2");
+                    return limited;
+                }
+
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            },
+        };
+
+        Assert.Empty(await Client(provider).GetObservationsAsync(["USD"], new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 2), CancellationToken.None));
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public async Task A_network_failure_is_retried_once_then_unavailable()
+    {
+        var calls = 0;
+        var provider = new StubProvider { Respond = _ => { calls++; throw new HttpRequestException("down"); } };
+
+        var failure = await Assert.ThrowsAsync<ExchangeRateProviderException>(() =>
+            Client(provider).GetObservationsAsync(["USD"], new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 2), CancellationToken.None));
+
+        Assert.Equal(ExchangeRateSyncErrorKind.ProviderUnavailable, failure.Kind);
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public async Task A_body_that_is_not_JSON_is_malformed()
+    {
+        var provider = new StubProvider
+        {
+            Respond = _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("<html>maintenance</html>") },
+        };
+
+        var failure = await Assert.ThrowsAsync<ExchangeRateProviderException>(() =>
+            Client(provider).GetObservationsAsync(["USD"], new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 2), CancellationToken.None));
+
+        Assert.Equal(ExchangeRateSyncErrorKind.ProviderMalformed, failure.Kind);
+    }
+
+    private static NorgesBankClient Client(HttpMessageHandler handler) =>
+        new(new HttpClient(handler) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None);
+
+    private static async Task<DateOnly?> WatermarkAsync(Harness harness, string code) =>
+        (await harness.Context.ExchangeRateSyncCurrencies.AsNoTracking().SingleAsync(row => row.CurrencyCode == code)).BackfilledFrom;
+
+    /// <summary>USD enabled with its backfill complete and fetched through today, so nothing is catching up.</summary>
+    private static async Task<Harness> CaughtUpAsync()
+    {
+        var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 1));
+        await harness.EnableAsync("USD", backfilledFrom: new DateOnly(2026, 10, 1));
+        harness.Context.ExchangeRates.Add(new ExchangeRate
+        {
+            FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 10m, CreatedAt = Now,
+            AsOf = ExchangeRateSyncClock.FetchedAsOf(new DateOnly(2026, 10, 22), ExchangeRateSyncClock.Oslo!),
+            Provider = ExchangeRateProvider.NorgesBank,
+        });
+        await harness.Context.SaveChangesAsync();
+        harness.Context.ChangeTracker.Clear();
+        return harness;
+    }
+
+    private static ExchangeRateSyncRun FinishedRun(
+        ExchangeRateSyncRunStatus status, DateTime finished, ExchangeRateSyncTrigger trigger = ExchangeRateSyncTrigger.Scheduled) => new()
+    {
+        Trigger = trigger,
+        Provider = ExchangeRateProvider.NorgesBank,
+        Status = status,
+        StartedAtUtc = finished.AddSeconds(-5),
+        FinishedAtUtc = finished,
+    };
+
     // ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
     private static (DateOnly From, DateOnly To) Span(string uri)
@@ -501,6 +920,7 @@ public class ExchangeRateSyncTests
         private Harness(OdysseyContext context, StubProvider provider, MutableClock clock, FakeSettings settings)
         {
             Context = context;
+            Settings = settings;
             Provider = provider;
             Clock = clock;
             var client = new NorgesBankClient(
@@ -517,6 +937,8 @@ public class ExchangeRateSyncTests
 
         public MutableClock Clock { get; }
 
+        public FakeSettings Settings { get; }
+
         public ExchangeRateSyncService Sync { get; }
 
         public ExchangeRateSyncCurrencyService Currencies { get; }
@@ -528,12 +950,16 @@ public class ExchangeRateSyncTests
                 new Currency { CurrencyCode = "NOK", Name = "Norwegian Krone", MinorUnits = 2, Symbol = "kr" },
                 new Currency { CurrencyCode = "RUB", Name = "Russian Ruble", MinorUnits = 2, Symbol = "₽" });
             await context.SaveChangesAsync();
-            return new Harness(context, new StubProvider(), new MutableClock(Now), new FakeSettings(start));
+            return new Harness(context, new StubProvider(), new MutableClock(Now), new FakeSettings { Start = start });
         }
 
-        public async Task EnableAsync(string code)
+        public async Task EnableAsync(string code, DateOnly? start = null, DateOnly? backfilledFrom = null)
         {
-            Context.ExchangeRateSyncCurrencies.Add(new ExchangeRateSyncCurrency { CurrencyCode = code, Enabled = true, UpdatedAtUtc = Clock.UtcNow });
+            Context.ExchangeRateSyncCurrencies.Add(new ExchangeRateSyncCurrency
+            {
+                CurrencyCode = code, Enabled = true, HistoryStartDate = start, BackfilledFrom = backfilledFrom,
+                UpdatedAtUtc = Clock.UtcNow,
+            });
             await Context.SaveChangesAsync();
             Context.ChangeTracker.Clear();
         }
@@ -545,20 +971,36 @@ public class ExchangeRateSyncTests
             return await Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.ExchangeRateSyncRunId == run.ExchangeRateSyncRunId);
         }
 
-        public async Task<ExchangeRateSyncRun> RunAsync(ExchangeRateSyncTrigger trigger)
+        public async Task<ExchangeRateSyncRun> RunAsync(ExchangeRateSyncTrigger trigger, CancellationToken cancellationToken = default)
         {
             var run = (await Sync.TryStartAsync(trigger, null))!;
-            await Sync.ExecuteAsync(run.ExchangeRateSyncRunId);
+            await Sync.ExecuteAsync(run.ExchangeRateSyncRunId, cancellationToken);
             return await Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.ExchangeRateSyncRunId == run.ExchangeRateSyncRunId);
         }
 
         public ValueTask DisposeAsync() => Context.DisposeAsync();
     }
 
-    private sealed class FakeSettings(DateOnly? start) : IExchangeRateSyncSettingsLookup
+    private sealed class FakeSettings : IExchangeRateSyncSettingsLookup
     {
-        public Task<ExchangeRateSyncSettings> GetAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new ExchangeRateSyncSettings(start, 24));
+        public DateOnly? Start { get; set; }
+
+        public int IntervalHours { get; set; } = 24;
+
+        public bool ReadFailed { get; set; }
+
+        /// <summary>Throws from inside the run — the stand-in for any unforeseen fault.</summary>
+        public bool ThrowOnRead { get; set; }
+
+        public int Reads { get; private set; }
+
+        public Task<ExchangeRateSyncSettings> GetAsync(CancellationToken cancellationToken = default)
+        {
+            Reads++;
+            return ThrowOnRead
+                ? throw new InvalidOperationException("boom")
+                : Task.FromResult(new ExchangeRateSyncSettings(Start, IntervalHours, ReadFailed));
+        }
     }
 
     internal sealed class MutableClock(DateTime start) : TimeProvider
@@ -586,35 +1028,51 @@ public class ExchangeRateSyncTests
 
         public bool FailSeries { get; set; }
 
+        /// <summary>A data request whose URI matches answers 503 (on both attempts).</summary>
+        public Func<string, bool>? FailWhen { get; set; }
+
+        /// <summary>Data requests never answer until cancelled.</summary>
+        public bool Hang { get; set; }
+
         public Func<HttpRequestMessage, HttpResponseMessage>? Respond { get; init; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (Hang && !request.RequestUri!.ToString().Contains("NObservations"))
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+            }
+
+            return Answer(request);
+        }
+
+        private HttpResponseMessage Answer(HttpRequestMessage request)
         {
             var uri = request.RequestUri!.ToString();
             Requests.Add(uri);
             if (Respond is not null)
             {
-                return Task.FromResult(Respond(request));
+                return Respond(request);
             }
 
             if (uri.Contains("lastNObservations") || uri.Contains("firstNObservations"))
             {
-                return Task.FromResult(FailSeries
+                return FailSeries
                     ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
                     : Json(Fixture(uri.Contains("lastNObservations")
                         ? "norgesbank-last-observation.json"
-                        : "norgesbank-first-observation-usd-eur.json")));
+                        : "norgesbank-first-observation-usd-eur.json"));
             }
 
             DataRequests.Add(uri);
-            if (FailData)
+            if (FailData || FailWhen?.Invoke(uri) == true)
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
             }
 
             var codes = Regex.Match(uri, @"EXR/B\.([A-Z+]+)\.NOK").Groups[1].Value.Split('+');
             var (from, to) = Span(uri);
-            return Task.FromResult(Json(Sdmx(codes, from, to)));
+            return Json(Sdmx(codes, from, to));
         }
 
         private static HttpResponseMessage Json(string body) =>

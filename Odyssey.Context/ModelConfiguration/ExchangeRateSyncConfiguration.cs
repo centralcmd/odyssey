@@ -29,7 +29,7 @@ internal sealed class ExchangeRateSyncRunConfiguration : IEntityTypeConfiguratio
             tb.HasCheckConstraint("CK_ExchangeRateSyncRuns_Trigger", "`Trigger` IN (0, 1, 2)");
             tb.HasCheckConstraint("CK_ExchangeRateSyncRuns_Status", "`Status` IN (0, 1, 2, 3, 4)");
             tb.HasCheckConstraint(
-                "CK_ExchangeRateSyncRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 8");
+                "CK_ExchangeRateSyncRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
             tb.HasCheckConstraint("CK_ExchangeRateSyncRuns_Provider", "`Provider` IN (1)");
         });
     }
