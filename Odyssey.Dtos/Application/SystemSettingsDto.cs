@@ -243,6 +243,18 @@ public sealed record SystemSettingsDto
     /// </summary>
     public string FileAnalysisBaseUrl { get; set; } = string.Empty;
 
+    // ── Weather (issue #348) ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>How MET Norway can reach whoever runs this instance. Empty: nothing is fetched.</summary>
+    public string WeatherUserAgentContact { get; set; } = string.Empty;
+
+    public int WeatherRefreshIntervalMinutes { get; set; }
+
+    public int WeatherMaxTrackedLocations { get; set; }
+
+    /// <summary>The household default weather location id, or empty for none.</summary>
+    public string WeatherDefaultLocationId { get; set; } = string.Empty;
+
     // ── The six bound projections (issue #434 §6) ────────────────────────────────────────────────
     //
     // These stay even though the server-side ceiling VALIDATORS for these keys were deleted (§9 —

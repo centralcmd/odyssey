@@ -196,6 +196,18 @@ public static class SystemSettingsKeys
     public const string FileAnalysisModel = "FileAnalysisModel";
     public const string FileAnalysisBaseUrl = "FileAnalysisBaseUrl";
 
+    // ---------------------------------------------------------------------------------------------
+    // Weather (issue #348). The contact travels to MET Norway in the User-Agent of every weather
+    // request, as MET's terms require; empty means nothing is fetched. The household default is a
+    // location id with no FK — WeatherLocationRules checks it is selectable on every write, and an
+    // archived default is treated as unset on read.
+    // ---------------------------------------------------------------------------------------------
+
+    public const string WeatherUserAgentContact = "WeatherUserAgentContact";
+    public const string WeatherRefreshIntervalMinutes = "WeatherRefreshIntervalMinutes";
+    public const string WeatherMaxTrackedLocations = "WeatherMaxTrackedLocations";
+    public const string WeatherDefaultLocationId = "WeatherDefaultLocationId";
+
     public static readonly string[] AllKeys =
     [
         RequireTwoFactor,
@@ -263,6 +275,10 @@ public static class SystemSettingsKeys
         FileAnalysisEnabled,
         FileAnalysisModel,
         FileAnalysisBaseUrl,
+        WeatherUserAgentContact,
+        WeatherRefreshIntervalMinutes,
+        WeatherMaxTrackedLocations,
+        WeatherDefaultLocationId,
     ];
 
     /// <summary>

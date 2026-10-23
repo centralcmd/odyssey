@@ -260,4 +260,19 @@ public static class SystemSettingsBounds
     /// The identical constraint as <see cref="ContractMaxSmartTagsPerContractMax"/>.
     /// </summary>
     public const int PropertyMaxSmartTagsPerPropertyMax = ListDefaults.MaxFilterArrayLength;
+
+    /// <summary>
+    /// MET Norway asks clients not to poll more often than the forecast changes; 30 min is the floor that
+    /// keeps a tracked location well inside that, 6 h the ceiling past which "scheduled" stops meaning
+    /// current. A degraded read resolves to the <b>max</b> of last-known-good and the default — the
+    /// conservative direction for a polling interval is longer, not shorter.
+    /// </summary>
+    public const int WeatherRefreshIntervalMinutesMin = 30;
+
+    public const int WeatherRefreshIntervalMinutesMax = 360;
+
+    public const int WeatherMaxTrackedLocationsMin = 1;
+
+    /// <summary>Each tracked location is ≈ 0.8 M forecast-step rows a year; 20 bounds the storage growth.</summary>
+    public const int WeatherMaxTrackedLocationsMax = 20;
 }

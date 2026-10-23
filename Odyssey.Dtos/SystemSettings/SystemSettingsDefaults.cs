@@ -303,4 +303,16 @@ public static class SystemSettingsDefaults
     /// to Anthropic when the administrator had deliberately pointed the deployment at a gateway.
     /// </summary>
     public const string FileAnalysisBaseUrl = "https://api.anthropic.com";
+
+    // ── Weather (issue #348) ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>Empty: weather is not configured until an administrator gives MET a way to reach them.</summary>
+    public const string WeatherUserAgentContact = "";
+
+    public const int WeatherRefreshIntervalMinutes = 60;
+
+    public const int WeatherMaxTrackedLocations = 5;
+
+    /// <summary>Empty: no household default weather location.</summary>
+    public const string WeatherDefaultLocationId = "";
 }
