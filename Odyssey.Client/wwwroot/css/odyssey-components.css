@@ -1339,6 +1339,17 @@
    (.odc-input-icon / .has-icon) the field is the first raw-input consumer of. ---------- */
 .odc-input-icon { position: absolute; left: 12px; pointer-events: none; color: var(--mud-palette-text-secondary); font-size: var(--icon-lg); }
 .odc-input.has-icon { padding-left: 38px; }
+/* The inline clear button (DS bundle.css · .odc-input-clear), for a raw input inside .odc-input-wrap. */
+.odc-input.has-clear { padding-right: 38px; }
+.odc-input-clear {
+  position: absolute; right: var(--space-2); top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 24px; height: 24px;
+  border: none; border-radius: var(--radius-sm); background: transparent;
+  color: var(--mud-palette-text-secondary); cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+.odc-input-clear:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-input-clear .material-icons { font-size: var(--icon-sm); }
 .odc-refnum-field { display: flex; flex-direction: column; gap: var(--space-2); }
 .odc-refnum-input { font-family: var(--font-mono); letter-spacing: 0.02em; }
 .odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--control-border); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
