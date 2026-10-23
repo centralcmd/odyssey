@@ -180,13 +180,15 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         row.UpdatedByUserId = userId;
         await context.SaveChangesAsync(cancellationToken);
 
-        // Unconditional on success, like the settings loop's security lines.
+        // Unconditional on success, like the settings loop's security lines. The code logged is the one
+        // read from the Currencies row, never the route value, so nothing request-supplied reaches the log.
+        var loggedCode = currency.CurrencyCode;
         audit.LogInformation(
             "System settings change by {ActorUserId}: {Field} {OldValue} -> {NewValue}.",
-            userId, $"ExchangeRateSync[{code}].Enabled", oldEnabled, enable);
+            userId, $"ExchangeRateSync[{loggedCode}].Enabled", oldEnabled, enable);
         audit.LogInformation(
             "System settings change by {ActorUserId}: {Field} {OldValue} -> {NewValue}.",
-            userId, $"ExchangeRateSync[{code}].HistoryStartDate", Format(oldStart), Format(update.HistoryStartDate));
+            userId, $"ExchangeRateSync[{loggedCode}].HistoryStartDate", Format(oldStart), Format(update.HistoryStartDate));
 
         series ??= supportedList.Peek();
         var settings = await settingsLookup.GetAsync(cancellationToken);
@@ -206,10 +208,12 @@ public sealed partial class ExchangeRateSyncCurrencyService(
     public async Task<ExchangeRatePurgeResult> PurgeAsync(string currencyCode, string? userId, CancellationToken cancellationToken = default)
     {
         var code = NormalizeCode(currencyCode);
-        if (!await context.Currencies.AnyAsync(value => value.CurrencyCode == code, cancellationToken))
-        {
-            throw new DomainNotFoundException($"Currency {code} not found.");
-        }
+        // The stored code, not the route value, is what the audit line below names.
+        var loggedCode = await context.Currencies.AsNoTracking()
+            .Where(value => value.CurrencyCode == code)
+            .Select(value => value.CurrencyCode)
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new DomainNotFoundException($"Currency {code} not found.");
 
         if (code == Hub)
         {
@@ -285,7 +289,7 @@ public sealed partial class ExchangeRateSyncCurrencyService(
 
         audit.LogInformation(
             "Exchange-rate purge by {ActorUserId}: {CurrencyCode} {RowsDeleted} fetched rows deleted.",
-            userId, code, deleted);
+            userId, loggedCode, deleted);
 
         return new ExchangeRatePurgeResult { RowsDeleted = deleted };
     }
@@ -347,8 +351,11 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         };
     }
 
+    /// <summary>Composed from the date's integer parts, so the audit line carries no request-supplied text.</summary>
     private static string Format(DateOnly? date) =>
-        date?.ToString(ExchangeRateHistoryStartDateRule.Format, CultureInfo.InvariantCulture) ?? "(global)";
+        date is { } value
+            ? string.Create(CultureInfo.InvariantCulture, $"{value.Year:D4}-{value.Month:D2}-{value.Day:D2}")
+            : "(global)";
 
     [GeneratedRegex("^[A-Z]{3}$")]
     private static partial Regex CodePattern();
