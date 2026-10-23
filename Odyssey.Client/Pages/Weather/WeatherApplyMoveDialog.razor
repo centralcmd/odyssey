@@ -1,0 +1,97 @@
+@using System.Net
+@using Odyssey.ApiClient.Resources
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@inject IWeatherApiClient Weather
+@inject ILocationsApiClient Locations
+@*
+    WeatherApplyMoveDialog — Apply the new position (issue #348 §5.8; design system · Weather.jsx
+    WeatherApplyMoveModal). Sends the fingerprint of the position this dialog shows, so a further move
+    while it was open is a 409, not a silent apply of something nobody reviewed.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="edit_location_alt" RequiredLegend="false" Wide="true"
+          Title="@(b => b.AddContent(0, "Apply the new position"))"
+          Subtitle="@(b => b.AddContent(0, Location.Name))">
+    <ChildContent>
+        <div class="ods-modal-body wx-form">
+            @if (_conflict is not null)
+            {
+                <OdsAlert Severity="Severity.Warning">@_conflict</OdsAlert>
+            }
+            <p class="wx-lede">The location has moved since weather copied its position. Weather keeps using the old position until you apply the move.</p>
+            <div class="wx-compare">
+                <WeatherSiteCard Title="Weather uses now" Latitude="Row.Site.Latitude" Longitude="Row.Site.Longitude"
+                                 AltitudeMeters="Row.Site.AltitudeMeters" TimeZoneId="@Row.Site.TimeZoneId"
+                                 Foot="@($"Copied {WeatherVisuals.Date(Row.Site.AppliedAt)}.")" />
+                <OdsMIcon Name="arrow_forward" Size="20" Class="wx-compare-arrow" />
+                <WeatherSiteCard Title="The location is now" Latitude="_live.Latitude" Longitude="_live.Longitude"
+                                 AltitudeMeters="_live.AltitudeMeters" TimeZoneId="@_live.TimeZoneId"
+                                 ChangedCoordinates="ChangedCoordinates" ChangedAltitude="ChangedAltitude" ChangedTimeZone="ChangedTimeZone" />
+            </div>
+            <ul class="wx-effects">
+                <li>The next forecast is fetched for the new position.</li>
+                <li>Measured history continues from the station nearest the new position, from today (@WeatherVisuals.Date(DateOnly.FromDateTime(DateTime.Today))). Earlier days keep what was measured at the old one.</li>
+                @if (ChangedTimeZone)
+                {
+                    <li>Days before today keep their own time zone, @Row.Site.TimeZoneId. From today, dates use @_live.TimeZoneId.</li>
+                }
+                <li>If MET Norway has paused fetching for this place, the pause still runs out first.</li>
+            </ul>
+            <WeatherDisclosure />
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_saving" OnClick="ApplyAsync">Apply new position</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
+    [Parameter, EditorRequired] public ExistingWeatherLocation Row { get; set; } = default!;
+    [Parameter] public EventCallback<ExistingWeatherLocation> OnApplied { get; set; }
+
+    private ExistingLocation _live = default!;
+    private bool _saving;
+    private string? _conflict;
+
+    private bool ChangedCoordinates =>
+        WeatherRules.RoundCoordinate(_live.Latitude) != Row.Site.Latitude || WeatherRules.RoundCoordinate(_live.Longitude) != Row.Site.Longitude;
+
+    private bool ChangedAltitude => _live.AltitudeMeters != Row.Site.AltitudeMeters;
+
+    private bool ChangedTimeZone => !string.Equals(_live.TimeZoneId, Row.Site.TimeZoneId, StringComparison.Ordinal);
+
+    protected override void OnInitialized() => _live = Location;
+
+    private async Task ApplyAsync()
+    {
+        _saving = true;
+        _conflict = null;
+        var result = await Weather.ApplyLocationAsync(Location.LocationId, WeatherVisuals.Fingerprint(_live));
+        _saving = false;
+        if (result.IsSuccess && result.Value is { } applied)
+        {
+            await OnApplied.InvokeAsync(applied);
+            await CloseAsync();
+            return;
+        }
+
+        if (result.Status == HttpStatusCode.Conflict && result.Problem?.Code == "location-changed")
+        {
+            if ((await Locations.GetAsync(Location.LocationId)).Value is { } fresh)
+                _live = fresh;
+            _conflict = "The location changed again while this dialog was open. Check the new position, then apply it.";
+            return;
+        }
+
+        _conflict = result.Status == HttpStatusCode.TooManyRequests
+            ? "Weather actions have been used many times in the last few minutes. Wait a moment, then try again."
+            : result.Problem?.Message ?? "The new position couldn’t be applied. Try again.";
+    }
+
+    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+}

@@ -1,0 +1,122 @@
+/* Weather — the dashboard card and the Admin pieces on the Locations page (issue #348; design system ·
+   ui_kits/web/weather.css). `wx-` is the design system's kit-local prefix: the pieces are shared by
+   several components here (the card, the section, three dialogs), which is why this is one stylesheet
+   rather than scoped CSS. Promote to `.odc-*` with the design system when calendar or journal weather
+   needs them. Tokens only; the design's odd sizes snap to the nearest step of each scale. */
+
+.wx-muted { color: var(--mud-palette-text-secondary); }
+.wx-attr { color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.wx-attr a { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; }
+.wx-attr a:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
+
+.wx-glyph { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--brand-text); }
+.wx-glyph-ic { display: inline-flex; }
+.wx-glyph-label { color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+
+.wx-wind { display: inline-flex; align-items: center; gap: var(--space-1); }
+.wx-wind-arrow { display: inline-flex; color: var(--mud-palette-text-secondary); }
+.wx-wind abbr { text-decoration: none; }
+
+/* ---------- Card ---------- */
+.wx-card .odc-card-header { gap: var(--space-3); flex-wrap: wrap; }
+.wx-ttl { display: inline-flex; align-items: center; gap: var(--space-2); }
+.wx-ttl .material-icons { color: var(--brand-text); }
+.wx-ttl-loc { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); }
+.wx-picker { min-width: calc(var(--space-16) * 3 + var(--space-6)); }
+
+.wx-body { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.wx-now { display: flex; flex-wrap: wrap; gap: var(--space-5) var(--space-10); align-items: center; }
+.wx-now-main { display: flex; align-items: center; gap: var(--space-4); }
+.wx-now-glyph { display: inline-grid; place-items: center; width: calc(var(--space-16) + var(--space-2)); height: calc(var(--space-16) + var(--space-2)); border-radius: var(--radius-lg); background: color-mix(in oklab, var(--brand-text) 14%, transparent); color: var(--brand-text); }
+.wx-now-text { display: flex; flex-direction: column; gap: var(--space-1); }
+.wx-now-temp { font: var(--fw-light) var(--fs-h1)/1 var(--font-mono); letter-spacing: -0.02em; color: var(--mud-palette-text-primary); }
+.wx-now-label { font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-now-range { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+.wx-facts { flex: 1 1 calc(var(--space-16) * 5 + var(--space-10)); display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--space-16) * 2 + var(--space-6)), 1fr)); gap: var(--space-3) var(--space-5); margin: 0; }
+.wx-facts > div { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.wx-facts dt { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.wx-facts dd { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.35 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+.wx-days { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(calc(var(--space-16) + var(--space-8)), 1fr); gap: var(--space-2); overflow-x: auto; scrollbar-width: thin; }
+.wx-day { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-2); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); text-align: center; min-height: var(--space-12); }
+.wx-day:first-child { border-color: var(--focus-ring); }
+.wx-day-name { font: var(--fw-medium) var(--fs-caption)/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-day-temp { font: var(--fw-regular) var(--fs-body2)/1.2 var(--font-mono); }
+.wx-hi { color: var(--mud-palette-text-primary); }
+.wx-lo { color: var(--mud-palette-text-secondary); }
+.wx-day-precip { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--fw-regular) var(--fs-caption)/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-day-precip .material-icons { color: var(--brand-text); }
+.wx-day-precip.none .material-icons { color: var(--mud-palette-text-secondary); opacity: .6; }
+.wx-day-partial { font: var(--fw-regular) var(--fs-caption)/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); font-style: italic; }
+
+.wx-measured { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mud-palette-action-default-hover); font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-measured .material-icons { color: var(--mud-palette-text-secondary); }
+.wx-measured b { font-weight: var(--fw-medium); }
+
+.wx-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2) var(--space-4); font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-stale { display: inline-flex; align-items: flex-start; gap: var(--space-2); color: var(--mud-palette-text-primary); }
+.wx-stale .material-icons { color: var(--finance-pending); margin-top: 2px; flex: none; }
+
+.wx-pref-error { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-error); }
+
+.wx-empty { display: flex; gap: var(--space-4); align-items: flex-start; padding: var(--space-2) 2px; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.wx-empty-ic { flex: none; display: inline-grid; place-items: center; width: var(--space-10); height: var(--space-10); border-radius: var(--radius-md); background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-secondary); }
+.wx-empty-text { display: flex; flex-direction: column; gap: var(--space-1); max-width: 72ch; }
+.wx-empty-title { font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-empty-act { margin-top: var(--space-2); }
+
+.wx-skel { display: flex; flex-direction: column; gap: var(--space-4); }
+.wx-skel-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-2); }
+
+/* ---------- Locations — Admin ---------- */
+.wx-sec-empty { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.wx-fail { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--mud-palette-error); }
+
+.wx-form { display: flex; flex-direction: column; gap: var(--space-4); }
+.wx-lede { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); text-wrap: pretty; }
+.wx-effects { margin: calc(var(--space-2) * -1) 0 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+.wx-site { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); }
+.wx-site-title { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.wx-site dl { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.wx-site dl > div { display: grid; grid-template-columns: calc(var(--space-16) + var(--space-5)) 1fr; gap: var(--space-2); align-items: baseline; }
+.wx-site dt { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-site dd { margin: 0; display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+.wx-site dl > div.changed dd { font-weight: var(--fw-medium); }
+.wx-site dd.mono { white-space: nowrap; font-family: var(--font-mono); }
+.wx-changed { font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--pending-text); }
+.wx-site-foot { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+
+.wx-compare { display: flex; align-items: stretch; gap: var(--space-3); }
+.wx-compare-arrow { align-self: center; color: var(--mud-palette-text-secondary); flex: none; }
+
+.wx-disclose, .wx-note { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mud-palette-action-default-hover); font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.wx-disclose .material-icons, .wx-note .material-icons { flex: none; margin-top: 1px; color: var(--brand-text); }
+
+.wx-toggle { display: flex; justify-content: space-between; gap: var(--space-4); align-items: flex-start; padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); }
+.wx-toggle.error { border-color: var(--mud-palette-error); }
+.wx-toggle-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.wx-toggle-label { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-toggle-help { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.wx-toggle-error { display: flex; gap: var(--space-1); align-items: flex-start; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-error); }
+.wx-toggle-error .material-icons { margin-top: 2px; flex: none; }
+
+/* The Weather section uses the Accounts section rhythm; its notice sits flush with the tile grid. */
+.wx-section .odc-recordsection-notice { margin: 0; }
+
+@media (max-width: 640px) {
+    .wx-picker { min-width: 0; width: 100%; }
+    .wx-now { gap: var(--space-4); }
+    .wx-compare { flex-direction: column; }
+    .wx-compare-arrow { transform: rotate(90deg); }
+    .wx-skel-days { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* System settings → Weather: the household-default select sits inside an OdsSettingField frame, which
+   owns the outline — flatten the select's own, as the frame already does for its inputs (design system
+   · weather.css, `.odc-sfield-ctrl .odc-select-trigger`). */
+.odc-sfield-ctrl .mud-select .mud-input-outlined-border { border: 0 !important; }
+.odc-sfield-ctrl .mud-select .mud-input.mud-input-outlined { background: transparent; }
+.odc-sfield-ctrl .mud-select .mud-input-slot { padding-left: 0; padding-right: 0; }

@@ -1,0 +1,50 @@
+@using Odyssey.Client.Components
+@*
+    WeatherSiteCard — the position weather uses, or the one it would copy (design system · Weather.jsx).
+    Always at the weather scale (3 decimals), coarser than the location's own coordinates on purpose. A
+    changed field says "changed" in words, never by colour alone.
+*@
+
+<div class="wx-site">
+    <div class="wx-site-title">@Title</div>
+    <dl>
+        <div class="@(ChangedCoordinates ? "changed" : null)">
+            <dt>Coordinates</dt>
+            <dd class="mono">@WeatherVisuals.Pair3(Latitude, Longitude)@if (ChangedCoordinates) {<span class="wx-changed">changed</span>}</dd>
+        </div>
+        <div class="@(ChangedAltitude ? "changed" : null)">
+            <dt>Altitude</dt>
+            <dd>
+                @if (AltitudeMeters is { } altitude)
+                {
+                    @($"{altitude} m")
+                }
+                else
+                {
+                    <span class="wx-muted">Not known</span>
+                }
+                @if (ChangedAltitude) {<span class="wx-changed">changed</span>}
+            </dd>
+        </div>
+        <div class="@(ChangedTimeZone ? "changed" : null)">
+            <dt>Time zone</dt>
+            <dd>@TimeZoneId@if (ChangedTimeZone) {<span class="wx-changed">changed</span>}</dd>
+        </div>
+    </dl>
+    @if (!string.IsNullOrEmpty(Foot))
+    {
+        <div class="wx-site-foot">@Foot</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter] public decimal Latitude { get; set; }
+    [Parameter] public decimal Longitude { get; set; }
+    [Parameter] public int? AltitudeMeters { get; set; }
+    [Parameter] public string TimeZoneId { get; set; } = "";
+    [Parameter] public string? Foot { get; set; }
+    [Parameter] public bool ChangedCoordinates { get; set; }
+    [Parameter] public bool ChangedAltitude { get; set; }
+    [Parameter] public bool ChangedTimeZone { get; set; }
+}

@@ -1,0 +1,26 @@
+@using Odyssey.Client.Components
+@*
+    WeatherWind — wind in words, "4 m/s from SW, gusts 8" (design system · Weather.jsx). The arrow
+    points where the wind blows TO and only echoes the words; the compass point carries its full name.
+*@
+
+<span class="wx-wind">
+    @if (Degrees is { } deg)
+    {
+        <span class="wx-wind-arrow" aria-hidden="true" style="@($"transform: rotate({(double)deg + 180:0}deg)")"><OdsMIcon Name="navigation" Size="14" /></span>
+    }
+    <span>
+        @WeatherVisuals.Mps(Speed)@if (WeatherVisuals.CompassOf(Degrees) is { } point)
+        {
+            <text> from <abbr title="@WeatherVisuals.CompassWordsOf(Degrees)">@point</abbr></text>
+        }@(Gust is { } g ? $", gusts {Math.Round(g, MidpointRounding.AwayFromZero):0}" : "")
+    </span>
+</span>
+
+@code {
+    [Parameter] public decimal? Speed { get; set; }
+
+    [Parameter] public decimal? Gust { get; set; }
+
+    [Parameter] public decimal? Degrees { get; set; }
+}

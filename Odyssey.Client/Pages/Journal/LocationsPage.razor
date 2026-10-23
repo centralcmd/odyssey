@@ -2,6 +2,7 @@
 @using Odyssey.Client.Authorization
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Journal
+@using Odyssey.Client.Pages.Weather
 @attribute [Authorize(Policy = PermissionClaims.LocationsRead)]
 @implements IDisposable
 
@@ -66,6 +67,10 @@
                         {
                             <OdsChip Tone="OdsChipTone.Outline" Icon="inventory_2" Class="sm">Archived</OdsChip>
                         }
+                        @if (_canReadWeather && WeatherRow(l) is { } wx)
+                        {
+                            @WeatherChip(wx, l)
+                        }
                     </Chips>
 
                     <Actions>
@@ -124,6 +129,14 @@
                                 </OdsInfoTile>
                             </OdsInfoTileGrid>
                         }
+                        @if (_canReadWeather)
+                        {
+                            <LocationWeatherSection Location="l" Row="WeatherRow(l)" CanUpdate="_canUpdateWeather"
+                                                    CanPurge="_canPurgeWeather"
+                                                    OnEnable="@(() => OpenWeatherSettings(l))"
+                                                    OnApply="@(() => OpenWeatherApply(l))"
+                                                    OnPurge="@(() => OpenWeatherPurge(l))" />
+                        }
                     </Details>
                 </OdsRecordCard>
             </RenderItem>
@@ -172,7 +185,33 @@
                     OnSaved="OnLocationSaved" />
 }
 
+@if (_wxSettingsLocation is not null)
+{
+    <WeatherSettingsDialog @key="_wxKey" @bind-Open="_wxSettingsOpen" Location="_wxSettingsLocation"
+                           Row="WeatherRow(_wxSettingsLocation)" TrackedCount="TrackedCount" Cap="_weatherCap"
+                           OnSaved="OnWeatherSaved" />
+}
+
+@if (_wxApplyLocation is not null && WeatherRow(_wxApplyLocation) is { } applyRow)
+{
+    <WeatherApplyMoveDialog @key="_wxKey" @bind-Open="_wxApplyOpen" Location="_wxApplyLocation" Row="applyRow"
+                            OnApplied="OnWeatherApplied" />
+}
+
+@if (_wxPurgeLocation is not null && WeatherRow(_wxPurgeLocation) is { } purgeRow)
+{
+    <WeatherPurgeDialog @key="_wxKey" @bind-Open="_wxPurgeOpen" Location="_wxPurgeLocation" Row="purgeRow"
+                        OnDeleted="OnWeatherPurged" OnInterrupted="OnWeatherPurgeInterrupted" />
+}
+
 @code {
+    // The row chip — Admin only; nobody else can read weather settings. The words are always present.
+    private static RenderFragment WeatherChip(ExistingWeatherLocation row, ExistingLocation l) =>
+        row.PurgeInProgress ? @<OdsChip Tone="OdsChipTone.Error" Icon="delete_sweep" Class="sm">Weather: deleting</OdsChip>
+        : !row.Enabled ? @<OdsChip Tone="OdsChipTone.Outline" Icon="cloud_off" Class="sm">Weather off</OdsChip>
+        : WeatherVisuals.Moved(row, l) ? @<OdsChip Tone="OdsChipTone.Warning" Icon="wrong_location" Class="sm">Weather: moved</OdsChip>
+        : @<OdsChip Tone="OdsChipTone.Info" Icon="wb_sunny" Class="sm">Weather</OdsChip>;
+
     // When a search matches only archived rows and the filter hides them, say so — otherwise a household
     // member who archived "Cabin" would conclude it is gone.
     private RenderFragment? ArchivedMatchLine => _archivedMatch
