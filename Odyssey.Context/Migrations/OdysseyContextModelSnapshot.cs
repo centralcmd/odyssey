@@ -2187,7 +2187,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("ExchangeRateSyncRuns", t =>
                         {
-                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 8");
+                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
 
                             t.HasCheckConstraint("CK_ExchangeRateSyncRuns_Provider", "`Provider` IN (1)");
 

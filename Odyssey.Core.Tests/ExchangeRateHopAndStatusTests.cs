@@ -15,7 +15,8 @@ public class ExchangeRateHopAndStatusTests
 {
     private static readonly DateTime Now = new(2026, 10, 23, 10, 0, 0, DateTimeKind.Utc);
 
-    private static readonly ExchangeRateSyncTests.MutableClock Clock = new(Now);
+    // Per test (xUnit builds one instance per test), so no test can move another's clock.
+    private readonly ExchangeRateSyncTests.MutableClock Clock = new(Now);
 
     private static OdysseyContext Create()
     {
@@ -183,6 +184,48 @@ public class ExchangeRateHopAndStatusTests
 
         Assert.Null(summary.Attribution);
         Assert.Null(summary.LatestAsOfUtc);
+    }
+
+    [Theory]
+    // Same AsOf: the later UpdatedAt ?? CreatedAt wins, whichever row was inserted first.
+    [InlineData(17, 9, 8)]
+    [InlineData(9, 17, 7)]
+    public async Task A_tie_on_AsOf_goes_to_the_more_recently_written_row_in_every_reader(int eightCreatedHour, int sevenCreatedHour, int expected)
+    {
+        await using var context = Create();
+        var tied = Now.AddDays(-3);
+        context.ExchangeRates.AddRange(
+            new ExchangeRate { FromCurrencyCode = "EUR", ToCurrencyCode = "USD", Rate = 8m, AsOf = tied, CreatedAt = Now.Date.AddDays(-4).AddHours(eightCreatedHour) },
+            new ExchangeRate { FromCurrencyCode = "EUR", ToCurrencyCode = "USD", Rate = 7m, AsOf = tied, CreatedAt = Now.Date.AddDays(-4).AddHours(sevenCreatedHour) });
+        await context.SaveChangesAsync();
+        var conversion = new CurrencyConversionService(context, Clock);
+
+        Assert.Equal(expected, (await conversion.GetLatestRatesToAsync("USD", ["EUR"]))["EUR"]);
+        Assert.Equal([(decimal)expected], (await conversion.GetRateTimelineToAsync("USD", ["EUR"], Now.AddDays(-1), Now))["EUR"].Select(p => p.Rate));
+        var service = new ExchangeRateService(context, Clock);
+        Assert.Equal(expected, (await service.GetLatest("EUR", "USD"))!.Rate);
+        var current = await service.ListAsync(new ExchangeRatesQueryParams { Status = [ExchangeRateStatus.Current] });
+        Assert.Equal(expected, Assert.Single(current.Items).Rate);
+    }
+
+    [Theory]
+    [InlineData("1980-01-01", true)]
+    [InlineData("1979-12-31", false)]
+    [InlineData(" 2020-01-01 ", true)]
+    [InlineData("2021-02-30", false)]
+    [InlineData("2020-1-1", false)]
+    [InlineData("01.01.2020", false)]
+    [InlineData("2020-01-01T00:00", false)]
+    public void The_start_date_rule_takes_iso_dates_from_its_floor(string value, bool valid)
+    {
+        Assert.Equal(valid, Odyssey.Dtos.ExchangeRateHistoryStartDateRule.Validate(value) is null);
+    }
+
+    [Fact]
+    public void The_dynamic_default_is_the_first_of_january_of_the_given_year()
+    {
+        Assert.Equal(new DateOnly(2026, 1, 1), Odyssey.Dtos.ExchangeRateHistoryStartDateRule.DynamicDefault(new DateOnly(2026, 10, 23)));
+        Assert.Equal(new DateOnly(2027, 1, 1), Odyssey.Dtos.ExchangeRateHistoryStartDateRule.DynamicDefault(new DateOnly(2027, 1, 1)));
     }
 
     /// <summary>

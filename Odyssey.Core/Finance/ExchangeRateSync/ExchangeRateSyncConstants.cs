@@ -28,6 +28,13 @@ public static class ExchangeRateSyncConstants
     /// <summary>Forward fill may use at most this many of <see cref="RequestsPerRun"/>, so backfill always progresses.</summary>
     public const int ForwardFillRequestsPerRun = 5;
 
+    /// <summary>
+    /// A currency whose newest fetched date is further behind today than this is still forward filling
+    /// (a run capped at <see cref="ForwardFillRequestsPerRun"/> left a gap), so the catch-up delay applies.
+    /// Ten days clears the longest run of Norwegian non-business days (Easter: Thursday to Monday) with margin.
+    /// </summary>
+    public const int ForwardFillCaughtUpDays = 10;
+
     public static readonly TimeSpan RequestSpacing = TimeSpan.FromSeconds(1);
 
     public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);

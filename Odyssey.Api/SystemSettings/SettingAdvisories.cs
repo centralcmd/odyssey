@@ -22,16 +22,6 @@ namespace Odyssey.Api.SystemSettings;
 internal static class SettingAdvisories
 {
     /// <summary>
-    /// The cost advisory shape: fires only when the saved value is strictly above the shipped default,
-    /// and names both numbers plus what the extra costs.
-    ///
-    /// <para>
-    /// "Above the shipped default" rather than "near the ceiling" on purpose. The default is the value
-    /// the system was measured at; anything above it is the administrator taking on a cost, whether or
-    /// not there is headroom left to a bound.
-    /// </para>
-    /// </summary>
-    /// <summary>
     /// The exchange-rate interval below six hours (issue #349 §8): Norges Bank publishes once per
     /// business day, so a shorter interval only adds requests that find nothing new.
     /// </summary>
@@ -41,6 +31,16 @@ internal static class SettingAdvisories
               + "publishes once per business day, so runs more often than every 6 h mostly find nothing new."
             : null;
 
+    /// <summary>
+    /// The cost advisory shape: fires only when the saved value is strictly above the shipped default,
+    /// and names both numbers plus what the extra costs.
+    ///
+    /// <para>
+    /// "Above the shipped default" rather than "near the ceiling" on purpose. The default is the value
+    /// the system was measured at; anything above it is the administrator taking on a cost, whether or
+    /// not there is headroom left to a bound.
+    /// </para>
+    /// </summary>
     public static Func<SystemSettingsDto, AdvisoryContext, string?> AboveDefault(
         Func<SystemSettingsDto, int> read, int shippedDefault, string cost) =>
         (dto, _) =>

@@ -44,6 +44,9 @@ public enum ExchangeRateSyncErrorKind
     TimeZoneUnavailable = 6,
     Cancelled = 7,
     Abandoned = 8,
+
+    /// <summary>An unforeseen fault inside the run itself, not the provider's — logged with its exception.</summary>
+    Internal = 9,
 }
 
 /// <summary>The scheduler's state, derived from the run log on every read.</summary>

@@ -27,6 +27,12 @@ public class ExchangeRateSyncApiTests
 {
     private const string Sync = "/api/system-settings/exchange-rate-sync";
 
+    /// <summary>
+    /// A fixed Friday, served as the API's TimeProvider and used by the stub, so neither a year rollover
+    /// nor a weekend 1 January can move what these tests see.
+    /// </summary>
+    private static readonly DateTime FixedNow = new(2026, 10, 23, 10, 0, 0, DateTimeKind.Utc);
+
     private static readonly string[] Admin =
     [
         PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate,
@@ -59,6 +65,21 @@ public class ExchangeRateSyncApiTests
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Sync}/status")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Sync}/currencies")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Sync}/runs")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync($"{Sync}/runs", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync($"{Sync}/currencies/USD", new { enabled = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync($"{Sync}/currencies/USD/rates")).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_settings_reader_reads_the_sync_but_cannot_change_or_run_it()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.SystemSettingsRead, PermissionClaims.ExchangeRatesDelete]);
+        await SeedAsync(factory);
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Sync}/status")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Sync}/currencies")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Sync}/runs")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync($"{Sync}/runs", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync($"{Sync}/currencies/USD", new { enabled = true })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync($"{Sync}/currencies/USD/rates")).StatusCode);
@@ -140,7 +161,7 @@ public class ExchangeRateSyncApiTests
         Assert.Equal(HttpStatusCode.OK, current.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await ownerClient.GetAsync("/api/exchange-rates?status=Bogus")).StatusCode);
 
-        var put = await ownerClient.PutAsJsonAsync($"/api/exchange-rates/{fetchedId}", new UpdateExchangeRate { Rate = 1m, AsOf = DateTime.UtcNow });
+        var put = await ownerClient.PutAsJsonAsync($"/api/exchange-rates/{fetchedId}", new UpdateExchangeRate { Rate = 1m, AsOf = FixedNow });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, put.StatusCode);
         Assert.Contains("source", await put.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.Forbidden, (await ownerClient.DeleteAsync($"/api/exchange-rates/{fetchedId}")).StatusCode);
@@ -182,7 +203,7 @@ public class ExchangeRateSyncApiTests
         await using var factory = new ApiFactory(Admin);
         await SeedAsync(factory);
         using var client = factory.CreateClient();
-        var tomorrow = DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var tomorrow = FixedNow.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync("/api/system-settings",
             new SystemSettingsUpdate { ExchangeRateHistoryStartDate = tomorrow })).StatusCode);
@@ -205,7 +226,53 @@ public class ExchangeRateSyncApiTests
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/system-settings",
             new SystemSettingsUpdate { ExchangeRateHistoryStartDate = "" })).StatusCode);
         status = await client.GetFromJsonAsync<ExchangeRateSyncStatus>($"{Sync}/status");
-        Assert.Equal(new DateOnly(DateTime.UtcNow.Year, 1, 1), status!.EffectiveGlobalHistoryStartDate);
+        Assert.Equal(new DateOnly(FixedNow.Year, 1, 1), status!.EffectiveGlobalHistoryStartDate);
+    }
+
+    /// <summary>
+    /// The hosted scheduler itself (not registered under Testing, so built by hand here): a run queued
+    /// through the channel dispatcher is picked up and finished, and stopping the host stops the loop.
+    /// </summary>
+    [Fact]
+    public async Task The_scheduler_executes_a_queued_run_and_stops_with_the_host()
+    {
+        await using var factory = new ApiFactory(Admin);
+        await SeedAsync(factory);
+        using (var client = factory.CreateClient())
+        {
+            await client.PutAsJsonAsync($"{Sync}/currencies/USD", new ExchangeRateSyncCurrencyUpdate { Enabled = true });
+        }
+
+        Guid runId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            runId = (await scope.ServiceProvider.GetRequiredService<ExchangeRateSyncService>()
+                .TryStartAsync(ExchangeRateSyncTrigger.Manual, "admin"))!.ExchangeRateSyncRunId;
+        }
+
+        var dispatcher = new Odyssey.Api.ExchangeRateSync.ChannelExchangeRateSyncDispatcher();
+        using var scheduler = new Odyssey.Api.ExchangeRateSync.ExchangeRateSyncScheduler(
+            dispatcher,
+            factory.Services.GetRequiredService<IServiceScopeFactory>(),
+            TimeProvider.System,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Odyssey.Api.ExchangeRateSync.ExchangeRateSyncScheduler>.Instance);
+        await scheduler.StartAsync(CancellationToken.None);
+        await dispatcher.DispatchAsync(runId, CancellationToken.None);
+
+        var status = ExchangeRateSyncRunStatus.Running;
+        for (var attempt = 0; attempt < 100 && status == ExchangeRateSyncRunStatus.Running; attempt++)
+        {
+            await Task.Delay(100);
+            using var scope = factory.Services.CreateScope();
+            status = (await scope.ServiceProvider.GetRequiredService<OdysseyContext>().ExchangeRateSyncRuns
+                .AsNoTracking().SingleAsync(run => run.ExchangeRateSyncRunId == runId)).Status;
+        }
+
+        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, status);
+
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await scheduler.StopAsync(stop.Token);
+        Assert.True(scheduler.ExecuteTask!.IsCompleted);
     }
 
     private sealed class ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharingStoreWith = null)
@@ -216,8 +283,14 @@ public class ExchangeRateSyncApiTests
             {
                 services.AddHttpClient(nameof(NorgesBankClient)).ConfigurePrimaryHttpMessageHandler(() => new StubProvider());
                 services.AddSingleton(ExchangeRateSyncPacing.None);
+                services.AddSingleton<TimeProvider>(new FixedClock());
             },
             sharingStoreWith: sharingStoreWith);
+
+    private sealed class FixedClock : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(FixedNow, TimeSpan.Zero);
+    }
 
     /// <summary>
     /// Norges Bank in-process: USD and EUR published as of today, from 1999; a data request gets one
@@ -228,7 +301,7 @@ public class ExchangeRateSyncApiTests
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var uri = request.RequestUri!.ToString();
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = DateOnly.FromDateTime(FixedNow);
             if (uri.Contains("lastNObservations"))
             {
                 return Task.FromResult(Json(Sdmx(["USD", "EUR"], [today])));

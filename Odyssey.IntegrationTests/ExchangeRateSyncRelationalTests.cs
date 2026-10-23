@@ -133,12 +133,7 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         }
 
         await using var context = NewContext();
-        var client = new NorgesBankClient(new HttpClient { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None);
-        var cache = new ExchangeRateSupportedListCache(TimeProvider.System);
-        var settings = new FixedSettings();
-        var sync = new ExchangeRateSyncService(
-            context, client, cache, settings, ExchangeRateSyncPacing.None, TimeProvider.System, NullLogger<ExchangeRateSyncService>.Instance);
-        var currencies = new ExchangeRateSyncCurrencyService(context, client, cache, settings, sync, TimeProvider.System, NullLoggerFactory.Instance);
+        var (_, currencies) = Services(context);
 
         var result = await currencies.PurgeAsync("USD", null);
 
@@ -147,6 +142,164 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         Assert.Null((await verify.ExchangeRates.SingleAsync()).Provider);
         Assert.Null((await verify.ExchangeRateSyncCurrencies.SingleAsync()).BackfilledFrom);
         Assert.Null(await verify.ExchangeRateSyncRuns.Select(run => run.RunningGuard).SingleAsync());
+    }
+
+    [SkippableFact]
+    public async Task A_purge_that_fails_part_way_rolls_back_every_batch_and_ends_failed()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+
+        await using (var seed = NewContext())
+        {
+            seed.ExchangeRateSyncCurrencies.Add(new ExchangeRateSyncCurrency
+            {
+                CurrencyCode = "USD", Enabled = false, BackfilledFrom = new DateOnly(2026, 1, 1), UpdatedAtUtc = DateTime.UtcNow,
+            });
+            seed.ExchangeRates.Add(Rate(ExchangeRateProvider.NorgesBank));
+            await seed.SaveChangesAsync();
+        }
+
+        // Fails the watermark reset, the save AFTER the deletes have been sent inside the transaction.
+        await using var context = NewContext(new FailOnUpdate<ExchangeRateSyncCurrency>());
+        var (_, currencies) = Services(context);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => currencies.PurgeAsync("USD", null));
+
+        await using var verify = NewContext();
+        Assert.Equal(ExchangeRateProvider.NorgesBank, (await verify.ExchangeRates.SingleAsync()).Provider);
+        Assert.Equal(new DateOnly(2026, 1, 1), (await verify.ExchangeRateSyncCurrencies.SingleAsync()).BackfilledFrom);
+        var run = await verify.ExchangeRateSyncRuns.SingleAsync();
+        Assert.Equal(ExchangeRateSyncRunStatus.Failed, run.Status);
+        Assert.Null(run.RunningGuard);
+    }
+
+    /// <summary>AC16 on the real engine: two runs racing for the guard — exactly one wins.</summary>
+    [SkippableFact]
+    public async Task Two_concurrent_starts_take_the_guard_exactly_once()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+
+        for (var round = 0; round < 5; round++)
+        {
+            var started = await Task.WhenAll(Enumerable.Range(0, 2).Select(async _ =>
+            {
+                await using var context = NewContext();
+                var (sync, _) = Services(context);
+                return await sync.TryStartAsync(ExchangeRateSyncTrigger.Manual, null);
+            }));
+
+            Assert.Single(started, run => run is not null);
+
+            await using var cleanup = NewContext();
+            var running = await cleanup.ExchangeRateSyncRuns.SingleAsync(run => run.Status == ExchangeRateSyncRunStatus.Running);
+            running.Status = ExchangeRateSyncRunStatus.Succeeded;
+            await cleanup.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// The new read queries (issue #349 §3, §5) translated by MySQL's provider, not EF InMemory: the
+    /// grouped-MAX latest lookup with the NOK hop, the status rank and filter, the summary, the run log
+    /// and the per-currency list with its fetched extents.
+    /// </summary>
+    [SkippableFact]
+    public async Task The_conversion_status_summary_and_list_queries_run_on_MariaDB()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        var now = DateTime.UtcNow;
+
+        await using (var seed = NewContext())
+        {
+            seed.ExchangeRates.AddRange(
+                new ExchangeRate { FromCurrencyCode = "USD", ToCurrencyCode = "EUR", Rate = 0.5m, AsOf = now.AddDays(-10), CreatedAt = now },
+                new ExchangeRate { FromCurrencyCode = "USD", ToCurrencyCode = "EUR", Rate = 0.1m, AsOf = now.AddDays(5), CreatedAt = now },
+                new ExchangeRate { FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 10m, AsOf = now.AddDays(-2), CreatedAt = now, Provider = ExchangeRateProvider.NorgesBank },
+                new ExchangeRate { FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 10.5m, AsOf = now.AddDays(-1), CreatedAt = now, Provider = ExchangeRateProvider.NorgesBank },
+                new ExchangeRate { FromCurrencyCode = "NOK", ToCurrencyCode = "EUR", Rate = 0.1m, AsOf = now.AddDays(-1), CreatedAt = now, Provider = ExchangeRateProvider.NorgesBank });
+            seed.ExchangeRateSyncCurrencies.Add(new ExchangeRateSyncCurrency { CurrencyCode = "USD", Enabled = true, UpdatedAtUtc = now });
+            seed.ExchangeRateSyncRuns.Add(new ExchangeRateSyncRun
+            {
+                Trigger = ExchangeRateSyncTrigger.Scheduled, Provider = ExchangeRateProvider.NorgesBank,
+                Status = ExchangeRateSyncRunStatus.Succeeded, StartedAtUtc = now.AddHours(-1), FinishedAtUtc = now.AddHours(-1),
+                CurrencyCodes = "USD",
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var context = NewContext();
+        var conversion = new Odyssey.Core.Finance.CurrencyConversionService(context);
+
+        // The hop (dated yesterday) beats the stale direct rate; the future-dated direct one is ignored.
+        Assert.Equal(10.5m * 0.1m, (await conversion.GetLatestRatesToAsync("EUR", ["USD"]))["USD"]);
+        Assert.Equal(1050m, await conversion.ConvertAsync(100m, "USD", "NOK"));
+        var timeline = await conversion.GetRateTimelineToAsync("EUR", ["USD"], now.AddDays(-5), now);
+        // The hop exists only once BOTH legs do (day −1), so the step series goes straight from the
+        // direct rate to the hop at its newest USD → NOK leg.
+        Assert.Equal([0.5m, 10.5m * 0.1m], timeline["USD"].Select(point => point.Rate));
+
+        var rates = new Odyssey.Core.Finance.ExchangeRateService(context);
+        var upcoming = await rates.ListAsync(new ExchangeRatesQueryParams { Status = [ExchangeRateStatus.Upcoming] });
+        Assert.Equal(0.1m, Assert.Single(upcoming.Items).Rate);
+        var current = await rates.ListAsync(new ExchangeRatesQueryParams
+        {
+            Status = [ExchangeRateStatus.Current], SortBy = ExchangeRateSortBy.Status,
+        });
+        Assert.Equal(3, current.TotalCount);
+        var bySource = await rates.ListAsync(new ExchangeRatesQueryParams { Source = [ExchangeRateSource.Fetched] });
+        Assert.Equal(3, bySource.TotalCount);
+        var sortedByStatus = await rates.ListAsync(new ExchangeRatesQueryParams { SortBy = ExchangeRateSortBy.Status });
+        Assert.Equal(ExchangeRateStatus.Upcoming, sortedByStatus.Items[^1].Status);
+
+        var summary = await rates.GetSummaryAsync();
+        Assert.Equal(5, summary.TotalCount);
+        Assert.Equal(new ExchangeRateStatusCounts { Current = 3, Historical = 1, Upcoming = 1 }, summary.ByStatus);
+
+        var (sync, currencies) = Services(context);
+        var runs = await sync.ListRunsAsync(new ExchangeRateSyncRunsQueryParams());
+        Assert.Single(runs.Items);
+        var status = await sync.GetStatusAsync();
+        Assert.Equal(1, status.EnabledCount);
+        var list = await currencies.ListAsync(new ExchangeRateSyncCurrenciesQueryParams { Search = "USD" });
+        Assert.Equal(DateOnly.FromDateTime(now.AddDays(-1)), Assert.Single(list.Items, item => item.CurrencyCode == "USD").NewestFetchedDate);
+    }
+
+    /// <summary>The two services wired to a provider that refuses every request: none of these paths may call out.</summary>
+    private static (ExchangeRateSyncService Sync, ExchangeRateSyncCurrencyService Currencies) Services(OdysseyContext context)
+    {
+        var client = new NorgesBankClient(
+            new HttpClient(new RefusingHandler()) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None);
+        var cache = new ExchangeRateSupportedListCache(TimeProvider.System);
+        var settings = new FixedSettings();
+        var sync = new ExchangeRateSyncService(
+            context, client, cache, settings, ExchangeRateSyncPacing.None, TimeProvider.System, NullLogger<ExchangeRateSyncService>.Instance);
+        return (sync, new ExchangeRateSyncCurrencyService(context, client, cache, settings, sync, TimeProvider.System, NullLoggerFactory.Instance));
+    }
+
+    private sealed class RefusingHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.ServiceUnavailable));
+    }
+
+    /// <summary>Throws on the first save that modifies a <typeparamref name="TEntity"/>.</summary>
+    private sealed class FailOnUpdate<TEntity> : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
+        where TEntity : class
+    {
+        public override ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int>> SavingChangesAsync(
+            Microsoft.EntityFrameworkCore.Diagnostics.DbContextEventData eventData,
+            Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context!.ChangeTracker.Entries<TEntity>().Any(entry => entry.State == EntityState.Modified))
+            {
+                throw new InvalidOperationException("Injected failure.");
+            }
+
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
     }
 
     private sealed class FixedSettings : IExchangeRateSyncSettingsLookup
@@ -180,10 +333,17 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         await context.Database.MigrateAsync();
     }
 
-    private OdysseyContext NewContext() =>
-        new(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
+    private OdysseyContext NewContext(Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor? interceptor = null)
+    {
+        var options = new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString));
+        if (interceptor is not null)
+        {
+            options.AddInterceptors(interceptor);
+        }
+
+        return new OdysseyContext(options.Options);
+    }
 
     private async Task RecreateAsync()
     {

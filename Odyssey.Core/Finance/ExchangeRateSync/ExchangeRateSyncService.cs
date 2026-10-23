@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Core.Finance.ExchangeRateSync.Providers;
+using Odyssey.Core.Journal;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 
@@ -104,9 +105,10 @@ public sealed class ExchangeRateSyncService(
         {
             await context.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException exception) when (DbErrors.IsDuplicateKey(exception))
         {
             // The unique RunningGuard index: another instance took the guard between the check and here.
+            // Only that error means "in progress"; any other write fault propagates as itself.
             context.Entry(run).State = EntityState.Detached;
             return null;
         }
@@ -125,6 +127,10 @@ public sealed class ExchangeRateSyncService(
         {
             return null;
         }
+
+        // A Running row left by a dead process must be abandoned HERE, before the status read: that read
+        // reports it as the current run, so without this the scheduler would wait on it forever.
+        await AbandonStaleAsync(cancellationToken);
 
         var status = await GetStatusAsync(cancellationToken);
         if (status.EnabledCount == 0 || status.CurrentRun is not null
@@ -169,6 +175,14 @@ public sealed class ExchangeRateSyncService(
         catch (OperationCanceledException)
         {
             outcome.Fail(ExchangeRateSyncErrorKind.Cancelled);
+            outcome.Stopped = true;
+        }
+        catch (Exception exception)
+        {
+            // Anything unforeseen still finishes the run, so it never stays Running holding the guard
+            // until the stale-run sweep. Requests that committed before the fault stay.
+            logger.LogError(exception, "Exchange-rate sync run {RunId} failed unexpectedly.", runId);
+            outcome.Fail(ExchangeRateSyncErrorKind.Internal);
             outcome.Stopped = true;
         }
 
@@ -233,7 +247,7 @@ public sealed class ExchangeRateSyncService(
                 run.ExchangeRateSyncRunId, string.Join(',', unsupported));
         }
 
-        var extents = await FetchedExtentsAsync(oslo, cancellationToken);
+        var extents = await FetchedExtentsAsync(oslo, enabled.Keys.ToList(), cancellationToken);
         var states = enabled
             .Where(pair => fresh.ContainsKey(pair.Key))
             .Select(pair =>
@@ -437,8 +451,23 @@ public sealed class ExchangeRateSyncService(
             scale *= 10m;
         }
 
-        toHub = Math.Round(value / scale, MoneyBounds.ExchangeRateScale, MidpointRounding.AwayFromZero);
-        fromHub = Math.Round(scale / value, MoneyBounds.ExchangeRateScale, MidpointRounding.AwayFromZero);
+        // A published value below the stored floor cannot survive rounding anyway, and rejecting it first
+        // keeps scale / value inside decimal's range: 10 / 1e-28 would otherwise throw OverflowException
+        // and leave the run Running, holding the guard.
+        if (value < RateMin)
+        {
+            return false;
+        }
+
+        try
+        {
+            toHub = Math.Round(value / scale, MoneyBounds.ExchangeRateScale, MidpointRounding.AwayFromZero);
+            fromHub = Math.Round(scale / value, MoneyBounds.ExchangeRateScale, MidpointRounding.AwayFromZero);
+        }
+        catch (OverflowException)
+        {
+            return false;
+        }
 
         return toHub >= RateMin && toHub <= RateMax && fromHub >= RateMin && fromHub <= RateMax;
     }
@@ -467,7 +496,7 @@ public sealed class ExchangeRateSyncService(
                 .ToList();
 
         var oslo = ExchangeRateSyncClock.Oslo;
-        var extents = await FetchedExtentsAsync(oslo, cancellationToken);
+        var extents = await FetchedExtentsAsync(oslo, enabled.Keys.ToList(), cancellationToken);
         var today = oslo is null ? todayUtc : ExchangeRateSyncClock.TodayIn(oslo, now);
         var backfillComplete = true;
         var forwardIncomplete = false;
@@ -482,8 +511,7 @@ public sealed class ExchangeRateSyncService(
             var first = firstDates?.GetValueOrDefault(code);
             backfillComplete &= IsBackfillComplete(sync.BackfilledFrom, start, first);
             if (extents.TryGetValue(code, out var extent)
-                && today.DayNumber - extent.Newest.DayNumber
-                    > ExchangeRateSyncConstants.DaysPerRequest * ExchangeRateSyncConstants.ForwardFillRequestsPerRun)
+                && today.DayNumber - extent.Newest.DayNumber > ExchangeRateSyncConstants.ForwardFillCaughtUpDays)
             {
                 forwardIncomplete = true;
             }
@@ -656,10 +684,18 @@ public sealed class ExchangeRateSyncService(
     /// Per currency, the Oslo dates of its oldest and newest fetched <c>X → NOK</c> row. Without zone data
     /// the UTC date is used, which is the same date for a 16:00 Oslo stamp.
     /// </summary>
-    internal async Task<Dictionary<string, FetchedExtent>> FetchedExtentsAsync(TimeZoneInfo? oslo, CancellationToken cancellationToken)
+    internal async Task<Dictionary<string, FetchedExtent>> FetchedExtentsAsync(
+        TimeZoneInfo? oslo, IReadOnlyCollection<string> codes, CancellationToken cancellationToken)
     {
+        if (codes.Count == 0)
+        {
+            return new Dictionary<string, FetchedExtent>(StringComparer.Ordinal);
+        }
+
+        // Scoped to the codes asked about, so the (From, To, AsOf, Provider) index is entered once per
+        // code rather than scanned across every fetched row — this runs on every scheduler tick.
         var rows = await context.ExchangeRates.AsNoTracking()
-            .Where(rate => rate.Provider != null && rate.ToCurrencyCode == Hub)
+            .Where(rate => codes.Contains(rate.FromCurrencyCode) && rate.ToCurrencyCode == Hub && rate.Provider != null)
             .GroupBy(rate => rate.FromCurrencyCode)
             .Select(group => new
             {
@@ -690,7 +726,9 @@ public sealed class ExchangeRateSyncService(
         {
             run.Status = ExchangeRateSyncRunStatus.Failed;
             run.ErrorKind = ExchangeRateSyncErrorKind.Abandoned;
-            run.FinishedAtUtc = Now;
+            // Stamped at the latest it can have been alive (the hard timeout), not at discovery: "now"
+            // would read as a run that just finished and push the next one back a whole delay again.
+            run.FinishedAtUtc = run.StartedAtUtc.AddMinutes(ExchangeRateSyncConstants.RunTimeoutMinutes);
             logger.LogWarning("Exchange-rate sync run {RunId} was abandoned mid-run and is marked failed.", run.ExchangeRateSyncRunId);
         }
 

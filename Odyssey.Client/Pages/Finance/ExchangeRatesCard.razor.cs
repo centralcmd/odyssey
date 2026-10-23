@@ -13,7 +13,6 @@ public partial class ExchangeRatesCard
 {
     private List<ExistingExchangeRate> _rates = new();
     private List<ExistingExchangeRate> _allRates = new();
-    private HashSet<Guid> _currentIds = new();
     private bool _isLoading = true;
     private bool _refetching;
     // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
@@ -48,9 +47,19 @@ public partial class ExchangeRatesCard
     ];
 
     private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
-        _rates, r => _currentIds.Contains(r.ExchangeRateId) ? "current" : "historical",
+        _rates, r => StatusKey(r.Status),
         new OdsBreakdownDef<string>("current", "Current", "income", "bolt"),
-        new OdsBreakdownDef<string>("historical", "Historical", "outline", "history"));
+        new OdsBreakdownDef<string>("historical", "Historical", "outline", "history"),
+        new OdsBreakdownDef<string>("upcoming", "Upcoming", "pending", "schedule"));
+
+    // The status is the server's (issue #349): a future-dated rate is Upcoming and only the newest rate
+    // already in force is Current, so the card must not re-derive it from the rows it happens to hold.
+    private static string StatusKey(ExchangeRateStatus status) => status switch
+    {
+        ExchangeRateStatus.Current => "current",
+        ExchangeRateStatus.Upcoming => "upcoming",
+        _ => "historical",
+    };
 
     private IReadOnlyList<OdsOption> _toOptions => [.. _toCodes.Select(OdsOption.From)];
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
@@ -155,12 +164,14 @@ public partial class ExchangeRatesCard
             StateHasChanged();
         }
 
-        // current/historical is a two-value toggle: filter only when exactly one is selected.
+        // Every option selected means no filter: sending them all would also drop the Upcoming rows the
+        // server lists beside them.
+        var status = _statusFilter.Count == _statusOptions.Count ? null : _statusFilter;
         var response = await _listLoader.RunAsync(ct => ExchangeRates.ListAsync(
             _page, _pageSize,
             search: _search,
             toCurrencies: _toFilter,
-            status: _statusFilter,
+            status: status,
             sortBy: _sort.Key,
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
@@ -187,15 +198,8 @@ public partial class ExchangeRatesCard
         StateHasChanged();
     }
 
-    // The current rate for a (From, To) pair is the one with the latest AsOf (CreatedAt breaks ties);
-    // everything else is historical. Derived from the full set so the badge stays correct under filters.
     private void RecomputeDerived()
     {
-        _currentIds = _allRates
-            .GroupBy(r => (r.FromCurrencyCode, r.ToCurrencyCode))
-            .Select(g => g.OrderByDescending(r => r.AsOf).ThenByDescending(r => r.CreatedAt).First().ExchangeRateId)
-            .ToHashSet();
-
         _toCodes = _allRates
             .Select(r => r.ToCurrencyCode)
             .Distinct()
