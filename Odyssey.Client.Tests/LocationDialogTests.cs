@@ -64,13 +64,20 @@ public class LocationDialogTests
         UpdatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
     };
 
-    private static (IRenderedComponent<DialogHost> Cut, Mock<ILocationsApiClient> Api) Render(
+    private BunitContext? _ctx;
+
+    private BunitJSInterop JsInterop => _ctx!.JSInterop;
+
+    private (IRenderedComponent<DialogHost> Cut, Mock<ILocationsApiClient> Api) Render(
         ExistingLocation? location = null,
         Func<LocationSearchRequest, ApiResult<LocationSearchResponse>>? search = null,
         ApiResult<ExistingLocation>? saveResult = null,
-        bool canSearch = true)
+        bool canSearch = true,
+        Action<bool>? onOpenChanged = null,
+        Action<ExistingLocation>? onSaved = null)
     {
         var ctx = new BunitContext();
+        _ctx = ctx;
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
 
@@ -95,7 +102,9 @@ public class LocationDialogTests
 
         var cut = ctx.Render<DialogHost>(p => p
             .Add(h => h.Location, location)
-            .Add(h => h.CanSearch, canSearch));
+            .Add(h => h.CanSearch, canSearch)
+            .Add(h => h.OnOpenChanged, onOpenChanged)
+            .Add(h => h.OnSaved, onSaved));
         return (cut, api);
     }
 
@@ -141,6 +150,83 @@ public class LocationDialogTests
 
         cut.WaitForAssertion(() => Assert.Contains("Type at least 2 characters to search in Norway.", cut.Markup));
         api.Verify(a => a.SearchAsync(It.IsAny<LocationSearchRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public void The_too_short_line_is_announced_and_describes_the_input()
+    {
+        var (cut, _) = Render();
+
+        Type(cut, "Å");
+
+        cut.WaitForAssertion(() => Assert.Contains("Type at least 2 characters", cut.Find(".loc-search [role=status]").TextContent));
+        var describedBy = cut.Find(".loc-search input[role=combobox]").GetAttribute("aria-describedby")!.Split(' ');
+        Assert.Equal(2, describedBy.Length);
+        Assert.Contains("Type at least 2 characters", cut.Find($"#{describedBy[1]}").TextContent);
+    }
+
+    [Fact]
+    public void Typing_again_takes_the_previous_results_out_of_reach()
+    {
+        var (cut, _) = Render();
+        Type(cut, "Storgata 1");
+        cut.WaitForElement("li[role=option]", TimeSpan.FromSeconds(3));
+
+        Type(cut, "Storgata 12");
+
+        Assert.Empty(cut.FindAll("li[role=option]"));
+        Assert.Equal("false", cut.Find(".loc-search input[role=combobox]").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void The_listbox_aria_controls_names_always_exists()
+    {
+        var (cut, _) = Render();
+
+        var controls = cut.Find(".loc-search input[role=combobox]").GetAttribute("aria-controls");
+
+        Assert.NotNull(cut.Find($"#{controls}"));
+    }
+
+    [Fact]
+    public void Arrowing_down_brings_the_active_option_into_view()
+    {
+        var (cut, _) = Render();
+        Type(cut, "Storgata 1");
+        cut.WaitForElement("li[role=option]", TimeSpan.FromSeconds(3));
+
+        cut.Find(".loc-search input[role=combobox]").KeyDown("ArrowDown");
+
+        var optionId = cut.Find("li[role=option]").Id;
+        Assert.Contains(JsInterop.Invocations,
+            i => i.Identifier == "odsScrollIntoViewById" && Equals(i.Arguments[0], optionId));
+    }
+
+    [Fact]
+    public void Picking_a_result_moves_focus_to_the_provenance_card()
+    {
+        var (cut, _) = Render();
+        Type(cut, "Storgata 1");
+        PickFirst(cut);
+
+        var cardId = cut.Find(".loc-picked").Id;
+        Assert.Equal("-1", cut.Find(".loc-picked").GetAttribute("tabindex"));
+        cut.WaitForAssertion(() => Assert.Contains(JsInterop.Invocations,
+            i => i.Identifier == "odsFocusById" && Equals(i.Arguments[0], cardId)));
+    }
+
+    [Fact]
+    public async Task The_dialog_closes_before_the_host_hears_about_the_save()
+    {
+        var order = new List<string>();
+        var (cut, _) = Render(onOpenChanged: open => { if (!open) order.Add("closed"); }, onSaved: _ => order.Add("saved"));
+        Type(cut, "Storgata 1");
+        PickFirst(cut);
+
+        Click(cut, "Create location");
+
+        await cut.InvokeAsync(() => { });
+        cut.WaitForAssertion(() => Assert.Equal(["closed", "saved"], order));
     }
 
     [Fact]
@@ -419,6 +505,12 @@ public class LocationDialogTests
 
         [Parameter] public bool CanSearch { get; set; } = true;
 
+        [Parameter] public Action<bool>? OnOpenChanged { get; set; }
+
+        [Parameter] public Action<ExistingLocation>? OnSaved { get; set; }
+
+        private bool _open = true;
+
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
         {
             builder.OpenComponent<MudDialogProvider>(0);
@@ -426,9 +518,15 @@ public class LocationDialogTests
             builder.OpenComponent<MudPopoverProvider>(1);
             builder.CloseComponent();
             builder.OpenComponent<LocationDialog>(2);
-            builder.AddComponentParameter(3, nameof(LocationDialog.Open), true);
+            builder.AddComponentParameter(3, nameof(LocationDialog.Open), _open);
             builder.AddComponentParameter(4, nameof(LocationDialog.Location), Location);
             builder.AddComponentParameter(5, nameof(LocationDialog.CanSearch), CanSearch);
+            builder.AddComponentParameter(6, nameof(LocationDialog.OpenChanged), EventCallback.Factory.Create<bool>(this, open =>
+            {
+                _open = open;
+                OnOpenChanged?.Invoke(open);
+            }));
+            builder.AddComponentParameter(7, nameof(LocationDialog.OnSaved), EventCallback.Factory.Create<ExistingLocation>(this, saved => OnSaved?.Invoke(saved)));
             builder.CloseComponent();
         }
     }

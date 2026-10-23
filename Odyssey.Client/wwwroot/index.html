@@ -168,21 +168,33 @@
             const el = document.activeElement;
             return el && el.id ? el.id : null;
         };
-        window.odsEscapeClearsInput = function (id) {
-            // The first Esc in a filled search input clears it; only the next one reaches the dialog
-            // and closes it (DS AddLocationModal). MudDialog closes on its own Esc listener before any
-            // Blazor handler runs, so the stop has to happen here, at the input. The cleared value is
-            // handed back to Blazor through an ordinary input event.
+        window.odsComboboxKeys = function (id) {
+            // Keyboard glue for a combobox over an inline listbox (DS AddLocationModal):
+            // - the first Esc in a filled input clears it and only the next one reaches the dialog. MudDialog
+            //   closes on its own Esc listener before any Blazor handler runs, so the stop has to happen here;
+            //   the cleared value goes back to Blazor through an ordinary input event;
+            // - while the list is open, ArrowUp/ArrowDown/Enter keep their default (caret jumps) from firing.
+            //   Blazor's @onkeydown:preventDefault is fixed at render time and cannot depend on the key.
             const el = document.getElementById(id);
-            if (!el || el.dataset.odsEscClears) return;
-            el.dataset.odsEscClears = '1';
+            if (!el || el.dataset.odsComboboxKeys) return;
+            el.dataset.odsComboboxKeys = '1';
             el.addEventListener('keydown', function (e) {
-                if (e.key !== 'Escape' || !el.value) return;
-                e.stopPropagation();
-                e.preventDefault();
-                el.value = '';
-                el.dispatchEvent(new Event('input', { bubbles: true }));
+                if (e.key === 'Escape' && el.value) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    el.value = '';
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter')
+                    && el.getAttribute('aria-expanded') === 'true') {
+                    e.preventDefault();
+                }
             });
+        };
+        window.odsScrollIntoViewById = function (id) {
+            // Bring a keyboard-active option into its scrolling list's view (WCAG 2.4.7), moving no further
+            // than needed.
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ block: 'nearest' });
         };
         window.odsSetIndeterminate = function (el, value) {
             // The checkbox "mixed" (select-all) state is a DOM property, not an attribute, so Blazor

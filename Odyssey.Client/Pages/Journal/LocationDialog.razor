@@ -19,6 +19,7 @@
           RequiredLegend="@(_step == Step.Details)"
           Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
+        <OdsLiveAnnouncer Message="@_announce" />
         <div class="ods-modal-body">
             @if (_step == Step.Search)
             {
@@ -31,13 +32,14 @@
                     <div class="loc-research">
                         @SearchPanel
                         <div>
-                            <OdsButton Variant="OdsButtonVariant.Text" Icon="close" OnClick="@(() => _researching = false)">Keep the current address</OdsButton>
+                            <OdsButton Variant="OdsButtonVariant.Text" Icon="close" OnClick="KeepCurrentAddress">Keep the current address</OdsButton>
                         </div>
                     </div>
                 }
                 else
                 {
-                    <div class="loc-picked" style="@($"--rec:{LocationVisuals.Accent};--rec-soft:{LocationVisuals.AccentSoft}")">
+                    @* tabindex=-1: where focus lands when a step change removes the control that had it. *@
+                    <div id="@PickedId" tabindex="-1" class="loc-picked" style="@($"--rec:{LocationVisuals.Accent};--rec-soft:{LocationVisuals.AccentSoft}")">
                         <span class="loc-picked-glyph"><span class="material-icons" aria-hidden="true">@PickedGlyph</span></span>
                         <div class="loc-picked-text">
                             @if (_pick is { } pick && !IsEdit)
@@ -149,5 +151,6 @@
     private RenderFragment SubtitleFragment => @<text>@SubtitleText</text>;
 
     private RenderFragment SearchPanel => @<LocationSearch Region="Region" RegionChanged="OnRegionChanged" OnPick="ApplyPick"
+                                                           AutoFocus="true"
                                                            OnManual="@(IsEdit ? default : EventCallback.Factory.Create(this, EnterByHand))" />;
 }

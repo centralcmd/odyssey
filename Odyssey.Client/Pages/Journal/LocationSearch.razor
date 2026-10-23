@@ -20,7 +20,7 @@
                    role="combobox" aria-label="@($"Search {RegionInfo.Phrase} by address or place name")"
                    aria-expanded="@(IsOpen ? "true" : "false")" aria-controls="@ListId" aria-autocomplete="list"
                    aria-activedescendant="@(IsOpen && _active >= 0 ? OptionId(_active) : null)"
-                   aria-describedby="@HelpId" aria-invalid="@(_state == SearchState.Long ? "true" : null)"
+                   aria-describedby="@DescribedBy" aria-invalid="@(_state == SearchState.Long ? "true" : null)"
                    autocomplete="off" spellcheck="false"
                    placeholder="@(Region == LocationSearchRegion.Norway ? "Address or place name, e.g. Storgata 1" : "Town or area, e.g. Lisbon")"
                    value="@_query" @oninput="OnInput" @onkeydown="OnKeyDown" />
@@ -48,10 +48,10 @@
     @switch (_state)
     {
         case SearchState.Short:
-            <div class="loc-search-state">Type at least @RegionInfo.MinLength characters to search @RegionInfo.Phrase.</div>
+            <div id="@StateId" class="loc-search-state">@ShortText</div>
             break;
         case SearchState.Long:
-            <div class="loc-search-state error">Searches are limited to @LocationRules.QueryMaxLength characters. Shorten the text to search.</div>
+            <div id="@StateId" class="loc-search-state error">@LongText</div>
             break;
         case SearchState.Loading:
             <div class="loc-search-state" aria-hidden="true">Searching @ProviderLabel…</div>
@@ -75,7 +75,12 @@
             break;
     }
 
-    @if (IsOpen)
+    @if (!IsOpen)
+    {
+        @* aria-controls always names a real element; the empty list is hidden until there are results. *@
+        <ul id="@ListId" role="listbox" aria-label="@($"Results from {ProviderLabel}")" hidden></ul>
+    }
+    else
     {
         <div class="loc-results-wrap">
             @if (_response!.Partial)
@@ -94,7 +99,7 @@
                     var index = i;
                     var c = Candidates[index];
                     var kind = LocationVisuals.KindOf(c.Kind);
-                    <li @key="index" id="@OptionId(index)" role="option" aria-selected="@(index == _active ? "true" : "false")"
+                    <li id="@OptionId(index)" role="option" aria-selected="@(index == _active ? "true" : "false")"
                         class="@(index == _active ? "loc-result active" : "loc-result")"
                         @onmouseenter="@(() => { _active = index; })"
                         @onmousedown="@(() => PickAsync(c))" @onmousedown:preventDefault="true">

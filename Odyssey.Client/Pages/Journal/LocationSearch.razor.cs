@@ -31,6 +31,9 @@ public partial class LocationSearch : IDisposable
     /// <summary>The design's 350 ms; a test passes zero.</summary>
     [Parameter] public int DebounceMilliseconds { get; set; } = 350;
 
+    /// <summary>Focus the input on first render — the dialog's search step, or a re-search in edit.</summary>
+    [Parameter] public bool AutoFocus { get; set; }
+
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
     private string _query = string.Empty;
     private SearchState _state = SearchState.Idle;
@@ -41,11 +44,19 @@ public partial class LocationSearch : IDisposable
     private int _seq;
     private CancellationTokenSource? _debounce;
     private LocationSearchRegion? _lastRegion;
-    private bool _escapeHooked;
+    private bool _keysHooked;
+    private int _announceNonce;
 
     private string InputId => $"loc-q-{_uid}";
     private string ListId => $"loc-list-{_uid}";
     private string HelpId => $"loc-help-{_uid}";
+    private string StateId => $"loc-state-{_uid}";
+
+    // The too-short and too-long lines describe the input while they show, alongside the data-flow line.
+    private string DescribedBy => _state is SearchState.Short or SearchState.Long ? $"{HelpId} {StateId}" : HelpId;
+
+    private string ShortText => $"Type at least {RegionInfo.MinLength} characters to search {RegionInfo.Phrase}.";
+    private string LongText => $"Searches are limited to {LocationRules.QueryMaxLength} characters. Shorten the text to search.";
     private string OptionId(int index) => $"{ListId}-{index}";
 
     private LocationRegionInfo RegionInfo => LocationVisuals.RegionOf(Region);
@@ -85,12 +96,26 @@ public partial class LocationSearch : IDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_escapeHooked)
+        if (_keysHooked)
             return;
-        _escapeHooked = true;
+        _keysHooked = true;
         try
-        { await Js.InvokeVoidAsync("odsEscapeClearsInput", InputId); }
+        {
+            await Js.InvokeVoidAsync("odsComboboxKeys", InputId);
+            if (AutoFocus)
+                await Js.InvokeVoidAsync("odsFocusById", InputId);
+        }
         catch (JSException) { /* the dialog's own Esc still closes it */ }
+    }
+
+    /// <summary>
+    /// Sets the live-region text so that a repeat of the same sentence is still announced: an unchanged
+    /// string renders nothing new, so a run of zero-width spaces alternates behind it.
+    /// </summary>
+    private void Say(string message)
+    {
+        _announceNonce = (_announceNonce + 1) % 4;
+        _announce = message + new string('\u200B', _announceNonce + 1);
     }
 
     private async Task OnRegionChanged(string value)
@@ -121,6 +146,7 @@ public partial class LocationSearch : IDisposable
     private void Schedule(bool immediate)
     {
         _debounce?.Cancel();
+        _debounce?.Dispose();
         _debounce = null;
 
         var cleaned = Clean(_query);
@@ -133,10 +159,17 @@ public partial class LocationSearch : IDisposable
         {
             // Anything still in flight is now stale.
             _seq++;
+            if (state != _state && state is SearchState.Short or SearchState.Long)
+                Say(state == SearchState.Short ? ShortText : LongText);
             _state = state;
             _active = -1;
             return;
         }
+
+        // The previous query's results stop being pickable the moment the text changes.
+        _seq++;
+        _state = SearchState.Loading;
+        _active = -1;
 
         var cts = new CancellationTokenSource();
         _debounce = cts;
@@ -177,9 +210,9 @@ public partial class LocationSearch : IDisposable
             _response = body;
             _state = SearchState.Done;
             var n = body.Candidates.Count;
-            _announce = n > 0
+            Say(n > 0
                 ? $"{n} {(n == 1 ? "result" : "results")} from {provider}{(body.Partial ? ", some may be missing" : "")}."
-                : $"No matches {RegionInfo.Phrase}.";
+                : $"No matches {RegionInfo.Phrase}.");
         }
         else
         {
@@ -187,9 +220,9 @@ public partial class LocationSearch : IDisposable
             _response = null;
             _failure = result.Status;
             _state = SearchState.Failed;
-            _announce = _failure == HttpStatusCode.TooManyRequests
+            Say(_failure == HttpStatusCode.TooManyRequests
                 ? "Too many searches. Wait a moment, then try again."
-                : $"{provider} isn’t answering right now.";
+                : $"{provider} isn’t answering right now.");
         }
 
         StateHasChanged();
@@ -203,14 +236,25 @@ public partial class LocationSearch : IDisposable
         {
             case "ArrowDown":
                 _active = Math.Min(_active + 1, Candidates.Count - 1);
+                await RevealActiveAsync();
                 break;
             case "ArrowUp":
                 _active = Math.Max(_active - 1, 0);
+                await RevealActiveAsync();
                 break;
             case "Enter":
                 await PickAsync(Candidates[_active < 0 ? 0 : _active]);
                 break;
         }
+    }
+
+    // The list scrolls past six rows, so the keyboard-active option is brought into view; a mouse hover
+    // is already in view and moves nothing.
+    private async Task RevealActiveAsync()
+    {
+        try
+        { await Js.InvokeVoidAsync("odsScrollIntoViewById", OptionId(_active)); }
+        catch (JSException) { }
     }
 
     private Task PickAsync(LocationCandidate candidate) =>
@@ -220,5 +264,6 @@ public partial class LocationSearch : IDisposable
     {
         _seq++;
         _debounce?.Cancel();
+        _debounce?.Dispose();
     }
 }

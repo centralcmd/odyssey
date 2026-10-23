@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
@@ -30,6 +31,7 @@ public partial class LocationDialog
 
     [Inject] private ILocationsApiClient Locations { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private IJSRuntime Js { get; set; } = default!;
 
     [Parameter] public bool Open { get; set; }
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
@@ -42,9 +44,6 @@ public partial class LocationDialog
 
     /// <summary>Raised with the stored row after a successful create or update.</summary>
     [Parameter] public EventCallback<ExistingLocation> OnSaved { get; set; }
-
-    /// <summary>Open on the details step with the place entered by hand (create only).</summary>
-    [Parameter] public bool StartManual { get; set; }
 
     // The region is remembered for the browser session (DS: locations-page.region) — the WASM runtime
     // lives exactly as long as the tab, which is what a session-scoped value means here.
@@ -68,6 +67,13 @@ public partial class LocationDialog
     private ZoneOrigin _zoneOrigin = ZoneOrigin.Provider;
 
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
+
+    // A step change removes the control that had focus (a result row, Enter by hand, Search again), so
+    // focus is moved on deliberately after the render rather than left to drop to the page (WCAG 2.4.3).
+    private bool _focusPicked;
+    private string _announce = "";
+
+    private string PickedId => $"loc-picked-{_uid}";
 
     // Keyed by the NewLocation JSON property name, so a server 400/409 lands on the control a client
     // pre-check would have marked. Coordinates share one key — the field shows one error line.
@@ -147,12 +153,7 @@ public partial class LocationDialog
     {
         if (Location is not { } l)
         {
-            _step = StartManual ? Step.Details : Step.Search;
-            if (StartManual)
-            {
-                _timeZone = LocationVisuals.BrowserZone();
-                _zoneOrigin = ZoneOrigin.Browser;
-            }
+            _step = Step.Search;
             return;
         }
 
@@ -226,6 +227,31 @@ public partial class LocationDialog
         _step = Step.Details;
         _replacedNote = IsEdit;
         _researching = false;
+        MoveToDetails(IsEdit
+            ? $"Address replaced from {LocationVisuals.SourceOf(c.Source).Label}."
+            : $"{c.Name} picked. Check the details before saving.");
+    }
+
+    private void MoveToDetails(string announcement)
+    {
+        _focusPicked = true;
+        _announce = announcement;
+    }
+
+    private void KeepCurrentAddress()
+    {
+        _researching = false;
+        MoveToDetails("Search closed. The address is unchanged.");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusPicked)
+            return;
+        _focusPicked = false;
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", PickedId); }
+        catch (JSException) { }
     }
 
     private void EnterByHand()
@@ -237,6 +263,7 @@ public partial class LocationDialog
             _zoneOrigin = ZoneOrigin.Browser;
         }
         _step = Step.Details;
+        MoveToDetails("Entering the place by hand.");
     }
 
     private void SearchAgain()
@@ -254,6 +281,7 @@ public partial class LocationDialog
         _lat = _pick.Latitude;
         _lng = _pick.Longitude;
         ClearCoordinateErrors();
+        MoveToDetails($"{PickLabel}’s coordinates restored.");
     }
 
     private Task CloseAsync() => OpenChanged.InvokeAsync(false);
@@ -323,9 +351,11 @@ public partial class LocationDialog
             if (!outcome.ToastOrFields(Snackbar, IsEdit ? "Unable to save location" : "Unable to create location", AssignServerError))
                 return;
 
+            // Close first: the host's follow-up (a list reload, the new row's highlight) should not hold the
+            // dialog open.
+            await OpenChanged.InvokeAsync(false);
             if (result.Value is { } saved)
                 await OnSaved.InvokeAsync(saved);
-            await OpenChanged.InvokeAsync(false);
         }
         finally
         {

@@ -1350,6 +1350,7 @@
 }
 .odc-input-clear:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 .odc-input-clear .material-icons { font-size: var(--icon-sm); }
+.odc-input-clear:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 1px; }
 .odc-refnum-field { display: flex; flex-direction: column; gap: var(--space-2); }
 .odc-refnum-input { font-family: var(--font-mono); letter-spacing: 0.02em; }
 .odc-refnum-strip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill, 999px); border: 1px solid var(--control-border); background: transparent; cursor: pointer; font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); transition: background var(--duration-base) var(--ease-standard); }
@@ -4676,4 +4677,7 @@ tr:focus-within > .odc-rowactions.reveal,
   .loc-search-bar > :first-child { width: 100%; }
   .loc-result { flex-wrap: wrap; }
   .loc-result-kind { margin-left: 44px; }
+  /* At phone width a truncated name is the whole difference between two results — let it wrap (1.4.10). */
+  .loc-result-name, .loc-result-desc { white-space: normal; overflow-wrap: anywhere; }
 }
+.loc-picked:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; }

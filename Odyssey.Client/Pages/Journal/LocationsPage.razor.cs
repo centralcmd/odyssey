@@ -95,11 +95,15 @@ public partial class LocationsPage
 
     private string EmptyTitle => "No locations yet";
 
-    private string EmptyDescription => _canCreate
+    private string EmptyDescription => EmptyDescriptionFor(_canCreate);
+
+    /// <summary>A reader who cannot create is told someone else can start the list — it offers no button they cannot use.</summary>
+    internal static string EmptyDescriptionFor(bool canCreate) => canCreate
         ? "Keep one shared list of the places that matter to the household — home, the cabin, school. Search an address or place name and the coordinates come with it."
         : "The household hasn’t saved any places yet. Someone with permission to add locations can start the list.";
 
-    private IReadOnlyList<LocationAttribution> Credits => LocationVisuals.Credits(_locations);
+    /// <summary>The credits line's sources — recomputed when the rows change, not on every render.</summary>
+    private IReadOnlyList<LocationAttribution> Credits { get; set; } = [];
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
@@ -186,6 +190,7 @@ public partial class LocationsPage
 
         var result = response.Value;
         _locations = result.ItemsOrToast(Snackbar, "locations");
+        Credits = LocationVisuals.Credits(_locations);
         _loadError = !result.IsSuccess;
         _archivedMatch = !_loadError && _locations.Count == 0 && await ArchivedRowMatchesAsync();
 
@@ -221,54 +226,36 @@ public partial class LocationsPage
         StateHasChanged();
     }
 
-    private async Task ReloadLocation(Guid id)
-    {
-        var result = await Locations.GetAsync(id);
-        if (result.IsSuccess && result.Value is { } fresh)
-        {
-            var index = _locations.FindIndex(l => l.LocationId == id);
-            if (index >= 0)
-                _locations[index] = fresh;
-        }
-
-        await LoadCounts();
-    }
-
     // ── Expand ──────────────────────────────────────────────────────────────────
     private bool IsExpanded(Guid id) => _expandedId == id;
 
     private void ToggleExpand(Guid id) => _expandedId = _expandedId == id ? null : id;
 
     // ── Row menu ──────────────────────────────────────────────────────────────────
-    private IReadOnlyList<OdsMenuItem> RowActions(ExistingLocation l)
+    private IReadOnlyList<OdsMenuItem> RowActions(ExistingLocation l) => BuildRowActions(
+        l,
+        _canUpdate,
+        edit: EventCallback.Factory.Create(this, () => EditClicked(l)),
+        copyCoordinates: EventCallback.Factory.Create(this, () => CopyAsync(LocationVisuals.FormatPair(l.Latitude, l.Longitude), "Coordinates copied.")),
+        copyId: EventCallback.Factory.Create(this, () => CopyAsync(l.LocationId.ToString(), "ID copied.")),
+        toggleArchive: EventCallback.Factory.Create(this, () => SetArchived(l, l.Archived is null)));
+
+    /// <summary>
+    /// The row menu: Edit and Archive / Restore need <c>locations.update</c> and are ABSENT without it;
+    /// the two copies are read-only and always there. There is no Delete — a location is archived.
+    /// </summary>
+    internal static IReadOnlyList<OdsMenuItem> BuildRowActions(
+        ExistingLocation l, bool canUpdate, EventCallback edit, EventCallback copyCoordinates, EventCallback copyId,
+        EventCallback toggleArchive)
     {
         var items = new List<OdsMenuItem>();
-        if (_canUpdate)
-        {
-            items.Add(new OdsMenuItem
-            {
-                Icon = "edit",
-                Label = "Edit location",
-                OnClick = EventCallback.Factory.Create(this, () => EditClicked(l)),
-            });
-        }
+        if (canUpdate)
+            items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit location", OnClick = edit });
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "my_location",
-            Label = "Copy coordinates",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyAsync(LocationVisuals.FormatPair(l.Latitude, l.Longitude), "Coordinates copied.")),
-        });
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyAsync(l.LocationId.ToString(), "ID copied.")),
-        });
+        items.Add(new OdsMenuItem { Icon = "my_location", Label = "Copy coordinates", TrailingIcon = "content_copy", OnClick = copyCoordinates });
+        items.Add(new OdsMenuItem { Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy", OnClick = copyId });
 
-        if (_canUpdate)
+        if (canUpdate)
         {
             var archived = l.Archived is not null;
             items.Add(new OdsMenuItem { Divider = true });
@@ -276,7 +263,7 @@ public partial class LocationsPage
             {
                 Icon = archived ? "unarchive" : "inventory_2",
                 Label = archived ? "Restore" : "Archive",
-                OnClick = EventCallback.Factory.Create(this, () => SetArchived(l, !archived)),
+                OnClick = toggleArchive,
             });
         }
 
@@ -324,6 +311,7 @@ public partial class LocationsPage
         var index = _locations.FindIndex(l => l.LocationId == saved.LocationId);
         if (index >= 0)
             _locations[index] = saved;
+        Credits = LocationVisuals.Credits(_locations);
         Announce($"{saved.Name} saved.");
         await LoadCounts();
     }

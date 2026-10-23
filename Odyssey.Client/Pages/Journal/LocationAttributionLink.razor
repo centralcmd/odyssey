@@ -16,7 +16,7 @@
         }
         @if (IsSafeUrl(a.Url))
         {
-            <a href="@a.Url" target="_blank" rel="noopener noreferrer">@a.Text</a>
+            <a href="@a.Url" target="_blank" rel="noopener noreferrer">@a.Text<span class="odc-sr-only"> (opens in a new tab)</span></a>
         }
         else
         {
