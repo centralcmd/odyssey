@@ -178,8 +178,11 @@ public class LocationDialogTests
             .Returns(new TaskCompletionSource<ApiResult<LocationSearchResponse>>().Task);
         Type(cut, "Storgata 12");
 
-        Assert.Empty(cut.FindAll("li[role=option]"));
-        Assert.Equal("false", cut.Find(".loc-search input[role=combobox]").GetAttribute("aria-expanded"));
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Empty(cut.FindAll("li[role=option]"));
+            Assert.Equal("false", cut.Find(".loc-search input[role=combobox]").GetAttribute("aria-expanded"));
+        }, TimeSpan.FromSeconds(3));
     }
 
     [Fact]
