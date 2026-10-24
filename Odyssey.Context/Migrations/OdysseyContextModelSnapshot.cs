@@ -4528,25 +4528,6 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("UserProfileImageBlobs");
                 });
 
-            modelBuilder.Entity("Odyssey.Context.UserWeatherPreference", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<Guid?>("DefaultLocationId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("UserId");
-
-                    b.HasIndex("DefaultLocationId");
-
-                    b.ToTable("UserWeatherPreferences");
-                });
-
             modelBuilder.Entity("Odyssey.Context.VehicleDetails", b =>
                 {
                     b.Property<Guid>("PropertyId")
@@ -6049,20 +6030,6 @@ namespace Odyssey.Context.Migrations
                         .IsRequired();
 
                     b.Navigation("Image");
-                });
-
-            modelBuilder.Entity("Odyssey.Context.UserWeatherPreference", b =>
-                {
-                    b.HasOne("Odyssey.Context.Location", null)
-                        .WithMany()
-                        .HasForeignKey("DefaultLocationId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Odyssey.Context.ApplicationUser", null)
-                        .WithOne()
-                        .HasForeignKey("Odyssey.Context.UserWeatherPreference", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.VehicleDetails", b =>

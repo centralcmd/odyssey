@@ -15,33 +15,6 @@ namespace Odyssey.Context.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "UserWeatherPreferences",
-                columns: table => new
-                {
-                    UserId = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    DefaultLocationId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UserWeatherPreferences", x => x.UserId);
-                    table.ForeignKey(
-                        name: "FK_UserWeatherPreferences_AspNetUsers_UserId",
-                        column: x => x.UserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_UserWeatherPreferences_Locations_DefaultLocationId",
-                        column: x => x.DefaultLocationId,
-                        principalTable: "Locations",
-                        principalColumn: "LocationId",
-                        onDelete: ReferentialAction.SetNull);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
                 name: "WeatherDays",
                 columns: table => new
                 {
@@ -311,11 +284,6 @@ namespace Odyssey.Context.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserWeatherPreferences_DefaultLocationId",
-                table: "UserWeatherPreferences",
-                column: "DefaultLocationId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_WeatherForecastRuns_LocationId_SiteVersion_ProviderUpdatedAt",
                 table: "WeatherForecastRuns",
                 columns: new[] { "LocationId", "SiteVersion", "ProviderUpdatedAt" },
@@ -361,9 +329,6 @@ namespace Odyssey.Context.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "UserWeatherPreferences");
-
             migrationBuilder.DropTable(
                 name: "WeatherDays");
 

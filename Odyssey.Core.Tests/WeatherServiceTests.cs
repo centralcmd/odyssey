@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context.Secrets;
+using Odyssey.Core.Preferences;
 using Odyssey.Core.Weather;
 using Odyssey.Dtos.Journal;
 using Xunit;
@@ -564,6 +565,50 @@ public class WeatherServiceTests
         var error = await Assert.ThrowsAsync<DomainValidationException>(() => h.Read().SetPreferenceAsync("u1",
             new UpdateWeatherPreferences { DefaultLocationId = bare.LocationId }, CancellationToken.None));
         Assert.Contains("defaultLocationId", error.Errors!.Keys);
+    }
+
+    [Fact]
+    public async Task The_preference_is_its_own_user_preference_row_and_leaves_the_others_alone()
+    {
+        using var h = new WeatherTestHarness();
+        var cabin = await h.EnableAsync("Cabin");
+        var preferences = new UserPreferencesService(h.Context, h.Time);
+        await preferences.UpsertAsync("u1", "preferences-page", """{"isDarkMode":true}""", CancellationToken.None);
+
+        await h.Read().SetPreferenceAsync("u1", new UpdateWeatherPreferences { DefaultLocationId = cabin.LocationId }, CancellationToken.None);
+
+        Assert.Equal("""{"isDarkMode":true}""", (await preferences.GetAsync("u1", "preferences-page", CancellationToken.None))!.PreferencesJson);
+        Assert.Equal($$"""{"defaultLocationId":"{{cabin.LocationId}}"}""",
+            (await preferences.GetAsync("u1", UserPreferencesService.WeatherKey, CancellationToken.None))!.PreferencesJson);
+        Assert.Equal(cabin.LocationId, (await h.Read().PreferencesAsync("u1", CancellationToken.None)).DefaultLocation!.LocationId);
+    }
+
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("""{"defaultLocationId":"not-a-guid"}""")]
+    [InlineData("null")]
+    public async Task An_unreadable_stored_preference_falls_back_to_the_household_default(string stored)
+    {
+        using var h = new WeatherTestHarness();
+        var home = await h.EnableAsync("Home");
+        h.Settings.Value = h.Settings.Value with { HouseholdDefaultLocationId = home.LocationId };
+        await new UserPreferencesService(h.Context, h.Time)
+            .UpsertServerOwnedAsync("u1", UserPreferencesService.WeatherKey, stored, CancellationToken.None);
+
+        Assert.Equal(home.LocationId, (await h.Read().ResolveAsync(null, "u1", CancellationToken.None)).Location!.LocationId);
+    }
+
+    [Theory]
+    [InlineData("weather-preferences")]
+    [InlineData("Weather-Preferences")]
+    [InlineData("weather-preferences  ")]
+    public async Task The_generic_preference_write_refuses_the_weather_key(string key)
+    {
+        using var h = new WeatherTestHarness();
+
+        var error = await Assert.ThrowsAsync<DomainValidationException>(() => new UserPreferencesService(h.Context, h.Time)
+            .UpsertAsync("u1", key, """{"defaultLocationId":null}""", CancellationToken.None));
+        Assert.Contains("pageKey", error.Errors!.Keys);
     }
 
     [Fact]

@@ -39,7 +39,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
         await MigrationSeam.MigrateToAsync(context, ThisMigration);
 
         foreach (var table in new[] { "WeatherLocations", "WeatherLocationSites", "WeatherLocationSchedules", "WeatherForecastRuns",
-                     "WeatherForecastSteps", "WeatherObservations", "WeatherDays", "UserWeatherPreferences" })
+                     "WeatherForecastSteps", "WeatherObservations", "WeatherDays" })
         {
             Assert.True(await MigrationSeam.TableExistsAsync(context, table), table);
         }
