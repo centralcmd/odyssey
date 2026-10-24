@@ -333,7 +333,8 @@ public partial class ExchangeRateSyncSurfaceTests
         cut.WaitForAssertion(() => SyncSwitch(cut, "USD"));
         ClickRowAction(cut, "USD", "Set start date…");
         cut.WaitForAssertion(() => Assert.Contains("Use default", cut.Markup));
-        cut.FindAll("button").Single(b => b.TextContent.Trim() == "checkSave" || b.TextContent.Trim().EndsWith("Save")).Click();
+        // The label is the button's text after its icon ligature, which is aria-hidden.
+        cut.FindAll("button").Single(b => b.QuerySelector(".material-icons")?.TextContent == "check" && b.TextContent.Contains("Save")).Click();
 
         cut.WaitForAssertion(() => Assert.Contains("Too early for this currency.", cut.Markup));
         Assert.Contains("Use default", cut.Markup);
@@ -461,6 +462,8 @@ public partial class ExchangeRateSyncSurfaceTests
         var deleteItem = await cut.InvokeAsync(() => cut.Instance.BuildActions(first, NoopActions("first-menu")).Single(i => i.Label == "Delete…"));
         await cut.InvokeAsync(() => deleteItem.OnClick.InvokeAsync());
         Dialogs.WaitForAssertion(() => Assert.Contains("Delete this fetched rate?", Dialogs.Markup));
+        // The same local timestamp the row's As of column shows.
+        Assert.Contains($"USD/BASE on {first.AsOf.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")} will not be fetched again", Dialogs.Markup);
         Dialogs.FindAll("button").Single(b => b.TextContent.Contains("Delete rate")).Click();
 
         // The remaining row's real trigger id, as the table rendered it.
@@ -554,5 +557,28 @@ public partial class ExchangeRateSyncSurfaceTests
         held.Find("button").Click();
         Assert.Equal(0, clicks);
         Assert.True(plain.Find("button").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task A_refresh_refused_for_permission_says_so_once()
+    {
+        var sync = new Mock<IExchangeRateSyncApiClient>();
+        var first = true;
+        sync.Setup(c => c.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() =>
+        {
+            if (!first)
+                return Refused<ExchangeRateSyncStatus>(HttpStatusCode.Forbidden);
+            first = false;
+            return ApiResult<ExchangeRateSyncStatus>.Success(Scheduled(), HttpStatusCode.OK);
+        });
+        var (ctx, _) = NewContext(sync.Object);
+        await using var __ = ctx;
+        var said = new Announced([], []);
+
+        var cut = RenderPanel(ctx, said);
+        await cut.InvokeAsync(cut.Instance.RefreshAsync);
+
+        Assert.Equal(["Your permissions changed — reload the page"], said.Assertive);
+        Assert.Empty(said.Polite);
     }
 }

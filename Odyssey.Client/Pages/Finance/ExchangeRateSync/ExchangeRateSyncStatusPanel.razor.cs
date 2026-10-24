@@ -49,6 +49,7 @@ public partial class ExchangeRateSyncStatusPanel
     private bool _readInFlight;
     private int _consecutiveFailures;
     private int _readFailures;
+    private bool _permissionLost;
 
     /// <summary>The run the panel saw start — its end is what gets announced and refreshed once.</summary>
     private Guid? _watchedRunId;
@@ -86,8 +87,8 @@ public partial class ExchangeRateSyncStatusPanel
         _refreshing = false;
         if (_readFailures != before)
         {
-            // A read that already went stale announced it; say it once.
-            if (_stale is null)
+            // A read that already went stale, or lost permission, announced it; say it once.
+            if (_stale is null && !_permissionLost)
                 await OnAnnounce.InvokeAsync("Couldn’t refresh status");
             _stale = StaleReason.Errors;
         }
@@ -279,6 +280,7 @@ public partial class ExchangeRateSyncStatusPanel
         switch (status)
         {
             case HttpStatusCode.Forbidden:
+                _permissionLost = true;
                 await OnAnnounceAssertive.InvokeAsync("Your permissions changed — reload the page");
                 Snackbar.Add("Your permissions changed — reload the page", Severity.Error);
                 return false;
