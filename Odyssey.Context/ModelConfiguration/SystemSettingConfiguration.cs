@@ -113,7 +113,7 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             // contact (nothing is fetched until an administrator sets one), hourly refresh, five
             // scheduled places, no household default.
             new SystemSetting { Key = SystemSettingsKeys.WeatherUserAgentContact, Value = SystemSettingsDefaults.WeatherUserAgentContact, UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.WeatherRefreshIntervalMinutes, Value = "60", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.WeatherRefreshIntervalMinutes, Value = "1440", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.WeatherMaxTrackedLocations, Value = "5", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.WeatherDefaultLocationId, Value = SystemSettingsDefaults.WeatherDefaultLocationId, UpdatedAt = seededAt },
             // The file-analysis kill switch, model and destination (issue #439). Seeded to today's

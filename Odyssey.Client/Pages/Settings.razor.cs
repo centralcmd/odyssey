@@ -319,7 +319,7 @@ public partial class Settings
                 AllowEmpty: true,
                 Rule: WeatherRules.ValidateContact),
             new("weatherRefreshIntervalMinutes", "update", "Forecast refresh interval",
-                "How often a scheduled place's forecast is refreshed. MET's own expiry is honoured on top of it, so a shorter interval never fetches more often than MET allows.",
+                "How often the background job refreshes a scheduled place's forecast. 1440 minutes is once a day. MET's own expiry is honoured on top of it, so a shorter interval never fetches more often than MET allows.",
                 SettingClaim.Count, SettingControl.Number,
                 Min: SystemSettingsBounds.WeatherRefreshIntervalMinutesMin, Max: SystemSettingsBounds.WeatherRefreshIntervalMinutesMax,
                 Field: nameof(SystemSettingsUpdate.WeatherRefreshIntervalMinutes),

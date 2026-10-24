@@ -309,7 +309,8 @@ public static class SystemSettingsDefaults
     /// <summary>Empty: weather is not configured until an administrator gives MET a way to reach them.</summary>
     public const string WeatherUserAgentContact = "";
 
-    public const int WeatherRefreshIntervalMinutes = 60;
+    /// <summary>Once a day. A household dashboard needs no fresher forecast than that, and it keeps MET traffic minimal.</summary>
+    public const int WeatherRefreshIntervalMinutes = 1440;
 
     public const int WeatherMaxTrackedLocations = 5;
 
