@@ -75,7 +75,7 @@
                 <OdsButton Icon="sync" AriaDisabled="@(RunNowReason is not null)" OnClick="RunNowAsync"
                            aria-describedby="@(RunNowReason is null ? null : _reasonId)">Run now</OdsButton>
             }
-            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" Loading="_refreshing" OnClick="RefreshAsync">Refresh status</OdsButton>
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" Loading="_refreshing" AriaDisabled="_refreshing" OnClick="RefreshAsync">Refresh status</OdsButton>
             @if (ShowRunNow && CanRun && RunNowReason is { } reason)
             {
                 <span class="xrs-status-reason" id="@_reasonId">@reason</span>

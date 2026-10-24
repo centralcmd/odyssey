@@ -310,6 +310,8 @@
 
     @* Polite live region — save success / load failure announcements (WCAG 2.2 §4.1.3). *@
     <OdsLiveAnnouncer Message="@_announce" />
+    @* Assertive — the sync panel's failures (a failed run, a refused Run now, a permission change). *@
+    <OdsLiveAnnouncer @ref="_syncAssertive" Assertive="true" />
 </MudStack>
 
 @code {

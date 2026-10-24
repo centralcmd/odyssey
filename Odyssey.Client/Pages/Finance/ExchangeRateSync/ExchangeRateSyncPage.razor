@@ -35,7 +35,8 @@
 
     <MudCard Outlined="true">
         <MudCardContent>
-            <ExchangeRateSyncStatusPanel CanRun="_canUpdate"
+            <ExchangeRateSyncStatusPanel @ref="_panel"
+                                         CanRun="_canUpdate"
                                          OnStatus="OnStatus"
                                          OnRunFinished="OnRunFinishedAsync"
                                          OnAnnounce="AnnouncePolite"
@@ -185,7 +186,7 @@
     private RenderFragment CoverageCell(ExistingExchangeRateSyncCurrency c, OdsRecordCellContext ctx) => @<text>
         @if (c.Locked)
         {
-            <span aria-label="Not applicable">—</span>
+            <span aria-hidden="true">—</span><span class="sr-only">Not applicable</span>
         }
         else if (c.OldestFetchedDate is { } oldest && c.NewestFetchedDate is { } newest)
         {
@@ -200,7 +201,7 @@
     private RenderFragment BackfillCell(ExistingExchangeRateSyncCurrency c, OdsRecordCellContext ctx)
     {
         if (c.Locked)
-            return @<span aria-label="Not applicable">—</span>;
+            return @<span><span aria-hidden="true">—</span><span class="sr-only">Not applicable</span></span>;
         var chip = OdsTypeRegistries.ExchangeRateBackfillStates.GetValueOrDefault(
             OdsTypeRegistries.ExchangeRateBackfillOf(c), OdsTypeRegistries.UnknownChip);
         return @<OdsChip Tone="@chip.Tone" Dot="@chip.Dot">@chip.Label</OdsChip>;
@@ -209,7 +210,7 @@
     private RenderFragment StartDateCell(ExistingExchangeRateSyncCurrency c, OdsRecordCellContext ctx) => @<text>
         @if (c.Locked)
         {
-            <span aria-label="Not applicable">—</span>
+            <span aria-hidden="true">—</span><span class="sr-only">Not applicable</span>
         }
         else if (c.HistoryStartDate is { } own)
         {
@@ -248,9 +249,9 @@
         </div>
         <div class="xrs-edit-actions">
             <OdsButton Variant="OdsButtonVariant.Text" OnClick="@(() => CancelEdit(c, edit))">Cancel</OdsButton>
-            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="restart_alt" Loading="@_busy.Contains(c.CurrencyCode)"
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="restart_alt" Loading="@_busy.Contains(c.CurrencyCode)" AriaDisabled="@_busy.Contains(c.CurrencyCode)"
                        OnClick="@(() => UseDefaultAsync(c, edit))">Use default</OdsButton>
-            <OdsButton Icon="check" Loading="@_busy.Contains(c.CurrencyCode)" OnClick="@(() => SaveStartDateAsync(c, edit))">Save</OdsButton>
+            <OdsButton Icon="check" Loading="@_busy.Contains(c.CurrencyCode)" AriaDisabled="@_busy.Contains(c.CurrencyCode)" OnClick="@(() => SaveStartDateAsync(c, edit))">Save</OdsButton>
         </div>
     </div>;
 
@@ -274,7 +275,7 @@
         }
         else
         {
-            <span class="xrs-rel" aria-label="None">—</span>
+            <span class="xrs-rel" aria-hidden="true">—</span><span class="sr-only">None</span>
         }
     </text>;
 

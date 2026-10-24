@@ -12,7 +12,7 @@
 
 <PageTitle>Exchange Rates</PageTitle>
 
-<OdsLiveAnnouncer Message="@_announce" />
+<OdsLiveAnnouncer @ref="_announcer" Message="@_announce" />
 
 <MudStack Spacing="4">
 
@@ -154,10 +154,10 @@
                               OnSaved="OnRateEdited" />
 }
 
+@* Stays mounted once opened (only its Open flips), so the close runs the modal's own focus restore. *@
 @if (_deletingFetched is { } fetched)
 {
     <Odyssey.Client.Pages.Finance.ExchangeRateSync.ConfirmFetchedRateDeleteDialog
-        @key="fetched.Rate.ExchangeRateId"
         Open="_deleteFetchedOpen"
         OpenChanged="OnDeleteFetchedOpenChanged"
         Title="Delete this fetched rate?"

@@ -45,6 +45,12 @@ public partial class Settings
 
     private void AnnounceSync(string message) => Announce(message);
 
+    private OdsLiveAnnouncer? _syncAssertive;
+
+    private Task AnnounceSyncAssertive(string message) => _syncAssertive?.Announce(message) ?? Task.CompletedTask;
+
+    private const string RunNowReasonId = "ss-run-now-reason";
+
     // The three new controls are built here rather than as markup in Settings.razor, whose @code block
     // is capped (SourceConventionTests); each is a plain composition of existing atoms.
 
@@ -77,7 +83,7 @@ public partial class Settings
         builder.AddComponentParameter(5, "OnStatus",
             EventCallback.Factory.Create<Odyssey.Dtos.Finance.ExchangeRateSyncStatus>(this, OnSyncStatus));
         builder.AddComponentParameter(6, "OnAnnounce", EventCallback.Factory.Create<string>(this, AnnounceSync));
-        builder.AddComponentParameter(7, "OnAnnounceAssertive", EventCallback.Factory.Create<string>(this, AnnounceSync));
+        builder.AddComponentParameter(7, "OnAnnounceAssertive", EventCallback.Factory.Create<string>(this, AnnounceSyncAssertive));
         builder.AddComponentReferenceCapture(8, panel => _syncPanel = (Odyssey.Client.Pages.Finance.ExchangeRateSync.ExchangeRateSyncStatusPanel)panel);
         builder.CloseComponent();
         builder.CloseElement();
@@ -105,15 +111,17 @@ public partial class Settings
         {
             builder.OpenElement(12, "span");
             builder.AddAttribute(13, "class", "ss-action-reason");
-            builder.AddContent(14, reason);
+            builder.AddAttribute(14, "id", RunNowReasonId);
+            builder.AddContent(15, reason);
             builder.CloseElement();
         }
-        builder.OpenComponent<OdsButton>(15);
-        builder.AddComponentParameter(16, nameof(OdsButton.Icon), "sync");
-        builder.AddComponentParameter(17, nameof(OdsButton.Disabled), IsRowDisabled(item));
-        builder.AddComponentParameter(18, nameof(OdsButton.AriaDisabled), reason is not null);
-        builder.AddComponentParameter(19, nameof(OdsButton.OnClick), EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, RunSyncNowAsync));
-        builder.AddComponentParameter(20, nameof(OdsButton.ChildContent), (RenderFragment)(b => b.AddContent(0, "Run now")));
+        builder.OpenComponent<OdsButton>(16);
+        builder.AddComponentParameter(17, nameof(OdsButton.Icon), "sync");
+        builder.AddComponentParameter(18, nameof(OdsButton.Disabled), IsRowDisabled(item));
+        builder.AddComponentParameter(19, nameof(OdsButton.AriaDisabled), reason is not null);
+        builder.AddAttribute(20, "aria-describedby", reason is null ? null : RunNowReasonId);
+        builder.AddComponentParameter(21, nameof(OdsButton.OnClick), EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, RunSyncNowAsync));
+        builder.AddComponentParameter(22, nameof(OdsButton.ChildContent), (RenderFragment)(b => b.AddContent(0, "Run now")));
         builder.CloseComponent();
         builder.CloseElement();
     };

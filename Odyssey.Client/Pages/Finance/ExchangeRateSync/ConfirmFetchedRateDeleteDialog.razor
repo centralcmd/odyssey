@@ -50,6 +50,15 @@
     [Parameter, EditorRequired] public Func<Task<string?>> OnConfirm { get; set; } = default!;
 
     private string? _error;
+    private bool _wasOpen;
+
+    // A refusal belongs to the attempt that drew it: reopening starts clean.
+    protected override void OnParametersSet()
+    {
+        if (Open && !_wasOpen)
+            _error = null;
+        _wasOpen = Open;
+    }
 
     private async Task<bool> SubmitAsync()
     {

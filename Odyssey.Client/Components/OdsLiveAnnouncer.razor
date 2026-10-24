@@ -18,6 +18,8 @@
      aria-atomic="true"
      class="sr-only">@_text</div>
 
+@implements IDisposable
+
 @code {
     /// <summary>The text announced to assistive technology. Update it to fire an announcement.</summary>
     [Parameter] public string? Message { get; set; }
@@ -45,7 +47,13 @@
         // Long enough for the cleared region to render before the text returns; a same-frame swap
         // would be coalesced into no change at all.
         await Task.Delay(50);
+        if (_disposed)
+            return;
         _text = message;
         StateHasChanged();
     }
+
+    private bool _disposed;
+
+    public void Dispose() => _disposed = true;
 }

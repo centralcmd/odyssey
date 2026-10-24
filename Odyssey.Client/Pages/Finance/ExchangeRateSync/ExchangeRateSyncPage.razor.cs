@@ -19,6 +19,7 @@ public partial class ExchangeRateSyncPage
     internal const int RunPageSize = 10;
 
     private OdsLiveAnnouncer? _polite;
+    private ExchangeRateSyncStatusPanel? _panel;
     private OdsLiveAnnouncer? _assertive;
 
     private bool _canUpdate;
@@ -222,6 +223,11 @@ public partial class ExchangeRateSyncPage
 
     private async Task MergeCurrenciesAsync()
     {
+        // A load the user started is already bringing fresh rows; merging would supersede it and patch
+        // the previous filter's rows instead.
+        if (_currenciesLoading || _currenciesRefetching)
+            return;
+
         var response = await _listLoader.RunAsync(ct => QueryCurrenciesAsync(ct));
         if (response.IsSuperseded)
             return;
@@ -352,6 +358,7 @@ public partial class ExchangeRateSyncPage
         if (result.IsSuccess && result.Value is { } updated)
         {
             Replace(updated);
+            await ReloadStatusAsync();
         }
         else
         {
@@ -440,6 +447,7 @@ public partial class ExchangeRateSyncPage
             _editErrors.Remove(c.CurrencyCode);
             edit.Done();
             await AnnouncePolite($"Start date for {c.CurrencyCode} saved");
+            await ReloadStatusAsync();
         }
         else if (result.Status == HttpStatusCode.Forbidden)
         {
@@ -488,9 +496,13 @@ public partial class ExchangeRateSyncPage
         var deleted = result.Value?.RowsDeleted ?? 0;
         Replace(target.Currency with { FetchedRowCount = 0, OldestFetchedDate = null, NewestFetchedDate = null });
         await AnnouncePolite($"Deleted {deleted.ToString("N0", CultureInfo.CurrentCulture)} fetched rates for {code}");
-        await LoadRunsAsync();
+        await Task.WhenAll(LoadRunsAsync(), ReloadStatusAsync());
         return null;
     }
+
+    // The chip, the banners and the synced count are read from status, which the panel polls only
+    // during a run — so a write that changes them re-reads it once.
+    private Task ReloadStatusAsync() => _panel?.ReloadQuietlyAsync() ?? Task.CompletedTask;
 
     // ── Run history ───────────────────────────────────────────────────────────────────────────────
 
