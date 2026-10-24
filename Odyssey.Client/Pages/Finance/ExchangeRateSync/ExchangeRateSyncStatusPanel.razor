@@ -1,0 +1,89 @@
+@*
+    ExchangeRateSyncStatusPanel — what the exchange-rate sync is doing (issue #351 §3.E; Odyssey Design
+    System · components/ExchangeRateSyncStatusPanel). ONE component, hosted by the System settings card
+    and by the /settings/exchange-rate-sync header; only one instance exists per page, and it owns the
+    status polling.
+
+      • a chip from EXCHANGE_RATE_SYNC_STATES and a line built only from status fields;
+      • the last FINISHED run, in every state, so a failure is visible beside Scheduled;
+      • the stale notice when polling stopped by its cap or by errors;
+      • the attribution, as the server wrote it;
+      • Run now (focusable while unavailable — AriaDisabled — with the reason as visible text) and
+        Refresh status, which is always available.
+
+    Lives under Pages/, not Components/: it injects an API client, which no Ods* atom does.
+*@
+@using Odyssey.Dtos.Finance
+@implements IAsyncDisposable
+@inject IExchangeRateSyncApiClient Sync
+@inject TimeProvider Time
+@inject ISnackbar Snackbar
+
+<div class="xrs-status" aria-busy="@(_refreshing ? "true" : "false")">
+    @if (_status is null)
+    {
+        @if (_loadFailed)
+        {
+            <div class="xrs-status-stale">
+                <span class="material-icons" aria-hidden="true">cloud_off</span>
+                Couldn’t load the sync status.
+            </div>
+        }
+        else
+        {
+            <OdsSkeleton Lines="3" />
+        }
+    }
+    else
+    {
+        var state = OdsTypeRegistries.ExchangeRateSyncStateOf(_status.State);
+        <div class="xrs-status-head">
+            <OdsChip Tone="@state.Tone">@state.Label</OdsChip>
+            <span class="xrs-status-line">@StatusLine(_status)</span>
+        </div>
+        <div class="xrs-status-last">
+            <span class="xrs-status-k">Last run</span>
+            @if (_status.LastRun is { } last)
+            {
+                <span>@OdsTypeRegistries.ExchangeRateSyncRunStatusOf(last.Status).Label · @Relative(last.FinishedAtUtc ?? last.StartedAtUtc)</span>
+                @if (last.ErrorKind is { } kind)
+                {
+                    <span class="xrs-status-err">
+                        <span class="material-icons" aria-hidden="true">error_outline</span>@OdsTypeRegistries.ExchangeRateSyncErrorOf(kind)
+                    </span>
+                }
+            }
+            else
+            {
+                <span>None yet</span>
+            }
+        </div>
+        @if (_stale is { } stale)
+        {
+            <div class="xrs-status-stale">
+                <span class="material-icons" aria-hidden="true">@(stale == StaleReason.Errors ? "cloud_off" : "hourglass_bottom")</span>
+                @StaleText(stale)
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(_status.Attribution))
+        {
+            <div class="xrs-status-attrib">@_status.Attribution</div>
+        }
+        <div class="xrs-status-actions">
+            @if (ShowRunNow && CanRun)
+            {
+                <OdsButton Icon="sync" AriaDisabled="@(RunNowReason is not null)" OnClick="RunNowAsync"
+                           aria-describedby="@(RunNowReason is null ? null : _reasonId)">Run now</OdsButton>
+            }
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" Loading="_refreshing" OnClick="RefreshAsync">Refresh status</OdsButton>
+            @if (ShowRunNow && CanRun && RunNowReason is { } reason)
+            {
+                <span class="xrs-status-reason" id="@_reasonId">@reason</span>
+            }
+            @if (ShowRunNow && !CanRun)
+            {
+                <span class="xrs-status-reason">Requires permission to change system settings</span>
+            }
+        </div>
+    }
+</div>
