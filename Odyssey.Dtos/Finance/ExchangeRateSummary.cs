@@ -30,6 +30,9 @@ public sealed record ExchangeRateSummary
     public string FetchedRateTimeZone { get; set; } = string.Empty;
 
     public string FetchedRateTimeZoneLabel { get; set; } = string.Empty;
+
+    /// <summary>The provider's display name, for the New rate dialog's precedence help (issue #351 §3.C).</summary>
+    public string ProviderDisplayName { get; set; } = string.Empty;
 }
 
 public sealed record ExchangeRateStatusCounts

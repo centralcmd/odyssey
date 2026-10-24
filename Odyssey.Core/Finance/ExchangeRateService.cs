@@ -146,6 +146,7 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
             FetchedRateLocalTime = ExchangeRateSyncConstants.FetchedRateLocalTime.ToString("HH:mm", CultureInfo.InvariantCulture),
             FetchedRateTimeZone = ExchangeRateSyncConstants.FetchedRateTimeZone,
             FetchedRateTimeZoneLabel = ExchangeRateSyncConstants.FetchedRateTimeZoneLabel,
+            ProviderDisplayName = ExchangeRateSyncConstants.ProviderDisplayName,
         };
     }
 

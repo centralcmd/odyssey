@@ -83,12 +83,6 @@ public interface IExchangeRatesApiClient
     /// <summary>The unfiltered counts, currencies and attribution (issue #349 §5.10).</summary>
     Task<ApiResult<ExchangeRateSummary>> GetSummaryAsync(CancellationToken ct = default);
 
-    /// <summary>
-    /// Every rate in one window. The card's summary tiles are derived from the whole set, so they are
-    /// computed from this rather than from the filtered display slice.
-    /// </summary>
-    Task<ApiResult<List<ExistingExchangeRate>>> ListAllAsync(CancellationToken ct = default);
-
     Task<ApiResult> CreateAsync(NewExchangeRate rate, CancellationToken ct = default);
 
     Task<ApiResult> UpdateAsync(Guid id, UpdateExchangeRate rate, CancellationToken ct = default);
@@ -116,9 +110,6 @@ public sealed class ExchangeRatesApiClient(IOdysseyApi api) : IExchangeRatesApiC
                 .Add("sortDir", sortDir)
                 .Build(),
             ct);
-
-    public Task<ApiResult<List<ExistingExchangeRate>>> ListAllAsync(CancellationToken ct = default) =>
-        api.GetAllAsync<ExistingExchangeRate>(PagedQuery.For(Base).Build(), ct);
 
     public Task<ApiResult<ExchangeRateSummary>> GetSummaryAsync(CancellationToken ct = default) =>
         api.GetAsync<ExchangeRateSummary>($"{Base}/summary", ct);

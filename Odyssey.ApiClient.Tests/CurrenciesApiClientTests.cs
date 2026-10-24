@@ -135,15 +135,4 @@ public class CurrenciesApiClientTests
         Assert.Equal(1, summary.Value!.ByStatus.Upcoming);
         Assert.Equal(3, summary.Value.BySource.Fetched);
     }
-
-    [Fact]
-    public async Task Rates_ListAllAsync_is_unfiltered_and_full_window()
-    {
-        var (client, handler) = Create(api => new ExchangeRatesApiClient(api));
-
-        await client.ListAllAsync();
-
-        var query = handler.LastRequest!.RequestUri!.Query;
-        Assert.Equal($"?offset=0&limit={PagedQuery.LimitAll}", query);
-    }
 }
