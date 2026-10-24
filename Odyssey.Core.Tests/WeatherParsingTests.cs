@@ -67,6 +67,37 @@ public class WeatherParsingTests
         Assert.Equal(0.4m, step.PrecipitationMm);
     }
 
+    public static TheoryData<string> MetLegendCodes()
+    {
+        var data = new TheoryData<string>();
+        foreach (var line in File.ReadLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "met-symbol-codes.txt")))
+        {
+            if (line.Length > 0 && line[0] != '#')
+                data.Add(line);
+        }
+        return data;
+    }
+
+    // MET's legend has codes up to 42 characters (heavysleetshowersandthunder_polartwilight and the two
+    // doubled-"s" bases); a cap below that silently dropped their symbol.
+    [Theory]
+    [MemberData(nameof(MetLegendCodes))]
+    public void Every_met_legend_code_is_kept(string code)
+    {
+        var json = $$"""
+        { "properties": { "meta": { "updated_at": "2026-10-23T21:30:07Z" }, "timeseries": [
+          { "time": "2026-10-23T22:00:00Z", "data": {
+            "instant": { "details": { "air_temperature": 5.0 } },
+            "next_1_hours": { "summary": { "symbol_code": "{{code}}" } } } } ] } }
+        """;
+        using var document = JsonDocument.Parse(json);
+
+        var step = Assert.Single(MetNorwayForecastSource.Parse(document.RootElement)!.Steps);
+
+        Assert.Equal(code, step.SymbolCode);
+        Assert.InRange(code.Length, 1, WeatherRules.SymbolCodeMaxLength);
+    }
+
     [Theory]
     [InlineData("""{ "properties": { "timeseries": [] } }""")]
     [InlineData("""{ "properties": { "meta": { "updated_at": "2026-10-23T21:30:07Z" }, "timeseries": [] } }""")]

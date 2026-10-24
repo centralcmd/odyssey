@@ -42,6 +42,28 @@ public class WeatherClientTests : IDisposable
     }
 
     [Theory]
+    [InlineData("lightssleetshowersandthunder_day", "Light sleet showers and thunder")]
+    [InlineData("lightssnowshowersandthunder_polartwilight", "Light snow showers and thunder")]
+    public void Mets_doubled_s_thunder_codes_resolve_to_their_base(string code, string label)
+    {
+        var symbol = WeatherVisuals.SymbolOf(code)!;
+        Assert.True(symbol.Known);
+        Assert.Equal(label, symbol.Label);
+        Assert.Equal("thunderstorm", symbol.Icon);
+    }
+
+    [Fact]
+    public void Every_met_legend_code_is_a_known_symbol()
+    {
+        var unknown = File.ReadLines(Path.Combine(AppContext.BaseDirectory, "Fixtures", "met-symbol-codes.txt"))
+            .Where(line => line.Length > 0 && line[0] != '#')
+            .Where(code => !WeatherVisuals.SymbolOf(code)!.Known)
+            .ToList();
+
+        Assert.Empty(unknown);
+    }
+
+    [Theory]
     [InlineData(-3.4, "−3°")]
     [InlineData(-0.4, "0°")]
     [InlineData(2.5, "3°")]

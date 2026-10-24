@@ -130,6 +130,6 @@ public sealed partial class MetNorwayForecastSource(HttpClient http) : IWeatherF
 
     private static decimal? Percent(double? value) => WeatherHttp.InRange(value, 0, 100);
 
-    [GeneratedRegex("^[a-z_]{1,40}$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex("^[a-z_]{1,48}$", RegexOptions.CultureInvariant)]
     private static partial Regex SymbolPattern();
 }
