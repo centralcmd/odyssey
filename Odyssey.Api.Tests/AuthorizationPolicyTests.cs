@@ -70,11 +70,13 @@ public class AuthorizationPolicyTests
     /// went the same way with its four <c>insurance.*</c> claims, and 94 before issue #190 moved
     /// account terms onto contracts and deleted the account-term read/write claim pair. 98 once issue
     /// #167 added the six <c>properties.*</c> claims. 101 once issue #350 added <c>locations.read</c>,
-    /// <c>.create</c> and <c>.update</c> (deliberately no delete).
+    /// <c>.create</c> and <c>.update</c> (deliberately no delete). 106 once issue #348 added
+    /// <c>weather.read</c>, <c>weather.preferences.update</c>, <c>weather.locations.read</c>,
+    /// <c>weather.locations.update</c> and <c>weather.history.delete</c>.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(101, DeclaredClaims().Count());
+        Assert.Equal(106, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).
@@ -233,6 +235,40 @@ public class AuthorizationPolicyTests
         Assert.True(gaps.Count == 0,
             "The data export carries every location; a role that can export must be able to read them. Roles that do not: "
             + string.Join(", ", gaps));
+    }
+
+    /// <summary>
+    /// Issue #348 §7.2: every weather response names a location, so a role that reads weather must be able
+    /// to read the locations it names.
+    /// </summary>
+    [Fact]
+    public void No_role_holds_WeatherRead_without_LocationsRead()
+    {
+        var gaps = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.WeatherRead, StringComparer.Ordinal))
+            .Where(role => !role.Claims.Contains(PermissionClaims.LocationsRead, StringComparer.Ordinal))
+            .Select(role => role.Role)
+            .ToList();
+
+        Assert.True(gaps.Count == 0, "Roles holding weather.read without locations.read: " + string.Join(", ", gaps));
+    }
+
+    /// <summary>
+    /// Issue #348 §7.2, N4: the purge destroys history no one can re-fetch, so only Admin holds it — and the
+    /// two Admin-only location claims with it, since they are what can send coordinates to MET Norway.
+    /// </summary>
+    [Fact]
+    public void Only_Admin_holds_the_weather_admin_claims()
+    {
+        string[] adminOnly = [PermissionClaims.WeatherHistoryDelete, PermissionClaims.WeatherLocationsRead, PermissionClaims.WeatherLocationsUpdate];
+        Assert.All(adminOnly, claim => Assert.Contains(claim, RolePermissions.AllClaims));
+        Assert.All(adminOnly, claim => Assert.Contains(claim, RolePermissions.AdminClaims));
+
+        var holders = MappedRoles()
+            .Where(role => role.Claims.Intersect(adminOnly, StringComparer.Ordinal).Any())
+            .Select(role => role.Role)
+            .ToList();
+        Assert.Equal(["Admin"], holders);
     }
 
     /// <summary>

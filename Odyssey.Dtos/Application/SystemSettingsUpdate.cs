@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Odyssey.Dtos;
+using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Dtos.Application;
 
@@ -441,4 +442,34 @@ public sealed record SystemSettingsUpdate
     [StringLength(256, ErrorMessage =
         "The provider base URL cannot exceed 256 characters.")]
     public string? FileAnalysisBaseUrl { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
+    // Weather (issue #348). All four take system-settings.update. The two strings are AllowEmpty:
+    // empty is meaningful ("not configured" / "no default"), and null already means "leave unchanged".
+    // ---------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// An email address or an <c>https://</c> URL, sent in the <c>User-Agent</c> of every MET request.
+    /// Shape-checked by <c>WeatherRules.ValidateContact</c>; empty turns weather fetching off.
+    /// </summary>
+    [StringLength(WeatherRules.ContactMaxLength, ErrorMessage =
+        "The weather contact cannot exceed {1} characters.")]
+    public string? WeatherUserAgentContact { get; set; }
+
+    [Range(SystemSettingsBounds.WeatherRefreshIntervalMinutesMin,
+        SystemSettingsBounds.WeatherRefreshIntervalMinutesMax, ErrorMessage =
+        "The forecast refresh interval must be between {1} and {2} minutes.")]
+    public int? WeatherRefreshIntervalMinutes { get; set; }
+
+    [Range(SystemSettingsBounds.WeatherMaxTrackedLocationsMin,
+        SystemSettingsBounds.WeatherMaxTrackedLocationsMax, ErrorMessage =
+        "Places on a schedule must be between {1} and {2}.")]
+    public int? WeatherMaxTrackedLocations { get; set; }
+
+    /// <summary>
+    /// A weather location id, or empty for none. Must be selectable — weather on, not archived, not being
+    /// purged — which <c>SystemSettingsService</c> checks inside the write's transaction (400 otherwise).
+    /// </summary>
+    [StringLength(36, ErrorMessage = "Choose a location from the list.")]
+    public string? WeatherDefaultLocationId { get; set; }
 }

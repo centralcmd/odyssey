@@ -284,6 +284,8 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         // width is refused outright by MariaDB (errno 150), which is why the previous 450 had to go.
         DeclareUserAttribution<Calendar>(modelBuilder, nameof(Calendar.CreatedByUserId), nameof(Calendar.UpdatedByUserId));
         DeclareUserAttribution<Location>(modelBuilder, nameof(Location.CreatedByUserId), nameof(Location.UpdatedByUserId));
+        DeclareUserAttribution<WeatherLocation>(modelBuilder, nameof(WeatherLocation.CreatedByUserId), nameof(WeatherLocation.UpdatedByUserId));
+        DeclareUserAttribution<WeatherLocationSite>(modelBuilder, nameof(WeatherLocationSite.AppliedByUserId));
         DeclareUserAttribution<CalendarEvent>(modelBuilder, nameof(CalendarEvent.CreatedByUserId), nameof(CalendarEvent.UpdatedByUserId));
         DeclareUserAttribution<JournalEntry>(modelBuilder, nameof(JournalEntry.CreatedByUserId), nameof(JournalEntry.UpdatedByUserId));
         DeclareUserAttribution<JournalTask>(modelBuilder, nameof(JournalTask.CreatedByUserId), nameof(JournalTask.UpdatedByUserId));
@@ -408,6 +410,15 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
     // Household locations (issue #350).
     public DbSet<Location> Locations { get; set; }
+
+    // Weather (issue #348). The four history tables and the sites are append-only; WeatherDays is derived.
+    public DbSet<WeatherLocation> WeatherLocations { get; set; }
+    public DbSet<WeatherLocationSite> WeatherLocationSites { get; set; }
+    public DbSet<WeatherLocationSchedule> WeatherLocationSchedules { get; set; }
+    public DbSet<WeatherForecastRun> WeatherForecastRuns { get; set; }
+    public DbSet<WeatherForecastStep> WeatherForecastSteps { get; set; }
+    public DbSet<WeatherObservation> WeatherObservations { get; set; }
+    public DbSet<WeatherDay> WeatherDays { get; set; }
     public DbSet<CalendarEvent> CalendarEvents { get; set; }
     public DbSet<RecurrencePattern> RecurrencePatterns { get; set; }
 

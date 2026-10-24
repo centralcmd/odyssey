@@ -2,6 +2,7 @@ using Odyssey.Context;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos;
+using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Api.SystemSettings;
 
@@ -812,6 +813,69 @@ internal static class SystemSettingsRegistry
             CacheKeyToEvict = PropertyLimitsLookup.CacheKey,
             Read = r => r.PropertyMaxSmartTagsPerProperty,
             Write = (dto, v) => dto.PropertyMaxSmartTagsPerProperty = v,
+        },
+
+        // ── Weather (issue #348 §11) ──────────────────────────────────────────────────────────────
+        //
+        // The ordinary write claim on all four, and one cache key: the scheduler and the read path read
+        // them together through WeatherSettingsLookup. The contact is an email or https URL sent in the
+        // User-Agent, so its shape check keeps CR/LF out of a header; the fetch path ALSO fails closed on
+        // an unusable stored value (ReadValidator), so a row planted by a restore cannot reach MET either.
+        new StringSetting
+        {
+            Key = SystemSettingsKeys.WeatherUserAgentContact,
+            FieldName = nameof(SystemSettingsUpdate.WeatherUserAgentContact),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = SystemSettingsDefaults.WeatherUserAgentContact,
+            CacheKeyToEvict = WeatherSettingsLookup.CacheKey,
+            MaxLength = WeatherRules.ContactMaxLength,
+            AllowEmpty = true,
+            Validator = WeatherRules.ValidateContact,
+            ReadValidator = WeatherRules.ValidateContact,
+            Read = r => r.WeatherUserAgentContact,
+            Write = (dto, v) => dto.WeatherUserAgentContact = v,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.WeatherRefreshIntervalMinutes,
+            Min = SystemSettingsBounds.WeatherRefreshIntervalMinutesMin,
+            Max = SystemSettingsBounds.WeatherRefreshIntervalMinutesMax,
+            FieldName = nameof(SystemSettingsUpdate.WeatherRefreshIntervalMinutes),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.WeatherRefreshIntervalMinutes),
+            CacheKeyToEvict = WeatherSettingsLookup.CacheKey,
+            Read = r => r.WeatherRefreshIntervalMinutes,
+            Write = (dto, v) => dto.WeatherRefreshIntervalMinutes = v,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.WeatherMaxTrackedLocations,
+            Min = SystemSettingsBounds.WeatherMaxTrackedLocationsMin,
+            Max = SystemSettingsBounds.WeatherMaxTrackedLocationsMax,
+            FieldName = nameof(SystemSettingsUpdate.WeatherMaxTrackedLocations),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.WeatherMaxTrackedLocations),
+            CacheKeyToEvict = WeatherSettingsLookup.CacheKey,
+            Read = r => r.WeatherMaxTrackedLocations,
+            Write = (dto, v) => dto.WeatherMaxTrackedLocations = v,
+        },
+        // GUID shape only here. Selectability (weather on, not archived, not purging) is a question about
+        // other tables, so SystemSettingsService asks IWeatherLocationRules inside the write's
+        // transaction — the one key that takes that path, which a guard test pins.
+        new StringSetting
+        {
+            Key = SystemSettingsKeys.WeatherDefaultLocationId,
+            FieldName = nameof(SystemSettingsUpdate.WeatherDefaultLocationId),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = SystemSettingsDefaults.WeatherDefaultLocationId,
+            CacheKeyToEvict = WeatherSettingsLookup.CacheKey,
+            MaxLength = 36,
+            AllowEmpty = true,
+            Validator = WeatherRules.ValidateDefaultLocationId,
+            ReadValidator = WeatherRules.ValidateDefaultLocationId,
+            Canonicalize = v => Guid.TryParse(v, out var id) ? id.ToString("D") : v,
+            Read = r => r.WeatherDefaultLocationId,
+            Write = (dto, v) => dto.WeatherDefaultLocationId = v,
         },
 
     ];

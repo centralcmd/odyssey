@@ -11,6 +11,12 @@ namespace Odyssey.Core.Preferences;
 /// </summary>
 public sealed class UserPreferencesService
 {
+    /// <summary>
+    /// The caller's weather location (issue #348 §4), as <c>{"defaultLocationId": "…"}</c>. Written only by
+    /// <c>PUT /api/weather/preferences</c>, which validates it; the generic endpoint refuses the key.
+    /// </summary>
+    public const string WeatherKey = "weather-preferences";
+
     private readonly OdysseyContext context;
     private readonly TimeProvider timeProvider;
 
@@ -30,12 +36,38 @@ public sealed class UserPreferencesService
         return preference is null ? null : ToDto(preference);
     }
 
-    /// <summary>Create or replace the caller's preference for <paramref name="pageKey"/>.</summary>
-    public async Task<UserPreferenceResponse> UpsertAsync(
-        string userId, string pageKey, string preferencesJson, CancellationToken cancellationToken)
+    /// <summary>
+    /// Create or replace the caller's preference for <paramref name="pageKey"/>. A server-owned key is a
+    /// <c>400</c>: its value is validated by its own endpoint, which this path would bypass.
+    /// </summary>
+    public Task<UserPreferenceResponse> UpsertAsync(
+        string userId, string pageKey, string preferencesJson, CancellationToken cancellationToken) =>
+        UpsertCoreAsync(userId, pageKey, preferencesJson, serverWrite: false, cancellationToken);
+
+    /// <summary>The write path for a server-owned key, after its owner has validated the value.</summary>
+    internal Task<UserPreferenceResponse> UpsertServerOwnedAsync(
+        string userId, string pageKey, string preferencesJson, CancellationToken cancellationToken) =>
+        UpsertCoreAsync(userId, pageKey, preferencesJson, serverWrite: true, cancellationToken);
+
+    // The column's collation is case- and trailing-space-insensitive, so "Weather-Preferences " names the
+    // same row; compare the same way, against both the requested key and the row it resolved to.
+    private static bool IsServerOwned(string key) =>
+        string.Equals(key.TrimEnd(), WeatherKey, StringComparison.OrdinalIgnoreCase);
+
+    private async Task<UserPreferenceResponse> UpsertCoreAsync(
+        string userId, string pageKey, string preferencesJson, bool serverWrite, CancellationToken cancellationToken)
     {
+        if (!serverWrite && IsServerOwned(pageKey))
+        {
+            throw new DomainValidationException("This preference is set through its own settings.", code: null, field: "pageKey");
+        }
+
         var preference = await context.UserPreferences
             .FirstOrDefaultAsync(item => item.UserId == userId && item.Key == pageKey, cancellationToken);
+        if (!serverWrite && preference is not null && IsServerOwned(preference.Key))
+        {
+            throw new DomainValidationException("This preference is set through its own settings.", code: null, field: "pageKey");
+        }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         if (preference is null)

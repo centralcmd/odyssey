@@ -1,0 +1,138 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    WeatherWidget — the dashboard weather card (issue #348; design system · Weather.jsx, specimen
+    components/WeatherWidget). Every role holds weather.read. Current conditions and the coming days for
+    the caller's place, yesterday's measured values, and a picker that saves the caller's OWN default.
+    There is deliberately no refresh: only rate-limited Admin actions may bring a fetch forward (§7.14).
+    Times are UTC on the wire, so they are shown in the viewer's clock and labelled "your time".
+*@
+
+<OdsCard Class="ods-outline wx-card" aria-busy="@(_phase == Phase.Loading || _saving ? "true" : null)">
+    <OdsCardHeader>
+        <div class="odc-card-header-ttl">
+            <span class="wx-ttl" role="heading" aria-level="2">
+                <OdsMIcon Name="wb_sunny" Size="20" />
+                <span>Weather<span class="wx-ttl-loc">@TitlePlace</span></span>
+            </span>
+        </div>
+        @if (ShowPicker)
+        {
+            <div class="wx-picker">
+                @* Never disabled during a save: disabling the focused control drops focus to <body> (WCAG 2.4.3).
+                   ChooseAsync ignores a change while one is saving; aria-busy and the announcement carry the state. *@
+                <OdsSelect Label="Location" Value="@PickerValue" ValueChanged="ChooseAsync" Options="PickerOptions" />
+            </div>
+        }
+    </OdsCardHeader>
+    <OdsCardBody>
+        @if (_prefError is not null)
+        {
+            <div class="wx-pref-error" role="alert"><OdsMIcon Name="error_outline" Size="16" />@_prefError</div>
+        }
+        @Body
+    </OdsCardBody>
+    <OdsLiveAnnouncer Message="@_announce" />
+</OdsCard>
+
+@code {
+    private RenderFragment Skeleton => @<div class="wx-skel" role="status" aria-label="Loading weather">
+        <OdsSkeleton Variant="OdsSkeletonVariant.Block" Width="14rem" Height="5.25rem" />
+        <div class="wx-skel-days">
+            @for (var i = 0; i < 7; i++)
+            {
+                <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="7rem" />
+            }
+        </div>
+    </div>;
+
+    // Each state without a forecast names its way out.
+    private RenderFragment Empty(string icon, string title, string text, RenderFragment? action) => @<div class="wx-empty">
+        <span class="wx-empty-ic" aria-hidden="true"><OdsMIcon Name="@icon" Size="22" /></span>
+        <div class="wx-empty-text">
+            <div class="wx-empty-title">@title</div>
+            <div>@text</div>
+            @if (action is not null)
+            {
+                <div class="wx-empty-act">@action</div>
+            }
+        </div>
+    </div>;
+
+    private RenderFragment Forecast => FocusForecast(_current!.Step!, _resolved!, TodaySummary, Coming, Yesterday);
+
+    private RenderFragment FocusForecast(WeatherStep step, WeatherLocationRef place, WeatherDaySummary? today,
+        IReadOnlyList<WeatherDaySummary> coming, WeatherDaySummary? yesterday) => @<div class="wx-body">
+        <section class="wx-now" aria-label="@($"Now at {place.Name}")">
+            <div class="wx-now-main">
+                <span class="wx-now-glyph" aria-hidden="true"><OdsMIcon Name="@(WeatherVisuals.SymbolOf(step.SymbolCode)?.Icon ?? "cloud")" Size="52" /></span>
+                <div class="wx-now-text">
+                    <div class="wx-now-temp">@WeatherVisuals.Temp(step.AirTemperatureC)</div>
+                    <div class="wx-now-label">@(WeatherVisuals.SymbolOf(step.SymbolCode)?.Label ?? "Unknown conditions")</div>
+                    @if (today?.Forecast is { } t)
+                    {
+                        <div class="wx-now-range">Today @WeatherVisuals.TempRange(t.MinTempC, t.MaxTempC)</div>
+                    }
+                </div>
+            </div>
+            <dl class="wx-facts">
+                <div><dt><OdsMIcon Name="air" Size="16" />Wind</dt><dd><WeatherWind Speed="step.WindSpeedMps" Gust="step.WindGustMps" Degrees="step.WindFromDirectionDeg" /></dd></div>
+                <div><dt><OdsMIcon Name="water_drop" Size="16" />Next hour</dt><dd>@WeatherVisuals.Mm(step.PrecipitationMm) · @WeatherVisuals.Pct(step.PrecipitationProbabilityPct) chance</dd></div>
+                <div><dt><OdsMIcon Name="water" Size="16" />Humidity</dt><dd>@WeatherVisuals.Pct(step.RelativeHumidityPct)</dd></div>
+                <div><dt><OdsMIcon Name="speed" Size="16" />Pressure</dt><dd>@WeatherVisuals.Hpa(step.AirPressureHpa)</dd></div>
+                @if (step.UvIndexClearSky is { } uv)
+                {
+                    <div><dt><OdsMIcon Name="light_mode" Size="16" />UV, clear sky</dt><dd>@uv.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)</dd></div>
+                }
+            </dl>
+        </section>
+
+        @if (coming.Count > 0)
+        {
+            @* tabindex: the strip scrolls sideways on narrow screens, so it must be reachable by keyboard. *@
+            <ol class="wx-days" role="list" tabindex="0" aria-label="@($"Forecast for {place.Name}, next {coming.Count} days")">
+                @foreach (var day in coming)
+                {
+                    var f = day.Forecast!;
+                    <li class="wx-day">
+                        <span class="wx-day-name" title="@WeatherVisuals.DayLong(day.Date)">@WeatherVisuals.DayShort(day.Date, Today)</span>
+                        <span aria-hidden="true"><WeatherGlyph Code="@f.SymbolCode" Size="28" /></span>
+                        <span class="wx-day-temp">
+                            <span class="wx-hi" aria-hidden="true">@WeatherVisuals.Temp(f.MaxTempC)</span><span class="wx-lo" aria-hidden="true"> / @WeatherVisuals.Temp(f.MinTempC)</span>
+                            <span class="sr-only">@DaySentence(day)</span>
+                        </span>
+                        <span class="wx-day-precip @(f.PrecipitationMm > 0 ? null : "none")"><OdsMIcon Name="water_drop" Size="14" />@WeatherVisuals.Mm(f.PrecipitationMm)</span>
+                        @if (f.CoverageHours < 24)
+                        {
+                            <span class="wx-day-partial">@f.CoverageHours h of forecast</span>
+                        }
+                    </li>
+                }
+            </ol>
+        }
+
+        @if (yesterday?.Observed is { } o)
+        {
+            <div class="wx-measured">
+                <OdsMIcon Name="history" Size="16" />
+                <span><b>Yesterday, measured:</b> @WeatherVisuals.TempRange(o.MinTempC, o.MaxTempC) · @WeatherVisuals.Mm(o.PrecipitationMm)</span>
+                <span class="wx-muted">Station day in UTC; rain counted 06:00–06:00 UTC.</span>
+            </div>
+        }
+
+        <div class="wx-foot">
+            @if (_current!.Stale)
+            {
+                <span class="wx-stale">
+                    <OdsMIcon Name="cloud_off" Size="16" />
+                    Not up to date — MET Norway didn’t answer the last refresh. Showing the forecast issued @WeatherVisuals.Clock(step.IssuedAtUtc) (your time).
+                </span>
+            }
+            else
+            {
+                <span>Forecast issued @WeatherVisuals.Clock(step.IssuedAtUtc) (your time)</span>
+            }
+            <WeatherAttributionLine Attribution="_current.Attribution" />
+        </div>
+    </div>;
+}

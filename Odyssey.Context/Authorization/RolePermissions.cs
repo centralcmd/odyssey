@@ -64,6 +64,16 @@ public static class RolePermissions
         LocationsUpdate,
     ];
 
+    /// <summary>
+    /// The weather claims every role holds (issue #348 §7.2). Configuring weather and purging its history
+    /// are Admin-only and reach Admin through <see cref="AllClaims"/> alone.
+    /// </summary>
+    public static readonly string[] WeatherReaderClaims =
+    [
+        WeatherRead,
+        WeatherPreferencesUpdate,
+    ];
+
     public static readonly string[] AllClaims =
     [
         AccountsCreate,
@@ -131,6 +141,10 @@ public static class RolePermissions
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
         ..CalendarModuleClaims,
+        ..WeatherReaderClaims,
+        WeatherLocationsRead,
+        WeatherLocationsUpdate,
+        WeatherHistoryDelete,
         ProfileImagesRead,
         SystemSettingsRead,
         SystemSettingsUpdate,
@@ -202,6 +216,7 @@ public static class RolePermissions
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
         ..CalendarModuleClaims,
+        ..WeatherReaderClaims,
         ProfileImagesRead,
     ];
 
@@ -236,6 +251,7 @@ public static class RolePermissions
         ..JournalModuleClaims,
         ..PhotosModuleClaims,
         ..CalendarModuleClaims,
+        ..WeatherReaderClaims,
         ProfileImagesRead,
     ];
 
@@ -261,6 +277,9 @@ public static class RolePermissions
         // is the household's own, so Guest reads it — addresses and descriptions included. Narrowing that
         // later is a change here, not in code.
         LocationsRead,
+        // Weather (issue #348 §7.2): reading it and choosing one's own weather location. weather.read
+        // implies locations.read on every role (AuthorizationPolicyTests pins that), which Guest holds.
+        ..WeatherReaderClaims,
         // Granted to Guest too (issue #94 §10.5). The picture identifies a person the caller already
         // meets by name on shared records, and the point of the claim is that it is REVOCABLE per role
         // without a code change — not that it narrows anything today.

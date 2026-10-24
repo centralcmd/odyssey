@@ -43,6 +43,8 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         ("RecurrencePatterns", "CreatedByUserId"), ("RecurrencePatterns", "UpdatedByUserId"),
         // Household locations (issue #350): shared data that outlives its author.
         ("Locations", "CreatedByUserId"), ("Locations", "UpdatedByUserId"),
+        ("WeatherLocations", "CreatedByUserId"), ("WeatherLocations", "UpdatedByUserId"),
+        ("WeatherLocationSites", "AppliedByUserId"),
         ("AccountFiles", "AttachedByUserId"),
         ("ContractFiles", "AttachedByUserId"),
         ("PropertyFiles", "AttachedByUserId"),
