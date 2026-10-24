@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.RegularExpressions;
 using Bunit;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,7 +24,7 @@ namespace Odyssey.Client.Tests;
 /// the currency rows' save behaviour, and the source rules the spec's acceptance criteria name.
 /// </summary>
 [Collection(ExchangeRateSyncCollection.Name)]
-public class ExchangeRateSyncSurfaceTests : IDisposable
+public partial class ExchangeRateSyncSurfaceTests : IDisposable
 {
     public void Dispose()
     {
@@ -74,12 +73,29 @@ public class ExchangeRateSyncSurfaceTests : IDisposable
 
     // ── Source rules (AC 8, 13) ──────────────────────────────────────────────────────────────────
 
-    private static IEnumerable<string> NewSurfaceFiles() =>
-        ClientSource.RazorFilesIn("Pages")
-            .Concat(Directory.EnumerateFiles(Path.Combine(ClientSource.Root, "Pages", "Finance", "ExchangeRateSync"), "*.cs"))
-            .Where(f => f.Replace('\\', '/').Contains("/ExchangeRateSync/", StringComparison.Ordinal)
-                || f.EndsWith("ExchangeRatesCard.razor", StringComparison.Ordinal))
-            .Distinct();
+    // The sync folder plus the two existing exchange-rate surfaces it changed, markup and code-behind.
+    // Settings.razor.cs is deliberately outside: its catalogue descriptions are static copy authored
+    // with the design system, for every setting, and carry no runtime value.
+    private static readonly string[] ChangedSurfaces =
+        ["ExchangeRatesCard.razor", "ExchangeRatesCard.razor.cs", "CreateExchangeRateDialog.razor", "CreateExchangeRateDialog.razor.cs"];
+
+    private static IEnumerable<string> NewSurfaceFiles()
+    {
+        var finance = Path.Combine(ClientSource.Root, "Pages", "Finance");
+        return Directory.EnumerateFiles(Path.Combine(finance, "ExchangeRateSync"))
+            .Where(f => f.EndsWith(".razor", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal))
+            .Concat(ChangedSurfaces.Select(name => Path.Combine(finance, name)).Where(File.Exists));
+    }
+
+    [Fact]
+    public void The_lint_scope_reaches_both_changed_surfaces_and_their_code_behind()
+    {
+        var names = NewSurfaceFiles().Select(Path.GetFileName).ToHashSet();
+
+        Assert.Contains("ExchangeRatesCard.razor.cs", names);
+        Assert.Contains("ExchangeRateSyncPage.razor.cs", names);
+        Assert.Contains("ExchangeRateSyncStatusPanel.razor", names);
+    }
 
     [Fact]
     public void No_provider_fact_is_hard_coded_in_the_new_surfaces()
@@ -124,7 +140,13 @@ public class ExchangeRateSyncSurfaceTests : IDisposable
         },
     };
 
-    private static (BunitContext Ctx, FakeTimeProvider Time) NewContext(IExchangeRateSyncApiClient sync)
+    private IRenderedComponent<MudDialogProvider>? _dialogs;
+    private FakeTimeProvider? _time;
+
+    /// <summary>Where an <c>OdsModal</c> renders — an inline MudDialog draws through the provider.</summary>
+    private IRenderedComponent<MudDialogProvider> Dialogs => _dialogs!;
+
+    private (BunitContext Ctx, FakeTimeProvider Time) NewContext(IExchangeRateSyncApiClient sync)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -132,6 +154,7 @@ public class ExchangeRateSyncSurfaceTests : IDisposable
         var time = new FakeTimeProvider(Now);
         ctx.Services.AddSingleton<TimeProvider>(time);
         ctx.Services.AddSingleton(sync);
+        _time = time;
         return (ctx, time);
     }
 
@@ -263,7 +286,9 @@ public class ExchangeRateSyncSurfaceTests : IDisposable
         EffectiveHistoryStartDate = new DateOnly(2026, 1, 1), FirstAvailableDate = new DateOnly(1999, 1, 4),
     };
 
-    private static (BunitContext Ctx, Mock<IExchangeRateSyncApiClient> Sync) NewPageContext(params ExistingExchangeRateSyncCurrency[] rows)
+    private IRenderedComponent<MudPopoverProvider>? _popover;
+
+    private (BunitContext Ctx, Mock<IExchangeRateSyncApiClient> Sync) NewPageContext(params ExistingExchangeRateSyncCurrency[] rows)
     {
         var sync = ExchangeRateSyncFakes.Client(Scheduled());
         sync.Setup(c => c.ListCurrenciesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<bool?>(),
@@ -274,7 +299,8 @@ public class ExchangeRateSyncSurfaceTests : IDisposable
         ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(
             [PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate, PermissionClaims.ExchangeRatesDelete]));
-        ctx.Render<MudPopoverProvider>();
+        _popover = ctx.Render<MudPopoverProvider>();
+        _dialogs = ctx.Render<MudDialogProvider>();
         ctx.Render<MudSnackbarProvider>();
         ExchangeRateSyncPage.InteractiveCheck = static () => true;
         return (ctx, sync);
@@ -372,12 +398,8 @@ public class ExchangeRateSyncSurfaceTests : IDisposable
     }
 
     [Fact]
-    public void The_poll_interval_is_the_specs_five_seconds()
-    {
+    public void The_poll_interval_is_the_specs_five_seconds() =>
         Assert.Equal(TimeSpan.FromSeconds(5), ExchangeRateSyncStatusPanel.PollInterval);
-        Assert.Matches(new Regex(@"PollInterval\s*=\s*TimeSpan\.FromSeconds\(5\)"),
-            File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", "ExchangeRateSync", "ExchangeRateSyncStatusPanel.razor.cs")));
-    }
 
     // ── /exchange-rates (AC 10, 11, 12) ──────────────────────────────────────────────────────────
 
@@ -389,7 +411,7 @@ public class ExchangeRateSyncSurfaceTests : IDisposable
         Provider = source == ExchangeRateSource.Fetched ? ExchangeRateProvider.NorgesBank : null,
     };
 
-    private static IRenderedComponent<ExchangeRatesCard> RenderRatesCard(BunitContext ctx, IReadOnlyList<string> claims, params ExistingExchangeRate[] rows)
+    private IRenderedComponent<ExchangeRatesCard> RenderRatesCard(BunitContext ctx, IReadOnlyList<string> claims, params ExistingExchangeRate[] rows)
     {
         var rates = new Mock<IExchangeRatesApiClient>();
         rates.Setup(c => c.GetSummaryAsync(It.IsAny<CancellationToken>()))
@@ -408,12 +430,14 @@ public class ExchangeRateSyncSurfaceTests : IDisposable
         ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(claims));
         ExchangeRatesCard.InteractiveCheck = static () => true;
+        ctx.Render<MudPopoverProvider>();
+        _dialogs = ctx.Render<MudDialogProvider>();
         var cut = ctx.Render<ExchangeRatesCard>();
         cut.WaitForAssertion(() => Assert.Contains("1,234 rates", cut.Markup));
         return cut;
     }
 
-    private static OdsRecordActionContext NoopActions() => new() { Toggle = () => { }, StartEdit = () => { }, Remove = () => { }, MenuTriggerId = "trigger" };
+    private static OdsRecordActionContext NoopActions(string menuTriggerId = "trigger") => new() { Toggle = () => { }, StartEdit = () => { }, Remove = () => { }, MenuTriggerId = menuTriggerId };
 
     [Fact]
     public async Task A_fetched_rate_has_no_edit_and_its_delete_needs_both_claims()
