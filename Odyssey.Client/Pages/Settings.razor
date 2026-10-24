@@ -325,7 +325,7 @@
     // hides the control's own help/error node inside the frame.
     private RenderFragment SettingField(SettingItem item) => item.Control switch
     {
-        SettingControl.Toggle or SettingControl.Export => TileField(item),
+        SettingControl.Toggle or SettingControl.Export or SettingControl.Status or SettingControl.Action => TileField(item),
         _ => FrameField(item),
     };
 

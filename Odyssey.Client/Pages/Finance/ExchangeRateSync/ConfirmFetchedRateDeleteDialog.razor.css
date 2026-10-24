@@ -1,0 +1,5 @@
+.xrs-confirm-body {
+    margin: 0 0 var(--space-3);
+    font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+}

@@ -1,0 +1,59 @@
+@*
+    The two destructive confirmations of the exchange-rate sync (issue #351 §3.D; Odyssey Design System ·
+    components/DialogFetchedRates): "Delete fetched rates for {code}?" on the sync page and "Delete this
+    fetched rate?" on /exchange-rates. One shell, because the anatomy is the SecretClearDialog's in both:
+    the error-toned lead icon, Cancel first and focused on open, the danger action on the right.
+
+    Focus returns to the row's menu trigger (ReturnFocusToId), since the menu item that opened the
+    dialog unmounts with its popover. A refusal keeps the dialog open with the server's message in an
+    alert, bound as text — never markup.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged"
+               Icon="@Icon"
+               IconTone="OdsModalTone.Error"
+               Title="@Title"
+               RequiredLegend="false"
+               InitialFocus="OdsModalInitialFocus.Cancel"
+               ReturnFocusToId="@ReturnFocusToId"
+               SubmitLabel="@ConfirmLabel"
+               SubmitIcon="delete"
+               SubmitVariant="OdsButtonVariant.Danger"
+               OnSubmit="SubmitAsync">
+    <p class="xrs-confirm-body">@Body</p>
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@_error</OdsAlert>
+    }
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string Body { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string ConfirmLabel { get; set; } = string.Empty;
+
+    [Parameter] public string Icon { get; set; } = "delete";
+
+    /// <summary>The row menu trigger's id (<c>OdsRecordActionContext.MenuTriggerId</c>).</summary>
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>
+    /// Performs the delete. Returns null on success (the dialog closes), or the message to show while it
+    /// stays open.
+    /// </summary>
+    [Parameter, EditorRequired] public Func<Task<string?>> OnConfirm { get; set; } = default!;
+
+    private string? _error;
+
+    private async Task<bool> SubmitAsync()
+    {
+        _error = await OnConfirm();
+        return _error is null;
+    }
+}

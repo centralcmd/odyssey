@@ -37,11 +37,12 @@ public class SettingsCatalogueTests
     private static IReadOnlyList<Settings.SettingItem> AllItems => Settings.AllItems.ToList();
 
     /// <summary>
-    /// Rows that are actions rather than stored settings — the database-export button. It has no
-    /// backing key, so it is exempt from the accessor rules below.
+    /// Rows that are not stored settings — the database-export button, and the exchange-rate sync's
+    /// status tile and action rows (issue #351). None has a backing key, so they are exempt from the
+    /// accessor rules below.
     /// </summary>
     private static bool IsStoredSetting(Settings.SettingItem item) =>
-        item.Control != Settings.SettingControl.Export;
+        !Settings.IsTileOnly(item.Control);
 
     [Fact]
     public void Every_stored_row_declares_a_field_a_load_and_a_write()
