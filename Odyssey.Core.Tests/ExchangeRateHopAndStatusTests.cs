@@ -173,6 +173,7 @@ public class ExchangeRateHopAndStatusTests
         Assert.Equal("Source: Norges Bank (NLOD 2.0)", summary.Attribution);
         Assert.Equal(Now.AddDays(-1), summary.LatestAsOfUtc);
         Assert.Equal("Norwegian time", summary.FetchedRateTimeZoneLabel);
+        Assert.Equal("Norges Bank", summary.ProviderDisplayName);
     }
 
     [Fact]
