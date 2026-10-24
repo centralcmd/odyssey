@@ -164,6 +164,25 @@ Until then, treat **v9** as the truth.
   through `Variant="OdsEmptyStateVariant.Line"` when a surface chooses between the two.
   `OdsRecordSection` wraps a record band's divider, its optional refused-write notice and that empty
   line, so a section stops re-deciding what "nothing here" looks like.
+- **An unavailable control that may hold focus is `AriaDisabled`, never `Disabled`** (issue #351).
+  A native `disabled` drops focus to `<body>`, so a button that becomes unavailable *because it was
+  pressed* (Run now) loses the user's place. `OdsButton.AriaDisabled` and `OdsSwitch.AriaDisabled`
+  keep the control focusable, set `aria-disabled` and swallow the click or change; put the reason
+  beside it as visible text. `OdsSwitch.Busy` is the same plus `aria-busy`, for a save in flight.
+- **A non-optimistic `OdsSwitch` is reset with `ResetKey`, not by re-assigning `Value`.** MudSwitch
+  keeps its own checked state, so a refused save would leave the thumb where the user put it. Bump
+  `ResetKey` and the switch rebuilds from the model and takes focus back.
+- **A dialog opened from a row's `⋯` menu passes `ReturnFocusToId="@ctx.MenuTriggerId"`.** The menu
+  item that opened it unmounts with its popover, so the modal's captured opener is gone by close;
+  the fallback chain is that id → the opener → the page `<h1>`. A destructive confirmation also
+  passes `InitialFocus="OdsModalInitialFocus.Cancel"`.
+- **`OdsLiveAnnouncer.Announce(text)` re-announces identical text; setting `Message` does not.** A
+  screen reader ignores a live region whose content did not change, so two "Rate deleted" in a row
+  would be heard once. `Announce` clears, waits a frame and sets. `OdsAlert.Live` picks
+  `alert`/`status` explicitly when the severity's default role is wrong for the surface.
+- **`OdsRecordTable` ignores a row click that lands inside an interactive element**, so a switch or
+  link in a cell no longer also expands the row. Focus follows expand/collapse and edit start/end,
+  and `OdsRecordEditContext.Done()` ends an edit the template saved itself.
 
 ## Running the client while iterating
 
