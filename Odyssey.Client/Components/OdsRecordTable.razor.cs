@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using MudBlazor;
 
 namespace Odyssey.Client.Components;
 
 public partial class OdsRecordTable<TRow>
 {
+    [Inject] private IJSRuntime Js { get; set; } = default!;
+
     /// <summary>Rows to render (already filtered by the parent).</summary>
     [Parameter, EditorRequired] public IEnumerable<TRow> Rows { get; set; } = [];
 
@@ -130,6 +133,78 @@ public partial class OdsRecordTable<TRow>
     private readonly HashSet<object> _editIds = [];
     private readonly HashSet<object> _savedIds = [];
 
+    // Stable per-row element ids for focus management — keyed by the row key, not its index, so a
+    // sort between a request and the render that honours it still finds the right row.
+    private readonly string _tableId = $"odc-rec-{Guid.NewGuid():N}";
+    private readonly Dictionary<object, int> _rowSlots = [];
+    private int _nextSlot;
+
+    private string SlotFor(object key)
+    {
+        if (!_rowSlots.TryGetValue(key, out var slot))
+            _rowSlots[key] = slot = _nextSlot++;
+        return $"{_tableId}-{slot}";
+    }
+
+    // Slots of rows no longer passed in are dropped, so a paged table's map tracks the page rather than
+    // every row it has ever shown. A row that returns gets a fresh slot; ids are never reused.
+    protected override void OnParametersSet()
+    {
+        if (_rowSlots.Count == 0)
+            return;
+        var present = Rows.Select(RowKey).ToHashSet();
+        foreach (var gone in _rowSlots.Keys.Where(k => !present.Contains(k)).ToList())
+            _rowSlots.Remove(gone);
+    }
+
+    private string MenuIdFor(object key) => $"{SlotFor(key)}-menu";
+
+    private string ExpandIdFor(object key) => $"{SlotFor(key)}-expand";
+
+    private string PanelIdFor(object key) => $"{SlotFor(key)}-panel";
+
+    private enum FocusMove { None, IntoPanel, EditField, Chevron, MenuTrigger }
+
+    private (FocusMove Move, object? Key) _pendingFocus;
+
+    private bool _clicksTracked;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_clicksTracked)
+        {
+            _clicksTracked = true;
+            try
+            { await Js.InvokeVoidAsync("odsRecTrackClicks", _tableId); }
+            catch (JSException) { }
+        }
+
+        var (move, key) = _pendingFocus;
+        if (move == FocusMove.None || key is null)
+            return;
+        _pendingFocus = (FocusMove.None, null);
+        try
+        {
+            switch (move)
+            {
+                // Two frames for every move a menu item can start (View details, Edit, Collapse): the row
+                // menu restores focus to its own trigger as it closes, and the move has to land after
+                // that restore, never race it.
+                case FocusMove.IntoPanel:
+                case FocusMove.EditField:
+                    await Js.InvokeVoidAsync("odsFocusFirstIn", PanelIdFor(key), true, 2);
+                    break;
+                case FocusMove.Chevron:
+                    await Js.InvokeVoidAsync("odsFocusFirstIn", ExpandIdFor(key), true, 2);
+                    break;
+                case FocusMove.MenuTrigger:
+                    await Js.InvokeVoidAsync("odsFocusFirstIn", MenuIdFor(key), false, 0);
+                    break;
+            }
+        }
+        catch (JSException) { }
+    }
+
     protected override void OnInitialized() => _sort = DefaultSort;
 
     // Controlled when the parent bound Sort (@bind-Sort → SortChanged has a delegate). Then the bound
@@ -253,10 +328,18 @@ public partial class OdsRecordTable<TRow>
     }
 
     // ── Open / edit state ─────────────────────────────────────────────────────
-    private void OnRowClick(object id, bool editing)
+    private async Task OnRowClickAsync(object id, bool editing)
     {
-        if (!editing)
-            ToggleRow(id);
+        if (editing || !CanExpand)
+            return;
+        // A click on a control inside a cell (a switch, a link) belongs to that control.
+        try
+        {
+            if (await Js.InvokeAsync<bool>("odsRecClickWasInteractive", _tableId))
+                return;
+        }
+        catch (JSException) { }
+        ToggleRow(id);
     }
 
     private void ToggleRow(object id)
@@ -264,9 +347,15 @@ public partial class OdsRecordTable<TRow>
         if (!CanExpand)
             return;
         if (_openIds.Contains(id))
+        {
             _openIds.Remove(id);
+            _pendingFocus = (FocusMove.Chevron, id);
+        }
         else
+        {
             OpenRow(id);
+            _pendingFocus = (FocusMove.IntoPanel, id);
+        }
     }
 
     private void OpenRow(object id)
@@ -281,9 +370,14 @@ public partial class OdsRecordTable<TRow>
     {
         OpenRow(id);
         _editIds.Add(id);
+        _pendingFocus = (FocusMove.EditField, id);
     }
 
-    private void EndEdit(object id) => _editIds.Remove(id);
+    private void EndEdit(object id)
+    {
+        if (_editIds.Remove(id))
+            _pendingFocus = (FocusMove.MenuTrigger, id);
+    }
 
     // Leaves edit mode and flashes "Saved" only when the host did not report a failure (issue #252).
     // A throwing OnSave is routed to the renderer's error handling rather than escaping into a task
@@ -336,11 +430,13 @@ public partial class OdsRecordTable<TRow>
         Toggle = () => ToggleRow(id),
         StartEdit = () => StartEdit(id),
         Remove = () => DoDelete(id),
+        MenuTriggerId = MenuIdFor(id),
     };
 
     private OdsRecordEditContext EditCtx(object id) => new()
     {
         Save = patch => DoSaveAsync(id, patch),
         Cancel = () => EndEdit(id),
+        Done = () => { EndEdit(id); StateHasChanged(); },
     };
 }

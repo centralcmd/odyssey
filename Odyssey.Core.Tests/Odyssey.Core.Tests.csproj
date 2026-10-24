@@ -18,6 +18,7 @@
   <ItemGroup>
     <!-- Recorded live responses from Kartverket and Open-Meteo (issue #350 AC 8). -->
     <None Include="Fixtures\Geocoding\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\NorgesBank\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -15,15 +15,21 @@
 @* Icon / IconRight are Material Icons ligatures (DS convention), not MudBlazor
    SVG constants — render them as material-icons spans rather than via MudButton's
    StartIcon/EndIcon (which expect SVG and would silently show nothing). *@
+@* Href renders MudButton's own <a> — navigation is a link, not a button (issue #351). AriaDisabled is
+   the focusable unavailable state: aria-disabled, clicks swallowed, focus kept — for an action that
+   becomes unavailable while it has focus (Run now once a run starts), where a native disabled would
+   drop focus to <body>. *@
 <MudButton Variant="@MudVariant"
            Color="@MudColor"
            FullWidth="@Full"
-           Disabled="@(Disabled || Loading)"
+           Disabled="@(Disabled || (Loading && !AriaDisabled))"
            ButtonType="@Type"
-           OnClick="OnClick"
-           Class="@Class"
+           Href="@Href"
+           OnClick="HandleClickAsync"
+           Class="@ButtonClass"
            aria-label="@AriaLabel"
            aria-busy="@(Loading ? "true" : null)"
+           aria-disabled="@(AriaDisabled ? "true" : null)"
            @attributes="UserAttributes">
     @if (Loading)
     {
@@ -60,10 +66,19 @@
     /// <summary>Stretch to the full width of the container.</summary>
     [Parameter] public bool Full { get; set; }
 
-    /// <summary>Busy state — label dims, a spinner overlays, the button is non-interactive.</summary>
+    /// <summary>Busy state — label dims, a spinner overlays, the button is non-interactive. Natively
+    /// disabled unless <see cref="AriaDisabled"/> is also set, which keeps focus on a button pressed to
+    /// start the work it is now busy with.</summary>
     [Parameter] public bool Loading { get; set; }
 
     [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Focusable unavailable state — <c>aria-disabled</c>, clicks ignored, focus kept. Pair it
+    /// with visible text saying why.</summary>
+    [Parameter] public bool AriaDisabled { get; set; }
+
+    /// <summary>Render an <c>&lt;a href&gt;</c> instead of a button — for navigation.</summary>
+    [Parameter] public string? Href { get; set; }
 
     /// <summary>
     /// Count pill on the button — a pending quantity this action will commit (unsaved changes, queued
@@ -89,6 +104,10 @@
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private string? ButtonClass => AriaDisabled ? $"odc-btn-aria-disabled {Class}".TrimEnd() : Class;
+
+    private Task HandleClickAsync(MouseEventArgs e) => AriaDisabled || Loading ? Task.CompletedTask : OnClick.InvokeAsync(e);
 
     private Variant MudVariant => Variant switch
     {

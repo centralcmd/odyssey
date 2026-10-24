@@ -829,6 +829,18 @@
 .odc-btn-icon { font-size: 18px; line-height: 1; }
 .odc-btn-icon.start { margin-inline-end: 8px; }
 .odc-btn-icon.end { margin-inline-start: 8px; }
+/* OdsButton AriaDisabled — the focusable unavailable state (issue #351): MudBlazor's own disabled
+   look, without the native disabled that would drop focus. */
+.mud-button-root.odc-btn-aria-disabled,
+.mud-button-root.odc-btn-aria-disabled:hover {
+    color: var(--mud-palette-action-disabled);
+    background-color: var(--mud-palette-action-disabled-background);
+    border-color: transparent;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+.mud-button-root.mud-button-text.odc-btn-aria-disabled,
+.mud-button-root.mud-button-outlined.odc-btn-aria-disabled { background-color: transparent; }
 
 /* ---------- MultiSelect (OdsMultiSelect — DS components/MultiSelect) ----------
    A trigger button (label + count badge + chevron) over a popover (OdsPopupMenu) whose
@@ -4681,3 +4693,30 @@ tr:focus-within > .odc-rowactions.reveal,
   .loc-result-name, .loc-result-desc { white-space: normal; overflow-wrap: anywhere; }
 }
 .loc-picked:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; }
+
+/* OdsSwitch Busy / AriaDisabled (issue #351): focusable, aria-disabled. Only the track and thumb dim —
+   the label keeps full text contrast, unlike the native disabled state. A busy switch spins a ring on
+   its thumb. */
+.odc-switch-locked { cursor: not-allowed; }
+.odc-switch-locked .mud-switch-track,
+.odc-switch-locked .mud-switch-button { opacity: 0.6; }
+.odc-switch-busy { cursor: progress; }
+.odc-switch-busy .mud-switch-button::after {
+    content: "";
+    position: absolute;
+    inset: 25%;
+    border-radius: 50%;
+    border: var(--border-strong) solid var(--mud-palette-primary);
+    border-right-color: transparent;
+    animation: odc-switch-spin 0.8s linear infinite;
+    pointer-events: none;
+}
+@keyframes odc-switch-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .odc-switch-busy .mud-switch-button::after { animation-duration: 2.4s; } }
+
+/* Exchange rates card (issue #351 §3.A): the status tile hosts the sync status panel beside its label;
+   Run now's unavailability reason sits left of its button, as visible text. Global, not in
+   Settings.razor.css: these elements are built in the code-behind, which scoped CSS does not reach. */
+.ss-status-host { flex: 1 1 360px; min-width: 0; max-width: 560px; }
+.ss-action { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2) var(--space-3); }
+.ss-action-reason { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }

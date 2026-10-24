@@ -209,12 +209,71 @@
         window.odsCaptureFocusOwner = function () {
             window.odsFocusOwnerStack.push(document.activeElement);
         };
-        window.odsRestoreFocusOwner = function () {
+        window.odsRestoreFocusOwner = function (preferredId) {
             const el = window.odsFocusOwnerStack.pop();
-            // The trigger might have been removed from the DOM since (e.g. the row it belonged to
-            // was deleted) — fall back to leaving focus wherever the dialog's own teardown left it
-            // rather than throwing.
-            if (el && document.contains(el) && typeof el.focus === 'function') el.focus();
+            // An explicit return target wins (OdsModal ReturnFocusToId): a row-menu item that opened
+            // the dialog unmounted with its popover, so the captured owner is gone. Then the owner if
+            // it is still in the DOM, then the page heading — never <body>.
+            const focusable = function (n) { return n && document.contains(n) && typeof n.focus === 'function'; };
+            if (preferredId) {
+                const host = document.getElementById(preferredId);
+                const target = host && (host.matches('button, a[href], input, select, textarea, [tabindex]')
+                    ? host : host.querySelector('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
+                if (focusable(target)) { target.focus(); return; }
+            }
+            if (focusable(el) && el !== document.body) { el.focus(); return; }
+            if (preferredId) {
+                const h1 = document.querySelector('main h1, h1');
+                if (h1) { if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1'); h1.focus(); }
+            }
+        };
+        window.odsFocusDialogCancel = function () {
+            // OdsModal InitialFocus="Cancel": a destructive confirmation opens on its safe choice — the
+            // element marked data-dialog-cancel, else the footer's first button (Cancel sits left of
+            // the action). Same two frames as odsFocusFirstField, so MudBlazor's focus trap runs first.
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    const dialogs = document.querySelectorAll('.ods-modal');
+                    const dialog = dialogs[dialogs.length - 1];
+                    if (!dialog) return;
+                    const el = dialog.querySelector('[data-dialog-cancel]') ||
+                        dialog.querySelector('.ods-modal-foot button:not([disabled])');
+                    if (el) el.focus();
+                });
+            });
+        };
+        window.odsFocusFirstIn = function (id, fallbackToSelf, frames) {
+            // Focus the first focusable control inside an element (OdsRecordTable panel / menu
+            // trigger), else the element itself when asked. `frames` defers the move so it lands
+            // after another focus change in flight (a closing menu restoring its trigger).
+            const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+            const run = function () {
+                const host = document.getElementById(id);
+                if (!host) return;
+                const el = Array.from(host.querySelectorAll(FOCUSABLE)).find(function (e) { return e.offsetParent !== null; });
+                if (el) { el.focus(); return; }
+                if (fallbackToSelf) host.focus();
+            };
+            let n = frames || 0;
+            const tick = function () { if (n-- > 0) requestAnimationFrame(tick); else run(); };
+            tick();
+        };
+        window.odsRecTrackClicks = function (tableId) {
+            // OdsRecordTable: a row click is ignored when it started inside an interactive element.
+            // Blazor's MouseEventArgs carries no target, so a capture-phase listener records whether
+            // the latest click did, and the row handler asks right after.
+            const table = document.getElementById(tableId);
+            if (!table || table.dataset.recTracked) return;
+            table.dataset.recTracked = '1';
+            table.addEventListener('click', function (e) {
+                const t = e.target;
+                const hit = t && t.closest && t.closest('input, button, a, select, textarea, label, [role="switch"], [role="menuitem"]');
+                table.dataset.recInteractive = hit && table.contains(hit) ? '1' : '0';
+            }, true);
+        };
+        window.odsRecClickWasInteractive = function (tableId) {
+            const table = document.getElementById(tableId);
+            return !!table && table.dataset.recInteractive === '1';
         };
         window.odsFocusFirstField = function () {
             // Autofocus the first form field when an OdsModal opens (Odyssey DS · Modal):

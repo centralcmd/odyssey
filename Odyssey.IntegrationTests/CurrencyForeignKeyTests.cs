@@ -66,7 +66,11 @@ public class CurrencyForeignKeyTests(MariaDbFixture fixture)
 
             // Unvetted extraction output is deliberately unkeyed; it is validated on import instead.
             Assert.DoesNotContain(rules.Keys, key => key.Table == "FileAnalysisCandidateTransactions");
-            Assert.Equal(CurrencyColumns.Length, rules.Count);
+
+            // The one deliberate CASCADE (issue #349 §4): a currency's sync configuration means nothing
+            // once the currency is gone, and the currency cannot be deleted while any rate names it.
+            Assert.Equal("CASCADE", rules.GetValueOrDefault(("ExchangeRateSyncCurrencies", "CurrencyCode")));
+            Assert.Equal(CurrencyColumns.Length + 1, rules.Count);
         }
         finally
         {

@@ -46,6 +46,16 @@
     <!-- As of -->
     <OdsDatePicker @bind-Value="_asOf" Label="As of" Required="@IsEdit" Clearable="@(!IsEdit)"
                    HelperText="@(IsEdit ? "When this rate takes effect." : "Defaults to now when left empty.")" />
+
+    @* Precedence over a fetched rate, in the summary's own words (issue #351 §3.C): every value is
+       server data, so a provider or time-zone change never leaves the dialog stating an old rule. *@
+    @if (!IsEdit && Summary is { ProviderDisplayName.Length: > 0 } summary)
+    {
+        <p class="xr-dialog-help">
+            @summary.ProviderDisplayName’s rate for a day is dated @summary.FetchedRateLocalTime @summary.FetchedRateTimeZoneLabel.
+            A manual rate counts instead of it only when its date and time are later. A rate dated in the future starts counting at that time.
+        </p>
+    }
 </OdsFormDialog>
 
 @code {
@@ -55,6 +65,9 @@
 
     /// <summary>Raised after a successful create/update so the host can refresh.</summary>
     [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>The page's rate summary — supplies the fetched-rate precedence help in create mode.</summary>
+    [Parameter] public ExchangeRateSummary? Summary { get; set; }
 
     /// <summary>When set, the dialog edits this rate (currency pair locked). Null = create mode.</summary>
     [Parameter] public ExistingExchangeRate? Rate { get; set; }

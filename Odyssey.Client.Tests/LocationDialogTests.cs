@@ -174,8 +174,11 @@ public class LocationDialogTests
 
         Type(cut, "Storgata 12");
 
-        Assert.Empty(cut.FindAll("li[role=option]"));
-        Assert.Equal("false", cut.Find(".loc-search input[role=combobox]").GetAttribute("aria-expanded"));
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Empty(cut.FindAll("li[role=option]"));
+            Assert.Equal("false", cut.Find(".loc-search input[role=combobox]").GetAttribute("aria-expanded"));
+        }, TimeSpan.FromSeconds(3));
     }
 
     [Fact]
@@ -198,8 +201,8 @@ public class LocationDialogTests
         cut.Find(".loc-search input[role=combobox]").KeyDown("ArrowDown");
 
         var optionId = cut.Find("li[role=option]").Id;
-        Assert.Contains(JsInterop.Invocations,
-            i => i.Identifier == "odsScrollIntoViewById" && Equals(i.Arguments[0], optionId));
+        cut.WaitForAssertion(() => Assert.Contains(JsInterop.Invocations,
+            i => i.Identifier == "odsScrollIntoViewById" && Equals(i.Arguments[0], optionId)), TimeSpan.FromSeconds(3));
     }
 
     [Fact]

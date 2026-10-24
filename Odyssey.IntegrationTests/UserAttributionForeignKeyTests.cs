@@ -57,6 +57,9 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         ("FileMetadata", "UploadedByUserId"),
         ("FileAnalysisJobs", "RequestedByUserId"),
         ("FileAnalysisCandidateTransactions", "ReviewedByUserId"),
+        // Exchange-rate sync (issue #349 §4).
+        ("ExchangeRateSyncCurrencies", "UpdatedByUserId"),
+        ("ExchangeRateSyncRuns", "RequestedByUserId"),
     ];
 
     [SkippableFact]

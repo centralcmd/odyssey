@@ -2063,6 +2063,9 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("varchar(3)");
 
+                    b.Property<int?>("Provider")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("Rate")
                         .HasPrecision(18, 8)
                         .HasColumnType("decimal(18,8)");
@@ -2077,11 +2080,121 @@ namespace Odyssey.Context.Migrations
 
                     b.HasKey("ExchangeRateId");
 
+                    b.HasIndex("AsOf");
+
                     b.HasIndex("ToCurrencyCode");
 
-                    b.HasIndex("FromCurrencyCode", "ToCurrencyCode", "AsOf");
+                    b.HasIndex("FromCurrencyCode", "ToCurrencyCode", "AsOf", "Provider")
+                        .IsUnique();
 
-                    b.ToTable("ExchangeRates");
+                    b.ToTable("ExchangeRates", t =>
+                        {
+                            t.HasCheckConstraint("CK_ExchangeRates_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.ExchangeRateSyncCurrency", b =>
+                {
+                    b.Property<string>("CurrencyCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<DateOnly?>("BackfilledFrom")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateOnly?>("HistoryStartDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("CurrencyCode");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("ExchangeRateSyncCurrencies");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.ExchangeRateSyncRun", b =>
+                {
+                    b.Property<Guid>("ExchangeRateSyncRunId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("CurrencyCodes")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int?>("ErrorKind")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FinishedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Provider")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RequestedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("RowsDeleted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowsInserted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowsRejected")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowsSkipped")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RunningGuard")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasComputedColumnSql("IF(`Status` = 0, 1, NULL)", false);
+
+                    b.Property<DateOnly?>("SpanFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("SpanTo")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("StartedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Trigger")
+                        .HasColumnType("int");
+
+                    b.HasKey("ExchangeRateSyncRunId");
+
+                    b.HasIndex("RequestedByUserId");
+
+                    b.HasIndex("RunningGuard")
+                        .IsUnique();
+
+                    b.HasIndex("StartedAtUtc");
+
+                    b.ToTable("ExchangeRateSyncRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_Provider", "`Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_Status", "`Status` IN (0, 1, 2, 3, 4)");
+
+                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
                 });
 
             modelBuilder.Entity("Odyssey.Context.FileAnalysisCandidateTag", b =>
@@ -3923,6 +4036,18 @@ namespace Odyssey.Context.Migrations
                             Key = "ContractMaxSummaryCharges",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "6"
+                        },
+                        new
+                        {
+                            Key = "ExchangeRateHistoryStartDate",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = ""
+                        },
+                        new
+                        {
+                            Key = "ExchangeRateSyncIntervalHours",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "24"
                         });
                 });
 
@@ -4927,6 +5052,28 @@ namespace Odyssey.Context.Migrations
                         .HasForeignKey("ToCurrencyCode")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.ExchangeRateSyncCurrency", b =>
+                {
+                    b.HasOne("Odyssey.Context.Currency", null)
+                        .WithMany()
+                        .HasForeignKey("CurrencyCode")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.ExchangeRateSyncRun", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Odyssey.Context.FileAnalysisCandidateTag", b =>

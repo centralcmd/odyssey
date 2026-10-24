@@ -814,6 +814,38 @@ internal static class SystemSettingsRegistry
             Write = (dto, v) => dto.PropertyMaxSmartTagsPerProperty = v,
         },
 
+        // ── Exchange-rate sync (issue #349 §8) ────────────────────────────────────────────────────
+        //
+        // The ORDINARY write claim: neither is a credential or a destination. No cache key — the
+        // scheduler reads both live on each tick, once a minute, so there is no snapshot to evict.
+        new StringSetting
+        {
+            Key = SystemSettingsKeys.ExchangeRateHistoryStartDate,
+            FieldName = nameof(SystemSettingsUpdate.ExchangeRateHistoryStartDate),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = SystemSettingsDefaults.ExchangeRateHistoryStartDate,
+            MaxLength = ExchangeRateHistoryStartDateRule.MaxLength,
+            // Empty means "1 January of the current UTC year" and is the only way back to it.
+            AllowEmpty = true,
+            // Format and floor only. "On or before today" needs a clock and is checked in
+            // SystemSettingsService against the injected TimeProvider.
+            Validator = ExchangeRateHistoryStartDateRule.Validate,
+            ReadValidator = ExchangeRateHistoryStartDateRule.Validate,
+            Read = r => r.ExchangeRateHistoryStartDate,
+            Write = (dto, v) => dto.ExchangeRateHistoryStartDate = v,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.ExchangeRateSyncIntervalHours,
+            Min = SystemSettingsBounds.ExchangeRateSyncIntervalHoursMin,
+            Max = SystemSettingsBounds.ExchangeRateSyncIntervalHoursMax,
+            FieldName = nameof(SystemSettingsUpdate.ExchangeRateSyncIntervalHours),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.ExchangeRateSyncIntervalHours),
+            Read = r => r.ExchangeRateSyncIntervalHours,
+            Write = (dto, v) => dto.ExchangeRateSyncIntervalHours = v,
+            Advise = SettingAdvisories.SyncIntervalBelowPublication,
+        },
     ];
 
     /// <summary>Descriptors by <see cref="SystemSettingDescriptor.Key"/>.</summary>

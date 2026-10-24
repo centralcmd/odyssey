@@ -1,0 +1,297 @@
+@page "/settings/exchange-rate-sync"
+@using Odyssey.Dtos.Finance
+@using Odyssey.Client.Authorization
+@attribute [Authorize(Policy = PermissionClaims.SystemSettingsRead)]
+@implements IDisposable
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject IExchangeRateSyncApiClient Sync
+@inject TimeProvider Time
+
+@*
+    /settings/exchange-rate-sync (issue #351 §3.B; Odyssey Design System · ui_kits/web/ExchangeRateSync.jsx).
+    Which currencies the provider's daily rates are fetched for, from which date, and what each run did.
+    Reached from System settings → Exchange rates → Manage currencies; not in the main nav.
+
+    Edits stay in place: a toggle, a date save or a purge patches its row from the response and never
+    removes it from the visible page, even when it no longer matches the filter. Only the user's own
+    filter, search, sort or page change re-queries — so focus never sits on a row that has vanished.
+*@
+
+<PageTitle>Exchange-rate sync</PageTitle>
+
+<OdsLiveAnnouncer @ref="_polite" />
+<OdsLiveAnnouncer @ref="_assertive" Assertive="true" />
+
+<MudStack Spacing="4">
+    <div>
+        <OdsButton Variant="OdsButtonVariant.Text" Icon="arrow_back" Href="/settings">System settings</OdsButton>
+    </div>
+
+    <PageHeader Title="Exchange-rate sync" Icon="@Icons.Material.Filled.CurrencyExchange">
+        <SubLine>@SubLineText</SubLine>
+    </PageHeader>
+
+    <MudCard Outlined="true">
+        <MudCardContent>
+            <ExchangeRateSyncStatusPanel @ref="_panel"
+                                         CanRun="_canUpdate"
+                                         OnStatus="OnStatus"
+                                         OnRunFinished="OnRunFinishedAsync"
+                                         OnAnnounce="AnnouncePolite"
+                                         OnAnnounceAssertive="AnnounceAssertive" />
+        </MudCardContent>
+    </MudCard>
+
+    @if (UnsupportedEnabled.Count > 0)
+    {
+        <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.Status">
+            <div class="xrs-banner">
+                <span>@UnsupportedBannerText</span>
+                @if (_show != ShowSupported.Enabled)
+                {
+                    @* The Supported view drops known-unsupported rows, so "below" needs a way there. *@
+                    <OdsButton Variant="OdsButtonVariant.Text" Icon="visibility" OnClick="ShowEnabledAsync">Show enabled currencies</OdsButton>
+                }
+            </div>
+        </OdsAlert>
+    }
+    @if (_status is { SupportedListAvailable: false })
+    {
+        <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.Status">
+            Couldn’t reach @_status.ProviderDisplayName to check which currencies are published. Switches still work; the server checks each change.
+        </OdsAlert>
+    }
+
+    <section class="xrs-section" aria-labelledby="xrs-currencies-h">
+        <h2 class="xrs-h" id="xrs-currencies-h">Currencies</h2>
+        <div class="xrs-filters">
+            <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged" DebounceInterval="300" OnSearch="ReloadCurrenciesAsync"
+                            Placeholder="Search currencies" AriaLabel="Search currencies" Class="xrs-filter-search" />
+            <div class="xrs-filter-show">
+                <span class="xrs-filter-label" id="xrs-show-label">Show</span>
+                <OdsSegmentedControl Options="ShowOptions" Value="@_show.ToString()" ValueChanged="OnShowChanged" AriaLabel="Show" />
+            </div>
+        </div>
+
+        <MudCard Outlined="true">
+            <OdsRecordTable TRow="ExistingExchangeRateSyncCurrency"
+                            AriaLabel="Currencies"
+                            Rows="_currencies"
+                            Loading="_currenciesLoading"
+                            Refetching="_currenciesRefetching"
+                            Error="_currenciesError"
+                            OnRetry="ReloadCurrenciesAsync"
+                            HasFilters="HasCurrencyFilters"
+                            OnClearFilters="ClearCurrencyFiltersAsync"
+                            Noun="currencies"
+                            EmptyIcon="search_off"
+                            ServerSort="true"
+                            RowKey="@(c => (object)c.CurrencyCode)"
+                            Columns="CurrencyColumns"
+                            DefaultSort="DefaultCurrencySort"
+                            Sort="_currencySort"
+                            SortChanged="OnCurrencySortChanged"
+                            Actions="CurrencyActions"
+                            RenderDetail="CurrencyDetail"
+                            RenderEdit="CurrencyEdit" />
+            @if (_currencyTotal > 0)
+            {
+                <OdsPager Page="_currencyPage" PageChanged="OnCurrencyPageChanged"
+                          PageSize="_currencyPageSize" PageSizeChanged="OnCurrencyPageSizeChanged"
+                          TotalCount="_currencyTotal" Loading="@(_currenciesLoading || _currenciesRefetching)" Label="Currency pages" />
+            }
+        </MudCard>
+    </section>
+
+    <section class="xrs-section" aria-labelledby="xrs-runs-h">
+        <h2 class="xrs-h" id="xrs-runs-h">Run history</h2>
+        <MudCard Outlined="true">
+            <OdsRecordTable TRow="ExistingExchangeRateSyncRun"
+                            AriaLabel="Run history"
+                            Rows="_runs"
+                            Loading="_runsLoading"
+                            Error="_runsError"
+                            OnRetry="LoadRunsAsync"
+                            Noun="runs"
+                            RowKey="@(r => (object)r.Id)"
+                            Columns="RunColumns"
+                            Actions="RunActions"
+                            RenderDetail="RunDetail">
+                <Empty>
+                    <OdsEmptyLine Text="No runs yet. Switch on a currency or select Run now." />
+                </Empty>
+            </OdsRecordTable>
+            @if (_runTotal > RunPageSize)
+            {
+                <OdsPager Page="_runPage" PageChanged="OnRunPageChanged" PageSize="RunPageSize"
+                          TotalCount="_runTotal" ShowPageSize="false" Loading="_runsLoading" Label="Run history pages" />
+            }
+        </MudCard>
+    </section>
+</MudStack>
+
+@if (_purging is { } purge)
+{
+    <ConfirmFetchedRateDeleteDialog @key="purge.Currency.CurrencyCode"
+                                    Open="_purgeOpen"
+                                    OpenChanged="OnPurgeOpenChanged"
+                                    Icon="delete_sweep"
+                                    Title="@($"Delete fetched rates for {purge.Currency.CurrencyCode}?")"
+                                    Body="@PurgeBody(purge.Currency)"
+                                    ConfirmLabel="Delete fetched rates"
+                                    ReturnFocusToId="@purge.MenuTriggerId"
+                                    OnConfirm="ConfirmPurgeAsync" />
+}
+
+@code {
+    // ── Currency table cells ──────────────────────────────────────────────────────────────────────
+
+    private RenderFragment CurrencyCell(ExistingExchangeRateSyncCurrency c, OdsRecordCellContext ctx) => @<span class="xrs-cur">
+        <span class="xrs-cur-code">@c.CurrencyCode</span>
+        <span class="xrs-cur-name">@c.Name</span>
+        @if (ctx.JustSaved)
+        {
+            <OdsChip Tone="OdsChipTone.Income" Dot="true">Saved</OdsChip>
+        }
+    </span>;
+
+    private RenderFragment SyncCell(ExistingExchangeRateSyncCurrency c, OdsRecordCellContext ctx)
+    {
+        var note = RowNote(c);
+        var error = _rowErrors.GetValueOrDefault(c.CurrencyCode);
+        var describedBy = string.Join(' ', new[] { note is null ? null : NoteId(c), error is null ? null : RowErrorId(c) }.OfType<string>());
+        return @<div class="xrs-sync">
+            <OdsSwitch Checked="@c.Enabled"
+                       CheckedChanged="@(v => ToggleAsync(c, v))"
+                       AriaLabel="@($"Sync {c.CurrencyCode}")"
+                       AriaDescribedBy="@(describedBy.Length == 0 ? null : describedBy)"
+                       Busy="@(_busy.Contains(c.CurrencyCode))"
+                       AriaDisabled="@IsLocked(c)"
+                       ResetKey="@_resetKeys.GetValueOrDefault(c.CurrencyCode)" />
+            @if (note is not null)
+            {
+                <span class="@($"xrs-sync-note{(c.Supported == false && c.Enabled ? " warn" : "")}")" id="@NoteId(c)">@note</span>
+            }
+            @if (error is not null)
+            {
+                <span class="xrs-sync-err" id="@RowErrorId(c)">
+                    <span class="material-icons" aria-hidden="true">error</span>@error
+                </span>
+            }
+        </div>;
+    }
+
+    private RenderFragment CoverageCell(ExistingExchangeRateSyncCurrency c, OdsRecordCellContext ctx) => @<text>
+        @if (c.Locked)
+        {
+            <span aria-hidden="true">—</span><span class="sr-only">Not applicable</span>
+        }
+        else if (c.OldestFetchedDate is { } oldest && c.NewestFetchedDate is { } newest)
+        {
+            <span class="xrs-mono">@ExchangeRateSyncTime.Date(oldest) – @ExchangeRateSyncTime.Date(newest)</span>
+        }
+        else
+        {
+            <span>Not fetched yet</span>
+        }
+    </text>;
+
+    private RenderFragment BackfillCell(ExistingExchangeRateSyncCurrency c, OdsRecordCellContext ctx)
+    {
+        if (c.Locked)
+            return @<span><span aria-hidden="true">—</span><span class="sr-only">Not applicable</span></span>;
+        var chip = OdsTypeRegistries.ExchangeRateBackfillStates.GetValueOrDefault(
+            OdsTypeRegistries.ExchangeRateBackfillOf(c), OdsTypeRegistries.UnknownChip);
+        return @<OdsChip Tone="@chip.Tone" Dot="@chip.Dot">@chip.Label</OdsChip>;
+    }
+
+    private RenderFragment StartDateCell(ExistingExchangeRateSyncCurrency c, OdsRecordCellContext ctx) => @<text>
+        @if (c.Locked)
+        {
+            <span aria-hidden="true">—</span><span class="sr-only">Not applicable</span>
+        }
+        else if (c.HistoryStartDate is { } own)
+        {
+            <span class="xrs-mono">@ExchangeRateSyncTime.Date(own)</span>
+        }
+        else
+        {
+            <span>Default (@ExchangeRateSyncTime.Date(c.EffectiveHistoryStartDate))</span>
+        }
+    </text>;
+
+    // Read-only, per the RecordTable rule: editing goes through the edit row.
+    private RenderFragment CurrencyDetail(ExistingExchangeRateSyncCurrency c) => @<OdsInfoTileGrid>
+        <OdsInfoTile Icon="history" Label="Available from" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+            <Value>@AvailableFromText(c)</Value>
+        </OdsInfoTile>
+        <OdsInfoTile Icon="table_rows" Label="Fetched rates">
+            <Value>@c.FetchedRowCount.ToString("N0")</Value>
+            <Foot>manual rates not counted</Foot>
+        </OdsInfoTile>
+        <OdsInfoTile Icon="event" Label="Effective start date" ValueVariant="OdsInfoTileVariant.Sm">
+            <Value>@(c.Locked ? "—" : ExchangeRateSyncTime.Date(c.EffectiveHistoryStartDate))</Value>
+            <Foot>@(c.HistoryStartDate is null ? "the instance default" : "this currency’s own date")</Foot>
+        </OdsInfoTile>
+    </OdsInfoTileGrid>;
+
+    private RenderFragment CurrencyEdit(ExistingExchangeRateSyncCurrency c, OdsRecordEditContext edit) => @<div class="xrs-edit">
+        <div class="xrs-edit-field">
+            <OdsDateField Id="@EditFieldId(c)"
+                          Label="@($"Start date for {c.CurrencyCode}")"
+                          Value="@EditDraft(c)"
+                          ValueChanged="@(v => SetEditDraft(c, v))"
+                          Min="@HistoryFloor" Max="@TodayUtc"
+                          Error="@_editErrors.GetValueOrDefault(c.CurrencyCode)"
+                          Help="Rates are fetched from this date. Moving it later keeps rates already fetched." />
+        </div>
+        <div class="xrs-edit-actions">
+            <OdsButton Variant="OdsButtonVariant.Text" OnClick="@(() => CancelEdit(c, edit))">Cancel</OdsButton>
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="restart_alt" Loading="@_busy.Contains(c.CurrencyCode)" AriaDisabled="@_busy.Contains(c.CurrencyCode)"
+                       OnClick="@(() => UseDefaultAsync(c, edit))">Use default</OdsButton>
+            <OdsButton Icon="check" Loading="@_busy.Contains(c.CurrencyCode)" AriaDisabled="@_busy.Contains(c.CurrencyCode)" OnClick="@(() => SaveStartDateAsync(c, edit))">Save</OdsButton>
+        </div>
+    </div>;
+
+    // ── Run history cells ─────────────────────────────────────────────────────────────────────────
+
+    private RenderFragment StartedCell(ExistingExchangeRateSyncRun r, OdsRecordCellContext ctx) => @<span class="xrs-started">
+        <span class="xrs-mono">@ExchangeRateSyncTime.Absolute(r.StartedAtUtc)</span>
+        <span class="xrs-rel">@ExchangeRateSyncTime.Relative(r.StartedAtUtc, Time.GetUtcNow())</span>
+    </span>;
+
+    private RenderFragment RunStatusCell(ExistingExchangeRateSyncRun r, OdsRecordCellContext ctx)
+    {
+        var chip = OdsTypeRegistries.ExchangeRateSyncRunStatusOf(r.Status);
+        return @<OdsChip Tone="@chip.Tone">@chip.Label</OdsChip>;
+    }
+
+    private RenderFragment RunErrorCell(ExistingExchangeRateSyncRun r, OdsRecordCellContext ctx) => @<text>
+        @if (r.ErrorKind is { } kind)
+        {
+            <span>@OdsTypeRegistries.ExchangeRateSyncErrorOf(kind)</span>
+        }
+        else
+        {
+            <span class="xrs-rel" aria-hidden="true">—</span><span class="sr-only">None</span>
+        }
+    </text>;
+
+    private RenderFragment RunDetail(ExistingExchangeRateSyncRun r) => @<OdsInfoTileGrid>
+        <OdsInfoTile Icon="date_range" Label="Span" ValueVariant="OdsInfoTileVariant.Sm">
+            <Value>@SpanText(r)</Value>
+        </OdsInfoTile>
+        <OdsInfoTile Icon="payments" Label="Currencies" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+            <Value>@(r.CurrencyCodes.Count == 0 ? "None" : string.Join(", ", r.CurrencyCodes))</Value>
+        </OdsInfoTile>
+        <OdsInfoTile Icon="content_copy" Label="Already stored">
+            <Value>@r.RowsSkipped.ToString("N0")</Value>
+            <Foot>rows skipped as duplicates</Foot>
+        </OdsInfoTile>
+        <OdsInfoTile Icon="timer" Label="Finished" ValueVariant="OdsInfoTileVariant.Sm">
+            <Value>@(r.FinishedAtUtc is { } done ? ExchangeRateSyncTime.Absolute(done) : "—")</Value>
+        </OdsInfoTile>
+    </OdsInfoTileGrid>;
+}

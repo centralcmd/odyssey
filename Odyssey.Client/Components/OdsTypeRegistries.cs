@@ -146,7 +146,7 @@ public static class OdsContactOptions
 }
 
 /// <summary>The canonical domain type registries and their <see cref="OdsOption"/> projections.</summary>
-public static class OdsTypeRegistries
+public static partial class OdsTypeRegistries
 {
     /// <summary>ContactType — Person · Organization (issue #325, trimmed from the earlier six values).
     /// Mirrors the DS CONTACT_TYPES registry.</summary>

@@ -5,6 +5,10 @@ using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Linq.Expressions;
+using Odyssey.Core.Finance.ExchangeRateSync;
+using Odyssey.Dtos.Authorization;
 
 namespace Odyssey.Core.Finance;
 
@@ -19,16 +23,18 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
     private readonly TimeProvider timeProvider = injectedTimeProvider ?? TimeProvider.System;
 
     /// <summary>
-    /// Server-side paged list (issue #277): search over currency codes, target-currency and
-    /// current/historical filters, and allowlisted sort. "Current" is the newest
-    /// (AsOf, UpdatedAt ?? CreatedAt) rate per directed pair — expressed as a SQL
-    /// "no newer rate exists" predicate.
+    /// Server-side paged list (issue #277): search over currency codes, target-currency, status and source
+    /// filters, and allowlisted sort. A row's status comes from <see cref="ExchangeRateOrdering"/>:
+    /// Upcoming while its <c>AsOf</c> is in the future, Current when it is the newest row of its pair
+    /// already in force, Historical otherwise (issue #349 §3).
     /// </summary>
     public async Task<PagedResult<ExistingExchangeRate>> ListAsync(
         ExchangeRatesQueryParams query,
         CancellationToken cancellationToken = default)
     {
-        var q = context.ExchangeRates.AsNoTracking().AsQueryable();
+        var now = Now;
+        var all = context.ExchangeRates.AsNoTracking();
+        var q = all;
 
         var term = ListQuery.NormalizeSearch(query.Search);
         if (term is not null)
@@ -48,20 +54,21 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
             q = q.Where(r => targets.Contains(r.ToCurrencyCode));
         }
 
-        // A rate is "current" when no other rate for the same directed pair has a newer
-        // (AsOf, UpdatedAt ?? CreatedAt) — the tiebreak folds in UpdatedAt so correcting a rate
-        // (Update touches AsOf/UpdatedAt, never CreatedAt) can't lose "current" to an unrelated
-        // row inserted later.
-        q = query.Status switch
+        // Duplicates are ignored and an out-of-range numeric value is dropped, so `source=99` matches
+        // nothing rather than everything.
+        if (query.Source is { Length: > 0 } sources)
         {
-            ExchangeRateStatus.Current => q.Where(r => !context.ExchangeRates.Any(x =>
-                x.FromCurrencyCode == r.FromCurrencyCode && x.ToCurrencyCode == r.ToCurrencyCode &&
-                (x.AsOf > r.AsOf || (x.AsOf == r.AsOf && (x.UpdatedAt ?? x.CreatedAt) > (r.UpdatedAt ?? r.CreatedAt))))),
-            ExchangeRateStatus.Historical => q.Where(r => context.ExchangeRates.Any(x =>
-                x.FromCurrencyCode == r.FromCurrencyCode && x.ToCurrencyCode == r.ToCurrencyCode &&
-                (x.AsOf > r.AsOf || (x.AsOf == r.AsOf && (x.UpdatedAt ?? x.CreatedAt) > (r.UpdatedAt ?? r.CreatedAt))))),
-            _ => q,
-        };
+            var manual = sources.Contains(ExchangeRateSource.Manual);
+            var fetched = sources.Contains(ExchangeRateSource.Fetched);
+            q = q.Where(r => (manual && r.Provider == null) || (fetched && r.Provider != null));
+        }
+
+        var rank = ExchangeRateOrdering.StatusRank(all, now);
+        if (query.Status is { Length: > 0 } statuses)
+        {
+            var ranks = statuses.Where(Enum.IsDefined).Select(status => (int)status).Distinct().ToList();
+            q = WhereRankIn(q, rank, ranks);
+        }
 
         var ascending = ListQuery.Ascending(query.SortDir, naturalDefaultAscending: query.SortBy is ExchangeRateSortBy.Pair or ExchangeRateSortBy.Status);
         var sorted = query.SortBy switch
@@ -75,42 +82,97 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
             // sort exact (no decimal rounding) and lets it use the same index Rate does.
             ExchangeRateSortBy.Inverse => ascending ? q.OrderByDescending(r => r.Rate) : q.OrderBy(r => r.Rate),
             ExchangeRateSortBy.CreatedAt => ascending ? q.OrderBy(r => r.CreatedAt) : q.OrderByDescending(r => r.CreatedAt),
-            // status: current (no newer exists → false) sorts before historical, matching the client (current = 0).
-            ExchangeRateSortBy.Status => ascending
-                ? q.OrderBy(r => context.ExchangeRates.Any(x =>
-                    x.FromCurrencyCode == r.FromCurrencyCode && x.ToCurrencyCode == r.ToCurrencyCode &&
-                    (x.AsOf > r.AsOf || (x.AsOf == r.AsOf && (x.UpdatedAt ?? x.CreatedAt) > (r.UpdatedAt ?? r.CreatedAt)))))
-                : q.OrderByDescending(r => context.ExchangeRates.Any(x =>
-                    x.FromCurrencyCode == r.FromCurrencyCode && x.ToCurrencyCode == r.ToCurrencyCode &&
-                    (x.AsOf > r.AsOf || (x.AsOf == r.AsOf && (x.UpdatedAt ?? x.CreatedAt) > (r.UpdatedAt ?? r.CreatedAt))))),
+            // Current (0) sorts before Historical (1) before Upcoming (2), the ExchangeRateStatus ordinals.
+            ExchangeRateSortBy.Status => ascending ? q.OrderBy(rank) : q.OrderByDescending(rank),
             _ => ascending
                 ? q.OrderBy(r => r.AsOf).ThenBy(r => r.UpdatedAt ?? r.CreatedAt)
-                : q.OrderByDescending(r => r.AsOf).ThenByDescending(r => r.UpdatedAt ?? r.CreatedAt),
+                : q.NewestFirst(),
         };
         q = sorted.ThenBy(r => r.ExchangeRateId);
 
-        return await q.ToPagedResultAsync(query.Offset, query.Limit, r => r.Adapt<ExistingExchangeRate>(), cancellationToken);
+        var page = await q.ToPagedResultAsync(query.Offset, query.Limit, r => r, cancellationToken);
+        var current = await CurrentIdsAsync(page.Items, now, cancellationToken);
+
+        return new PagedResult<ExistingExchangeRate>
+        {
+            Items = page.Items.Select(r => ToDto(r, now, current)).ToList(),
+            Offset = page.Offset,
+            Limit = page.Limit,
+            TotalCount = page.TotalCount,
+        };
+    }
+
+    /// <summary>
+    /// The unfiltered aggregates for <c>GET /api/exchange-rates/summary</c> (issue #349 §5.10). Each pair
+    /// with a row in force has exactly one Current row, so Current is the count of such pairs, and the
+    /// three status buckets sum to the total.
+    /// </summary>
+    public async Task<ExchangeRateSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
+    {
+        var now = Now;
+        var rates = context.ExchangeRates.AsNoTracking();
+
+        var total = await rates.CountAsync(cancellationToken);
+        var fetched = await rates.CountAsync(r => r.Provider != null, cancellationToken);
+        var upcoming = await rates.CountAsync(r => r.AsOf > now, cancellationToken);
+        var currentPairs = await rates
+            .Where(r => r.AsOf <= now)
+            .Select(r => new { r.FromCurrencyCode, r.ToCurrencyCode })
+            .Distinct()
+            .CountAsync(cancellationToken);
+        var pairs = await rates
+            .Select(r => new { r.FromCurrencyCode, r.ToCurrencyCode })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        var latest = await rates
+            .Where(r => r.AsOf <= now)
+            .MaxAsync(r => (DateTime?)r.AsOf, cancellationToken);
+
+        return new ExchangeRateSummary
+        {
+            TotalCount = total,
+            ByStatus = new ExchangeRateStatusCounts
+            {
+                Current = currentPairs,
+                Upcoming = upcoming,
+                Historical = total - currentPairs - upcoming,
+            },
+            BySource = new ExchangeRateSourceCounts { Manual = total - fetched, Fetched = fetched },
+            PairCount = pairs.Count,
+            FromCurrencyCodes = pairs.Select(p => p.FromCurrencyCode).Distinct().Order(StringComparer.Ordinal).ToList(),
+            ToCurrencyCodes = pairs.Select(p => p.ToCurrencyCode).Distinct().Order(StringComparer.Ordinal).ToList(),
+            Attribution = fetched > 0 ? ExchangeRateSyncConstants.Attribution : null,
+            LatestAsOfUtc = latest,
+            FetchedRateLocalTime = ExchangeRateSyncConstants.FetchedRateLocalTime.ToString("HH:mm", CultureInfo.InvariantCulture),
+            FetchedRateTimeZone = ExchangeRateSyncConstants.FetchedRateTimeZone,
+            FetchedRateTimeZoneLabel = ExchangeRateSyncConstants.FetchedRateTimeZoneLabel,
+            ProviderDisplayName = ExchangeRateSyncConstants.ProviderDisplayName,
+        };
     }
 
     public async Task<ExistingExchangeRate?> Get(Guid exchangeRateId, CancellationToken cancellationToken = default)
     {
-        var rate = await context.ExchangeRates.FirstOrDefaultAsync(value => value.ExchangeRateId == exchangeRateId, cancellationToken);
-        return rate?.Adapt<ExistingExchangeRate>();
+        var rate = await context.ExchangeRates.AsNoTracking()
+            .FirstOrDefaultAsync(value => value.ExchangeRateId == exchangeRateId, cancellationToken);
+        return rate is null ? null : await ToDtoAsync(rate, cancellationToken);
     }
 
-    /// <summary>Returns the most recent rate (max <see cref="ExchangeRate.AsOf"/>) for the given pair, or null.</summary>
+    /// <summary>
+    /// Returns the rate in force for the given pair — the newest with <c>AsOf ≤ now</c>, so a
+    /// future-dated row is ignored until its date arrives — or null. Direct pairs only.
+    /// </summary>
     public async Task<ExistingExchangeRate?> GetLatest(string fromCurrencyCode, string toCurrencyCode, CancellationToken cancellationToken = default)
     {
         var from = CurrencyValidationService.Normalize(fromCurrencyCode);
         var to = CurrencyValidationService.Normalize(toCurrencyCode);
+        var now = Now;
 
-        var rate = await context.ExchangeRates
-            .Where(value => value.FromCurrencyCode == from && value.ToCurrencyCode == to)
-            .OrderByDescending(value => value.AsOf)
-            .ThenByDescending(value => value.UpdatedAt ?? value.CreatedAt)
+        var rate = await context.ExchangeRates.AsNoTracking()
+            .Where(value => value.FromCurrencyCode == from && value.ToCurrencyCode == to && value.AsOf <= now)
+            .NewestFirst()
             .FirstOrDefaultAsync(cancellationToken);
 
-        return rate?.Adapt<ExistingExchangeRate>();
+        return rate is null ? null : ToDto(rate, now, new HashSet<Guid> { rate.ExchangeRateId });
     }
 
     public async Task<ExistingExchangeRate> Create(NewExchangeRate newExchangeRate, CancellationToken cancellationToken = default)
@@ -146,13 +208,14 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
         context.ExchangeRates.Add(exchangeRate);
         await context.SaveChangesAsync(cancellationToken);
 
-        return exchangeRate.Adapt<ExistingExchangeRate>();
+        return await ToDtoAsync(exchangeRate, cancellationToken);
     }
 
     /// <summary>
     /// Corrects the Rate and AsOf of an existing rate record. The currency pair can't change —
     /// the update DTO doesn't carry From/To — so this never touches a different pair's identity.
-    /// Returns null if the id doesn't exist.
+    /// Returns null if the id doesn't exist. A fetched row is never corrected in place — a correction is
+    /// a manual row with a later <c>AsOf</c> — so it is a <c>422</c> keyed <c>source</c> for everyone.
     /// </summary>
     public async Task<ExistingExchangeRate?> Update(
         Guid exchangeRateId, UpdateExchangeRate update, CancellationToken cancellationToken = default)
@@ -161,6 +224,13 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
         if (rate is null)
         {
             return null;
+        }
+
+        if (rate.Provider is not null)
+        {
+            throw new DomainUnprocessableException(
+                $"Exchange rate {exchangeRateId} was fetched and cannot be corrected in place. Enter a manual rate with a later date instead.",
+                "source");
         }
 
         if (update.Rate <= 0)
@@ -173,10 +243,16 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
         rate.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
         await context.SaveChangesAsync(cancellationToken);
 
-        return rate.Adapt<ExistingExchangeRate>();
+        return await ToDtoAsync(rate, cancellationToken);
     }
 
-    public async Task Delete(Guid exchangeRateId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Deletes one rate; a missing id is an idempotent no-op. A FETCHED row additionally needs
+    /// <c>system-settings.update</c> (issue #349 §4): the caller passes whether it holds it as
+    /// <paramref name="mayDeleteFetched"/>, and the rule is decided here against the row, since only the
+    /// row says whether it was fetched.
+    /// </summary>
+    public async Task Delete(Guid exchangeRateId, bool mayDeleteFetched, CancellationToken cancellationToken = default)
     {
         var rate = await context.ExchangeRates.FirstOrDefaultAsync(value => value.ExchangeRateId == exchangeRateId, cancellationToken);
         if (rate is null)
@@ -184,7 +260,79 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
             return;
         }
 
+        if (rate.Provider is not null && !mayDeleteFetched)
+        {
+            throw new DomainForbiddenException(
+                $"Exchange rate {exchangeRateId} was fetched; deleting it requires the '{PermissionClaims.SystemSettingsUpdate}' claim.");
+        }
+
         context.ExchangeRates.Remove(rate);
         await context.SaveChangesAsync(cancellationToken);
     }
+
+    private DateTime Now => timeProvider.GetUtcNow().UtcDateTime;
+
+    private static IQueryable<ExchangeRate> WhereRankIn(
+        IQueryable<ExchangeRate> query, Expression<Func<ExchangeRate, int>> rank, List<int> ranks)
+    {
+        // ranks.Contains(rank(r)), composed by hand so the status rule stays written once.
+        var parameter = rank.Parameters[0];
+        var contains = Expression.Call(
+            Expression.Constant(ranks),
+            typeof(List<int>).GetMethod(nameof(List<int>.Contains))!,
+            rank.Body);
+        return query.Where(Expression.Lambda<Func<ExchangeRate, bool>>(contains, parameter));
+    }
+
+    /// <summary>The ids of the rows in force for the pairs on a page — one per pair, by the shared ordering.</summary>
+    private async Task<HashSet<Guid>> CurrentIdsAsync(
+        IReadOnlyCollection<ExchangeRate> rows, DateTime now, CancellationToken cancellationToken)
+    {
+        if (rows.Count == 0)
+        {
+            return [];
+        }
+
+        var froms = rows.Select(r => r.FromCurrencyCode).Distinct().ToList();
+        var tos = rows.Select(r => r.ToCurrencyCode).Distinct().ToList();
+        var inForce = context.ExchangeRates.AsNoTracking()
+            .Where(r => froms.Contains(r.FromCurrencyCode) && tos.Contains(r.ToCurrencyCode) && r.AsOf <= now);
+
+        var instants = inForce
+            .GroupBy(r => new { r.FromCurrencyCode, r.ToCurrencyCode })
+            .Select(g => new { g.Key.FromCurrencyCode, g.Key.ToCurrencyCode, AsOf = g.Max(r => r.AsOf) });
+
+        var candidates = await (
+                from rate in inForce
+                join instant in instants
+                    on new { rate.FromCurrencyCode, rate.ToCurrencyCode, rate.AsOf }
+                    equals new { instant.FromCurrencyCode, instant.ToCurrencyCode, instant.AsOf }
+                select new Candidate(rate.FromCurrencyCode, rate.ToCurrencyCode, rate.AsOf,
+                    rate.UpdatedAt ?? rate.CreatedAt, rate.ExchangeRateId))
+            .ToListAsync(cancellationToken);
+
+        return candidates
+            .GroupBy(c => (c.From, c.To))
+            .Select(g => ExchangeRateOrdering.Newest(g)!.ExchangeRateId)
+            .ToHashSet();
+    }
+
+    private async Task<ExistingExchangeRate> ToDtoAsync(ExchangeRate rate, CancellationToken cancellationToken)
+    {
+        var now = Now;
+        return ToDto(rate, now, await CurrentIdsAsync([rate], now, cancellationToken));
+    }
+
+    private static ExistingExchangeRate ToDto(ExchangeRate rate, DateTime now, IReadOnlySet<Guid> current)
+    {
+        var dto = rate.Adapt<ExistingExchangeRate>();
+        dto.Source = rate.Provider is null ? ExchangeRateSource.Manual : ExchangeRateSource.Fetched;
+        dto.Status = rate.AsOf > now
+            ? ExchangeRateStatus.Upcoming
+            : current.Contains(rate.ExchangeRateId) ? ExchangeRateStatus.Current : ExchangeRateStatus.Historical;
+        return dto;
+    }
+
+    private sealed record Candidate(string From, string To, DateTime AsOf, DateTime Tiebreak, Guid ExchangeRateId)
+        : IRateCandidate;
 }
