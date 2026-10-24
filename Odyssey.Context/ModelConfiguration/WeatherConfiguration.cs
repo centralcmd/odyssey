@@ -103,20 +103,3 @@ internal sealed class WeatherDayConfiguration : IEntityTypeConfiguration<Weather
             "CK_WeatherDays_HasData", "`ForecastCoverageHours` IS NOT NULL OR `ObservedFetchedAtUtc` IS NOT NULL"));
     }
 }
-
-internal sealed class UserWeatherPreferenceConfiguration : IEntityTypeConfiguration<UserWeatherPreference>
-{
-    public void Configure(EntityTypeBuilder<UserWeatherPreference> entity)
-    {
-        // The caller's own row: it goes with the user, and a purged or removed location simply unsets it.
-        entity.HasOne<ApplicationUser>()
-            .WithOne()
-            .HasForeignKey<UserWeatherPreference>(preference => preference.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        entity.HasOne<Location>()
-            .WithMany()
-            .HasForeignKey(preference => preference.DefaultLocationId)
-            .OnDelete(DeleteBehavior.SetNull);
-    }
-}

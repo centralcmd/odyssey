@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
+using Odyssey.Core.Preferences;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Core.Weather;
@@ -55,8 +57,7 @@ public sealed class WeatherReadService
             return new Resolution(new WeatherLocationRef { LocationId = id, Name = name }, state.Selectable, state.Tracked);
         }
 
-        var preferred = await context.UserWeatherPreferences.AsNoTracking()
-            .Where(p => p.UserId == userId).Select(p => p.DefaultLocationId).FirstOrDefaultAsync(cancellationToken);
+        var preferred = await PreferredLocationIdAsync(userId, cancellationToken);
         var household = (await settings.GetAsync(cancellationToken)).HouseholdDefaultLocationId;
 
         foreach (var candidate in new[] { preferred, household })
@@ -330,8 +331,7 @@ public sealed class WeatherReadService
 
     public async Task<WeatherPreferences> PreferencesAsync(string userId, CancellationToken cancellationToken)
     {
-        var preferred = await context.UserWeatherPreferences.AsNoTracking()
-            .Where(p => p.UserId == userId).Select(p => p.DefaultLocationId).FirstOrDefaultAsync(cancellationToken);
+        var preferred = await PreferredLocationIdAsync(userId, cancellationToken);
         var household = (await settings.GetAsync(cancellationToken)).HouseholdDefaultLocationId;
         return new WeatherPreferences
         {
@@ -340,7 +340,7 @@ public sealed class WeatherReadService
         };
     }
 
-    /// <summary>Upserts the caller's own row. A location that is not selectable is a 400 keyed <c>defaultLocationId</c>.</summary>
+    /// <summary>Saves the caller's own preference row. A location that is not selectable is a 400 keyed <c>defaultLocationId</c>.</summary>
     public async Task SetPreferenceAsync(string userId, UpdateWeatherPreferences request, CancellationToken cancellationToken)
     {
         if (request.DefaultLocationId is { } id && !await IsSelectableAsync(id, cancellationToken))
@@ -349,16 +349,38 @@ public sealed class WeatherReadService
                 "That location has no weather. Choose one from the list.", code: null, field: "defaultLocationId");
         }
 
-        var row = await context.UserWeatherPreferences.FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
-        if (row is null)
+        var json = JsonSerializer.Serialize(new StoredPreference(request.DefaultLocationId), PreferenceJson);
+        await new UserPreferencesService(context, time)
+            .UpsertServerOwnedAsync(userId, UserPreferencesService.WeatherKey, json, cancellationToken);
+    }
+
+    private static readonly JsonSerializerOptions PreferenceJson = new(JsonSerializerDefaults.Web);
+
+    private sealed record StoredPreference(Guid? DefaultLocationId);
+
+    /// <summary>
+    /// The caller's stored location id, or null. A row that does not parse reads as no preference, never a
+    /// failure; whatever it names is re-checked for selectability by every caller.
+    /// </summary>
+    private async Task<Guid?> PreferredLocationIdAsync(string userId, CancellationToken cancellationToken)
+    {
+        var json = await context.UserPreferences.AsNoTracking()
+            .Where(p => p.UserId == userId && p.Key == UserPreferencesService.WeatherKey)
+            .Select(p => p.PreferencesJson)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (string.IsNullOrEmpty(json))
         {
-            row = new UserWeatherPreference { UserId = userId };
-            context.UserWeatherPreferences.Add(row);
+            return null;
         }
 
-        row.DefaultLocationId = request.DefaultLocationId;
-        row.UpdatedAt = Now;
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            return JsonSerializer.Deserialize<StoredPreference>(json, PreferenceJson)?.DefaultLocationId;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private async Task<WeatherLocationRef?> SelectableRefAsync(Guid? id, CancellationToken cancellationToken)

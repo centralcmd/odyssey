@@ -419,7 +419,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<WeatherForecastStep> WeatherForecastSteps { get; set; }
     public DbSet<WeatherObservation> WeatherObservations { get; set; }
     public DbSet<WeatherDay> WeatherDays { get; set; }
-    public DbSet<UserWeatherPreference> UserWeatherPreferences => Set<UserWeatherPreference>();
     public DbSet<CalendarEvent> CalendarEvents { get; set; }
     public DbSet<RecurrencePattern> RecurrencePatterns { get; set; }
 

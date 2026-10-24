@@ -270,19 +270,3 @@ public class WeatherDay
 
     public DateTime UpdatedAtUtc { get; set; }
 }
-
-/// <summary>
-/// The caller's own weather location (issue #348 §4). A dedicated 1:1 table rather than a
-/// <c>UserProfile</c> column, so a user with no profile row can still set it and a profile <c>PUT</c> cannot
-/// clobber it. Cascades with the user; the location link nulls out.
-/// </summary>
-public class UserWeatherPreference
-{
-    [Key]
-    [StringLength(255)]
-    public required string UserId { get; set; }
-
-    public Guid? DefaultLocationId { get; set; }
-
-    public DateTime UpdatedAt { get; set; }
-}

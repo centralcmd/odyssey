@@ -75,8 +75,6 @@ public class DataExportTableCoverageTests
         ["RoleClaims"] = "Application/Identity: out of scope",
         ["UserProfiles"] = "Application/Identity: out of scope",
         ["UserPreferences"] = "Application/Identity: out of scope",
-        // The caller's own weather place (issue #348 §7.10), alongside UserPreferences.
-        ["UserWeatherPreferences"] = "Application/Identity: out of scope",
 
         // The user profile picture (issue #94 §10.14). Out of scope for the same reason the identity
         // tables above are, and for two more that are specific to it: this export deliberately omits a
