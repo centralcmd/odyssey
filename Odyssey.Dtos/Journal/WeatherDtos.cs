@@ -61,7 +61,7 @@ public enum WeatherLocationSortBy
 public static class WeatherRules
 {
     public const int StationIdMaxLength = 32;
-    public const int SymbolCodeMaxLength = 40;
+    public const int SymbolCodeMaxLength = 48;
     public const int ContactMaxLength = 254;
 
     /// <summary>Weather positions are stored and sent to 3 decimal places (≈ 100 m).</summary>

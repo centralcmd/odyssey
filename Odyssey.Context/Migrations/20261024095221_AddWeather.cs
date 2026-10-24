@@ -47,7 +47,7 @@ namespace Odyssey.Context.Migrations
                 {
                     LocationId = table.Column<Guid>(type: "char(36)", nullable: false, collation: "ascii_general_ci"),
                     LocalDate = table.Column<DateOnly>(type: "date", nullable: false),
-                    ForecastSymbolCode = table.Column<string>(type: "varchar(40)", maxLength: 40, nullable: true)
+                    ForecastSymbolCode = table.Column<string>(type: "varchar(48)", maxLength: 48, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     ForecastMinTempC = table.Column<decimal>(type: "decimal(4,1)", precision: 4, scale: 1, nullable: true),
                     ForecastMaxTempC = table.Column<decimal>(type: "decimal(4,1)", precision: 4, scale: 1, nullable: true),
@@ -194,7 +194,7 @@ namespace Odyssey.Context.Migrations
                     WindGustMps = table.Column<decimal>(type: "decimal(4,1)", precision: 4, scale: 1, nullable: true),
                     WindFromDirectionDeg = table.Column<decimal>(type: "decimal(4,1)", precision: 4, scale: 1, nullable: true),
                     UvIndexClearSky = table.Column<decimal>(type: "decimal(3,1)", precision: 3, scale: 1, nullable: true),
-                    SymbolCode = table.Column<string>(type: "varchar(40)", maxLength: 40, nullable: true)
+                    SymbolCode = table.Column<string>(type: "varchar(48)", maxLength: 48, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     PrecipitationMm = table.Column<decimal>(type: "decimal(5,1)", precision: 5, scale: 1, nullable: true),
                     PrecipitationProbabilityPct = table.Column<decimal>(type: "decimal(4,1)", precision: 4, scale: 1, nullable: true),

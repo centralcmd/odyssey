@@ -52,6 +52,13 @@ public static class WeatherVisuals
 
     private const string Thunder = "andthunder";
 
+    // MET's own legend spells two thunder bases with a doubled "s"; they are real wire codes.
+    private static readonly Dictionary<string, string> BaseAliases = new(StringComparer.Ordinal)
+    {
+        ["lightssleetshowers"] = "lightsleetshowers",
+        ["lightssnowshowers"] = "lightsnowshowers",
+    };
+
     /// <summary>
     /// The glyph and words for a MET code. An <c>…andthunder</c> code takes the thunder glyph and adds the
     /// words; an unknown code is the neutral cloud and "Unknown conditions" — never a guess.
@@ -66,6 +73,7 @@ public static class WeatherVisuals
         var variant = parts.Length > 1 ? parts[1] : null;
         var thunder = raw.EndsWith(Thunder, StringComparison.Ordinal);
         var key = thunder ? raw[..^Thunder.Length] : raw;
+        key = BaseAliases.GetValueOrDefault(key, key);
         if (!Symbols.TryGetValue(key, out var symbol))
             return new WeatherSymbolInfo(code, "Unknown conditions", "cloud", false);
         if (thunder)

@@ -4620,8 +4620,8 @@ namespace Odyssey.Context.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("ForecastSymbolCode")
-                        .HasMaxLength(40)
-                        .HasColumnType("varchar(40)");
+                        .HasMaxLength(48)
+                        .HasColumnType("varchar(48)");
 
                     b.Property<DateTime?>("ObservedFetchedAtUtc")
                         .HasColumnType("datetime(6)");
@@ -4758,8 +4758,8 @@ namespace Odyssey.Context.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("SymbolCode")
-                        .HasMaxLength(40)
-                        .HasColumnType("varchar(40)");
+                        .HasMaxLength(48)
+                        .HasColumnType("varchar(48)");
 
                     b.Property<decimal?>("TempMaxC")
                         .HasPrecision(4, 1)
