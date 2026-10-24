@@ -306,7 +306,7 @@ namespace Odyssey.Context.Migrations
                 {
                     { "WeatherDefaultLocationId", new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "" },
                     { "WeatherMaxTrackedLocations", new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "5" },
-                    { "WeatherRefreshIntervalMinutes", new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "60" },
+                    { "WeatherRefreshIntervalMinutes", new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "1440" },
                     { "WeatherUserAgentContact", new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), null, "" }
                 });
 

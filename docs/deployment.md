@@ -1021,7 +1021,7 @@ Locationforecast (`api.met.no`) and, optionally, measured days from Frost (`fros
 - **Observations are optional.** They need a Frost client id (free, from `frost.met.no`), entered in
   **`/settings` → Weather** as a secret. Without it, past days show the forecast only. An id that
   cannot be decrypted (a lost Data Protection key ring) stops observations and logs an error hourly.
-- Four new settings: the contact, the refresh interval (default 60 min, 30–360), the cap on scheduled
+- Four new settings: the contact, the refresh interval (default 1440 min, i.e. once a day; 30–1440), the cap on scheduled
   places (default 5, 1–20) and the household default place. No configuration keys are added or moved.
 - Two new deploy-time limits: `RateLimiting:WeatherRead` (per user, default 120 per 60 s) and
   `RateLimiting:WeatherRefresh` (per user, default 6 per 300 s, covering apply, refresh and delete).

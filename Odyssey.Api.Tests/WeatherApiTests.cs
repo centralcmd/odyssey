@@ -558,8 +558,8 @@ public class WeatherApiTests
     {
         // contact, interval, default → expected interval, expected cap
         { "ops@example.org", "120", null, 120, 5 },
-        { "ops@example.org", "9999", null, 360, 5 },
-        { "ops@example.org", "not-a-number", null, 60, 5 },
+        { "ops@example.org", "9999", null, 1440, 5 },
+        { "ops@example.org", "not-a-number", null, 1440, 5 },
     };
 
     [Theory]

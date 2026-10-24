@@ -12,7 +12,7 @@ using Odyssey.Context;
 namespace Odyssey.Context.Migrations
 {
     [DbContext(typeof(OdysseyContext))]
-    [Migration("20261023221920_AddWeather")]
+    [Migration("20261024093739_AddWeather")]
     partial class AddWeather
     {
         /// <inheritdoc />
@@ -3901,7 +3901,7 @@ namespace Odyssey.Context.Migrations
                         {
                             Key = "WeatherRefreshIntervalMinutes",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "60"
+                            Value = "1440"
                         },
                         new
                         {
