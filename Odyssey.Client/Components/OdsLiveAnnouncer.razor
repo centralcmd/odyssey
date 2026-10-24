@@ -7,12 +7,16 @@
     server fetch that the user triggered by typing, filtering, sorting or paging —
     changes that otherwise happen silently. Use Assertive="true" (role="alert")
     for errors that should interrupt; the default is polite.
+
+    Announce(text) re-announces an identical message (issue #351): an unchanged
+    string renders nothing new, so it clears the region and sets the text on the
+    next render — "Rate deleted" twice in a row is read twice.
 *@
 
 <div role="@(Assertive ? "alert" : "status")"
      aria-live="@(Assertive ? "assertive" : "polite")"
      aria-atomic="true"
-     class="sr-only">@Message</div>
+     class="sr-only">@_text</div>
 
 @code {
     /// <summary>The text announced to assistive technology. Update it to fire an announcement.</summary>
@@ -20,4 +24,28 @@
 
     /// <summary>When true, announce as <c>role="alert"</c> (assertive) rather than polite <c>role="status"</c>.</summary>
     [Parameter] public bool Assertive { get; set; }
+
+    private string? _text;
+    private string? _lastMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (Message != _lastMessage)
+        {
+            _lastMessage = Message;
+            _text = Message;
+        }
+    }
+
+    /// <summary>Announce <paramref name="message"/>, even when it equals the text already in the region.</summary>
+    public async Task Announce(string message)
+    {
+        _text = string.Empty;
+        StateHasChanged();
+        // Long enough for the cleared region to render before the text returns; a same-frame swap
+        // would be coalesced into no change at all.
+        await Task.Delay(50);
+        _text = message;
+        StateHasChanged();
+    }
 }

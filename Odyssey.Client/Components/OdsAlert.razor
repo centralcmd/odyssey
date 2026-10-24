@@ -18,6 +18,13 @@
     /// <summary>Sets the color and leading icon — info (default) / success / warning / error.</summary>
     [Parameter] public Severity Severity { get; set; } = Severity.Info;
 
+    /// <summary>
+    /// Live-region role, overriding the severity default (Odyssey Design System · Alert <c>live</c>).
+    /// A persistent banner that renders on every load — a degraded provider, an unsupported currency —
+    /// passes <c>Status</c> so it does not interrupt; a failure the user just caused passes <c>Alert</c>.
+    /// </summary>
+    [Parameter] public OdsAlertLive? Live { get; set; }
+
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     [Parameter] public string? Class { get; set; }
@@ -41,7 +48,12 @@
 
             if (!attrs.ContainsKey("role"))
             {
-                attrs["role"] = Severity is Severity.Error or Severity.Warning ? "alert" : "status";
+                attrs["role"] = Live switch
+                {
+                    OdsAlertLive.Alert => "alert",
+                    OdsAlertLive.Status => "status",
+                    _ => Severity is Severity.Error or Severity.Warning ? "alert" : "status",
+                };
             }
 
             return attrs;

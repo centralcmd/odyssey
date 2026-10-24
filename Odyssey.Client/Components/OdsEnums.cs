@@ -108,6 +108,14 @@ public enum OdsSortType { Text, Number, Date, Status }
 /// default; Warning / Error for destructive or confirm dialogs.</summary>
 public enum OdsModalTone { Brand, Warning, Error }
 
+/// <summary>Where an <c>OdsModal</c> puts focus when it opens (Odyssey Design System · Modal
+/// <c>initialFocus</c>). <c>Cancel</c> opens a destructive confirmation on its safe choice.</summary>
+public enum OdsModalInitialFocus { FirstField, Cancel }
+
+/// <summary>Live-region role of an <c>OdsAlert</c> (Odyssey Design System · Alert <c>live</c>):
+/// <c>Alert</c> interrupts, <c>Status</c> is polite — for a persistent banner that renders on load.</summary>
+public enum OdsAlertLive { Alert, Status }
+
 /// <summary>Signal level for an <c>OdsSeverityIcon</c> — the glyph shared by Alert
 /// blocks and the PageHeader problem-rollup toggle. Renders in currentColor so the
 /// parent supplies the tint (amber / coral / sea).</summary>

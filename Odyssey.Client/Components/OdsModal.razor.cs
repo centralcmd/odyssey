@@ -36,6 +36,17 @@ public partial class OdsModal
     /// (e.g. a favourite toggle on the photo lightbox). Mirrors the design-system Modal head slot.</summary>
     [Parameter] public RenderFragment? HeaderActions { get; set; }
 
+    /// <summary>Where focus goes on open: the first body field (default) or Cancel — the element marked
+    /// <c>data-dialog-cancel</c>, else the footer's first button (Odyssey Design System · Modal).</summary>
+    [Parameter] public OdsModalInitialFocus InitialFocus { get; set; } = OdsModalInitialFocus.FirstField;
+
+    /// <summary>
+    /// Id of the element to focus on close (or of a container whose first control takes it) — for a
+    /// dialog opened from a row-menu item, which unmounts with its popover. Fallbacks: the captured
+    /// opener if still in the DOM, then the page's <c>h1</c>.
+    /// </summary>
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
     /// <summary>Wide variant — for batch grids / file analysis.</summary>
     [Parameter] public bool Wide { get; set; }
 
@@ -134,7 +145,7 @@ public partial class OdsModal
                 // Capture (synchronously, before MudBlazor's own deferred focus-trap can run) whatever
                 // had focus — the row action that opened us — so the close edge below can restore it.
                 await Js.InvokeVoidAsync("odsCaptureFocusOwner");
-                await Js.InvokeVoidAsync("odsFocusFirstField");
+                await Js.InvokeVoidAsync(InitialFocus == OdsModalInitialFocus.Cancel ? "odsFocusDialogCancel" : "odsFocusFirstField");
             }
             catch { /* JS unavailable (e.g. prerender / teardown) */ }
         }
@@ -143,7 +154,12 @@ public partial class OdsModal
         {
             restorePending = false;
             try
-            { await Js.InvokeVoidAsync("odsRestoreFocusOwner"); }
+            {
+                if (string.IsNullOrEmpty(ReturnFocusToId))
+                    await Js.InvokeVoidAsync("odsRestoreFocusOwner");
+                else
+                    await Js.InvokeVoidAsync("odsRestoreFocusOwner", ReturnFocusToId);
+            }
             catch { /* JS unavailable (e.g. teardown) */ }
         }
     }
