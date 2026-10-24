@@ -14,6 +14,7 @@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync"
           Icon="@Icon" IconTone="@IconTone" Wide="@Wide" RequiredLegend="@RequiredLegend"
+          InitialFocus="@InitialFocus" ReturnFocusToId="@ReturnFocusToId"
           Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
         <div class="ods-modal-body">
@@ -51,6 +52,14 @@
     /// <summary>Show the footer's "* Required" legend when the body holds a required field — forwarded
     /// to OdsModal. Default true.</summary>
     [Parameter] public bool RequiredLegend { get; set; } = true;
+
+    /// <summary>Where focus goes on open — forwarded to OdsModal. A destructive confirmation passes
+    /// <c>Cancel</c>.</summary>
+    [Parameter] public OdsModalInitialFocus InitialFocus { get; set; } = OdsModalInitialFocus.FirstField;
+
+    /// <summary>Element id to return focus to on close — forwarded to OdsModal (a row menu's
+    /// <c>OdsRecordActionContext.MenuTriggerId</c>).</summary>
+    [Parameter] public string? ReturnFocusToId { get; set; }
 
     /// <summary>Header title text.</summary>
     [Parameter] public string? Title { get; set; }

@@ -157,6 +157,13 @@ public sealed class OdsRecordActionContext
 
     /// <summary>Delete this row (clears its open/edit state, then raises <c>OnDelete</c>).</summary>
     public required Action Remove { get; init; }
+
+    /// <summary>
+    /// Id of the element wrapping this row's <c>more_vert</c> trigger. Pass it as a dialog's
+    /// <c>ReturnFocusToId</c> when a menu item opens one: the item unmounts with its popover, so the
+    /// dialog's own opener is gone by the time it closes.
+    /// </summary>
+    public string MenuTriggerId { get; init; } = string.Empty;
 }
 
 /// <summary>Commit / cancel callbacks passed to a RecordTable's <c>RenderEdit</c> template.</summary>
@@ -173,6 +180,12 @@ public sealed class OdsRecordEditContext
 
     /// <summary>Leave edit mode without saving (the row stays expanded on its detail view).</summary>
     public required Action Cancel { get; init; }
+
+    /// <summary>
+    /// End the edit after a caller action that is neither a patch nor a cancel (e.g. "Use default",
+    /// which the host saves itself). No "Saved" flash; focus returns to the row's menu trigger.
+    /// </summary>
+    public Action Done { get; init; } = static () => { };
 }
 
 /// <summary>
