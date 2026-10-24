@@ -202,8 +202,8 @@ public class LocationDialogTests
         cut.Find(".loc-search input[role=combobox]").KeyDown("ArrowDown");
 
         var optionId = cut.Find("li[role=option]").Id;
-        Assert.Contains(JsInterop.Invocations,
-            i => i.Identifier == "odsScrollIntoViewById" && Equals(i.Arguments[0], optionId));
+        cut.WaitForAssertion(() => Assert.Contains(JsInterop.Invocations,
+            i => i.Identifier == "odsScrollIntoViewById" && Equals(i.Arguments[0], optionId)), TimeSpan.FromSeconds(3));
     }
 
     [Fact]
