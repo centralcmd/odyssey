@@ -48,6 +48,7 @@ public partial class ExchangeRateSyncStatusPanel
     private Task? _pollTask;
     private bool _readInFlight;
     private int _consecutiveFailures;
+    private int _readFailures;
 
     /// <summary>The run the panel saw start — its end is what gets announced and refreshed once.</summary>
     private Guid? _watchedRunId;
@@ -68,21 +69,54 @@ public partial class ExchangeRateSyncStatusPanel
         }
     }
 
-    /// <summary>Re-read status once, on the user's request; recovers a stale panel.</summary>
+    /// <summary>
+    /// Re-read status once, on the user's request; recovers a stale panel. The outcome is announced,
+    /// because the button keeps focus and nothing else tells a screen-reader user the read happened.
+    /// </summary>
     public async Task RefreshAsync()
     {
+        if (_refreshing)
+            return;
         _refreshing = true;
         StateHasChanged();
         _stale = null;
         _consecutiveFailures = 0;
+        var before = _readFailures;
         await ReadStatusAsync(announce: true);
         _refreshing = false;
+        if (_readFailures != before)
+        {
+            // A read that already went stale announced it; say it once.
+            if (_stale is null)
+                await OnAnnounce.InvokeAsync("Couldn’t refresh status");
+            _stale = StaleReason.Errors;
+        }
+        else if (_status is { } status)
+        {
+            await OnAnnounce.InvokeAsync($"Status refreshed: {OdsTypeRegistries.ExchangeRateSyncStateOf(status.State).Label}");
+        }
+        ResumePollingIfRunning();
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Re-read status without announcing — after the page changed what it reports (a currency
+    /// switched, a start date saved, a purge), so the chip, the banners and the synced count follow.
+    /// </summary>
+    public async Task ReloadQuietlyAsync()
+    {
+        await ReadStatusAsync(announce: false);
+        ResumePollingIfRunning();
+        StateHasChanged();
+    }
+
+    private void ResumePollingIfRunning()
+    {
         if (_status?.CurrentRun is { } run && !IsPolling)
         {
             _watchedRunId ??= run.Id;
             StartPolling();
         }
-        StateHasChanged();
     }
 
     /// <summary>Why Run now is unavailable right now, as visible text; null when it can run.</summary>
@@ -195,7 +229,10 @@ public partial class ExchangeRateSyncStatusPanel
         { _readInFlight = false; }
 
         if (!result.IsSuccess || result.Value is null)
+        {
+            _readFailures++;
             return await OnReadFailedAsync(result.Status, announce);
+        }
 
         _consecutiveFailures = 0;
         _loadFailed = false;

@@ -239,6 +239,9 @@ public partial class ExchangeRatesCard
         {
             _rates = [.. load.Items];
             _totalCount = load.TotalCount;
+            var shown = _rates.Select(x => x.ExchangeRateId).ToHashSet();
+            foreach (var gone in _menuTriggers.Keys.Where(k => !shown.Contains(k)).ToList())
+                _menuTriggers.Remove(gone);
             _loadError = false;
             _announce = _totalCount == 0 ? "No rates match your filters."
                 : $"Showing {OdsPagerMath.FirstShown(_page, _pageSize, _totalCount)}–{OdsPagerMath.LastShown(_page, _pageSize, _totalCount)} of {_totalCount} rate{(_totalCount == 1 ? "" : "s")}.";
@@ -362,6 +365,7 @@ public partial class ExchangeRatesCard
     // ── Deleting one fetched rate (issue #351 §3.D) ──────────────────────────
     private readonly Dictionary<Guid, string> _menuTriggers = [];
     private (ExistingExchangeRate Rate, string MenuTriggerId)? _deletingFetched;
+    private OdsLiveAnnouncer? _announcer;
     private bool _deleteFetchedOpen;
 
     private void StartDeleteFetched(ExistingExchangeRate rate, string menuTriggerId)
@@ -374,8 +378,10 @@ public partial class ExchangeRatesCard
 
     private void OnDeleteFetchedOpenChanged(bool open) => _deleteFetchedOpen = open;
 
+    // The same local timestamp the row's As of column shows, so the dialog names the row the user is
+    // looking at — a date alone can read as a different day from the provider's in a far-east zone.
     private static string FetchedDeleteBody(ExistingExchangeRate rate) =>
-        $"{rate.FromCurrencyCode}/{rate.ToCurrencyCode} on {rate.AsOf.ToLocalTime():MMM dd, yyyy} will not be fetched again, leaving a gap in the history.";
+        $"{rate.FromCurrencyCode}/{rate.ToCurrencyCode} on {rate.AsOf.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")} will not be fetched again, leaving a gap in the history.";
 
     private async Task<string?> ConfirmDeleteFetchedAsync()
     {
@@ -392,8 +398,8 @@ public partial class ExchangeRatesCard
         await RefreshAsync();
         var next = index >= 0 && index < _rates.Count ? _rates[index] : index - 1 >= 0 && index - 1 < _rates.Count ? _rates[index - 1] : null;
         _focusAfterDelete = next is not null && _menuTriggers.TryGetValue(next.ExchangeRateId, out var id) ? id : "xr-rates-card";
-        _announce = "Rate deleted";
-        _deletingFetched = null;
+        if (_announcer is not null)
+            await _announcer.Announce("Rate deleted");
         return null;
     }
 

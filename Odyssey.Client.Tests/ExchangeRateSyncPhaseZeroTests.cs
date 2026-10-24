@@ -234,7 +234,7 @@ public class ExchangeRateSyncPhaseZeroTests
 
         cut.FindAll("button.odc-rec-expand")[0].Click();
 
-        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusById" && Equals(i.Arguments[0], chevronId));
+        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusFirstIn" && Equals(i.Arguments[0], chevronId));
     }
 
     [Fact]

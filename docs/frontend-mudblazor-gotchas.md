@@ -169,6 +169,8 @@ Until then, treat **v9** as the truth.
   pressed* (Run now) loses the user's place. `OdsButton.AriaDisabled` and `OdsSwitch.AriaDisabled`
   keep the control focusable, set `aria-disabled` and swallow the click or change; put the reason
   beside it as visible text. `OdsSwitch.Busy` is the same plus `aria-busy`, for a save in flight.
+  `OdsButton.Loading` alone is natively disabled; pass `AriaDisabled` with it on a button the user
+  presses to start the work it then shows as busy (Save, Refresh status), so a failure leaves focus there.
 - **A non-optimistic `OdsSwitch` is reset with `ResetKey`, not by re-assigning `Value`.** MudSwitch
   keeps its own checked state, so a refused save would leave the thumb where the user put it. Bump
   `ResetKey` and the switch rebuilds from the model and takes focus back.

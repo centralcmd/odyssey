@@ -137,12 +137,24 @@ public partial class OdsRecordTable<TRow>
     // sort between a request and the render that honours it still finds the right row.
     private readonly string _tableId = $"odc-rec-{Guid.NewGuid():N}";
     private readonly Dictionary<object, int> _rowSlots = [];
+    private int _nextSlot;
 
     private string SlotFor(object key)
     {
         if (!_rowSlots.TryGetValue(key, out var slot))
-            _rowSlots[key] = slot = _rowSlots.Count;
+            _rowSlots[key] = slot = _nextSlot++;
         return $"{_tableId}-{slot}";
+    }
+
+    // Slots of rows no longer passed in are dropped, so a paged table's map tracks the page rather than
+    // every row it has ever shown. A row that returns gets a fresh slot; ids are never reused.
+    protected override void OnParametersSet()
+    {
+        if (_rowSlots.Count == 0)
+            return;
+        var present = Rows.Select(RowKey).ToHashSet();
+        foreach (var gone in _rowSlots.Keys.Where(k => !present.Contains(k)).ToList())
+            _rowSlots.Remove(gone);
     }
 
     private string MenuIdFor(object key) => $"{SlotFor(key)}-menu";
@@ -175,16 +187,15 @@ public partial class OdsRecordTable<TRow>
         {
             switch (move)
             {
+                // Two frames for every move a menu item can start (View details, Edit, Collapse): the row
+                // menu restores focus to its own trigger as it closes, and the move has to land after
+                // that restore, never race it.
                 case FocusMove.IntoPanel:
-                    await Js.InvokeVoidAsync("odsFocusFirstIn", PanelIdFor(key), true, 0);
-                    break;
                 case FocusMove.EditField:
-                    // Two frames: the row menu restores focus to its own trigger as it closes, and this
-                    // move has to land after that restore, never race it.
                     await Js.InvokeVoidAsync("odsFocusFirstIn", PanelIdFor(key), true, 2);
                     break;
                 case FocusMove.Chevron:
-                    await Js.InvokeVoidAsync("odsFocusById", ExpandIdFor(key));
+                    await Js.InvokeVoidAsync("odsFocusFirstIn", ExpandIdFor(key), true, 2);
                     break;
                 case FocusMove.MenuTrigger:
                     await Js.InvokeVoidAsync("odsFocusFirstIn", MenuIdFor(key), false, 0);

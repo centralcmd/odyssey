@@ -22,7 +22,7 @@
 <MudButton Variant="@MudVariant"
            Color="@MudColor"
            FullWidth="@Full"
-           Disabled="@(Disabled || Loading)"
+           Disabled="@(Disabled || (Loading && !AriaDisabled))"
            ButtonType="@Type"
            Href="@Href"
            OnClick="HandleClickAsync"
@@ -66,7 +66,9 @@
     /// <summary>Stretch to the full width of the container.</summary>
     [Parameter] public bool Full { get; set; }
 
-    /// <summary>Busy state — label dims, a spinner overlays, the button is non-interactive.</summary>
+    /// <summary>Busy state — label dims, a spinner overlays, the button is non-interactive. Natively
+    /// disabled unless <see cref="AriaDisabled"/> is also set, which keeps focus on a button pressed to
+    /// start the work it is now busy with.</summary>
     [Parameter] public bool Loading { get; set; }
 
     [Parameter] public bool Disabled { get; set; }
@@ -105,7 +107,7 @@
 
     private string? ButtonClass => AriaDisabled ? $"odc-btn-aria-disabled {Class}".TrimEnd() : Class;
 
-    private Task HandleClickAsync(MouseEventArgs e) => AriaDisabled ? Task.CompletedTask : OnClick.InvokeAsync(e);
+    private Task HandleClickAsync(MouseEventArgs e) => AriaDisabled || Loading ? Task.CompletedTask : OnClick.InvokeAsync(e);
 
     private Variant MudVariant => Variant switch
     {
