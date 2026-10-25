@@ -5,6 +5,7 @@ using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Api.SystemSettings;
 using Odyssey.Context;
+using Odyssey.Core.SystemSettings;
 using Odyssey.Dtos;
 using Xunit;
 
@@ -249,15 +250,18 @@ public class SettingsLookupReadPathContractTests
     }
 
     /// <summary>
-    /// Nothing in the settings folder stores a cache entry with no expiry — the drift
+    /// Nothing in either settings folder stores a cache entry with no expiry — the drift
     /// <c>new MemoryCacheEntryOptions()</c> and a two-argument <c>cache.Set</c> both were. Asserted as a
-    /// property of every call rather than as literal source lines, so a rename does not trip it.
+    /// property of every call rather than as literal source lines, so a rename does not trip it. The Core
+    /// folder holds the lookups both hosts share (the API and <c>Odyssey.Worker</c>), so it is scanned too.
     /// </summary>
     [Fact]
     public void NoSettingsCacheEntry_IsStoredWithoutAnExpiry()
     {
-        var folder = Path.Combine(RepositoryRootPath(), "Odyssey.Api", "SystemSettings");
-        var files = Directory.GetFiles(folder, "*.cs");
+        var files = new[] { Path.Combine("Odyssey.Api", "SystemSettings"), Path.Combine("Odyssey.Core", "SystemSettings") }
+            .SelectMany(folder => Directory.GetFiles(Path.Combine(RepositoryRootPath(), folder), "*.cs"))
+            .ToArray();
+        Assert.Contains(files, file => file.EndsWith("WeatherSettingsLookup.cs", StringComparison.Ordinal));
         var calls = 0;
 
         foreach (var file in files)

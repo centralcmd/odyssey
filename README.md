@@ -146,6 +146,7 @@ counterparty, custodian or contract party.
 | `Odyssey.Client` | Blazor WebAssembly frontend (MudBlazor v9), served by NGINX |
 | `Odyssey.ApiClient` | Typed HTTP client, free of any web/UI dependency so non-browser consumers can use it |
 | `Odyssey.MigrationService` | Runs EF Core migrations before the API starts |
+| `Odyssey.Worker` | Runs the background jobs (the weather schedule first); no HTTP surface |
 | `Odyssey.AppHost` | .NET Aspire orchestrator for local development |
 | `Odyssey.<Domain>[.Context\|.Dtos]` | Business logic, EF Core context and DTOs per domain |
 
@@ -417,6 +418,7 @@ The full strategy and rationale live in [`docs/test-environment-and-e2e-spec.md`
 | `Odyssey.Core.Tests` | Unit / service logic | none (EF InMemory) |
 | `Odyssey.Api.Tests` | API integration via `WebApplicationFactory` + the shared `OdysseyApiFactory` fixture | none (EF InMemory) |
 | `Odyssey.MigrationService.Tests` | The demo-data seeder | none (EF InMemory) |
+| `Odyssey.Worker.Tests` | The worker host: the job loop, its service graph, its read-only key ring | none |
 | `Odyssey.IntegrationTests` | Real-engine behaviour InMemory can't model — actual migrations, FK `ON DELETE CASCADE`, decimal/datetime fidelity | **Docker** (Testcontainers-MariaDB) |
 | `Odyssey.E2ETests` | Playwright browser smoke: sign in as a seeded user and see seeded data | a **running, seeded stack** |
 | `Odyssey.E2ETests.Api` | API security/permissions/contracts over real HTTP + real login cookie (permission matrix across the seeded role users) | a **running, seeded stack** |

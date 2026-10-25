@@ -1,11 +1,12 @@
+using Microsoft.Extensions.Hosting;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 
-namespace Odyssey.Api.SystemSettings;
+namespace Odyssey.Core.SystemSettings;
 
 /// <summary>
 /// The single declaration of every encrypted secret setting (issue #444 §5), mirroring
-/// <see cref="SystemSettingsRegistry"/>'s single-declaration discipline while deliberately sharing
+/// <c>SystemSettingsRegistry</c>'s single-declaration discipline while deliberately sharing
 /// none of its type hierarchy.
 ///
 /// <para>

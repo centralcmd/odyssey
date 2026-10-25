@@ -49,6 +49,11 @@ services:
       secrets:
         - proxy_ca
 
+  worker:
+    build:
+      secrets:
+        - proxy_ca
+
 secrets:
   proxy_ca:
     file: ${ODYSSEY_PROXY_CA:-/root/.ccr/ca-bundle.crt}

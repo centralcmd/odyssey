@@ -17,7 +17,7 @@ private one too, with the two-variable diff and the reasoning in
 stack — that is a bare `docker compose up` on the base file, with demo data and published
 credentials.
 
-The app runs as four containers behind one origin:
+The app runs as five containers behind one origin:
 
 ```
             ┌──────────────────────────── VPS ────────────────────────────┐
@@ -25,6 +25,7 @@ The app runs as four containers behind one origin:
    (443)    │                                          │                   │
             │                                       mariadb :3306 (internal)│
             │                          migrations (runs once, then exits)  │
+            │                          worker (background jobs, no port)   │
             └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -32,7 +33,7 @@ Because the client's nginx proxies `/api/*` to the API, the browser only ever ta
 origin (`https://your-domain`). That keeps cookie auth working without CORS configuration.
 
 Images are published to GHCR automatically on every release (`…-api`, `…-client`,
-`…-migrations`), tagged with an immutable SemVer. Production **pulls** these — the server
+`…-migrations`, `…-worker`), tagged with an immutable SemVer. Production **pulls** these — the server
 never builds.
 
 ## Files involved
@@ -749,7 +750,8 @@ The only stateful pieces are two named volumes — back both up:
   ```
 - `dataprotection_keys` — **the Data Protection key ring, and it is secret-bearing.** It has always
   held the auth-cookie and antiforgery signing keys; since issue #444 it is also what decrypts any
-  credential an administrator stores under **System settings → Credentials**. See the section below.
+  credential an administrator stores under **System settings → Credentials**. The `api` mounts it
+  read-write and the `worker` read-only. See the section below.
 
 ### The Data Protection keys volume
 
@@ -781,6 +783,25 @@ database client. It does **not** protect against an attacker who has the applica
 that attacker has the key ring and the process memory. The access boundary is unchanged by this
 feature; the prize behind it is larger.
 
+### Two containers hold the key ring
+
+Since issue #348 the **worker** mounts the volume too, **read-only**, because a background job reads the
+encrypted secret store (the Frost client id today; mail and other jobs are expected to follow). This was
+a deliberate choice over the alternatives: keeping secret-reading jobs in the API, or an internal endpoint
+through which the worker asks the API for one secret at a time.
+
+What it changes and what it does not:
+
+- **A compromise of either container exposes every stored credential.** The incident response above
+  applies to the worker exactly as to the API: rotate every credential at its provider.
+- **The worker never writes the ring.** The mount is `:ro`, and automatic key generation is turned off
+  in the worker (`WorkerHost`), so the API remains the only process that creates, rotates or revokes a
+  key. A worker started against an empty volume refuses to protect anything rather than inventing a key.
+- **Both must use the same path and the same application name** (`Odyssey`). A worker without
+  `DataProtection__KeysPath` logs a warning at startup, and every secret then reads as *cannot be
+  decrypted*: observations stop and log an error hourly, while forecasts continue.
+- **The migrations job still holds no key ring.** It protects nothing.
+
 **The key ring itself is stored unencrypted, and the API says so on every boot.** Expect this line,
 and do not treat it as a misconfiguration:
 
@@ -805,8 +826,9 @@ condition: `Data Protection has no explicitly configured durable key repository`
 encrypted secret settings are refused with `503`. That one needs fixing; the framework's
 `No XML encryptor configured` does not.
 
-**Only the `api` container mounts it**, and that is the point: every container holding the ring is one
-more that can decrypt every stored credential. The `migrations` job mounted it too for a while, so
+**Only the `api` and the `worker` mount it** — the worker read-only, since issue #348 (see
+[Two containers hold the key ring](#two-containers-hold-the-key-ring)) — and the short list is the
+point: every container holding the ring is one more that can decrypt every stored credential. The `migrations` job mounted it too for a while, so
 that a configuration-adoption step could protect a value under keys the API could read — a value
 protected under the job's own ephemeral ring would have produced a row the API could never decrypt.
 That step no longer exists and nothing in the job protects anything, so the mount was removed along
@@ -816,7 +838,8 @@ If you ever add a mount back, add it together with the step that needs it, point
 volume and using the same `SetApplicationName("Odyssey")` — two services deriving different keys from
 the same files is the failure this arrangement exists to avoid.
 
-**The mount must be read-write.** A read-only mount does not fail loudly: Data Protection falls back
+**The API's mount must be read-write.** (The worker's is read-only on purpose: it never creates a key.)
+A read-only mount on the API does not fail loudly: Data Protection falls back
 to an in-memory key ring with a log line, which is the same silently-ephemeral failure by another
 route.
 
@@ -1025,8 +1048,13 @@ Locationforecast (`api.met.no`) and, optionally, measured days from Frost (`fros
   places (default 5, 1–20) and the household default place. No configuration keys are added or moved.
 - Two new deploy-time limits: `RateLimiting:WeatherRead` (per user, default 120 per 60 s) and
   `RateLimiting:WeatherRefresh` (per user, default 6 per 300 s, covering apply, refresh and delete).
-- The scheduler runs inside the API, once a minute, at most one MET request per second. Every replica
-  runs one; a lease on each place keeps two from fetching the same one.
+- **A new container, `worker`** (image `odyssey-worker`), runs the schedule: once a minute, at most one
+  MET request per second. It is where every background job runs from now on; it has no port and serves
+  nothing. Every worker replica runs the schedule, and a lease on each place keeps two from fetching the
+  same one. The API still fetches on demand and for the Admin refresh.
+- **The worker mounts `dataprotection_keys` read-only** so it can read the Frost client id. That makes it
+  the second container able to decrypt every stored credential; see
+  [Two containers hold the key ring](#two-containers-hold-the-key-ring).
 
 ### The data flow
 

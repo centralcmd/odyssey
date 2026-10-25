@@ -11,6 +11,7 @@ using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Context.Authorization;
 using Odyssey.Context.Secrets;
+using Odyssey.Core.SystemSettings;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Xunit;

@@ -2,6 +2,7 @@ using System.Reflection;
 using Odyssey.Api.SystemSettings;
 using Odyssey.Context;
 using Xunit;
+using Odyssey.Core.SystemSettings;
 
 namespace Odyssey.Api.Tests;
 

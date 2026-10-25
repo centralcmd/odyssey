@@ -1,9 +1,10 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 
-namespace Odyssey.Api.SystemSettings;
+namespace Odyssey.Core.SystemSettings;
 
 /// <summary>Which way a degraded read moves an int setting: toward the safer end of its pair.</summary>
 public enum ConservativeDirection

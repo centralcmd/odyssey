@@ -1,6 +1,6 @@
 using Odyssey.Dtos.Application;
 
-namespace Odyssey.Api.SystemSettings;
+namespace Odyssey.Core.SystemSettings;
 
 /// <summary>
 /// How recoverable a secret is if it is lost (issue #444 §5 item 3). Carried as a declared field
@@ -29,7 +29,7 @@ public enum SecretKind
 /// One secret-valued setting, declared once (issue #444 §5).
 ///
 /// <para>
-/// <strong>A parallel type, deliberately not a subclass of <see cref="SystemSettingDescriptor"/></strong>
+/// <strong>A parallel type, deliberately not a subclass of <c>SystemSettingDescriptor</c></strong>
 /// (§5 option B1). That type has three members a secret must never reach: <c>Format</c>, whose output
 /// the audit loop writes verbatim; <c>Project</c>, which writes onto the response DTO; and
 /// <c>AuditChanges</c>, which is <em>derived</em> from the claim — so a
@@ -41,7 +41,7 @@ public enum SecretKind
 /// <para>
 /// The scope of that guarantee is worth stating exactly: the separate type prevents a secret being
 /// handed to the <em>existing</em> <c>{OldValue} -&gt; {NewValue}</c> loop. It does not prevent
-/// somebody authoring a new leak inside <see cref="SecretSettingsService"/> itself — that residual is
+/// somebody authoring a new leak inside <c>SecretSettingsService</c> itself — that residual is
 /// covered by a log-capturing test over a sentinel value, which is a test, not a type guarantee.
 /// </para>
 ///

@@ -5,6 +5,7 @@ using Odyssey.Api.Email;
 using Odyssey.Api.SystemSettings;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context.Secrets;
+using Odyssey.Core.SystemSettings;
 using Odyssey.Dtos.Application;
 using Xunit;
 using Odyssey.Core.Email;

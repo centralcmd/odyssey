@@ -58,10 +58,11 @@ var mariadb = builder
 // before this, so a secret written through `dotnet run --project Odyssey.AppHost` would have been
 // refused by the write-path durability check with nowhere to point the operator.
 //
-// The API alone gets it. The migrations job had it too, for a config-adoption step that no longer
-// exists; it protects nothing now, and a second holder of the ring is a cost with no return. If that
-// changes, give it this same directory — a job protecting a row under its own ephemeral ring writes
-// one the API can never decrypt.
+// The API writes it; the worker reads it (issue #348), so a job can read the encrypted secret store —
+// a deliberate second holder of the ring, read-only by configuration (WorkerHost turns automatic key
+// generation off; a host directory cannot be mounted read-only here the way Compose mounts the volume).
+// The migrations job had it too, for a config-adoption step that no longer exists; it protects nothing
+// now, and holding the ring there would be a cost with no return.
 var dataProtectionKeysPath = Path.GetFullPath(
     Path.Combine(builder.AppHostDirectory, "..", ".aspire", "dataprotection-keys"));
 Directory.CreateDirectory(dataProtectionKeysPath);
@@ -112,6 +113,20 @@ var api = builder
     .WaitFor(mariadb)
     .WithReference(migrations)
     .WaitForCompletion(migrations);
+
+// Background jobs (issue #348 first). Same database and environment as the API, and the API's key ring,
+// which it reads but never writes. No endpoint: the worker serves nothing.
+builder
+    .AddProject<Projects.Odyssey_Worker>("worker")
+    .WithEnvironment("DataProtection__KeysPath", dataProtectionKeysPath)
+    .WithEnvironment("ConnectionStrings__OdysseyConnection", BuildConnectionString(odysseyDatabase))
+    // Host.CreateApplicationBuilder reads DOTNET_ENVIRONMENT, not the ASPNETCORE name.
+    .WithEnvironment("DOTNET_ENVIRONMENT", apiEnvironment)
+    // The same trust bundle as the API: the worker makes the scheduled outbound HTTPS calls (MET, Frost).
+    .WithEnvironment("SSL_CERT_FILE", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
+    .WaitFor(mariadb)
+    .WaitForCompletion(migrations)
+    .WaitFor(api);
 
 // These settings are optional and come from AppHost user-secrets under Aspire:*. Only forward keys
 // that are actually set — emitting an empty value would override the API's appsettings defaults,

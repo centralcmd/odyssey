@@ -141,6 +141,26 @@ services:
     tmpfs:
       - /tmp
 
+  worker:
+    image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in your env file (the GitHub user or org that owns the published images)}/odyssey-worker:${IMAGE_TAG:?IMAGE_TAG must be set in your env file (the release to deploy, e.g. 1.4.0)}
+    build: !reset null
+    environment:
+      # Pinned like the migrations job's, for the same reason: the base file takes it from the env file,
+      # and the secret registry's environment filter must agree with the API's.
+      DOTNET_ENVIRONMENT: Production
+      # DataProtection__KeysPath comes from the base file, beside its read-only mount, so the two cannot
+      # drift apart. That mount makes this the second container able to decrypt the stored credentials;
+      # see docs/deployment.md before changing either.
+    # Runtime hardening: non-root .NET app (UID 1654) that needs no caps and no port. The root filesystem
+    # is read-only and so is the key-ring mount; /tmp is a tmpfs.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
   client:
     image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in your env file (the GitHub user or org that owns the published images)}/odyssey-client:${IMAGE_TAG:?IMAGE_TAG must be set in your env file (the release to deploy, e.g. 1.4.0)}
     build: !reset null
@@ -161,7 +181,7 @@ services:
       - /var/run
 
   caddy:
-    # Pinned to an exact patch, like the three Odyssey images above: `2-alpine` floats, so a
+    # Pinned to an exact patch, like the four Odyssey images above: `2-alpine` floats, so a
     # `docker compose pull` for an app upgrade could swap the TLS terminator underneath you at the
     # same time. Bump this deliberately. (2.11.4 is what `2-alpine` resolved to when it was pinned,
     # so this changed nothing at the time.)

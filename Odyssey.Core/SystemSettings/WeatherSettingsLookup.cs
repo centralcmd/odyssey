@@ -1,14 +1,15 @@
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Core.Weather;
-using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
+using Odyssey.Dtos;
 
-namespace Odyssey.Api.SystemSettings;
+namespace Odyssey.Core.SystemSettings;
 
 /// <summary>
 /// Backs <see cref="IWeatherSettingsLookup"/> (issue #348 §11) on the shared 30s TTL, evicted by
-/// <see cref="SystemSettingsService"/> when any of the four rows changes.
+/// <c>SystemSettingsService</c> when any of the four rows changes.
 ///
 /// <para>
 /// <strong>The contact fails closed.</strong> A stored contact the shape rule rejects reads as "not set", so
@@ -22,7 +23,7 @@ public sealed class WeatherSettingsLookup(
     IMemoryCache cache,
     ILogger<WeatherSettingsLookup> logger) : IWeatherSettingsLookup
 {
-    internal const string CacheKey = "system-settings:weather";
+    public const string CacheKey = "system-settings:weather";
 
     /// <summary>The keys this entry serves; <c>SystemSettingsCacheEvictionTests</c> reads it.</summary>
     private static readonly string[] Keys =

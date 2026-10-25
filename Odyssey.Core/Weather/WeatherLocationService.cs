@@ -455,12 +455,12 @@ public sealed class WeatherLocationService
     private async Task<RowContext> RowContextAsync(CancellationToken cancellationToken)
     {
         var configured = await settings.GetAsync(cancellationToken);
-        var tracked = await TrackedQueue().Select(w => w.LocationId).ToListAsync(cancellationToken);
+        var tracked = await TrackedQueue(context).Select(w => w.LocationId).ToListAsync(cancellationToken);
         return new RowContext(configured.HouseholdDefaultLocationId, tracked.Skip(configured.MaxTrackedLocations).ToHashSet());
     }
 
     /// <summary>Tracked locations in cap order — the one definition the scheduler and the Admin list share.</summary>
-    public IQueryable<WeatherLocation> TrackedQueue() =>
+    public static IQueryable<WeatherLocation> TrackedQueue(OdysseyContext context) =>
         from weather in context.WeatherLocations.AsNoTracking()
         join location in context.Locations.AsNoTracking() on weather.LocationId equals location.LocationId
         where weather.Enabled && weather.IsTracked && weather.PurgeStartedAt == null && location.Archived == null
@@ -511,7 +511,7 @@ public sealed class WeatherLocationService
 
     private async Task EnsureTrackedCapacityAsync(Guid locationId, WeatherSettings configured, CancellationToken cancellationToken)
     {
-        var tracked = await TrackedQueue().CountAsync(w => w.LocationId != locationId, cancellationToken);
+        var tracked = await TrackedQueue(context).CountAsync(w => w.LocationId != locationId, cancellationToken);
         if (tracked >= configured.MaxTrackedLocations)
         {
             throw new DomainUnprocessableException(

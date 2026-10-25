@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Api.SystemSettings;
 using Odyssey.Api.Tests.Infrastructure;
 using Xunit;
+using Odyssey.Core.SystemSettings;
 
 namespace Odyssey.Api.Tests;
 

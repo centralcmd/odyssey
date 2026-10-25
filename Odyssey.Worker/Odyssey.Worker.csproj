@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-Odyssey.Worker-6b0d6f3e-8a52-4d5f-9b0a-3f6d2a9c41e7</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Odyssey.Worker.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Odyssey.Context\Odyssey.Context.csproj" />
+    <!-- The jobs themselves live in Odyssey.Core (Odyssey.Core.Jobs.IPeriodicJob); this project only hosts them. -->
+    <ProjectReference Include="..\Odyssey.Core\Odyssey.Core.csproj" />
+    <ProjectReference Include="..\Odyssey.Dtos\Odyssey.Dtos.csproj" />
+  </ItemGroup>
+</Project>

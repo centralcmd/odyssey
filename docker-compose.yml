@@ -168,6 +168,35 @@ services:
       migrations:
         condition: service_completed_successfully
 
+  # Background jobs (issue #348 first): the weather schedule, and every job added after it. No port and
+  # no HTTP surface. Every replica runs every job; a job coordinates through the rows it works on, so
+  # scaling this service out is safe.
+  worker:
+    build:
+      context: .
+      dockerfile: Odyssey.Worker/Dockerfile
+    container_name: odyssey-worker
+    restart: unless-stopped
+    environment:
+      # The generic host reads DOTNET_ENVIRONMENT; it must match the API's, because the secret registry's
+      # environment filter decides which stored secrets exist at all.
+      DOTNET_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__OdysseyConnection: server=mariadb;port=3306;database=${ODYSSEY_DATABASE:-odyssey};user=${MARIADB_USER:-odyssey};password=${MARIADB_PASSWORD:-odyssey_password};
+      # The API's key ring, READ-ONLY (`:ro` below), so a job can read the encrypted secret store — the
+      # Frost client id today. This makes the worker the second container that can decrypt every stored
+      # credential, a deliberate trade-off (docs/deployment.md). It never writes a key: automatic key
+      # generation is off in WorkerHost, so the API stays the only writer.
+      DataProtection__KeysPath: /var/odyssey/dataprotection-keys
+    volumes:
+      - dataprotection_keys:/var/odyssey/dataprotection-keys:ro
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      # After the API, so a fresh keys volume is initialised from the API's image, which owns the
+      # directory as `app` and is the one container allowed to write it.
+      api:
+        condition: service_started
+
   client:
     build:
       context: .
@@ -182,7 +211,7 @@ services:
 
 volumes:
   mariadb_data:
-  # Mounted by the api service alone (issue #444 §14). It was briefly shared with the migrations job,
-  # for a config-adoption step that no longer exists; one mount means one container can decrypt what
-  # is stored under it.
+  # Mounted read-write by the api service and READ-ONLY by the worker (issue #444 §14, revisited for
+  # issue #348): those two containers, and only those, can decrypt what is stored under it. The
+  # migrations job protects nothing and still does not mount it.
   dataprotection_keys:

@@ -545,12 +545,12 @@ public class WeatherApiTests
     /// <summary>A row written directly bypasses the save path's eviction; the lookup caches for 30 s.</summary>
     private static void Evict(WeatherFactory factory) =>
         factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>()
-            .Remove(Odyssey.Api.SystemSettings.WeatherSettingsLookup.CacheKey);
+            .Remove(Odyssey.Core.SystemSettings.WeatherSettingsLookup.CacheKey);
 
-    private static Odyssey.Api.Weather.WeatherScheduler Scheduler(WeatherFactory factory) => new(
+    private static WeatherScheduleJob Scheduler(WeatherFactory factory) => new(
         factory.Services.GetRequiredService<IServiceScopeFactory>(),
         TimeProvider.System,
-        Microsoft.Extensions.Logging.Abstractions.NullLogger<Odyssey.Api.Weather.WeatherScheduler>.Instance);
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<WeatherScheduleJob>.Instance);
 
     // ── Settings lookup ───────────────────────────────────────────────────────────────────────────
 

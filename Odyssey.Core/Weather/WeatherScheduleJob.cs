@@ -1,24 +1,27 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Context.Secrets;
-using Odyssey.Core.Weather;
+using Odyssey.Core.Jobs;
 
-namespace Odyssey.Api.Weather;
+namespace Odyssey.Core.Weather;
 
 /// <summary>
-/// The weather scheduler (issue #348 §3): once a minute, the forecasts of the tracked locations within the
-/// cap, then the observations of every enabled location. Requests go out one at a time, at most one a
-/// second. Every replica runs one; claiming on <see cref="WeatherLocationSchedule.Version"/> is what keeps
-/// two from fetching the same job.
+/// The weather schedule (issue #348 §3), run by <c>Odyssey.Worker</c> once a minute: the forecasts of the
+/// tracked locations within the cap, then the observations of every enabled location. Requests go out one
+/// at a time, at most one a second. Every worker replica runs it; claiming on
+/// <see cref="WeatherLocationSchedule.Version"/> is what keeps two from fetching the same location.
 /// </summary>
 /// <remarks>
-/// Not registered under <c>UseInMemoryDatabase</c> or the <c>Testing</c> environment, so no test tier sends a
-/// request to MET. A host shutdown cancels the tick, and a cancelled fetch records no failure (§3 step 8).
+/// Nothing registers it in the API or any test host, so no test tier sends a request to MET; the tests
+/// drive <see cref="RunOnceAsync"/> directly. A host shutdown cancels the run, and a cancelled fetch
+/// records no failure (§3 step 8).
 /// </remarks>
-public sealed class WeatherScheduler(
+public sealed class WeatherScheduleJob(
     IServiceScopeFactory scopes,
     TimeProvider time,
-    ILogger<WeatherScheduler> logger) : BackgroundService
+    ILogger<WeatherScheduleJob> logger) : IPeriodicJob
 {
     public static readonly TimeSpan Tick = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan RequestSpacing = TimeSpan.FromSeconds(1);
@@ -26,29 +29,11 @@ public sealed class WeatherScheduler(
 
     private DateTime? lastUnreadableLog;
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        using var timer = new PeriodicTimer(Tick, time);
-        do
-        {
-            try
-            {
-                await RunOnceAsync(stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception exception)
-            {
-                // One failed tick must not end the scheduler; the next tick retries from the stored state.
-                logger.LogError(exception, "A weather scheduler tick failed.");
-            }
-        }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
-    }
+    public string Name => "weather";
 
-    /// <summary>One tick. Public so a test can drive it without the timer.</summary>
+    public TimeSpan Interval => Tick;
+
+    /// <summary>One run.</summary>
     public async Task RunOnceAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
@@ -62,8 +47,7 @@ public sealed class WeatherScheduler(
 
         await LogArchivedSkipsAsync(context, cancellationToken);
 
-        var locations = services.GetRequiredService<WeatherLocationService>();
-        var tracked = await locations.TrackedQueue()
+        var tracked = await WeatherLocationService.TrackedQueue(context)
             .Select(w => w.LocationId)
             .Take(settings.MaxTrackedLocations)
             .ToListAsync(cancellationToken);
