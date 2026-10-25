@@ -59,6 +59,10 @@ public sealed class MariaDbFixture : IAsyncLifetime
                 .WithUsername(AppUser)
                 .WithPassword(AppPassword)
                 .WithEnvironment("MARIADB_ROOT_PASSWORD", RootPassword)
+                // The tier migrates a fresh schema ~60 times and InnoDB syncs every DDL statement to
+                // disk, so on a slow-fsync host (btrfs on LUKS) the tier took 5 hours with the CPU
+                // idle, and 3.5 minutes in memory. The data is discarded with the container anyway.
+                .WithTmpfsMount("/var/lib/mysql")
                 // The MySql module's default readiness probe shells out to the `mysql` client, which the
                 // mariadb image no longer ships — it would loop until timeout. Use the image's own
                 // healthcheck script instead (same one docker-compose uses).
