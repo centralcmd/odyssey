@@ -18,7 +18,8 @@ var mariadbUser = GetRequiredValue("Aspire:MariaDb:User");
 var mariadbPassword = GetRequiredValue("Aspire:MariaDb:Password");
 var mariadbDatabase = GetRequiredValue("Aspire:MariaDb:Database");
 var mariadbDataVolume = GetRequiredValue("Aspire:MariaDb:DataVolumeName");
-var mariadbInitScriptsPath = GetRequiredValue("Aspire:MariaDb:InitScriptsPath");
+var mariadbInitScriptsPath = Path.GetFullPath(
+    Path.Combine(builder.AppHostDirectory, GetRequiredValue("Aspire:MariaDb:InitScriptsPath")));
 var mariadbHostPort = GetRequiredInt("Aspire:MariaDb:HostPort");
 var mariadbContainerPort = GetRequiredInt("Aspire:MariaDb:ContainerPort");
 var mariadbServer = GetRequiredValue("Aspire:MariaDb:Server");
@@ -45,7 +46,11 @@ var mariadb = builder
     .WithEnvironment("MARIADB_USER", mariadbUser)
     .WithEnvironment("MARIADB_PASSWORD", mariadbPassword)
     .WithVolume(mariadbDataVolume, "/var/lib/mysql")
-    .WithBindMount(mariadbInitScriptsPath, "/docker-entrypoint-initdb.d", isReadOnly: true)
+    // Copied in, not bind-mounted. On an SELinux host (Fedora, RHEL) a bind mount of the checkout
+    // keeps its user_home_t label, the container is denied reading it, and MariaDB exits before
+    // initialising. Compose relabels with `:z`; WithBindMount has no equivalent, and copied files
+    // carry no host label at all.
+    .WithContainerFiles("/docker-entrypoint-initdb.d", mariadbInitScriptsPath)
     .WithEndpoint(targetPort: mariadbContainerPort, port: mariadbHostPort, name: "tcp", isProxied: false)
     .WithHealthCheck("mariadb-ready");
 
