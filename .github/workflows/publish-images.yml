@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     # Serialize publishing per ref *and per image* so an in-flight older build can't
     # push the mutable `latest` tag after a newer commit has already published it. The
-    # matrix image must be part of the group, otherwise the three matrix legs share one
+    # matrix image must be part of the group, otherwise the four matrix legs share one
     # group and cancel each other.
     concurrency:
       group: publish-images-${{ inputs.ref }}-${{ matrix.image }}
@@ -40,6 +40,8 @@ jobs:
             dockerfile: Odyssey.Client/Dockerfile
           - image: migrations
             dockerfile: Odyssey.MigrationService/Dockerfile
+          - image: worker
+            dockerfile: Odyssey.Worker/Dockerfile
 
     steps:
       - name: Checkout repository
