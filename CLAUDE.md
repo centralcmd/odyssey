@@ -1227,7 +1227,10 @@ Claude is integrated into this repo via the [claude-code-action](https://github.
 
 **Limitations:**
 - Claude cannot approve PRs or merge branches
-- Claude cannot modify files under `.github/workflows/`
+- Claude may modify files under `.github/workflows/` when a change needs it (the maintainer's decision,
+  October 2026) — for example adding a `publish-images.yml` matrix leg for a new image. Treat a workflow
+  edit like any other: in the diff, in the commit body, and never as a way to widen the tool allow-lists
+  below without saying so.
 - Each invocation is a fresh context — reference prior issues or PRs explicitly if relevant
 
 **A precedent a design cites must be verified in the live tree, not recalled.** Issue #167 was
