@@ -1,8 +1,12 @@
+using System.Net;
 using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
+using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Theme;
+using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages;
 
@@ -28,6 +32,19 @@ public partial class Preferences
     private string _searchText = string.Empty;
     private List<ExistingCurrency> _currencies = [];
 
+    // The caller's own weather place. Not part of the page's preferences blob: it is its own
+    // server-owned user-preferences row, written only through PUT /api/weather/preferences, which
+    // checks the place is selectable. "" follows the household default, as on the dashboard card.
+    private const string FollowHouseholdDefault = "";
+    private bool _canChooseWeather;
+    private WeatherLocationOptions _weatherOptions = new();
+    private string _weatherLocation = FollowHouseholdDefault;
+    private string _savedWeatherLocation = FollowHouseholdDefault;
+    private string? _weatherError;
+
+    /// <summary>The interactivity check, as a seam for bUnit (the <c>WeatherWidget.InteractiveCheck</c> pattern).</summary>
+    internal static Func<bool> InteractiveCheck = OperatingSystem.IsBrowser;
+
     private bool DarkModeSwitchValue
     {
         get => _isDarkMode;
@@ -46,8 +63,10 @@ public partial class Preferences
     private bool DarkModeDirty => _isDarkMode != _savedDarkMode;
     private bool DefaultCurrencyDirty => !string.Equals(_currencyCode, _savedCurrencyCode, StringComparison.Ordinal);
     private bool MainCurrencyDirty => !string.Equals(_mainCurrencyCode, _savedMainCurrencyCode, StringComparison.Ordinal);
+    private bool WeatherLocationDirty => !string.Equals(_weatherLocation, _savedWeatherLocation, StringComparison.Ordinal);
+    private bool PagePreferencesDirty => DarkModeDirty || DefaultCurrencyDirty || MainCurrencyDirty;
 
-    private bool HasUnsavedChanges => DarkModeDirty || DefaultCurrencyDirty || MainCurrencyDirty;
+    private bool HasUnsavedChanges => PagePreferencesDirty || WeatherLocationDirty;
 
     // ── Page view-state persistence (search section + box) ────────────────────
     private async Task RestoreViewStateAsync()
@@ -78,6 +97,27 @@ public partial class Preferences
     private bool ShowCurrencyCard => Matches("Default currency", "Currency used by default for new transactions");
     private bool ShowMainCurrencyCard => Matches("Main currency", "Currency used to display total net worth, assets and liabilities");
 
+    /// <summary>As the dashboard card's picker: the claim, and two or more places to choose between.</summary>
+    private bool ShowWeatherLocationCard =>
+        _canChooseWeather && _weatherOptions.Locations.Count > 1
+        && Matches("Weather location", "Place the weather card on your dashboard shows");
+
+    private IReadOnlyList<OdsOption> WeatherLocationOptions
+    {
+        get
+        {
+            var household = _weatherOptions.Locations.FirstOrDefault(l => l.LocationId == _weatherOptions.HouseholdDefaultLocationId);
+            var options = new List<OdsOption>
+            {
+                new(FollowHouseholdDefault, household is not null ? $"{household.Name} (household default)" : "Household default"),
+            };
+            options.AddRange(_weatherOptions.Locations
+                .Where(l => household is null || l.LocationId != household.LocationId)
+                .Select(l => new OdsOption(l.LocationId.ToString("D"), l.Name)));
+            return options;
+        }
+    }
+
     private bool Matches(string title, string description) =>
         string.IsNullOrWhiteSpace(_searchText) ||
         title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
@@ -93,7 +133,7 @@ public partial class Preferences
 
     protected override async Task OnInitializedAsync()
     {
-        if (!OperatingSystem.IsBrowser())
+        if (!InteractiveCheck())
             return;
 
         await RestoreViewStateAsync();
@@ -104,7 +144,7 @@ public partial class Preferences
         _isDarkMode = _savedDarkMode;
         _currencyCode = UserPreferences.DefaultCurrency ?? string.Empty;
         _mainCurrencyCode = UserPreferences.MainCurrency ?? string.Empty;
-        await LoadCurrencies();
+        await Task.WhenAll(LoadCurrencies(), LoadWeatherLocationAsync());
         // Baseline after LoadCurrencies, which may substitute an archived/unknown
         // saved code for an active one — so the page opens clean, not pre-dirtied.
         _savedCurrencyCode = _currencyCode;
@@ -130,6 +170,36 @@ public partial class Preferences
             _mainCurrencyCode = _currencies[0].CurrencyCode;
     }
 
+    /// <summary>
+    /// A stored place that is no longer selectable reads as the household default, as on the dashboard card.
+    /// A failed read leaves the row hidden rather than offering a choice it cannot show the current value of.
+    /// </summary>
+    private async Task LoadWeatherLocationAsync()
+    {
+        var user = await Auth.GetUserAsync();
+        if (!user.HasPermission(PermissionClaims.WeatherPreferencesUpdate))
+            return;
+
+        var options = Weather.OptionsAsync();
+        var preferences = Weather.PreferencesAsync();
+        await Task.WhenAll(options, preferences);
+        if ((await options).Value is not { } loaded || (await preferences).Value is not { } own)
+            return;
+
+        _weatherOptions = loaded;
+        _weatherLocation = _savedWeatherLocation =
+            own.DefaultLocation is { } place && loaded.Locations.Any(l => l.LocationId == place.LocationId)
+                ? place.LocationId.ToString("D")
+                : FollowHouseholdDefault;
+        _canChooseWeather = true;
+    }
+
+    private void OnWeatherLocationChanged(string value)
+    {
+        _weatherLocation = value;
+        _weatherError = null;
+    }
+
     private Task OnCurrencyChanged(string value)
     {
         _currencyCode = value;
@@ -149,16 +219,24 @@ public partial class Preferences
 
         _isSaving = true;
         _justSaved = false;
-        var saved = await UserPreferences.SaveUserPreferencesAsync(new UserPreferencesPage(_isDarkMode, _currencyCode, _mainCurrencyCode));
+        // The two writes are independent: each half that succeeds commits its own baselines, so a refused
+        // weather place leaves only that row dirty and never costs the user their currency change.
+        var saved = !PagePreferencesDirty
+            || await UserPreferences.SaveUserPreferencesAsync(new UserPreferencesPage(_isDarkMode, _currencyCode, _mainCurrencyCode));
+        if (saved && PagePreferencesDirty)
+        {
+            _savedDarkMode = _isDarkMode;
+            _savedCurrencyCode = _currencyCode;
+            _savedMainCurrencyCode = _mainCurrencyCode;
+        }
+
+        if (WeatherLocationDirty)
+            saved &= await SaveWeatherLocationAsync();
+
         _isSaving = false;
 
         if (saved)
         {
-            // Commit every field's baseline together so the button returns to its
-            // clean (disabled) state and the "Unsaved changes" hint clears.
-            _savedDarkMode = _isDarkMode;
-            _savedCurrencyCode = _currencyCode;
-            _savedMainCurrencyCode = _mainCurrencyCode;
             // Brief "Saved" confirmation on the button (design: save → check, then revert).
             _justSaved = true;
             StateHasChanged();
@@ -166,6 +244,23 @@ public partial class Preferences
             _justSaved = false;
             StateHasChanged();
         }
+    }
+
+    private async Task<bool> SaveWeatherLocationAsync()
+    {
+        Guid? next = Guid.TryParse(_weatherLocation, out var id) ? id : null;
+        var result = await Weather.SetPreferenceAsync(next);
+        if (!result.IsSuccess)
+        {
+            _weatherError = result.Status == HttpStatusCode.BadRequest
+                ? "That location no longer has weather. Choose another one."
+                : "Your weather location couldn't be saved. Try again.";
+            return false;
+        }
+
+        _savedWeatherLocation = _weatherLocation;
+        _weatherError = null;
+        return true;
     }
 
     public void Dispose()

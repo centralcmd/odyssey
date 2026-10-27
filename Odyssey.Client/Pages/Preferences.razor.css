@@ -20,6 +20,12 @@
     max-width: 240px;
 }
 
+/* Wider than the currency pickers: a place name plus "(household default)" does not fit them. */
+.pref-weather {
+    width: 280px;
+    max-width: 100%;
+}
+
 /* ── Per-row unsaved-change flag ──
    The control and its flag share a right-aligned group. The dot's slot is
    always laid out (flag is flex:none + the group gap), and only its opacity
