@@ -387,6 +387,14 @@ public class WeatherApiTests
         Assert.Equal(WeatherStatus.Ok, daily!.Status);
         Assert.NotEmpty(daily.Days);
         Assert.All(daily.Days, day => Assert.Equal(7.5m, day.Forecast!.MaxTempC));
+
+        // The history bounds travel on every resolved daily response, under the names the client pages by.
+        using var raw = JsonDocument.Parse(await client.GetStringAsync(
+            $"/api/weather/daily?locationId={location.LocationId}&from={today.AddDays(-60):yyyy-MM-dd}&to={today.AddDays(-1):yyyy-MM-dd}"));
+        var history = raw.RootElement.GetProperty("history");
+        Assert.Equal(JsonValueKind.Null, history.GetProperty("measuredFrom").ValueKind);
+        Assert.Equal(JsonValueKind.Null, history.GetProperty("measuredThrough").ValueKind);
+        Assert.Equal(JsonValueKind.False, history.GetProperty("hasObservationStation").ValueKind);
     }
 
     [Fact]

@@ -644,6 +644,85 @@ public class WeatherServiceTests
     }
 
     [Fact]
+    public async Task A_daily_range_ending_before_the_local_today_never_fetches_on_demand()
+    {
+        using var h = new WeatherTestHarness();
+        var cabin = await h.EnableAsync("Cabin", tracked: false);
+        h.Forecasts.Respond = _ => Task.FromResult(WeatherTestHarness.Run(Noon.AddMinutes(-30), Noon.AddHours(-1), 24, 7));
+        var today = new DateOnly(2026, 10, 23);
+
+        await h.Read().DailyAsync(Daily(cabin.LocationId, today.AddDays(-60), today.AddDays(-1)), "u1", CancellationToken.None);
+        Assert.Equal(0, h.Forecasts.Calls);
+
+        await h.Read(h.NewContext()).DailyAsync(Daily(cabin.LocationId, today.AddDays(-2), today), "u1", CancellationToken.None);
+        Assert.Equal(1, h.Forecasts.Calls);
+    }
+
+    [Fact]
+    public async Task A_daily_range_reaching_a_west_of_utc_local_today_still_fetches_on_demand()
+    {
+        // 03:00 UTC on the 24th is still the 23rd in Los Angeles, so a range ending on the 23rd reaches today there.
+        using var h = new WeatherTestHarness(new DateTimeOffset(2026, 10, 24, 3, 0, 0, TimeSpan.Zero));
+        var place = await h.EnableAsync("Cabin", tracked: false, zone: "America/Los_Angeles");
+        var now = h.Time.GetUtcNow().UtcDateTime;
+        h.Forecasts.Respond = _ => Task.FromResult(WeatherTestHarness.Run(now.AddMinutes(-30), now.AddHours(-1), 24, 7));
+
+        await h.Read().DailyAsync(Daily(place.LocationId, new DateOnly(2026, 10, 21), new DateOnly(2026, 10, 23)), "u1", CancellationToken.None);
+
+        Assert.Equal(1, h.Forecasts.Calls);
+    }
+
+    [Fact]
+    public async Task Daily_carries_the_measured_history_bounds_whatever_range_was_asked()
+    {
+        using var h = new WeatherTestHarness();
+        var home = await h.EnableAsync();
+        var weather = await h.Context.WeatherLocations.SingleAsync(w => w.LocationId == home.LocationId);
+        weather.FrostStationId = "SN18700";
+        h.Context.WeatherDays.AddRange(
+            MeasuredDay(home.LocationId, new DateOnly(2026, 3, 2)),
+            MeasuredDay(home.LocationId, new DateOnly(2026, 10, 21)),
+            // A forecast-only day is not measured history, however recent.
+            new Odyssey.Context.WeatherDay { LocationId = home.LocationId, LocalDate = new DateOnly(2026, 10, 24), ForecastMaxTempC = 9, UpdatedAtUtc = Noon });
+        await h.Context.SaveChangesAsync();
+        h.Context.ChangeTracker.Clear();
+
+        var daily = await h.Read().DailyAsync(Daily(home.LocationId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 30)), "u1", CancellationToken.None);
+
+        Assert.Empty(daily.Days);
+        Assert.Equal(new DateOnly(2026, 3, 2), daily.History!.MeasuredFrom);
+        Assert.Equal(new DateOnly(2026, 10, 21), daily.History.MeasuredThrough);
+        Assert.True(daily.History.HasObservationStation);
+    }
+
+    [Fact]
+    public async Task Daily_history_bounds_are_empty_with_no_station_and_nothing_measured()
+    {
+        using var h = new WeatherTestHarness();
+        var home = await h.EnableAsync();
+
+        var daily = await h.Read().DailyAsync(Daily(home.LocationId, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 22)), "u1", CancellationToken.None);
+
+        Assert.Null(daily.History!.MeasuredFrom);
+        Assert.Null(daily.History.MeasuredThrough);
+        Assert.False(daily.History.HasObservationStation);
+    }
+
+    private static WeatherDailyQuery Daily(Guid locationId, DateOnly from, DateOnly to) =>
+        new() { LocationId = locationId, From = from, To = to };
+
+    private static Odyssey.Context.WeatherDay MeasuredDay(Guid locationId, DateOnly date) => new()
+    {
+        LocationId = locationId,
+        LocalDate = date,
+        ObservedMinTempC = 2,
+        ObservedMaxTempC = 9,
+        ObservedMeanTempC = 5,
+        ObservedFetchedAtUtc = Noon,
+        UpdatedAtUtc = Noon,
+    };
+
+    [Fact]
     public async Task A_failed_on_demand_fetch_is_reported_stale()
     {
         using var h = new WeatherTestHarness();

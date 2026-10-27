@@ -244,12 +244,31 @@ public sealed record WeatherHourlyResponse
     public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
 }
 
+/// <summary>
+/// What measured history is stored for a location, independent of the requested range, so a caller holding
+/// only <c>weather.read</c> can page through it without the Admin row.
+/// </summary>
+public sealed record WeatherHistoryBounds
+{
+    /// <summary>The oldest stored local date with a measured half; null when none is stored.</summary>
+    public DateOnly? MeasuredFrom { get; init; }
+
+    /// <summary>The newest stored local date with a measured half; null when none is stored.</summary>
+    public DateOnly? MeasuredThrough { get; init; }
+
+    /// <summary>Whether Frost has a station within range of the location's current weather position.</summary>
+    public bool HasObservationStation { get; init; }
+}
+
 public sealed record WeatherDailyResponse
 {
     public WeatherLocationRef? Location { get; init; }
     public WeatherStatus Status { get; init; }
     public bool Stale { get; init; }
     public IReadOnlyList<WeatherDaySummary> Days { get; init; } = [];
+
+    /// <summary>Null when no location resolved or the range is out of range; otherwise always filled.</summary>
+    public WeatherHistoryBounds? History { get; init; }
     public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
 }
 

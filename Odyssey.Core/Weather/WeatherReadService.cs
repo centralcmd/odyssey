@@ -165,13 +165,17 @@ public sealed class WeatherReadService
         }
 
         var now = Now;
-        var today = DateOnly.FromDateTime(now);
         if (from > DateOnly.FromDateTime(now + Horizon))
         {
             return new WeatherDailyResponse { Location = location, Status = WeatherStatus.OutOfRange };
         }
 
-        if (to >= today.AddDays(-1))
+        // Only a range that reaches the location's own today asks MET for a forecast, as hourly and journal
+        // reads only fetch for a future instant. Comparing in the location's zone is what lets a history
+        // window ending yesterday stay a pure read; the UTC fallback keeps the margin a west-of-UTC place needs.
+        var timeline = await TimelineOrNullAsync(location.LocationId, cancellationToken);
+        var localToday = timeline?.DateForInstant(now) ?? DateOnly.FromDateTime(now).AddDays(-1);
+        if (to >= localToday)
         {
             await OnDemandAsync(resolution, now, cancellationToken);
         }
@@ -183,6 +187,7 @@ public sealed class WeatherReadService
             Status = await StatusAsync(resolution, days.Count > 0, cancellationToken),
             Stale = await StaleAsync(resolution, location.LocationId, cancellationToken),
             Days = days,
+            History = await HistoryBoundsAsync(location.LocationId, cancellationToken),
         };
     }
 
@@ -471,6 +476,23 @@ public sealed class WeatherReadService
             .ToListAsync(cancellationToken))
         .Select(ToSummary)
         .ToList();
+
+    private async Task<WeatherHistoryBounds> HistoryBoundsAsync(Guid locationId, CancellationToken cancellationToken)
+    {
+        var measured = await context.WeatherDays.AsNoTracking()
+            .Where(d => d.LocationId == locationId && d.ObservedFetchedAtUtc != null)
+            .GroupBy(d => d.LocationId)
+            .Select(g => new { From = g.Min(d => d.LocalDate), Through = g.Max(d => d.LocalDate) })
+            .FirstOrDefaultAsync(cancellationToken);
+        var hasStation = await context.WeatherLocations.AsNoTracking()
+            .AnyAsync(w => w.LocationId == locationId && w.FrostStationId != null, cancellationToken);
+        return new WeatherHistoryBounds
+        {
+            MeasuredFrom = measured?.From,
+            MeasuredThrough = measured?.Through,
+            HasObservationStation = hasStation,
+        };
+    }
 
     private Task<bool> HasAnyDataAsync(Guid locationId, CancellationToken cancellationToken) =>
         context.WeatherDays.AsNoTracking().AnyAsync(d => d.LocationId == locationId, cancellationToken);
