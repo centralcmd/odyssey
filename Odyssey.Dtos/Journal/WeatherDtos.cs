@@ -68,7 +68,9 @@ public static class WeatherRules
     public const int CoordinateScale = 3;
 
     public const int HourlyMaxDays = 10;
-    public const int DailyMaxDays = 62;
+
+    /// <summary>A year, leap day included — what the temperature history's longest window and a custom range need.</summary>
+    public const int DailyMaxDays = 366;
     public const int OptionsMax = 200;
 
     /// <summary>
@@ -327,7 +329,7 @@ public sealed class WeatherHourlyQuery : IValidatableObject
     }
 }
 
-/// <summary><c>GET /api/weather/daily</c>: <c>to ≥ from</c>, span ≤ 62 days.</summary>
+/// <summary><c>GET /api/weather/daily</c>: <c>to ≥ from</c>, span ≤ <see cref="WeatherRules.DailyMaxDays"/> days.</summary>
 public sealed class WeatherDailyQuery : IValidatableObject
 {
     public Guid? LocationId { get; set; }

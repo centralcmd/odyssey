@@ -297,7 +297,7 @@ public class WeatherApiTests
     [InlineData("/api/weather/hourly?fromUtc=2026-10-23T00:00:00Z&toUtc=2026-11-03T00:00:00Z")]
     [InlineData("/api/weather/hourly?fromUtc=2026-10-23T00:00:00Z&toUtc=2026-10-22T00:00:00Z")]
     [InlineData("/api/weather/hourly")]
-    [InlineData("/api/weather/daily?from=2026-01-01&to=2026-03-05")]
+    [InlineData("/api/weather/daily?from=2025-01-01&to=2026-01-02")]
     [InlineData("/api/weather/daily?from=2026-03-05&to=2026-03-01")]
     public async Task An_invalid_window_is_400(string path)
     {

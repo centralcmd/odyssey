@@ -57,7 +57,7 @@ public sealed class WeatherController(WeatherReadService service) : ControllerBa
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WeatherDailyResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Day summaries over a range of at most 62 days; days with no data are omitted.")]
+    [SwaggerOperation(Summary = "Day summaries over a range of at most 366 days; days with no data are omitted.")]
     public async Task<IActionResult> Daily([FromQuery] WeatherDailyQuery query, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)
