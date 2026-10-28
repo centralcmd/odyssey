@@ -795,7 +795,19 @@ public sealed class ExchangeRateSyncService(
             logger.LogWarning("Exchange-rate sync run {RunId} was abandoned mid-run and is marked failed.", run.ExchangeRateSyncRunId);
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A worker claimed an unclaimed request in the same instant (ClaimedAtUtc is a concurrency
+            // token): it is live after all, so the abandonment is dropped and the caller sees it Running.
+            foreach (var run in stale)
+            {
+                context.Entry(run).State = EntityState.Detached;
+            }
+        }
     }
 
     /// <summary>Finishes a run row and prunes the log to the newest 500 by tracked <c>RemoveRange</c>.</summary>

@@ -375,11 +375,6 @@ public class ExchangeRateSyncTests
         Assert.Equal(ExchangeRateSyncTrigger.Manual, only.Trigger);
     }
 
-    /// <summary>
-    /// The claim's conflict path, forced rather than raced: a second claimer takes the row through another
-    /// context in the instant before this one saves, so the <c>ClaimedAtUtc</c> concurrency token is the
-    /// only thing that can stop both from executing it.
-    /// </summary>
     [Fact]
     public async Task With_no_request_the_job_starts_and_finishes_a_due_scheduled_run()
     {
@@ -395,6 +390,11 @@ public class ExchangeRateSyncTests
         Assert.NotNull(only.ClaimedAtUtc);
     }
 
+    /// <summary>
+    /// The claim's conflict path, forced rather than raced: a second claimer takes the row through another
+    /// context in the instant before this one saves, so the <c>ClaimedAtUtc</c> concurrency token is the
+    /// only thing that can stop both from executing it.
+    /// </summary>
     [Fact]
     public async Task A_claim_that_loses_to_another_replica_returns_nothing_and_keeps_the_winners_claim()
     {
@@ -431,6 +431,46 @@ public class ExchangeRateSyncTests
         Assert.Empty(context.ChangeTracker.Entries<ExchangeRateSyncRun>());
         await using var verify = new OdysseyContext(Options());
         Assert.Equal(rivalAt, (await verify.ExchangeRateSyncRuns.SingleAsync(r => r.ExchangeRateSyncRunId == runId)).ClaimedAtUtc);
+    }
+
+    /// <summary>
+    /// Abandoning an unclaimed request while a worker claims it in the same instant: the claim wins, the
+    /// abandonment is dropped, and the caller is refused as "in progress" rather than failing.
+    /// </summary>
+    [Fact]
+    public async Task An_abandonment_that_races_a_workers_claim_is_dropped_and_the_run_stays_live()
+    {
+        var store = Guid.NewGuid().ToString();
+        var claimedAt = Now.AddMinutes(3);
+        var rival = new ClaimFirst(store, claimedAt);
+        DbContextOptions<OdysseyContext> Options(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors) =>
+            new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase(store).AddInterceptors(interceptors).Options;
+
+        await using (var seed = new OdysseyContext(Options()))
+        {
+            seed.ExchangeRateSyncRuns.Add(new ExchangeRateSyncRun
+            {
+                Trigger = ExchangeRateSyncTrigger.Manual, Provider = ExchangeRateProvider.NorgesBank,
+                Status = ExchangeRateSyncRunStatus.Running, StartedAtUtc = Now,
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        await using var context = new OdysseyContext(Options(rival));
+        var clock = new MutableClock(Now + ExchangeRateSyncConstants.UnclaimedRequestTimeout + TimeSpan.FromSeconds(1));
+        var sync = new ExchangeRateSyncService(
+            context,
+            new NorgesBankClient(new HttpClient(new StubProvider()) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None),
+            new ExchangeRateSupportedListCache(clock), new FakeSettings(), ExchangeRateSyncPacing.None, clock,
+            NullLogger<ExchangeRateSyncService>.Instance);
+
+        Assert.Null(await sync.TryStartAsync(ExchangeRateSyncTrigger.Purge, null));
+
+        Assert.True(rival.Claimed);
+        await using var verify = new OdysseyContext(Options());
+        var run = await verify.ExchangeRateSyncRuns.SingleAsync();
+        Assert.Equal(ExchangeRateSyncRunStatus.Running, run.Status);
+        Assert.Equal(claimedAt, run.ClaimedAtUtc);
     }
 
     /// <summary>Claims the run through its own context the first time the service is about to save.</summary>
