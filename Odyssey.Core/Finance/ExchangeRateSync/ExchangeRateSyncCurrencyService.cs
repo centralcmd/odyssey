@@ -16,8 +16,7 @@ namespace Odyssey.Core.Finance.ExchangeRateSync;
 /// </summary>
 public sealed partial class ExchangeRateSyncCurrencyService(
     OdysseyContext context,
-    NorgesBankClient client,
-    ExchangeRateSupportedListCache supportedList,
+    ExchangeRateSupportedList supportedList,
     IExchangeRateSyncSettingsLookup settingsLookup,
     ExchangeRateSyncService sync,
     TimeProvider timeProvider,
@@ -113,12 +112,10 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         var configured = await context.ExchangeRateSyncCurrencies.AsNoTracking()
             .ToDictionaryAsync(row => row.CurrencyCode, StringComparer.Ordinal, cancellationToken);
 
-        // Every currency list — every currency picker — derives its statuses from this, so it never waits
-        // on the provider once a list has been fetched: an expired or failed entry answers from the last
-        // good list and refreshes in the background. Only with no list at all (the first read after the
-        // host starts) does it wait, rather than report every status as if nothing were published.
-        var series = supportedList.GetWithoutWaiting(client.GetSeriesAsync)
-            ?? await supportedList.GetAsync(client.GetSeriesAsync, cancellationToken);
+        // Every currency list — every currency picker — derives its statuses from this, so it reads only the
+        // stored list and never waits on the provider. Null until a first list is stored: an unknown list,
+        // which marks nothing as not published.
+        var series = (await supportedList.ReadAsync(cancellationToken))?.Series;
         var settings = await settingsLookup.GetAsync(cancellationToken);
         // Only a currency that was ever configured can have fetched rows.
         var extents = withExtents
@@ -201,9 +198,10 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         IReadOnlyList<ProviderSeries>? series = null;
         if (enable)
         {
-            series = await supportedList.GetAsync(client.GetSeriesAsync, cancellationToken)
+            // Live, not the stored copy: starting a sync acts on what the provider publishes today.
+            series = await supportedList.FetchAsync(cancellationToken)
                 ?? throw new ExchangeRateSupportedListUnavailableException();
-            if (!series.Any(value => value.CurrencyCode == code && ExchangeRateSupportedListCache.IsFresh(value, TodayUtc)))
+            if (!series.Any(value => value.CurrencyCode == code && ExchangeRateSupportedList.IsFresh(value, TodayUtc)))
             {
                 throw new DomainUnprocessableException(
                     $"Norges Bank does not publish {code}, so it cannot be synced.", "enabled");
@@ -235,7 +233,7 @@ public sealed partial class ExchangeRateSyncCurrencyService(
             "System settings change by {ActorUserId}: {Field} {OldValue} -> {NewValue}.",
             userId, $"ExchangeRateSync[{loggedCode}].HistoryStartDate", Format(oldStart), Format(update.HistoryStartDate));
 
-        series ??= supportedList.Peek();
+        series ??= (await supportedList.ReadAsync(cancellationToken))?.Series;
         var settings = await settingsLookup.GetAsync(cancellationToken);
         var extents = await sync.FetchedExtentsAsync(ExchangeRateSyncClock.Oslo, [code], cancellationToken);
         var item = Project(code, currency.Name, row, series, settings, extents);
@@ -392,7 +390,7 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         {
             CurrencyCode = code,
             Name = name,
-            Supported = series is null ? null : published is not null && ExchangeRateSupportedListCache.IsFresh(published, TodayUtc),
+            Supported = series is null ? null : published is not null && ExchangeRateSupportedList.IsFresh(published, TodayUtc),
             Enabled = row?.Enabled ?? false,
             Locked = false,
             HistoryStartDate = row?.HistoryStartDate,

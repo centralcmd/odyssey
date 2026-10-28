@@ -79,7 +79,7 @@
     @if (_canReadSync && _syncStatus is { SupportedListAvailable: false })
     {
         <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.Status">
-            Couldn’t reach @_syncStatus.ProviderDisplayName to check which currencies are published. Starting a sync still works; the server checks each change.
+            @_syncStatus.ProviderDisplayName’s list of published currencies hasn’t been fetched yet, so no currency is marked as not published. The next run fetches it, as does Refresh exchange-rate sync status.
         </OdsAlert>
     }
 

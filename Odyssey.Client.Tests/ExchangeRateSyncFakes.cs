@@ -28,6 +28,8 @@ internal static class ExchangeRateSyncFakes
         var mock = new Mock<IExchangeRateSyncApiClient>();
         mock.Setup(c => c.GetStatusAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ExchangeRateSyncStatus>.Success(status ?? IdleStatus(), HttpStatusCode.OK));
+        mock.Setup(c => c.RefreshStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ExchangeRateSyncStatus>.Success(status ?? IdleStatus(), HttpStatusCode.OK));
         mock.Setup(c => c.ListCurrenciesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<bool?>(),
                 It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<PagedResult<ExistingExchangeRateSyncCurrency>>.Success(

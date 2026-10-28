@@ -210,13 +210,11 @@ public partial class ExchangeRateSyncSurfaceTests
         await using var __ = ctx;
         var cut = RenderCurrencies(ctx, "USD");
         cut.WaitForAssertion(() => Assert.NotNull(cut.FindComponent<ExchangeRateSyncStatusPanel>().Instance.Status));
-        var reads = sync.Invocations.Count(i => i.Method.Name == nameof(IExchangeRateSyncApiClient.GetStatusAsync));
 
         Assert.DoesNotContain(RunNowItem, OpenHeaderMenu(cut));
         _popover!.FindAll(".mud-menu-item, [role=menuitem]").First(i => i.TextContent.Contains(RefreshItem)).Click();
 
-        cut.WaitForAssertion(() => Assert.Equal(reads + 1,
-            sync.Invocations.Count(i => i.Method.Name == nameof(IExchangeRateSyncApiClient.GetStatusAsync))));
+        cut.WaitForAssertion(() => sync.Verify(c => c.RefreshStatusAsync(It.IsAny<CancellationToken>()), Times.Once));
     }
 
     [Fact]
@@ -401,6 +399,21 @@ public partial class ExchangeRateSyncSurfaceTests
             Assert.False(table.Instance.Loading);
             Assert.Contains("Succeeded", cut.Markup);
         });
+    }
+
+    [Fact]
+    public async Task Before_the_providers_list_is_first_stored_a_banner_says_so()
+    {
+        var (ctx, sync, _) = NewCurrenciesContext(Row(Currency("USD", enabled: true)));
+        sync.Setup(c => c.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+            ApiResult<ExchangeRateSyncStatus>.Success(Scheduled() with { SupportedListAvailable = false }, HttpStatusCode.OK));
+        await using var __ = ctx;
+
+        var cut = RenderCurrencies(ctx, "USD");
+
+        cut.WaitForAssertion(() => Assert.Contains(
+            "Provider’s list of published currencies hasn’t been fetched yet, so no currency is marked as not published.",
+            cut.Markup));
     }
 
     // ── The list: loaded whole, revealed N at a time, ending in an add row ────────────────────────

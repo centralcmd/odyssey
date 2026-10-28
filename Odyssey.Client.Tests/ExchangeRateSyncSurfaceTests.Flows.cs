@@ -162,12 +162,17 @@ public partial class ExchangeRateSyncSurfaceTests
     [Fact]
     public async Task Refresh_status_announces_what_it_read()
     {
-        var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client(Scheduled()).Object);
+        var sync = ExchangeRateSyncFakes.Client(Scheduled());
+        var (ctx, _) = NewContext(sync.Object);
         await using var __ = ctx;
         var said = new Announced([], []);
 
         var cut = RenderPanel(ctx, said);
         await cut.InvokeAsync(cut.Instance.RefreshAsync);
+
+        // The explicit refresh asks the server to re-fetch the provider's list; a plain read does not.
+        sync.Verify(c => c.RefreshStatusAsync(It.IsAny<CancellationToken>()), Times.Once);
+        sync.Verify(c => c.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Once);
 
         Assert.Equal([$"Status refreshed: {OdsTypeRegistries.ExchangeRateSyncStateOf(ExchangeRateSyncState.Scheduled).Label}"], said.Polite);
     }
@@ -175,15 +180,9 @@ public partial class ExchangeRateSyncSurfaceTests
     [Fact]
     public async Task A_failed_refresh_goes_stale_and_says_so_once()
     {
-        var sync = new Mock<IExchangeRateSyncApiClient>();
-        var first = true;
-        sync.Setup(c => c.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() =>
-        {
-            if (!first)
-                return Refused<ExchangeRateSyncStatus>(HttpStatusCode.TooManyRequests);
-            first = false;
-            return ApiResult<ExchangeRateSyncStatus>.Success(Scheduled(), HttpStatusCode.OK);
-        });
+        var sync = ExchangeRateSyncFakes.Client(Scheduled());
+        sync.Setup(c => c.RefreshStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Refused<ExchangeRateSyncStatus>(HttpStatusCode.TooManyRequests));
         var (ctx, _) = NewContext(sync.Object);
         await using var __ = ctx;
         var said = new Announced([], []);
@@ -303,15 +302,9 @@ public partial class ExchangeRateSyncSurfaceTests
     [Fact]
     public async Task A_refresh_refused_for_permission_says_so_once()
     {
-        var sync = new Mock<IExchangeRateSyncApiClient>();
-        var first = true;
-        sync.Setup(c => c.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() =>
-        {
-            if (!first)
-                return Refused<ExchangeRateSyncStatus>(HttpStatusCode.Forbidden);
-            first = false;
-            return ApiResult<ExchangeRateSyncStatus>.Success(Scheduled(), HttpStatusCode.OK);
-        });
+        var sync = ExchangeRateSyncFakes.Client(Scheduled());
+        sync.Setup(c => c.RefreshStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Refused<ExchangeRateSyncStatus>(HttpStatusCode.Forbidden));
         var (ctx, _) = NewContext(sync.Object);
         await using var __ = ctx;
         var said = new Announced([], []);

@@ -2093,6 +2093,29 @@ namespace Odyssey.Context.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Odyssey.Context.ExchangeRateProviderSeries", b =>
+                {
+                    b.Property<int>("Provider")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CurrencyCode")
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<DateTime>("FetchedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateOnly?>("FirstObservation")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("NewestObservation")
+                        .HasColumnType("date");
+
+                    b.HasKey("Provider", "CurrencyCode");
+
+                    b.ToTable("ExchangeRateProviderSeries");
+                });
+
             modelBuilder.Entity("Odyssey.Context.ExchangeRateSyncCurrency", b =>
                 {
                     b.Property<string>("CurrencyCode")

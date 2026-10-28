@@ -63,6 +63,7 @@ public class ExchangeRateSyncApiTests
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Sync}/status")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync($"{Sync}/status/refresh", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Sync}/currencies")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync($"{Sync}/runs")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync($"{Sync}/runs", null)).StatusCode);
@@ -78,11 +79,32 @@ public class ExchangeRateSyncApiTests
         using var client = factory.CreateClient();
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Sync}/status")).StatusCode);
+        // Refresh status changes no setting: it re-fetches the provider's list, bounded to once in 5 minutes.
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"{Sync}/status/refresh", null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Sync}/currencies")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Sync}/runs")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync($"{Sync}/runs", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync($"{Sync}/currencies/USD", new { enabled = true })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync($"{Sync}/currencies/USD/rates")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Refresh_status_stores_the_providers_list_that_status_then_reports()
+    {
+        await using var factory = new ApiFactory(Admin);
+        await SeedAsync(factory);
+        using var client = factory.CreateClient();
+
+        var before = await client.GetFromJsonAsync<ExchangeRateSyncStatus>($"{Sync}/status");
+        Assert.False(before!.SupportedListAvailable);
+
+        var refreshed = await client.PostAsync($"{Sync}/status/refresh", null);
+        Assert.Equal(HttpStatusCode.OK, refreshed.StatusCode);
+        Assert.True((await refreshed.Content.ReadFromJsonAsync<ExchangeRateSyncStatus>())!.SupportedListAvailable);
+
+        var after = await client.GetFromJsonAsync<ExchangeRateSyncStatus>($"{Sync}/status");
+        Assert.True(after!.SupportedListAvailable);
+        Assert.NotNull(after.SupportedListFetchedAtUtc);
     }
 
     [Fact]

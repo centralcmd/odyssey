@@ -77,6 +77,17 @@ public sealed class ExchangeRateSyncController(
     public async Task<IActionResult> GetStatus(CancellationToken cancellationToken = default) =>
         Ok(await sync.GetStatusAsync(cancellationToken));
 
+    /// <remarks>
+    /// Refresh status. Under the read claim because it changes no setting: it re-fetches the provider's list
+    /// of published currencies into the stored copy every reader uses, at most once every 5 minutes, so the
+    /// outbound requests it can cause are bounded whoever calls it.
+    /// </remarks>
+    [HttpPost("status/refresh")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExchangeRateSyncStatus))]
+    [SwaggerOperation(Summary = "Fetch the provider's currency list, then read the status.")]
+    public async Task<IActionResult> RefreshStatus(CancellationToken cancellationToken = default) =>
+        Ok(await sync.RefreshStatusAsync(cancellationToken));
+
     [HttpGet("runs")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingExchangeRateSyncRun>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]

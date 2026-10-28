@@ -79,7 +79,9 @@ public partial class ExchangeRateSyncStatusPanel
         _stale = null;
         _consecutiveFailures = 0;
         var before = _readFailures;
-        await ReadStatusAsync(announce: true);
+        // The explicit refresh also re-fetches the provider's currency list on the server (at most every
+        // 5 minutes); polls and quiet reloads read the stored one.
+        await ReadStatusAsync(announce: true, refreshList: true);
         _refreshing = false;
         if (_readFailures != before)
         {
@@ -222,12 +224,12 @@ public partial class ExchangeRateSyncStatusPanel
     /// Reads status and applies every stop rule. Returns false when polling should stop: a failure that
     /// ends it, the run timeout reached, or the run over.
     /// </summary>
-    private async Task<bool> ReadStatusAsync(bool announce)
+    private async Task<bool> ReadStatusAsync(bool announce, bool refreshList = false)
     {
         _readInFlight = true;
         ApiResult<ExchangeRateSyncStatus> result;
         try
-        { result = await Sync.GetStatusAsync(); }
+        { result = await (refreshList ? Sync.RefreshStatusAsync() : Sync.GetStatusAsync()); }
         finally
         { _readInFlight = false; }
 

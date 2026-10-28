@@ -75,9 +75,11 @@ public static class ExchangeRateSyncConstants
 
     public const long MaxResponseBytes = 10L * 1024 * 1024;
 
-    public static readonly TimeSpan SupportedListTtl = TimeSpan.FromHours(24);
-
-    public static readonly TimeSpan SupportedListFailureTtl = TimeSpan.FromMinutes(5);
+    /// <summary>
+    /// A stored provider list this recent is reused by a run and by Refresh status rather than fetched again,
+    /// so neither makes more than one list request in the window (catch-up runs come every 5 minutes).
+    /// </summary>
+    public static readonly TimeSpan SupportedListRefreshInterval = TimeSpan.FromMinutes(5);
 
     /// <summary>A series whose newest observation is older than this is not offered.</summary>
     public const int SupportedFreshnessDays = 30;

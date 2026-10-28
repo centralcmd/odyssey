@@ -31,7 +31,7 @@ namespace Odyssey.Core.Finance.ExchangeRateSync;
 public sealed class ExchangeRateSyncService(
     OdysseyContext context,
     NorgesBankClient client,
-    ExchangeRateSupportedListCache supportedList,
+    ExchangeRateSupportedList supportedList,
     IExchangeRateSyncSettingsLookup settingsLookup,
     ExchangeRateSyncPacing pacing,
     TimeProvider timeProvider,
@@ -279,7 +279,8 @@ public sealed class ExchangeRateSyncService(
             return;
         }
 
-        var series = await supportedList.GetAsync(client.GetSeriesAsync, cancellationToken);
+        // Fetched and stored, unless a list was stored in the last few minutes (a catch-up run's predecessor).
+        var series = await supportedList.RefreshAsync(cancellationToken);
         if (series is null)
         {
             outcome.Fail(ExchangeRateSyncErrorKind.ProviderUnavailable);
@@ -289,7 +290,7 @@ public sealed class ExchangeRateSyncService(
         var today = ExchangeRateSyncClock.TodayIn(oslo, Now);
         var todayUtc = DateOnly.FromDateTime(Now);
         var fresh = series
-            .Where(value => ExchangeRateSupportedListCache.IsFresh(value, todayUtc))
+            .Where(value => ExchangeRateSupportedList.IsFresh(value, todayUtc))
             .ToDictionary(value => value.CurrencyCode, StringComparer.Ordinal);
 
         var unsupported = enabled.Keys.Where(code => !fresh.ContainsKey(code)).ToList();
@@ -528,6 +529,17 @@ public sealed class ExchangeRateSyncService(
 
     // ── Reading state ─────────────────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Refresh status: fetches and stores the provider's list (at most once per
+    /// <see cref="ExchangeRateSyncConstants.SupportedListRefreshInterval"/>), then reads status. A failed fetch
+    /// keeps the stored list, so the status still answers.
+    /// </summary>
+    public async Task<ExchangeRateSyncStatus> RefreshStatusAsync(CancellationToken cancellationToken = default)
+    {
+        await supportedList.RefreshAsync(cancellationToken);
+        return await GetStatusAsync(cancellationToken);
+    }
+
     /// <summary>The status the sync panel shows (issue #349 §5.3), derived from the run log and the rows.</summary>
     public async Task<ExchangeRateSyncStatus> GetStatusAsync(CancellationToken cancellationToken = default)
     {
@@ -535,9 +547,10 @@ public sealed class ExchangeRateSyncService(
         var todayUtc = DateOnly.FromDateTime(now);
         var settings = await settingsLookup.GetAsync(cancellationToken);
         var enabled = await EnabledCodesAsync(cancellationToken);
-        // Fetched only when the 24 h entry (or the 5 min failure entry) has expired, so a status poll or a
-        // job tick costs no outbound request in the ordinary case.
-        var series = await supportedList.GetAsync(client.GetSeriesAsync, cancellationToken);
+        // The stored list only: a status poll or a job tick never waits on the provider. Null until a first
+        // list has been stored, which reads as an unknown list, never as "nothing is published".
+        var stored = await supportedList.ReadAsync(cancellationToken);
+        var series = stored?.Series;
         var firstDates = series?.ToDictionary(value => value.CurrencyCode, value => value.FirstObservation, StringComparer.Ordinal);
         var effectiveGlobal = settings.HistoryStartDate ?? ExchangeRateHistoryStartDateRule.DynamicDefault(todayUtc);
 
@@ -545,7 +558,7 @@ public sealed class ExchangeRateSyncService(
             ? []
             : enabled.Keys
                 .Where(code => !series.Any(value => value.CurrencyCode == code
-                    && ExchangeRateSupportedListCache.IsFresh(value, todayUtc)))
+                    && ExchangeRateSupportedList.IsFresh(value, todayUtc)))
                 .Order(StringComparer.Ordinal)
                 .ToList();
 
@@ -636,7 +649,8 @@ public sealed class ExchangeRateSyncService(
             LastRun = last is null ? null : ToDto(last),
             CurrentRun = current,
             ManualRunAvailableAtUtc = cooldownEnds > now ? cooldownEnds : null,
-            SupportedListAvailable = series is not null,
+            SupportedListAvailable = stored is not null,
+            SupportedListFetchedAtUtc = stored?.FetchedAtUtc,
             NextRunAtUtc = next,
             UnsupportedEnabledCodes = unsupported,
             ConsecutiveFailures = failures,

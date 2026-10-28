@@ -94,6 +94,9 @@ public class DataExportTableCoverageTests
         // SystemSettings, and the run log is operational. The fetched RATES are exported, with Provider.
         ["ExchangeRateSyncCurrencies"] = "Application: exchange-rate sync configuration, instance policy",
         ["ExchangeRateSyncRuns"] = "Application: exchange-rate sync run log, operational",
+        // The provider's list of published currencies (issue #351): a stored copy of the provider's own
+        // data, re-fetched by every run, so there is nothing of the user's to export.
+        ["ExchangeRateProviderSeries"] = "Application: the exchange-rate provider's currency list, re-fetched",
         ["LicenseAcceptances"] = "Application/Legal: out of scope",
         ["TermsOfServiceVersions"] = "Application/Legal: out of scope",
         ["TermsOfServiceAcceptances"] = "Application/Legal: out of scope",

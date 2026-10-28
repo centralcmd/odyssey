@@ -366,6 +366,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<ExchangeRate> ExchangeRates { get; set; }
     public DbSet<ExchangeRateSyncCurrency> ExchangeRateSyncCurrencies { get; set; }
     public DbSet<ExchangeRateSyncRun> ExchangeRateSyncRuns { get; set; }
+    public DbSet<ExchangeRateProviderSeries> ExchangeRateProviderSeries { get; set; }
     public DbSet<TransactionFile> TransactionFiles { get; set; }
     public DbSet<AccountFile> AccountFiles { get; set; }
     public DbSet<FileMetadata> FileMetadata { get; set; }

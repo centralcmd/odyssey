@@ -41,7 +41,7 @@ public static class ExchangeRateSyncServiceCollectionExtensions
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(NorgesBankClient)),
             sp.GetRequiredService<ExchangeRateSyncPacing>()));
         // A singleton: the 24 h provider list and its single-flight gate must outlive a request. One per host.
-        services.AddSingleton<ExchangeRateSupportedListCache>();
+        services.AddScoped<ExchangeRateSupportedList>();
         services.AddScoped<IExchangeRateSyncSettingsLookup, ExchangeRateSyncSettingsLookup>();
         services.AddScoped<ExchangeRateSyncService>();
         return services;

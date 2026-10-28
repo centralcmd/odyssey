@@ -118,7 +118,15 @@ public sealed record ExchangeRateSyncStatus
     /// <summary>When <c>POST …/runs</c> stops returning <c>429</c>; null when no cooldown applies.</summary>
     public DateTime? ManualRunAvailableAtUtc { get; set; }
 
+    /// <summary>
+    /// Whether the provider's list of published currencies has been fetched and stored. False only before a
+    /// first fetch succeeds (a new install before its first run): the list is then unknown, and no currency is
+    /// marked not published.
+    /// </summary>
     public bool SupportedListAvailable { get; set; }
+
+    /// <summary>When the stored list was fetched; null while <see cref="SupportedListAvailable"/> is false.</summary>
+    public DateTime? SupportedListFetchedAtUtc { get; set; }
 
     public DateTime? NextRunAtUtc { get; set; }
 

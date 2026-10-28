@@ -67,7 +67,7 @@ public class ExchangeRateSyncTests
         var today = DateOnly.FromDateTime(Now);
 
         var fresh = NorgesBankClient.ParseObservations(document.RootElement)
-            .Where(o => ExchangeRateSupportedListCache.IsFresh(new ProviderSeries(o.CurrencyCode, null, o.Date), today))
+            .Where(o => ExchangeRateSupportedList.IsFresh(new ProviderSeries(o.CurrencyCode, null, o.Date), today))
             .Select(o => o.CurrencyCode)
             .ToHashSet();
 
@@ -419,11 +419,11 @@ public class ExchangeRateSyncTests
 
         await using var context = new OdysseyContext(Options(rival));
         var clock = new MutableClock(Now);
+        var client = new NorgesBankClient(new HttpClient(new StubProvider()) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None);
         var sync = new ExchangeRateSyncService(
-            context,
-            new NorgesBankClient(new HttpClient(new StubProvider()) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None),
-            new ExchangeRateSupportedListCache(clock), new FakeSettings(), ExchangeRateSyncPacing.None, clock,
-            NullLogger<ExchangeRateSyncService>.Instance);
+            context, client,
+            new ExchangeRateSupportedList(context, client, clock, NullLogger<ExchangeRateSupportedList>.Instance),
+            new FakeSettings(), ExchangeRateSyncPacing.None, clock, NullLogger<ExchangeRateSyncService>.Instance);
 
         Assert.Null(await sync.ClaimRequestedRunAsync());
 
@@ -458,11 +458,11 @@ public class ExchangeRateSyncTests
 
         await using var context = new OdysseyContext(Options(rival));
         var clock = new MutableClock(Now + ExchangeRateSyncConstants.UnclaimedRequestTimeout + TimeSpan.FromSeconds(1));
+        var client = new NorgesBankClient(new HttpClient(new StubProvider()) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None);
         var sync = new ExchangeRateSyncService(
-            context,
-            new NorgesBankClient(new HttpClient(new StubProvider()) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None),
-            new ExchangeRateSupportedListCache(clock), new FakeSettings(), ExchangeRateSyncPacing.None, clock,
-            NullLogger<ExchangeRateSyncService>.Instance);
+            context, client,
+            new ExchangeRateSupportedList(context, client, clock, NullLogger<ExchangeRateSupportedList>.Instance),
+            new FakeSettings(), ExchangeRateSyncPacing.None, clock, NullLogger<ExchangeRateSyncService>.Instance);
 
         Assert.Null(await sync.TryStartAsync(ExchangeRateSyncTrigger.Purge, null));
 
@@ -695,6 +695,8 @@ public class ExchangeRateSyncTests
         await harness.Context.SaveChangesAsync();
         harness.Context.ChangeTracker.Clear();
         var currencies = new CurrencyService(harness.Context);
+        // The provider's list as a run or Refresh status would have stored it.
+        await harness.SupportedList.FetchAsync();
         var sync = await harness.Currencies.ProjectAllAsync();
 
         var synced = await currencies.ListAsync(
@@ -1301,85 +1303,85 @@ public class ExchangeRateSyncTests
         return (DateOnly.Parse(from, CultureInfo.InvariantCulture), DateOnly.Parse(to, CultureInfo.InvariantCulture));
     }
 
-    // ── The provider list's non-waiting read (the currency list's) ─────────────────────────────────
+    // ── The stored provider list (the currency list's and the status's) ────────────────────────────
 
-    private static readonly IReadOnlyList<ProviderSeries> SeriesA =
-        [new ProviderSeries("USD", new DateOnly(1980, 12, 10), new DateOnly(2026, 10, 22))];
-
-    private static readonly IReadOnlyList<ProviderSeries> SeriesB =
-        [new ProviderSeries("EUR", new DateOnly(1999, 1, 4), new DateOnly(2026, 10, 22))];
+    private static int SeriesRequests(Harness h) => h.Provider.Requests.Count(uri => uri.Contains("NObservations"));
 
     [Fact]
-    public async Task An_expired_list_is_answered_at_once_while_one_background_refresh_replaces_it()
+    public async Task Reading_the_currencies_and_the_status_never_calls_the_provider()
     {
-        var clock = new MutableClock(Now);
-        var cache = new ExchangeRateSupportedListCache(clock);
-        await cache.GetAsync(_ => Task.FromResult(SeriesA), CancellationToken.None);
-        clock.Advance(ExchangeRateSyncConstants.SupportedListTtl + TimeSpan.FromMinutes(1));
-        var pending = new TaskCompletionSource<IReadOnlyList<ProviderSeries>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var fetches = 0;
-        Task<IReadOnlyList<ProviderSeries>> Fetch(CancellationToken _) { Interlocked.Increment(ref fetches); return pending.Task; }
+        await using var h = await Harness.CreateAsync();
+        await h.EnableAsync("USD");
 
-        // The refresh never completes on its own, so a read that waited on it would hang here.
-        Assert.Same(SeriesA, cache.GetWithoutWaiting(Fetch));
-        Assert.Same(SeriesA, cache.GetWithoutWaiting(Fetch));
-        await WaitUntil(() => Volatile.Read(ref fetches) == 1);
-        Assert.Equal(1, Volatile.Read(ref fetches));
+        var currencies = await h.Currencies.ProjectAllAsync();
+        var status = await h.Sync.GetStatusAsync();
 
-        pending.SetResult(SeriesB);
-        await WaitUntil(() => ReferenceEquals(cache.GetWithoutWaiting(Fetch), SeriesB));
-        Assert.Equal(1, Volatile.Read(ref fetches));
+        Assert.Equal(0, SeriesRequests(h));
+        // Nothing stored yet: the list is unknown, which marks nothing as not published.
+        Assert.False(status.SupportedListAvailable);
+        Assert.Null(status.SupportedListFetchedAtUtc);
+        Assert.Empty(status.UnsupportedEnabledCodes);
+        Assert.All(currencies, item => Assert.Null(item.Supported));
     }
 
     [Fact]
-    public async Task A_provider_outage_keeps_answering_the_last_good_list_and_retries_only_after_the_failure_entry()
+    public async Task A_run_stores_the_list_the_currencies_and_the_status_then_read()
     {
-        var clock = new MutableClock(Now);
-        var cache = new ExchangeRateSupportedListCache(clock);
-        await cache.GetAsync(_ => Task.FromResult(SeriesA), CancellationToken.None);
-        clock.Advance(ExchangeRateSyncConstants.SupportedListTtl + TimeSpan.FromMinutes(1));
-        var fetches = 0;
-        Task<IReadOnlyList<ProviderSeries>> Down(CancellationToken _)
-        {
-            Interlocked.Increment(ref fetches);
-            throw new ExchangeRateProviderException(ExchangeRateSyncErrorKind.ProviderUnavailable);
-        }
+        await using var h = await Harness.CreateAsync();
+        await h.EnableAsync("USD");
 
-        Assert.Same(SeriesA, cache.GetWithoutWaiting(Down));
-        await WaitUntil(() => cache.Peek() is null && Volatile.Read(ref fetches) == 1);
+        await h.RunManualAsync();
+        var requests = SeriesRequests(h);
+        var status = await h.Sync.GetStatusAsync();
+        var usd = Assert.Single(await h.Currencies.ProjectAllAsync(), item => item.CurrencyCode == "USD");
 
-        // Inside the failure entry: still the last good list, and no new attempt.
-        Assert.Same(SeriesA, cache.GetWithoutWaiting(Down));
-        await Task.Delay(50);
-        Assert.Equal(1, Volatile.Read(ref fetches));
-
-        clock.Advance(ExchangeRateSyncConstants.SupportedListFailureTtl + TimeSpan.FromSeconds(1));
-        Assert.Same(SeriesA, cache.GetWithoutWaiting(Down));
-        await WaitUntil(() => Volatile.Read(ref fetches) == 2);
+        Assert.True(status.SupportedListAvailable);
+        Assert.Equal(h.Clock.UtcNow, status.SupportedListFetchedAtUtc);
+        Assert.True(usd.Supported);
+        Assert.Equal(requests, SeriesRequests(h));
     }
 
     [Fact]
-    public async Task With_no_list_yet_the_read_answers_null_and_starts_the_first_fetch()
+    public async Task Refresh_status_fetches_the_list_at_most_once_in_its_window()
     {
-        var cache = new ExchangeRateSupportedListCache(new MutableClock(Now));
+        await using var h = await Harness.CreateAsync();
 
-        Assert.Null(cache.GetWithoutWaiting(_ => Task.FromResult(SeriesA)));
+        await h.Sync.RefreshStatusAsync();
+        var afterFirst = SeriesRequests(h);
+        await h.Sync.RefreshStatusAsync();
+        Assert.Equal(afterFirst, SeriesRequests(h));
 
-        await WaitUntil(() => ReferenceEquals(cache.GetWithoutWaiting(_ => Task.FromResult(SeriesB)), SeriesA));
+        h.Clock.Advance(ExchangeRateSyncConstants.SupportedListRefreshInterval);
+        var status = await h.Sync.RefreshStatusAsync();
+        Assert.True(SeriesRequests(h) > afterFirst);
+        Assert.Equal(h.Clock.UtcNow, status.SupportedListFetchedAtUtc);
     }
 
     [Fact]
-    public async Task An_unexpected_failure_in_the_background_is_cached_as_a_failure_not_thrown()
+    public async Task A_failed_fetch_keeps_the_stored_list()
     {
-        var cache = new ExchangeRateSupportedListCache(new MutableClock(Now));
+        await using var h = await Harness.CreateAsync();
+        await h.Sync.RefreshStatusAsync();
+        var fetchedAt = (await h.SupportedList.ReadAsync())!.FetchedAtUtc;
 
-        Assert.Null(cache.GetWithoutWaiting(_ => throw new InvalidOperationException("boom")));
+        h.Clock.Advance(ExchangeRateSyncConstants.SupportedListRefreshInterval);
+        h.Provider.FailSeries = true;
+        var status = await h.Sync.RefreshStatusAsync();
 
-        // Cached as a failure: a waiting read inside the failure entry answers null without fetching.
-        await Task.Delay(50);
-        var fetched = false;
-        Assert.Null(await cache.GetAsync(_ => { fetched = true; return Task.FromResult(SeriesA); }, CancellationToken.None));
-        Assert.False(fetched);
+        Assert.True(status.SupportedListAvailable);
+        Assert.Equal(fetchedAt, status.SupportedListFetchedAtUtc);
+    }
+
+    [Fact]
+    public async Task Storing_a_list_never_saves_the_callers_pending_changes()
+    {
+        await using var h = await Harness.CreateAsync();
+        h.Context.Currencies.Add(new Currency { CurrencyCode = "ZZZ", Name = "Pending", MinorUnits = 2, Symbol = "z" });
+
+        Assert.NotNull(await h.SupportedList.FetchAsync());
+
+        Assert.Null(await h.SupportedList.ReadAsync());
+        Assert.Equal(EntityState.Added, h.Context.Entry(h.Context.Currencies.Local.Single(c => c.CurrencyCode == "ZZZ")).State);
     }
 
     private static async Task WaitUntil(Func<bool> condition)
@@ -1402,10 +1404,10 @@ public class ExchangeRateSyncTests
             Clock = clock;
             var client = new NorgesBankClient(
                 new HttpClient(provider) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None);
-            var cache = new ExchangeRateSupportedListCache(clock);
+            SupportedList = new ExchangeRateSupportedList(context, client, clock, NullLogger<ExchangeRateSupportedList>.Instance);
             Sync = new ExchangeRateSyncService(
-                context, client, cache, settings, ExchangeRateSyncPacing.None, clock, NullLogger<ExchangeRateSyncService>.Instance);
-            Currencies = new ExchangeRateSyncCurrencyService(context, client, cache, settings, Sync, clock, NullLoggerFactory.Instance);
+                context, client, SupportedList, settings, ExchangeRateSyncPacing.None, clock, NullLogger<ExchangeRateSyncService>.Instance);
+            Currencies = new ExchangeRateSyncCurrencyService(context, SupportedList, settings, Sync, clock, NullLoggerFactory.Instance);
         }
 
         public OdysseyContext Context { get; }
@@ -1417,6 +1419,8 @@ public class ExchangeRateSyncTests
         public FakeSettings Settings { get; }
 
         public ExchangeRateSyncService Sync { get; }
+
+        public ExchangeRateSupportedList SupportedList { get; }
 
         public ExchangeRateSyncCurrencyService Currencies { get; }
 

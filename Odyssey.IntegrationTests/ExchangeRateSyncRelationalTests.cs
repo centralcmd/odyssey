@@ -310,11 +310,11 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
     {
         var client = new NorgesBankClient(
             new HttpClient(new RefusingHandler()) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None);
-        var cache = new ExchangeRateSupportedListCache(TimeProvider.System);
+        var list = new ExchangeRateSupportedList(context, client, TimeProvider.System, NullLogger<ExchangeRateSupportedList>.Instance);
         var settings = new FixedSettings();
         var sync = new ExchangeRateSyncService(
-            context, client, cache, settings, ExchangeRateSyncPacing.None, TimeProvider.System, NullLogger<ExchangeRateSyncService>.Instance);
-        return (sync, new ExchangeRateSyncCurrencyService(context, client, cache, settings, sync, TimeProvider.System, NullLoggerFactory.Instance));
+            context, client, list, settings, ExchangeRateSyncPacing.None, TimeProvider.System, NullLogger<ExchangeRateSyncService>.Instance);
+        return (sync, new ExchangeRateSyncCurrencyService(context, list, settings, sync, TimeProvider.System, NullLoggerFactory.Instance));
     }
 
     private sealed class RefusingHandler : HttpMessageHandler

@@ -26,6 +26,9 @@ public interface IExchangeRateSyncApiClient
 
     Task<ApiResult<ExchangeRateSyncStatus>> GetStatusAsync(CancellationToken ct = default);
 
+    /// <summary>Fetches the provider's currency list (at most every 5 minutes), then reads the status.</summary>
+    Task<ApiResult<ExchangeRateSyncStatus>> RefreshStatusAsync(CancellationToken ct = default);
+
     /// <summary>One page of the run log, newest first.</summary>
     Task<ApiResult<PagedResult<ExistingExchangeRateSyncRun>>> ListRunsAsync(
         int page, int pageSize, CancellationToken ct = default);
@@ -64,6 +67,9 @@ public sealed class ExchangeRateSyncApiClient(IOdysseyApi api) : IExchangeRateSy
 
     public Task<ApiResult<ExchangeRateSyncStatus>> GetStatusAsync(CancellationToken ct = default) =>
         api.GetAsync<ExchangeRateSyncStatus>($"{Base}/status", ct);
+
+    public Task<ApiResult<ExchangeRateSyncStatus>> RefreshStatusAsync(CancellationToken ct = default) =>
+        api.SendAsync<ExchangeRateSyncStatus>(HttpMethod.Post, $"{Base}/status/refresh", null, ct);
 
     public Task<ApiResult<PagedResult<ExistingExchangeRateSyncRun>>> ListRunsAsync(
         int page, int pageSize, CancellationToken ct = default) =>
