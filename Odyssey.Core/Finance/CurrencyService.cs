@@ -1,6 +1,7 @@
 using Odyssey.Core;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
+using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Mapster;
@@ -117,7 +118,13 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
         return currency.Adapt<ExistingCurrency>();
     }
 
-    public async Task<ExistingCurrency?> Update(string currencyCode, NewCurrency putCurrency, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Updates a currency; <c>null</c> when the code is unknown. Archiving one also switches its
+    /// exchange-rate sync off, in the same save — the job skips an archived currency anyway, and a sync
+    /// left on would resume silently on restore and back-fill the whole gap. Restoring never switches it
+    /// back on. <see cref="CurrencyUpdated.SyncStopped"/> tells the caller, which owns the audit line.
+    /// </summary>
+    public async Task<CurrencyUpdated?> Update(string currencyCode, NewCurrency putCurrency, CancellationToken cancellationToken = default)
     {
         var normalizedCode = NormalizeCode(currencyCode);
         if (!string.Equals(normalizedCode, NormalizeCode(putCurrency.CurrencyCode), StringComparison.Ordinal))
@@ -133,14 +140,35 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
 
         Validate(putCurrency, normalizedCode);
 
+        var archiving = currency.Archived is null && putCurrency.Archived;
+        if (archiving && normalizedCode == ExchangeRateSyncConstants.BaseCurrencyCode
+            && await context.ExchangeRateSyncCurrencies.AnyAsync(row => row.Enabled && row.CurrencyCode != normalizedCode, cancellationToken))
+        {
+            // Every synced rate is quoted against the base, so archiving it would quietly break conversion.
+            throw new DomainUnprocessableException(
+                $"{normalizedCode} is the base every synced rate is quoted against. Stop syncing every currency before archiving it.",
+                "archived");
+        }
+
         currency.Name = putCurrency.Name.Trim();
         currency.MinorUnits = putCurrency.MinorUnits;
         currency.Symbol = putCurrency.Symbol.Trim();
         ApplyArchiveTransition(currency, putCurrency.Archived);
 
+        var syncStopped = false;
+        if (archiving
+            && await context.ExchangeRateSyncCurrencies.FirstOrDefaultAsync(
+                row => row.CurrencyCode == normalizedCode && row.Enabled, cancellationToken) is { } sync)
+        {
+            // The start date is kept, for when someone restarts it; fetched rates are kept, as on a stop.
+            sync.Enabled = false;
+            sync.UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
+            syncStopped = true;
+        }
+
         await context.SaveChangesAsync(cancellationToken);
 
-        return currency.Adapt<ExistingCurrency>();
+        return new CurrencyUpdated(currency.Adapt<ExistingCurrency>(), syncStopped);
     }
 
     public async Task Delete(string currencyCode, CancellationToken cancellationToken = default)
@@ -277,3 +305,6 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
         }
     }
 }
+
+/// <summary>An updated currency, and whether archiving it switched its exchange-rate sync off.</summary>
+public sealed record CurrencyUpdated(ExistingCurrency Currency, bool SyncStopped);

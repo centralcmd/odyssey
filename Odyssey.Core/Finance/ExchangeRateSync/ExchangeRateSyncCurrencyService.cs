@@ -142,6 +142,15 @@ public sealed partial class ExchangeRateSyncCurrencyService(
     }
 
     /// <summary>
+    /// The audit line for a sync that archiving its currency switched off — the same line a manual stop
+    /// writes, so the settings log records every change to a currency's sync, whatever made it.
+    /// </summary>
+    public void LogStoppedByArchive(string currencyCode, string? userId) =>
+        audit.LogInformation(
+            "System settings change by {ActorUserId}: {Field} {OldValue} -> {NewValue}.",
+            userId, $"ExchangeRateSync[{NormalizeCode(currencyCode)}].Enabled", true, false);
+
+    /// <summary>
     /// Turns sync on or off for one currency and sets its start-date override (issue #349 §5.2). An
     /// upsert. Enabling needs the provider's list; disabling is never refused for support reasons — it is
     /// the remedy <c>UnsupportedCurrency</c> names — and never deletes fetched rows.
@@ -151,8 +160,14 @@ public sealed partial class ExchangeRateSyncCurrencyService(
     {
         var code = NormalizeCode(currencyCode);
         var currency = await context.Currencies.AsNoTracking()
-            .FirstOrDefaultAsync(value => value.CurrencyCode == code && value.Archived == null, cancellationToken)
+            .FirstOrDefaultAsync(value => value.CurrencyCode == code, cancellationToken)
             ?? throw new DomainNotFoundException($"Currency {code} not found.");
+
+        // The sync never covers an archived currency: archiving switches it off, and it stays off.
+        if (currency.Archived is not null)
+        {
+            throw new DomainUnprocessableException($"{code} is archived. Restore it before syncing it.", "enabled");
+        }
 
         if (code == Hub)
         {

@@ -105,21 +105,29 @@ public sealed class CurrenciesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Update the details for a currency.",
         Description = @"Update the details for a currency. Not an upsert: an unknown code is a 404 and
-                        nothing is created. Use POST to create.")]
+                        nothing is created. Use POST to create. Archiving a currency switches its
+                        exchange-rate sync off, and restoring it does not switch it back on. Archiving
+                        the sync's base currency while any currency is synced is a 422.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "code")] [SwaggerParameter("Code", Required = true,
             Description = @"The code for the currency to update.")] string code,
         [FromBody] [SwaggerParameter("NewCurrency", Required = true,
             Description = @"The currency with the updated values.")] NewCurrency newCurrency, CancellationToken cancellationToken = default)
     {
-        var currency = await currencyService.Update(code, newCurrency, cancellationToken);
-        return currency is null
-            ? this.NotFoundProblem($"Currency {code} not found.")
-            : NoContent();
+        var updated = await currencyService.Update(code, newCurrency, cancellationToken);
+        if (updated is null)
+            return this.NotFoundProblem($"Currency {code} not found.");
+
+        // After the save: an audit line must not record a change that did not commit.
+        if (updated.SyncStopped)
+            syncCurrencies.LogStoppedByArchive(updated.Currency.CurrencyCode, User.ActingUserId());
+
+        return NoContent();
     }
 
     [HttpDelete("{code}", Name = "DeleteCurrency")]

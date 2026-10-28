@@ -598,6 +598,28 @@ public partial class ExchangeRateSyncSurfaceTests
         Assert.EndsWith(" USD", OdsMoney.Format(1234.5m, "USD", 2));
     }
 
+    [Theory]
+    [InlineData(true, "USD archived. Its sync was stopped.")]
+    [InlineData(false, "Currency updated.")]
+    public async Task Archiving_says_when_it_stopped_the_currencys_sync(bool synced, string expected)
+    {
+        var (ctx, sync, currencies) = NewCurrenciesContext(Row(Currency("USD", enabled: synced)));
+        await using var __ = ctx;
+        currencies.Setup(c => c.UpdateAsync("USD", It.IsAny<NewCurrency>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        var cut = RenderCurrencies(ctx, "USD");
+        var reads = sync.Invocations.Count(i => i.Method.Name == nameof(IExchangeRateSyncApiClient.GetStatusAsync));
+
+        ClickRowAction(cut, "USD", "Archive");
+
+        cut.WaitForAssertion(() => Assert.Contains(expected,
+            ctx.Services.GetRequiredService<ISnackbar>().ShownSnackbars.Select(s => s.Message)));
+        currencies.Verify(c => c.UpdateAsync("USD", It.Is<NewCurrency>(n => n.Archived), It.IsAny<CancellationToken>()), Times.Once);
+        // The synced count in the header follows a stopped sync.
+        if (synced)
+            cut.WaitForAssertion(() => Assert.True(sync.Invocations.Count(i => i.Method.Name == nameof(IExchangeRateSyncApiClient.GetStatusAsync)) > reads));
+    }
+
     // ── Purge ────────────────────────────────────────────────────────────────────────────────────
 
     [Fact]

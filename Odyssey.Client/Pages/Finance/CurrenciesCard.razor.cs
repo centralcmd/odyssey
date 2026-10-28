@@ -346,7 +346,11 @@ public partial class CurrenciesCard
             Archived = archived,
         };
 
-        if ((await Currencies.UpdateAsync(currency.CurrencyCode, update)).Toast(Snackbar, "Update failed", "Currency updated."))
+        // Archiving a synced currency switches its sync off on the server, in the same save; say so, since
+        // nothing on the archived row shows it afterwards.
+        var stopsSync = archived && currency.Archived is null && currency.Sync is { Enabled: true, Locked: false };
+        var success = stopsSync ? $"{currency.CurrencyCode} archived. Its sync was stopped." : "Currency updated.";
+        if ((await Currencies.UpdateAsync(currency.CurrencyCode, update)).Toast(Snackbar, "Update failed", success))
         {
             currency.Name = update.Name;
             currency.Symbol = update.Symbol;
@@ -358,7 +362,11 @@ public partial class CurrenciesCard
             // Archiving takes a currency out of the sync and restoring brings it back, so a sync caller
             // re-reads the page for the row's projection.
             if (_canReadSync)
+            {
                 await GetCurrencies();
+                if (stopsSync)
+                    await ReloadStatusAsync();
+            }
         }
 
         StateHasChanged();

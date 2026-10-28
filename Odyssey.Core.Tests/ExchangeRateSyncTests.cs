@@ -717,6 +717,73 @@ public class ExchangeRateSyncTests
         Assert.All(plain.Items, item => Assert.Null(item.Sync));
     }
 
+    private static NewCurrency Put(string code, string name, bool archived) =>
+        new() { CurrencyCode = code, Name = name, MinorUnits = 2, Symbol = code, Archived = archived };
+
+    [Fact]
+    public async Task Archiving_a_synced_currency_switches_its_sync_off_and_restoring_leaves_it_off()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+        await harness.EnableAsync("USD", start: new DateOnly(2020, 1, 1));
+        var currencies = new CurrencyService(harness.Context);
+
+        var archived = await currencies.Update("USD", Put("USD", "US Dollar", archived: true));
+
+        Assert.True(archived!.SyncStopped);
+        var row = await harness.Context.ExchangeRateSyncCurrencies.AsNoTracking().SingleAsync(r => r.CurrencyCode == "USD");
+        Assert.False(row.Enabled);
+        // Kept for when someone restarts it.
+        Assert.Equal(new DateOnly(2020, 1, 1), row.HistoryStartDate);
+
+        var restored = await currencies.Update("USD", Put("USD", "US Dollar", archived: false));
+
+        Assert.False(restored!.SyncStopped);
+        Assert.False((await harness.Context.ExchangeRateSyncCurrencies.AsNoTracking().SingleAsync(r => r.CurrencyCode == "USD")).Enabled);
+    }
+
+    [Fact]
+    public async Task Archiving_an_unsynced_currency_or_editing_a_synced_one_leaves_the_sync_alone()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+        await harness.EnableAsync("USD");
+        var currencies = new CurrencyService(harness.Context);
+
+        Assert.False((await currencies.Update("EUR", Put("EUR", "Euro", archived: true)))!.SyncStopped);
+        Assert.False((await currencies.Update("USD", Put("USD", "Dollar", archived: false)))!.SyncStopped);
+        Assert.True((await harness.Context.ExchangeRateSyncCurrencies.AsNoTracking().SingleAsync(r => r.CurrencyCode == "USD")).Enabled);
+    }
+
+    [Fact]
+    public async Task The_base_cannot_be_archived_while_any_currency_is_synced()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+        await harness.EnableAsync("USD");
+        var currencies = new CurrencyService(harness.Context);
+
+        var refused = await Assert.ThrowsAsync<DomainUnprocessableException>(
+            () => currencies.Update("NOK", Put("NOK", "Norwegian Krone", archived: true)));
+        Assert.Contains("Stop syncing every currency", refused.Message);
+        harness.Context.ChangeTracker.Clear();
+        Assert.Null((await harness.Context.Currencies.AsNoTracking().SingleAsync(c => c.CurrencyCode == "NOK")).Archived);
+
+        await harness.Currencies.UpdateAsync("USD", new ExchangeRateSyncCurrencyUpdate { Enabled = false }, "admin");
+        harness.Context.ChangeTracker.Clear();
+        Assert.NotNull((await currencies.Update("NOK", Put("NOK", "Norwegian Krone", archived: true)))!.Currency.Archived);
+    }
+
+    [Fact]
+    public async Task An_archived_currency_cannot_be_synced_and_says_why()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+        await new CurrencyService(harness.Context).Update("USD", Put("USD", "US Dollar", archived: true));
+        harness.Context.ChangeTracker.Clear();
+
+        var refused = await Assert.ThrowsAsync<DomainUnprocessableException>(
+            () => harness.Currencies.UpdateAsync("USD", new ExchangeRateSyncCurrencyUpdate { Enabled = true }, "admin"));
+
+        Assert.Equal("USD is archived. Restore it before syncing it.", refused.Message);
+    }
+
     [Theory]
     [InlineData(true, null, CurrencySyncState.On)]
     [InlineData(true, false, CurrencySyncState.On)]

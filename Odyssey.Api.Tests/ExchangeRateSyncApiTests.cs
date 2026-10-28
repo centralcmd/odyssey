@@ -151,6 +151,29 @@ public class ExchangeRateSyncApiTests
     }
 
     [Fact]
+    public async Task Archiving_a_currency_stops_its_sync_and_the_base_cannot_be_archived_while_synced()
+    {
+        await using var factory = new ApiFactory([.. Admin, PermissionClaims.CurrenciesRead, PermissionClaims.CurrenciesUpdate]);
+        await SeedAsync(factory);
+        using var client = factory.CreateClient();
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{Sync}/currencies/USD", new { enabled = true })).StatusCode);
+
+        var nok = await client.PutAsJsonAsync("/api/currencies/NOK",
+            new NewCurrency { CurrencyCode = "NOK", Name = "Norwegian Krone", MinorUnits = 2, Symbol = "kr", Archived = true });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, nok.StatusCode);
+
+        var usd = await client.PutAsJsonAsync("/api/currencies/USD",
+            new NewCurrency { CurrencyCode = "USD", Name = "US Dollar", MinorUnits = 2, Symbol = "$", Archived = true });
+        Assert.Equal(HttpStatusCode.NoContent, usd.StatusCode);
+
+        var synced = await client.GetFromJsonAsync<PagedResult<ExistingCurrency>>("/api/currencies?sync=On&limit=100");
+        Assert.DoesNotContain(synced!.Items, item => item.CurrencyCode == "USD");
+        var restart = await client.PutAsJsonAsync($"{Sync}/currencies/USD", new { enabled = true });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, restart.StatusCode);
+        Assert.Contains("Restore it before syncing it", await restart.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task The_per_currency_put_validates_its_route_and_body()
     {
         await using var factory = new ApiFactory(Admin);
