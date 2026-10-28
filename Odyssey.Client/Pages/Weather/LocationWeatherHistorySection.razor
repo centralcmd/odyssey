@@ -70,19 +70,8 @@ else
                 }
                 else
                 {
-                    @* The picker stands in for the chart's title, as on the contract-terms chart: choosing is
-                       client-side, since one response carries every measure. *@
-                    <div class="wx-hist-head">
-                        <OdsMultiSelect Label="Measures" Icon="insights" Quiet="true" Align="OdsAlign.Start"
-                                        Values="_measures" ValuesChanged="PickMeasures" Options="MeasureOptions" />
-                    </div>
-                    <dl class="wx-facts wx-hist-facts">
-                        @foreach (var fact in ShownFacts)
-                        {
-                            <div><dt><OdsMIcon Name="@fact.Icon" Size="13" />@fact.Label</dt><dd><b>@fact.Value</b>@(fact.Date is { } on ? $" on {ShortDate(on)}" : fact.After)</dd></div>
-                        }
-                    </dl>
-                    <WeatherHistoryChart Days="_response!.Days" From="From" To="_end" LocationName="@Location.Name" Measures="_measures" />
+                    <WeatherHistoryChart Days="_response!.Days" From="From" To="_end" LocationName="@Location.Name" Measures="_measures"
+                                         Head="MeasurePicker" Facts="FactsRow" />
                 }
                 break;
         }
@@ -106,6 +95,18 @@ else
     private RenderFragment NotConfiguredText => CanSetUp && CanOpenSettings
         ? @<span>Historical weather service is not configured. See <a class="wx-link" href="/settings">system settings</a>.</span>
         : Text("Historical weather service is not configured.");
+
+    // The picker heads the chart's card in place of a title, as on the contract-terms chart. Choosing is
+    // client-side: one response carries every measure.
+    private RenderFragment MeasurePicker => @<OdsMultiSelect Label="Measures" Icon="insights" Quiet="true" Align="OdsAlign.Start"
+                                                             Values="_measures" ValuesChanged="PickMeasures" Options="MeasureOptions" />;
+
+    private RenderFragment FactsRow => @<dl class="wx-facts wx-hist-facts">
+        @foreach (var fact in ShownFacts)
+        {
+            <div><dt><OdsMIcon Name="@fact.Icon" Size="13" />@fact.Label</dt><dd><b>@fact.Value</b>@(fact.Date is { } on ? $" on {ShortDate(on)}" : fact.After)</dd></div>
+        }
+    </dl>;
 
     private RenderFragment Box(string icon, string title, string text) => @<div class="wx-empty">
         <span class="wx-empty-ic" aria-hidden="true"><OdsMIcon Name="@icon" Size="22" /></span>

@@ -1,11 +1,16 @@
 @using Odyssey.Client.Components
 @*
-    WeatherHistoryChart — the Weather history plot (design system · Weather.jsx WeatherHistoryChart). It reuses
-    LineChart's plot, axis and tooltip classes (.odc-lc-*) and the contract-terms chart's ledger (.odc-sc-legend);
-    the band, bar, series and gap rules are wx-.
+    WeatherHistoryChart — the Weather history card (design system · Weather.jsx WeatherHistoryChart). A card as
+    the contract-terms chart is (.odc-lc): Head (the Measures picker, in place of a title), Facts, the plot and its
+    ledger (.odc-sc-legend), on one content edge. The band, bar, series and gap rules are wx-.
 *@
 
-<div class="wx-hist-chart">
+<div class="odc-lc wx-hist-chart">
+    @if (Head is not null)
+    {
+        <div class="odc-lc-head wx-hist-head"><div class="odc-lc-controls">@Head</div></div>
+    }
+    @Facts
     @* One tab stop: focus opens the readout on the newest day, Left / Right step through the days,
        Escape or leaving closes it. The live region speaks only for keyboard steps. *@
     <div class="odc-lc-plot" tabindex="0" role="group" aria-label="@PlotKeyLabel" @ref="_plotRef"
@@ -239,7 +244,7 @@
     internal static RenderFragment Swatch(WeatherMeasure m) => m.Mark switch
     {
         WeatherMeasureMark.Band => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect class="wx-hist-band" x="1" y="1" width="20" height="10" rx="2" /><line class="wx-hist-mean" x1="1" y1="6" x2="21" y2="6" /></svg>,
-        WeatherMeasureMark.Bar => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="7" y="1" width="8" height="10" rx="1.5" style="@($"fill:{m.Color}")" /></svg>,
+        WeatherMeasureMark.Bar => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="1" y="5" width="6" height="7" rx="1" style="@($"fill:{m.Color}")" /><rect x="9" y="1" width="6" height="11" rx="1" style="@($"fill:{m.Color}")" /></svg>,
         WeatherMeasureMark.Line => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><line class="wx-hist-series" x1="1" y1="6" x2="21" y2="6" style="@($"stroke:{m.Color}")" /></svg>,
         _ => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><line class="wx-hist-series thin" x1="1" y1="6" x2="21" y2="6" style="@($"stroke:{m.Color}")" /><circle cx="11" cy="6" r="2.6" style="@($"fill:{m.Color}")" /></svg>,
     };

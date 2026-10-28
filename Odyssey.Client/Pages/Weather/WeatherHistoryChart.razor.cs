@@ -26,6 +26,12 @@ public partial class WeatherHistoryChart : IAsyncDisposable
     /// <summary>The measure keys to plot, in one unit; the first leads the ledger and the gap key.</summary>
     [Parameter] public IReadOnlyList<string> Measures { get; set; } = [WeatherMeasures.Temperature];
 
+    /// <summary>The card's head — the Measures picker, standing in for a title.</summary>
+    [Parameter] public RenderFragment? Head { get; set; }
+
+    /// <summary>The figures for the unit plotted, between the head and the plot.</summary>
+    [Parameter] public RenderFragment? Facts { get; set; }
+
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
     internal sealed record Column(int Index, DateOnly Date, WeatherDayObserved? Observed)

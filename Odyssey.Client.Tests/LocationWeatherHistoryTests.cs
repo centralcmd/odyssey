@@ -44,6 +44,10 @@ public class LocationWeatherHistoryTests : IDisposable
         Assert.Equal((Yesterday.AddDays(-59), Yesterday), Assert.Single(requests));
         Assert.Contains("60</b> of 60", section.Markup);
         Assert.Single(section.FindComponents<WeatherHistoryChart>());
+        // One card, as the contract-terms chart: the picker heads it and the facts sit above the plot.
+        var card = section.Find(".odc-lc.wx-hist-chart");
+        Assert.NotNull(card.QuerySelector(":scope > .odc-lc-head .odc-ms-trigger"));
+        Assert.NotNull(card.QuerySelector(":scope > dl.wx-hist-facts"));
         Assert.Contains("Weather data from MET Norway", section.Markup);
         Assert.Equal("60", section.FindComponent<OdsSegmentedControl>().Instance.Value);
         // OdsIconButton draws an SVG icon constant; a Material ligature would render an empty button.

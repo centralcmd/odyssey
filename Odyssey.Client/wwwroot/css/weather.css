@@ -146,9 +146,11 @@
    where a --chart-1 fill alone would not. */
 .wx-hist-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
 .wx-hist-nav { display: inline-flex; align-items: center; gap: var(--space-1); }
+/* A chevron's glyph sits well inside its button: the nav reaches past the content edge by the button's
+   inset, so the arrow — not its hover circle — lines up with the card below. */
+.wx-hist-nav { margin-right: -8px; }
 .wx-hist-facts { flex: none; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
 .wx-hist-facts dd b { font-weight: var(--fw-medium); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.wx-hist-chart { display: flex; flex-direction: column; gap: var(--space-1); }
 .wx-hist-band { fill: var(--chart-1); fill-opacity: 0.22; stroke: var(--brand-text); stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .wx-hist-mean { fill: none; stroke: var(--brand-text); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .wx-hist-dot { fill: var(--brand-text); }
@@ -160,9 +162,15 @@
 .wx-hist-bar-mark { shape-rendering: crispEdges; }
 /* A day nobody measured, when bars are drawn: a missing bar would otherwise read as a dry day. */
 .wx-hist-nodata { fill: var(--mud-palette-action-default-hover); stroke: var(--chart-grid); stroke-width: 1; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; pointer-events: none; }
-/* The chart's head: the Measures picker stands in for its title, as on the contract-terms chart. */
-.wx-hist-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: -4px; }
-.wx-hist-legend { padding-left: 0; padding-right: 0; }
+/* The chart is a card, as the contract-terms chart is (.odc-lc): the Measures picker heads it in place of a
+   title, then the facts, the plot and the ledger. Everything starts on the card's content edge: the quiet
+   trigger's padding and border (12px + 1px) are pulled back so its icon, not its hover box, lines up with
+   the facts and the ledger. */
+.wx-hist-chart { display: flex; flex-direction: column; gap: 0; }
+.wx-hist-chart > .wx-hist-head { margin: -8px 0 10px -13px; align-items: center; }
+.wx-hist-chart > .wx-hist-head .odc-lc-controls { margin-bottom: 0; }
+.wx-hist-chart > .wx-hist-facts { margin-bottom: 18px; }
+.wx-hist-legend { padding: 10px 0 0; }
 .wx-hist-hcol { fill: var(--mud-palette-action-default-hover); pointer-events: none; }
 .wx-hist-tip-v { display: flex; gap: 10px; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .wx-hist-tip-v b { font-weight: var(--fw-medium); color: var(--mud-palette-text-primary); }
@@ -187,7 +195,9 @@
 @media (max-width: 640px) {
     /* No wrap: in a wrapping column, items stretch to the widest line rather than to the card. */
     .wx-hist-bar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
-    .wx-hist-nav { justify-content: space-between; }
+    /* The card nests in the record section: its padding steps down so the plot keeps its width. */
+    .wx-hist-chart.odc-lc { padding: 14px 12px; }
+    .wx-hist-nav { justify-content: space-between; margin: 0 -8px; }
     /* Four segments and two dates have to fit a phone: the segments share the row, and the dates drop
        their calendar glyph (the input's hover fill and focus ring still mark them as controls). */
     .wx-hist-bar .odc-seg { display: flex; min-width: 0; }
