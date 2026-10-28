@@ -696,6 +696,29 @@ public class WeatherServiceTests
     }
 
     [Fact]
+    public async Task A_weather_off_place_still_serves_its_measured_history_and_never_fetches()
+    {
+        using var h = new WeatherTestHarness();
+        var boat = await h.EnableAsync("Boat", tracked: false);
+        var weather = await h.Context.WeatherLocations.SingleAsync(w => w.LocationId == boat.LocationId);
+        weather.FrostStationId = "SN18700";
+        h.Context.WeatherDays.Add(MeasuredDay(boat.LocationId, new DateOnly(2026, 8, 30)));
+        await h.Context.SaveChangesAsync();
+        await h.Admin().UpsertAsync(boat.LocationId, new UpsertWeatherLocation { Enabled = false, IsTracked = false },
+            WeatherTestHarness.AdminId, CancellationToken.None);
+        h.Context.ChangeTracker.Clear();
+
+        // The location record's history chart asks for the window ending on the newest measured day, which
+        // reaches today only for a place still measuring; this one stopped, and its history is kept.
+        var daily = await h.Read(h.NewContext()).DailyAsync(
+            Daily(boat.LocationId, new DateOnly(2026, 8, 1), new DateOnly(2026, 10, 23)), "u1", CancellationToken.None);
+
+        Assert.Equal(new DateOnly(2026, 8, 30), Assert.Single(daily.Days).Date);
+        Assert.Equal(new DateOnly(2026, 8, 30), daily.History!.MeasuredThrough);
+        Assert.Equal(0, h.Forecasts.Calls);
+    }
+
+    [Fact]
     public async Task Daily_history_bounds_are_empty_with_no_station_and_nothing_measured()
     {
         using var h = new WeatherTestHarness();
