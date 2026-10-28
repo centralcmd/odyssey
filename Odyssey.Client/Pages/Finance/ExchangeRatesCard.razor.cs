@@ -94,7 +94,7 @@ public partial class ExchangeRatesCard
             if (summary.LatestAsOfUtc is { } latest)
                 text += $" · latest {latest.ToLocalTime():MMM dd, yyyy, HH:mm}";
             if (!string.IsNullOrEmpty(summary.Attribution))
-                text += $" · {summary.Attribution}";
+                text += $" · Source: {summary.Attribution}";
             return text;
         }
     }

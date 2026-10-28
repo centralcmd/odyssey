@@ -17,7 +17,7 @@ internal static class ExchangeRateSyncFakes
     {
         State = ExchangeRateSyncState.Idle,
         ProviderDisplayName = "Provider",
-        Attribution = "Source: Provider",
+        Attribution = "Provider (licence)",
         BaseCurrencyCode = "BASE",
         RunTimeoutMinutes = 60,
         SupportedListAvailable = true,

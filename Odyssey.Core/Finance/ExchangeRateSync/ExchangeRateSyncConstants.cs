@@ -12,7 +12,11 @@ public static class ExchangeRateSyncConstants
 
     public const string ProviderDisplayName = "Norges Bank";
 
-    public const string Attribution = "Source: Norges Bank (NLOD 2.0)";
+    /// <summary>
+    /// The provider and its licence, with no "Source:" of its own: every surface labels it (the Exchange
+    /// rates header's "· Source: …", the sync panel's Source row), as the design system specifies.
+    /// </summary>
+    public const string Attribution = "Norges Bank (NLOD 2.0)";
 
     /// <summary>Fetched rates are stamped at this local time, when Norges Bank publishes.</summary>
     public static readonly TimeOnly FetchedRateLocalTime = new(16, 0);

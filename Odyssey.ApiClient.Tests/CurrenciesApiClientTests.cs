@@ -124,7 +124,7 @@ public class CurrenciesApiClientTests
         handler.Response = new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(
-                """{"totalCount":5,"byStatus":{"current":3,"historical":1,"upcoming":1},"bySource":{"manual":2,"fetched":3},"pairCount":3,"attribution":"Source: Norges Bank (NLOD 2.0)"}""",
+                """{"totalCount":5,"byStatus":{"current":3,"historical":1,"upcoming":1},"bySource":{"manual":2,"fetched":3},"pairCount":3,"attribution":"Norges Bank (NLOD 2.0)"}""",
                 System.Text.Encoding.UTF8, "application/json"),
         };
 
