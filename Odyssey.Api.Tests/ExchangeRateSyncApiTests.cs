@@ -147,7 +147,7 @@ public class ExchangeRateSyncApiTests
         Assert.All(plain.Items, item => Assert.Null(item.Sync));
         Assert.All(plain.Items, item => Assert.NotNull(item.Status));
         Assert.Equal(CurrencyStatus.Synced, Assert.Single(plain.Items, item => item.CurrencyCode == "NOK").Status);
-        Assert.Equal(HttpStatusCode.OK, (await ownerClient.GetAsync("/api/currencies?statuses=Manual")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await ownerClient.GetAsync("/api/currencies?statuses=SyncingOff")).StatusCode);
     }
 
     [Fact]

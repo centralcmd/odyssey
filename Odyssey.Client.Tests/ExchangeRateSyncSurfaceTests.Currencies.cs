@@ -143,7 +143,7 @@ public partial class ExchangeRateSyncSurfaceTests
         Assert.Empty(cut.FindComponents<ExchangeRateSyncStatusPanel>());
         sync.VerifyNoOtherCalls();
         // The status is everyone's: the row shows it, with no other sync part.
-        Assert.Contains("Manual", RowOf(cut, "USD").TextContent);
+        Assert.Contains("Syncing off", RowOf(cut, "USD").TextContent);
     }
 
     [Fact]
@@ -296,7 +296,7 @@ public partial class ExchangeRateSyncSurfaceTests
         // A refusal opens the row: the reason is its alert, never hidden behind a collapsed card.
         cut.WaitForAssertion(() => Assert.Contains("The provider doesn't publish USD.", RowOf(cut, "USD").TextContent));
         Assert.Equal("true", RowOf(cut, "USD").QuerySelector(".odc-record-trigger")!.GetAttribute("aria-expanded"));
-        Assert.Contains("Manual", RowOf(cut, "USD").TextContent);
+        Assert.Contains("Syncing off", RowOf(cut, "USD").TextContent);
         cut.WaitForAssertion(() => Assert.Contains("Couldn’t start syncing USD.", AssertiveText(cut)));
     }
 

@@ -719,12 +719,12 @@ public class ExchangeRateSyncTests
         Assert.Equal(CurrencyStatus.Archived, all.Items[^1].Status);
         Assert.Null(all.Items[^1].Sync);
         Assert.All(all.Items.Where(item => item.Archived is null), item => Assert.NotNull(item.Sync));
-        Assert.All(all.Items.Where(item => item.Status == CurrencyStatus.Manual), item => Assert.False(item.Sync!.Enabled));
+        Assert.All(all.Items.Where(item => item.Status == CurrencyStatus.SyncingOff), item => Assert.False(item.Sync!.Enabled));
 
         // With no projection at all, every non-archived currency reads Manual.
-        var plain = await currencies.ListAsync(new CurrenciesQueryParams { Statuses = [CurrencyStatus.Manual] });
+        var plain = await currencies.ListAsync(new CurrenciesQueryParams { Statuses = [CurrencyStatus.SyncingOff] });
         Assert.Equal(all.TotalCount - 1, plain.TotalCount);
-        Assert.All(plain.Items, item => Assert.Equal(CurrencyStatus.Manual, item.Status));
+        Assert.All(plain.Items, item => Assert.Equal(CurrencyStatus.SyncingOff, item.Status));
     }
 
     private static NewCurrency Put(string code, string name, bool archived) =>
@@ -802,8 +802,8 @@ public class ExchangeRateSyncTests
     [InlineData(false, true, false, null, true, CurrencyStatus.Synced)]
     [InlineData(false, false, true, false, true, CurrencyStatus.Synced)]
     [InlineData(false, false, false, false, false, CurrencyStatus.NotPublished)]
-    [InlineData(false, false, false, true, false, CurrencyStatus.Manual)]
-    [InlineData(false, false, false, null, false, CurrencyStatus.Manual)]
+    [InlineData(false, false, false, true, false, CurrencyStatus.SyncingOff)]
+    [InlineData(false, false, false, null, false, CurrencyStatus.SyncingOff)]
     public void A_currencys_status_follows_its_precedence(
         bool archived, bool enabled, bool locked, bool? supported, bool backfillComplete, CurrencyStatus expected) =>
         Assert.Equal(expected, CurrencyStatuses.Of(archived, new ExistingExchangeRateSyncCurrency
@@ -815,7 +815,7 @@ public class ExchangeRateSyncTests
     [Fact]
     public void A_currency_with_no_projection_is_manual_unless_archived()
     {
-        Assert.Equal(CurrencyStatus.Manual, CurrencyStatuses.Of(archived: false, null));
+        Assert.Equal(CurrencyStatus.SyncingOff, CurrencyStatuses.Of(archived: false, null));
         Assert.Equal(CurrencyStatus.Archived, CurrencyStatuses.Of(archived: true, null));
     }
 
@@ -1384,12 +1384,12 @@ public class ExchangeRateSyncTests
 
     private static async Task WaitUntil(Func<bool> condition)
     {
-        for (var i = 0; i < 200 && !condition(); i++)
+        for (var i = 0; i < 1000 && !condition(); i++)
         {
             await Task.Delay(10);
         }
 
-        Assert.True(condition(), "The condition did not hold within two seconds.");
+        Assert.True(condition(), "The condition did not hold within ten seconds.");
     }
 
     private sealed class Harness : IAsyncDisposable

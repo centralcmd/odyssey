@@ -44,7 +44,7 @@ public sealed class CurrenciesController : ControllerBase
     [SwaggerOperation(
         Summary = "List currencies.",
         Description = @"List currencies with search, sorting and pagination. Every row carries its derived
-                        status (Synced, FetchingHistory, NoLongerPublished, Manual, NotPublished,
+                        status (Synced, FetchingHistory, NoLongerPublished, SyncingOff, NotPublished,
                         Archived), which statuses= filters and sortBy=status orders, for every caller.
                         A caller holding system-settings.read also gets each non-archived row's
                         exchange-rate sync projection (sync). status=active|archived is the older

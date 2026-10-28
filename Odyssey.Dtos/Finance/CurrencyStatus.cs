@@ -23,9 +23,10 @@ public enum CurrencyStatus
 
     /// <summary>
     /// Not synced, and the provider publishes it — or its support is unknown, because the provider's
-    /// list is unreachable; that never reads as <see cref="NotPublished"/>. Its rates are entered by hand.
+    /// list is unreachable; that never reads as <see cref="NotPublished"/>. Nobody keeps its rates
+    /// current: they are entered by hand, or not at all.
     /// </summary>
-    Manual,
+    SyncingOff,
 
     /// <summary>Not synced, and the provider does not publish it.</summary>
     NotPublished,
@@ -38,16 +39,16 @@ public static class CurrencyStatuses
 {
     /// <summary>
     /// The derivation, by precedence:
-    /// <c>Archived &gt; NoLongerPublished &gt; FetchingHistory &gt; Synced &gt; NotPublished &gt; Manual</c>.
+    /// <c>Archived &gt; NoLongerPublished &gt; FetchingHistory &gt; Synced &gt; NotPublished &gt; SyncingOff</c>.
     /// The server's list and the client's patch after a sync change call this one rule, so the two cannot
-    /// disagree about a row. A non-archived currency with no projection reads <see cref="CurrencyStatus.Manual"/>.
+    /// disagree about a row. A non-archived currency with no projection reads <see cref="CurrencyStatus.SyncingOff"/>.
     /// </summary>
     public static CurrencyStatus Of(bool archived, ExistingExchangeRateSyncCurrency? sync)
     {
         if (archived)
             return CurrencyStatus.Archived;
         if (sync is null)
-            return CurrencyStatus.Manual;
+            return CurrencyStatus.SyncingOff;
         if (sync.Enabled || sync.Locked)
         {
             if (!sync.Locked && sync.Supported == false)
@@ -55,6 +56,6 @@ public static class CurrencyStatuses
             return sync.BackfillComplete ? CurrencyStatus.Synced : CurrencyStatus.FetchingHistory;
         }
 
-        return sync.Supported == false ? CurrencyStatus.NotPublished : CurrencyStatus.Manual;
+        return sync.Supported == false ? CurrencyStatus.NotPublished : CurrencyStatus.SyncingOff;
     }
 }

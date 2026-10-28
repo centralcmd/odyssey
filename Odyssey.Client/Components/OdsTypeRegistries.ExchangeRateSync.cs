@@ -82,7 +82,7 @@ public static partial class OdsTypeRegistries
             [CurrencyStatus.Synced] = (new("Synced", OdsChipTone.Income, Dot: true), "income", "sync"),
             [CurrencyStatus.FetchingHistory] = (new("Fetching history", OdsChipTone.Info, Dot: true), "info", "downloading"),
             [CurrencyStatus.NoLongerPublished] = (new("No longer published", OdsChipTone.Warning, Dot: true), "warning", "warning"),
-            [CurrencyStatus.Manual] = (new("Manual", OdsChipTone.Default, Dot: true), "default", "edit_note"),
+            [CurrencyStatus.SyncingOff] = (new("Syncing off", OdsChipTone.Error, Dot: true), "error", "sync_disabled"),
             [CurrencyStatus.NotPublished] = (new("Not published", OdsChipTone.Outline, Dot: true), "outline", "block"),
             [CurrencyStatus.Archived] = (new("Archived", OdsChipTone.Outline, Dot: true), "outline", "inventory_2"),
         };
