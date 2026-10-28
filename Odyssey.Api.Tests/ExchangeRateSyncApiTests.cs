@@ -120,6 +120,37 @@ public class ExchangeRateSyncApiTests
     }
 
     [Fact]
+    public async Task The_currency_list_carries_the_sync_projection_only_for_a_settings_reader()
+    {
+        await using (var owner = new ApiFactory([.. RateOwner, PermissionClaims.CurrenciesRead]))
+        {
+            await SeedAsync(owner);
+            using var client = owner.CreateClient();
+
+            var plain = await client.GetFromJsonAsync<PagedResult<ExistingCurrency>>("/api/currencies?limit=100");
+            Assert.NotEmpty(plain!.Items);
+            Assert.All(plain.Items, item => Assert.Null(item.Sync));
+            // The result alone would disclose the sync state, so the filter and the sort need the claim too.
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/currencies?sync=On")).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/currencies?sortBy=Sync")).StatusCode);
+        }
+
+        await using var admin = new ApiFactory([.. Admin, PermissionClaims.CurrenciesRead]);
+        await SeedAsync(admin);
+        using var adminClient = admin.CreateClient();
+        Assert.Equal(HttpStatusCode.OK, (await adminClient.PutAsJsonAsync($"{Sync}/currencies/USD", new { enabled = true })).StatusCode);
+
+        var synced = await adminClient.GetFromJsonAsync<PagedResult<ExistingCurrency>>("/api/currencies?sync=On&limit=100");
+        Assert.Equal(["NOK", "USD"], synced!.Items.Select(item => item.CurrencyCode).Order());
+        Assert.All(synced.Items, item => Assert.True(item.Sync!.Enabled));
+        Assert.True(Assert.Single(synced.Items, item => item.CurrencyCode == "NOK").Sync!.Locked);
+
+        var bySync = await adminClient.GetFromJsonAsync<PagedResult<ExistingCurrency>>("/api/currencies?sortBy=Sync&limit=100");
+        Assert.Equal(["NOK", "USD"], bySync!.Items.Take(2).Select(item => item.CurrencyCode));
+        Assert.All(bySync.Items.Skip(2), item => Assert.False(item.Sync?.Enabled ?? false));
+    }
+
+    [Fact]
     public async Task The_per_currency_put_validates_its_route_and_body()
     {
         await using var factory = new ApiFactory(Admin);

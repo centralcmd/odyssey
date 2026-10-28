@@ -17,4 +17,10 @@ public sealed record ExistingCurrency
     public required string Symbol { get; set; }
 
     public DateTime? Archived { get; set; }
+
+    /// <summary>
+    /// The currency's exchange-rate sync projection. Filled only for a caller holding
+    /// <c>system-settings.read</c>, and never for an archived currency, which the sync does not cover.
+    /// </summary>
+    public ExistingExchangeRateSyncCurrency? Sync { get; set; }
 }

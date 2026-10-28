@@ -13,8 +13,15 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
     private readonly TimeProvider timeProvider = injectedTimeProvider ?? TimeProvider.System;
 
     /// <summary>Server-side paged list (issue #277): search over code/name + allowlisted sort.</summary>
+    /// <param name="sync">
+    /// Every non-archived currency's sync projection, for a caller allowed to see it; <c>null</c> otherwise.
+    /// When given, it is attached to the returned rows and the <see cref="CurrenciesQueryParams.Sync"/>
+    /// filter and the <see cref="CurrencySortBy.Sync"/> key read it; when <c>null</c>, both are ignored, so
+    /// gating them is the caller's job. An archived currency has no projection and matches no sync state.
+    /// </param>
     public async Task<PagedResult<ExistingCurrency>> ListAsync(
         CurrenciesQueryParams query,
+        IReadOnlyCollection<ExistingExchangeRateSyncCurrency>? sync = null,
         CancellationToken cancellationToken = default)
     {
         var q = context.Currencies.AsNoTracking().AsQueryable();
@@ -35,6 +42,24 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
             _ => q,
         };
 
+        // The sync state is not a column, so the filter and the sort run on the code lists it splits into;
+        // EF translates each Contains to an IN, keeping the paging in the database.
+        var byState = (sync ?? [])
+            .GroupBy(item => CurrencySyncStates.Of(item))
+            .ToDictionary(group => group.Key, group => group.Select(item => item.CurrencyCode).ToList());
+        var on = byState.GetValueOrDefault(CurrencySyncState.On) ?? [];
+        var off = byState.GetValueOrDefault(CurrencySyncState.Off) ?? [];
+        var notPublished = byState.GetValueOrDefault(CurrencySyncState.NotPublished) ?? [];
+
+        // Out-of-range values match nothing; duplicates are ignored.
+        if (sync is not null && query.Sync is { Length: > 0 } states)
+        {
+            var allowed = states.Distinct()
+                .SelectMany(state => byState.GetValueOrDefault(state) ?? [])
+                .ToList();
+            q = q.Where(c => allowed.Contains(c.CurrencyCode));
+        }
+
         var ascending = ListQuery.Ascending(query.SortDir, naturalDefaultAscending: true);
         var sorted = query.SortBy switch
         {
@@ -43,11 +68,25 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
             CurrencySortBy.MinorUnits => ascending ? q.OrderBy(c => c.MinorUnits) : q.OrderByDescending(c => c.MinorUnits),
             // Status sorts on the derived archival flag (active before archived when ascending).
             CurrencySortBy.Status => ascending ? q.OrderBy(c => c.Archived != null) : q.OrderByDescending(c => c.Archived != null),
+            // Synced, not synced, not published, then the rows with no projection (archived).
+            CurrencySortBy.Sync when sync is not null => ascending
+                ? q.OrderBy(c => on.Contains(c.CurrencyCode) ? 0 : off.Contains(c.CurrencyCode) ? 1 : notPublished.Contains(c.CurrencyCode) ? 2 : 3)
+                : q.OrderByDescending(c => on.Contains(c.CurrencyCode) ? 0 : off.Contains(c.CurrencyCode) ? 1 : notPublished.Contains(c.CurrencyCode) ? 2 : 3),
             _ => ascending ? q.OrderBy(c => c.CurrencyCode) : q.OrderByDescending(c => c.CurrencyCode),
         };
         q = sorted.ThenBy(c => c.CurrencyCode);
 
-        return await q.ToPagedResultAsync(query.Offset, query.Limit, c => c.Adapt<ExistingCurrency>(), cancellationToken);
+        var page = await q.ToPagedResultAsync(query.Offset, query.Limit, c => c.Adapt<ExistingCurrency>(), cancellationToken);
+        if (sync is not null)
+        {
+            var byCode = sync.ToDictionary(item => item.CurrencyCode, StringComparer.Ordinal);
+            foreach (var item in page.Items)
+            {
+                item.Sync = item.Archived is null ? byCode.GetValueOrDefault(item.CurrencyCode) : null;
+            }
+        }
+
+        return page;
     }
 
     public async Task<ExistingCurrency?> Get(string currencyCode, CancellationToken cancellationToken = default)

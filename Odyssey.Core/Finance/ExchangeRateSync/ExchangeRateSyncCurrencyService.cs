@@ -41,23 +41,7 @@ public sealed partial class ExchangeRateSyncCurrencyService(
     public async Task<PagedResult<ExistingExchangeRateSyncCurrency>> ListAsync(
         ExchangeRateSyncCurrenciesQueryParams query, CancellationToken cancellationToken = default)
     {
-        var currencies = await context.Currencies.AsNoTracking()
-            .Where(currency => currency.Archived == null)
-            .Select(currency => new { currency.CurrencyCode, currency.Name })
-            .ToListAsync(cancellationToken);
-        var configured = await context.ExchangeRateSyncCurrencies.AsNoTracking()
-            .ToDictionaryAsync(row => row.CurrencyCode, StringComparer.Ordinal, cancellationToken);
-
-        var series = await supportedList.GetAsync(client.GetSeriesAsync, cancellationToken);
-        var settings = await settingsLookup.GetAsync(cancellationToken);
-        // Only a currency that was ever configured can have fetched rows.
-        var extents = await sync.FetchedExtentsAsync(ExchangeRateSyncClock.Oslo, configured.Keys.ToList(), cancellationToken);
-
-        var items = currencies
-            .Select(currency => Project(
-                currency.CurrencyCode, currency.Name, configured.GetValueOrDefault(currency.CurrencyCode),
-                series, settings, extents))
-            .ToList();
+        var items = await ProjectAllAsync(cancellationToken);
 
         IEnumerable<ExistingExchangeRateSyncCurrency> filtered = items;
         if (ListQuery.NormalizeSearch(query.Search) is { } term)
@@ -98,21 +82,7 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         var (offset, limit) = ListQuery.ResolveWindow(query.Offset, query.Limit);
         var page = all.Skip(offset).Take(limit).ToList();
 
-        // Computed for the returned page only: what a purge of each would delete.
-        var codes = page.Where(item => item.CurrencyCode != Hub).Select(item => item.CurrencyCode).ToList();
-        if (codes.Count > 0)
-        {
-            var counts = await context.ExchangeRates.AsNoTracking()
-                .Where(rate => rate.Provider != null
-                    && (codes.Contains(rate.FromCurrencyCode) || codes.Contains(rate.ToCurrencyCode)))
-                .GroupBy(rate => rate.FromCurrencyCode == Hub ? rate.ToCurrencyCode : rate.FromCurrencyCode)
-                .Select(group => new { Code = group.Key, Count = group.Count() })
-                .ToListAsync(cancellationToken);
-            foreach (var item in page)
-            {
-                item.FetchedRowCount = counts.FirstOrDefault(count => count.Code == item.CurrencyCode)?.Count ?? 0;
-            }
-        }
+        await FillFetchedRowCountsAsync(page, cancellationToken);
 
         return new PagedResult<ExistingExchangeRateSyncCurrency>
         {
@@ -121,6 +91,54 @@ public sealed partial class ExchangeRateSyncCurrencyService(
             Limit = limit,
             TotalCount = all.Count,
         };
+    }
+
+    /// <summary>
+    /// The sync projection of every non-archived currency, keyed nowhere and unpaged: the currencies list
+    /// attaches it to its rows and filters and sorts by it. <see cref="ExistingExchangeRateSyncCurrency.FetchedRowCount"/>
+    /// is left at 0; <see cref="FillFetchedRowCountsAsync"/> fills it for the rows actually returned.
+    /// </summary>
+    public async Task<List<ExistingExchangeRateSyncCurrency>> ProjectAllAsync(CancellationToken cancellationToken = default)
+    {
+        var currencies = await context.Currencies.AsNoTracking()
+            .Where(currency => currency.Archived == null)
+            .Select(currency => new { currency.CurrencyCode, currency.Name })
+            .ToListAsync(cancellationToken);
+        var configured = await context.ExchangeRateSyncCurrencies.AsNoTracking()
+            .ToDictionaryAsync(row => row.CurrencyCode, StringComparer.Ordinal, cancellationToken);
+
+        var series = await supportedList.GetAsync(client.GetSeriesAsync, cancellationToken);
+        var settings = await settingsLookup.GetAsync(cancellationToken);
+        // Only a currency that was ever configured can have fetched rows.
+        var extents = await sync.FetchedExtentsAsync(ExchangeRateSyncClock.Oslo, configured.Keys.ToList(), cancellationToken);
+
+        return currencies
+            .Select(currency => Project(
+                currency.CurrencyCode, currency.Name, configured.GetValueOrDefault(currency.CurrencyCode),
+                series, settings, extents))
+            .ToList();
+    }
+
+    /// <summary>What a purge of each would delete: computed for the given rows only, since it counts rates.</summary>
+    public async Task FillFetchedRowCountsAsync(
+        IReadOnlyCollection<ExistingExchangeRateSyncCurrency> items, CancellationToken cancellationToken = default)
+    {
+        var codes = items.Where(item => item.CurrencyCode != Hub).Select(item => item.CurrencyCode).ToList();
+        if (codes.Count == 0)
+        {
+            return;
+        }
+
+        var counts = await context.ExchangeRates.AsNoTracking()
+            .Where(rate => rate.Provider != null
+                && (codes.Contains(rate.FromCurrencyCode) || codes.Contains(rate.ToCurrencyCode)))
+            .GroupBy(rate => rate.FromCurrencyCode == Hub ? rate.ToCurrencyCode : rate.FromCurrencyCode)
+            .Select(group => new { Code = group.Key, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+        foreach (var item in items)
+        {
+            item.FetchedRowCount = counts.FirstOrDefault(count => count.Code == item.CurrencyCode)?.Count ?? 0;
+        }
     }
 
     /// <summary>
@@ -223,7 +241,7 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         if (await context.ExchangeRateSyncCurrencies.AnyAsync(value => value.CurrencyCode == code && value.Enabled, cancellationToken))
         {
             throw new DomainUnprocessableException(
-                $"{code} is still enabled and would be fetched again on the next run. Disable it first.", "enabled");
+                $"{code} is still synced and would be fetched again on the next run. Stop its sync first.", "enabled");
         }
 
         var run = await sync.TryStartAsync(ExchangeRateSyncTrigger.Purge, userId, cancellationToken)

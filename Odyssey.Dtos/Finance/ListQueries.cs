@@ -104,10 +104,16 @@ public sealed class PropertyEventsQueryParams : QueryParams<PropertyEventSortBy>
     public ContractEventSource? Source { get; set; }
 }
 
-/// <summary>Currencies list query: filter by archival status.</summary>
+/// <summary>
+/// Currencies list query: filter by archival status and, for a caller holding
+/// <c>system-settings.read</c>, by sync state (<c>?sync=On&amp;sync=NotPublished</c>; empty = all).
+/// </summary>
 public sealed class CurrenciesQueryParams : QueryParams<CurrencySortBy>
 {
     public ArchivalStatus? Status { get; set; }
+
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public CurrencySyncState[]? Sync { get; set; }
 }
 
 /// <summary>

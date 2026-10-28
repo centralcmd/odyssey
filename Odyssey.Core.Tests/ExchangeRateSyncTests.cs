@@ -686,6 +686,50 @@ public class ExchangeRateSyncTests
     }
 
     [Fact]
+    public async Task The_currencies_list_filters_sorts_and_attaches_by_the_sync_projection()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+        await harness.EnableAsync("USD");
+        harness.Context.Currencies.Add(new Currency { CurrencyCode = "CHF", Name = "Swiss Franc", MinorUnits = 2, Symbol = "Fr", Archived = Now });
+        await harness.Context.SaveChangesAsync();
+        harness.Context.ChangeTracker.Clear();
+        var currencies = new CurrencyService(harness.Context);
+        var sync = await harness.Currencies.ProjectAllAsync();
+
+        var on = await currencies.ListAsync(new CurrenciesQueryParams { Sync = [CurrencySyncState.On] }, sync);
+        Assert.Equal(["NOK", "USD"], on.Items.Select(item => item.CurrencyCode).Order());
+        Assert.All(on.Items, item => Assert.True(item.Sync!.Enabled));
+
+        var notPublished = await currencies.ListAsync(new CurrenciesQueryParams { Sync = [CurrencySyncState.NotPublished] }, sync);
+        Assert.Equal(["RUB"], notPublished.Items.Select(item => item.CurrencyCode));
+
+        var all = await currencies.ListAsync(new CurrenciesQueryParams { SortBy = CurrencySortBy.Sync }, sync);
+        Assert.Equal(["NOK", "USD"], all.Items.Take(2).Select(item => item.CurrencyCode));
+        // Synced, not synced, not published, then the archived row with no projection.
+        Assert.Equal("RUB", all.Items[^2].CurrencyCode);
+        var archived = all.Items[^1];
+        Assert.Equal("CHF", archived.CurrencyCode);
+        Assert.Null(archived.Sync);
+
+        // Without a projection — a caller who may not see it — the filter is ignored and nothing is attached.
+        var plain = await currencies.ListAsync(new CurrenciesQueryParams { Sync = [CurrencySyncState.On] });
+        Assert.Equal(all.TotalCount, plain.TotalCount);
+        Assert.All(plain.Items, item => Assert.Null(item.Sync));
+    }
+
+    [Theory]
+    [InlineData(true, null, CurrencySyncState.On)]
+    [InlineData(true, false, CurrencySyncState.On)]
+    [InlineData(false, true, CurrencySyncState.Off)]
+    [InlineData(false, null, CurrencySyncState.Off)]
+    [InlineData(false, false, CurrencySyncState.NotPublished)]
+    public void A_currencys_sync_state_keeps_a_synced_but_unpublished_one_stoppable(bool enabled, bool? supported, CurrencySyncState expected) =>
+        Assert.Equal(expected, CurrencySyncStates.Of(new ExistingExchangeRateSyncCurrency
+        {
+            CurrencyCode = "USD", Name = "US Dollar", Enabled = enabled, Supported = supported,
+        }));
+
+    [Fact]
     public async Task A_purge_deletes_only_fetched_rows_resets_the_watermark_and_is_logged()
     {
         await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));

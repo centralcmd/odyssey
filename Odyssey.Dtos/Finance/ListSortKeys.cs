@@ -89,6 +89,9 @@ public enum CurrencySortBy
     Symbol,
     MinorUnits,
     Status,
+
+    /// <summary>By <see cref="CurrencySyncState"/>; needs <c>system-settings.read</c>.</summary>
+    Sync,
 }
 
 /// <summary>Sortable keys for the exchange-rates list.</summary>

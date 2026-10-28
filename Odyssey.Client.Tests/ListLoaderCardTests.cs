@@ -73,8 +73,9 @@ public class ListLoaderCardTests
 
         var currencies = new Mock<ICurrenciesApiClient>();
         currencies.Setup(c => c.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(),
-                It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .Returns((int _, int _, string? search, IReadOnlyCollection<string>? _, string? _, string? _, CancellationToken ct) =>
+                It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns((int _, int _, string? search, IReadOnlyCollection<string>? _, string? _, string? _, IReadOnlyCollection<string>? _, CancellationToken ct) =>
             {
                 harness!.Tokens[search ?? string.Empty] = ct;
                 return harness.Pending[search ?? string.Empty].Task;
