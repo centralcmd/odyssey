@@ -4228,6 +4228,9 @@ tr:focus-within > .odc-rowactions.reveal,
     background: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent)); color: oklch(from var(--rec, var(--brand-text)) var(--glyph-l, l) c h);
 }
 .odc-record-mark .material-icons { font-size: var(--icon-xl); }
+/* Text mark — a short code (a currency's ISO code) in place of the type glyph.
+   Same box and accent ground; the text is the glyph's colour, at body size. */
+.odc-record-mark.mono { font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); letter-spacing: 0.02em; }
 /* Image mark — the record's own picture in place of its type glyph. The accent
    stays with the card; only this mark's content (and, for a logo, its ground)
    changes. `.ground` is the neutral letterbox; `.round` is a photograph. */

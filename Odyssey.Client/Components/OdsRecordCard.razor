@@ -69,6 +69,11 @@
                         <img src="@image.Src" alt="" loading="lazy" decoding="async" @onerror="OnImageError" />
                     </span>
                 }
+                else if (!string.IsNullOrEmpty(Monogram))
+                {
+                    @* Text, not a glyph: part of the trigger's accessible name. *@
+                    <span class="odc-record-mark mono">@Monogram</span>
+                }
                 else if (!string.IsNullOrEmpty(Icon))
                 {
                     <span class="odc-record-mark">
