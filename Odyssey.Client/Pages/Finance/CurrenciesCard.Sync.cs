@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Net;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.Client.Components;
@@ -38,7 +37,7 @@ public partial class CurrenciesCard
     private readonly HashSet<string> _busy = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _rowErrors = new(StringComparer.Ordinal);
 
-    private (ExistingExchangeRateSyncCurrency Currency, string MenuTriggerId)? _purging;
+    private ExistingExchangeRateSyncCurrency? _purging;
     private bool _purgeOpen;
 
     // The Sync filter's values are the server's CurrencySyncState names.
@@ -133,6 +132,17 @@ public partial class CurrenciesCard
 
     // Keyed off `locked` and `supported`, never a currency code (SEC F4). A currency the provider does not
     // publish says so in its chip, so only the two rows the chip cannot explain carry a note.
+    // The coverage that ends a sync caller's meta line: the fetched span, or "Not fetched yet" for a
+    // synced currency with none; nothing for the base, an unsynced currency without rows, or no projection.
+    private static string? CoverageText(ExistingExchangeRateSyncCurrency? s) => s switch
+    {
+        null or { Locked: true } => null,
+        { OldestFetchedDate: { } oldest, NewestFetchedDate: { } newest } =>
+            $"{ExchangeRateSyncTime.Date(oldest)} – {ExchangeRateSyncTime.Date(newest)}",
+        { Enabled: true } => "Not fetched yet",
+        _ => null,
+    };
+
     private string? RowNote(ExistingExchangeRateSyncCurrency s)
     {
         if (s.Locked)
@@ -158,7 +168,7 @@ public partial class CurrenciesCard
     // Each sync item is offered only when it can act; an unavailable one is omitted, never greyed. The
     // base is never started or stopped, and a currency the provider does not publish can be stopped (the
     // remedy) but not started. The start date is a field of the Edit currency dialog.
-    private IEnumerable<OdsMenuItem> SyncActions(ExistingCurrency c, OdsRecordActionContext ctx)
+    private IEnumerable<OdsMenuItem> SyncActions(ExistingCurrency c)
     {
         if (!_canWriteSync || c.Sync is not { Locked: false } s)
             yield break;
@@ -166,25 +176,26 @@ public partial class CurrenciesCard
         // The save is started, not awaited: the menu waits out its item's handler before closing, and it
         // should close at once while the row itself says "Saving…".
         if (s.Enabled)
-            yield return new OdsMenuItem { Icon = "sync_disabled", Label = "Stop sync", OnClick = EventCallback.Factory.Create(this, () => { _ = ToggleSyncAsync(c, false, ctx.MenuTriggerId); }) };
+            yield return new OdsMenuItem { Icon = "sync_disabled", Label = "Stop sync", OnClick = EventCallback.Factory.Create(this, () => { _ = ToggleSyncAsync(c, false); }) };
         else if (s.Supported != false)
-            yield return new OdsMenuItem { Icon = "sync", Label = "Start sync", OnClick = EventCallback.Factory.Create(this, () => { _ = ToggleSyncAsync(c, true, ctx.MenuTriggerId); }) };
+            yield return new OdsMenuItem { Icon = "sync", Label = "Start sync", OnClick = EventCallback.Factory.Create(this, () => { _ = ToggleSyncAsync(c, true); }) };
     }
 
-    private OdsMenuItem? PurgeAction(ExistingCurrency c, OdsRecordActionContext ctx) =>
+    private OdsMenuItem? PurgeAction(ExistingCurrency c) =>
         _canPurge && c.Sync is { Locked: false, Enabled: false, FetchedRowCount: > 0 } s
             ? new OdsMenuItem
             {
                 Icon = "delete_sweep", Label = "Delete fetched rates…", Danger = true,
-                OnClick = EventCallback.Factory.Create(this, () => StartPurge(s, ctx.MenuTriggerId)),
+                OnClick = EventCallback.Factory.Create(this, () => StartPurge(s)),
             }
             : null;
 
     // ── Start / stop ──────────────────────────────────────────────────────────────────────────────
 
-    // Not optimistic: the cell reads "Saving…" for the one PUT and the row changes only on success. Focus
-    // returns to the row's menu button either way, since the item that started it unmounted with its menu.
-    private async Task ToggleSyncAsync(ExistingCurrency c, bool enable, string menuTriggerId)
+    // Not optimistic: the row carries a "Saving…" chip for the one PUT and changes only on success. The
+    // menu returns focus to its own button as it closes. A refusal OPENS the row, whose alert is the
+    // reason, so it is never hidden behind a collapsed card.
+    private async Task ToggleSyncAsync(ExistingCurrency c, bool enable)
     {
         if (c.Sync is not { } s || _busy.Contains(c.CurrencyCode) || !_canWriteSync || s.Locked)
             return;
@@ -206,10 +217,11 @@ public partial class CurrenciesCard
         else
         {
             await ReportRowFailureAsync(c, result, enable);
+            if (_rowErrors.ContainsKey(c.CurrencyCode))
+                _openCode = c.CurrencyCode;
         }
 
         StateHasChanged();
-        await FocusAsync(menuTriggerId);
     }
 
     private async Task ReportRowFailureAsync<T>(ExistingCurrency c, ApiResult<T> result, bool enable)
@@ -235,12 +247,6 @@ public partial class CurrenciesCard
         await AnnounceAssertive($"Couldn’t {(enable ? "start" : "stop")} syncing {c.CurrencyCode}. {_rowErrors[c.CurrencyCode]}");
     }
 
-    private async Task FocusAsync(string elementId)
-    {
-        try { await Js.InvokeVoidAsync("odsFocusById", elementId); }
-        catch { /* JS unavailable (e.g. prerender / teardown) */ }
-    }
-
     // New or Edit currency saved a start date; the host re-reads the page on the dialog's OnSaved.
     private async Task OnSyncStartSaved(string code)
     {
@@ -250,11 +256,11 @@ public partial class CurrenciesCard
 
     // ── Purge ─────────────────────────────────────────────────────────────────────────────────────
 
-    private void StartPurge(ExistingExchangeRateSyncCurrency s, string menuTriggerId)
+    private void StartPurge(ExistingExchangeRateSyncCurrency s)
     {
         if (!_canPurge || s.Enabled || s.FetchedRowCount == 0)
             return;
-        _purging = (s, menuTriggerId);
+        _purging = s;
         _purgeOpen = true;
     }
 
@@ -269,7 +275,7 @@ public partial class CurrenciesCard
         if (_purging is not { } target)
             return null;
 
-        var code = target.Currency.CurrencyCode;
+        var code = target.CurrencyCode;
         var result = await Sync.PurgeCurrencyAsync(code);
         if (!result.IsSuccess)
         {
@@ -279,7 +285,7 @@ public partial class CurrenciesCard
         }
 
         var deleted = result.Value?.RowsDeleted ?? 0;
-        ReplaceSync(target.Currency with { FetchedRowCount = 0, OldestFetchedDate = null, NewestFetchedDate = null });
+        ReplaceSync(target with { FetchedRowCount = 0, OldestFetchedDate = null, NewestFetchedDate = null });
         await AnnouncePolite($"Deleted {deleted.ToString("N0", CultureInfo.CurrentCulture)} fetched rates for {code}");
         await Task.WhenAll(ReloadRunsAsync(), ReloadStatusAsync());
         return null;

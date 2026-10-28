@@ -225,16 +225,44 @@ public partial class CurrenciesCard
         await ReloadAsync();
     }
 
-    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingCurrency c, OdsRecordActionContext ctx)
+    // ── The record list: one card open at a time (RecordCard rule) ─────────────────────────────────
+    private string? _openCode;
+
+    // One meta line: symbol · decimals · the example amount · and, for a sync caller, the coverage.
+    private IReadOnlyList<RenderFragment?> MetaFor(ExistingCurrency c)
     {
-        // No "View details" without sync: the columns are the whole record, so rows don't expand. A sync
-        // caller's rows expand to the read-only sync detail, through the row's own expand button.
+        var meta = new List<RenderFragment?>
+        {
+            string.IsNullOrWhiteSpace(c.Symbol) ? null : Text(c.Symbol),
+            Text($"{c.MinorUnits} {(c.MinorUnits == 1 ? "decimal" : "decimals")}"),
+            Text(Example(c)),
+        };
+        if (_canReadSync && CoverageText(c.Sync) is { } coverage)
+            meta.Add(Text(coverage));
+        return meta;
+    }
+
+    private static RenderFragment Text(string value) => b => b.AddContent(0, value);
+
+    // The fetched-rate count, beside the coverage: what a purge would delete (manual rates not counted).
+    // Never for the base, which has no rates of its own, or a currency never synced that holds none.
+    private IReadOnlyList<OdsRecordCount> CountsFor(ExistingCurrency c) =>
+        _canReadSync && c.Sync is { Locked: false } s && (s.Enabled || s.FetchedRowCount > 0)
+            ? [new OdsRecordCount("cloud_download", s.FetchedRowCount.ToString("N0"), "Fetched rates")]
+            : [];
+
+    // A sample amount written as the app writes money everywhere — the figure, then the ISO code — so it
+    // shows the currency's decimal precision in the form a user reads.
+    internal static string Example(ExistingCurrency c) => OdsMoney.Format(1234.5m, c.CurrencyCode, c.MinorUnits);
+
+    internal IReadOnlyList<OdsMenuItem> BuildActions(ExistingCurrency c)
+    {
         var items = new List<OdsMenuItem>();
 
         if (_canUpdate)
             items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)) });
 
-        items.AddRange(SyncActions(c, ctx));
+        items.AddRange(SyncActions(c));
 
         if (_canUpdate)
         {
@@ -248,13 +276,13 @@ public partial class CurrenciesCard
 
         items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyCode(c.CurrencyCode)) });
 
-        var purge = PurgeAction(c, ctx);
+        var purge = PurgeAction(c);
         if (_canDelete || purge is not null)
             items.Add(new OdsMenuItem { Divider = true });
         if (purge is not null)
             items.Add(purge);
         if (_canDelete)
-            items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, ctx.Remove) });
+            items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, () => DeleteClicked(c)) });
 
         return items;
     }
@@ -336,24 +364,38 @@ public partial class CurrenciesCard
         StateHasChanged();
     }
 
-    private async Task HandleDelete(object key)
+    // ── Delete: a record list has no inline confirm, so it asks first ─────────────────────────────
+    private ExistingCurrency? _deleting;
+    private bool _deleteOpen;
+
+    private void DeleteClicked(ExistingCurrency currency)
     {
         if (!_canDelete)
             return;
+        _deleting = currency;
+        _deleteOpen = true;
+    }
 
-        var currency = _currencies.FirstOrDefault(c => string.Equals(c.CurrencyCode, (string)key, StringComparison.Ordinal));
-        if (currency is null)
-            return;
+    private void OnDeleteOpenChanged(bool open) => _deleteOpen = open;
 
-        if ((await Currencies.DeleteAsync(currency.CurrencyCode)).Toast(Snackbar, "Delete failed", "Currency deleted."))
-        {
-            ReferenceData.InvalidateCurrencies();
-            // Full refresh, not a local Remove: the delete changes the total, so the pager and the
-            // current page have to be re-fetched or the page renders short against a stale count.
-            await RefreshAsync();
-        }
+    // Null closes the dialog; a refusal (a currency still in use) stays in it as the server's message.
+    private async Task<string?> ConfirmDeleteAsync()
+    {
+        if (_deleting is not { } currency || !_canDelete)
+            return null;
 
-        StateHasChanged();
+        var result = await Currencies.DeleteAsync(currency.CurrencyCode);
+        if (!result.IsSuccess)
+            return string.IsNullOrWhiteSpace(result.Error) ? "The currency couldn’t be deleted." : result.Error;
+
+        Snackbar.Add("Currency deleted.", Severity.Success);
+        ReferenceData.InvalidateCurrencies();
+        if (_openCode == currency.CurrencyCode)
+            _openCode = null;
+        // Full refresh, not a local Remove: the delete changes the total, so the pager and the current
+        // page have to be re-fetched or the page renders short against a stale count.
+        await RefreshAsync();
+        return null;
     }
 
     private Task CopyCode(string currencyCode) =>

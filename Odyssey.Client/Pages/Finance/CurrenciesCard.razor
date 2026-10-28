@@ -12,7 +12,6 @@
 @inject IExchangeRateSyncApiClient Sync
 @inject IReferenceDataCache ReferenceData
 @inject TimeProvider Time
-@inject IJSRuntime Js
 
 <PageTitle>Currencies</PageTitle>
 
@@ -88,97 +87,94 @@
         </OdsAlert>
     }
 
-    @{
-        var columns = new List<OdsRecordColumn<ExistingCurrency>>
-        {
-            @* No Code column: the avatar shows the code. Code stays a sort key (the default) in Sort by. *@
-            new()
-            {
-                Key = "name", HeaderText = "Name", Sortable = true,
-                SortValue = c => c.Name.ToLowerInvariant(),
-                Cell = (c, ctx) => @<span class="d-inline-flex align-center flex-wrap" style="gap:8px;">@c.Name @if (ctx.JustSaved) { <OdsChip Tone="OdsChipTone.Income" Dot="true">Saved</OdsChip> }</span>
-            },
-            new()
-            {
-                Key = "symbol", HeaderText = "Symbol", Sortable = true, CellClass = "odc-rec-muted",
-                SortValue = c => (c.Symbol ?? string.Empty).ToLowerInvariant(),
-                Cell = (c, ctx) => @<text>@(string.IsNullOrWhiteSpace(c.Symbol) ? "—" : c.Symbol)</text>
-            },
-            new()
-            {
-                Key = "minorUnits", HeaderText = "Minor units", Sortable = true, Align = OdsAlign.End, CellClass = "odc-rec-muted", SortType = OdsSortType.Number,
-                SortValue = c => c.MinorUnits,
-                Cell = (c, ctx) => @<text>@c.MinorUnits</text>
-            },
-            @* A sample amount written as the app writes money everywhere — the figure, then the ISO code —
-               so it shows the currency's decimal precision in the form a user reads. Derived, so it is
-               not a server sort key. *@
-            new()
-            {
-                Key = "example", HeaderText = "Example", Align = OdsAlign.End, CellClass = "odc-rec-muted",
-                Cell = (c, ctx) => @<text>@OdsMoney.Format(1234.5m, c.CurrencyCode, c.MinorUnits)</text>
-            },
-            new()
-            {
-                Key = "status", HeaderText = "Status", Sortable = true, SortType = OdsSortType.Status,
-                SortValue = c => c.Archived is null ? 0 : 1,
-                Cell = (c, ctx) => @<text>
-                    @if (c.Archived is not null)
-                    {
-                        <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
-                    }
-                    else
-                    {
-                        <OdsChip Tone="OdsChipTone.Income" Dot="true">Active</OdsChip>
-                    }
-                </text>
-            },
-        };
-        if (_canReadSync)
-            columns.AddRange(SyncColumns);
-    }
+    @* A record list (Odyssey Design System · Currencies, RecordCard): one card per currency, one open
+       at a time, server-paged. The code is the mark — symbols repeat ($, kr) where codes never do — and
+       it is shown nowhere else, so the monogram is part of the row's accessible name. *@
+    <div class="acct-list">
+        <OdsInfiniteList TItem="ExistingCurrency" Items="_currencies" BatchSize="@Math.Max(_currencies.Count, 1)"
+                         ItemKey="@(c => (object)c.CurrencyCode)" Noun="currencies"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="GetCurrencies"
+                         HasFilters="_hasFilters" OnClearFilters="ClearFilters"
+                         EmptyIcon="payments"
+                         EmptyTitle="No currencies match"
+                         EmptyDescription="Enable the currencies your accounts and budgets use.">
+            <RenderItem Context="c">
+                <OdsRecordCard Id="@($"cur-{c.CurrencyCode}")"
+                               Monogram="@c.CurrencyCode"
+                               Name="@c.Name"
+                               Meta="MetaFor(c)"
+                               Counts="CountsFor(c)"
+                               Dimmed="@(c.Archived is not null)"
+                               Open="@(_openCode == c.CurrencyCode)"
+                               OnToggle="@(open => _openCode = open ? c.CurrencyCode : null)">
+                    <Chips>
+                        @if (c.Archived is not null)
+                        {
+                            <OdsChip Tone="OdsChipTone.Outline" Icon="inventory_2" Class="sm">Archived</OdsChip>
+                        }
+                        @if (_canReadSync && c.Sync is { } sync)
+                        {
+                            var chip = OdsTypeRegistries.CurrencySyncStateOf(CurrencySyncStates.Of(sync));
+                            <OdsChip Tone="@chip.Tone" Dot="@chip.Dot" Class="sm">@chip.Label</OdsChip>
+                            @if (sync.Supported == false && sync.Enabled)
+                            {
+                                <OdsChip Tone="OdsChipTone.Warning" Icon="warning" Class="sm problem">No longer published</OdsChip>
+                            }
+                        }
+                        @if (_busy.Contains(c.CurrencyCode))
+                        {
+                            <OdsChip Tone="OdsChipTone.Outline" Class="sm">Saving…</OdsChip>
+                        }
+                    </Chips>
 
-    <MudCard Outlined="true">
-        <OdsRecordTable TRow="ExistingCurrency"
-                        AriaLabel="Currencies"
-                        Rows="@_currencies"
-                        Loading="_isLoading"
-                        Refetching="_refetching"
-                        Error="_loadError"
-                        OnRetry="GetCurrencies"
-                        HasFilters="_hasFilters"
-                        OnClearFilters="ClearFilters"
-                        Noun="currencies"
-                        EmptyIcon="payments"
-                        EmptyDescription="Enable the currencies your accounts and budgets use."
-                        ServerSort="true"
-                        RowKey="@(c => (object)c.CurrencyCode)"
-                        Columns="@columns"
-                        DefaultSort="@DefaultSort"
-                        Sort="_sort"
-                        SortChanged="OnSortChanged"
-                        Actions="BuildActions"
-                        RenderDetail="@(_canReadSync ? SyncDetail : null)"
-                        OnDelete="HandleDelete">
-            <Leading Context="c">
-                @* The ISO code, not the symbol: symbols repeat ($, kr) where codes never do. With no Code
-                   column the avatar is the code's only place, so it is named rather than decorative. *@
-                <OdsAvatar Initials="@c.CurrencyCode" Alt="@c.CurrencyCode" />
-            </Leading>
+                    <Actions>
+                        <OdsMenu Items="BuildActions(c)" AriaLabel="@($"Actions for {c.CurrencyCode}")" />
+                    </Actions>
+
+                    <Alert>
+                        @if (_rowErrors.GetValueOrDefault(c.CurrencyCode) is { } error)
+                        {
+                            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@error</OdsAlert>
+                        }
+                        else if (_canReadSync && c.Sync is { Supported: false, Enabled: true })
+                        {
+                            <OdsAlert Severity="Severity.Warning">@ProviderName no longer publishes @c.CurrencyCode. Stop its sync from the row menu.</OdsAlert>
+                        }
+                    </Alert>
+
+                    <Details>
+                        <OdsInfoTileGrid>
+                            <OdsInfoTile Icon="tag" Label="Code" ValueVariant="OdsInfoTileVariant.Sm"><Value>@c.CurrencyCode</Value></OdsInfoTile>
+                            <OdsInfoTile Icon="currency_exchange" Label="Symbol" ValueVariant="OdsInfoTileVariant.Sm">
+                                <Value>@(string.IsNullOrWhiteSpace(c.Symbol) ? "—" : c.Symbol)</Value>
+                            </OdsInfoTile>
+                            <OdsInfoTile Icon="pin" Label="Minor units" Foot="@OdsInfoTile.Caption("decimal places")"><Value>@c.MinorUnits</Value></OdsInfoTile>
+                            <OdsInfoTile Icon="payments" Label="Example" ValueVariant="OdsInfoTileVariant.Sm"><Value>@Example(c)</Value></OdsInfoTile>
+                            <OdsInfoTile Icon="@(c.Archived is null ? "task_alt" : "inventory_2")" Label="Status" ValueVariant="OdsInfoTileVariant.Sm">
+                                <Value>@(c.Archived is null ? "Active" : "Archived")</Value>
+                            </OdsInfoTile>
+                            @if (_canReadSync)
+                            {
+                                @SyncTiles(c)
+                            }
+                        </OdsInfoTileGrid>
+                    </Details>
+                </OdsRecordCard>
+            </RenderItem>
             <CreateAction>
                 @if (_canCreate)
                 {
                     <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New currency</OdsButton>
                 }
             </CreateAction>
-        </OdsRecordTable>
-        @if (_totalCount > 0)
-        {
-            <OdsPager Page="_page" PageChanged="OnPageChanged"
-                      PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
-                      TotalCount="_totalCount" Loading="@(_isLoading || _refetching)" />
-        }
-    </MudCard>
+        </OdsInfiniteList>
+    </div>
+    @if (_totalCount > 0)
+    {
+        <OdsPager Page="_page" PageChanged="OnPageChanged"
+                  PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
+                  TotalCount="_totalCount" Loading="@(_isLoading || _refetching)" />
+    }
 
     @if (_canReadSync)
     {
@@ -192,15 +188,26 @@
 @* Stays mounted once opened (only its Open flips), so the close runs the modal's own focus restore. *@
 @if (_purging is { } purge)
 {
-    <ConfirmFetchedRateDeleteDialog @key="purge.Currency.CurrencyCode"
+    <ConfirmFetchedRateDeleteDialog @key="purge.CurrencyCode"
                                     Open="_purgeOpen"
                                     OpenChanged="OnPurgeOpenChanged"
                                     Icon="delete_sweep"
-                                    Title="@($"Delete fetched rates for {purge.Currency.CurrencyCode}?")"
-                                    Body="@PurgeBody(purge.Currency)"
+                                    Title="@($"Delete fetched rates for {purge.CurrencyCode}?")"
+                                    Body="@PurgeBody(purge)"
                                     ConfirmLabel="Delete fetched rates"
-                                    ReturnFocusToId="@purge.MenuTriggerId"
                                     OnConfirm="ConfirmPurgeAsync" />
+}
+
+@* A record list has no inline confirm, so Delete asks first, in the same anatomy as the purge. *@
+@if (_deleting is { } doomed)
+{
+    <ConfirmFetchedRateDeleteDialog @key="@($"delete-{doomed.CurrencyCode}")"
+                                    Open="_deleteOpen"
+                                    OpenChanged="OnDeleteOpenChanged"
+                                    Title="@($"Delete {doomed.CurrencyCode}?")"
+                                    Body="@($"{doomed.Name} is removed from your currencies. A currency still in use can’t be deleted — archive it instead.")"
+                                    ConfirmLabel="Delete currency"
+                                    OnConfirm="ConfirmDeleteAsync" />
 }
 
 @if (_createKey != Guid.Empty)
@@ -224,92 +231,37 @@
 }
 
 @code {
-    // ── Exchange-rate sync cells (issue #351). A row with no projection (archived) reads "—". ─────────
+    // ── Exchange-rate sync tiles (issue #351), after the currency's own. An archived currency has no
+    // projection, so it shows one tile saying why. ────────────────────────────────────────────────────
 
-    private static RenderFragment NotApplicable => @<span><span aria-hidden="true">—</span><span class="sr-only">Not applicable</span></span>;
-
-    private IReadOnlyList<OdsRecordColumn<ExistingCurrency>> SyncColumns =>
-    [
-        new()
-        {
-            Key = "sync", HeaderText = "Sync", Sortable = true, SortType = OdsSortType.Status,
-            Cell = SyncCell,
-        },
-        new() { Key = "coverage", HeaderText = "Coverage", CellClass = "odc-rec-muted", Cell = CoverageCell },
-        new() { Key = "backfill", HeaderText = "Backfill", Cell = BackfillCell },
-        new() { Key = "start", HeaderText = "Start date", CellClass = "odc-rec-muted", Cell = StartDateCell },
-    ];
-
-    private RenderFragment SyncCell(ExistingCurrency c, OdsRecordCellContext ctx)
-    {
-        if (c.Sync is not { } s)
-            return NotApplicable;
-        var chip = OdsTypeRegistries.CurrencySyncStateOf(CurrencySyncStates.Of(s));
-        var note = RowNote(s);
-        var error = _rowErrors.GetValueOrDefault(c.CurrencyCode);
-        var busy = _busy.Contains(c.CurrencyCode);
-        return @<div class="xrs-sync" aria-busy="@(busy ? "true" : null)">
-            <span class="xrs-sync-state">
-                <OdsChip Tone="@chip.Tone" Dot="@chip.Dot">@chip.Label</OdsChip>
-                @if (busy)
-                {
-                    <span class="xrs-sync-busy">Saving…</span>
-                }
-            </span>
-            @if (note is not null)
+    private RenderFragment SyncTiles(ExistingCurrency c) => c.Sync is not { } s
+        ? @<OdsInfoTile Icon="sync_disabled" Label="Sync" ValueVariant="OdsInfoTileVariant.Text"><Value>Archived currencies are not synced.</Value></OdsInfoTile>
+        : @<text>
+            @* The one place the source is named per currency: it is the same provider on every synced
+               row, so the header does not repeat it. *@
+            <OdsInfoTile Icon="sync" Label="Sync" ValueVariant="OdsInfoTileVariant.Text" Foot="@OdsInfoTile.Caption(RowNote(s))">
+                <Value>@(CurrencySyncStates.Of(s) == CurrencySyncState.On
+                    ? $"Synced from {ProviderName}"
+                    : OdsTypeRegistries.CurrencySyncStateOf(CurrencySyncStates.Of(s)).Label)</Value>
+            </OdsInfoTile>
+            @if (!s.Locked)
             {
-                <span class="@($"xrs-sync-note{(s.Supported == false && s.Enabled ? " warn" : "")}")">@note</span>
+                <OdsInfoTile Icon="date_range" Label="Coverage" ValueVariant="OdsInfoTileVariant.Sm"
+                             Foot="@OdsInfoTile.Caption(s.NewestFetchedDate is { } newest ? $"to {ExchangeRateSyncTime.Date(newest)}" : null)">
+                    <Value>@(s.OldestFetchedDate is { } oldest ? ExchangeRateSyncTime.Date(oldest) : "Not fetched yet")</Value>
+                </OdsInfoTile>
+                <OdsInfoTile Icon="downloading" Label="Backfill" ValueVariant="OdsInfoTileVariant.Sm">
+                    <Value>@(OdsTypeRegistries.ExchangeRateBackfillStates.GetValueOrDefault(OdsTypeRegistries.ExchangeRateBackfillOf(s), OdsTypeRegistries.UnknownChip).Label)</Value>
+                </OdsInfoTile>
+                <OdsInfoTile Icon="event" Label="Start date" ValueVariant="OdsInfoTileVariant.Sm"
+                             Foot="@OdsInfoTile.Caption(s.HistoryStartDate is null ? "the instance default" : "this currency’s own date")">
+                    <Value>@ExchangeRateSyncTime.Date(s.EffectiveHistoryStartDate)</Value>
+                </OdsInfoTile>
             }
-            @if (error is not null)
-            {
-                <span class="xrs-sync-err">
-                    <span class="material-icons" aria-hidden="true">error</span>@error
-                </span>
-            }
-        </div>;
-    }
-
-    private RenderFragment CoverageCell(ExistingCurrency c, OdsRecordCellContext ctx)
-    {
-        if (c.Sync is not { Locked: false } s)
-            return NotApplicable;
-        return s.OldestFetchedDate is { } oldest && s.NewestFetchedDate is { } newest
-            ? @<span class="xrs-mono xrs-range"><span>@ExchangeRateSyncTime.Date(oldest) –</span> <span>@ExchangeRateSyncTime.Date(newest)</span></span>
-            : @<span>Not fetched yet</span>;
-    }
-
-    private RenderFragment BackfillCell(ExistingCurrency c, OdsRecordCellContext ctx)
-    {
-        if (c.Sync is not { Locked: false } s)
-            return NotApplicable;
-        var chip = OdsTypeRegistries.ExchangeRateBackfillStates.GetValueOrDefault(
-            OdsTypeRegistries.ExchangeRateBackfillOf(s), OdsTypeRegistries.UnknownChip);
-        return @<OdsChip Tone="@chip.Tone" Dot="@chip.Dot">@chip.Label</OdsChip>;
-    }
-
-    private RenderFragment StartDateCell(ExistingCurrency c, OdsRecordCellContext ctx)
-    {
-        if (c.Sync is not { Locked: false } s)
-            return NotApplicable;
-        return s.HistoryStartDate is { } own
-            ? @<span class="xrs-mono">@ExchangeRateSyncTime.Date(own)</span>
-            : @<span>Default (@ExchangeRateSyncTime.Date(s.EffectiveHistoryStartDate))</span>;
-    }
-
-    // Read-only, per the RecordTable rule: editing goes through the edit row.
-    private RenderFragment SyncDetail(ExistingCurrency c) => c.Sync is not { } s
-        ? @<OdsEmptyLine Text="Archived currencies are not synced." />
-        : @<OdsInfoTileGrid>
-            <OdsInfoTile Icon="history" Label="Available from" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
-                <Value>@AvailableFromText(s)</Value>
+            @* The earliest day the provider has a rate for this currency — the floor for a useful start date. *@
+            <OdsInfoTile Icon="history" Label="Earliest rate" ValueVariant="OdsInfoTileVariant.Sm"
+                         Foot="@OdsInfoTile.Caption(s.Locked ? $"every {ProviderName} rate is quoted against {s.CurrencyCode}" : $"first day {ProviderName} publishes")">
+                <Value>@(s.Locked ? "—" : s.FirstAvailableDate is { } first ? ExchangeRateSyncTime.Date(first) : "Not published")</Value>
             </OdsInfoTile>
-            <OdsInfoTile Icon="table_rows" Label="Fetched rates">
-                <Value>@s.FetchedRowCount.ToString("N0")</Value>
-                <Foot>manual rates not counted</Foot>
-            </OdsInfoTile>
-            <OdsInfoTile Icon="event" Label="Effective start date" ValueVariant="OdsInfoTileVariant.Sm">
-                <Value>@(s.Locked ? "—" : ExchangeRateSyncTime.Date(s.EffectiveHistoryStartDate))</Value>
-                <Foot>@(s.HistoryStartDate is null ? "the instance default" : "this currency’s own date")</Foot>
-            </OdsInfoTile>
-        </OdsInfoTileGrid>;
+        </text>;
 }

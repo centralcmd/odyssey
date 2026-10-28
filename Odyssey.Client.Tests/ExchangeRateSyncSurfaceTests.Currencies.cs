@@ -18,7 +18,7 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The sync's currency rows, which live on /currencies (issue #351): who sees them, the Sync column's
+/// The sync's currency rows, which live on /currencies (issue #351): who sees them, the row's sync
 /// states, start and stop from the row menu with their refusals, the start date in Edit currency, and the purge.
 /// </summary>
 public partial class ExchangeRateSyncSurfaceTests
@@ -81,13 +81,24 @@ public partial class ExchangeRateSyncSurfaceTests
         return cut;
     }
 
+    /// <summary>The currency's record card — header and, while open, its body.</summary>
     private static AngleSharp.Dom.IElement RowOf(IRenderedComponent<CurrenciesCard> cut, string code) =>
-        cut.FindAll("tr").First(tr => tr.TextContent.Contains(code + " name"));
+        cut.Find($"#cur-{code}");
+
+    private static AngleSharp.Dom.IElement MenuTrigger(IRenderedComponent<CurrenciesCard> cut, string code) =>
+        RowOf(cut, code).QuerySelector($"button[aria-label='Actions for {code}']")!;
+
+    /// <summary>Expands the currency's card (one is open at a time).</summary>
+    private static void Open(IRenderedComponent<CurrenciesCard> cut, string code)
+    {
+        RowOf(cut, code).QuerySelector(".odc-record-trigger")!.Click();
+        cut.WaitForAssertion(() => Assert.Equal("true", RowOf(cut, code).QuerySelector(".odc-record-trigger")!.GetAttribute("aria-expanded")));
+    }
 
     /// <summary>The menu's item labels for a row, read by opening and closing its ⋯ menu.</summary>
     private string MenuOf(IRenderedComponent<CurrenciesCard> cut, string code)
     {
-        AngleSharp.Dom.IElement Trigger() => RowOf(cut, code).QuerySelector("button[aria-label='Row actions']")!;
+        AngleSharp.Dom.IElement Trigger() => MenuTrigger(cut, code);
         Trigger().Click();
         var popover = _popover!;
         popover.WaitForAssertion(() => Assert.Contains("Copy ID", popover.Markup));
@@ -100,7 +111,7 @@ public partial class ExchangeRateSyncSurfaceTests
     /// <summary>Opens a row's ⋯ menu and clicks the item labelled <paramref name="label"/>.</summary>
     private void ClickRowAction(IRenderedComponent<CurrenciesCard> cut, string code, string label)
     {
-        RowOf(cut, code).QuerySelector("button[aria-label='Row actions']")!.Click();
+        MenuTrigger(cut, code).Click();
         var popover = _popover!;
         popover.WaitForAssertion(() => Assert.Contains(label, popover.Markup));
         popover.FindAll(".mud-menu-item, [role=menuitem]").First(i => i.TextContent.Contains(label)).Click();
@@ -132,7 +143,7 @@ public partial class ExchangeRateSyncSurfaceTests
     }
 
     [Fact]
-    public async Task A_sync_reader_gets_the_columns_the_overview_panel_and_run_history_but_no_sync_actions()
+    public async Task A_sync_reader_gets_the_row_parts_the_overview_panel_and_run_history_but_no_sync_actions()
     {
         var (ctx, sync, _) = NewCurrenciesContext(
             [PermissionClaims.CurrenciesRead, PermissionClaims.SystemSettingsRead], Row(Currency("USD", enabled: true)));
@@ -140,7 +151,10 @@ public partial class ExchangeRateSyncSurfaceTests
 
         var cut = RenderCurrencies(ctx, "USD");
 
-        Assert.Contains("Coverage", cut.Markup);
+        // The coverage ends the meta line; the sync tiles are in the body.
+        Assert.Contains("Not fetched yet", RowOf(cut, "USD").QuerySelector(".odc-record-meta")!.TextContent);
+        Open(cut, "USD");
+        Assert.Contains("Coverage", RowOf(cut, "USD").TextContent);
         Assert.Contains("Run history", cut.Markup);
         Assert.Single(cut.FindComponents<ExchangeRateSyncStatusPanel>());
         Assert.Contains("Synced", RowOf(cut, "USD").TextContent);
@@ -149,7 +163,7 @@ public partial class ExchangeRateSyncSurfaceTests
         sync.Verify(c => c.ListRunsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // ── The Sync column and the menu ─────────────────────────────────────────────────────────────
+    // ── The row's sync parts and the menu ────────────────────────────────────────────────────────
 
     [Fact]
     public async Task The_base_row_and_an_unpublished_row_explain_themselves_and_offer_no_start()
@@ -160,10 +174,16 @@ public partial class ExchangeRateSyncSurfaceTests
 
         var cut = RenderCurrencies(ctx, "BASE");
 
-        Assert.Contains("Provider’s base — always synced", RowOf(cut, "BASE").TextContent);
         Assert.Contains("Synced", RowOf(cut, "BASE").TextContent);
         Assert.Contains("Not published", RowOf(cut, "XDR").TextContent);
-        Assert.Contains("No longer published — stop syncing", RowOf(cut, "RUB").TextContent);
+        // A synced currency the provider dropped says so in its header, not only when opened.
+        Assert.Contains("No longer published", RowOf(cut, "RUB").QuerySelector(".odc-record-head")!.TextContent);
+
+        Open(cut, "BASE");
+        Assert.Contains("Provider’s base — always synced", RowOf(cut, "BASE").TextContent);
+        Open(cut, "RUB");
+        Assert.Contains("Provider no longer publishes RUB.", RowOf(cut, "RUB").TextContent);
+        Assert.Equal("false", RowOf(cut, "BASE").QuerySelector(".odc-record-trigger")!.GetAttribute("aria-expanded"));
 
         var baseMenu = MenuOf(cut, "BASE");
         Assert.DoesNotContain("sync", baseMenu.Replace("Copy ID", string.Empty), StringComparison.OrdinalIgnoreCase);
@@ -172,15 +192,44 @@ public partial class ExchangeRateSyncSurfaceTests
     }
 
     [Fact]
-    public async Task An_archived_row_reads_not_applicable_in_text_and_has_no_sync_actions()
+    public async Task The_header_counts_fetched_rates_and_the_body_names_the_source_and_the_earliest_rate()
+    {
+        var (ctx, _, _) = NewCurrenciesContext(
+            Row(Currency("USD", enabled: true) with { FetchedRowCount = 1717 }),
+            Row(Currency("BASE", enabled: true, locked: true)),
+            Row(Currency("SEK")));
+        await using var __ = ctx;
+
+        var cut = RenderCurrencies(ctx, "USD");
+
+        string Counts(string code) => RowOf(cut, code).QuerySelector(".odc-record-counts")?.TextContent ?? string.Empty;
+        Assert.Contains("1,717", Counts("USD"));
+        Assert.Contains("Fetched rates", Counts("USD"));
+        // The base has no rates of its own; a currency never synced holds none.
+        Assert.Empty(Counts("BASE"));
+        Assert.Empty(Counts("SEK"));
+        // The source is named once, in the panel, not on every row's header.
+        Assert.DoesNotContain("Provider", RowOf(cut, "USD").QuerySelector(".odc-record-head")!.TextContent);
+
+        Open(cut, "USD");
+        var body = RowOf(cut, "USD").TextContent;
+        Assert.Contains("Synced from Provider", body);
+        Assert.Contains("Earliest rate", body);
+        Assert.Contains("first day Provider publishes", body);
+        Assert.DoesNotContain("Available from", body);
+    }
+
+    [Fact]
+    public async Task An_archived_row_has_no_sync_chip_says_why_in_its_body_and_has_no_sync_actions()
     {
         var (ctx, _, _) = NewCurrenciesContext(Row(null, "CHF", archived: true));
         await using var __ = ctx;
 
         var cut = RenderCurrencies(ctx, "CHF");
 
-        Assert.Empty(cut.FindAll("span[aria-label='Not applicable']"));
-        Assert.Contains(RowOf(cut, "CHF").QuerySelectorAll(".sr-only"), sp => sp.TextContent == "Not applicable");
+        Assert.DoesNotContain("synced", RowOf(cut, "CHF").QuerySelector(".odc-record-head")!.TextContent, StringComparison.OrdinalIgnoreCase);
+        Open(cut, "CHF");
+        Assert.Contains("Archived currencies are not synced.", RowOf(cut, "CHF").TextContent);
         var menu = MenuOf(cut, "CHF");
         Assert.DoesNotContain("Start sync", menu);
     }
@@ -237,7 +286,9 @@ public partial class ExchangeRateSyncSurfaceTests
         var cut = RenderCurrencies(ctx, "USD");
         ClickRowAction(cut, "USD", "Start sync");
 
+        // A refusal opens the row: the reason is its alert, never hidden behind a collapsed card.
         cut.WaitForAssertion(() => Assert.Contains("The provider doesn't publish USD.", RowOf(cut, "USD").TextContent));
+        Assert.Equal("true", RowOf(cut, "USD").QuerySelector(".odc-record-trigger")!.GetAttribute("aria-expanded"));
         Assert.Contains("Not synced", RowOf(cut, "USD").TextContent);
         cut.WaitForAssertion(() => Assert.Contains("Couldn’t start syncing USD.", AssertiveText(cut)));
     }
@@ -268,7 +319,7 @@ public partial class ExchangeRateSyncSurfaceTests
         ClickRowAction(cut, "USD", "Stop sync");
 
         cut.WaitForAssertion(() => Assert.Equal(ExchangeRateSyncStatusPanel.PermissionMessage, AssertiveText(cut)));
-        Assert.Empty(RowOf(cut, "USD").QuerySelectorAll(".xrs-sync-err"));
+        Assert.Empty(RowOf(cut, "USD").QuerySelectorAll(".mud-alert"));
     }
 
     [Fact]
@@ -299,7 +350,6 @@ public partial class ExchangeRateSyncSurfaceTests
         cut.WaitForAssertion(() => Assert.Contains("Saving…", RowOf(cut, "USD").TextContent));
         // The menu closes at once rather than waiting out the request.
         Assert.DoesNotContain("Start sync", _popover!.Markup);
-        Assert.Equal("true", RowOf(cut, "USD").QuerySelector(".xrs-sync")!.GetAttribute("aria-busy"));
         ClickRowAction(cut, "USD", "Start sync");
 
         sync.Verify(c => c.UpdateCurrencyAsync("USD", It.IsAny<ExchangeRateSyncCurrencyUpdate>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -407,7 +457,7 @@ public partial class ExchangeRateSyncSurfaceTests
             .ReturnsAsync(ApiResult<ExistingExchangeRateSyncCurrency>.Success(own with { HistoryStartDate = null }, HttpStatusCode.OK));
 
         var cut = RenderCurrencies(ctx, "USD");
-        RowOf(cut, "USD").QuerySelector("button[aria-label='Row actions']")!.Click();
+        MenuTrigger(cut, "USD").Click();
         var popover = _popover!;
         popover.WaitForAssertion(() => Assert.Contains("Edit", popover.Markup));
         popover.FindAll(".mud-menu-item, [role=menuitem]").First(i => i.TextContent.Trim().EndsWith("Edit", StringComparison.Ordinal)).Click();
@@ -529,20 +579,22 @@ public partial class ExchangeRateSyncSurfaceTests
     }
 
     [Fact]
-    public async Task Each_row_names_its_code_in_the_avatar_and_writes_the_example_with_the_code_after()
+    public async Task Each_row_is_a_record_card_named_by_its_code_with_the_example_code_after()
     {
         var (ctx, _, _) = NewCurrenciesContext(Row(Currency("USD")));
         await using var __ = ctx;
 
         var cut = RenderCurrencies(ctx, "USD");
 
-        var avatar = RowOf(cut, "USD").QuerySelector(".mud-avatar")!;
-        Assert.Equal("USD", avatar.TextContent.Trim());
-        // No Code column, so the avatar is the code's only place and must be named, not hidden.
-        Assert.Equal("USD", avatar.GetAttribute("aria-label"));
-        Assert.Null(avatar.GetAttribute("aria-hidden"));
-        Assert.DoesNotContain(cut.FindAll("th"), th => th.TextContent.Trim() == "Code");
-        Assert.Contains(OdsMoney.Format(1234.5m, "USD", 2), RowOf(cut, "USD").TextContent);
+        // A record card, not a table row (Run history below is still a table).
+        Assert.Null(RowOf(cut, "USD").Closest("table"));
+        Assert.Contains("odc-record", RowOf(cut, "USD").ClassList);
+        var mark = RowOf(cut, "USD").QuerySelector(".odc-record-mark.mono")!;
+        Assert.Equal("USD", mark.TextContent.Trim());
+        // The code is shown nowhere else, so the mark is text inside the trigger — part of its name.
+        Assert.Null(mark.GetAttribute("aria-hidden"));
+        Assert.Same(mark.ParentElement, RowOf(cut, "USD").QuerySelector(".odc-record-trigger"));
+        Assert.Contains(OdsMoney.Format(1234.5m, "USD", 2), RowOf(cut, "USD").QuerySelector(".odc-record-meta")!.TextContent);
         Assert.EndsWith(" USD", OdsMoney.Format(1234.5m, "USD", 2));
     }
 

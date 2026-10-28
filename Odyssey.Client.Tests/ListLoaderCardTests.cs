@@ -134,7 +134,7 @@ public class ListLoaderCardTests
         await older;
 
         Assert.DoesNotContain("EUR name", h.Cut.Markup, StringComparison.Ordinal);
-        Assert.True(h.Cut.FindComponent<OdsRecordTable<ExistingCurrency>>().Instance.Loading);
+        Assert.True(h.Cut.FindComponent<OdsInfiniteList<ExistingCurrency>>().Instance.Loading);
 
         await h.Answer("usd", Page(Currency("USD")));
         await newer;
@@ -143,7 +143,7 @@ public class ListLoaderCardTests
         {
             Assert.Contains("USD name", h.Cut.Markup, StringComparison.Ordinal);
             Assert.DoesNotContain("EUR name", h.Cut.Markup, StringComparison.Ordinal);
-            Assert.False(h.Cut.FindComponent<OdsRecordTable<ExistingCurrency>>().Instance.Loading);
+            Assert.False(h.Cut.FindComponent<OdsInfiniteList<ExistingCurrency>>().Instance.Loading);
         });
         Assert.Empty(h.Toasts);
     }
@@ -166,7 +166,7 @@ public class ListLoaderCardTests
 
         h.Cut.WaitForAssertion(() =>
         {
-            Assert.True(h.Cut.FindComponent<OdsRecordTable<ExistingCurrency>>().Instance.Error);
+            Assert.True(h.Cut.FindComponent<OdsInfiniteList<ExistingCurrency>>().Instance.Error);
             Assert.Equal("Couldn't load currencies.", h.Announcement);
             Assert.DoesNotContain("EUR name", h.Cut.Markup, StringComparison.Ordinal);
         });
