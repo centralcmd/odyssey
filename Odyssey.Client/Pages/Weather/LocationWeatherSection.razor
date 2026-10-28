@@ -3,7 +3,7 @@
 @*
     LocationWeatherSection — the Weather band in a location's expanded record, Admin only (issue #348;
     design system · Weather.jsx LocationWeatherSection). It carries NO action buttons beyond the ones a
-    notice names: Weather settings and Refresh forecast live in the row's ⋯ menu only.
+    notice names: Turn on weather, Weather settings and Refresh forecast live in the row's ⋯ menu only.
 *@
 
 @if (Row is null)
@@ -47,18 +47,15 @@ else
     [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
     [Parameter] public ExistingWeatherLocation? Row { get; set; }
     [Parameter] public bool CanUpdate { get; set; }
-    [Parameter] public EventCallback OnEnable { get; set; }
     [Parameter] public EventCallback OnApply { get; set; }
     [Parameter] public EventCallback OnPurge { get; set; }
 
     private static RenderFragment Text(string text) => b => b.AddContent(0, text);
 
+    // Only someone who can turn it on is told to; the action itself is the row menu's Turn on weather….
     private RenderFragment EmptyLine => Location.Archived is not null || !CanUpdate
         ? Text("Weather is off for this place.")
-        : @<span class="wx-sec-empty">
-              Weather is off for this place. Turn it on to keep a forecast and a measured history here.
-              <OdsButton Variant="OdsButtonVariant.Outlined" Icon="wb_sunny" OnClick="OnEnable">Turn on weather</OdsButton>
-          </span>;
+        : Text("Weather is turned off. Turn it on to see forecasts and historical weather data for this location.");
 
     private bool Moved => Row is not null && WeatherVisuals.Moved(Row, Location);
 

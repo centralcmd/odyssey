@@ -228,6 +228,21 @@ public class WeatherClientTests : IDisposable
         Assert.Contains("Try again", card.Markup);
     }
 
+    [Theory]
+    [InlineData(true, false, "Weather is turned off. Turn it on to see forecasts and historical weather data for this location.")]
+    [InlineData(false, false, "Weather is off for this place.")]
+    [InlineData(true, true, "Weather is off for this place.")]
+    public async Task A_place_without_weather_says_so_and_leaves_turning_it_on_to_the_row_menu(bool canUpdate, bool archived, string expected)
+    {
+        await using var ctx = Context(_ => { });
+
+        var section = ctx.Render<LocationWeatherSection>(p => p
+            .Add(s => s.Location, Location(archived: archived)).Add(s => s.Row, null).Add(s => s.CanUpdate, canUpdate));
+
+        Assert.Contains(expected, section.Markup);
+        Assert.Empty(section.FindAll("button"));
+    }
+
     // ── Harness ──────────────────────────────────────────────────────────────────────────────────────
 
     private static ExistingLocation Location(decimal latitude = 59.91273m, decimal longitude = 10.75027m, bool archived = false) => new()
