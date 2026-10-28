@@ -69,12 +69,15 @@ public sealed class ExchangeRateSupportedListCache(TimeProvider timeProvider)
     public IReadOnlyList<ProviderSeries>? GetWithoutWaiting(
         Func<CancellationToken, Task<IReadOnlyList<ProviderSeries>>> fetch)
     {
+        // Read before starting the refresh: on a busy pool it can finish before this method returns, and
+        // the answer would then depend on which thread won.
+        var answer = lastGood;
         if (timeProvider.GetUtcNow() >= current.ExpiresAt && gate.Wait(0))
         {
             _ = RefreshInBackgroundAsync(fetch);
         }
 
-        return lastGood;
+        return answer;
     }
 
     /// <summary>The cached list without fetching; null when unknown or unavailable.</summary>
