@@ -94,6 +94,8 @@ public class MoneyBoundsTests
         (typeof(Context.WeatherForecastRun), nameof(Context.WeatherForecastRun.Longitude)),
         ..WeatherValueColumns(typeof(Context.WeatherForecastStep)),
         ..WeatherValueColumns(typeof(Context.WeatherObservation)),
+        // A station's distance comes from Frost's lookup response, never from a request body.
+        (typeof(Context.WeatherStation), nameof(Context.WeatherStation.DistanceKm)),
         ..WeatherValueColumns(typeof(Context.WeatherDay)),
     ];
 

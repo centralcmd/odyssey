@@ -24,6 +24,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
     private const string PreviousMigration = "_AddLocations";
     private const string ThisMigration = "_AddWeather";
     private const string SplitMigration = "_SplitWeatherForecastAndHistory";
+    private const string StationMigration = "_WeatherStationPerMeasure";
     private const string AdminId = "weather-admin";
 
     private static readonly DateTime Noon = new(2026, 10, 23, 12, 0, 0, DateTimeKind.Utc);
@@ -80,6 +81,46 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
     }
 
     [SkippableFact]
+    public async Task The_station_migration_starts_measured_history_over_and_keeps_the_forecast()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await RecreateAsync();
+
+        await using var context = NewContext();
+        await MigrationSeam.MigrateToAsync(context, SplitMigration);
+        var id = Guid.NewGuid();
+        await context.Database.ExecuteSqlRawAsync($"""
+            SET FOREIGN_KEY_CHECKS = 0;
+            INSERT INTO `WeatherLocations` (`LocationId`, `ForecastEnabled`, `HistoryEnabled`, `IsTracked`, `HistoryFrom`, `EnabledAt`, `CurrentSiteVersion`, `CreatedAt`, `UpdatedAt`, `FrostStationId`, `StationResolvedAtUtc`)
+            VALUES ('{id}', 1, 1, 1, '2025-01-01', '2026-10-01', 1, '2026-10-01', '2026-10-01', 'SN18700', '2026-10-01');
+            INSERT INTO `WeatherLocationSchedules` (`LocationId`, `Version`, `ObservationsCheckedThroughDate`, `ForecastConsecutiveFailures`, `ObservationConsecutiveFailures`, `ArchivedSkipLogged`)
+            VALUES ('{id}', '{Guid.NewGuid()}', '2026-10-22', 0, 2, 0);
+            INSERT INTO `WeatherObservations` (`WeatherObservationId`, `LocationId`, `SiteVersion`, `Provider`, `StationId`, `LocalDate`, `MeanTempC`, `FetchedAtUtc`)
+            VALUES ('{Guid.NewGuid()}', '{id}', 1, 1, 'SN18700', '2026-10-22', 6.8, '2026-10-23 08:02:00');
+            INSERT INTO `WeatherDays` (`LocationId`, `LocalDate`, `ObservedMeanTempC`, `ObservedFetchedAtUtc`, `UpdatedAtUtc`)
+            VALUES ('{id}', '2026-10-22', 6.8, '2026-10-23 08:02:00', '2026-10-23 08:02:00');
+            INSERT INTO `WeatherDays` (`LocationId`, `LocalDate`, `ForecastCoverageHours`, `ForecastMaxTempC`, `ObservedMeanTempC`, `ObservedFetchedAtUtc`, `UpdatedAtUtc`)
+            VALUES ('{id}', '2026-10-23', 24, 9.0, 4.1, '2026-10-23 08:02:00', '2026-10-23 08:02:00');
+            SET FOREIGN_KEY_CHECKS = 1;
+            """);
+
+        await MigrationSeam.MigrateToAsync(context, StationMigration);
+
+        Assert.True(await MigrationSeam.TableExistsAsync(context, "WeatherStations"));
+        Assert.Equal(0, await context.WeatherObservations.CountAsync());
+        Assert.Null((await context.WeatherLocations.AsNoTracking().SingleAsync()).StationResolvedAtUtc);
+        var schedule = await context.WeatherLocationSchedules.AsNoTracking().SingleAsync();
+        Assert.Null(schedule.ObservationsCheckedThroughDate);
+        Assert.Equal(0, schedule.ObservationConsecutiveFailures);
+        // The measured-only day goes; the forecast's day keeps its forecast and loses only the measured half.
+        var day = await context.WeatherDays.AsNoTracking().SingleAsync();
+        Assert.Equal(new DateOnly(2026, 10, 23), day.LocalDate);
+        Assert.Equal(9.0m, day.ForecastMaxTempC);
+        Assert.Null(day.ObservedMeanTempC);
+        Assert.Null(day.ObservedFetchedAtUtc);
+    }
+
+    [SkippableFact]
     public async Task With_the_forecast_on_the_purge_removes_only_the_measured_data()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
@@ -96,7 +137,12 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
             await context.Database.ExecuteSqlRawAsync(
                 $"UPDATE `WeatherDays` SET `ObservedMeanTempC` = 4.1, `ObservedFetchedAtUtc` = '2026-10-23 08:02:00' WHERE `LocationId` = '{locationId}' AND `LocalDate` = '2026-10-23'");
             await context.Database.ExecuteSqlRawAsync(
-                $"UPDATE `WeatherLocations` SET `FrostStationId` = 'SN18700', `StationResolvedAtUtc` = '2026-10-23 08:00:00' WHERE `LocationId` = '{locationId}'");
+                $"UPDATE `WeatherLocations` SET `StationResolvedAtUtc` = '2026-10-23 08:00:00' WHERE `LocationId` = '{locationId}'");
+            await context.Database.ExecuteSqlRawAsync($"""
+                INSERT INTO `WeatherStations` (`LocationId`, `Group`, `StationId`, `Name`, `DistanceKm`, `ResolvedAtUtc`)
+                VALUES ('{locationId}', 0, 'SN18700', 'OSLO - BLINDERN', 3.2, '2026-10-23 08:00:00'),
+                       ('{locationId}', 1, NULL, NULL, NULL, '2026-10-23 08:00:00')
+                """);
             await context.Database.ExecuteSqlRawAsync(
                 $"UPDATE `WeatherLocationSchedules` SET `ObservationsCheckedThroughDate` = '2026-10-22', `LastObservationSuccessUtc` = '2026-10-23 08:02:00' WHERE `LocationId` = '{locationId}'");
             await Admin(context).UpsertAsync(locationId,
@@ -112,8 +158,8 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
         var row = await verify.WeatherLocations.SingleAsync(w => w.LocationId == locationId);
         Assert.True(row.ForecastEnabled);
         Assert.Null(row.PurgeStartedAt);
-        Assert.Null(row.FrostStationId);
         Assert.Null(row.StationResolvedAtUtc);
+        Assert.Equal(0, await verify.WeatherStations.CountAsync(st => st.LocationId == locationId));
         Assert.Equal(50, await verify.WeatherForecastSteps.CountAsync(s => s.LocationId == locationId));
         Assert.True(await verify.WeatherForecastRuns.AnyAsync(r => r.LocationId == locationId));
         Assert.Equal(2, await verify.WeatherLocationSites.CountAsync(s => s.LocationId == locationId));
@@ -314,7 +360,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
             FROM seq_1_to_{steps}
             """);
         await context.Database.ExecuteSqlRawAsync($"""
-            INSERT INTO `WeatherObservations` (`WeatherObservationId`, `LocationId`, `SiteVersion`, `Provider`, `StationId`, `LocalDate`, `MeanTempC`, `FetchedAtUtc`)
+            INSERT INTO `WeatherObservations` (`WeatherObservationId`, `LocationId`, `SiteVersion`, `Provider`, `TemperatureStationId`, `LocalDate`, `MeanTempC`, `FetchedAtUtc`)
             VALUES ('{Guid.NewGuid()}', '{locationId}', 1, 1, 'SN18700', '2026-10-22', 6.8, '2026-10-23 08:02:00')
             """);
         await context.Database.ExecuteSqlRawAsync($"""
@@ -389,11 +435,11 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
 
     private sealed class NoObservations : IWeatherObservationSource
     {
-        public Task<StationLookupResult> FindStationAsync(WeatherSiteQuery site, string contact, string clientId, CancellationToken cancellationToken) =>
+        public Task<StationLookupResult> FindStationAsync(WeatherSiteQuery site, WeatherMeasureGroup group, string contact, string clientId, CancellationToken cancellationToken) =>
             Task.FromResult(new StationLookupResult(true, null));
 
         public Task<ObservationFetchResult> FetchDailyAsync(
-            string stationId, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken) =>
+            IReadOnlyCollection<string> stationIds, IReadOnlyCollection<string> elements, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken) =>
             Task.FromResult(new ObservationFetchResult(true, []));
     }
 }

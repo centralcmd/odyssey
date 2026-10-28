@@ -40,9 +40,10 @@ public class WeatherLocation
     /// <summary>Set while a purge is running; the location is fenced until the purge's final transaction.</summary>
     public DateTime? PurgeStartedAt { get; set; }
 
-    [StringLength(WeatherRules.StationIdMaxLength)]
-    public string? FrostStationId { get; set; }
-
+    /// <summary>
+    /// When every measure group had been looked up at least once for the current site; null until then. The
+    /// stations themselves are the <see cref="WeatherStation"/> rows.
+    /// </summary>
     public DateTime? StationResolvedAtUtc { get; set; }
 
     public string? CreatedByUserId { get; set; }
@@ -206,6 +207,32 @@ public class WeatherForecastStep
     [Precision(4, 1)] public decimal? TempMaxC { get; set; }
 }
 
+/// <summary>
+/// The Frost station one measure group of a location is measured at, for the current site. Each group has its
+/// own because the measures differ in how far they hold and in how many stations report them. A row with no
+/// <see cref="StationId"/> is a lookup that found nothing in reach; it is retried at most once per 24 h. The rows
+/// go when the site changes or history is purged, and with the <see cref="WeatherLocation"/> (CASCADE).
+/// </summary>
+[PrimaryKey(nameof(LocationId), nameof(Group))]
+public class WeatherStation
+{
+    public Guid LocationId { get; set; }
+
+    public WeatherMeasureGroup Group { get; set; }
+
+    [StringLength(WeatherRules.StationIdMaxLength)]
+    public string? StationId { get; set; }
+
+    [StringLength(WeatherRules.StationNameMaxLength)]
+    public string? Name { get; set; }
+
+    [Precision(5, 1)] public decimal? DistanceKm { get; set; }
+
+    public int? AltitudeMeters { get; set; }
+
+    public DateTime ResolvedAtUtc { get; set; }
+}
+
 /// <summary>One measured day from a Frost station. Append-only; a changed value inserts a new row.</summary>
 [Index(nameof(LocationId), nameof(LocalDate), nameof(SiteVersion), nameof(FetchedAtUtc))]
 public class WeatherObservation
@@ -219,9 +246,15 @@ public class WeatherObservation
 
     public WeatherProvider Provider { get; set; }
 
-    [Required]
+    /// <summary>The station each group's values came from; null where the group has no station.</summary>
     [StringLength(WeatherRules.StationIdMaxLength)]
-    public required string StationId { get; set; }
+    public string? TemperatureStationId { get; set; }
+
+    [StringLength(WeatherRules.StationIdMaxLength)]
+    public string? PrecipitationStationId { get; set; }
+
+    [StringLength(WeatherRules.StationIdMaxLength)]
+    public string? WindStationId { get; set; }
 
     public DateOnly LocalDate { get; set; }
 

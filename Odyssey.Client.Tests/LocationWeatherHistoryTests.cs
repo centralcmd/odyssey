@@ -73,13 +73,39 @@ public class LocationWeatherHistoryTests : IDisposable
         var button = info.Find("button");
         // The tooltip's popover is not linked to its trigger, so the same text describes the button.
         var described = section.Find($"#{button.GetAttribute("aria-describedby")}");
-        Assert.Equal(LocationWeatherHistorySection.AboutText, described.TextContent);
+        Assert.Equal(LocationWeatherHistorySection.AboutText(Stations), described.TextContent);
+        Assert.Contains("Temperature: Oslo - Blindern, 3 km", described.TextContent);
         Assert.NotNull(section.Find(".wx-hist-card .wx-hist-lead").QuerySelector("button[aria-label='About these values']"));
         // The attribution, which both licences require to be visible, closes the ledger row inside the card.
         var attribution = section.Find(".wx-hist-card .odc-sc-legend > .wx-hist-attr");
         Assert.Contains("Weather data from MET Norway", attribution.TextContent);
         Assert.Empty(section.FindAll(".wx-foot"));
         Assert.DoesNotContain("midnight to midnight", section.Find(".wx-hist-card .odc-sc-legend").TextContent);
+    }
+
+    [Fact]
+    public async Task A_measure_whose_group_has_no_station_is_not_offered_and_the_info_says_why()
+    {
+        stations = [Stations[0], Stations[1], new() { Group = WeatherMeasureGroup.Wind, MaxDistanceKm = 30 }];
+        // A wind chart was remembered, from before the wind station was gone.
+        saved = new LocationWeatherHistorySection.SavedWindow { Measures = ["wind", "gust"] };
+        Serve(measuredFrom: new DateOnly(2025, 3, 2), measuredThrough: Yesterday);
+        await using var ctx = Context();
+
+        var section = Render(ctx);
+
+        section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
+        Assert.Equal(["temp", "precip"], section.FindComponent<OdsMultiSelect>().Instance.Options.Select(o => o.Value));
+        // The remembered measures fall back to what the place measures.
+        Assert.Equal([WeatherMeasures.Temperature], section.FindComponent<WeatherHistoryChart>().Instance.Measures);
+        Assert.Contains("Wind: no station within 30 km", section.Find($"#{section.Find("button[aria-label='About these values']").GetAttribute("aria-describedby")}").TextContent);
+    }
+
+    [Fact]
+    public void Before_any_lookup_every_measure_is_offered()
+    {
+        Assert.Equal(WeatherMeasures.All, WeatherMeasures.Offered([]));
+        Assert.StartsWith("Daily values from the MET Norway stations nearest", LocationWeatherHistorySection.AboutText([]), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -276,7 +302,7 @@ public class LocationWeatherHistoryTests : IDisposable
 
         var section = Render(ctx);
 
-        section.WaitForAssertion(() => Assert.Contains("No MET Norway station measures within 25 km", section.Markup));
+        section.WaitForAssertion(() => Assert.Contains("none for temperature within 25 km, precipitation within 15 km or wind within 30 km", section.Markup));
         Assert.Empty(section.FindComponents<OdsDatePicker>());
     }
 
@@ -551,6 +577,16 @@ public class LocationWeatherHistoryTests : IDisposable
     };
 
     /// <summary>Answers every daily request with each measured day of the range, and the given bounds.</summary>
+    /// <summary>Every group measured at a station near the cabin — the ordinary case.</summary>
+    private static readonly IReadOnlyList<WeatherStationRef> Stations =
+    [
+        new() { Group = WeatherMeasureGroup.Temperature, Name = "Oslo - Blindern", DistanceKm = 3, MaxDistanceKm = 25 },
+        new() { Group = WeatherMeasureGroup.Precipitation, Name = "Oslo - Hovin", DistanceKm = 2, MaxDistanceKm = 15 },
+        new() { Group = WeatherMeasureGroup.Wind, Name = "Oslo - Blindern", DistanceKm = 3, MaxDistanceKm = 30 },
+    ];
+
+    private IReadOnlyList<WeatherStationRef> stations = Stations;
+
     private void Serve(DateOnly? measuredFrom, DateOnly? measuredThrough, bool station = true, bool configured = true) =>
         weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), Cabin.LocationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((DateOnly from, DateOnly to, Guid? _, CancellationToken _) =>
@@ -565,7 +601,7 @@ public class LocationWeatherHistoryTests : IDisposable
                     Location = new WeatherLocationRef { LocationId = Cabin.LocationId, Name = Cabin.Name },
                     Status = days.Count > 0 ? WeatherStatus.Ok : WeatherStatus.NoData,
                     Days = days,
-                    History = new WeatherHistoryBounds { MeasuredFrom = measuredFrom, MeasuredThrough = measuredThrough, HasObservationStation = station, ObservationsConfigured = configured },
+                    History = new WeatherHistoryBounds { MeasuredFrom = measuredFrom, MeasuredThrough = measuredThrough, HasObservationStation = station, ObservationsConfigured = configured, Stations = stations },
                 }, HttpStatusCode.OK);
             });
 

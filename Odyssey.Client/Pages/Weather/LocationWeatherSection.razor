@@ -99,7 +99,7 @@ else
         : WeatherVisuals.FailureOf(Row.ObservationFailureKind) is { } fail
         ? Failure(fail)
         : OdsInfoTile.Caption(!Row.HasObservationStation
-            ? "no MET station within 25 km"
+            ? "no MET station in reach"
             : Row.LastObservationSuccessUtc is { } at ? $"last fetched {WeatherVisuals.Stamp(at)}" : "not fetched yet");
 
     private static RenderFragment Failure(WeatherFailureInfo fail) =>

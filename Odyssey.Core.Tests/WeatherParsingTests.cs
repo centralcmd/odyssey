@@ -217,27 +217,75 @@ public class WeatherParsingTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }, FrostObservationSource.BaseAddress));
 
-        var result = await source.FetchDailyAsync("SN18700", new DateOnly(2026, 10, 16), new DateOnly(2026, 10, 22),
-            "ops@example.org", "client-id", CancellationToken.None);
+        var result = await source.FetchDailyAsync(["SN18700", "SN18950"], FrostObservationSource.Elements(WeatherMeasureGroup.Wind),
+            new DateOnly(2026, 10, 16), new DateOnly(2026, 10, 22), "ops@example.org", "client-id", CancellationToken.None);
 
         Assert.True(result.Succeeded);
         Assert.Empty(result.Days);
         Assert.Equal("Basic", sent!.Headers.Authorization!.Scheme);
         Assert.Equal(Convert.ToBase64String(Encoding.ASCII.GetBytes("client-id:")), sent.Headers.Authorization.Parameter);
-        Assert.Contains("referencetime=2026-10-16/2026-10-23", Uri.UnescapeDataString(sent.RequestUri!.Query), StringComparison.Ordinal);
+        var query = Uri.UnescapeDataString(sent.RequestUri!.Query);
+        Assert.Contains("referencetime=2026-10-16/2026-10-23", query, StringComparison.Ordinal);
+        // Every station in one request, so a place costs one request however many stations its groups use.
+        Assert.Contains("sources=SN18700,SN18950", query, StringComparison.Ordinal);
+        Assert.Contains("elements=mean(wind_speed P1D),max(wind_speed_of_gust P1D)", query, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    // Each group has its own reach: 31 km is beyond temperature's 25 and wind's 30; 20 km is beyond precipitation's 15.
+    [InlineData(WeatherMeasureGroup.Temperature, 31.2, null)]
+    [InlineData(WeatherMeasureGroup.Wind, 31.2, null)]
+    [InlineData(WeatherMeasureGroup.Wind, 28.0, "SN99999")]
+    [InlineData(WeatherMeasureGroup.Precipitation, 20.0, null)]
+    [InlineData(WeatherMeasureGroup.Precipitation, 14.0, "SN99999")]
+    public async Task Frost_station_lookup_keeps_each_group_within_its_own_reach(WeatherMeasureGroup group, double km, string? expected)
+    {
+        HttpRequestMessage? sent = null;
+        var source = new FrostObservationSource(Client(request =>
+        {
+            sent = request;
+            return Json($$"""{ "data": [ { "id": "SN99999", "name": "TEST - STATION", "distance": {{km.ToString(System.Globalization.CultureInfo.InvariantCulture)}}, "masl": 20 } ] }""");
+        }, FrostObservationSource.BaseAddress));
+
+        var result = await source.FindStationAsync(Oslo, group, "ops@example.org", "client-id", CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(expected, result.Station?.Id);
+        Assert.Contains($"elements={FrostObservationSource.LookupElement(group)}", Uri.UnescapeDataString(sent!.RequestUri!.Query), StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task Frost_station_lookup_ignores_a_station_beyond_25_km()
+    public void A_temperature_station_far_above_or_below_the_place_gives_way_to_a_farther_level_one()
     {
-        var source = new FrostObservationSource(Client(_ => Json("""
-            { "data": [ { "id": "SN99999", "distance": 31.2 } ] }
-            """), FrostObservationSource.BaseAddress));
+        FoundStation[] candidates =
+        [
+            new("SN1", "HIGH", 4, 520),
+            new("SN2", "LEVEL", 18, 110),
+            new("SN3", "NO HEIGHT", 22, null),
+        ];
 
-        var result = await source.FindStationAsync(Oslo, "ops@example.org", "client-id", CancellationToken.None);
+        // 400 m above a place at 120 m: beyond the 300 m rule, so the level station 18 km away is chosen.
+        Assert.Equal("SN2", FrostObservationSource.Choose(candidates, WeatherMeasureGroup.Temperature, 120)?.Id);
+        // Height means nothing to precipitation, and an unknown height never excludes a station.
+        Assert.Equal("SN1", FrostObservationSource.Choose(candidates, WeatherMeasureGroup.Precipitation, 120)?.Id);
+        Assert.Equal("SN1", FrostObservationSource.Choose(candidates, WeatherMeasureGroup.Temperature, null)?.Id);
+    }
 
-        Assert.True(result.Succeeded);
-        Assert.Null(result.StationId);
+    [Fact]
+    public void Frost_days_say_which_station_they_came_from()
+    {
+        using var json = System.Text.Json.JsonDocument.Parse("""
+            { "data": [
+              { "sourceId": "SN1:0", "referenceTime": "2026-10-21T00:00:00.000Z", "observations": [
+                { "elementId": "mean(air_temperature P1D)", "value": 6.8, "timeOffset": "PT0H" } ] },
+              { "sourceId": "SN2:0", "referenceTime": "2026-10-21T00:00:00.000Z", "observations": [
+                { "elementId": "sum(precipitation_amount P1D)", "value": 3.1, "timeOffset": "PT6H" } ] } ] }
+            """);
+
+        var days = FrostObservationSource.Parse(json.RootElement);
+
+        Assert.Equal(6.8m, Assert.Single(days, d => d.StationId == "SN1").MeanTempC);
+        Assert.Equal(3.1m, Assert.Single(days, d => d.StationId == "SN2").PrecipitationMm);
     }
 
     [Fact]

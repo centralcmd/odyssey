@@ -15,6 +15,7 @@ internal sealed record WeatherMeasure(
     string Key,
     string Label,
     string Group,
+    WeatherMeasureGroup StationGroup,
     string Color,
     WeatherMeasureMark Mark,
     string Unit,
@@ -33,13 +34,35 @@ internal static class WeatherMeasures
 
     public static readonly IReadOnlyList<WeatherMeasure> All =
     [
-        new(Temperature, "Temperature", "c", "var(--brand-text)", WeatherMeasureMark.Band, "°", o => o.MeanTempC, v => WeatherVisuals.Temp(v)),
-        new(Precipitation, "Precipitation", "mm", "var(--chart-2)", WeatherMeasureMark.Bar, "mm", o => o.PrecipitationMm, v => $"{One(v)} mm"),
-        new(Wind, "Mean wind", "ms", "var(--chart-4)", WeatherMeasureMark.Line, "m/s", o => o.MeanWindSpeedMps, v => $"{One(v)} m/s"),
-        new(Gust, "Gusts", "ms", "var(--chart-6)", WeatherMeasureMark.Dots, "m/s", o => o.MaxWindGustMps, v => $"{One(v)} m/s"),
+        new(Temperature, "Temperature", "c", WeatherMeasureGroup.Temperature, "var(--brand-text)", WeatherMeasureMark.Band, "°", o => o.MeanTempC, v => WeatherVisuals.Temp(v)),
+        new(Precipitation, "Precipitation", "mm", WeatherMeasureGroup.Precipitation, "var(--chart-2)", WeatherMeasureMark.Bar, "mm", o => o.PrecipitationMm, v => $"{One(v)} mm"),
+        new(Wind, "Mean wind", "ms", WeatherMeasureGroup.Wind, "var(--chart-4)", WeatherMeasureMark.Line, "m/s", o => o.MeanWindSpeedMps, v => $"{One(v)} m/s"),
+        new(Gust, "Gusts", "ms", WeatherMeasureGroup.Wind, "var(--chart-6)", WeatherMeasureMark.Dots, "m/s", o => o.MaxWindGustMps, v => $"{One(v)} m/s"),
     ];
 
     public static WeatherMeasure Of(string key) => All.First(m => m.Key == key);
+
+    /// <summary>
+    /// The measures a place can show: those whose group has a station. Before any lookup has answered (no
+    /// stations listed) every measure is offered — nothing is known to be missing.
+    /// </summary>
+    public static IReadOnlyList<WeatherMeasure> Offered(IReadOnlyList<WeatherStationRef> stations) =>
+        stations.Count == 0
+            ? All
+            : [.. All.Where(m => stations.Any(st => st.Group == m.StationGroup && st.Name is not null))];
+
+    /// <summary>The section's own name for a group, as the info button lists it.</summary>
+    public static string GroupLabel(WeatherMeasureGroup group) => group switch
+    {
+        WeatherMeasureGroup.Precipitation => "Precipitation",
+        WeatherMeasureGroup.Wind => "Wind",
+        _ => "Temperature",
+    };
+
+    /// <summary>"Temperature: Oslo - Blindern, 3 km", or the reach searched for a group with none.</summary>
+    public static string StationLine(WeatherStationRef station) => station.Name is { } name
+        ? $"{GroupLabel(station.Group)}: {name}, {station.DistanceKm} km"
+        : $"{GroupLabel(station.Group)}: no station within {station.MaxDistanceKm} km";
 
     /// <summary>The value a measure states for a whole window, in the ledger.</summary>
     public static string WindowFigure(WeatherMeasure m, IReadOnlyList<decimal> values)

@@ -323,7 +323,9 @@ public sealed class WeatherLocationService
             var next = NewSite(location, site.SiteVersion + 1, now, userId);
             context.WeatherLocationSites.Add(next);
             weather.CurrentSiteVersion = next.SiteVersion;
-            weather.FrostStationId = null;
+            // The stations were chosen for the old position: every group is looked up again for the new one.
+            context.WeatherStations.RemoveRange(
+                await context.WeatherStations.Where(st => st.LocationId == locationId).ToListAsync(cancellationToken));
             weather.StationResolvedAtUtc = null;
             weather.UpdatedAt = now;
             weather.UpdatedByUserId = userId;
@@ -503,6 +505,8 @@ public sealed class WeatherLocationService
         var schedule = await context.WeatherLocationSchedules.AsNoTracking()
             .FirstOrDefaultAsync(s => s.LocationId == weather.LocationId, cancellationToken);
         var suspended = rowContext.Suspended.Contains(weather.LocationId);
+        var stations = await context.WeatherStations.AsNoTracking()
+            .Where(st => st.LocationId == weather.LocationId).ToListAsync(cancellationToken);
         return new ExistingWeatherLocation
         {
             LocationId = weather.LocationId,
@@ -528,8 +532,9 @@ public sealed class WeatherLocationService
             LocationFingerprint = WeatherCoordinates.Fingerprint(location),
             PurgeInProgress = weather.PurgeStartedAt is not null,
             IsHouseholdDefault = rowContext.HouseholdDefault == weather.LocationId,
-            // As on the daily response: no station only once a lookup came back empty, never before one ran.
-            HasObservationStation = weather.FrostStationId is not null || weather.StationResolvedAtUtc is null,
+            // As on the daily response: no station only once every lookup came back empty, never before one ran.
+            HasObservationStation = WeatherStationGroups.HasAny(weather.StationResolvedAtUtc, stations),
+            Stations = WeatherStationGroups.Refs(stations),
             LastForecastSuccessUtc = Utc(schedule?.LastForecastSuccessUtc),
             ForecastFailureKind = schedule?.ForecastFailureKind,
             LastObservationSuccessUtc = Utc(schedule?.LastObservationSuccessUtc),

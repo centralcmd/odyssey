@@ -660,14 +660,14 @@ public class WeatherApiTests
     {
         public int Calls;
 
-        public Task<StationLookupResult> FindStationAsync(WeatherSiteQuery site, string contact, string clientId, CancellationToken cancellationToken)
+        public Task<StationLookupResult> FindStationAsync(WeatherSiteQuery site, WeatherMeasureGroup group, string contact, string clientId, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref Calls);
             return Task.FromResult(new StationLookupResult(true, null));
         }
 
         public Task<ObservationFetchResult> FetchDailyAsync(
-            string stationId, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken)
+            IReadOnlyCollection<string> stationIds, IReadOnlyCollection<string> elements, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref Calls);
             return Task.FromResult(new ObservationFetchResult(true, []));
@@ -738,11 +738,11 @@ public class WeatherApiTests
 
     private sealed class NoObservations : IWeatherObservationSource
     {
-        public Task<StationLookupResult> FindStationAsync(WeatherSiteQuery site, string contact, string clientId, CancellationToken cancellationToken) =>
+        public Task<StationLookupResult> FindStationAsync(WeatherSiteQuery site, WeatherMeasureGroup group, string contact, string clientId, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("No read may call Frost.");
 
         public Task<ObservationFetchResult> FetchDailyAsync(
-            string stationId, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken) =>
+            IReadOnlyCollection<string> stationIds, IReadOnlyCollection<string> elements, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("No read may call Frost.");
     }
 }

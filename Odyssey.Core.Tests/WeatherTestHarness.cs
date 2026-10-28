@@ -54,25 +54,43 @@ internal sealed class StubForecastSource : IWeatherForecastSource
 
 internal sealed class StubObservationSource : IWeatherObservationSource
 {
+    /// <summary>The station every group finds unless <see cref="Stations"/> says otherwise; null finds none.</summary>
     public string? StationId { get; set; } = "SN18700";
+
+    /// <summary>Per-group answers, overriding <see cref="StationId"/> (a null value finds none).</summary>
+    public Dictionary<WeatherMeasureGroup, string?> Stations { get; } = [];
 
     public Func<DateOnly, DateOnly, ObservationFetchResult> Daily { get; set; } = (_, _) => new ObservationFetchResult(true, []);
 
     public int StationCalls { get; private set; }
 
+    public List<WeatherMeasureGroup> LookedUp { get; } = [];
+
     public List<(DateOnly From, DateOnly To)> DailyCalls { get; } = [];
 
-    public Task<StationLookupResult> FindStationAsync(WeatherSiteQuery site, string contact, string clientId, CancellationToken cancellationToken)
+    public List<IReadOnlyCollection<string>> DailyStations { get; } = [];
+
+    public Task<StationLookupResult> FindStationAsync(
+        WeatherSiteQuery site, WeatherMeasureGroup group, string contact, string clientId, CancellationToken cancellationToken)
     {
         StationCalls++;
-        return Task.FromResult(new StationLookupResult(true, StationId));
+        LookedUp.Add(group);
+        var id = Stations.TryGetValue(group, out var station) ? station : StationId;
+        return Task.FromResult(new StationLookupResult(true, id is null ? null : new FoundStation(id, $"STATION {id}", 4.2, 90)));
     }
 
+    /// <summary>Answers every requested station with the delegate's days, so each group finds its station's values.</summary>
     public Task<ObservationFetchResult> FetchDailyAsync(
-        string stationId, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken)
+        IReadOnlyCollection<string> stationIds, IReadOnlyCollection<string> elements, DateOnly from, DateOnly to,
+        string contact, string clientId, CancellationToken cancellationToken)
     {
         DailyCalls.Add((from, to));
-        return Task.FromResult(Daily(from, to));
+        DailyStations.Add(stationIds);
+        var result = Daily(from, to);
+        return Task.FromResult(result with
+        {
+            Days = [.. stationIds.SelectMany(id => result.Days.Select(day => day with { StationId = id }))],
+        });
     }
 }
 

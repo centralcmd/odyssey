@@ -497,13 +497,15 @@ public sealed class WeatherReadService
             .FirstOrDefaultAsync(cancellationToken);
         // "No station" is a lookup's answer, never the absence of one: an unresolved position is not reported
         // as having no station just because nothing has asked Frost yet.
-        var knownToHaveNone = await context.WeatherLocations.AsNoTracking()
-            .AnyAsync(w => w.LocationId == locationId && w.FrostStationId == null && w.StationResolvedAtUtc != null, cancellationToken);
+        var resolvedAt = await context.WeatherLocations.AsNoTracking()
+            .Where(w => w.LocationId == locationId).Select(w => w.StationResolvedAtUtc).FirstOrDefaultAsync(cancellationToken);
+        var stations = await context.WeatherStations.AsNoTracking().Where(st => st.LocationId == locationId).ToListAsync(cancellationToken);
         return new WeatherHistoryBounds
         {
             MeasuredFrom = measured?.From,
             MeasuredThrough = measured?.Through,
-            HasObservationStation = !knownToHaveNone,
+            HasObservationStation = WeatherStationGroups.HasAny(resolvedAt, stations),
+            Stations = WeatherStationGroups.Refs(stations),
             ObservationsConfigured = await fetch.ObservationsConfiguredAsync(cancellationToken),
         };
     }

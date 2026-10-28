@@ -13,7 +13,7 @@ else if (_bounds is { HasObservationStation: false })
 {
     @* The server sends false only once Frost was asked and found none — never because nobody has asked. *@
     <OdsRecordSection Class="@Cls" Label="Weather history" Empty="true"
-                      EmptyText="@Text("No MET Norway station measures within 25 km of this place, so there is no weather history. Forecasts are not affected.")" />
+                      EmptyText="@Text(NoStationText)" />
 }
 else if (_bounds is { ObservationsConfigured: false } && !HistoryOff && (Latest is null || Earliest is null))
 {
@@ -43,11 +43,11 @@ else
                                     Values="_measures" ValuesChanged="PickMeasures" Options="MeasureOptions" />
                     @* What the values are, behind an info button. A tap opens it too, and the same text describes the
                        button for a screen reader, since the tooltip's popover is not linked to its trigger. *@
-                    <OdsTooltip Label="@AboutText" Class="wx-hist-about" ShowOnClick="true">
+                    <OdsTooltip Label="@About" Class="wx-hist-about" ShowOnClick="true">
                         <OdsIconButton Icon="@Icons.Material.Outlined.Info" AriaLabel="About these values" Size="OdsSize.Sm"
                                        aria-describedby="@AboutId" />
                     </OdsTooltip>
-                    <span class="odc-sr-only" id="@AboutId">@AboutText</span>
+                    <span class="odc-sr-only" id="@AboutId">@About</span>
                 </div>
                 @if (_bounds is not null)
                 {
@@ -103,8 +103,6 @@ else
 
 @code {
     private const string Cls = "acct-section wx-section wx-hist";
-
-    internal const string AboutText = "Daily values from the MET Norway station nearest the weather position. A day runs midnight to midnight UTC — precipitation 06:00 to 06:00 UTC, as MET reports it — so it can sit an hour or two off the local date.";
 
     // The attribution sits in the card, bottom right: at the end of the ledger row, or on its own line when nothing
     // was measured. NLOD and CC BY require it to be visible, and it comes from the response, so it shows once one

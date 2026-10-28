@@ -57,6 +57,21 @@ internal sealed class WeatherLocationScheduleConfiguration : IEntityTypeConfigur
     }
 }
 
+internal sealed class WeatherStationConfiguration : IEntityTypeConfiguration<WeatherStation>
+{
+    public void Configure(EntityTypeBuilder<WeatherStation> entity)
+    {
+        // A station is a setting of the weather row, not history: it goes with the row.
+        entity.HasOne<WeatherLocation>()
+            .WithMany()
+            .HasForeignKey(station => station.LocationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        entity.Property(station => station.Group).HasConversion<int>();
+        entity.ToTable(tb => tb.HasCheckConstraint("CK_WeatherStations_GroupKnown", "`Group` IN (0, 1, 2)"));
+    }
+}
+
 internal sealed class WeatherForecastRunConfiguration : IEntityTypeConfiguration<WeatherForecastRun>
 {
     public void Configure(EntityTypeBuilder<WeatherForecastRun> entity)

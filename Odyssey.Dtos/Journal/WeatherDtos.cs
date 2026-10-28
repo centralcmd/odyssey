@@ -61,6 +61,26 @@ public enum WeatherLocationSortBy
 public static class WeatherRules
 {
     public const int StationIdMaxLength = 32;
+    public const int StationNameMaxLength = 128;
+
+    /// <summary>
+    /// How far a station may be for each measure group. They differ because the measures do: temperature holds
+    /// over tens of kilometres on level ground, precipitation is local (showers especially) and MET's gauges are
+    /// dense, and wind stations are few — mostly airports and the coast.
+    /// </summary>
+    public static double StationMaxDistanceKm(WeatherMeasureGroup group) => group switch
+    {
+        WeatherMeasureGroup.Precipitation => 15,
+        WeatherMeasureGroup.Wind => 30,
+        _ => 25,
+    };
+
+    /// <summary>
+    /// A temperature station may differ in height from the place by at most this much: temperature falls about
+    /// 0.65 °C per 100 m, so a near station 400 m higher describes the place worse than a farther one level with
+    /// it. Applied only when both heights are known.
+    /// </summary>
+    public const int TemperatureStationMaxHeightDifferenceMeters = 300;
     public const int SymbolCodeMaxLength = 48;
     public const int ContactMaxLength = 254;
 
@@ -259,17 +279,54 @@ public sealed record WeatherHistoryBounds
     public DateOnly? MeasuredThrough { get; init; }
 
     /// <summary>
-    /// False only once a station lookup for the current weather position has come back empty. A position
-    /// never looked up yet — Frost not configured, the Worker not run, a fresh move — reads as true, so it
-    /// is never reported as having no station when nobody has asked.
+    /// False only once every measure group has been looked up and none found a station. A position never
+    /// looked up yet — Frost not configured, the Worker not run, a fresh move — reads as true, so it is never
+    /// reported as having no station when nobody has asked.
     /// </summary>
     public bool HasObservationStation { get; init; }
+
+    /// <summary>
+    /// The station each measure group is measured at, one entry per group looked up so far (none before the
+    /// first lookup). An entry with no <see cref="WeatherStationRef.Name"/> is a group with no station in reach.
+    /// </summary>
+    public IReadOnlyList<WeatherStationRef> Stations { get; init; } = [];
 
     /// <summary>
     /// Whether measured history can be fetched at all: a MET contact address and a Frost client ID are both
     /// set. Lets the client say why nothing is measured instead of promising it will arrive.
     /// </summary>
     public bool ObservationsConfigured { get; init; }
+}
+
+/// <summary>The three kinds of measured values, each fetched from its own nearest suitable station.</summary>
+public enum WeatherMeasureGroup
+{
+    /// <summary>Daily mean, minimum and maximum air temperature.</summary>
+    Temperature = 0,
+
+    /// <summary>Daily precipitation, 06:00 to 06:00 UTC.</summary>
+    Precipitation = 1,
+
+    /// <summary>Daily mean wind speed and strongest gust.</summary>
+    Wind = 2,
+}
+
+/// <summary>
+/// Where one measure group comes from: a public MET Norway station's name and its distance from the weather
+/// position, rounded to whole kilometres. No name means no station in reach — <see cref="MaxDistanceKm"/>
+/// says how far was searched.
+/// </summary>
+public sealed record WeatherStationRef
+{
+    [EnumDataType(typeof(WeatherMeasureGroup))]
+    public WeatherMeasureGroup Group { get; init; }
+
+    [StringLength(WeatherRules.StationNameMaxLength)]
+    public string? Name { get; init; }
+
+    public int? DistanceKm { get; init; }
+
+    public int MaxDistanceKm { get; init; }
 }
 
 public sealed record WeatherDailyResponse
@@ -408,8 +465,11 @@ public sealed record ExistingWeatherLocation
     public bool PurgeInProgress { get; init; }
     public bool IsHouseholdDefault { get; init; }
 
-    /// <summary>False only once a station lookup came back empty; an unresolved position reads as true.</summary>
+    /// <summary>False only once every measure group was looked up and none found a station; an unresolved position reads as true.</summary>
     public bool HasObservationStation { get; init; }
+
+    /// <summary>The station per measure group looked up so far; see <see cref="WeatherHistoryBounds.Stations"/>.</summary>
+    public IReadOnlyList<WeatherStationRef> Stations { get; init; } = [];
     public DateTime? LastForecastSuccessUtc { get; init; }
     public WeatherFetchFailureKind? ForecastFailureKind { get; init; }
     public DateTime? LastObservationSuccessUtc { get; init; }

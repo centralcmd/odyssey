@@ -401,12 +401,13 @@ public sealed class WeatherFetchService
             return secret.State;
         }
 
-        // Station resolution: at most once per 24 h, for the current site only (§3 step 1).
-        if (weather.FrostStationId is null
-            && (weather.StationResolvedAtUtc is not { } resolved || resolved <= now.AddHours(-24)))
+        // Station resolution, for the current site only (§3 step 1): one measure group per call, so the scheduler
+        // stays at one request per call; a group that found nothing is asked again at most once per 24 h.
+        var stations = await context.WeatherStations.Where(st => st.LocationId == locationId).ToListAsync(cancellationToken);
+        if (WeatherStationGroups.Pending(stations, now) is { } group)
         {
             var lookup = await observations.FindStationAsync(
-                new WeatherSiteQuery(site.Latitude, site.Longitude, site.AltitudeMeters), contact, clientId, cancellationToken);
+                new WeatherSiteQuery(site.Latitude, site.Longitude, site.AltitudeMeters), group, contact, clientId, cancellationToken);
             now = Now;
             if (!lookup.Succeeded)
             {
@@ -415,21 +416,53 @@ public sealed class WeatherFetchService
                 return secret.State;
             }
 
-            weather.FrostStationId = lookup.StationId;
-            weather.StationResolvedAtUtc = now;
-            // One request per call keeps the scheduler at ≤ 1 request/s: the lookup was this call's request,
-            // so the daily fetch waits for the next tick (immediately due when a station was found).
-            schedule.NextObservationFetchAfterUtc = lookup.StationId is null ? now.AddHours(24) : now;
+            var row = stations.FirstOrDefault(st => st.Group == group);
+            if (row is null)
+            {
+                row = new WeatherStation { LocationId = locationId, Group = group };
+                context.WeatherStations.Add(row);
+                stations.Add(row);
+            }
+
+            var found = lookup.Station;
+            var changed = row.StationId != found?.Id;
+            row.StationId = found?.Id;
+            row.Name = found?.Name;
+            row.DistanceKm = found is null ? null : Math.Round((decimal)found.DistanceKm, 1);
+            row.AltitudeMeters = found?.AltitudeMeters;
+            row.ResolvedAtUtc = now;
+            if (stations.Count == WeatherStationGroups.All.Count)
+            {
+                weather.StationResolvedAtUtc ??= now;
+            }
+
+            // A group that gained a station measures from the history start again: its days so far are empty.
+            if (changed && found is not null && schedule.ObservationsCheckedThroughDate is not null)
+            {
+                schedule.ObservationsCheckedThroughDate = null;
+                schedule.ObservationsBackfilledFromDate = null;
+            }
+
+            // One request per call keeps the scheduler at ≤ 1 request/s: the lookup was this call's request, so
+            // the next lookup or the daily fetch waits for the next tick — immediately due unless nothing was found.
+            var anyStation = stations.Any(st => st.StationId is not null);
+            var morePending = stations.Count < WeatherStationGroups.All.Count;
+            schedule.NextObservationFetchAfterUtc = anyStation || morePending ? now : now.AddHours(24);
             await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
             return secret.State;
         }
 
-        if (weather.FrostStationId is not { } station)
+        var chosen = stations.Where(st => st.StationId is not null).ToDictionary(st => st.Group, st => st.StationId!);
+        if (chosen.Count == 0)
         {
             schedule.NextObservationFetchAfterUtc = now.AddHours(24);
             await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
             return secret.State;
         }
+
+        // One request carries every station; a longer backfill chunk per station would outgrow the response cap.
+        var stationIds = chosen.Values.Distinct(StringComparer.Ordinal).ToList();
+        var chunkDays = BackfillChunkDays / stationIds.Count;
 
         DateOnly from, to;
         var daily = dailyAllowed;
@@ -441,14 +474,15 @@ public sealed class WeatherFetchService
         else
         {
             var lowest = schedule.ObservationsBackfilledFromDate!.Value;
-            from = Max(floor, lowest.AddDays(-365));
+            from = Max(floor, lowest.AddDays(-chunkDays));
             to = lowest.AddDays(-1);
         }
 
         var inserted = new List<DateOnly>();
         if (from <= to)
         {
-            var fetched = await observations.FetchDailyAsync(station, from, to, contact, clientId, cancellationToken);
+            var elements = chosen.Keys.SelectMany(FrostObservationSource.Elements).Distinct(StringComparer.Ordinal).ToList();
+            var fetched = await observations.FetchDailyAsync(stationIds, elements, from, to, contact, clientId, cancellationToken);
             now = Now;
             if (!fetched.Succeeded)
             {
@@ -457,7 +491,7 @@ public sealed class WeatherFetchService
                 return secret.State;
             }
 
-            inserted = await StageObservationsAsync(locationId, site.SiteVersion, station, fetched.Days, now, cancellationToken);
+            inserted = await StageObservationsAsync(locationId, site.SiteVersion, chosen, Compose(chosen, fetched.Days), now, cancellationToken);
         }
 
         // Markers advance even on an empty result, so an empty range is never re-requested (AC 16).
@@ -491,20 +525,54 @@ public sealed class WeatherFetchService
         return secret.State;
     }
 
-    /// <summary>Insert a row only when none exists for (location, site, station, date), or when a value differs (§3 step 4).</summary>
+    /// <summary>The longest backfill request, in station-days: a year from one station, a third of one from three.</summary>
+    internal const int BackfillChunkDays = 365;
+
+    /// <summary>
+    /// One day per date from the per-station days: each group's values come from that group's own station, so a
+    /// station that also reports another group never overrides the station chosen for it.
+    /// </summary>
+    internal static IReadOnlyList<ObservationDayData> Compose(
+        IReadOnlyDictionary<WeatherMeasureGroup, string> chosen, IReadOnlyList<ObservationDayData> days)
+    {
+        var byKey = days.GroupBy(d => (d.StationId, d.Date)).ToDictionary(g => g.Key, g => g.First());
+        ObservationDayData? From(WeatherMeasureGroup group, DateOnly date) =>
+            chosen.TryGetValue(group, out var station) && byKey.TryGetValue((station, date), out var day) ? day : null;
+
+        return [.. days.Select(d => d.Date).Distinct().Order()
+            .Select(date =>
+            {
+                var temperature = From(WeatherMeasureGroup.Temperature, date);
+                var precipitation = From(WeatherMeasureGroup.Precipitation, date);
+                var wind = From(WeatherMeasureGroup.Wind, date);
+                return new ObservationDayData(date,
+                    temperature?.MeanTempC, temperature?.MinTempC, temperature?.MaxTempC,
+                    wind?.MeanWindSpeedMps, wind?.MaxWindGustMps, precipitation?.PrecipitationMm);
+            })
+            .Where(day => day.MeanTempC is not null || day.MinTempC is not null || day.MaxTempC is not null
+                || day.PrecipitationMm is not null || day.MeanWindSpeedMps is not null || day.MaxWindGustMps is not null)];
+    }
+
+    /// <summary>
+    /// Insert a row only when none exists for (location, site, date), or when a value or a group's station differs
+    /// (§3 step 4).
+    /// </summary>
     private async Task<List<DateOnly>> StageObservationsAsync(
-        Guid locationId, int siteVersion, string station, IReadOnlyList<ObservationDayData> days, DateTime now,
-        CancellationToken cancellationToken)
+        Guid locationId, int siteVersion, IReadOnlyDictionary<WeatherMeasureGroup, string> chosen,
+        IReadOnlyList<ObservationDayData> days, DateTime now, CancellationToken cancellationToken)
     {
         if (days.Count == 0)
         {
             return [];
         }
 
+        var temperatureStation = chosen.GetValueOrDefault(WeatherMeasureGroup.Temperature);
+        var precipitationStation = chosen.GetValueOrDefault(WeatherMeasureGroup.Precipitation);
+        var windStation = chosen.GetValueOrDefault(WeatherMeasureGroup.Wind);
         var first = days.Min(day => day.Date);
         var last = days.Max(day => day.Date);
         var existing = (await context.WeatherObservations.AsNoTracking()
-                .Where(o => o.LocationId == locationId && o.SiteVersion == siteVersion && o.StationId == station
+                .Where(o => o.LocationId == locationId && o.SiteVersion == siteVersion
                     && o.LocalDate >= first && o.LocalDate <= last)
                 .ToListAsync(cancellationToken))
             .GroupBy(o => o.LocalDate)
@@ -516,7 +584,9 @@ public sealed class WeatherFetchService
             if (existing.TryGetValue(day.Date, out var current)
                 && current.MeanTempC == day.MeanTempC && current.MinTempC == day.MinTempC && current.MaxTempC == day.MaxTempC
                 && current.MeanWindSpeedMps == day.MeanWindSpeedMps && current.MaxWindGustMps == day.MaxWindGustMps
-                && current.PrecipitationMm == day.PrecipitationMm)
+                && current.PrecipitationMm == day.PrecipitationMm
+                && current.TemperatureStationId == temperatureStation && current.PrecipitationStationId == precipitationStation
+                && current.WindStationId == windStation)
             {
                 continue;
             }
@@ -527,7 +597,9 @@ public sealed class WeatherFetchService
                 LocationId = locationId,
                 SiteVersion = siteVersion,
                 Provider = WeatherProvider.MetNorway,
-                StationId = station,
+                TemperatureStationId = temperatureStation,
+                PrecipitationStationId = precipitationStation,
+                WindStationId = windStation,
                 LocalDate = day.Date,
                 MeanTempC = day.MeanTempC,
                 MinTempC = day.MinTempC,

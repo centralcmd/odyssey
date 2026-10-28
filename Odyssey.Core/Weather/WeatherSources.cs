@@ -61,9 +61,16 @@ public sealed record ObservationDayData(
     decimal? MaxTempC,
     decimal? MeanWindSpeedMps,
     decimal? MaxWindGustMps,
-    decimal? PrecipitationMm);
+    decimal? PrecipitationMm)
+{
+    /// <summary>The station the values were measured at, as the fetch request named it.</summary>
+    public string StationId { get; init; } = "";
+}
 
-public sealed record StationLookupResult(bool Succeeded, string? StationId, WeatherFetchFailureKind? FailureKind = null, TimeSpan? RetryAfter = null);
+/// <summary>A station a lookup chose: Frost's id and name, its distance from the site and its height.</summary>
+public sealed record FoundStation(string Id, string? Name, double DistanceKm, int? AltitudeMeters);
+
+public sealed record StationLookupResult(bool Succeeded, FoundStation? Station, WeatherFetchFailureKind? FailureKind = null, TimeSpan? RetryAfter = null);
 
 public sealed record ObservationFetchResult(
     bool Succeeded,
@@ -74,11 +81,15 @@ public sealed record ObservationFetchResult(
 /// <summary>Frost <c>/sources</c> and <c>/observations</c>. Called by the scheduler only — no read ever reaches it.</summary>
 public interface IWeatherObservationSource
 {
-    /// <summary>The nearest station with daily air temperature within 25 km, or a null id when there is none.</summary>
+    /// <summary>The nearest suitable station reporting <paramref name="group"/>, or none when there is none in reach.</summary>
     Task<StationLookupResult> FindStationAsync(
-        WeatherSiteQuery site, string contact, string clientId, CancellationToken cancellationToken);
+        WeatherSiteQuery site, WeatherMeasureGroup group, string contact, string clientId, CancellationToken cancellationToken);
 
-    /// <summary>Daily values for <c>[from, to]</c>, inclusive. An empty range is a success with no days.</summary>
+    /// <summary>
+    /// Daily values of <paramref name="elements"/> for <c>[from, to]</c>, inclusive, from every station in one
+    /// request; each day says which station it came from. An empty range is a success with no days.
+    /// </summary>
     Task<ObservationFetchResult> FetchDailyAsync(
-        string stationId, DateOnly from, DateOnly to, string contact, string clientId, CancellationToken cancellationToken);
+        IReadOnlyCollection<string> stationIds, IReadOnlyCollection<string> elements, DateOnly from, DateOnly to,
+        string contact, string clientId, CancellationToken cancellationToken);
 }

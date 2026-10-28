@@ -4802,10 +4802,6 @@ namespace Odyssey.Context.Migrations
                     b.Property<bool>("ForecastEnabled")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<string>("FrostStationId")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
                     b.Property<bool>("HistoryEnabled")
                         .HasColumnType("tinyint(1)");
 
@@ -4977,14 +4973,21 @@ namespace Odyssey.Context.Migrations
                         .HasPrecision(5, 1)
                         .HasColumnType("decimal(5,1)");
 
+                    b.Property<string>("PrecipitationStationId")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
                     b.Property<int>("Provider")
                         .HasColumnType("int");
 
                     b.Property<int>("SiteVersion")
                         .HasColumnType("int");
 
-                    b.Property<string>("StationId")
-                        .IsRequired()
+                    b.Property<string>("TemperatureStationId")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("WindStationId")
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
@@ -4993,6 +4996,40 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("LocationId", "LocalDate", "SiteVersion", "FetchedAtUtc");
 
                     b.ToTable("WeatherObservations");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherStation", b =>
+                {
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Group")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("AltitudeMeters")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("DistanceKm")
+                        .HasPrecision(5, 1)
+                        .HasColumnType("decimal(5,1)");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<DateTime>("ResolvedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("StationId")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.HasKey("LocationId", "Group");
+
+                    b.ToTable("WeatherStations", t =>
+                        {
+                            t.HasCheckConstraint("CK_WeatherStations_GroupKnown", "`Group` IN (0, 1, 2)");
+                        });
                 });
 
             modelBuilder.Entity("Odyssey.Context.ContractEvent", b =>
@@ -6127,6 +6164,15 @@ namespace Odyssey.Context.Migrations
                         .WithMany()
                         .HasForeignKey("LocationId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherStation", b =>
+                {
+                    b.HasOne("Odyssey.Context.WeatherLocation", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

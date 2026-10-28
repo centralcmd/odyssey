@@ -155,9 +155,9 @@ public sealed class RelationalWeatherHistoryPurger(OdysseyContext context) : IWe
                     .SetProperty(s => s.NextObservationFetchAfterUtc, (DateTime?)null)
                     .SetProperty(s => s.LeaseUntilUtc, (DateTime?)null)
                     .SetProperty(s => s.Version, Guid.NewGuid()), cancellationToken);
+            await context.WeatherStations.Where(st => st.LocationId == locationId).ExecuteDeleteAsync(cancellationToken);
             await context.WeatherLocations.Where(w => w.LocationId == locationId)
                 .ExecuteUpdateAsync(set => set
-                    .SetProperty(w => w.FrostStationId, (string?)null)
                     .SetProperty(w => w.StationResolvedAtUtc, (DateTime?)null)
                     .SetProperty(w => w.PurgeStartedAt, (DateTime?)null), cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -215,6 +215,9 @@ public sealed class TrackedWeatherHistoryPurger(OdysseyContext context) : IWeath
 
         context.WeatherLocationSchedules.RemoveRange(
             await context.WeatherLocationSchedules.Where(s => s.LocationId == locationId).ToListAsync(cancellationToken));
+        // The database cascades the stations with the row; the in-memory provider only cascades tracked rows.
+        context.WeatherStations.RemoveRange(
+            await context.WeatherStations.Where(st => st.LocationId == locationId).ToListAsync(cancellationToken));
         context.WeatherLocations.RemoveRange(
             await context.WeatherLocations.Where(w => w.LocationId == locationId).ToListAsync(cancellationToken));
         var remaining = await context.WeatherLocationSites.Where(s => s.LocationId == locationId).ToListAsync(cancellationToken);
@@ -260,10 +263,12 @@ public sealed class TrackedWeatherHistoryPurger(OdysseyContext context) : IWeath
         var weather = await context.WeatherLocations.FirstOrDefaultAsync(w => w.LocationId == locationId, cancellationToken);
         if (weather is not null)
         {
-            weather.FrostStationId = null;
             weather.StationResolvedAtUtc = null;
             weather.PurgeStartedAt = null;
         }
+
+        context.WeatherStations.RemoveRange(
+            await context.WeatherStations.Where(st => st.LocationId == locationId).ToListAsync(cancellationToken));
 
         await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();

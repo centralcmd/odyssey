@@ -108,6 +108,7 @@ public partial class LocationWeatherHistorySection
         }
 
         _bounds = response.History ?? new WeatherHistoryBounds();
+        _measures = KeepOffered(_measures, WeatherMeasures.Offered(_bounds.Stations));
         if (firstLoad && Latest is { } latest && Resolve(_saved, latest, Earliest) is var resolved && resolved != (_from, _to))
         {
             (_from, _to) = resolved;
@@ -224,6 +225,33 @@ public partial class LocationWeatherHistorySection
         PageState.QueueSave(StateKey(Location.LocationId), _saved);
     }
 
+    /// <summary>
+    /// The selection limited to the measures offered; when none of it is, the first measure offered — a remembered
+    /// wind chart at a place whose wind station is gone opens on what the place does measure.
+    /// </summary>
+    internal static IReadOnlyList<string> KeepOffered(IReadOnlyList<string> selected, IReadOnlyList<WeatherMeasure> offered)
+    {
+        var kept = selected.Where(k => offered.Any(m => m.Key == k)).ToList();
+        return kept.Count > 0 ? kept : [(offered.Count > 0 ? offered[0] : WeatherMeasures.Of(WeatherMeasures.Temperature)).Key];
+    }
+
+    internal const string DayNote =
+        "A day runs midnight to midnight UTC — precipitation 06:00 to 06:00 UTC, as MET reports it — so it can sit an hour or two off the local date.";
+
+    internal const string NoStationText =
+        "No MET Norway station measures this place — none for temperature within 25 km, precipitation within 15 km or wind within 30 km — so there is no weather history. Forecasts are not affected.";
+
+    /// <summary>
+    /// What the info button says: where each measure group is measured (or how far was searched), then the UTC day.
+    /// Lines are newline-separated; the tooltip keeps them (pre-line).
+    /// </summary>
+    internal static string AboutText(IReadOnlyList<WeatherStationRef> stations) => stations.Count == 0
+        ? $"Daily values from the MET Norway stations nearest the weather position.\n{DayNote}"
+        : "Daily values from MET Norway stations, each measure from the nearest station that reports it:\n"
+          + string.Join("\n", stations.Select(WeatherMeasures.StationLine)) + $"\n{DayNote}";
+
+    private string About => AboutText(_bounds?.Stations ?? []);
+
     /// <summary>Remembered measures, kept only while they still name one unit; otherwise temperature.</summary>
     internal static IReadOnlyList<string> RestoreMeasures(IEnumerable<string>? saved)
     {
@@ -236,9 +264,12 @@ public partial class LocationWeatherHistorySection
 
     // ── Measures and facts ──────────────────────────────────────────────────────────────────────────
 
-    /// <summary>The dash means "this is the line", so only a selected row carries the measure's hue.</summary>
+    /// <summary>
+    /// The dash means "this is the line", so only a selected row carries the measure's hue. A measure whose group
+    /// has no station is not offered; the info button says why.
+    /// </summary>
     private IReadOnlyList<OdsOption> MeasureOptions =>
-        [.. WeatherMeasures.All.Select(m => new OdsOption(m.Key, m.Label) { Icon = "remove", IconColor = _measures.Contains(m.Key) ? m.Color : null })];
+        [.. WeatherMeasures.Offered(_bounds?.Stations ?? []).Select(m => new OdsOption(m.Key, m.Label) { Icon = "remove", IconColor = _measures.Contains(m.Key) ? m.Color : null })];
 
     private void PickMeasures(IReadOnlyCollection<string> next)
     {

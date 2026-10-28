@@ -69,11 +69,13 @@ public sealed class DataExportExclusions
             "FileAnalysisCandidateTags",
             // Issue #348 §7.10 — weather. WeatherLocations (the Admin's settings) is exported; these are
             // not. The sites are history — part of what a purge erases, with the history export a later
-            // item. The schedule is scheduler state. The runs, steps, observations and day summaries are
+            // item. The schedule and the chosen stations are scheduler state, looked up again from the
+            // position. The runs, steps, observations and day summaries are
             // third-party provider data and its derivation, re-fetchable for the forecast horizon and
             // unbounded in volume (≈ 0.8 M step rows per location-year).
             "WeatherLocationSites",
             "WeatherLocationSchedules",
+            "WeatherStations",
             "WeatherForecastRuns",
             "WeatherForecastSteps",
             "WeatherObservations",

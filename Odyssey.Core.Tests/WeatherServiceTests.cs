@@ -297,7 +297,7 @@ public class WeatherServiceTests
     }
 
     [Fact]
-    public async Task Observations_resolve_a_station_then_fetch_one_request_per_call()
+    public async Task Observations_look_up_a_station_per_measure_then_fetch_one_request_per_call()
     {
         using var h = new WeatherTestHarness(new DateTimeOffset(2026, 10, 23, 9, 0, 0, TimeSpan.Zero));
         h.Secrets.Frost = SecretResult.Found("client-id");
@@ -305,9 +305,16 @@ public class WeatherServiceTests
         h.Observations.Daily = (from, _) => new ObservationFetchResult(true,
             [new ObservationDayData(new DateOnly(2026, 10, 22), 6.8m, 3.6m, 10.1m, 4.9m, 15.2m, 7.4m)]);
 
-        await h.Fetch().FetchObservationsAsync(location.LocationId, CancellationToken.None);
-        Assert.Equal(1, h.Observations.StationCalls);
-        Assert.Empty(h.Observations.DailyCalls);
+        // One lookup per call, a group at a time, so the scheduler stays at one request per call.
+        for (var i = 1; i <= 3; i++)
+        {
+            await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
+            Assert.Equal(i, h.Observations.StationCalls);
+            Assert.Empty(h.Observations.DailyCalls);
+        }
+
+        Assert.Equal([WeatherMeasureGroup.Temperature, WeatherMeasureGroup.Precipitation, WeatherMeasureGroup.Wind], h.Observations.LookedUp);
+        Assert.NotNull((await h.NewContext().WeatherLocations.SingleAsync()).StationResolvedAtUtc);
 
         await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
 
@@ -316,6 +323,69 @@ public class WeatherServiceTests
         var check = h.NewContext();
         Assert.Equal(1, await check.WeatherObservations.CountAsync());
         Assert.True(await check.WeatherDays.AnyAsync(d => d.LocalDate == new DateOnly(2026, 10, 22) && d.ObservedMaxTempC == 10.1m));
+    }
+
+    [Fact]
+    public async Task Each_measure_comes_from_its_own_station_in_one_request()
+    {
+        using var h = new WeatherTestHarness(new DateTimeOffset(2026, 10, 23, 9, 0, 0, TimeSpan.Zero));
+        h.Secrets.Frost = SecretResult.Found("client-id");
+        var location = await h.EnableAsync();
+        h.Observations.Stations[WeatherMeasureGroup.Temperature] = "SN-T";
+        h.Observations.Stations[WeatherMeasureGroup.Precipitation] = "SN-P";
+        h.Observations.Stations[WeatherMeasureGroup.Wind] = null;
+        // Every station reports every value; only each group's own station may supply it.
+        h.Observations.Daily = (_, _) => new ObservationFetchResult(true,
+            [new ObservationDayData(new DateOnly(2026, 10, 22), 6.8m, 3.6m, 10.1m, 4.9m, 15.2m, 7.4m)]);
+        for (var i = 0; i < 4; i++)
+        {
+            await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
+        }
+
+        Assert.Equal(["SN-T", "SN-P"], Assert.Single(h.Observations.DailyStations));
+        var check = h.NewContext();
+        var observation = await check.WeatherObservations.SingleAsync();
+        Assert.Equal(("SN-T", "SN-P", (string?)null), (observation.TemperatureStationId, observation.PrecipitationStationId, observation.WindStationId));
+        var day = await check.WeatherDays.SingleAsync(d => d.LocalDate == new DateOnly(2026, 10, 22));
+        Assert.Equal(6.8m, day.ObservedMeanTempC);
+        Assert.Equal(7.4m, day.ObservedPrecipitationMm);
+        // No wind station: no wind, even though the other stations report it.
+        Assert.Null(day.ObservedMeanWindSpeedMps);
+        Assert.Null(day.ObservedMaxWindGustMps);
+
+        // The read shapes name each group's station, and the one with none in reach.
+        var daily = await h.Read(h.NewContext()).DailyAsync(Daily(location.LocationId, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 22)), "u1", CancellationToken.None);
+        Assert.True(daily.History!.HasObservationStation);
+        Assert.Collection(daily.History.Stations,
+            t => Assert.Equal((WeatherMeasureGroup.Temperature, "Station Sn-T", 4, 25), (t.Group, t.Name, t.DistanceKm!.Value, t.MaxDistanceKm)),
+            p => Assert.Equal((WeatherMeasureGroup.Precipitation, 15), (p.Group, p.MaxDistanceKm)),
+            w => Assert.Equal((WeatherMeasureGroup.Wind, (string?)null, (int?)null, 30), (w.Group, w.Name, w.DistanceKm, w.MaxDistanceKm)));
+    }
+
+    [Fact]
+    public async Task A_measure_with_no_station_is_asked_again_after_a_day_and_measures_from_the_start_once_found()
+    {
+        using var h = new WeatherTestHarness(new DateTimeOffset(2026, 10, 23, 9, 0, 0, TimeSpan.Zero));
+        h.Secrets.Frost = SecretResult.Found("client-id");
+        var location = await h.EnableAsync();
+        h.Observations.Stations[WeatherMeasureGroup.Wind] = null;
+        for (var i = 0; i < 4; i++)
+        {
+            await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
+        }
+
+        Assert.Equal(3, h.Observations.StationCalls);
+        Assert.NotNull((await h.NewContext().WeatherLocationSchedules.SingleAsync()).ObservationsCheckedThroughDate);
+
+        // A day later the wind lookup runs again, and a station found now starts its history from the beginning.
+        h.Observations.Stations[WeatherMeasureGroup.Wind] = "SN-W";
+        h.Time.Advance(TimeSpan.FromHours(25));
+        await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
+
+        Assert.Equal(WeatherMeasureGroup.Wind, h.Observations.LookedUp[^1]);
+        var check = h.NewContext();
+        Assert.Equal("SN-W", (await check.WeatherStations.SingleAsync(st => st.Group == WeatherMeasureGroup.Wind)).StationId);
+        Assert.Null((await check.WeatherLocationSchedules.SingleAsync()).ObservationsCheckedThroughDate);
     }
 
     [Fact]
@@ -331,8 +401,12 @@ public class WeatherServiceTests
         h.Context.ChangeTracker.Clear();
         h.Observations.Daily = (_, _) => new ObservationFetchResult(true, []);
 
-        await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
-        Assert.Equal(1, h.Observations.StationCalls);
+        for (var i = 0; i < 3; i++)
+        {
+            await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
+        }
+
+        Assert.Equal(3, h.Observations.StationCalls);
 
         await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
         var first = Assert.Single(h.Observations.DailyCalls);
@@ -723,8 +797,11 @@ public class WeatherServiceTests
         h.Forecasts.Respond = _ => Task.FromResult(WeatherTestHarness.Run(Noon.AddMinutes(-30), Noon, 24, 7));
         await h.Fetch().FetchForecastAsync(home.LocationId, WeatherFetchMode.Scheduled, CancellationToken.None);
         var weather = await h.Context.WeatherLocations.SingleAsync(w => w.LocationId == home.LocationId);
-        weather.FrostStationId = "SN18700";
         weather.StationResolvedAtUtc = Noon;
+        h.Context.WeatherStations.Add(new Odyssey.Context.WeatherStation
+        {
+            LocationId = home.LocationId, Group = WeatherMeasureGroup.Temperature, StationId = "SN18700", ResolvedAtUtc = Noon,
+        });
         // One day measured only, and the forecast's own day measured too.
         var forecastDay = await h.Context.WeatherDays.FirstAsync(d => d.LocationId == home.LocationId);
         forecastDay.ObservedMeanTempC = 5;
@@ -732,7 +809,7 @@ public class WeatherServiceTests
         h.Context.WeatherDays.Add(MeasuredDay(home.LocationId, new DateOnly(2026, 9, 1)));
         h.Context.WeatherObservations.Add(new Odyssey.Context.WeatherObservation
         {
-            WeatherObservationId = Guid.NewGuid(), LocationId = home.LocationId, SiteVersion = 1, StationId = "SN18700",
+            WeatherObservationId = Guid.NewGuid(), LocationId = home.LocationId, SiteVersion = 1, TemperatureStationId = "SN18700",
             LocalDate = new DateOnly(2026, 9, 1), MeanTempC = 5,
         });
         var schedule = await h.Context.WeatherLocationSchedules.SingleAsync(s => s.LocationId == home.LocationId);
@@ -750,8 +827,8 @@ public class WeatherServiceTests
         var row = await check.WeatherLocations.SingleAsync(w => w.LocationId == home.LocationId);
         Assert.True(row.ForecastEnabled);
         Assert.Null(row.PurgeStartedAt);
-        Assert.Null(row.FrostStationId);
         Assert.Null(row.StationResolvedAtUtc);
+        Assert.Equal(0, await check.WeatherStations.CountAsync());
         Assert.NotEqual(0, await check.WeatherForecastRuns.CountAsync());
         Assert.NotEqual(0, await check.WeatherForecastSteps.CountAsync());
         Assert.Equal(0, await check.WeatherObservations.CountAsync());
@@ -943,8 +1020,6 @@ public class WeatherServiceTests
     {
         using var h = new WeatherTestHarness();
         var home = await h.EnableAsync();
-        var weather = await h.Context.WeatherLocations.SingleAsync(w => w.LocationId == home.LocationId);
-        weather.FrostStationId = "SN18700";
         h.Context.WeatherDays.AddRange(
             MeasuredDay(home.LocationId, new DateOnly(2026, 3, 2)),
             MeasuredDay(home.LocationId, new DateOnly(2026, 10, 21)),
@@ -966,8 +1041,6 @@ public class WeatherServiceTests
     {
         using var h = new WeatherTestHarness();
         var boat = await h.EnableAsync("Boat", tracked: false);
-        var weather = await h.Context.WeatherLocations.SingleAsync(w => w.LocationId == boat.LocationId);
-        weather.FrostStationId = "SN18700";
         h.Context.WeatherDays.Add(MeasuredDay(boat.LocationId, new DateOnly(2026, 8, 30)));
         await h.Context.SaveChangesAsync();
         await h.Admin().UpsertAsync(boat.LocationId, new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = false },
