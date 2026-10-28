@@ -266,6 +266,17 @@ public class ExchangeRateSyncApiTests
         }
     }
 
+    /// <summary>Background jobs run in Odyssey.Worker, never in the API: the API host neither hosts nor resolves the job.</summary>
+    [Fact]
+    public async Task The_api_host_does_not_run_the_sync_job()
+    {
+        await using var factory = new ApiFactory(Admin);
+
+        Assert.Null(factory.Services.GetService<ExchangeRateSyncJob>());
+        Assert.DoesNotContain(factory.Services.GetServices<Microsoft.Extensions.Hosting.IHostedService>(),
+            service => service.GetType().FullName!.Contains("ExchangeRateSync", StringComparison.Ordinal));
+    }
+
     private sealed class ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharingStoreWith = null)
         : OdysseyApiFactory(
             permissions,

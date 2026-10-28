@@ -57,6 +57,13 @@ public static class ExchangeRateSyncConstants
     /// </summary>
     public static readonly TimeSpan SchedulerTick = TimeSpan.FromSeconds(15);
 
+    /// <summary>
+    /// How long a Run now waits for a worker before it is given up as <c>Abandoned</c>: eight ticks, so a
+    /// worker restart rides through it, but a missing worker blocks other runs and purges for minutes, not
+    /// for the whole stale window.
+    /// </summary>
+    public static readonly TimeSpan UnclaimedRequestTimeout = TimeSpan.FromMinutes(2);
+
     /// <summary>After this many consecutive failed sync runs the interval doubles, capped at <see cref="MaxBackoffHours"/>.</summary>
     public const int BackoffAfterFailures = 3;
 

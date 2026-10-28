@@ -12,7 +12,7 @@ namespace Odyssey.Core.Finance.ExchangeRateSync;
 /// <summary>
 /// Runs the exchange-rate sync (issue #349 §3 "Processing pipeline"): plans forward fill and backfill per
 /// enabled currency, fetches each span from Norges Bank, writes <c>X → NOK</c> and <c>NOK → X</c> rows
-/// idempotently, and records the run. It holds no schedule state: everything the scheduler and the status
+/// idempotently, and records the run. It holds no schedule state: everything the worker's job and the status
 /// endpoint need is derived from the run log and the rows on every call.
 /// </summary>
 /// <remarks>
@@ -127,7 +127,7 @@ public sealed class ExchangeRateSyncService(
     }
 
     /// <summary>
-    /// The scheduler's tick: starts and executes a scheduled run when one is due. With nothing enabled it
+    /// The worker job's tick: starts and executes a scheduled run when one is due. With nothing enabled it
     /// writes nothing at all, so idle ticks never flood the 500-row run log.
     /// </summary>
     public async Task<Guid?> RunScheduledIfDueAsync(CancellationToken cancellationToken = default)
@@ -139,7 +139,7 @@ public sealed class ExchangeRateSyncService(
         }
 
         // A Running row left by a dead process must be abandoned HERE, before the status read: that read
-        // reports it as the current run, so without this the scheduler would wait on it forever.
+        // reports it as the current run, so without this the job would wait on it forever.
         await AbandonStaleAsync(cancellationToken);
 
         var status = await GetStatusAsync(cancellationToken);
@@ -162,7 +162,8 @@ public sealed class ExchangeRateSyncService(
     /// <summary>
     /// Claims the oldest manual run no process has taken yet, or returns null. Every worker replica asks;
     /// the <see cref="ExchangeRateSyncRun.ClaimedAtUtc"/> concurrency token lets exactly one save succeed.
-    /// Stale runs are abandoned first, so a request no worker took in time is never executed late.
+    /// Stale runs are abandoned first, so a request no worker took within
+    /// <see cref="ExchangeRateSyncConstants.UnclaimedRequestTimeout"/> is never executed late.
     /// </summary>
     public async Task<Guid?> ClaimRequestedRunAsync(CancellationToken cancellationToken = default)
     {
@@ -527,7 +528,7 @@ public sealed class ExchangeRateSyncService(
         var settings = await settingsLookup.GetAsync(cancellationToken);
         var enabled = await EnabledCodesAsync(cancellationToken);
         // Fetched only when the 24 h entry (or the 5 min failure entry) has expired, so a status poll or a
-        // scheduler tick costs no outbound request in the ordinary case.
+        // job tick costs no outbound request in the ordinary case.
         var series = await supportedList.GetAsync(client.GetSeriesAsync, cancellationToken);
         var firstDates = series?.ToDictionary(value => value.CurrencyCode, value => value.FirstObservation, StringComparer.Ordinal);
         var effectiveGlobal = settings.HistoryStartDate ?? ExchangeRateHistoryStartDateRule.DynamicDefault(todayUtc);
@@ -742,7 +743,7 @@ public sealed class ExchangeRateSyncService(
         }
 
         // Scoped to the codes asked about, so the (From, To, AsOf, Provider) index is entered once per
-        // code rather than scanned across every fetched row — this runs on every scheduler tick.
+        // code rather than scanned across every fetched row — this runs on every job tick.
         var rows = await context.ExchangeRates.AsNoTracking()
             .Where(rate => codes.Contains(rate.FromCurrencyCode) && rate.ToCurrencyCode == Hub && rate.Provider != null)
             .GroupBy(rate => rate.FromCurrencyCode)
@@ -763,8 +764,12 @@ public sealed class ExchangeRateSyncService(
     private async Task AbandonStaleAsync(CancellationToken cancellationToken)
     {
         var cutoff = Now.AddMinutes(-2 * ExchangeRateSyncConstants.RunTimeoutMinutes);
+        // A manual request no worker took (none running, or all down) would otherwise hold the guard for
+        // the whole stale window, refusing every Run now and purge; it is given up much sooner.
+        var unclaimedCutoff = Now - ExchangeRateSyncConstants.UnclaimedRequestTimeout;
         var stale = await context.ExchangeRateSyncRuns
-            .Where(run => run.Status == ExchangeRateSyncRunStatus.Running && run.StartedAtUtc < cutoff)
+            .Where(run => run.Status == ExchangeRateSyncRunStatus.Running
+                && (run.StartedAtUtc < cutoff || (run.ClaimedAtUtc == null && run.StartedAtUtc < unclaimedCutoff)))
             .ToListAsync(cancellationToken);
         if (stale.Count == 0)
         {
@@ -775,6 +780,15 @@ public sealed class ExchangeRateSyncService(
         {
             run.Status = ExchangeRateSyncRunStatus.Failed;
             run.ErrorKind = ExchangeRateSyncErrorKind.Abandoned;
+            if (run.ClaimedAtUtc is null)
+            {
+                run.FinishedAtUtc = run.StartedAtUtc + ExchangeRateSyncConstants.UnclaimedRequestTimeout;
+                logger.LogWarning(
+                    "Exchange-rate sync run {RunId} was requested but no worker took it; it is marked failed. Is Odyssey.Worker running?",
+                    run.ExchangeRateSyncRunId);
+                continue;
+            }
+
             // Stamped at the latest it can have been alive (the hard timeout), not at discovery: "now"
             // would read as a run that just finished and push the next one back a whole delay again.
             run.FinishedAtUtc = run.StartedAtUtc.AddMinutes(ExchangeRateSyncConstants.RunTimeoutMinutes);

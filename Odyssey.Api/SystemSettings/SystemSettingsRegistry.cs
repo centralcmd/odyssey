@@ -882,7 +882,7 @@ internal static class SystemSettingsRegistry
         // ── Exchange-rate sync (issue #349 §8) ────────────────────────────────────────────────────
         //
         // The ORDINARY write claim: neither is a credential or a destination. No cache key — the
-        // scheduler reads both live on each tick, once a minute, so there is no snapshot to evict.
+        // worker's sync job reads both live on each tick, so there is no snapshot to evict.
         new StringSetting
         {
             Key = SystemSettingsKeys.ExchangeRateHistoryStartDate,

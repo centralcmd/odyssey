@@ -1110,9 +1110,10 @@ It is off until an Admin enables a currency under *System settings*.
 - **No new claims**, so nobody needs to sign out. No new configuration: the start date and interval are
   System settings, and nothing is carried over from the environment (both keys are new).
 - **The sync runs in `Odyssey.Worker`**, like every background job. Without a running worker nothing is
-  fetched: *Run now* still records a `Running` run, which no process takes and which is marked
-  *Abandoned* after 20 minutes. The API reaches Norges Bank too — for the list of published currencies
-  behind the switches — so both containers need egress to `data.norges-bank.no`.
+  fetched: *Run now* still records a `Running` run, which no process takes; the next run or purge
+  started after two minutes marks it *Abandoned* and proceeds, logging a warning that asks whether the
+  worker runs. The API reaches Norges Bank too — for the list of published currencies behind the
+  switches — so both containers need egress to `data.norges-bank.no`.
 - **Both runtime images need `tzdata`** for `Europe/Oslo`, and both Dockerfiles already install it.
   Without it the sync runs fail with *Time zone unavailable*; the hosts still start.
 

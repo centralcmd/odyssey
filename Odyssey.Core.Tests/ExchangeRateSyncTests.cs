@@ -359,7 +359,7 @@ public class ExchangeRateSyncTests
     public async Task The_job_executes_a_requested_run_before_looking_for_a_scheduled_one()
     {
         await using var harness = await Harness.CreateAsync();
-        await harness.EnableAsync("RUB");
+        await harness.EnableAsync("USD");
         var manual = await harness.Sync.StartManualAsync("admin");
         var services = new ServiceCollection()
             .AddScoped(_ => harness.Sync)
@@ -371,8 +371,121 @@ public class ExchangeRateSyncTests
         var runs = await harness.Context.ExchangeRateSyncRuns.AsNoTracking().ToListAsync();
         var only = Assert.Single(runs);
         Assert.Equal(manual.ExchangeRateSyncRunId, only.ExchangeRateSyncRunId);
-        Assert.NotEqual(ExchangeRateSyncRunStatus.Running, only.Status);
-        Assert.NotNull(only.FinishedAtUtc);
+        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, only.Status);
+        Assert.Equal(ExchangeRateSyncTrigger.Manual, only.Trigger);
+    }
+
+    /// <summary>
+    /// The claim's conflict path, forced rather than raced: a second claimer takes the row through another
+    /// context in the instant before this one saves, so the <c>ClaimedAtUtc</c> concurrency token is the
+    /// only thing that can stop both from executing it.
+    /// </summary>
+    [Fact]
+    public async Task With_no_request_the_job_starts_and_finishes_a_due_scheduled_run()
+    {
+        await using var harness = await Harness.CreateAsync();
+        await harness.EnableAsync("USD");
+        var services = new ServiceCollection().AddScoped(_ => harness.Sync).BuildServiceProvider();
+
+        await new ExchangeRateSyncJob(services.GetRequiredService<IServiceScopeFactory>()).RunOnceAsync(CancellationToken.None);
+
+        var only = Assert.Single(await harness.Context.ExchangeRateSyncRuns.AsNoTracking().ToListAsync());
+        Assert.Equal(ExchangeRateSyncTrigger.Scheduled, only.Trigger);
+        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, only.Status);
+        Assert.NotNull(only.ClaimedAtUtc);
+    }
+
+    [Fact]
+    public async Task A_claim_that_loses_to_another_replica_returns_nothing_and_keeps_the_winners_claim()
+    {
+        var store = Guid.NewGuid().ToString();
+        var rivalAt = Now.AddSeconds(-3);
+        var rival = new ClaimFirst(store, rivalAt);
+        DbContextOptions<OdysseyContext> Options(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors) =>
+            new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase(store).AddInterceptors(interceptors).Options;
+
+        Guid runId;
+        await using (var seed = new OdysseyContext(Options()))
+        {
+            var run = new ExchangeRateSyncRun
+            {
+                Trigger = ExchangeRateSyncTrigger.Manual, Provider = ExchangeRateProvider.NorgesBank,
+                Status = ExchangeRateSyncRunStatus.Running, StartedAtUtc = Now,
+            };
+            seed.ExchangeRateSyncRuns.Add(run);
+            await seed.SaveChangesAsync();
+            runId = run.ExchangeRateSyncRunId;
+        }
+
+        await using var context = new OdysseyContext(Options(rival));
+        var clock = new MutableClock(Now);
+        var sync = new ExchangeRateSyncService(
+            context,
+            new NorgesBankClient(new HttpClient(new StubProvider()) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None),
+            new ExchangeRateSupportedListCache(clock), new FakeSettings(), ExchangeRateSyncPacing.None, clock,
+            NullLogger<ExchangeRateSyncService>.Instance);
+
+        Assert.Null(await sync.ClaimRequestedRunAsync());
+
+        Assert.True(rival.Claimed);
+        Assert.Empty(context.ChangeTracker.Entries<ExchangeRateSyncRun>());
+        await using var verify = new OdysseyContext(Options());
+        Assert.Equal(rivalAt, (await verify.ExchangeRateSyncRuns.SingleAsync(r => r.ExchangeRateSyncRunId == runId)).ClaimedAtUtc);
+    }
+
+    /// <summary>Claims the run through its own context the first time the service is about to save.</summary>
+    private sealed class ClaimFirst(string store, DateTime claimedAt) : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
+    {
+        public bool Claimed { get; private set; }
+
+        public override async ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int>> SavingChangesAsync(
+            Microsoft.EntityFrameworkCore.Diagnostics.DbContextEventData eventData,
+            Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (!Claimed)
+            {
+                Claimed = true;
+                await using var other = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase(store).Options);
+                var run = await other.ExchangeRateSyncRuns.SingleAsync(cancellationToken);
+                run.ClaimedAtUtc = claimedAt;
+                await other.SaveChangesAsync(cancellationToken);
+            }
+
+            return result;
+        }
+    }
+
+    [Fact]
+    public async Task A_request_no_worker_takes_is_given_up_after_the_unclaimed_timeout_and_frees_the_guard()
+    {
+        await using var harness = await Harness.CreateAsync();
+        await harness.EnableAsync("RUB");
+        var manual = await harness.Sync.StartManualAsync("admin");
+
+        harness.Clock.Advance(ExchangeRateSyncConstants.UnclaimedRequestTimeout - TimeSpan.FromSeconds(1));
+        Assert.Null(await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Purge, null));
+
+        harness.Clock.Advance(TimeSpan.FromSeconds(2));
+        Assert.NotNull(await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Purge, null));
+        var abandoned = await harness.Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.ExchangeRateSyncRunId == manual.ExchangeRateSyncRunId);
+        Assert.Equal(ExchangeRateSyncErrorKind.Abandoned, abandoned.ErrorKind);
+        Assert.Equal(manual.StartedAtUtc + ExchangeRateSyncConstants.UnclaimedRequestTimeout, abandoned.FinishedAtUtc);
+    }
+
+    [Fact]
+    public async Task A_claimed_run_is_not_abandoned_by_the_unclaimed_timeout()
+    {
+        await using var harness = await Harness.CreateAsync();
+        await harness.EnableAsync("RUB");
+        var manual = await harness.Sync.StartManualAsync("admin");
+        Assert.NotNull(await harness.Sync.ClaimRequestedRunAsync());
+
+        harness.Clock.Advance(TimeSpan.FromMinutes(2 * ExchangeRateSyncConstants.RunTimeoutMinutes - 1));
+
+        Assert.Null(await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Purge, null));
+        Assert.Equal(ExchangeRateSyncRunStatus.Running,
+            (await harness.Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.ExchangeRateSyncRunId == manual.ExchangeRateSyncRunId)).Status);
     }
 
     [Fact]
