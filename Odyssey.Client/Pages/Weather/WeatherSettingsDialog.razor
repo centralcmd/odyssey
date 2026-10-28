@@ -1,0 +1,103 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    WeatherSettingsDialog — Turn on weather (no row yet) and Weather settings (an existing row), one shell
+    (issue #348 §5.7; design system · Weather.jsx WeatherSettingsModal). Turning weather on copies the
+    position shown, NOW: the request carries the fingerprint of exactly that position, so a move made
+    while the dialog was open is a 409 rather than a silent snapshot of something nobody reviewed.
+*@
+
+@* While a save is in flight the dialog cannot be dismissed (as WeatherPurgeDialog): OdsModal derives Esc, scrim and
+   the close button from OnClose having a delegate, so it is withheld, and an OpenChanged(false) arriving anyway is
+   refused — otherwise OnSaved could fire for a dialog the user already closed. *@
+<OdsModal Open="Open" OpenChanged="OnOpenChanged" OnClose="@(_saving ? default : EventCallback.Factory.Create(this, CancelAsync))" Icon="wb_sunny" RequiredLegend="false"
+          Title="@(b => b.AddContent(0, Creating ? "Turn on weather" : "Weather settings"))"
+          Subtitle="@(b => b.AddContent(0, Location.Name))">
+    <ChildContent>
+        <div class="ods-modal-body wx-form" tabindex="-1" @ref="_body" aria-busy="@(_saving ? "true" : null)">
+            @if (_conflict is not null)
+            {
+                <OdsAlert Severity="Severity.Warning">@_conflict</OdsAlert>
+            }
+
+            @if (Creating)
+            {
+                <WeatherSiteCard Title="Weather position"
+                                 Latitude="_preview.Latitude" Longitude="_preview.Longitude"
+                                 AltitudeMeters="_preview.AltitudeMeters" TimeZoneId="@_preview.TimeZoneId"
+                                 Foot="Copied from the location now. If the location moves later, weather keeps this position until you apply the move." />
+                <WeatherDisclosure />
+            }
+
+            @* Two independent settings: forecast and historical data each fetch on their own, so a place can
+               have either, both or neither (design system · Weather.jsx WeatherSettingsModal). *@
+            <div class="wx-toggle">
+                <div class="wx-toggle-text">
+                    <div class="wx-toggle-label">Forecast</div>
+                    <div class="wx-toggle-help" id="wx-fc-h">@ForecastHelp</div>
+                </div>
+                <OdsSwitch Checked="_forecast" CheckedChanged="@(v => _forecast = v)" Disabled="ForecastLocked"
+                           AriaLabel="Forecast" AriaDescribedBy="wx-fc-h" />
+            </div>
+
+            @if (_forecast)
+            {
+                <div class="wx-toggle wx-toggle-sub @(_trackedError is not null ? "error" : null)">
+                    <div class="wx-toggle-text">
+                        <div class="wx-toggle-label">Refresh on a schedule</div>
+                        <div class="wx-toggle-help" id="wx-tr-h">
+                            @(_tracked
+                                ? "The forecast is refreshed in the background, so the dashboard is current when someone opens it."
+                                : "The forecast is fetched only when someone opens weather for this place.")
+                            @if (Cap is { } cap)
+                            {
+                                <span class="wx-muted"> @(UsedElsewhere + (_tracked ? 1 : 0)) of @cap scheduled places in use.</span>
+                            }
+                        </div>
+                        @if (_trackedError is not null)
+                        {
+                            <div class="wx-toggle-error" id="wx-tr-e" role="alert"><OdsMIcon Name="error_outline" Size="16" />@_trackedError</div>
+                        }
+                    </div>
+                    <OdsSwitch Checked="_tracked" CheckedChanged="OnTrackedChanged" AriaLabel="Refresh on a schedule" AriaDescribedBy="@(_trackedError is null ? "wx-tr-h" : "wx-tr-h wx-tr-e")" />
+                </div>
+                @if (_tracked && AtCap && _trackedError is null)
+                {
+                    <div class="wx-note" role="status"><OdsMIcon Name="info" Size="16" /><span>All @Cap scheduled places are in use. Saving will be refused unless another place stops refreshing on a schedule.</span></div>
+                }
+            }
+
+            <div class="wx-toggle">
+                <div class="wx-toggle-text">
+                    <div class="wx-toggle-label">Historical data</div>
+                    <div class="wx-toggle-help" id="wx-hs-h">@HistoryToggleHelp</div>
+                </div>
+                <OdsSwitch Checked="_history" CheckedChanged="@(v => _history = v)" Disabled="HistoryLocked"
+                           AriaLabel="Historical data" AriaDescribedBy="wx-hs-h" />
+            </div>
+
+            @if (_history)
+            {
+                <OdsDateField Label="Keep measured history from" Value="_historyFrom" ValueChanged="@(v => _historyFrom = v)"
+                              Min="HistoryFloor" Max="DateTime.Today"
+                              Placeholder="@(Creating ? WeatherVisuals.Date(DefaultFrom) : "Select date")"
+                              Help="@HistoryHelp" Error="@_historyError" />
+            }
+
+            @if (NothingToTurnOn)
+            {
+                <div class="wx-note" role="status"><OdsMIcon Name="info" Size="16" /><span>Turn on the forecast, historical data or both.</span></div>
+            }
+            @if (ReEnablingMoved)
+            {
+                <OdsAlert Severity="Severity.Warning">The location has moved since weather copied its position. Weather turns back on at the old position; apply the move afterwards from the location’s menu.</OdsAlert>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" Disabled="_saving" OnClick="CancelAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(Creating ? "wb_sunny" : "save")" Loading="_saving" Disabled="NothingToTurnOn" OnClick="SaveAsync">
+            @(Creating ? "Turn on weather" : "Save")
+        </OdsButton>
+    </Footer>
+</OdsModal>

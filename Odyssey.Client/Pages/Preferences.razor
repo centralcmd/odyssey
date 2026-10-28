@@ -7,6 +7,8 @@
 @inject IUserPreferenceService UserPreferences
 @inject Odyssey.Client.Services.IPageStateService PageState
 @inject IReferenceDataCache ReferenceData
+@inject IWeatherApiClient Weather
+@inject AuthenticationStateProvider Auth
 
 <PageTitle>Preferences</PageTitle>
 
@@ -97,7 +99,25 @@
                 </OdsSettingRow>
             }
 
-            @if (!ShowDarkModeCard && !ShowCurrencyCard && !ShowMainCurrencyCard)
+            @if (ShowWeatherLocationCard)
+            {
+                @* The caller's own place for the dashboard weather card — the card picker's choice and
+                   stored value, saved through PUT /api/weather/preferences (design system ·
+                   Preferences.jsx, components-weather.md → Preferences → Weather location). *@
+                <OdsSettingRow Icon="wb_sunny" Title="Weather location"
+                               Desc="Place the weather card on your dashboard shows">
+                    <div class="pref-right">
+                        <div class="pref-control pref-weather">
+                            <OdsSelect AriaLabel="Weather location"
+                                       Value="@_weatherLocation" ValueChanged="OnWeatherLocationChanged"
+                                       Options="WeatherLocationOptions" Error="@_weatherError" />
+                        </div>
+                        <span class="pref-flag @(WeatherLocationDirty ? "on" : "")" title="Unsaved change" aria-hidden="true"></span>
+                    </div>
+                </OdsSettingRow>
+            }
+
+            @if (!ShowDarkModeCard && !ShowCurrencyCard && !ShowMainCurrencyCard && !ShowWeatherLocationCard)
             {
                 <MudCard Elevation="1" Class="ods-outline">
                     <MudCardContent>

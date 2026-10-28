@@ -4,6 +4,7 @@
     look + focus ring with OdsField. Pass Options as OdsOption records.
     Two-way bindable via @bind-Value.
 *@
+@inject IJSRuntime Js
 
 <MudSelect T="string"
            Value="@Value"
@@ -21,6 +22,7 @@
            Disabled="@Disabled"
            MaxHeight="360"
            Class="@Class"
+           InputId="@_inputId"
            @attributes="UserAttributes">
     @foreach (var option in Options)
     {
@@ -64,8 +66,29 @@
 
     [Parameter] public string? Class { get; set; }
 
+    /// <summary>Accessible name for a label-less select (a settings row). Applied to the inner input,
+    /// as on <see cref="OdsCurrencySelect"/>, because MudSelect splats attributes onto its wrapper.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private readonly string _inputId = $"odc-select-{Guid.NewGuid():N}";
+
+    // The label applied to the inner input so far: re-applied whenever the parameter changes, not only on the
+    // first render, so a label that follows state never goes stale.
+    private string? _appliedAriaLabel;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (string.Equals(AriaLabel, _appliedAriaLabel, StringComparison.Ordinal)) return;
+        try
+        {
+            await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-label", AriaLabel);
+            _appliedAriaLabel = AriaLabel;
+        }
+        catch { /* JS unavailable (e.g. prerender / teardown) */ }
+    }
 
     /// <summary>The currently selected option (drives the trigger's leading glyph).</summary>
     private OdsOption? SelectedOption => Options.FirstOrDefault(o => o.Value == Value);

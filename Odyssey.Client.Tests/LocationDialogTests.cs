@@ -168,10 +168,14 @@ public class LocationDialogTests
     [Fact]
     public void Typing_again_takes_the_previous_results_out_of_reach()
     {
-        var (cut, _) = Render();
+        var (cut, api) = Render();
         Type(cut, "Storgata 1");
         cut.WaitForElement("li[role=option]", TimeSpan.FromSeconds(3));
 
+        // The new query never answers, so the assertion cannot race the 350 ms debounce: on a slow runner the
+        // second search used to complete and render its own option before the check ran.
+        api.Setup(a => a.SearchAsync(It.Is<LocationSearchRequest>(r => r.Query == "Storgata 12"), It.IsAny<CancellationToken>()))
+            .Returns(new TaskCompletionSource<ApiResult<LocationSearchResponse>>().Task);
         Type(cut, "Storgata 12");
 
         Assert.Empty(cut.FindAll("li[role=option]"));
@@ -198,8 +202,8 @@ public class LocationDialogTests
         cut.Find(".loc-search input[role=combobox]").KeyDown("ArrowDown");
 
         var optionId = cut.Find("li[role=option]").Id;
-        Assert.Contains(JsInterop.Invocations,
-            i => i.Identifier == "odsScrollIntoViewById" && Equals(i.Arguments[0], optionId));
+        cut.WaitForAssertion(() => Assert.Contains(JsInterop.Invocations,
+            i => i.Identifier == "odsScrollIntoViewById" && Equals(i.Arguments[0], optionId)), TimeSpan.FromSeconds(3));
     }
 
     [Fact]

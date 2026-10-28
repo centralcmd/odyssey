@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using Odyssey.Context;
 using Odyssey.Core.Journal;
+using Odyssey.Core.SystemSettings;
 using Odyssey.Dtos;
 
 namespace Odyssey.Api.SystemSettings;

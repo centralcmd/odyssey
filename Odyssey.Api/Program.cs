@@ -25,7 +25,9 @@ using Odyssey.Core.Email;
 using Odyssey.Core.DataExport;
 using Odyssey.Core.FileExport;
 using Odyssey.Core.Legal;
+using Odyssey.Core.SystemSettings;
 using Odyssey.Core.UserAdministration;
+using Odyssey.Core.Weather;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -312,6 +314,8 @@ builder.Services.AddAdminActionRateLimiter(builder.Configuration);
 builder.Services.AddProfileImageRateLimiter(builder.Configuration);
 // The geocoding search proxy's per-user and instance-wide limits (issue #350). Same composition rules.
 builder.Services.AddLocationSearchRateLimiter(builder.Configuration);
+// The weather read and Admin-action limits (issue #348). Same composition rules.
+builder.Services.AddWeatherRateLimiter(builder.Configuration);
 
 // The instance-wide half of the export concurrency control (issue #343 §5) — a singleton so every
 // request's ExportConcurrencyFilter instance (one per request, via [TypeFilter]) shares the same
@@ -414,16 +418,12 @@ builder.Services.AddSingleton<Odyssey.Api.SystemSettings.RequestCapCeilings>();
 // host environment; the protector is a singleton over IDataProtectionProvider; the durability check
 // reads KeyManagementOptions, which is fixed once the container is built. Everything that touches a
 // DbContext is scoped.
-builder.Services.AddSingleton<Odyssey.Api.SystemSettings.SecretSettingsRegistry>();
+// The registry, protector and reader are shared with Odyssey.Worker (AddSecretSettingsReading); the write
+// side below is the API's alone.
+builder.Services.AddSecretSettingsReading();
 builder.Services.AddSingleton<Odyssey.Api.SystemSettings.IKeyRingDurability,
     Odyssey.Api.SystemSettings.KeyRingDurability>();
-builder.Services.AddSingleton<Odyssey.Context.Secrets.ISecretProtector,
-    Odyssey.Context.Secrets.SecretProtector>();
 builder.Services.AddScoped<Odyssey.Api.SystemSettings.SecretSettingsService>();
-// The consumption seam. No consumers yet — each queued credential gets its own follow-up issue, which
-// decides its own fallback policy on Unreadable and its own config-retirement question.
-builder.Services.AddScoped<Odyssey.Context.Secrets.ISecretSettingsReader,
-    Odyssey.Api.SystemSettings.SecretSettingsReader>();
 
 builder.Services.AddScoped<ContractService>();
 builder.Services.AddScoped<ContractPartyService>();
@@ -501,6 +501,24 @@ builder.Services.AddTransient<Odyssey.Core.Journal.Geocoding.ILocationSearchSour
     new Odyssey.Core.Journal.Geocoding.OpenMeteoLocationSearch(sp.GetRequiredService<IHttpClientFactory>()
         .CreateClient(nameof(Odyssey.Core.Journal.Geocoding.OpenMeteoLocationSearch))));
 
+// Weather (issue #348). No feature toggle — gated by the weather.* claims, and nothing is fetched until an
+// Admin sets the MET contact. The fetch path is shared with Odyssey.Worker, which runs the schedule; the API
+// fetches only on demand and for the Admin refresh.
+builder.Services.AddWeatherFetching();
+builder.Services.AddScoped<Odyssey.Core.Weather.WeatherReadService>();
+builder.Services.AddScoped<Odyssey.Core.Weather.WeatherLocationService>();
+
+// The purge (N2): bulk ExecuteDelete on a real engine, tracked RemoveRange on the EF InMemory provider,
+// where ExecuteDelete throws.
+if (builder.Configuration.GetValue<bool>("UseInMemoryDatabase") || builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddScoped<Odyssey.Core.Weather.IWeatherHistoryPurger, Odyssey.Core.Weather.TrackedWeatherHistoryPurger>();
+}
+else
+{
+    builder.Services.AddScoped<Odyssey.Core.Weather.IWeatherHistoryPurger, Odyssey.Core.Weather.RelationalWeatherHistoryPurger>();
+}
+
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<DataExportService>();
 
@@ -577,7 +595,7 @@ builder.Services.AddHttpClient<IFileAnalysisProvider, ClaudeFileAnalysisProvider
 // user out; with credentials stored under it, it is also what stops them being lost. That volume is
 // therefore SECRET-BEARING — see docs/deployment.md for the backup and incident-response guidance.
 var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
-var dataProtection = builder.Services.AddDataProtection().SetApplicationName("Odyssey");
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName(Odyssey.Core.SystemSettings.DataProtectionKeyRing.ApplicationName);
 if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 {
     // A CONFIGURED but unwritable directory fails startup, deliberately. Data Protection's own

@@ -67,6 +67,19 @@ public sealed class DataExportExclusions
             "FileAnalysisJobs",
             "FileAnalysisCandidateTransactions",
             "FileAnalysisCandidateTags",
+            // Issue #348 §7.10 — weather. WeatherLocations (the Admin's settings) is exported; these are
+            // not. The sites are history — part of what a purge erases, with the history export a later
+            // item. The schedule and the chosen stations are scheduler state, looked up again from the
+            // position. The runs, steps, observations and day summaries are
+            // third-party provider data and its derivation, re-fetchable for the forecast horizon and
+            // unbounded in volume (≈ 0.8 M step rows per location-year).
+            "WeatherLocationSites",
+            "WeatherLocationSchedules",
+            "WeatherStations",
+            "WeatherForecastRuns",
+            "WeatherForecastSteps",
+            "WeatherObservations",
+            "WeatherDays",
         ];
 
     public IReadOnlyList<string> ExcludedFields { get; init; } = ["FileBlob.Content"];
@@ -79,8 +92,8 @@ public sealed class DataExportExclusions
     public IReadOnlyList<string> OutOfScopeDatabases { get; init; } =
         [
             "Application (Identity: users, roles, profiles, preferences, system settings)",
-            "Journal (journal entries, tasks, photos, albums, calendars, tags) — except Contacts and " +
-            "Locations, which are exported below under \"finance\" (Contacts for backward compatibility) even though the " +
+            "Journal (journal entries, tasks, photos, albums, calendars, tags) — except Contacts, " +
+            "Locations and WeatherLocations, which are exported below under \"finance\" (Contacts for backward compatibility) even though the " +
             "Contact entity itself now lives in Journal (issue #325 follow-up). Only the Contact " +
             "row itself is exported: its detail tables (PersonDetails, OrganizationDetails, " +
             "ContactAliases, Addresses, EmailAddresses, PhoneNumbers) are served by the vCard " +
@@ -154,6 +167,24 @@ public sealed class FinanceDatabaseExport
     // Admin-only (data.export) and Admin reads them live under locations.read. The attribution columns are
     // not exported, the same rule the read path follows.
     public IReadOnlyList<LocationExport> Locations { get; init; } = [];
+
+    // Issue #348 §7.10 — the per-location weather settings. Holds no coordinates (those live on the
+    // excluded site history) and, like Locations, no attribution columns.
+    public IReadOnlyList<WeatherLocationExport> WeatherLocations { get; init; } = [];
+}
+
+public sealed class WeatherLocationExport
+{
+    public Guid LocationId { get; init; }
+    public bool ForecastEnabled { get; init; }
+    public bool HistoryEnabled { get; init; }
+    public bool IsTracked { get; init; }
+    public DateOnly HistoryFrom { get; init; }
+    public DateTime EnabledAt { get; init; }
+    public int CurrentSiteVersion { get; init; }
+    public DateTime? PurgeStartedAt { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public DateTime UpdatedAt { get; init; }
 }
 
 public sealed class LocationExport

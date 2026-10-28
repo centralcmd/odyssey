@@ -154,6 +154,16 @@ public static class PermissionClaims
     public const string LocationsRead = "locations.read";
     public const string LocationsUpdate = "locations.update";
 
+    // Weather (issue #348). Reading weather and choosing one's own weather location are every role's;
+    // configuring which locations have weather, and purging a location's weather history, are Admin's
+    // alone. weather.history.delete is separate from weather.locations.update so the one destructive,
+    // erasure-shaped action can be revoked on its own.
+    public const string WeatherRead = "weather.read";
+    public const string WeatherPreferencesUpdate = "weather.preferences.update";
+    public const string WeatherLocationsRead = "weather.locations.read";
+    public const string WeatherLocationsUpdate = "weather.locations.update";
+    public const string WeatherHistoryDelete = "weather.history.delete";
+
     /// <summary>
     /// Read another user's profile picture (issue #94 §10.5). A deliberately <b>low-tier</b> claim,
     /// granted to <b>every</b> role including Guest, so its effective reach equals "any authenticated

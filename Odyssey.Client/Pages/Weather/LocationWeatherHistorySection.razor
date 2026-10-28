@@ -1,0 +1,128 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    LocationWeatherHistorySection — Weather history in a location's record, for every role
+    (issue #348; design system · Weather.jsx LocationWeatherHistorySection, components-weather.md).
+*@
+
+@if (Row is { PurgeInProgress: true })
+{
+    @* The place leaves the options list during a purge; for an Admin the Weather section's notice owns it. *@
+}
+else if (_bounds is { HasObservationStation: false })
+{
+    @* The server sends false only once Frost was asked and found none — never because nobody has asked. *@
+    <OdsRecordSection Class="@Cls" Label="Weather history" Empty="true"
+                      EmptyText="@Text(NoStationText)" />
+}
+else if (_bounds is { ObservationsConfigured: false } && !HistoryOff && (Latest is null || Earliest is null))
+{
+    @* Nothing stored and nothing can be fetched: say why rather than promise history that will never
+       arrive. History stored before the setting was cleared still shows. *@
+    <OdsRecordSection Class="@Cls" Label="Weather history" Empty="true" EmptyText="@NotConfiguredText" />
+}
+else if (_bounds is not null && (Latest is null || Earliest is null))
+{
+    <OdsRecordSection Class="@Cls" Label="Weather history" Empty="true"
+                      EmptyText="@Text(HistoryOff
+                          ? "Historical data is turned off for this place."
+                          : "No measured weather yet. Odyssey fetches it from MET Norway on its own — check back later.")" />
+}
+else
+{
+    <OdsRecordSection Class="@Cls" Label="Weather history" Meta="measured · UTC days"
+                      Notice="@(HistoryOff ? Text("Historical data is turned off for this place. This is what was measured until it was turned off; nothing new is added.") : null)"
+                      NoticeIconName="@(HistoryOff ? "history" : null)">
+        @* One card, as the contract-terms chart: the Measures picker heads it on the left and the window on the
+           right, where the terms card has its axis toggle. Loading and errors render inside it under the same
+           head, so the control in use is never unmounted while a window loads. *@
+        <div class="odc-lc wx-hist-card">
+            <div class="odc-lc-head wx-hist-head">
+                <div class="odc-lc-controls wx-hist-lead">
+                    <OdsMultiSelect Label="Measures" Icon="insights" Quiet="true" Align="OdsAlign.Start"
+                                    Values="_measures" ValuesChanged="PickMeasures" Options="MeasureOptions" />
+                    @* What the values are, behind an info button. A tap opens it too, and the same text describes the
+                       button for a screen reader, since the tooltip's popover is not linked to its trigger. *@
+                    <OdsTooltip Label="@About" Class="wx-hist-about" ShowOnClick="true">
+                        <OdsIconButton Icon="@Icons.Material.Outlined.Info" AriaLabel="About these values" Size="OdsSize.Sm"
+                                       aria-describedby="@AboutId" />
+                    </OdsTooltip>
+                    <span class="odc-sr-only" id="@AboutId">@About</span>
+                </div>
+                @if (_bounds is not null)
+                {
+                    <div class="odc-lc-controls end wx-hist-nav">
+                        <OdsIconButton Icon="@Icons.Material.Filled.ChevronLeft" AriaLabel="@($"Earlier {StepLabel}")" Disabled="AtStart" OnClick="Earlier" />
+                        <div class="odc-dpr wx-hist-range" role="group" aria-label="Dates shown">
+                            <OdsDatePicker AriaLabel="From" Value="_from.ToDateTime(TimeOnly.MinValue)" ValueChanged="PickFrom"
+                                           Min="FromMin" Max="FromMax" Full="false" />
+                            <span class="odc-dpr-dash" aria-hidden="true">–</span>
+                            <OdsDatePicker AriaLabel="To" Value="_to.ToDateTime(TimeOnly.MinValue)" ValueChanged="PickTo"
+                                           Min="ToMin" Max="ToMax" Align="OdsAlign.End" Full="false" />
+                        </div>
+                        <span class="odc-sr-only" aria-live="polite">@Period</span>
+                        <OdsIconButton Icon="@Icons.Material.Filled.ChevronRight" AriaLabel="@($"Later {StepLabel}")" Disabled="AtEnd" OnClick="Later" />
+                    </div>
+                }
+            </div>
+
+            @switch (_phase)
+            {
+                case Phase.RateLimited:
+                    @Box("hourglass_bottom", "Weather is resting for a moment", "Weather has been loaded many times in the last minute. Wait a moment, then try again.")
+                    break;
+                case Phase.Error:
+                    @Box("cloud_off", "Weather history couldn’t be loaded", "Something went wrong reaching Odyssey. The rest of this location is unaffected.")
+                    break;
+                case Phase.Loading:
+                    <OdsSkeleton Variant="OdsSkeletonVariant.Block" Class="wx-hist-skel" />
+                    break;
+                default:
+                    @if (Measured.Count == 0)
+                    {
+                        <OdsEmptyLine Pad="OdsSize.Lg">Nothing was measured between @WeatherVisuals.Date(_from) and @WeatherVisuals.Date(_to).@(AtStart ? "" : " Earlier days may have it.")</OdsEmptyLine>
+                        <div class="wx-hist-foot">@Attribution</div>
+                    }
+                    else
+                    {
+                        <dl class="wx-facts wx-hist-facts">
+                            @foreach (var fact in ShownFacts)
+                            {
+                                <div><dt><OdsMIcon Name="@fact.Icon" Size="13" />@fact.Label</dt><dd><b>@fact.Value</b>@(fact.Date is { } on ? $" on {ShortDate(on)}" : fact.After)</dd></div>
+                            }
+                        </dl>
+                        <WeatherHistoryChart Days="_response!.Days" From="_from" To="_to" LocationName="@Location.Name" Measures="_measures"
+                                             LegendEnd="Attribution" />
+                    }
+                    break;
+            }
+        </div>
+
+    </OdsRecordSection>
+}
+
+@code {
+    private const string Cls = "acct-section wx-section wx-hist";
+
+    // The attribution sits in the card, bottom right: at the end of the ledger row, or on its own line when nothing
+    // was measured. NLOD and CC BY require it to be visible, and it comes from the response, so it shows once one
+    // has arrived. What the values are is behind the info button in the card's head.
+    private RenderFragment Attribution => @<WeatherAttributionLine Attribution="_response?.Attribution" />;
+
+    private string AboutId => $"wx-hist-about-{Location.LocationId:N}";
+
+    private static RenderFragment Text(string text) => b => b.AddContent(0, text);
+
+    private RenderFragment NotConfiguredText => CanSetUp && CanOpenSettings
+        ? @<span>Historical weather service is not configured. See <a class="wx-link" href="/settings">system settings</a>.</span>
+        : Text("Historical weather service is not configured.");
+
+    private RenderFragment Box(string icon, string title, string text) => @<div class="wx-empty">
+        <span class="wx-empty-ic" aria-hidden="true"><OdsMIcon Name="@icon" Size="22" /></span>
+        <div class="wx-empty-text">
+            <div class="wx-empty-title">@title</div>
+            <div>@text</div>
+            <div class="wx-empty-act"><OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" OnClick="Retry">Try again</OdsButton></div>
+        </div>
+    </div>;
+}

@@ -1,0 +1,227 @@
+/* Weather — the dashboard card and the Admin pieces on the Locations page (issue #348; design system ·
+   ui_kits/web/weather.css). `wx-` is the design system's kit-local prefix: the pieces are shared by
+   several components here (the card, the section, three dialogs), which is why this is one stylesheet
+   rather than scoped CSS. Promote to `.odc-*` with the design system when calendar or journal weather
+   needs them. Tokens only; the design's odd sizes snap to the nearest step of each scale. */
+
+.wx-muted { color: var(--mud-palette-text-secondary); }
+.wx-attr { color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+/* A link inside a sentence (an empty line's way out): it takes the sentence's own size and weight, so it
+   reads as part of the text rather than a button (design system · weather.css). */
+.wx-link { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; }
+.wx-link:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: 2px; }
+.wx-attr a { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; }
+.wx-attr a:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
+
+.wx-glyph { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--brand-text); }
+.wx-glyph-ic { display: inline-flex; }
+.wx-glyph-label { color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+
+.wx-wind { display: inline-flex; align-items: center; gap: var(--space-1); }
+.wx-wind-arrow { display: inline-flex; color: var(--mud-palette-text-secondary); }
+.wx-wind abbr { text-decoration: none; }
+
+/* ---------- Card ---------- */
+.wx-card .odc-card-header { gap: var(--space-3); flex-wrap: wrap; }
+.wx-ttl { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; font: inherit; color: inherit; }
+.wx-ttl .material-icons { color: var(--brand-text); }
+.wx-ttl-loc { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); }
+.wx-picker { min-width: calc(var(--space-16) * 3 + var(--space-6)); }
+
+.wx-body { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.wx-now { display: flex; flex-wrap: wrap; gap: var(--space-5) var(--space-10); align-items: center; }
+.wx-now-main { display: flex; align-items: center; gap: var(--space-4); }
+.wx-now-glyph { display: inline-grid; place-items: center; width: calc(var(--space-16) + var(--space-2)); height: calc(var(--space-16) + var(--space-2)); border-radius: var(--radius-lg); background: color-mix(in oklab, var(--brand-text) 14%, transparent); color: var(--brand-text); }
+.wx-now-text { display: flex; flex-direction: column; gap: var(--space-1); }
+.wx-now-temp { font: var(--fw-light) var(--fs-h1)/1 var(--font-mono); letter-spacing: -0.02em; color: var(--mud-palette-text-primary); }
+.wx-now-label { font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-now-range { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+.wx-facts { flex: 1 1 calc(var(--space-16) * 5 + var(--space-10)); display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(var(--space-16) * 2 + var(--space-6)), 1fr)); gap: var(--space-3) var(--space-5); margin: 0; }
+.wx-facts > div { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.wx-facts dt { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.wx-facts dd { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.35 var(--font-sans); color: var(--mud-palette-text-primary); }
+
+.wx-days { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(calc(var(--space-16) + var(--space-8)), 1fr); gap: var(--space-2); overflow-x: auto; scrollbar-width: thin; }
+.wx-day { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-2); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); text-align: center; min-height: var(--space-12); }
+.wx-day:first-child { border-color: var(--focus-ring); }
+.wx-day-name { font: var(--fw-medium) var(--fs-caption)/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-day-temp { font: var(--fw-regular) var(--fs-body2)/1.2 var(--font-mono); }
+.wx-hi { color: var(--mud-palette-text-primary); }
+.wx-lo { color: var(--mud-palette-text-secondary); }
+.wx-day-precip { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--fw-regular) var(--fs-caption)/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-day-precip .material-icons { color: var(--brand-text); }
+.wx-day-precip.none .material-icons { color: var(--mud-palette-text-secondary); opacity: .6; }
+.wx-day-partial { font: var(--fw-regular) var(--fs-caption)/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); font-style: italic; }
+
+.wx-measured { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mud-palette-action-default-hover); font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-measured .material-icons { color: var(--mud-palette-text-secondary); }
+.wx-measured b { font-weight: var(--fw-medium); }
+
+.wx-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2) var(--space-4); font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-stale { display: inline-flex; align-items: flex-start; gap: var(--space-2); color: var(--mud-palette-text-primary); }
+.wx-stale .material-icons { color: var(--finance-pending); margin-top: 2px; flex: none; }
+
+.wx-pref-error { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-error); }
+
+.wx-empty { display: flex; gap: var(--space-4); align-items: flex-start; padding: var(--space-2) 2px; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.wx-empty-ic { flex: none; display: inline-grid; place-items: center; width: var(--space-10); height: var(--space-10); border-radius: var(--radius-md); background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-secondary); }
+.wx-empty-text { display: flex; flex-direction: column; gap: var(--space-1); max-width: 72ch; }
+.wx-empty-title { font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-empty-act { margin-top: var(--space-2); }
+
+.wx-skel { display: flex; flex-direction: column; gap: var(--space-4); }
+.wx-skel-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-2); }
+
+/* ---------- Locations — Admin ---------- */
+.wx-sec-empty { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.wx-fail { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--mud-palette-error); }
+
+.wx-form { display: flex; flex-direction: column; gap: var(--space-4); }
+.wx-lede { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); text-wrap: pretty; }
+/* The delete dialog moves focus to its explanation, and the settings dialog to its body, while they work; a
+   programmatic focus target needs no ring. */
+.wx-lede:focus, .wx-form:focus { outline: none; }
+.wx-effects { margin: calc(var(--space-2) * -1) 0 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+.wx-site { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); }
+.wx-site-title { font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.wx-site dl { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.wx-site dl > div { display: grid; grid-template-columns: calc(var(--space-16) + var(--space-5)) 1fr; gap: var(--space-2); align-items: baseline; }
+.wx-site dt { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-site dd { margin: 0; display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+.wx-site dl > div.changed dd { font-weight: var(--fw-medium); }
+.wx-site dd.mono { white-space: nowrap; font-family: var(--font-mono); }
+.wx-changed { font: var(--fw-medium) var(--fs-caption)/1 var(--font-sans); color: var(--pending-text); }
+.wx-site-foot { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+
+.wx-compare { display: flex; align-items: stretch; gap: var(--space-3); }
+.wx-compare-arrow { align-self: center; color: var(--mud-palette-text-secondary); flex: none; }
+
+.wx-disclose, .wx-note { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--mud-palette-action-default-hover); font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.wx-disclose .material-icons, .wx-note .material-icons { flex: none; margin-top: 1px; color: var(--brand-text); }
+
+.wx-toggle { display: flex; justify-content: space-between; gap: var(--space-4); align-items: flex-start; padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); }
+.wx-toggle.error { border-color: var(--mud-palette-error); }
+/* A setting that belongs to the one above it (Refresh on a schedule, under Forecast): inset so the
+   dependency reads without a heading (design system · weather.css). */
+.wx-toggle-sub { margin-left: 20px; }
+.wx-toggle-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.wx-toggle-label { font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-toggle-help { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.wx-toggle-error { display: flex; gap: var(--space-1); align-items: flex-start; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-error); }
+.wx-toggle-error .material-icons { margin-top: 2px; flex: none; }
+
+/* The Weather section uses the Accounts section rhythm; its notice sits flush with the tile grid. */
+.wx-section .odc-recordsection-notice { margin: 0; }
+
+@media (max-width: 640px) {
+    .wx-picker { min-width: 0; width: 100%; }
+    .wx-now { gap: var(--space-4); }
+    .wx-compare { flex-direction: column; }
+    .wx-compare-arrow { transform: rotate(90deg); }
+    .wx-skel-days { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* System settings → Weather: the household-default select sits inside an OdsSettingField frame, which
+   owns the outline — flatten the select's own, as the frame already does for its inputs (design system
+   · weather.css, `.odc-sfield-ctrl .odc-select-trigger`). */
+.odc-sfield-ctrl .mud-select .mud-input-outlined-border { border: 0 !important; }
+.odc-sfield-ctrl .mud-select .mud-input.mud-input-outlined { background: transparent; }
+.odc-sfield-ctrl .mud-select .mud-input-slot { padding-left: 0; padding-right: 0; }
+
+/* A failure's explanation travels with its label (WCAG 1.4.13: not a hover-only title). */
+.wx-fail { flex-wrap: wrap; }
+.wx-fail-help { color: var(--mud-palette-text-secondary); }
+
+/* The day strip is focusable because it scrolls; show where focus is. */
+.wx-days:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-md); }
+
+/* ---------- Weather history (location record) ----------
+   Design system · weather.css. The chart reuses LineChart's plot, axis and tooltip classes (.odc-lc-*)
+   and the contract-terms chart's ledger (.odc-sc-legend) so they read as one family; only the band,
+   the mean, the bars, the series and the gap rules are weather's own. The band is a fill and the mean a stroke, so the two are told apart by shape; the band's edges
+   carry a 1px --brand-text rule, which keeps low and high at 3:1 against the surface in both themes
+   where a --chart-1 fill alone would not. */
+/* One card, as the contract-terms chart (.odc-lc). Its head holds the Measures picker on the left and the
+   window on the right, where the terms card has its Change / Value toggle. The quiet trigger's padding and
+   border (12px + 1px) are pulled back on the left and the chevron button's inset on the right, so the icon
+   and the arrow — not their hover boxes — sit on the card's content edges with the facts below. */
+.wx-hist-card { display: flex; flex-direction: column; }
+.wx-hist-card > .wx-hist-head { align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: -8px -8px 10px -13px; }
+.wx-hist-card > .wx-hist-head .odc-lc-controls { margin-bottom: 0; }
+.wx-hist-nav { display: inline-flex; align-items: center; gap: var(--space-1); }
+.wx-hist-card .wx-hist-facts { margin-bottom: 18px; }
+/* The facts sit centred over the plot: each figure is centred in its column, so the row reads as one
+   balanced line above the chart. */
+.wx-hist-card .wx-hist-facts > div { align-items: center; text-align: center; }
+/* The picker and the info button about the values, side by side. */
+.wx-hist-lead { display: inline-flex; align-items: center; gap: 2px; }
+/* The attribution closes the ledger row on the right, or stands alone at the card's bottom right when nothing
+   was measured. The ledger keeps its left inset but drops the right one, so the attribution ends on the card's
+   content edge; on a narrow card it wraps rather than running out of it. */
+.wx-hist-attr { margin-left: auto; text-align: right; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-hist-foot { display: flex; justify-content: flex-end; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-hist-chart .odc-sc-legend { padding-right: 0; }
+.wx-hist-attr .wx-attr, .wx-hist-foot .wx-attr { white-space: normal; }
+/* The about tooltip is a paragraph, not a label: it wraps at about 34ch and reads left-aligned. */
+.mud-tooltip.wx-hist-about { max-width: 36ch; text-align: left; white-space: pre-line; font-weight: var(--fw-regular); }
+.wx-hist-facts { flex: none; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.wx-hist-facts dd b { font-weight: var(--fw-medium); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.wx-hist-band { fill: var(--chart-1); fill-opacity: 0.22; stroke: var(--brand-text); stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.wx-hist-mean { fill: none; stroke: var(--brand-text); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.wx-hist-dot { fill: var(--brand-text); }
+/* Precipitation bars and the wind lines take their hue from the measure registry (WeatherMeasures,
+   inline). A line is 2.4px; gusts are the thinner line with a dot per day, so the two m/s measures
+   differ by shape as well as hue. */
+.wx-hist-series { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.wx-hist-series.thin { stroke-width: 1.4; }
+.wx-hist-bar-mark { shape-rendering: crispEdges; }
+/* A day nobody measured, when bars are drawn: a missing bar would otherwise read as a dry day. */
+.wx-hist-nodata { fill: var(--mud-palette-action-default-hover); stroke: var(--chart-grid); stroke-width: 1; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.wx-hist-chart { display: flex; flex-direction: column; }
+/* The ledger is the contract-terms chart's (.odc-sc-legend, its own inset); the gap key is a swatch too —
+   shaded where bars are drawn, a dashed outline where lines break. */
+.wx-hist-gapkey { background: transparent; border: 1px dashed var(--mud-palette-text-secondary); box-sizing: border-box; }
+.wx-hist-gapkey.shaded { background: var(--mud-palette-action-default-hover); border-color: var(--chart-grid); }
+.wx-hist-hcol { fill: var(--mud-palette-action-default-hover); pointer-events: none; }
+.wx-hist-tip-v { display: flex; gap: 10px; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.wx-hist-tip-v b { font-weight: var(--fw-medium); color: var(--mud-palette-text-primary); }
+.wx-hist-tip-gap { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); max-width: 26ch; white-space: normal; }
+.wx-hist-skel { display: block; height: 300px; }
+
+/* The period is the two ends of the window in DateRangePicker's layout (.odc-dpr), each an
+   OdsDatePicker: either one opens a calendar and makes the window a custom range. No clear button —
+   the window always has two ends. The pill's outline is dropped so the dates read as the period
+   between the arrows; each input keeps a hover fill and its own focus ring. */
+.wx-hist-range.odc-dpr, .wx-hist-range.odc-dpr:focus-within { border-color: transparent; background: transparent; box-shadow: none; padding: 0; gap: var(--space-1); }
+/* MudBlazor's input rules out-rank a two-class selector, so these name the input chain in full; the
+   picker shrinks to its date instead of taking MudBlazor's fixed field width. */
+.wx-hist-range.odc-dpr .mud-picker,
+.wx-hist-range.odc-dpr .mud-input-control,
+.wx-hist-range.odc-dpr .mud-input.mud-input-outlined { width: auto; flex: none; }
+.wx-hist-range.odc-dpr .mud-input.mud-input-outlined > input.mud-input-slot { width: 11ch; padding: 0 var(--space-1); font: var(--fw-regular) var(--fs-body2)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
+.wx-hist-range .mud-input { border-radius: var(--radius-sm); padding: 0 var(--space-1); }
+.wx-hist-range .mud-input:hover { background: var(--mud-palette-action-default-hover); }
+.wx-hist-range .mud-input:focus-within { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 1px; }
+
+@media (max-width: 640px) {
+    /* The card nests in the record section: its padding steps down so the plot keeps its width, and the
+       window takes a row of its own under the picker, arrows at the two edges. No wrap: in a wrapping column,
+       items stretch to the widest line rather than to the card. */
+    .wx-hist-card.odc-lc { padding: 14px 12px; }
+    .wx-hist-card > .wx-hist-head { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+    .wx-hist-card > .wx-hist-head .odc-lc-controls { align-self: flex-start; }
+    .wx-hist-card > .wx-hist-head .wx-hist-nav { align-self: stretch; justify-content: space-between; margin-left: 5px; }
+    /* Two dates have to fit between the arrows: they drop their calendar glyph (the input's hover fill and
+       focus ring still mark them as controls). */
+    .wx-hist-range { flex: 1 1 auto; justify-content: center; min-width: 0; }
+    .wx-hist-range .mud-input-adornment { display: none; }
+    /* A record card on a phone leaves about 260px: the dates drop to label size and the arrows to 32px so
+       the row holds both ends between them without overflowing. */
+    .wx-hist-range.odc-dpr { gap: 2px; }
+    .wx-hist-range.odc-dpr .mud-input.mud-input-outlined > input.mud-input-slot { width: 10ch; padding: 0 2px; font-size: var(--fs-label); }
+    .wx-hist-range.odc-dpr .mud-input.mud-input-outlined { padding: 0; }
+    .wx-hist-nav .mud-icon-button { width: 32px; height: 32px; padding: 4px; }
+}

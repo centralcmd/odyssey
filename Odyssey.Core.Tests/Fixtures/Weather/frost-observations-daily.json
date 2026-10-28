@@ -1,0 +1,42 @@
+{
+  "@context": "https://frost.met.no/schema",
+  "@type": "ObservationResponse",
+  "apiVersion": "v0",
+  "license": "https://creativecommons.org/licenses/by/3.0/no/",
+  "createdAt": "2026-10-23T08:02:00Z",
+  "currentItemCount": 3,
+  "itemsPerPage": 3,
+  "offset": 0,
+  "totalItemCount": 3,
+  "currentLink": "https://frost.met.no/observations/v0.jsonld",
+  "data": [
+    {
+      "sourceId": "SN18700:0",
+      "referenceTime": "2026-10-21T00:00:00.000Z",
+      "observations": [
+        { "elementId": "mean(air_temperature P1D)", "value": 6.8, "unit": "degC", "timeOffset": "PT0H" },
+        { "elementId": "min(air_temperature P1D)", "value": 3.6, "unit": "degC", "timeOffset": "PT0H" },
+        { "elementId": "max(air_temperature P1D)", "value": 10.1, "unit": "degC", "timeOffset": "PT0H" },
+        { "elementId": "mean(wind_speed P1D)", "value": 4.9, "unit": "m/s", "timeOffset": "PT0H" },
+        { "elementId": "max(wind_speed_of_gust P1D)", "value": 15.2, "unit": "m/s", "timeOffset": "PT0H" },
+        { "elementId": "sum(precipitation_amount P1D)", "value": 1.0, "unit": "mm", "timeOffset": "PT0H" },
+        { "elementId": "sum(precipitation_amount P1D)", "value": 7.4, "unit": "mm", "timeOffset": "PT6H" }
+      ]
+    },
+    {
+      "sourceId": "SN18700:0",
+      "referenceTime": "2026-10-22T00:00:00.000Z",
+      "observations": [
+        { "elementId": "mean(air_temperature P1D)", "value": 5.2, "unit": "degC", "timeOffset": "PT0H" },
+        { "elementId": "min(air_temperature P1D)", "value": 999, "unit": "degC", "timeOffset": "PT0H" }
+      ]
+    },
+    {
+      "sourceId": "SN18700:0",
+      "referenceTime": "not-a-date",
+      "observations": [
+        { "elementId": "mean(air_temperature P1D)", "value": 1.0, "unit": "degC", "timeOffset": "PT0H" }
+      ]
+    }
+  ]
+}

@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITaskApiClient, TaskApiClient>();
         services.AddScoped<ICalendarApiClient, CalendarApiClient>();
         services.AddScoped<ILocationsApiClient, LocationsApiClient>();
+        services.AddScoped<IWeatherApiClient, WeatherApiClient>();
         services.AddScoped<IContactVCardApiClient, ContactVCardApiClient>();
         services.AddScoped<IPhotosApiClient, PhotosApiClient>();
         services.AddScoped<IPhotoTagsApiClient, PhotoTagsApiClient>();

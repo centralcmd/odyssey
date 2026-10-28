@@ -69,6 +69,22 @@ public class UserPreferencesApiTests
     }
 
     [Fact]
+    public async Task UpsertPreference_WeatherKey_ReturnsBadRequestProblem()
+    {
+        await using var factory = new ApiFactory(TestAuthHandler.SchemeName, TestAuthHandler.ConfigureScheme);
+        using var client = factory.CreateClient();
+
+        await CreateTestUserAsync(factory);
+
+        // The weather location is validated by PUT /api/weather/preferences; this path would bypass that.
+        var response = await client.PutAsJsonAsync(
+            "/api/user-preferences/weather-preferences", new UserPreferenceRequest { PreferencesJson = "{\"defaultLocationId\":null}" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
     public async Task UpsertPreference_EmptyPreferencesJson_ReturnsBadRequestProblem()
     {
         await using var factory = new ApiFactory(TestAuthHandler.SchemeName, TestAuthHandler.ConfigureScheme);

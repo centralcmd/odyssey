@@ -204,12 +204,13 @@ public class ContractSignatureSurfaceTests
         dialog.FindAll("input[type=text]")[0].Input("Fibre broadband — renewed");
         ClickFooter(dialog, "Save changes");
 
-        client.Verify(
+        // The save handler awaits before it calls the client, so wait for the call rather than racing it.
+        dialog.WaitForAssertion(() => client.Verify(
             c => c.UpdateAsync(
                 contract.ContractId,
                 It.Is<UpdateContract>(u => u.Ready == ready && u.Signed == signed),
                 It.IsAny<CancellationToken>()),
-            Times.Once);
+            Times.Once), TimeSpan.FromSeconds(3));
     }
 
     /// <summary>

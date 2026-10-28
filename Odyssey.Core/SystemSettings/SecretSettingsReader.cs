@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Odyssey.Context;
+using Microsoft.Extensions.Logging;
 using Odyssey.Context.Secrets;
+using Odyssey.Context;
 
-namespace Odyssey.Api.SystemSettings;
+namespace Odyssey.Core.SystemSettings;
 
 /// <summary>
 /// The consumption-side reader (issue #444 §5). Lives here rather than beside its interface because
@@ -16,7 +17,7 @@ namespace Odyssey.Api.SystemSettings;
 /// noise — and a rotated credential must bind on the next use rather than after a TTL.
 /// </para>
 /// </summary>
-internal sealed class SecretSettingsReader(
+public sealed class SecretSettingsReader(
     OdysseyContext context,
     ISecretProtector protector,
     SecretSettingsRegistry registry,

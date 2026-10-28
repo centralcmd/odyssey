@@ -21,6 +21,7 @@ dotnet test Odyssey.sln --no-build
 dotnet test Odyssey.Core.Tests               # unit / service
 dotnet test Odyssey.Api.Tests                # API integration (shared OdysseyApiFactory)
 dotnet test Odyssey.MigrationService.Tests   # demo seeder
+dotnet test Odyssey.Worker.Tests             # background-job host
 
 # Real-engine integration (Testcontainers; needs Docker, else skips):
 dotnet test Odyssey.IntegrationTests
@@ -94,6 +95,8 @@ client are HTTP and need no certificate. Procedure in
 - `Odyssey.ApiClient` — the typed HTTP client for `Odyssey.Api`, shared by any .NET consumer.
 - `Odyssey.AppHost` — .NET Aspire orchestrator for local dev.
 - `Odyssey.MigrationService` — EF Core migration runner that executes before the API starts.
+- `Odyssey.Worker` — the background-job host (a .NET Worker Service, its own container). See
+  **Background jobs** below.
 
 **`Odyssey.ApiClient` must stay free of web/UI dependencies.** It is a plain `Microsoft.NET.Sdk`
 library so consumers other than the Blazor app can use it (`Odyssey.E2ETests.Api` already does).
@@ -132,7 +135,10 @@ Account-level services sit in their own folders beside these (`UserAdministratio
 Where one needs something only the host can provide — mail delivery, the send throttle, the
 pseudonymization key, display-name resolution — the **interface** lives in Core (`Email/`, `Identity/`,
 `Legal/`) and the implementation stays in `Odyssey.Api`. `Odyssey.Api` keeps controllers (all under
-`Controllers/`), middleware and those implementations; a new business service goes in Core.
+`Controllers/`), middleware and those implementations; a new business service goes in Core. Two folders hold
+what both hosts (`Odyssey.Api` and `Odyssey.Worker`) need: `Jobs/` (the `IPeriodicJob` contract) and
+`SystemSettings/` (`IntSettingResolver`, the weather settings lookup and the secret registry and reader),
+moved out of `Odyssey.Api` by issue #348 because a second host cannot reference a web project.
 
 The root, `Configuration/` and `Pagination/` are the former `Odyssey.Shared` project, merged in for the
 same reason: its only three consumers were `Odyssey.Api`, `Odyssey.MigrationService` and the two service
@@ -569,6 +575,28 @@ is gone, and with it the one `__EFMigrationsHistory` table shared between two co
 
 **Data flow:** Controllers → domain services (e.g., `AccountService`, `TransactionService`) → EF Core DbContexts → MariaDB. DTOs map between layers using Mapster.
 
+**Background jobs run in `Odyssey.Worker`, never in the API.** The worker is a host and nothing more: a
+job is an `Odyssey.Core.Jobs.IPeriodicJob`, written and tested in `Odyssey.Core` like any other business
+service, and registered with one `services.AddPeriodicJob<TJob>()` line in `Odyssey.Worker/WorkerHost.cs`.
+`PeriodicJobService` owns the loop — first run at once, one run per interval, a failed run logged and the
+next one going ahead, runs never overlapping. Four rules:
+
+- **Every replica runs every job.** A job that must not run twice at once coordinates through the rows it
+  works on (a lease, a concurrency token — `WeatherScheduleJob`'s claim on `WeatherLocationSchedule.Version`
+  is the working pattern), never through process state. That is also why the worker has no in-memory
+  database mode: a private, empty copy would coordinate with nothing.
+- **Share a dependency, don't copy it.** When a job needs something the API already has, move it into
+  `Odyssey.Core` behind one registration both hosts call (`AddWeatherFetching`, `AddSecretSettingsReading`).
+  `WorkerHostTests` builds the production graph with `ValidateOnBuild`, so a missing registration fails a
+  test rather than the container.
+- **The worker reads the API's Data Protection key ring, read-only** (a product decision for issue #348):
+  the keys volume is mounted `:ro` and automatic key generation is off, so the API stays the only key
+  writer. Holding the ring means the worker can decrypt every stored credential — see
+  `docs/deployment.md` → *Two containers hold the key ring*. The migrations job still holds none.
+- **Settings reach the worker within the cache TTL, not instantly.** A `/settings` save evicts the API's
+  `IMemoryCache`, not the worker's, so a changed value applies to jobs on the next read after the 30 s TTL.
+  A setting that must bind on the very next job run is read uncached, as `FileAnalysisEnabled` is.
+
 ## Key Details
 
 **`ExecuteDeleteAsync`/`ExecuteUpdateAsync` throw on the EF InMemory provider.** They live in
@@ -717,7 +745,8 @@ Two rules that are easy to get backwards:
   unparseable value or a failed query is degraded, and those resolve to `min(last-known-good, default)`
   with the watermark carrying the same TTL as the values (a watermark older than the TTL is "last known",
   not "last known good"). Every lookup resolves its int settings through one `IntSettingResolver`
-  (`Odyssey.Api/SystemSettings/`, issue #287) — never a private parse/clamp copy. Because the watermark
+  (`Odyssey.Core/SystemSettings/`, issue #287; moved out of `Odyssey.Api` so `Odyssey.Worker` shares
+  it) — never a private parse/clamp copy. Because the watermark
   and the resolved value expire together, the watermark only covers the window after an explicit
   eviction (a save); a fault on the first read after a natural expiry resolves to the cold value. That is
   the accepted price of the TTL rule — lengthen the watermark's TTL only as a deliberate change to it.
@@ -725,7 +754,9 @@ Two rules that are easy to get backwards:
 **Adding a *secret* setting is a different recipe, and the seed/default steps do NOT apply**
 (issue #444). A secret-valued setting — a credential, an API key, an HMAC key — lives in the
 `SystemSettingSecrets` table on `OdysseyContext`, encrypted with ASP.NET Core Data Protection, and
-is declared in `SecretSettingsRegistry` (`Odyssey.Api/SystemSettings/`). That registry deliberately
+is declared in `SecretSettingsRegistry` (`Odyssey.Core/SystemSettings/`, beside its reader, so every host
+that consumes a secret shares the environment filter; the write side stays in `Odyssey.Api/SystemSettings/`).
+That registry deliberately
 **does not share a base type** with `SystemSettingsRegistry`: `SystemSettingDescriptor` carries
 `Format` (whose output the audit loop writes verbatim), `Project` (which writes onto the response DTO)
 and `AuditChanges` (*derived* from the claim), so a secret subclass carrying the security claim would
@@ -946,7 +977,7 @@ that same blind spot today and the same property would close it.
 
 | | Where | What |
 |---|---|---|
-| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 101 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
+| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 106 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
 | The **role mapping** | `Odyssey.Context/Authorization/RolePermissions.cs` | `AllClaims`, `AdminClaims`/`OwnerClaims`/`UserClaims`/`GuestClaims`, and the per-module arrays. Server-only, so the browser never ships the role-to-claim mapping. |
 
 **Adding a claim:** add the constant to `PermissionClaims`, then add it to `RolePermissions.AllClaims`
@@ -984,6 +1015,7 @@ Full plan and rationale: `docs/test-environment-and-e2e-spec.md`.
 | `Odyssey.Core.Tests` | Unit / service | nothing (EF InMemory) |
 | `Odyssey.Api.Tests` | API integration via `WebApplicationFactory` + the shared `OdysseyApiFactory`/`TestAuthHandler` fixture in `Infrastructure/` | nothing (EF InMemory) |
 | `Odyssey.MigrationService.Tests` | The demo seeder | nothing (EF InMemory) |
+| `Odyssey.Worker.Tests` | The worker host — the job loop, its production service graph, its read-only key ring | nothing |
 | `Odyssey.ApiClient.Tests` | The shared API client — transport core, `PagedQuery`, typed clients (HttpMessageHandler stubs) | nothing |
 | `Odyssey.IntegrationTests` | Real-engine checks InMemory can't do — actual migrations, FK cascade, decimal/datetime fidelity | **Docker** (Testcontainers-MariaDB); self-skips otherwise |
 | `Odyssey.E2ETests` | Playwright browser smoke (login → seeded data) | a **running, seeded stack**; self-skips otherwise (see its README) |
@@ -1165,6 +1197,7 @@ reviewer had to guess whether a `_field` in a new component was a defect or the 
 |---|---|
 | New API endpoint | `Odyssey.Api/Controllers/` |
 | Business logic | `Odyssey.Core/Finance/` or `Odyssey.Core/Journal/` |
+| Background job | an `IPeriodicJob` in `Odyssey.Core/`, then one line in `Odyssey.Worker/WorkerHost.cs` |
 | DB schema / entity | `Odyssey.Context/` then add a migration |
 | Frontend page/component | `Odyssey.Client/Pages/` or `Odyssey.Client/Components/` |
 | Shared DTOs | `Odyssey.Dtos/<Module>/` |
@@ -1194,7 +1227,10 @@ Claude is integrated into this repo via the [claude-code-action](https://github.
 
 **Limitations:**
 - Claude cannot approve PRs or merge branches
-- Claude cannot modify files under `.github/workflows/`
+- Claude may modify files under `.github/workflows/` when a change needs it (the maintainer's decision,
+  October 2026) — for example adding a `publish-images.yml` matrix leg for a new image. Treat a workflow
+  edit like any other: in the diff, in the commit body, and never as a way to widen the tool allow-lists
+  below without saying so.
 - Each invocation is a fresh context — reference prior issues or PRs explicitly if relevant
 
 **A precedent a design cites must be verified in the live tree, not recalled.** Issue #167 was

@@ -1,10 +1,10 @@
-using Odyssey.Api;
+using Odyssey.Core.Configuration;
 using Xunit;
 
-namespace Odyssey.Api.Tests;
+namespace Odyssey.Core.Tests;
 
 /// <summary>
-/// The time-zone database startup guard (issue #350 §11). Like <see cref="GlobalizationGuardTests"/>, the
+/// The time-zone database startup guard (issue #350 §11). Like <c>GlobalizationGuardTests</c>, the
 /// failure it catches — an alpine image without tzdata — cannot be reproduced in-process, so the
 /// measurement is pinned in the healthy direction and the refusal is asserted through the injected check.
 /// </summary>

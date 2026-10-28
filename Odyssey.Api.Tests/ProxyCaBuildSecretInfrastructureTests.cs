@@ -50,6 +50,7 @@ public class ProxyCaBuildSecretInfrastructureTests
         "Odyssey.Api/Dockerfile",
         "Odyssey.Client/Dockerfile",
         "Odyssey.MigrationService/Dockerfile",
+        "Odyssey.Worker/Dockerfile",
     ];
 
     /// <summary>
@@ -80,16 +81,18 @@ public class ProxyCaBuildSecretInfrastructureTests
     }
 
     /// <summary>
-    /// The API's runtime stage installs ICU over the network too, so it needs the same guard — and it
-    /// is the one <c>RUN</c> in the set whose layers actually ship.
+    /// The runtime stages that install packages over the network — the API's (ICU, tzdata) and the
+    /// worker's (tzdata) — need the same guard, and theirs are the <c>RUN</c>s whose layers actually ship.
     /// </summary>
-    [Fact]
-    public void TheApiRuntimeStage_GuardsItsPackageInstallTheSameWay()
+    [Theory]
+    [InlineData("Odyssey.Api/Dockerfile", "apk add --no-cache icu-libs")]
+    [InlineData("Odyssey.Worker/Dockerfile", "apk add --no-cache tzdata")]
+    public void TheRuntimeStage_GuardsItsPackageInstallTheSameWay(string dockerfile, string install)
     {
-        var text = RepositoryRoot.ReadAllText("Odyssey.Api/Dockerfile");
+        var text = RepositoryRoot.ReadAllText(dockerfile);
 
-        var apk = text.IndexOf("apk add --no-cache icu-libs", StringComparison.Ordinal);
-        Assert.True(apk >= 0, "The API image no longer installs ICU.");
+        var apk = text.IndexOf(install, StringComparison.Ordinal);
+        Assert.True(apk >= 0, $"{dockerfile} no longer runs `{install}`.");
 
         // The LAST guard before the apk line is the runtime stage's own; the build stage's guard sits
         // far above it, so a plain Contains() would pass even if this stage had none.
@@ -101,7 +104,7 @@ public class ProxyCaBuildSecretInfrastructureTests
         // And it belongs to the FINAL stage rather than an earlier one. Anchoring on the last FROM is
         // what makes that precise: there is no FROM after the runtime stage to search forward to.
         var finalStage = text.LastIndexOf("\nFROM ", StringComparison.Ordinal);
-        Assert.True(finalStage >= 0, "The API Dockerfile is no longer multi-stage.");
+        Assert.True(finalStage >= 0, $"{dockerfile} is no longer multi-stage.");
         Assert.True(
             guard > finalStage,
             "The guard nearest the apk install belongs to an earlier stage, not the runtime stage.");
@@ -150,7 +153,7 @@ public class ProxyCaBuildSecretInfrastructureTests
         var overrideFile = RepositoryRoot.ReadAllText("docker-compose.ca.yml");
         var baseFile = RepositoryRoot.ReadAllText("docker-compose.yml");
 
-        foreach (var service in new[] { "migrations", "api", "client" })
+        foreach (var service in new[] { "migrations", "api", "client", "worker" })
         {
             Assert.Contains($"\n  {service}:", baseFile, StringComparison.Ordinal);
             Assert.Contains($"\n  {service}:", overrideFile, StringComparison.Ordinal);
@@ -158,7 +161,7 @@ public class ProxyCaBuildSecretInfrastructureTests
 
         // Declared as a BUILD secret, not a runtime one: a runtime `secrets:` on the service would
         // mount the CA into the running container and never reach the build at all.
-        Assert.Equal(3, Occurrences(overrideFile, $"      secrets:\n        - {SecretId}"));
+        Assert.Equal(4, Occurrences(overrideFile, $"      secrets:\n        - {SecretId}"));
         Assert.Contains($"\n  {SecretId}:\n    file: ", overrideFile, StringComparison.Ordinal);
     }
 

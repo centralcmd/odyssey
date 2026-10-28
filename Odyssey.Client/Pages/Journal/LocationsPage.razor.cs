@@ -5,6 +5,7 @@ using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
+using Odyssey.Client.Pages.Weather;
 using Odyssey.Client.Services;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -19,6 +20,8 @@ public partial class LocationsPage
     [Inject] private IClipboardService Clipboard { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
     [Inject] private IPageStateService PageState { get; set; } = default!;
+    [Inject] private IWeatherApiClient Weather { get; set; } = default!;
+    [Inject] private ISystemSettingsApiClient SystemSettings { get; set; } = default!;
 
     // ── Data ────────────────────────────────────────────────────────────────
     private List<ExistingLocation> _locations = [];
@@ -70,6 +73,11 @@ public partial class LocationsPage
     // ── Permissions ────────────────────────────────────────────────────────────
     private bool _canCreate;
     private bool _canUpdate;
+    private bool _canReadWeather;
+    private bool _canUpdateWeather;
+    private bool _canPurgeWeather;
+    private bool _canReadWeatherData;
+    private bool _canOpenSettings;
 
     // ── Dialogs ──────────────────────────────────────────────────────────────────
     private Guid _createKey = Guid.Empty;
@@ -114,9 +122,17 @@ public partial class LocationsPage
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canCreate = user.HasPermission(PermissionClaims.LocationsCreate);
         _canUpdate = user.HasPermission(PermissionClaims.LocationsUpdate);
+        // Weather on this page is Admin-only (issue #348): without weather.locations.read it shows nothing.
+        _canReadWeather = user.HasPermission(PermissionClaims.WeatherLocationsRead);
+        _canUpdateWeather = _canReadWeather && user.HasPermission(PermissionClaims.WeatherLocationsUpdate);
+        _canPurgeWeather = _canReadWeather && user.HasPermission(PermissionClaims.WeatherHistoryDelete);
+        _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
+        // Weather history is weather data, not setup: it follows weather.read, which every role holds.
+        _canReadWeatherData = user.HasPermission(PermissionClaims.WeatherRead);
+        _canOpenSettings = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
 
         await RestorePageStateAsync();
-        await Task.WhenAll(LoadLocations(), LoadCounts());
+        await Task.WhenAll(LoadLocations(), LoadCounts(), LoadWeatherAsync(), LoadWeatherOptionsAsync());
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────
@@ -238,7 +254,8 @@ public partial class LocationsPage
         edit: EventCallback.Factory.Create(this, () => EditClicked(l)),
         copyCoordinates: EventCallback.Factory.Create(this, () => CopyAsync(LocationVisuals.FormatPair(l.Latitude, l.Longitude), "Coordinates copied.")),
         copyId: EventCallback.Factory.Create(this, () => CopyAsync(l.LocationId.ToString(), "ID copied.")),
-        toggleArchive: EventCallback.Factory.Create(this, () => SetArchived(l, l.Archived is null)));
+        toggleArchive: EventCallback.Factory.Create(this, () => SetArchived(l, l.Archived is null)),
+        weather: ShowWeather ? WeatherActions(l) : null);
 
     /// <summary>
     /// The row menu: Edit and Archive / Restore need <c>locations.update</c> and are ABSENT without it;
@@ -246,7 +263,7 @@ public partial class LocationsPage
     /// </summary>
     internal static IReadOnlyList<OdsMenuItem> BuildRowActions(
         ExistingLocation l, bool canUpdate, EventCallback edit, EventCallback copyCoordinates, EventCallback copyId,
-        EventCallback toggleArchive)
+        EventCallback toggleArchive, IReadOnlyList<OdsMenuItem>? weather = null)
     {
         var items = new List<OdsMenuItem>();
         if (canUpdate)
@@ -254,6 +271,13 @@ public partial class LocationsPage
 
         items.Add(new OdsMenuItem { Icon = "my_location", Label = "Copy coordinates", TrailingIcon = "content_copy", OnClick = copyCoordinates });
         items.Add(new OdsMenuItem { Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy", OnClick = copyId });
+
+        // The weather items sit after Copy ID and before Archive (issue #348).
+        if (weather is { Count: > 0 })
+        {
+            items.Add(new OdsMenuItem { Divider = true });
+            items.AddRange(weather);
+        }
 
         if (canUpdate)
         {
@@ -308,6 +332,9 @@ public partial class LocationsPage
     private async Task OnLocationSaved(ExistingLocation saved)
     {
         Snackbar.Add($"{saved.Name} saved.", Severity.Success);
+        // The weather chip and notice derive "moved" from the live location, so they follow the edit as-is;
+        // the rows are re-read for the server's own view.
+        _ = LoadWeatherAsync();
         var index = _locations.FindIndex(l => l.LocationId == saved.LocationId);
         if (index >= 0)
             _locations[index] = saved;
@@ -385,6 +412,253 @@ public partial class LocationsPage
             builder.CloseComponent();
         }
         : OdsInfoTile.Caption("no third-party data")!;
+
+    // ── Weather (issue #348, Admin only) ────────────────────────────────────────────────────────────
+
+    private bool _canReadSettings;
+    private Dictionary<Guid, ExistingWeatherLocation> _weatherRows = [];
+    private bool _weatherLoaded;
+    private readonly HashSet<Guid> _refreshing = [];
+
+    /// <summary>Weather shows only once its rows are known — never a guess from an empty list.</summary>
+    private bool ShowWeather => _canReadWeather && _weatherLoaded;
+    private int? _weatherCap;
+    private Guid _wxKey;
+    private ExistingLocation? _wxSettingsLocation;
+    private bool _wxSettingsOpen;
+    private ExistingLocation? _wxApplyLocation;
+    private bool _wxApplyOpen;
+    private ExistingLocation? _wxPurgeLocation;
+    private bool _wxPurgeOpen;
+
+    private ExistingWeatherLocation? WeatherRow(ExistingLocation l) => _weatherRows.GetValueOrDefault(l.LocationId);
+
+    // ── Weather history (every role) ────────────────────────────────────────────────────────────
+
+    /// <summary>The places with historical data on (<c>historyLocations</c> of <c>GET /api/weather/locations/options</c>).</summary>
+    private HashSet<Guid> _historyPlaces = [];
+
+    /// <summary>Bumped when measured data is deleted, so an open Weather history section reloads.</summary>
+    private int _historyEpoch;
+
+    /// <summary>
+    /// On a place with historical data on — the same list for every role, separate from the dashboard picker's,
+    /// since a place can have history without a forecast — and, for an Admin, on any place with a weather row
+    /// (design system · Locations.jsx).
+    /// </summary>
+    private bool ShowHistory(ExistingLocation l) =>
+        _canReadWeatherData
+        && (_historyPlaces.Contains(l.LocationId) || ShowWeather && WeatherRow(l) is { PurgeInProgress: false });
+
+    private async Task LoadWeatherOptionsAsync()
+    {
+        if (!_canReadWeatherData)
+            return;
+
+        // A failed read leaves the set as it was: the section is extra, and an Admin still reaches it by the row.
+        if ((await Weather.OptionsAsync()).Value is { } options)
+        {
+            _historyPlaces = [.. options.HistoryLocations.Select(o => o.LocationId)];
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Places on a schedule — what the cap counts.</summary>
+    private int TrackedCount => _weatherRows.Values.Count(r => r is { ForecastEnabled: true, IsTracked: true, LocationArchived: false, PurgeInProgress: false });
+
+    private async Task LoadWeatherAsync()
+    {
+        if (!_canReadWeather)
+            return;
+
+        var rows = Weather.ListLocationsAsync();
+        if (_canReadSettings && (await SystemSettings.GetAsync()).Value is { } settings)
+            _weatherCap = settings.WeatherMaxTrackedLocations;
+        var result = await rows;
+        if (result.IsSuccess && result.Value is { } list)
+        {
+            _weatherRows = list.ToDictionary(r => r.LocationId);
+            _weatherLoaded = true;
+        }
+        else
+        {
+            // Keep whatever was known. With nothing known, the weather surfaces stay hidden rather than
+            // offering "Turn on weather" on places that already have it (a create would then PUT defaults).
+            Snackbar.Add("Weather settings couldn’t be loaded.", Severity.Warning);
+        }
+        StateHasChanged();
+    }
+
+    /// <summary>The Admin's weather items. Unavailable actions are absent, not dimmed.</summary>
+    private IReadOnlyList<OdsMenuItem> WeatherActions(ExistingLocation l) => BuildWeatherActions(
+        l, WeatherRow(l), _canUpdateWeather, _canPurgeWeather,
+        enable: EventCallback.Factory.Create(this, () => OpenWeatherSettings(l)),
+        apply: EventCallback.Factory.Create(this, () => OpenWeatherApply(l)),
+        refresh: EventCallback.Factory.Create(this, () => RefreshWeatherAsync(l)),
+        purge: EventCallback.Factory.Create(this, () => OpenWeatherPurge(l)));
+
+    internal static IReadOnlyList<OdsMenuItem> BuildWeatherActions(
+        ExistingLocation l, ExistingWeatherLocation? row, bool canUpdate, bool canPurge,
+        EventCallback enable, EventCallback apply, EventCallback refresh, EventCallback purge)
+    {
+        var items = new List<OdsMenuItem>();
+        if (row is null)
+        {
+            if (canUpdate && l.Archived is null)
+                items.Add(new OdsMenuItem { Icon = "wb_sunny", Label = "Turn on weather…", OnClick = enable });
+            return items;
+        }
+
+        if (row.PurgeInProgress)
+        {
+            if (canPurge)
+                items.Add(new OdsMenuItem { Icon = "delete_sweep", Label = "Continue deleting weather history…", Danger = true, OnClick = purge });
+            return items;
+        }
+
+        if (canUpdate)
+        {
+            items.Add(new OdsMenuItem { Icon = "tune", Label = "Weather settings…", OnClick = enable });
+            if (l.Archived is null)
+            {
+                if (row.ForecastEnabled)
+                    items.Add(new OdsMenuItem { Icon = "refresh", Label = "Refresh forecast", OnClick = refresh });
+                if ((row.ForecastEnabled || row.HistoryEnabled) && WeatherVisuals.Moved(row, l))
+                    items.Add(new OdsMenuItem { Icon = "edit_location_alt", Label = "Apply new position…", OnClick = apply });
+            }
+        }
+
+        // Offered once historical data is off. With the forecast still on it deletes only the measured data; with
+        // both off, everything. A place with its forecast off cannot be the household default, so that refusal
+        // is unreachable here.
+        if (canPurge && !row.HistoryEnabled)
+        {
+            if (items.Count > 0)
+                items.Add(new OdsMenuItem { Divider = true });
+            items.Add(new OdsMenuItem { Icon = "delete_forever", Label = "Delete weather history…", Danger = true, OnClick = purge });
+        }
+
+        return items;
+    }
+
+    private void OpenWeatherSettings(ExistingLocation l)
+    {
+        _wxKey = Guid.NewGuid();
+        _wxSettingsLocation = l;
+        _wxSettingsOpen = true;
+    }
+
+    private void OpenWeatherApply(ExistingLocation l)
+    {
+        _wxKey = Guid.NewGuid();
+        _wxApplyLocation = l;
+        _wxApplyOpen = true;
+    }
+
+    private void OpenWeatherPurge(ExistingLocation l)
+    {
+        _wxKey = Guid.NewGuid();
+        _wxPurgeLocation = l;
+        _wxPurgeOpen = true;
+    }
+
+    private void StoreWeatherRow(ExistingWeatherLocation row)
+    {
+        _weatherRows[row.LocationId] = row;
+        StateHasChanged();
+    }
+
+    private async Task OnWeatherSaved(ExistingWeatherLocation row)
+    {
+        var wasOn = _weatherRows.TryGetValue(row.LocationId, out var before) && (before.ForecastEnabled || before.HistoryEnabled);
+        var isOn = row.ForecastEnabled || row.HistoryEnabled;
+        Announce(!wasOn && isOn ? $"Weather is on for {row.Name}." : !isOn && wasOn ? $"Weather is off for {row.Name}. Everything stored is kept." : $"Weather settings for {row.Name} saved.");
+        // Re-read every row: the cap's suspension flags are computed across them. Turning weather on or off
+        // also changes which places the options list serves, which the history section follows.
+        await Task.WhenAll(LoadWeatherAsync(), LoadWeatherOptionsAsync());
+    }
+
+    private void OnWeatherApplied(ExistingWeatherLocation row)
+    {
+        StoreWeatherRow(row);
+        Announce($"Weather for {row.Name} now uses the new position.");
+    }
+
+    private async Task OnWeatherPurged()
+    {
+        if (_wxPurgeLocation is { } l)
+        {
+            // With the forecast still on, only the measured data went and the row stays: re-read it. Otherwise
+            // the row is gone along with everything else.
+            _historyEpoch++;
+            if (WeatherRow(l) is { ForecastEnabled: true })
+            {
+                Announce($"Measured weather for {l.Name} deleted. The forecast keeps running.");
+                await LoadWeatherAsync();
+            }
+            else
+            {
+                _weatherRows.Remove(l.LocationId);
+                _historyPlaces.Remove(l.LocationId);
+                Announce($"Weather history for {l.Name} deleted.");
+            }
+        }
+        StateHasChanged();
+    }
+
+    private void OnWeatherPurgeInterrupted(ExistingWeatherLocation? row)
+    {
+        if (row is not null)
+            StoreWeatherRow(row);
+    }
+
+    private async Task RefreshWeatherAsync(ExistingLocation l)
+    {
+        if (!_refreshing.Add(l.LocationId))
+            return;
+        try
+        {
+            await RefreshWeatherCoreAsync(l);
+        }
+        finally
+        {
+            _refreshing.Remove(l.LocationId);
+        }
+    }
+
+    private async Task RefreshWeatherCoreAsync(ExistingLocation l)
+    {
+        var result = await Weather.RefreshAsync(l.LocationId);
+        if (result.IsSuccess && result.Value is { } refreshed)
+        {
+            Announce(refreshed.Fetched
+                ? $"Forecast for {l.Name} refreshed — issued {WeatherVisuals.Clock(refreshed.IssuedAtUtc)}."
+                : WeatherVisuals.IsPause(refreshed.ForecastFailureKind)
+                    ? $"MET Norway has paused fetching for {l.Name} for up to 6 hours. A refresh can’t shorten the pause."
+                    : refreshed.ForecastFailureKind is { } kind
+                        ? $"The forecast for {l.Name} couldn’t be refreshed: {WeatherVisuals.FailureOf(kind)!.Label.ToLowerInvariant()}."
+                        : $"MET Norway has nothing newer for {l.Name} yet.");
+            await LoadWeatherAsync();
+            return;
+        }
+
+        if (result.Status is System.Net.HttpStatusCode.GatewayTimeout or 0)
+        {
+            // The fetch may still be running server-side: say so and re-read rather than report a failure.
+            Announce($"The refresh for {l.Name} is taking longer than usual and may still finish. Its status updates here.");
+            await LoadWeatherAsync();
+            return;
+        }
+
+        var message = result.Status switch
+        {
+            System.Net.HttpStatusCode.ServiceUnavailable => "Weather isn’t set up: add a contact address for MET Norway in System settings → Weather.",
+            System.Net.HttpStatusCode.TooManyRequests => "Weather actions have been used many times in the last few minutes. Wait a moment, then try again.",
+            _ => result.Problem?.Message ?? $"The forecast for {l.Name} couldn’t be refreshed.",
+        };
+        Snackbar.Add(message, Severity.Warning);
+        Announce(message);
+    }
 
     public void Dispose() => _listLoader.Dispose();
 }

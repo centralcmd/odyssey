@@ -28,6 +28,14 @@ namespace Odyssey.Api.Tests;
 /// </para>
 ///
 /// <para>
+/// <strong>The numbers changed once, for issue #348.</strong> The background-job host,
+/// <c>Odyssey.Worker</c>, reads the encrypted secret store, so it holds the ring too — <em>read-only</em>,
+/// with automatic key generation off (a product decision recorded in docs/deployment.md, "Two containers
+/// hold the key ring"). So the counts are now one read-write holder (the API), one read-only holder (the
+/// worker), and none anywhere else, the migrations job included.
+/// </para>
+///
+/// <para>
 /// The runtime halves of those criteria (a secret surviving <c>docker compose restart</c>, a
 /// cross-host unprotect) need a live stack and a real engine; they live in
 /// <c>Odyssey.IntegrationTests</c> and in manual verification. What is pinned here is the wiring those
@@ -40,17 +48,31 @@ public class SecretSettingsInfrastructureTests
     private const string EnvironmentVariable = "DataProtection__KeysPath";
 
     /// <summary>
-    /// The DEV stack gives the key ring to the <c>api</c> service and to nothing else: the volume is
-    /// declared once and mounted once, and one service carries the path.
+    /// The DEV stack gives the key ring read-write to the <c>api</c> service, read-only to the
+    /// <c>worker</c>, and to nothing else: the volume is declared once, and each of the two services
+    /// carries the path beside its own mount.
     /// </summary>
     [Fact]
-    public void TheDevComposeStack_GivesTheKeyRingToTheApiServiceAlone()
+    public void TheDevComposeStack_GivesTheKeyRingToTheApiReadWriteAndTheWorkerReadOnly()
     {
         var compose = RepositoryRoot.ReadAllText("docker-compose.yml");
+        var readWrite = $"- dataprotection_keys:{KeysPath}\n";
+        var readOnly = $"- dataprotection_keys:{KeysPath}:ro\n";
 
         Assert.Contains("\n  dataprotection_keys:", compose, StringComparison.Ordinal);
-        Assert.Equal(1, Occurrences(compose, $"- dataprotection_keys:{KeysPath}"));
-        Assert.Equal(1, Occurrences(compose, $"{EnvironmentVariable}: {KeysPath}"));
+        Assert.Equal(2, Occurrences(compose, $"- dataprotection_keys:{KeysPath}"));
+        Assert.Equal(2, Occurrences(compose, $"{EnvironmentVariable}: {KeysPath}"));
+
+        var api = ComposeService(compose, "api");
+        Assert.Contains(readWrite, api, StringComparison.Ordinal);
+        Assert.Contains($"{EnvironmentVariable}: {KeysPath}", api, StringComparison.Ordinal);
+
+        var worker = ComposeService(compose, "worker");
+        Assert.Contains(readOnly, worker, StringComparison.Ordinal);
+        Assert.DoesNotContain(readWrite, worker, StringComparison.Ordinal);
+        Assert.Contains($"{EnvironmentVariable}: {KeysPath}", worker, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("dataprotection_keys:/", ComposeService(compose, "migrations"), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -88,14 +110,20 @@ public class SecretSettingsInfrastructureTests
     /// <summary>
     /// Aspire gets the ring for the same reason — a developer running
     /// <c>dotnet run --project Odyssey.AppHost</c> would otherwise be refused every credential write
-    /// with a <c>503</c> and no obvious place to point — and on the API resource only.
+    /// with a <c>503</c> and no obvious place to point — on the API resource and the worker only. A host
+    /// directory cannot be mounted read-only here; the worker's own <c>DisableAutomaticKeyGeneration</c>
+    /// is what keeps it from writing (pinned by <c>Odyssey.Worker.Tests</c>).
     /// </summary>
     [Fact]
-    public void TheAspireHost_GivesTheKeysDirectoryToTheApiResourceAlone()
+    public void TheAspireHost_GivesTheKeysDirectoryToTheApiAndTheWorkerOnly()
     {
         var appHost = RepositoryRoot.ReadAllText(System.IO.Path.Combine("Odyssey.AppHost", "AppHost.cs"));
+        var grant = $"WithEnvironment(\"{EnvironmentVariable}\", dataProtectionKeysPath)";
 
-        Assert.Equal(1, Occurrences(appHost, $"WithEnvironment(\"{EnvironmentVariable}\", dataProtectionKeysPath)"));
+        Assert.Equal(2, Occurrences(appHost, grant));
+        Assert.Contains(grant, AspireResource(appHost, "Odyssey_Api"), StringComparison.Ordinal);
+        Assert.Contains(grant, AspireResource(appHost, "Odyssey_Worker"), StringComparison.Ordinal);
+        Assert.DoesNotContain(grant, AspireResource(appHost, "Odyssey_MigrationService"), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -106,6 +134,9 @@ public class SecretSettingsInfrastructureTests
     /// </summary>
     [Theory]
     [InlineData("Odyssey.Api")]
+    // The worker only reads the ring, but if it is the first to mount a fresh volume Docker initialises
+    // the volume from its image — so its copy of the directory must be app-owned too.
+    [InlineData("Odyssey.Worker")]
     public void TheImage_CreatesTheKeysDirectoryOwnedByTheRuntimeUser(string project)
     {
         var dockerfile = RepositoryRoot.ReadAllText(System.IO.Path.Combine(project, "Dockerfile"));
@@ -275,6 +306,25 @@ public class SecretSettingsInfrastructureTests
         // The derivation-key warning, which is the one that cannot be undone by re-entering a value.
         Assert.Contains("permanently un-re-derivable", guide, StringComparison.Ordinal);
         Assert.Contains("Art. 7(1)", guide, StringComparison.Ordinal);
+    }
+
+    /// <summary>One top-level service's block in a compose file: from <c>"  name:"</c> to the next service.</summary>
+    private static string ComposeService(string compose, string name)
+    {
+        var start = compose.IndexOf($"\n  {name}:\n", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"no {name} service in the compose file");
+        var lines = compose[(start + 1)..].Split('\n');
+        var block = lines.Skip(1).TakeWhile(line => line.Length == 0 || line.StartsWith("   ", StringComparison.Ordinal)
+            || line.StartsWith("  #", StringComparison.Ordinal));
+        return string.Join('\n', block) + '\n';
+    }
+
+    /// <summary>One <c>AddProject&lt;Projects.X&gt;</c> chain in AppHost.cs, up to its terminating semicolon.</summary>
+    private static string AspireResource(string appHost, string project)
+    {
+        var start = appHost.IndexOf($"AddProject<Projects.{project}>", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"no {project} resource in AppHost.cs");
+        return appHost[start..appHost.IndexOf(';', start)];
     }
 
     private static int Occurrences(string haystack, string needle)

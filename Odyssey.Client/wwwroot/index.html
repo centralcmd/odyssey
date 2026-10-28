@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="css/app.css" />
     <link rel="stylesheet" href="css/odyssey-components.css" />
     <link rel="stylesheet" href="css/legal.css" />
+    <link rel="stylesheet" href="css/weather.css" />
     <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
     <link rel="icon" type="image/svg+xml" href="odyssey-logomark.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
@@ -94,9 +95,10 @@
             URL.revokeObjectURL(url);
         };
         window.odsSetAttr = function (elementId, name, value) {
-            // Set (or remove, when value is empty) an attribute on an element by id. Used to wire
-            // aria-describedby onto a MudBlazor input whose own attribute rendering would otherwise
-            // clobber a splatted value (OdsCustodianSelect → the inner combobox input).
+            // Set (or remove, when value is null or empty) an attribute on an element by id. Used to wire
+            // aria-describedby or aria-label onto a MudBlazor input whose own attribute rendering would
+            // otherwise clobber a splatted value (OdsCustodianSelect, OdsSelect, OdsDatePicker → the inner
+            // input). The one definition: a second, later one used to win silently.
             const el = document.getElementById(elementId);
             if (!el) return;
             if (value === null || value === undefined || value === '') el.removeAttribute(name);
@@ -144,14 +146,6 @@
                 const trigger = document.getElementById(triggerId);
                 if (trigger) trigger.focus();
             });
-        };
-        window.odsSetAttr = function (id, name, value) {
-            // Set/remove an attribute on an element by id — used to associate a control (e.g. a
-            // MudAutocomplete input) with a helper via aria-describedby, which the component can't
-            // render on the inner input itself.
-            const el = document.getElementById(id);
-            if (!el) return;
-            if (value == null) el.removeAttribute(name); else el.setAttribute(name, value);
         };
         window.odsSetInputValue = function (id, value) {
             // Put an input's DOM value back to what the component holds. A keystroke the component

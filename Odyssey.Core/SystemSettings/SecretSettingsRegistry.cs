@@ -1,11 +1,12 @@
+using Microsoft.Extensions.Hosting;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 
-namespace Odyssey.Api.SystemSettings;
+namespace Odyssey.Core.SystemSettings;
 
 /// <summary>
 /// The single declaration of every encrypted secret setting (issue #444 §5), mirroring
-/// <see cref="SystemSettingsRegistry"/>'s single-declaration discipline while deliberately sharing
+/// <c>SystemSettingsRegistry</c>'s single-declaration discipline while deliberately sharing
 /// none of its type hierarchy.
 ///
 /// <para>
@@ -99,6 +100,16 @@ public sealed class SecretSettingsRegistry
             Key = SecretSettingKeys.LegalPseudonymizationSecret,
             RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
             Kind = SecretKind.DerivationKey,
+        },
+
+        // Issue #348. The Frost client id, sent to frost.met.no only. NotSet is healthy — forecasts work
+        // and measured history is simply not collected; Unreadable fails closed (no Frost request) and
+        // logs an error hourly, so it is never mistaken for the healthy unset state.
+        new SecretSettingDescriptor
+        {
+            Key = SecretSettingKeys.WeatherFrostClientId,
+            RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
+            Kind = SecretKind.RotatableCredential,
         },
     ];
 

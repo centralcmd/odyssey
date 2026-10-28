@@ -9,6 +9,7 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages;
 
@@ -94,6 +95,7 @@ public partial class Settings
         var result = await SystemSettings.GetAsync();
         if (result.IsSuccess && result.Value is { } dto)
         {
+            await LoadWeatherOptionsAsync();
             ApplyLoaded(dto);
             await LoadSecretStatusesAsync();
             _phase = Phase.Ready;
@@ -106,6 +108,33 @@ public partial class Settings
         }
 
         StateHasChanged();
+    }
+
+    /// <summary>The places that can be the household weather default, served at read time (issue #348).</summary>
+    private IReadOnlyList<WeatherLocationRef> _weatherOptions = [];
+
+    private async Task LoadWeatherOptionsAsync()
+    {
+        // weather.read, not a settings claim: the options endpoint serves the same picker the dashboard
+        // uses. Without it the row still shows its stored value, it just offers nothing else to pick.
+        if (!(await Auth.GetUserAsync()).HasPermission(PermissionClaims.WeatherRead))
+            return;
+        var options = await Weather.OptionsAsync();
+        _weatherOptions = options.IsSuccess && options.Value is { } value ? value.Locations : [];
+    }
+
+    /// <summary>
+    /// <i>None</i>, then every selectable place. A stored default that is no longer selectable stays in the
+    /// list, named as such, so opening the page never silently changes what is saved.
+    /// </summary>
+    internal IReadOnlyList<OdsOption> WeatherDefaultOptions()
+    {
+        var options = new List<OdsOption> { new("", "None") };
+        options.AddRange(_weatherOptions.Select(l => new OdsOption(l.LocationId.ToString("D"), l.Name)));
+        var stored = _texts.TryGetValue("weatherDefaultLocationId", out var state) ? state.Saved : "";
+        if (stored.Length > 0 && options.All(o => !string.Equals(o.Value, stored, StringComparison.OrdinalIgnoreCase)))
+            options.Add(new OdsOption(stored, "A place that no longer has weather"));
+        return options;
     }
 
     /// <summary>Every row in the catalogue, flattened — the loop source for load and save.</summary>
@@ -236,7 +265,12 @@ public partial class Settings
         // flag only stops ErrorFor reporting "Enter a value" for a state the API accepts. Without it
         // the two mail rows could never be cleared: an empty host would be a client-side error that
         // disables Save, so configuring mail would be a one-way door.
-        bool AllowEmpty = false);
+        bool AllowEmpty = false,
+        // A Text row whose value is chosen from a list served at read time rather than typed (issue
+        // #348's household weather default). Still a Text row for dirty-tracking, validation and save —
+        // only the control differs. The options are the server's; the server re-checks the choice on
+        // save, so a list gone stale while the page was open is refused there, not trusted here.
+        Func<Settings, IReadOnlyList<OdsOption>>? OptionsFrom = null);
 
     internal sealed record RoundTripPair(string ExportKey, string ImportKey);
 
@@ -268,6 +302,46 @@ public partial class Settings
             new("data-export", "download_for_offline", "Export database JSON",
                 "Download finance records as JSON for audit or migration. Excludes uploaded file contents, file analysis, Identity data, and preferences.",
                 SettingClaim.None, SettingControl.Export),
+        ]),
+        // ── Weather (issue #348). Nothing is fetched until the contact is set: MET Norway's terms ask
+        // every client for one, and it travels in the User-Agent of every request. The Frost client id
+        // joins this card from SecretCatalogue.
+        new("Weather", Icons.Material.Filled.WbSunny,
+        [
+            new("weatherUserAgentContact", "contact_mail", "Contact for MET Norway",
+                "An email address or an https:// URL MET Norway can reach the operator of this instance at. It is sent with every weather request. Empty means nothing is fetched. Prefer a role address over a person's.",
+                SettingClaim.Count, SettingControl.Text, Max: WeatherRules.ContactMaxLength,
+                Field: nameof(SystemSettingsUpdate.WeatherUserAgentContact),
+                Load: (p, dto) => p.SetTextLoaded("weatherUserAgentContact", dto.WeatherUserAgentContact),
+                Write: (p, req) => req.WeatherUserAgentContact = p.TextRequest("weatherUserAgentContact"),
+                InputMode: "email",
+                Placeholder: "weather@example.net",
+                AllowEmpty: true,
+                Rule: WeatherRules.ValidateContact),
+            new("weatherRefreshIntervalMinutes", "update", "Forecast refresh interval",
+                "How often the background job refreshes a scheduled place's forecast. 1440 minutes is once a day. MET's own expiry is honoured on top of it, so a shorter interval never fetches more often than MET allows.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.WeatherRefreshIntervalMinutesMin, Max: SystemSettingsBounds.WeatherRefreshIntervalMinutesMax,
+                Field: nameof(SystemSettingsUpdate.WeatherRefreshIntervalMinutes),
+                Load: (p, dto) => p.SetIntLoaded("weatherRefreshIntervalMinutes", dto.WeatherRefreshIntervalMinutes),
+                Write: (p, req) => req.WeatherRefreshIntervalMinutes = p.IntRequest("weatherRefreshIntervalMinutes"),
+                Unit: "min"),
+            new("weatherMaxTrackedLocations", "event_repeat", "Places on a schedule",
+                "How many places refresh in the background. Others are fetched only when someone opens their weather. Lowering it pauses the most recently enabled places first.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.WeatherMaxTrackedLocationsMin, Max: SystemSettingsBounds.WeatherMaxTrackedLocationsMax,
+                Field: nameof(SystemSettingsUpdate.WeatherMaxTrackedLocations),
+                Load: (p, dto) => p.SetIntLoaded("weatherMaxTrackedLocations", dto.WeatherMaxTrackedLocations),
+                Write: (p, req) => req.WeatherMaxTrackedLocations = p.IntRequest("weatherMaxTrackedLocations")),
+            new("weatherDefaultLocationId", "home", "Household default location",
+                "The place the dashboard shows to anyone who hasn't picked one. Only places with weather on can be chosen.",
+                SettingClaim.Count, SettingControl.Text,
+                Field: nameof(SystemSettingsUpdate.WeatherDefaultLocationId),
+                Load: (p, dto) => p.SetTextLoaded("weatherDefaultLocationId", dto.WeatherDefaultLocationId),
+                Write: (p, req) => req.WeatherDefaultLocationId = p.TextRequest("weatherDefaultLocationId"),
+                AllowEmpty: true,
+                Rule: WeatherRules.ValidateDefaultLocationId,
+                OptionsFrom: p => p.WeatherDefaultOptions()),
         ]),
         new("Contacts import & export", Icons.Material.Filled.Contacts,
         [
@@ -1255,10 +1329,30 @@ public partial class Settings
         SettingControl.Number => NumberControl(item),
         SettingControl.Size => SizeControl(item),
         SettingControl.Capacity => CapacityControl(item),
-        SettingControl.Text => TextControl(item),
+        SettingControl.Text => item.OptionsFrom is null ? TextControl(item) : SelectControl(item),
         SettingControl.Decimal => DecimalControl(item),
         SettingControl.Percent => PercentControl(item),
         _ => ToggleControl(item),
+    };
+
+    // A Text row chosen from a served list (issue #348). The frame owns the label and help, as for every
+    // other control, so the select is handed neither. Built here rather than in the markup's @code block,
+    // which is at its size limit.
+    private RenderFragment SelectControl(SettingItem item) => builder =>
+    {
+        builder.OpenComponent<OdsSelect>(0);
+        builder.AddComponentParameter(1, nameof(OdsSelect.Value), GetText(item.Key));
+        builder.AddComponentParameter(2, nameof(OdsSelect.ValueChanged),
+            EventCallback.Factory.Create<string>(this, v => SetText(item.Key, v)));
+        builder.AddComponentParameter(3, nameof(OdsSelect.Options), item.OptionsFrom!(this));
+        builder.AddComponentParameter(4, nameof(OdsSelect.Disabled), IsRowDisabled(item));
+        builder.AddComponentParameter(5, nameof(OdsSelect.Error), FieldStateFor(item));
+        // Named and described through aria-*, which MudSelect forwards to its visible combobox. An `id`
+        // would land on its hidden input, leaving the frame's <label for> pointing at nothing focusable —
+        // so a select row takes no `for` (HasFocusableControl).
+        builder.AddAttribute(6, "aria-labelledby", TitleId(item.Key));
+        builder.AddAttribute(7, "aria-describedby", DescribedBy(item));
+        builder.CloseComponent();
     };
 
     // ── The ids an OdsSettingField and its control share ──────────────────────────────────────────
@@ -1280,7 +1374,8 @@ public partial class Settings
     /// names itself through <c>aria-labelledby</c> on the title instead.
     /// </summary>
     private static bool HasFocusableControl(SettingItem item) =>
-        item.Control is not (SettingControl.Capacity or SettingControl.Toggle or SettingControl.Export);
+        item.Control is not (SettingControl.Capacity or SettingControl.Toggle or SettingControl.Export)
+        && item.OptionsFrom is null;
 
     /// <summary>
     /// The always-visible helper line: what the setting does, then the bound that qualifies it, then
@@ -1786,6 +1881,18 @@ public partial class Settings
             Affects:
             "Throttle digests have fallen back to a per-process key, so log correlation is broken "
             + "across restarts."),
+
+        new(SecretSettingKeys.WeatherFrostClientId, "Weather", "key", "Frost client ID",
+            "The client id for MET Norway's Frost service, which supplies the measured history of each "
+            + "place with weather. Free from frost.met.no. It is sent with every Frost request, never with "
+            + "forecasts.",
+            IsDerivationKey: false,
+            Consequence:
+            "Unset is a supported configuration: forecasts work, and past days show the forecast only — "
+            + "no measured history is collected.",
+            Affects:
+            "Measured history has stopped for every place: the stored id cannot be decrypted, so no "
+            + "Frost request is made. Re-enter it."),
 
         new(SecretSettingKeys.LegalPseudonymizationSecret, "Data", "gavel", "Pseudonymisation secret",
             "HMACs the subject of a consent record when an account is deleted, so acceptance stays "

@@ -159,8 +159,8 @@ public class SystemSettingsApiTests
         // for the Contracts summary windows and its next-charge row cap, +1 for the per-contract
         // smart-tag cap (issue #166), then -3 when the standalone subscriptions feature was removed
         // and -5 when the standalone insurance-policy feature was, then +1 for the per-property
-        // smart-tag cap (issue #167).
-        Assert.Equal(65, rows.Count);
+        // smart-tag cap (issue #167), then +4 for weather (issue #348).
+        Assert.Equal(69, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 

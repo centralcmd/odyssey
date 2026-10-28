@@ -680,6 +680,7 @@ public class EmailTransportSurfaceTests : IDisposable
         ctx.Services.AddSingleton(settings.Object);
         ctx.Services.AddSingleton(secrets.Object);
         ctx.Services.AddSingleton(new Mock<IDataExportApiClient>().Object);
+        ctx.Services.AddSingleton(new Mock<IWeatherApiClient>().Object);
         ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
         ctx.Services.AddSingleton(new Mock<IImportLimitsCache>().Object);
         ctx.Services.AddSingleton(new Mock<IUploadLimitsCache>().Object);

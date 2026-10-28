@@ -32,6 +32,7 @@
     <ProjectReference Include="..\Odyssey.Api\Odyssey.Api.csproj" />
     <ProjectReference Include="..\Odyssey.Client\Odyssey.Client.csproj" />
     <ProjectReference Include="..\Odyssey.MigrationService\Odyssey.MigrationService.csproj" />
+    <ProjectReference Include="..\Odyssey.Worker\Odyssey.Worker.csproj" />
   </ItemGroup>
 
 </Project>

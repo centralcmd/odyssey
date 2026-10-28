@@ -1,0 +1,107 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    LocationWeatherSection — the Weather band in a location's expanded record, Admin only (issue #348;
+    design system · Weather.jsx LocationWeatherSection). It carries NO action buttons beyond the ones a
+    notice names: Turn on weather, Weather settings and Refresh forecast live in the row's ⋯ menu only.
+*@
+
+@if (Row is null)
+{
+    <OdsRecordSection Class="acct-section wx-section" Label="Weather" Empty="true"
+                      Notice="@(Location.Archived is not null ? Text("Restore the location to turn on weather for it.") : null)"
+                      NoticeTone="OdsRecordSectionTone.Warning"
+                      EmptyText="@EmptyLine" />
+}
+else
+{
+    <OdsRecordSection Class="acct-section wx-section" Label="Weather" Meta="@($"position v{Row.Site.Version}")"
+                      Notice="@Notice" NoticeTone="@NoticeTone" NoticeIconName="@NoticeIcon">
+        <OdsInfoTileGrid>
+            @* Forecast and historical data are separate settings, so each tile says whether its half is on;
+               there is no single "Weather on" tile. *@
+            <OdsInfoTile Icon="@(Row.ForecastEnabled ? "wb_sunny" : "cloud_off")" Label="Forecast" ValueVariant="OdsInfoTileVariant.Text" Foot="@ForecastFoot">
+                <Value>@ForecastValue</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="history" Label="Historical data"
+                         ValueVariant="@(Row.HistoryEnabled && !Row.PurgeInProgress ? OdsInfoTileVariant.Sm : OdsInfoTileVariant.Text)" Foot="@HistoryFoot">
+                <Value>@HistoryValue</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="my_location" Label="Weather position" ValueVariant="OdsInfoTileVariant.Sm"
+                         Foot="@OdsInfoTile.Caption($"{Row.Site.TimeZoneId}{(Row.Site.AltitudeMeters is { } a ? $" · {a} m" : "")} · copied {WeatherVisuals.Date(Row.Site.AppliedAt)}")">
+                <Value>@WeatherVisuals.Pair3(Row.Site.Latitude, Row.Site.Longitude)</Value>
+            </OdsInfoTile>
+            @if (Row.IsHouseholdDefault)
+            {
+                <OdsInfoTile Icon="home" Label="Household default" ValueVariant="OdsInfoTileVariant.Text"
+                             Foot="@OdsInfoTile.Caption("shown to anyone who hasn’t picked a location")">
+                    <Value>Yes</Value>
+                </OdsInfoTile>
+            }
+        </OdsInfoTileGrid>
+    </OdsRecordSection>
+}
+
+@code {
+    [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
+    [Parameter] public ExistingWeatherLocation? Row { get; set; }
+    [Parameter] public bool CanUpdate { get; set; }
+    [Parameter] public bool CanPurge { get; set; }
+    [Parameter] public EventCallback OnApply { get; set; }
+    [Parameter] public EventCallback OnPurge { get; set; }
+
+    private static RenderFragment Text(string text) => b => b.AddContent(0, text);
+
+    // Only someone who can turn it on is told to; the action itself is the row menu's Turn on weather….
+    private RenderFragment EmptyLine => Location.Archived is not null || !CanUpdate
+        ? Text("Weather is off for this place.")
+        : Text("Weather is turned off. Turn it on to see forecasts and historical weather data for this location.");
+
+    private bool Moved => Row is not null && WeatherVisuals.Moved(Row, Location);
+
+    // One notice at a time, in this order: an interrupted purge, an archived location, a move.
+    private RenderFragment? Notice => Row switch
+    {
+        { PurgeInProgress: true } => @<span>Deleting this place’s weather history was interrupted. Weather stays paused until it completes. @if (CanPurge) {<button type="button" class="loc-link" @onclick="OnPurge">Continue deleting</button>}</span>,
+        _ when Location.Archived is not null || Row!.LocationArchived => Text("The location is archived, so weather fetching is paused. Restoring it resumes fetching."),
+        { ForecastEnabled: true } or { HistoryEnabled: true } when Moved => @<span>The location has moved since weather copied its position. Weather keeps using the old position until you apply the move. @if (CanUpdate) {<button type="button" class="loc-link" @onclick="OnApply">Apply new position</button>}</span>,
+        _ when Moved => Text("The location has moved since weather copied its position. Turn weather back on to apply the move."),
+        _ => null,
+    };
+
+    private OdsRecordSectionTone NoticeTone =>
+        Row is { PurgeInProgress: true } || Location.Archived is not null || Row is { LocationArchived: true } || Row is { ForecastEnabled: true } or { HistoryEnabled: true } && Moved
+            ? OdsRecordSectionTone.Warning
+            : OdsRecordSectionTone.Default;
+
+    private string? NoticeIcon =>
+        Row is { PurgeInProgress: true } ? "delete_sweep" : Moved && Location.Archived is null ? "wrong_location" : null;
+
+    private string ForecastValue =>
+        !Row!.ForecastEnabled ? "Off"
+        : Row.TrackingSuspended ? "Paused — schedule full"
+        : Row.IsTracked ? "On a schedule" : "When someone looks";
+
+    private string HistoryValue =>
+        Row!.PurgeInProgress ? "Deleting history"
+        : Row.HistoryEnabled ? $"From {WeatherVisuals.Date(Row.HistoryFrom)}" : "Off";
+
+    private RenderFragment? ForecastFoot => !Row!.ForecastEnabled
+        ? OdsInfoTile.Caption("not fetched; not on the dashboard")
+        : WeatherVisuals.FailureOf(Row.ForecastFailureKind) is { } fail
+        ? Failure(fail)
+        : OdsInfoTile.Caption(Row.TrackingSuspended
+            ? "Only the first scheduled places refresh. Raise the limit in System settings."
+            : Row.LastForecastSuccessUtc is { } at ? $"last fetched {WeatherVisuals.Stamp(at)}" : "not fetched yet");
+
+    private RenderFragment? HistoryFoot => !Row!.HistoryEnabled
+        ? OdsInfoTile.Caption("not fetched; stored data kept")
+        : WeatherVisuals.FailureOf(Row.ObservationFailureKind) is { } fail
+        ? Failure(fail)
+        : OdsInfoTile.Caption(!Row.HasObservationStation
+            ? "no MET station in reach"
+            : Row.LastObservationSuccessUtc is { } at ? $"last fetched {WeatherVisuals.Stamp(at)}" : "not fetched yet");
+
+    private static RenderFragment Failure(WeatherFailureInfo fail) =>
+        @<span class="wx-fail"><OdsMIcon Name="error_outline" Size="14" />@fail.Label<span class="wx-fail-help">@(string.IsNullOrEmpty(fail.Help) ? null : $" — {fail.Help}")</span></span>;
+}

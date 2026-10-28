@@ -1,0 +1,16 @@
+@using Odyssey.Dtos.Journal
+@*
+    MET Norway's attribution, exactly as the response carries it — never a client constant
+    (design system · Weather.jsx `WeatherAttribution`).
+*@
+
+@if (Attribution is { } attribution)
+{
+    <span class="wx-attr">
+        <a href="@attribution.Url" target="_blank" rel="noopener noreferrer">@attribution.Text</a> · @attribution.License
+    </span>
+}
+
+@code {
+    [Parameter] public WeatherAttribution? Attribution { get; set; }
+}
