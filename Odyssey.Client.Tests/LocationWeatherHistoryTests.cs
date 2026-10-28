@@ -13,9 +13,9 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// Temperature history in a location's record (design system · Weather.jsx LocationWeatherHistorySection
-/// and WeatherTemperatureChart, components-weather.md → Temperature history): the window, its bounds from
-/// the daily response, the custom range and the states.
+/// Weather history in a location's record (design system · Weather.jsx LocationWeatherHistorySection
+/// and WeatherHistoryChart, components-weather.md → Weather history): the window, its bounds from
+/// the daily response, the custom range, the measures and the states.
 /// </summary>
 [Collection(nameof(WeatherWidgetSeam))]
 public class LocationWeatherHistoryTests : IDisposable
@@ -43,7 +43,7 @@ public class LocationWeatherHistoryTests : IDisposable
         section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
         Assert.Equal((Yesterday.AddDays(-59), Yesterday), Assert.Single(requests));
         Assert.Contains("60</b> of 60", section.Markup);
-        Assert.Single(section.FindComponents<WeatherTemperatureChart>());
+        Assert.Single(section.FindComponents<WeatherHistoryChart>());
         Assert.Contains("Weather data from MET Norway", section.Markup);
         Assert.Equal("60", section.FindComponent<OdsSegmentedControl>().Instance.Value);
         // OdsIconButton draws an SVG icon constant; a Material ligature would render an empty button.
@@ -209,7 +209,7 @@ public class LocationWeatherHistoryTests : IDisposable
     }
 
     [Theory]
-    [InlineData(true, "No measured temperature yet.")]
+    [InlineData(true, "No measured weather yet.")]
     [InlineData(false, "Historical data is turned off for this place.")]
     public async Task Nothing_stored_names_the_reason(bool enabled, string expected)
     {
@@ -243,7 +243,7 @@ public class LocationWeatherHistoryTests : IDisposable
 
         var section = Render(ctx, Row(enabled: false) with { PurgeInProgress = true });
 
-        Assert.DoesNotContain("Temperature history", section.Markup);
+        Assert.DoesNotContain("Weather history", section.Markup);
     }
 
     // ── The chart ───────────────────────────────────────────────────────────────────────────────────
@@ -256,7 +256,7 @@ public class LocationWeatherHistoryTests : IDisposable
         int[] measured = [0, 1, 2, 5, 7, 8, 9];
         await using var ctx = Context();
 
-        var chart = ctx.Render<WeatherTemperatureChart>(p => p
+        var chart = ctx.Render<WeatherHistoryChart>(p => p
             .Add(c => c.Days, [.. measured.Select(i => Day(from.AddDays(i), 2 + i))])
             .Add(c => c.From, from).Add(c => c.To, from.AddDays(9)).Add(c => c.LocationName, "Cabin"));
 
@@ -270,9 +270,105 @@ public class LocationWeatherHistoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Precipitation_draws_a_bar_per_measured_day_and_shades_the_missing_ones()
+    {
+        var from = new DateOnly(2026, 10, 1);
+        int[] measured = [0, 1, 2, 5, 7, 8, 9];
+        await using var ctx = Context();
+
+        var chart = ctx.Render<WeatherHistoryChart>(p => p
+            .Add(c => c.Days, [.. measured.Select(i => Day(from.AddDays(i), 2 + i))])
+            .Add(c => c.From, from).Add(c => c.To, from.AddDays(9)).Add(c => c.LocationName, "Cabin")
+            .Add(c => c.Measures, [WeatherMeasures.Precipitation]));
+
+        Assert.Equal(7, chart.FindAll(".odc-line-svg rect.wx-hist-bar-mark").Count);
+        // A missing bar would read as a dry day, so the day is shaded instead.
+        Assert.Equal(3, chart.FindAll(".odc-line-svg rect.wx-hist-nodata").Count);
+        Assert.Empty(chart.FindAll(".odc-line-svg .wx-hist-band"));
+        Assert.Contains("Shaded: not measured", chart.Markup);
+        // (1+1.5+2+3.5+4.5+5+5.5) = 23 mm over the window; the amount axis names its unit once.
+        Assert.Contains("23.0 mm total", chart.Find(".wx-hist-legend").TextContent);
+        Assert.Contains(">mm</text>", chart.Markup);
+        Assert.Equal(["Date", "Precipitation"], chart.FindAll("thead th").Select(th => th.TextContent));
+    }
+
+    [Fact]
+    public async Task Wind_and_gusts_share_the_metres_per_second_axis_told_apart_by_shape()
+    {
+        var from = new DateOnly(2026, 10, 1);
+        await using var ctx = Context();
+
+        var chart = ctx.Render<WeatherHistoryChart>(p => p
+            .Add(c => c.Days, [.. Enumerable.Range(0, 10).Select(i => Day(from.AddDays(i), 5))])
+            .Add(c => c.From, from).Add(c => c.To, from.AddDays(9)).Add(c => c.LocationName, "Cabin")
+            .Add(c => c.Measures, [WeatherMeasures.Wind, WeatherMeasures.Gust]));
+
+        Assert.Single(chart.FindAll(".odc-line-svg polyline.wx-hist-series:not(.thin)"));
+        Assert.Single(chart.FindAll(".odc-line-svg polyline.wx-hist-series.thin"));
+        // Gusts carry a dot per day up to 90 days; mean wind is the plain line.
+        Assert.Equal(10, chart.FindAll(".odc-line-svg circle").Count);
+        var ledger = chart.Find(".wx-hist-legend").TextContent;
+        Assert.Contains("3.0 m/s avg", ledger);
+        Assert.Contains("8.0 m/s max", ledger);
+        Assert.DoesNotContain("not measured", ledger);
+        Assert.Contains(">m/s</text>", chart.Markup);
+        Assert.Contains("mean wind and gusts", chart.Find("svg").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public async Task Choosing_a_measure_in_another_unit_replaces_the_selection_and_its_facts()
+    {
+        Serve(measuredFrom: new DateOnly(2025, 3, 2), measuredThrough: Yesterday);
+        await using var ctx = Context();
+        var section = Render(ctx);
+        section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
+        var picker = section.FindComponent<OdsMultiSelect>();
+        Assert.Equal("Measures", picker.Instance.Label);
+        // Only a selected row carries its hue.
+        Assert.Equal(["var(--brand-text)", null, null, null], picker.Instance.Options.Select(o => o.IconColor));
+
+        await section.InvokeAsync(() => picker.Instance.ValuesChanged.InvokeAsync([WeatherMeasures.Temperature, WeatherMeasures.Precipitation]));
+
+        Assert.Equal([WeatherMeasures.Precipitation], section.FindComponent<WeatherHistoryChart>().Instance.Measures);
+        Assert.Contains("Wettest day", section.Markup);
+        Assert.Contains("Days with precipitation", section.Markup);
+        Assert.DoesNotContain("Average of daily means", section.Markup);
+        // A change of measure is client-side: one response carries every measure.
+        Assert.Single(requests);
+    }
+
+    [Theory]
+    [InlineData(new[] { "temp" }, new[] { "temp", "precip" }, new[] { "precip" })]
+    [InlineData(new[] { "wind" }, new[] { "wind", "gust" }, new[] { "wind", "gust" })]
+    [InlineData(new[] { "wind", "gust" }, new[] { "gust" }, new[] { "gust" })]
+    [InlineData(new[] { "precip" }, new string[0], new[] { "precip" })]
+    [InlineData(new[] { "wind", "gust" }, new[] { "wind", "gust", "temp" }, new[] { "temp" })]
+    public void The_selection_never_empties_and_never_mixes_units(string[] current, string[] next, string[] expected) =>
+        Assert.Equal(expected, WeatherMeasures.NextSelection(current, next));
+
+    [Fact]
+    public void The_window_facts_follow_the_unit_plotted()
+    {
+        var from = new DateOnly(2026, 10, 1);
+        var days = Enumerable.Range(0, 4).Select(i => Day(from.AddDays(i), i * 2)).ToList();
+
+        var mm = LocationWeatherHistorySection.FactsFor(days, 5, "mm");
+        Assert.Equal(["Total", "Wettest day", "Days with precipitation", "Days measured"], mm.Select(f => f.Label));
+        Assert.Equal("6.0 mm", mm[0].Value);
+        Assert.Equal(from.AddDays(3), mm[1].Date);
+        // Day 0 has 0 mm, below the 0.1 mm a gauge reports.
+        Assert.Equal("3", mm[2].Value);
+        Assert.Equal((" of 5"), mm[3].After);
+
+        var ms = LocationWeatherHistorySection.FactsFor(days, 5, "ms");
+        Assert.Equal(["Average wind", "Windiest day", "Strongest gust", "Days measured"], ms.Select(f => f.Label));
+        Assert.Equal("8.0 m/s", ms[2].Value);
+    }
+
+    [Fact]
     public void A_year_is_labelled_by_month_with_the_year_on_january_and_the_first_label()
     {
-        var labels = WeatherTemperatureChart.DateLabels(new DateOnly(2025, 10, 28), 365, 1100);
+        var labels = WeatherHistoryChart.DateLabels(new DateOnly(2025, 10, 28), 365, 1100);
 
         Assert.Equal("Nov 2025", labels[0].Text);
         Assert.Contains(labels, l => l.Text == "Jan 2026");
@@ -283,7 +379,7 @@ public class LocationWeatherHistoryTests : IDisposable
     [Fact]
     public void Up_to_ninety_days_is_labelled_from_the_newest_day_back()
     {
-        var labels = WeatherTemperatureChart.DateLabels(new DateOnly(2026, 9, 1), 60, 1100);
+        var labels = WeatherHistoryChart.DateLabels(new DateOnly(2026, 9, 1), 60, 1100);
 
         Assert.Equal(59, labels[^1].Index);
         Assert.All(labels, l => Assert.False(l.Start));
@@ -322,7 +418,11 @@ public class LocationWeatherHistoryTests : IDisposable
     private static WeatherDaySummary Day(DateOnly date, decimal mean) => new()
     {
         Date = date,
-        Observed = new WeatherDayObserved { MinTempC = mean - 3, MaxTempC = mean + 3, MeanTempC = mean },
+        Observed = new WeatherDayObserved
+        {
+            MinTempC = mean - 3, MaxTempC = mean + 3, MeanTempC = mean,
+            PrecipitationMm = mean / 2, MeanWindSpeedMps = 3, MaxWindGustMps = 8,
+        },
     };
 
     /// <summary>Answers every daily request with each measured day of the range, and the given bounds.</summary>

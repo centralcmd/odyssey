@@ -1,7 +1,7 @@
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Journal
 @*
-    LocationWeatherHistorySection — Temperature history in a location's record, for every role
+    LocationWeatherHistorySection — Weather history in a location's record, for every role
     (issue #348; design system · Weather.jsx LocationWeatherHistorySection, components-weather.md).
 *@
 
@@ -12,26 +12,26 @@
 else if (_bounds is { HasObservationStation: false })
 {
     @* The server sends false only once Frost was asked and found none — never because nobody has asked. *@
-    <OdsRecordSection Class="@Cls" Label="Temperature history" Empty="true"
-                      EmptyText="@Text("No MET Norway station measures within 25 km of this place, so there is no temperature history. Forecasts are not affected.")" />
+    <OdsRecordSection Class="@Cls" Label="Weather history" Empty="true"
+                      EmptyText="@Text("No MET Norway station measures within 25 km of this place, so there is no weather history. Forecasts are not affected.")" />
 }
 else if (_bounds is { ObservationsConfigured: false } && !HistoryOff && (Latest is null || Earliest is null))
 {
     @* Nothing stored and nothing can be fetched: say why rather than promise history that will never
        arrive. History stored before the setting was cleared still shows. *@
-    <OdsRecordSection Class="@Cls" Label="Temperature history" Empty="true" EmptyText="@NotConfiguredText" />
+    <OdsRecordSection Class="@Cls" Label="Weather history" Empty="true" EmptyText="@NotConfiguredText" />
 }
 else if (_bounds is not null && (Latest is null || Earliest is null))
 {
-    <OdsRecordSection Class="@Cls" Label="Temperature history" Empty="true"
+    <OdsRecordSection Class="@Cls" Label="Weather history" Empty="true"
                       EmptyText="@Text(HistoryOff
                           ? "Historical data is turned off for this place."
-                          : "No measured temperature yet. Odyssey fetches it from MET Norway on its own — check back later.")" />
+                          : "No measured weather yet. Odyssey fetches it from MET Norway on its own — check back later.")" />
 }
 else
 {
-    <OdsRecordSection Class="@Cls" Label="Temperature history" Meta="measured · UTC days"
-                      Notice="@(HistoryOff ? Text("Historical data is turned off for this place. This is the temperature measured until it was turned off; nothing new is added.") : null)"
+    <OdsRecordSection Class="@Cls" Label="Weather history" Meta="measured · UTC days"
+                      Notice="@(HistoryOff ? Text("Historical data is turned off for this place. This is what was measured until it was turned off; nothing new is added.") : null)"
                       NoticeIconName="@(HistoryOff ? "history" : null)">
         @if (_bounds is not null)
         {
@@ -58,7 +58,7 @@ else
                 @Box("hourglass_bottom", "Weather is resting for a moment", "Weather has been loaded many times in the last minute. Wait a moment, then try again.")
                 break;
             case Phase.Error:
-                @Box("cloud_off", "Temperature history couldn’t be loaded", "Something went wrong reaching Odyssey. The rest of this location is unaffected.")
+                @Box("cloud_off", "Weather history couldn’t be loaded", "Something went wrong reaching Odyssey. The rest of this location is unaffected.")
                 break;
             case Phase.Loading:
                 <OdsSkeleton Variant="OdsSkeletonVariant.Block" Class="wx-hist-skel" />
@@ -66,26 +66,23 @@ else
             default:
                 @if (Measured.Count == 0)
                 {
-                    <OdsEmptyLine Pad="OdsSize.Lg">No temperature was measured between @WeatherVisuals.Date(From) and @WeatherVisuals.Date(_end).@(AtStart ? "" : " Earlier days may have it.")</OdsEmptyLine>
+                    <OdsEmptyLine Pad="OdsSize.Lg">Nothing was measured between @WeatherVisuals.Date(From) and @WeatherVisuals.Date(_end).@(AtStart ? "" : " Earlier days may have it.")</OdsEmptyLine>
                 }
                 else
                 {
+                    @* The picker stands in for the chart's title, as on the contract-terms chart: choosing is
+                       client-side, since one response carries every measure. *@
+                    <div class="wx-hist-head">
+                        <OdsMultiSelect Label="Measures" Icon="insights" Quiet="true" Align="OdsAlign.Start"
+                                        Values="_measures" ValuesChanged="PickMeasures" Options="MeasureOptions" />
+                    </div>
                     <dl class="wx-facts wx-hist-facts">
-                        @if (Lowest is { } low)
+                        @foreach (var fact in ShownFacts)
                         {
-                            <div><dt><OdsMIcon Name="south" Size="13" />Lowest</dt><dd><b>@WeatherVisuals.Temp(low.Observed!.MinTempC)</b> on @ShortDate(low.Date)</dd></div>
+                            <div><dt><OdsMIcon Name="@fact.Icon" Size="13" />@fact.Label</dt><dd><b>@fact.Value</b>@(fact.Date is { } on ? $" on {ShortDate(on)}" : fact.After)</dd></div>
                         }
-                        @if (Highest is { } high)
-                        {
-                            <div><dt><OdsMIcon Name="north" Size="13" />Highest</dt><dd><b>@WeatherVisuals.Temp(high.Observed!.MaxTempC)</b> on @ShortDate(high.Date)</dd></div>
-                        }
-                        @if (AverageOfMeans is { } avg)
-                        {
-                            <div><dt><OdsMIcon Name="thermostat" Size="13" />Average of daily means</dt><dd><b>@WeatherVisuals.Temp(avg)</b></dd></div>
-                        }
-                        <div><dt><OdsMIcon Name="event_available" Size="13" />Days measured</dt><dd><b>@Measured.Count</b> of @DaysShown</dd></div>
                     </dl>
-                    <WeatherTemperatureChart Days="_response!.Days" From="From" To="_end" LocationName="@Location.Name" />
+                    <WeatherHistoryChart Days="_response!.Days" From="From" To="_end" LocationName="@Location.Name" Measures="_measures" />
                 }
                 break;
         }
@@ -94,7 +91,7 @@ else
         @if (_phase == Phase.Ready && _response is not null)
         {
             <div class="wx-foot">
-                <span>Daily values from the MET Norway station nearest the weather position. A day runs midnight to midnight UTC, so it can sit an hour or two off the local date.</span>
+                <span>Daily values from the MET Norway station nearest the weather position. A day runs midnight to midnight UTC — precipitation 06:00 to 06:00 UTC, as MET reports it — so it can sit an hour or two off the local date.</span>
                 <WeatherAttributionLine Attribution="_response.Attribution" />
             </div>
         }

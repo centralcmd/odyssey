@@ -325,7 +325,7 @@ public sealed class WeatherReadService
             select new { weather.ForecastEnabled, weather.HistoryEnabled, location.LocationId, location.Name };
 
         // The forecast places are the dashboard picker's list; the history places are where a location's
-        // Temperature history exists. A place may be in either, both or neither.
+        // Weather history exists. A place may be in either, both or neither.
         var locations = await live.Where(w => w.ForecastEnabled)
             .OrderBy(w => w.Name).ThenBy(w => w.LocationId)
             .Select(w => new WeatherLocationRef { LocationId = w.LocationId, Name = w.Name })

@@ -138,10 +138,10 @@
 /* The day strip is focusable because it scrolls; show where focus is. */
 .wx-days:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-md); }
 
-/* ---------- Temperature history (location record) ----------
-   Design system · weather.css. The chart reuses LineChart's plot, axis, tooltip and key classes
-   (.odc-lc-*) so the two read as one family; only the band, the mean and the gap rules are weather's
-   own. The band is a fill and the mean a stroke, so the two are told apart by shape; the band's edges
+/* ---------- Weather history (location record) ----------
+   Design system · weather.css. The chart reuses LineChart's plot, axis and tooltip classes (.odc-lc-*)
+   and the contract-terms chart's ledger (.odc-sc-legend) so they read as one family; only the band,
+   the mean, the bars, the series and the gap rules are weather's own. The band is a fill and the mean a stroke, so the two are told apart by shape; the band's edges
    carry a 1px --brand-text rule, which keeps low and high at 3:1 against the surface in both themes
    where a --chart-1 fill alone would not. */
 .wx-hist-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
@@ -152,11 +152,21 @@
 .wx-hist-band { fill: var(--chart-1); fill-opacity: 0.22; stroke: var(--brand-text); stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .wx-hist-mean { fill: none; stroke: var(--brand-text); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .wx-hist-dot { fill: var(--brand-text); }
+/* Precipitation bars and the wind lines take their hue from the measure registry (WeatherMeasures,
+   inline). A line is 2.4px; gusts are the thinner line with a dot per day, so the two m/s measures
+   differ by shape as well as hue. */
+.wx-hist-series { fill: none; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.wx-hist-series.thin { stroke-width: 1.4; }
+.wx-hist-bar-mark { shape-rendering: crispEdges; }
+/* A day nobody measured, when bars are drawn: a missing bar would otherwise read as a dry day. */
+.wx-hist-nodata { fill: var(--mud-palette-action-default-hover); stroke: var(--chart-grid); stroke-width: 1; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+/* The chart's head: the Measures picker stands in for its title, as on the contract-terms chart. */
+.wx-hist-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: -4px; }
+.wx-hist-legend { padding-left: 0; padding-right: 0; }
 .wx-hist-hcol { fill: var(--mud-palette-action-default-hover); pointer-events: none; }
 .wx-hist-tip-v { display: flex; gap: 10px; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); white-space: nowrap; }
 .wx-hist-tip-v b { font-weight: var(--fw-medium); color: var(--mud-palette-text-primary); }
 .wx-hist-tip-gap { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); max-width: 26ch; white-space: normal; }
-.wx-hist-key { margin-top: 2px; }
 .wx-hist-skel { display: block; height: 300px; }
 
 /* The period is the two ends of the window in DateRangePicker's layout (.odc-dpr), each an

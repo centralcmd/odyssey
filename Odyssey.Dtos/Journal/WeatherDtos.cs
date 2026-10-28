@@ -476,7 +476,7 @@ public sealed record WeatherLocationOptions
 
     public Guid? HouseholdDefaultLocationId { get; init; }
 
-    /// <summary>The places with historical data on — where a location's Temperature history exists.</summary>
+    /// <summary>The places with historical data on — where a location's Weather history exists.</summary>
     public IReadOnlyList<WeatherLocationRef> HistoryLocations { get; init; } = [];
 }
 

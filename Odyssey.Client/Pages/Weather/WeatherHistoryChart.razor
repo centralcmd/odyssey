@@ -1,0 +1,246 @@
+@using Odyssey.Client.Components
+@*
+    WeatherHistoryChart — the Weather history plot (design system · Weather.jsx WeatherHistoryChart). It reuses
+    LineChart's plot, axis and tooltip classes (.odc-lc-*) and the contract-terms chart's ledger (.odc-sc-legend);
+    the band, bar, series and gap rules are wx-.
+*@
+
+<div class="wx-hist-chart">
+    @* One tab stop: focus opens the readout on the newest day, Left / Right step through the days,
+       Escape or leaving closes it. The live region speaks only for keyboard steps. *@
+    <div class="odc-lc-plot" tabindex="0" role="group" aria-label="@PlotKeyLabel" @ref="_plotRef"
+         @onmouseleave="ClearHover" @onfocus="OnPlotFocus" @onblur="ClearHover" @onkeydown="OnPlotKey">
+        <svg class="odc-line-svg" viewBox="@($"0 0 {F(_vbW)} {F(ViewBoxHeight)}")" preserveAspectRatio="xMidYMid meet"
+             role="img" aria-label="@AriaLabel">
+            <g stroke="var(--chart-grid)" stroke-width="1">
+                @foreach (var v in _ticks)
+                {
+                    @if (v != 0)
+                    {
+                        <line x1="@F(X0)" y1="@F(Sy(v))" x2="@F(X1)" y2="@F(Sy(v))" />
+                    }
+                }
+            </g>
+            @if (_yMin <= 0 && _yMax > 0)
+            {
+                <line class="odc-lc-zero" x1="@F(X0)" y1="@F(Sy(0))" x2="@F(X1)" y2="@F(Sy(0))" />
+            }
+            <g class="odc-lc-axis">@((MarkupString)YAxisMarkup)</g>
+            <g class="odc-lc-axis">@((MarkupString)XAxisMarkup)</g>
+
+            @* A day nobody measured is shaded when bars are drawn — a missing bar would otherwise read as a dry
+               day. Lines break instead. *@
+            @if (HasBars)
+            {
+                @foreach (var c in _cols.Where(c => !MeasuredDay(c)))
+                {
+                    <rect class="wx-hist-nodata" x="@F(Cx(c.Index) - ColW / 2)" y="@F(YTop)" width="@F(ColW)" height="@F(YBot - YTop)" />
+                }
+            }
+            @if (_hover is { } hc && hc < N)
+            {
+                <rect class="wx-hist-hcol" x="@F(Cx(hc) - ColW / 2)" y="@F(YTop)" width="@F(ColW)" height="@F(YBot - YTop)" />
+            }
+
+            @* Precipitation: one bar per measured day, from zero. *@
+            @foreach (var m in _shown.Where(m => m.Mark == WeatherMeasureMark.Bar))
+            {
+                var w = Math.Max(1, Math.Min(ColW * 0.7, 10));
+                @foreach (var c in _cols.Where(c => Has(m, c)))
+                {
+                    var v = Value(m, c);
+                    <rect class="wx-hist-bar-mark" x="@F(Cx(c.Index) - w / 2)" width="@F(w)" y="@F(Sy(v))"
+                          height="@F(Math.Max(v > 0 ? 1 : 0, Sy(0) - Sy(v)))" rx="@(w > 4 ? "1.5" : "0")" style="@($"fill:{m.Color}")" />
+                }
+            }
+
+            @if (Temp)
+            {
+                @* Temperature: the low–high band and the daily mean, one shape per run of reported days; a lone
+                   day is a bar with a dot. *@
+                @foreach (var run in Runs(_cols, c => c.HasBand))
+                {
+                    var c = run[0];
+                    @if (run.Count == 1)
+                    {
+                        <rect class="wx-hist-band" x="@F(Cx(c.Index) - Math.Min(ColW * 0.3, 4))" width="@F(Math.Min(ColW * 0.6, 8))"
+                              y="@F(Sy(D(c.Observed!.MaxTempC)))" height="@F(Math.Max(1, Sy(D(c.Observed.MinTempC)) - Sy(D(c.Observed.MaxTempC))))" rx="2" />
+                    }
+                    else
+                    {
+                        <path class="wx-hist-band" d="@BandPath(run)" />
+                    }
+                }
+                @foreach (var run in Runs(_cols, c => c.HasMean))
+                {
+                    var c = run[0];
+                    @if (run.Count == 1)
+                    {
+                        <circle class="wx-hist-dot" cx="@F(Cx(c.Index))" cy="@F(Sy(D(c.Observed!.MeanTempC)))" r="3" />
+                    }
+                    else
+                    {
+                        <polyline class="wx-hist-mean" points="@MeanPoints(run)" />
+                    }
+                }
+            }
+
+            @* Wind: a line per measure, broken at a missing day. Gusts are the thinner line with a dot on each
+               day, so the two are told apart by shape as well as hue (the dots drop past 90 days, where they merge). *@
+            @foreach (var m in _shown.Where(m => m.Mark is WeatherMeasureMark.Line or WeatherMeasureMark.Dots))
+            {
+                var dotted = m.Mark == WeatherMeasureMark.Dots;
+                @foreach (var run in Runs(_cols, c => Has(m, c)))
+                {
+                    @if (run.Count > 1)
+                    {
+                        <polyline class="@(dotted ? "wx-hist-series thin" : "wx-hist-series")" style="@($"stroke:{m.Color}")"
+                                  points="@SeriesPoints(m, run)" />
+                    }
+                    @if (dotted && N <= 90 || run.Count == 1)
+                    {
+                        @foreach (var c in run)
+                        {
+                            <circle cx="@F(Cx(c.Index))" cy="@F(Sy(Value(m, c)))" r="@(dotted ? "2.4" : "3")" style="@($"fill:{m.Color}")" />
+                        }
+                    }
+                }
+            }
+
+            @if (_hover is { } ring && ring < N && Temp && _cols[ring].HasBand && _cols[ring].HasMean)
+            {
+                <circle class="odc-lc-hring" cx="@F(Cx(ring))" cy="@F(Sy(D(_cols[ring].Observed!.MeanTempC)))" r="6" stroke="var(--brand-text)" />
+            }
+            @foreach (var c in _cols)
+            {
+                var index = c.Index;
+                <rect class="odc-lc-hit" x="@F(Cx(index) - ColW / 2)" y="@F(YTop)" width="@F(ColW)" height="@F(YBot - YTop)"
+                      @onmouseenter="@(() => ShowHover(index, byKey: false))" />
+            }
+        </svg>
+        @if (_hover is { } h && h < N)
+        {
+            var col = _cols[h];
+            <div class="@($"odc-lc-tip{TipEdge(col)}")" style="@TipStyle(col)" aria-hidden="true">
+                <div class="odc-lc-tip-k">@WeatherVisuals.DayLong(col.Date)</div>
+                @if (MeasuredDay(col))
+                {
+                    var o = col.Observed!;
+                    <div class="wx-hist-tip-v">
+                        @foreach (var m in _shown)
+                        {
+                            @if (m.Key == WeatherMeasures.Temperature)
+                            {
+                                <span>High <b>@WeatherVisuals.Temp(o.MaxTempC)</b></span>
+                                <span>Low <b>@WeatherVisuals.Temp(o.MinTempC)</b></span>
+                                <span>Mean <b>@WeatherVisuals.Temp(o.MeanTempC)</b></span>
+                            }
+                            else
+                            {
+                                <span>@m.Label <b>@Cell(m, o)</b></span>
+                            }
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="wx-hist-tip-gap">Not measured — the station didn’t report this day</div>
+                }
+            </div>
+        }
+        <div class="odc-sr-only" aria-live="polite">@(_hoverByKey ? TipText : null)</div>
+    </div>
+
+    @* The ledger: each plotted measure's swatch, name and its figure for the window — the contract-terms
+       chart's legend row. *@
+    <div class="odc-sc-legend wx-hist-legend">
+        @foreach (var m in _shown)
+        {
+            <span class="odc-sc-leg">
+                @Swatch(m)
+                <span class="odc-sc-leg-name">@m.Label</span>
+                <span class="odc-sc-leg-val" style="@($"color:{OdsGlyphInk.Text(m.Color)}")">@WindowFigure(m)</span>
+            </span>
+        }
+        @if (Gaps)
+        {
+            var lead = _shown[0];
+            var stroke = lead.Mark == WeatherMeasureMark.Band ? null : $"stroke:{lead.Color}";
+            <span class="odc-sc-leg" aria-hidden="true">
+                @if (HasBars)
+                {
+                    <svg width="22" height="12" viewBox="0 0 22 12"><rect class="wx-hist-nodata" x="1" y="1" width="20" height="10" rx="2" /></svg>
+                }
+                else
+                {
+                    <svg width="22" height="12" viewBox="0 0 22 12"><line class="wx-hist-mean" x1="1" y1="6" x2="8" y2="6" style="@stroke" /><line class="wx-hist-mean" x1="14" y1="6" x2="21" y2="6" style="@stroke" /></svg>
+                }
+                <span class="odc-sc-leg-name">@(HasBars ? "Shaded: not measured" : "Break: not measured")</span>
+            </span>
+        }
+    </div>
+
+    @* The hidden class sits on a wrapper: a table box is not clipped by its own overflow, so on the table
+       itself the caption overflowed and made the page scroll sideways at phone width. *@
+    <div class="odc-sr-only">
+    <table>
+        <caption>@($"Measured {Names} at {LocationName}, {Range}")</caption>
+        <thead>
+            <tr>
+                <th scope="col">Date</th>
+                @foreach (var m in _shown)
+                {
+                    @if (m.Key == WeatherMeasures.Temperature)
+                    {
+                        <th scope="col">High</th><th scope="col">Low</th><th scope="col">Mean</th>
+                    }
+                    else
+                    {
+                        <th scope="col">@m.Label</th>
+                    }
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in _cols)
+            {
+                <tr>
+                    <th scope="row">@WeatherVisuals.DayLong(c.Date)</th>
+                    @if (MeasuredDay(c))
+                    {
+                        var o = c.Observed!;
+                        @foreach (var m in _shown)
+                        {
+                            @if (m.Key == WeatherMeasures.Temperature)
+                            {
+                                <td>@WeatherVisuals.Temp(o.MaxTempC)</td>
+                                <td>@WeatherVisuals.Temp(o.MinTempC)</td>
+                                <td>@WeatherVisuals.Temp(o.MeanTempC)</td>
+                            }
+                            else
+                            {
+                                <td>@Cell(m, o)</td>
+                            }
+                        }
+                    }
+                    else
+                    {
+                        <td colspan="@ColumnCount">Not measured</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+</div>
+
+@code {
+    /// <summary>The measure's mark in its hue, in the ledger (design system · Weather.jsx <c>WxMeasureSwatch</c>).</summary>
+    internal static RenderFragment Swatch(WeatherMeasure m) => m.Mark switch
+    {
+        WeatherMeasureMark.Band => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect class="wx-hist-band" x="1" y="1" width="20" height="10" rx="2" /><line class="wx-hist-mean" x1="1" y1="6" x2="21" y2="6" /></svg>,
+        WeatherMeasureMark.Bar => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="7" y="1" width="8" height="10" rx="1.5" style="@($"fill:{m.Color}")" /></svg>,
+        WeatherMeasureMark.Line => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><line class="wx-hist-series" x1="1" y1="6" x2="21" y2="6" style="@($"stroke:{m.Color}")" /></svg>,
+        _ => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><line class="wx-hist-series thin" x1="1" y1="6" x2="21" y2="6" style="@($"stroke:{m.Color}")" /><circle cx="11" cy="6" r="2.6" style="@($"fill:{m.Color}")" /></svg>,
+    };
+}

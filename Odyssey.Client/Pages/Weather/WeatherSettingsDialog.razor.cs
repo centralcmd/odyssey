@@ -74,7 +74,7 @@ public partial class WeatherSettingsDialog
         Archived && Row is { HistoryEnabled: false }
             ? "The location is archived. Restore it before turning historical data on."
         : _history
-            ? "Measured daily weather is fetched from MET’s Frost service and shown in the location’s Temperature history."
+            ? "Measured daily weather is fetched from MET’s Frost service and shown in the location’s Weather history."
             : "No measured data is fetched. Everything already stored is kept until you delete it.";
 
     private string HistoryHelp => Creating

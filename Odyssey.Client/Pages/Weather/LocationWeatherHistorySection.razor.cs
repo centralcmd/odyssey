@@ -7,8 +7,8 @@ using Odyssey.Dtos.Journal;
 namespace Odyssey.Client.Pages.Weather;
 
 /// <summary>
-/// The Temperature history section of a location's record, for every role (design system · Weather.jsx
-/// <c>LocationWeatherHistorySection</c>, components-weather.md → Temperature history). It reads
+/// The Weather history section of a location's record, for every role (design system · Weather.jsx
+/// <c>LocationWeatherHistorySection</c>, components-weather.md → Weather history). It reads
 /// <c>GET /api/weather/daily?locationId=…</c> and pages through the place's measured days by the response's
 /// <c>history</c> bounds, never by the Admin row, so every role pages the same way. <see cref="Row"/> is
 /// the Admin row or null; it only adds the weather-off notice and hides the section during a purge.
@@ -49,6 +49,7 @@ public partial class LocationWeatherHistorySection
     private int _requestSeq;
     private Guid _loadedFor;
     private OdsDatePicker? _fromPicker;
+    private IReadOnlyList<string> _measures = [WeatherMeasures.Temperature];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -214,21 +215,67 @@ public partial class LocationWeatherHistorySection
         return LoadAsync();
     }
 
-    // ── Facts ───────────────────────────────────────────────────────────────────────────────────────
+    // ── Measures and facts ──────────────────────────────────────────────────────────────────────────
+
+    /// <summary>The dash means "this is the line", so only a selected row carries the measure's hue.</summary>
+    private IReadOnlyList<OdsOption> MeasureOptions =>
+        [.. WeatherMeasures.All.Select(m => new OdsOption(m.Key, m.Label) { Icon = "remove", IconColor = _measures.Contains(m.Key) ? m.Color : null })];
+
+    private void PickMeasures(IReadOnlyCollection<string> next) => _measures = WeatherMeasures.NextSelection(_measures, next);
+
+    /// <summary>One fact: its figure in bold, then its day or <see cref="After"/> in plain text.</summary>
+    internal sealed record Fact(string Icon, string Label, string Value, DateOnly? Date = null, string? After = null);
 
     private IReadOnlyList<WeatherDaySummary> Measured =>
         [.. (_response?.Days ?? []).Where(d => d.Observed is not null)];
 
-    private WeatherDaySummary? Lowest => Measured.Where(d => d.Observed is { MinTempC: not null, MaxTempC: not null }).MinBy(d => d.Observed!.MinTempC);
-    private WeatherDaySummary? Highest => Measured.Where(d => d.Observed is { MinTempC: not null, MaxTempC: not null }).MaxBy(d => d.Observed!.MaxTempC);
+    /// <summary>The facts row for the unit plotted (design system · Weather.jsx <c>WxHistoryFacts</c>).</summary>
+    private IReadOnlyList<Fact> ShownFacts => FactsFor(Measured, DaysShown, WeatherMeasures.Of(_measures[0]).Group);
 
-    private decimal? AverageOfMeans
+    internal static IReadOnlyList<Fact> FactsFor(IReadOnlyList<WeatherDaySummary> measured, int daysShown, string group)
     {
-        get
+        static string One(decimal v) => v.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+        WeatherDaySummary? MaxBy(Func<WeatherDayObserved, decimal?> pick) =>
+            measured.Where(d => pick(d.Observed!) is not null).MaxBy(d => pick(d.Observed!));
+        decimal? Mean(Func<WeatherDayObserved, decimal?> pick)
         {
-            var means = Measured.Select(d => d.Observed!.MeanTempC).Where(v => v is not null).Select(v => v!.Value).ToList();
-            return means.Count > 0 ? means.Average() : null;
+            var values = measured.Select(d => pick(d.Observed!)).Where(v => v is not null).Select(v => v!.Value).ToList();
+            return values.Count > 0 ? values.Average() : null;
         }
+        Fact DaysFact(Func<WeatherDayObserved, bool> has) =>
+            new("event_available", "Days measured", $"{measured.Count(d => has(d.Observed!))}", After: $" of {daysShown}");
+
+        var facts = new List<Fact?>();
+        if (group == "mm")
+        {
+            var wettest = MaxBy(o => o.PrecipitationMm);
+            facts.Add(new("water_drop", "Total", $"{One(measured.Sum(d => d.Observed!.PrecipitationMm ?? 0))} mm"));
+            facts.Add(wettest is null ? null : new("north", "Wettest day", $"{One(wettest.Observed!.PrecipitationMm!.Value)} mm", wettest.Date));
+            // 0.1 mm is the smallest amount a gauge reports; below it is a dry day.
+            facts.Add(new("umbrella", "Days with precipitation", $"{measured.Count(d => d.Observed!.PrecipitationMm >= 0.1m)}"));
+            facts.Add(DaysFact(o => o.PrecipitationMm is not null));
+        }
+        else if (group == "ms")
+        {
+            var windiest = MaxBy(o => o.MeanWindSpeedMps);
+            var gust = MaxBy(o => o.MaxWindGustMps);
+            facts.Add(Mean(o => o.MeanWindSpeedMps) is { } avg ? new("air", "Average wind", $"{One(avg)} m/s") : null);
+            facts.Add(windiest is null ? null : new("north", "Windiest day", $"{One(windiest.Observed!.MeanWindSpeedMps!.Value)} m/s", windiest.Date));
+            facts.Add(gust is null ? null : new("storm", "Strongest gust", $"{One(gust.Observed!.MaxWindGustMps!.Value)} m/s", gust.Date));
+            facts.Add(DaysFact(o => o.MeanWindSpeedMps is not null || o.MaxWindGustMps is not null));
+        }
+        else
+        {
+            var band = measured.Where(d => d.Observed is { MinTempC: not null, MaxTempC: not null }).ToList();
+            var low = band.MinBy(d => d.Observed!.MinTempC);
+            var high = band.MaxBy(d => d.Observed!.MaxTempC);
+            facts.Add(low is null ? null : new("south", "Lowest", WeatherVisuals.Temp(low.Observed!.MinTempC), low.Date));
+            facts.Add(high is null ? null : new("north", "Highest", WeatherVisuals.Temp(high.Observed!.MaxTempC), high.Date));
+            facts.Add(Mean(o => o.MeanTempC) is { } avg ? new("thermostat", "Average of daily means", WeatherVisuals.Temp(avg)) : null);
+            facts.Add(DaysFact(o => o.MeanTempC is not null || o.MaxTempC is not null));
+        }
+
+        return [.. facts.OfType<Fact>()];
     }
 
     private static string ShortDate(DateOnly date) => date.ToString("d MMM", System.Globalization.CultureInfo.InvariantCulture);

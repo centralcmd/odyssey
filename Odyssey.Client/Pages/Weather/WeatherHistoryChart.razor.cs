@@ -8,18 +8,23 @@ using Odyssey.Dtos.Journal;
 namespace Odyssey.Client.Pages.Weather;
 
 /// <summary>
-/// The measured daily temperature of one place over a window of days (design system · Weather.jsx
-/// <c>WeatherTemperatureChart</c>): a band from each day's low to high and a line through the daily mean.
+/// The measured daily weather of one place over a window of days (design system · Weather.jsx
+/// <c>WeatherHistoryChart</c>), for the measures <see cref="Measures"/> names — all in one unit
+/// (<see cref="WeatherMeasures.NextSelection"/> keeps it so). Temperature is a band from each day's low to high
+/// with a line through the daily mean; precipitation a bar from zero; wind a line, gusts a thinner line with dots.
 /// Only the observed half of a day is plotted — a forecast for a day that has passed is a prediction, not
-/// history. A day the station did not report is a gap: band and line both break, and a lone reported day
-/// between two gaps draws as a bar with a dot. Nothing is joined across a missing day.
+/// history. A day the station did not report is a gap: lines and bands break, a lone reported day draws as a
+/// bar or a dot, and with bars drawn the day is shaded so it cannot read as a dry one.
 /// </summary>
-public partial class WeatherTemperatureChart : IAsyncDisposable
+public partial class WeatherHistoryChart : IAsyncDisposable
 {
     [Parameter, EditorRequired] public IReadOnlyList<WeatherDaySummary> Days { get; set; } = [];
     [Parameter, EditorRequired] public DateOnly From { get; set; }
     [Parameter, EditorRequired] public DateOnly To { get; set; }
     [Parameter, EditorRequired] public string LocationName { get; set; } = "";
+
+    /// <summary>The measure keys to plot, in one unit; the first leads the ledger and the gap key.</summary>
+    [Parameter] public IReadOnlyList<string> Measures { get; set; } = [WeatherMeasures.Temperature];
 
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
@@ -31,7 +36,10 @@ public partial class WeatherTemperatureChart : IAsyncDisposable
 
     // As LineChart: the viewBox tracks the plot's pixel width, so axis text stays at --fs-micro at any width.
     internal const double ViewBoxHeight = 236;
-    private const double YTop = 14, YBot = 200, X0 = 46, RightInset = 10;
+    private const double YBot = 200, X0 = 46, RightInset = 10;
+
+    // An amount axis says its unit once, above the top tick, so its plot starts lower.
+    private double YTop => Temp ? 14 : 26;
     private double _vbW = 720;
     private double X1 => _vbW - RightInset;
 
@@ -39,6 +47,7 @@ public partial class WeatherTemperatureChart : IAsyncDisposable
     private PlotWidthObserver? _widthObserver;
 
     private Column[] _cols = [];
+    private WeatherMeasure[] _shown = [];
     private double[] _ticks = [];
     private double _yMin, _yMax;
     private int? _hover;
@@ -61,15 +70,21 @@ public partial class WeatherTemperatureChart : IAsyncDisposable
             return new Column(i, date, byDate.GetValueOrDefault(date));
         })];
         if (_hover >= N) _hover = null;
+        _shown = [.. Measures.Select(WeatherMeasures.Of)];
+        if (_shown.Length == 0) _shown = [WeatherMeasures.Of(WeatherMeasures.Temperature)];
 
+        // The domain: every plotted value. An amount (millimetres, metres per second) starts at zero — a bar or
+        // a speed measured from anywhere else overstates it. Temperature has no floor.
         var values = _cols.Where(c => c.Observed is not null)
-            .SelectMany(c => new[] { c.Observed!.MinTempC, c.Observed.MaxTempC, c.Observed.MeanTempC })
+            .SelectMany(c => _shown.SelectMany(m => m.Key == WeatherMeasures.Temperature
+                ? new[] { c.Observed!.MinTempC, c.Observed.MaxTempC, c.Observed.MeanTempC }
+                : [m.Pick(c.Observed!)]))
             .Where(v => v is not null).Select(v => (double)v!.Value).ToList();
         var lo = values.Count > 0 ? values.Min() : 0;
-        var hi = values.Count > 0 ? values.Max() : 0;
+        var hi = values.Count > 0 ? values.Max() : Temp ? 0 : 1;
         var step = hi - lo <= 8 ? 2 : hi - lo <= 24 ? 5 : 10;
-        _yMin = Math.Floor((lo - 1) / step) * step;
-        _yMax = Math.Ceiling((hi + 1) / step) * step;
+        _yMin = Temp ? Math.Floor((lo - 1) / step) * step : 0;
+        _yMax = Math.Max(_yMin + step, Math.Ceiling((hi + (Temp ? 1 : 0.5)) / step) * step);
         var ticks = new List<double>();
         for (var v = _yMin; v <= _yMax; v += step) ticks.Add(v);
         _ticks = [.. ticks];
@@ -111,10 +126,27 @@ public partial class WeatherTemperatureChart : IAsyncDisposable
         return runs;
     }
 
-    private List<List<Column>> BandRuns => Runs(_cols, c => c.HasBand);
-    private List<List<Column>> MeanRuns => Runs(_cols, c => c.HasMean);
-    private int MeasuredCount => _cols.Count(c => c.Observed is not null);
+    private bool Temp => _shown.Any(m => m.Key == WeatherMeasures.Temperature);
+    private bool HasBars => _shown.Any(m => m.Mark == WeatherMeasureMark.Bar);
+
+    /// <summary>Temperature counts a day by its mean, which is what its line draws; any other measure by its value.</summary>
+    private static bool Has(WeatherMeasure m, Column c) =>
+        c.Observed is { } o && (m.Key == WeatherMeasures.Temperature ? o.MeanTempC is not null : m.Pick(o) is not null);
+
+    private static double Value(WeatherMeasure m, Column c) => (double)m.Pick(c.Observed!)!.Value;
+
+    private bool MeasuredDay(Column c) => _shown.Any(m => Has(m, c));
+    private int MeasuredCount => _cols.Count(MeasuredDay);
     private bool Gaps => MeasuredCount < N;
+
+    private string WindowFigure(WeatherMeasure m) =>
+        WeatherMeasures.WindowFigure(m, [.. _cols.Where(c => Has(m, c)).Select(c => m.Pick(c.Observed!)!.Value)]);
+
+    private static string Cell(WeatherMeasure m, WeatherDayObserved o) => m.Pick(o) is { } v ? m.Format(v) : "—";
+
+    private int ColumnCount => _shown.Sum(m => m.Key == WeatherMeasures.Temperature ? 3 : 1);
+
+    private string Names => string.Join(" and ", _shown.Select(m => m.Label.ToLowerInvariant()));
 
     private string BandPath(List<Column> run) =>
         "M " + string.Join(" L ", run.Select(c => $"{F(Cx(c.Index))} {F(Sy(D(c.Observed!.MaxTempC)))}"))
@@ -124,23 +156,16 @@ public partial class WeatherTemperatureChart : IAsyncDisposable
     private string MeanPoints(List<Column> run) =>
         string.Join(' ', run.Select(c => $"{F(Cx(c.Index))},{F(Sy(D(c.Observed!.MeanTempC)))}"));
 
+    private string SeriesPoints(WeatherMeasure m, List<Column> run) =>
+        string.Join(' ', run.Select(c => $"{F(Cx(c.Index))},{F(Sy(Value(m, c)))}"));
+
     private string Range => $"{WeatherVisuals.Date(From)} to {WeatherVisuals.Date(To)}";
 
-    private string AriaLabel
-    {
-        get
-        {
-            var band = _cols.Where(c => c.HasBand).ToList();
-            var lowest = band.MinBy(c => c.Observed!.MinTempC);
-            var highest = band.MaxBy(c => c.Observed!.MaxTempC);
-            return $"Measured daily temperature at {LocationName}, {Range}."
-                + (lowest is not null && highest is not null
-                    ? $" Lowest {WeatherVisuals.Temp(lowest.Observed!.MinTempC)} on {WeatherVisuals.DayLong(lowest.Date)}, highest {WeatherVisuals.Temp(highest.Observed!.MaxTempC)} on {WeatherVisuals.DayLong(highest.Date)}."
-                    : "")
-                + (Gaps ? $" {N - MeasuredCount} of {N} days were not measured." : "")
-                + " A table of every day follows.";
-        }
-    }
+    private string AriaLabel =>
+        $"Measured {Names} at {LocationName}, {Range}."
+        + string.Concat(_shown.Select(m => $" {m.Label}: {WindowFigure(m)}."))
+        + (Gaps ? $" {N - MeasuredCount} of {N} days were not measured." : "")
+        + " A table of every day follows.";
 
     private string PlotKeyLabel => $"{AriaLabel} Use Left and Right arrow keys to read each day.";
 
@@ -177,9 +202,11 @@ public partial class WeatherTemperatureChart : IAsyncDisposable
     private static string Enc(string s) => System.Net.WebUtility.HtmlEncode(s);
 
     // Razor reserves <text> as a control keyword, so the axis labels are emitted as raw SVG markup.
+    // An amount axis says its unit once, above the top tick; temperature's ° rides on every tick.
     private string YAxisMarkup => string.Concat(_ticks.Select(v =>
         $"<text x=\"{F(X0 - 10)}\" y=\"{F(Sy(v) + 4)}\" text-anchor=\"end\"{(v == 0 ? " class=\"odc-lc-axis-zero\"" : "")}>"
-        + $"{Enc(WeatherVisuals.Temp((decimal)v))}</text>"));
+        + $"{Enc(Temp ? WeatherVisuals.Temp((decimal)v) : F(v))}</text>"))
+        + (Temp ? "" : $"<text x=\"{F(X0 - 10)}\" y=\"10\" text-anchor=\"end\">{Enc(_shown[0].Unit)}</text>");
 
     private string XAxisMarkup => string.Concat(DateLabels(From, N, X1 - X0).Select(l =>
     {
@@ -221,17 +248,28 @@ public partial class WeatherTemperatureChart : IAsyncDisposable
 
     private string TipStyle(Column c)
     {
-        var anchor = c.Observed is { } o ? o.MaxTempC ?? o.MeanTempC ?? o.MinTempC : null;
-        var top = (anchor is { } a ? Sy((double)a) : YTop + 24) / ViewBoxHeight * 100;
+        var top = (TipAnchor(c) is { } a ? Sy(a) : YTop + 24) / ViewBoxHeight * 100;
         return OdsLineChart.TipStyle(Cx(c.Index) / _vbW * 100, top);
+    }
+
+    /// <summary>The highest plotted value of the day, so the tooltip sits above every mark.</summary>
+    private double? TipAnchor(Column c)
+    {
+        if (c.Observed is not { } o)
+            return null;
+        var values = _shown.SelectMany(m => m.Key == WeatherMeasures.Temperature ? new[] { o.MaxTempC, o.MeanTempC } : [m.Pick(o)])
+            .Where(v => v is not null).Select(v => (double)v!.Value).ToList();
+        return values.Count > 0 ? values.Max() : null;
     }
 
     private string TipEdge(Column c) => OdsLineChart.TipEdge(Cx(c.Index) / _vbW * 100);
 
     /// <summary>The live region's sentence for the day the keyboard is on.</summary>
     private string? TipText => _hover is { } h && h < N
-        ? _cols[h].Observed is { } o
-            ? $"{WeatherVisuals.DayLong(_cols[h].Date)}: high {WeatherVisuals.Temp(o.MaxTempC)}, low {WeatherVisuals.Temp(o.MinTempC)}, mean {WeatherVisuals.Temp(o.MeanTempC)}"
+        ? MeasuredDay(_cols[h])
+            ? $"{WeatherVisuals.DayLong(_cols[h].Date)}: " + string.Join(", ", _shown.Select(m => m.Key == WeatherMeasures.Temperature
+                ? $"high {WeatherVisuals.Temp(_cols[h].Observed!.MaxTempC)}, low {WeatherVisuals.Temp(_cols[h].Observed!.MinTempC)}, mean {WeatherVisuals.Temp(_cols[h].Observed!.MeanTempC)}"
+                : $"{m.Label.ToLowerInvariant()} {Cell(m, _cols[h].Observed!)}"))
             : $"{WeatherVisuals.DayLong(_cols[h].Date)}: not measured"
         : null;
 }

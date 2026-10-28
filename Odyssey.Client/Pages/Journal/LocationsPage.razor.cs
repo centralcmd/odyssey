@@ -127,7 +127,7 @@ public partial class LocationsPage
         _canUpdateWeather = _canReadWeather && user.HasPermission(PermissionClaims.WeatherLocationsUpdate);
         _canPurgeWeather = _canReadWeather && user.HasPermission(PermissionClaims.WeatherHistoryDelete);
         _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
-        // Temperature history is weather data, not setup: it follows weather.read, which every role holds.
+        // Weather history is weather data, not setup: it follows weather.read, which every role holds.
         _canReadWeatherData = user.HasPermission(PermissionClaims.WeatherRead);
         _canOpenSettings = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
 
@@ -433,12 +433,12 @@ public partial class LocationsPage
 
     private ExistingWeatherLocation? WeatherRow(ExistingLocation l) => _weatherRows.GetValueOrDefault(l.LocationId);
 
-    // ── Temperature history (every role) ────────────────────────────────────────────────────────────
+    // ── Weather history (every role) ────────────────────────────────────────────────────────────
 
     /// <summary>The places with historical data on (<c>historyLocations</c> of <c>GET /api/weather/locations/options</c>).</summary>
     private HashSet<Guid> _historyPlaces = [];
 
-    /// <summary>Bumped when measured data is deleted, so an open Temperature history section reloads.</summary>
+    /// <summary>Bumped when measured data is deleted, so an open Weather history section reloads.</summary>
     private int _historyEpoch;
 
     /// <summary>
