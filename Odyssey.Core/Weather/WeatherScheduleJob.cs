@@ -69,10 +69,18 @@ public sealed class WeatherScheduleJob(
                 join schedule in context.WeatherLocationSchedules.AsNoTracking() on weather.LocationId equals schedule.LocationId
                 where weather.HistoryEnabled && weather.PurgeStartedAt == null && location.Archived == null
                 orderby weather.EnabledAt, weather.LocationId
-                select new { weather.LocationId, schedule.NextObservationFetchAfterUtc })
+                select new
+                {
+                    weather.LocationId,
+                    schedule.NextObservationFetchAfterUtc,
+                    // WeatherFetchService.FirstLookupPending, spelled out so the query translates to SQL.
+                    FirstLookupPending = weather.StationResolvedAtUtc == null
+                        && schedule.ObservationsCheckedThroughDate == null
+                        && schedule.ObservationFailureKind == null,
+                })
             .ToListAsync(cancellationToken);
         var now = time.GetUtcNow().UtcDateTime;
-        foreach (var row in enabled.Where(r => r.NextObservationFetchAfterUtc is null || r.NextObservationFetchAfterUtc <= now))
+        foreach (var row in enabled.Where(r => r.FirstLookupPending || r.NextObservationFetchAfterUtc is null || r.NextObservationFetchAfterUtc <= now))
         {
             await using var inner = scopes.CreateAsyncScope();
             var state = await inner.ServiceProvider.GetRequiredService<WeatherFetchService>()

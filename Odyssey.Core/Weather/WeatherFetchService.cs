@@ -356,7 +356,7 @@ public sealed class WeatherFetchService
         var schedule = await context.WeatherLocationSchedules
             .FirstOrDefaultAsync(s => s.LocationId == locationId, cancellationToken);
         var now = Now;
-        if (schedule is null || schedule.NextObservationFetchAfterUtc > now || schedule.LeaseUntilUtc > now)
+        if (schedule is null || (schedule.NextObservationFetchAfterUtc > now && !FirstLookupPending(weather, schedule)) || schedule.LeaseUntilUtc > now)
         {
             return secret.State;
         }
@@ -369,8 +369,14 @@ public sealed class WeatherFetchService
         var firstOwned = site.SiteVersion == 1 ? DateOnly.MinValue : timeline.FirstOwnedDate(site);
         var floor = Max(weather.HistoryFrom, firstOwned);
 
+        // Frost has finished yesterday by ObservationLocalHour; before then the newest complete day is the one before.
+        // A place never fetched for its current site does not wait for that hour: it starts at once with the days
+        // already complete, and the morning run adds yesterday — so newly turned-on history shows within minutes.
+        var morning = localNow.Hour >= ObservationLocalHour;
+        var lastComplete = morning ? yesterday : yesterday.AddDays(-1);
+        var neverFetched = schedule.ObservationsCheckedThroughDate is null;
         var dailyPending = schedule.ObservationsCheckedThroughDate is not { } checkedThrough || checkedThrough < yesterday;
-        var dailyAllowed = dailyPending && localNow.Hour >= ObservationLocalHour;
+        var dailyAllowed = dailyPending && (morning || neverFetched);
         var backfillPending = schedule.ObservationsBackfilledFromDate is { } backfilledFrom && backfilledFrom > floor;
 
         if (!dailyAllowed && !backfillPending)
@@ -429,8 +435,8 @@ public sealed class WeatherFetchService
         var daily = dailyAllowed;
         if (daily)
         {
-            from = Max(floor, yesterday.AddDays(-6));
-            to = yesterday;
+            from = Max(floor, lastComplete.AddDays(-6));
+            to = lastComplete;
         }
         else
         {
@@ -457,7 +463,7 @@ public sealed class WeatherFetchService
         // Markers advance even on an empty result, so an empty range is never re-requested (AC 16).
         if (daily)
         {
-            schedule.ObservationsCheckedThroughDate = yesterday;
+            schedule.ObservationsCheckedThroughDate = lastComplete;
             if (schedule.ObservationsBackfilledFromDate is null || schedule.ObservationsBackfilledFromDate > from)
             {
                 schedule.ObservationsBackfilledFromDate = from;
@@ -472,7 +478,10 @@ public sealed class WeatherFetchService
         schedule.ObservationFailureKind = null;
         schedule.ObservationConsecutiveFailures = 0;
         var moreBackfill = schedule.ObservationsBackfilledFromDate > floor;
-        schedule.NextObservationFetchAfterUtc = moreBackfill ? now : NextObservationWindow(site, now, dailyPending: false);
+        // An early first fetch still owes yesterday, so it wakes at this morning's window rather than tomorrow's.
+        schedule.NextObservationFetchAfterUtc = moreBackfill
+            ? now
+            : NextObservationWindow(site, now, dailyPending: schedule.ObservationsCheckedThroughDate < yesterday);
 
         if (await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken) && inserted.Count > 0)
         {
@@ -543,6 +552,14 @@ public sealed class WeatherFetchService
     }
 
     /// <summary>The next 08:00 site-local after <paramref name="now"/> — today's if it is still pending and ahead.</summary>
+    /// <summary>
+    /// A place whose history has never started — no station looked up, nothing fetched, no failure pause — is due
+    /// whatever its wake-up time says. An earlier release parked such a place until the next morning; this lets it
+    /// start at once. A failure pause still holds, and after the first lookup the wake-up time governs again.
+    /// </summary>
+    internal static bool FirstLookupPending(WeatherLocation weather, WeatherLocationSchedule schedule) =>
+        weather.StationResolvedAtUtc == null && schedule.ObservationsCheckedThroughDate == null && schedule.ObservationFailureKind == null;
+
     private static DateTime NextObservationWindow(WeatherLocationSite site, DateTime now, bool dailyPending)
     {
         var zone = WeatherSiteTimeline.Zone(site);

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Preferences;
 using Odyssey.Core.Weather;
@@ -314,6 +316,85 @@ public class WeatherServiceTests
         var check = h.NewContext();
         Assert.Equal(1, await check.WeatherObservations.CountAsync());
         Assert.True(await check.WeatherDays.AnyAsync(d => d.LocalDate == new DateOnly(2026, 10, 22) && d.ObservedMaxTempC == 10.1m));
+    }
+
+    [Fact]
+    public async Task A_never_fetched_place_starts_at_once_and_adds_yesterday_at_the_morning_window()
+    {
+        // 01:00 UTC is 03:00 in Oslo: before Frost has finished yesterday, but the days before it are complete.
+        using var h = new WeatherTestHarness(new DateTimeOffset(2026, 10, 23, 1, 0, 0, TimeSpan.Zero));
+        h.Secrets.Frost = SecretResult.Found("client-id");
+        var location = await h.EnableAsync();
+        var weather = await h.Context.WeatherLocations.SingleAsync(w => w.LocationId == location.LocationId);
+        weather.HistoryFrom = new DateOnly(2026, 10, 15);
+        await h.Context.SaveChangesAsync();
+        h.Context.ChangeTracker.Clear();
+        h.Observations.Daily = (_, _) => new ObservationFetchResult(true, []);
+
+        await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
+        Assert.Equal(1, h.Observations.StationCalls);
+
+        await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
+        var first = Assert.Single(h.Observations.DailyCalls);
+        Assert.Equal((new DateOnly(2026, 10, 15), new DateOnly(2026, 10, 21)), (first.From, first.To));
+
+        // Yesterday is still owed, so the next run is this morning's 08:00 in Oslo, not tomorrow's.
+        var schedule = await h.NewContext().WeatherLocationSchedules.SingleAsync(s => s.LocationId == location.LocationId);
+        Assert.Equal(new DateTime(2026, 10, 23, 6, 0, 0), schedule.NextObservationFetchAfterUtc);
+
+        // Nothing more before then: a place that has been fetched keeps to the morning rhythm.
+        h.Time.Now = new DateTimeOffset(2026, 10, 23, 3, 0, 0, TimeSpan.Zero);
+        await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
+        Assert.Single(h.Observations.DailyCalls);
+
+        h.Time.Now = new DateTimeOffset(2026, 10, 23, 6, 30, 0, TimeSpan.Zero);
+        await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
+        Assert.Equal(new DateOnly(2026, 10, 22), h.Observations.DailyCalls[^1].To);
+    }
+
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 0)]
+    public async Task A_place_parked_before_its_first_lookup_starts_now_unless_a_failure_pause_holds(bool failed, int stationCalls)
+    {
+        // An earlier release parked a never-fetched place until the next morning's window.
+        using var h = new WeatherTestHarness(new DateTimeOffset(2026, 10, 23, 1, 0, 0, TimeSpan.Zero));
+        h.Secrets.Frost = SecretResult.Found("client-id");
+        var location = await h.EnableAsync();
+        var schedule = await h.Context.WeatherLocationSchedules.SingleAsync(s => s.LocationId == location.LocationId);
+        schedule.NextObservationFetchAfterUtc = new DateTime(2026, 10, 23, 6, 0, 0);
+        if (failed)
+            schedule.ObservationFailureKind = WeatherFetchFailureKind.RateLimited;
+        await h.Context.SaveChangesAsync();
+        h.Context.ChangeTracker.Clear();
+
+        await h.Fetch(h.NewContext()).FetchObservationsAsync(location.LocationId, CancellationToken.None);
+
+        Assert.Equal(stationCalls, h.Observations.StationCalls);
+    }
+
+    [Fact]
+    public async Task The_schedule_job_starts_a_place_parked_before_its_first_lookup()
+    {
+        // 01:00 UTC is 03:00 in Oslo; an earlier release parked the place until 08:00 there.
+        using var h = new WeatherTestHarness(new DateTimeOffset(2026, 10, 23, 1, 0, 0, TimeSpan.Zero));
+        h.Secrets.Frost = SecretResult.Found("client-id");
+        var location = await h.EnableAsync(tracked: false);
+        var schedule = await h.Context.WeatherLocationSchedules.SingleAsync(s => s.LocationId == location.LocationId);
+        schedule.NextObservationFetchAfterUtc = new DateTime(2026, 10, 23, 6, 0, 0);
+        await h.Context.SaveChangesAsync();
+        h.Context.ChangeTracker.Clear();
+
+        var services = new ServiceCollection()
+            .AddScoped(_ => h.NewContext())
+            .AddScoped(sp => h.Fetch(sp.GetRequiredService<Odyssey.Context.OdysseyContext>()))
+            .AddSingleton<IWeatherSettingsLookup>(h.Settings)
+            .BuildServiceProvider();
+        var job = new WeatherScheduleJob(services.GetRequiredService<IServiceScopeFactory>(), h.Time, NullLogger<WeatherScheduleJob>.Instance);
+
+        await job.RunOnceAsync(CancellationToken.None);
+
+        Assert.Equal(1, h.Observations.StationCalls);
     }
 
     // ── Admin: enable / configure / disable ───────────────────────────────────────────────────────
