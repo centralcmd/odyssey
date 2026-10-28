@@ -30,9 +30,10 @@ public static partial class OdsTypeRegistries
 
     public static readonly IReadOnlyDictionary<ExchangeRateStatus, OdsChipValue> ExchangeRateStatuses = new Dictionary<ExchangeRateStatus, OdsChipValue>
     {
-        [ExchangeRateStatus.Current] = new("Current", OdsChipTone.Info, Dot: true),
-        [ExchangeRateStatus.Historical] = new("Historical", OdsChipTone.Default, Dot: true),
-        [ExchangeRateStatus.Upcoming] = new("Upcoming", OdsChipTone.Pending, Dot: true),
+        // In force green, still to come blue, superseded the outline grey Archived and Draft wear.
+        [ExchangeRateStatus.Current] = new("Current", OdsChipTone.Income, Dot: true),
+        [ExchangeRateStatus.Historical] = new("Historical", OdsChipTone.Outline, Dot: true),
+        [ExchangeRateStatus.Upcoming] = new("Upcoming", OdsChipTone.Info, Dot: true),
     };
 
     public static readonly IReadOnlyDictionary<ExchangeRateSyncState, OdsChipValue> ExchangeRateSyncStates = new Dictionary<ExchangeRateSyncState, OdsChipValue>

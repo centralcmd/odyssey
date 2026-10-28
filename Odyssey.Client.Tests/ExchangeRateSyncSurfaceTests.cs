@@ -359,6 +359,23 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
 
     private static OdsRecordActionContext NoopActions(string menuTriggerId = "trigger") => new() { Toggle = () => { }, StartEdit = () => { }, Remove = () => { }, MenuTriggerId = menuTriggerId };
 
+    [Theory]
+    [InlineData(ExchangeRateStatus.Current, OdsChipTone.Income, "background:var(--finance-income-soft);color:var(--finance-income);")]
+    [InlineData(ExchangeRateStatus.Upcoming, OdsChipTone.Info, "background:var(--info-soft);color:var(--info-text);")]
+    [InlineData(ExchangeRateStatus.Historical, OdsChipTone.Outline,
+        "background:color-mix(insrgb,var(--mud-palette-text-secondary)var(--tint-soft),transparent);color:var(--mud-palette-text-secondary);")]
+    public async Task A_rates_status_colours_its_chip_and_its_rows_mark_alike(ExchangeRateStatus status, OdsChipTone tone, string markColours)
+    {
+        var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client().Object);
+        await using var __ = ctx;
+
+        var cut = RenderRatesCard(ctx, [PermissionClaims.ExchangeRatesRead], Rate(ExchangeRateSource.Manual) with { Status = status });
+
+        Assert.Equal(tone, OdsTypeRegistries.ExchangeRateStatusOf(status).Tone);
+        var style = cut.FindComponents<OdsAvatar>().Single().Find(".odc-avatar, .mud-avatar").GetAttribute("style") ?? "";
+        Assert.Contains(markColours, style.Replace(" ", ""));
+    }
+
     [Fact]
     public async Task A_fetched_rate_has_no_edit_and_its_delete_needs_both_claims()
     {

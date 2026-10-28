@@ -63,8 +63,18 @@ public partial class ExchangeRatesCard
                 _ => summary.ByStatus.Historical,
             },
             StatusDef(ExchangeRateStatus.Current, "income", "bolt"),
-            StatusDef(ExchangeRateStatus.Upcoming, "pending", "schedule"),
+            StatusDef(ExchangeRateStatus.Upcoming, "info", "schedule"),
             StatusDef(ExchangeRateStatus.Historical, "outline", "history"));
+
+    // The row's mark takes its status chip's colour pair (Odyssey Design System · reference-data.md, rate
+    // status): Current green, Upcoming blue, Historical the secondary-text grey Archived and Draft wear.
+    // The chip still carries the label.
+    internal static (string Bg, string Fg) MarkColours(ExchangeRateStatus status) => status switch
+    {
+        ExchangeRateStatus.Current => ("var(--finance-income-soft)", "var(--finance-income)"),
+        ExchangeRateStatus.Upcoming => ("var(--info-soft)", "var(--info-text)"),
+        _ => ("color-mix(in srgb, var(--mud-palette-text-secondary) var(--tint-soft), transparent)", "var(--mud-palette-text-secondary)"),
+    };
 
     private static OdsBreakdownDef<ExchangeRateStatus> StatusDef(ExchangeRateStatus status, string tone, string icon) =>
         new(status, OdsTypeRegistries.ExchangeRateStatusOf(status).Label, tone, icon);

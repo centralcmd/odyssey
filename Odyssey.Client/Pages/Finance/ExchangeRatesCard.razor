@@ -120,7 +120,8 @@
                         RenderDetail="DetailFor"
                         OnDelete="HandleDelete">
             <Leading Context="r">
-                <OdsAvatar Icon="currency_exchange" />
+                @{ var mark = MarkColours(r.Status); }
+                <OdsAvatar Icon="currency_exchange" Bg="@mark.Bg" Fg="@mark.Fg" />
             </Leading>
             <CreateAction>
                 @if (_canCreate)
