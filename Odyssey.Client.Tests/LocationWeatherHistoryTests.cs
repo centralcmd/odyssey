@@ -7,6 +7,7 @@ using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Weather;
+using Odyssey.Client.Services;
 using Odyssey.Dtos.Journal;
 using Xunit;
 
@@ -25,6 +26,8 @@ public class LocationWeatherHistoryTests : IDisposable
 
     private readonly Mock<IWeatherApiClient> weather = new();
     private readonly List<(DateOnly From, DateOnly To)> requests = [];
+    private readonly List<(string Key, LocationWeatherHistorySection.SavedWindow State)> saves = [];
+    private LocationWeatherHistorySection.SavedWindow? saved;
 
     public LocationWeatherHistoryTests() => LocationWeatherHistorySection.Today = static () => Today;
 
@@ -33,7 +36,7 @@ public class LocationWeatherHistoryTests : IDisposable
     // ── The window ──────────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task The_first_window_is_sixty_days_ending_yesterday_with_facts_chart_and_attribution()
+    public async Task The_first_window_is_the_last_365_days_in_one_card_with_facts_chart_and_attribution()
     {
         Serve(measuredFrom: new DateOnly(2025, 3, 2), measuredThrough: Yesterday);
         await using var ctx = Context();
@@ -41,17 +44,20 @@ public class LocationWeatherHistoryTests : IDisposable
         var section = Render(ctx);
 
         section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
-        Assert.Equal((Yesterday.AddDays(-59), Yesterday), Assert.Single(requests));
-        Assert.Contains("60</b> of 60", section.Markup);
+        Assert.Equal((Yesterday.AddDays(-364), Yesterday), Assert.Single(requests));
+        Assert.Contains("365</b> of 365", section.Markup);
         Assert.Single(section.FindComponents<WeatherHistoryChart>());
-        // One card, as the contract-terms chart: the picker heads it and the facts sit above the plot.
-        var card = section.Find(".odc-lc.wx-hist-chart");
-        Assert.NotNull(card.QuerySelector(":scope > .odc-lc-head .odc-ms-trigger"));
-        Assert.NotNull(card.QuerySelector(":scope > dl.wx-hist-facts"));
         Assert.Contains("Weather data from MET Norway", section.Markup);
-        Assert.Equal("60", section.FindComponent<OdsSegmentedControl>().Instance.Value);
+        // One card, as the contract-terms chart: the picker heads it on the left, the window on the right.
+        var head = section.Find(".odc-lc.wx-hist-card > .odc-lc-head");
+        Assert.NotNull(head.QuerySelector(".odc-lc-controls .odc-ms-trigger"));
+        Assert.NotNull(head.QuerySelector(".odc-lc-controls.end .wx-hist-range"));
+        Assert.NotNull(section.Find(".wx-hist-card").QuerySelector("dl.wx-hist-facts"));
+        Assert.Empty(section.FindComponents<OdsSegmentedControl>());
         // OdsIconButton draws an SVG icon constant; a Material ligature would render an empty button.
         Assert.All(section.FindComponents<OdsIconButton>(), b => Assert.StartsWith("<", b.Instance.Icon, StringComparison.Ordinal));
+        // Nothing is remembered for a place nobody has touched.
+        Assert.Empty(saves);
     }
 
     [Fact]
@@ -64,38 +70,24 @@ public class LocationWeatherHistoryTests : IDisposable
         var section = Render(ctx, Row(enabled: false));
 
         section.WaitForAssertion(() => Assert.Equal(2, requests.Count));
-        Assert.Equal((stopped.AddDays(-59), stopped), requests[1]);
+        Assert.Equal((new DateOnly(2026, 1, 1), stopped), requests[1]);
         section.WaitForAssertion(() => Assert.Contains("Historical data is turned off for this place.", section.Markup));
     }
 
     [Fact]
-    public async Task Choosing_365_days_asks_for_a_year_in_one_request()
+    public async Task A_picker_echoing_the_windows_own_date_is_not_a_pick()
     {
-        Serve(measuredFrom: new DateOnly(2024, 1, 1), measuredThrough: Yesterday);
-        await using var ctx = Context();
-        var section = Render(ctx);
-        section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
-
-        await section.InvokeAsync(() => section.FindComponent<OdsSegmentedControl>().Instance.ValueChanged.InvokeAsync("365"));
-
-        section.WaitForAssertion(() => Assert.Equal((Yesterday.AddDays(-364), Yesterday), requests[^1]));
-        Assert.Equal("365", section.FindComponent<OdsSegmentedControl>().Instance.Value);
-    }
-
-    [Fact]
-    public async Task A_picker_echoing_the_windows_own_date_is_not_a_custom_pick()
-    {
-        // MudDatePicker raises DateChanged when its value is set from code; that must not make the window custom.
+        // MudDatePicker raises DateChanged when its value is set from code; that must not count as a pick.
         Serve(measuredFrom: new DateOnly(2025, 1, 1), measuredThrough: Yesterday);
         await using var ctx = Context();
         var section = Render(ctx);
         section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
 
-        await section.InvokeAsync(() => Picker(section, "From").Instance.ValueChanged.InvokeAsync(Yesterday.AddDays(-59).ToDateTime(TimeOnly.MinValue)));
+        await section.InvokeAsync(() => Picker(section, "From").Instance.ValueChanged.InvokeAsync(Yesterday.AddDays(-364).ToDateTime(TimeOnly.MinValue)));
         await section.InvokeAsync(() => Picker(section, "To").Instance.ValueChanged.InvokeAsync(Yesterday.ToDateTime(TimeOnly.MinValue)));
 
         Assert.Single(requests);
-        Assert.Equal("60", section.FindComponent<OdsSegmentedControl>().Instance.Value);
+        Assert.Empty(saves);
     }
 
     [Fact]
@@ -103,19 +95,22 @@ public class LocationWeatherHistoryTests : IDisposable
     {
         var start = Yesterday.AddDays(-89);
         Serve(measuredFrom: start, measuredThrough: Yesterday);
+        saved = new LocationWeatherHistorySection.SavedWindow { From = Yesterday.AddDays(-39) };
         await using var ctx = Context();
         var section = Render(ctx);
         section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
 
         await section.InvokeAsync(() => Nav(section, "Earlier").Instance.OnClick.InvokeAsync());
+        section.WaitForAssertion(() => Assert.Equal((Yesterday.AddDays(-79), Yesterday.AddDays(-40)), requests[^1]));
 
-        // 90 days of history hold one and a half windows: Earlier lands on the first full one, not a stub.
-        section.WaitForAssertion(() => Assert.Equal((start, start.AddDays(59)), requests[^1]));
+        // 90 days of history hold two and a quarter 40-day windows: the next step lands on the first full one.
+        await section.InvokeAsync(() => Nav(section, "Earlier").Instance.OnClick.InvokeAsync());
+        section.WaitForAssertion(() => Assert.Equal((start, start.AddDays(39)), requests[^1]));
         section.WaitForAssertion(() => Assert.True(Nav(section, "Earlier").Instance.Disabled));
     }
 
     [Fact]
-    public async Task Picking_a_from_date_makes_the_window_a_custom_range()
+    public async Task Picking_a_from_date_moves_only_that_end_within_the_cap()
     {
         Serve(measuredFrom: new DateOnly(2025, 1, 1), measuredThrough: Yesterday);
         await using var ctx = Context();
@@ -126,7 +121,6 @@ public class LocationWeatherHistoryTests : IDisposable
         await section.InvokeAsync(() => Picker(section, "From").Instance.ValueChanged.InvokeAsync(from.ToDateTime(TimeOnly.MinValue)));
 
         section.WaitForAssertion(() => Assert.Equal((from, Yesterday), requests[^1]));
-        Assert.Equal("custom", section.FindComponent<OdsSegmentedControl>().Instance.Value);
         // Each end is bounded by the cap measured from the other, so no pick can exceed it.
         Assert.Equal(Yesterday.AddDays(-(WeatherRules.DailyMaxDays - 1)).ToDateTime(TimeOnly.MinValue), Picker(section, "From").Instance.Min);
         Assert.Equal(Yesterday.ToDateTime(TimeOnly.MinValue), Picker(section, "To").Instance.Max);
@@ -145,6 +139,111 @@ public class LocationWeatherHistoryTests : IDisposable
         Assert.Single(requests);
     }
 
+    // ── Remembered per user and location ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task A_window_ending_on_the_newest_day_is_remembered_with_an_open_end()
+    {
+        Serve(measuredFrom: new DateOnly(2025, 1, 1), measuredThrough: Yesterday);
+        await using var ctx = Context();
+        var section = Render(ctx);
+        section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
+        var from = new DateOnly(2026, 6, 1);
+
+        await section.InvokeAsync(() => Picker(section, "From").Instance.ValueChanged.InvokeAsync(from.ToDateTime(TimeOnly.MinValue)));
+
+        var (key, state) = Assert.Single(saves);
+        Assert.Equal($"weather-history-{Cabin.LocationId}", key);
+        Assert.Equal(from, state.From);
+        // "Up to now" means up to now on the next visit, not up to the day it was chosen.
+        Assert.Null(state.To);
+        Assert.Equal([WeatherMeasures.Temperature], state.Measures);
+    }
+
+    [Fact]
+    public async Task A_window_ending_earlier_is_remembered_as_both_dates()
+    {
+        Serve(measuredFrom: new DateOnly(2025, 1, 1), measuredThrough: Yesterday);
+        await using var ctx = Context();
+        var section = Render(ctx);
+        section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
+        var to = new DateOnly(2026, 8, 31);
+
+        await section.InvokeAsync(() => Picker(section, "To").Instance.ValueChanged.InvokeAsync(to.ToDateTime(TimeOnly.MinValue)));
+
+        Assert.Equal(to, saves[^1].State.To);
+        Assert.Equal(Yesterday.AddDays(-364), saves[^1].State.From);
+    }
+
+    [Fact]
+    public async Task An_open_end_runs_to_the_newest_day_and_a_closed_one_comes_back_as_it_was()
+    {
+        Serve(measuredFrom: new DateOnly(2025, 1, 1), measuredThrough: Yesterday);
+        saved = new LocationWeatherHistorySection.SavedWindow { From = new DateOnly(2026, 6, 1), Measures = ["wind", "gust"] };
+        await using (var ctx = Context())
+        {
+            var section = Render(ctx);
+            section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
+            Assert.Equal((new DateOnly(2026, 6, 1), Yesterday), Assert.Single(requests));
+            Assert.Equal([WeatherMeasures.Wind, WeatherMeasures.Gust], section.FindComponent<WeatherHistoryChart>().Instance.Measures);
+            Assert.Contains("Strongest gust", section.Markup);
+        }
+
+        requests.Clear();
+        saved = new LocationWeatherHistorySection.SavedWindow { From = new DateOnly(2026, 6, 1), To = new DateOnly(2026, 7, 31) };
+        await using (var ctx = Context())
+        {
+            var section = Render(ctx);
+            section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
+            Assert.Equal((new DateOnly(2026, 6, 1), new DateOnly(2026, 7, 31)), Assert.Single(requests));
+        }
+    }
+
+    [Fact]
+    public async Task Choosing_measures_is_remembered_with_the_window()
+    {
+        Serve(measuredFrom: new DateOnly(2025, 1, 1), measuredThrough: Yesterday);
+        await using var ctx = Context();
+        var section = Render(ctx);
+        section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
+
+        await section.InvokeAsync(() => section.FindComponent<OdsMultiSelect>().Instance.ValuesChanged.InvokeAsync([WeatherMeasures.Temperature, WeatherMeasures.Precipitation]));
+
+        Assert.Equal([WeatherMeasures.Precipitation], saves[^1].State.Measures);
+        Assert.Null(saves[^1].State.To);
+    }
+
+    [Theory]
+    // An open end runs to the newest day; a remembered From older than the cap moves up to fit.
+    [InlineData("2026-06-01", null, "2024-01-01", "2026-06-01", "2026-10-27")]
+    [InlineData("2025-01-01", null, "2024-01-01", "2025-10-27", "2026-10-27")]
+    // A closed window comes back as it was, pulled inside the stored history if that has shrunk.
+    [InlineData("2026-06-01", "2026-07-31", "2024-01-01", "2026-06-01", "2026-07-31")]
+    [InlineData("2026-01-01", "2026-07-31", "2026-03-02", "2026-03-02", "2026-07-31")]
+    [InlineData("2025-06-01", "2025-07-31", "2026-03-02", "2026-03-02", "2026-10-27")]
+    // Nothing remembered: the last 365 days, from the history start when there is less.
+    [InlineData(null, null, "2026-03-02", "2026-03-02", "2026-10-27")]
+    [InlineData(null, null, "2024-01-01", "2025-10-28", "2026-10-27")]
+    public void A_remembered_window_resolves_inside_the_history_and_the_cap(
+        string? from, string? to, string earliest, string expectedFrom, string expectedTo)
+    {
+        var state = from is null ? null : new LocationWeatherHistorySection.SavedWindow
+        {
+            From = DateOnly.Parse(from),
+            To = to is null ? null : DateOnly.Parse(to),
+        };
+
+        Assert.Equal((DateOnly.Parse(expectedFrom), DateOnly.Parse(expectedTo)),
+            LocationWeatherHistorySection.Resolve(state, new DateOnly(2026, 10, 27), DateOnly.Parse(earliest)));
+    }
+
+    [Theory]
+    [InlineData(new[] { "wind", "gust" }, new[] { "wind", "gust" })]
+    [InlineData(new[] { "precip", "wind" }, new[] { "precip" })]
+    [InlineData(new[] { "sunshine" }, new[] { "temp" })]
+    public void Remembered_measures_keep_one_unit(string[] saved, string[] expected) =>
+        Assert.Equal(expected, LocationWeatherHistorySection.RestoreMeasures(saved));
+
     // ── States ──────────────────────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -156,7 +255,7 @@ public class LocationWeatherHistoryTests : IDisposable
         var section = Render(ctx);
 
         section.WaitForAssertion(() => Assert.Contains("No MET Norway station measures within 25 km", section.Markup));
-        Assert.Empty(section.FindComponents<OdsSegmentedControl>());
+        Assert.Empty(section.FindComponents<OdsDatePicker>());
     }
 
     [Fact]
@@ -291,7 +390,7 @@ public class LocationWeatherHistoryTests : IDisposable
         Assert.Empty(chart.FindAll(".odc-line-svg .wx-hist-band"));
         Assert.Contains("Shaded: not measured", chart.Markup);
         // (1+1.5+2+3.5+4.5+5+5.5) = 23 mm over the window; the amount axis names its unit once.
-        Assert.Contains("23.0 mm total", chart.Find(".wx-hist-legend").TextContent);
+        Assert.Contains("23.0 mm total", chart.Find(".odc-sc-legend").TextContent);
         Assert.Contains(">mm</text>", chart.Markup);
         Assert.Equal(["Date", "Precipitation"], chart.FindAll("thead th").Select(th => th.TextContent));
     }
@@ -311,7 +410,7 @@ public class LocationWeatherHistoryTests : IDisposable
         Assert.Single(chart.FindAll(".odc-line-svg polyline.wx-hist-series.thin"));
         // Gusts carry a dot per day up to 90 days; mean wind is the plain line.
         Assert.Equal(10, chart.FindAll(".odc-line-svg circle").Count);
-        var ledger = chart.Find(".wx-hist-legend").TextContent;
+        var ledger = chart.Find(".odc-sc-legend").TextContent;
         Assert.Contains("3.0 m/s avg", ledger);
         Assert.Contains("8.0 m/s max", ledger);
         Assert.DoesNotContain("not measured", ledger);
@@ -390,13 +489,13 @@ public class LocationWeatherHistoryTests : IDisposable
     }
 
     [Theory]
-    [InlineData("2026-10-27", 60, "2026-10-27")]
-    [InlineData("2026-12-01", 60, "2026-10-27")]
-    [InlineData("2026-03-01", 60, "2026-04-30")]
-    [InlineData("2026-03-01", 365, "2026-10-27")]
-    public void A_window_stays_whole_and_inside_the_stored_history(string end, int span, string expected) =>
-        Assert.Equal(DateOnly.Parse(expected), LocationWeatherHistorySection.ClampEnd(
-            DateOnly.Parse(end), span, new DateOnly(2026, 3, 2), new DateOnly(2026, 10, 27)));
+    [InlineData("2026-10-27", 60, "2026-08-29", "2026-10-27")]
+    [InlineData("2026-12-01", 60, "2026-08-29", "2026-10-27")]
+    [InlineData("2026-03-01", 60, "2026-03-02", "2026-04-30")]
+    [InlineData("2026-03-01", 365, "2026-03-02", "2026-10-27")]
+    public void A_step_stays_whole_and_inside_the_stored_history(string end, int days, string from, string to) =>
+        Assert.Equal((DateOnly.Parse(from), DateOnly.Parse(to)), LocationWeatherHistorySection.Place(
+            DateOnly.Parse(end), days, new DateOnly(2026, 3, 2), new DateOnly(2026, 10, 27)));
 
     // ── Harness ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -465,6 +564,11 @@ public class LocationWeatherHistoryTests : IDisposable
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton(weather.Object);
+        var pageState = new Mock<IPageStateService>();
+        pageState.Setup(p => p.LoadAsync<LocationWeatherHistorySection.SavedWindow>(It.IsAny<string>())).ReturnsAsync(() => saved);
+        pageState.Setup(p => p.QueueSave(It.IsAny<string>(), It.IsAny<LocationWeatherHistorySection.SavedWindow>()))
+            .Callback((string key, LocationWeatherHistorySection.SavedWindow state) => saves.Add((key, state)));
+        ctx.Services.AddSingleton(pageState.Object);
         return ctx;
     }
 }

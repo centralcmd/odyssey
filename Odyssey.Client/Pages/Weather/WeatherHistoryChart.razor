@@ -1,16 +1,13 @@
 @using Odyssey.Client.Components
 @*
-    WeatherHistoryChart — the Weather history card (design system · Weather.jsx WeatherHistoryChart). A card as
-    the contract-terms chart is (.odc-lc): Head (the Measures picker, in place of a title), Facts, the plot and its
-    ledger (.odc-sc-legend), on one content edge. The band, bar, series and gap rules are wx-.
+    WeatherHistoryChart — the Weather history plot and its ledger (design system · Weather.jsx WeatherHistoryChart).
+    The card around it, with the Measures picker and the window in its head, belongs to
+    LocationWeatherHistorySection, so the controls stay put while a window loads. It reuses LineChart's plot, axis
+    and tooltip classes (.odc-lc-*) and the contract-terms chart's ledger (.odc-sc-legend); the band, bar, series
+    and gap rules are wx-.
 *@
 
-<div class="odc-lc wx-hist-chart">
-    @if (Head is not null)
-    {
-        <div class="odc-lc-head wx-hist-head"><div class="odc-lc-controls">@Head</div></div>
-    }
-    @Facts
+<div class="wx-hist-chart">
     @* One tab stop: focus opens the readout on the newest day, Left / Right step through the days,
        Escape or leaving closes it. The live region speaks only for keyboard steps. *@
     <div class="odc-lc-plot" tabindex="0" role="group" aria-label="@PlotKeyLabel" @ref="_plotRef"
@@ -156,30 +153,21 @@
         <div class="odc-sr-only" aria-live="polite">@(_hoverByKey ? TipText : null)</div>
     </div>
 
-    @* The ledger: each plotted measure's swatch, name and its figure for the window — the contract-terms
-       chart's legend row. *@
-    <div class="odc-sc-legend wx-hist-legend">
+    @* The ledger, as under the contract-terms chart (.odc-sc-legend): a square in the measure's hue, its name
+       and its figure for the window. *@
+    <div class="odc-sc-legend">
         @foreach (var m in _shown)
         {
             <span class="odc-sc-leg">
-                @Swatch(m)
+                <span class="odc-sc-swatch" style="@($"background:{OdsGlyphInk.Glyph(m.Color)}")"></span>
                 <span class="odc-sc-leg-name">@m.Label</span>
                 <span class="odc-sc-leg-val" style="@($"color:{OdsGlyphInk.Text(m.Color)}")">@WindowFigure(m)</span>
             </span>
         }
         @if (Gaps)
         {
-            var lead = _shown[0];
-            var stroke = lead.Mark == WeatherMeasureMark.Band ? null : $"stroke:{lead.Color}";
             <span class="odc-sc-leg" aria-hidden="true">
-                @if (HasBars)
-                {
-                    <svg width="22" height="12" viewBox="0 0 22 12"><rect class="wx-hist-nodata" x="1" y="1" width="20" height="10" rx="2" /></svg>
-                }
-                else
-                {
-                    <svg width="22" height="12" viewBox="0 0 22 12"><line class="wx-hist-mean" x1="1" y1="6" x2="8" y2="6" style="@stroke" /><line class="wx-hist-mean" x1="14" y1="6" x2="21" y2="6" style="@stroke" /></svg>
-                }
+                <span class="@(HasBars ? "odc-sc-swatch wx-hist-gapkey shaded" : "odc-sc-swatch wx-hist-gapkey")"></span>
                 <span class="odc-sc-leg-name">@(HasBars ? "Shaded: not measured" : "Break: not measured")</span>
             </span>
         }
@@ -239,13 +227,3 @@
     </div>
 </div>
 
-@code {
-    /// <summary>The measure's mark in its hue, in the ledger (design system · Weather.jsx <c>WxMeasureSwatch</c>).</summary>
-    internal static RenderFragment Swatch(WeatherMeasure m) => m.Mark switch
-    {
-        WeatherMeasureMark.Band => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect class="wx-hist-band" x="1" y="1" width="20" height="10" rx="2" /><line class="wx-hist-mean" x1="1" y1="6" x2="21" y2="6" /></svg>,
-        WeatherMeasureMark.Bar => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="1" y="5" width="6" height="7" rx="1" style="@($"fill:{m.Color}")" /><rect x="9" y="1" width="6" height="11" rx="1" style="@($"fill:{m.Color}")" /></svg>,
-        WeatherMeasureMark.Line => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><line class="wx-hist-series" x1="1" y1="6" x2="21" y2="6" style="@($"stroke:{m.Color}")" /></svg>,
-        _ => @<svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><line class="wx-hist-series thin" x1="1" y1="6" x2="21" y2="6" style="@($"stroke:{m.Color}")" /><circle cx="11" cy="6" r="2.6" style="@($"fill:{m.Color}")" /></svg>,
-    };
-}

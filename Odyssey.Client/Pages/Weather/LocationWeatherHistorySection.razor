@@ -33,48 +33,61 @@ else
     <OdsRecordSection Class="@Cls" Label="Weather history" Meta="measured · UTC days"
                       Notice="@(HistoryOff ? Text("Historical data is turned off for this place. This is what was measured until it was turned off; nothing new is added.") : null)"
                       NoticeIconName="@(HistoryOff ? "history" : null)">
-        @if (_bounds is not null)
-        {
-            <div class="wx-hist-bar">
-                <OdsSegmentedControl AriaLabel="Days shown" Options="SpanOptions" Value="@SpanValue" ValueChanged="OnSpanChanged" />
-                <div class="wx-hist-nav">
-                    <OdsIconButton Icon="@Icons.Material.Filled.ChevronLeft" AriaLabel="@($"Earlier {StepLabel}")" Disabled="AtStart" OnClick="Earlier" />
-                    <div class="odc-dpr wx-hist-range" role="group" aria-label="Dates shown">
-                        <OdsDatePicker @ref="_fromPicker" AriaLabel="From" Value="From.ToDateTime(TimeOnly.MinValue)" ValueChanged="PickFrom"
-                                       Min="FromMin" Max="FromMax" Full="false" />
-                        <span class="odc-dpr-dash" aria-hidden="true">–</span>
-                        <OdsDatePicker AriaLabel="To" Value="_end.ToDateTime(TimeOnly.MinValue)" ValueChanged="PickTo"
-                                       Min="ToMin" Max="ToMax" Align="OdsAlign.End" Full="false" />
-                    </div>
-                    <span class="odc-sr-only" aria-live="polite">@Period</span>
-                    <OdsIconButton Icon="@Icons.Material.Filled.ChevronRight" AriaLabel="@($"Later {StepLabel}")" Disabled="AtEnd" OnClick="Later" />
+        @* One card, as the contract-terms chart: the Measures picker heads it on the left and the window on the
+           right, where the terms card has its axis toggle. Loading and errors render inside it under the same
+           head, so the control in use is never unmounted while a window loads. *@
+        <div class="odc-lc wx-hist-card">
+            <div class="odc-lc-head wx-hist-head">
+                <div class="odc-lc-controls">
+                    <OdsMultiSelect Label="Measures" Icon="insights" Quiet="true" Align="OdsAlign.Start"
+                                    Values="_measures" ValuesChanged="PickMeasures" Options="MeasureOptions" />
                 </div>
+                @if (_bounds is not null)
+                {
+                    <div class="odc-lc-controls end wx-hist-nav">
+                        <OdsIconButton Icon="@Icons.Material.Filled.ChevronLeft" AriaLabel="@($"Earlier {StepLabel}")" Disabled="AtStart" OnClick="Earlier" />
+                        <div class="odc-dpr wx-hist-range" role="group" aria-label="Dates shown">
+                            <OdsDatePicker AriaLabel="From" Value="_from.ToDateTime(TimeOnly.MinValue)" ValueChanged="PickFrom"
+                                           Min="FromMin" Max="FromMax" Full="false" />
+                            <span class="odc-dpr-dash" aria-hidden="true">–</span>
+                            <OdsDatePicker AriaLabel="To" Value="_to.ToDateTime(TimeOnly.MinValue)" ValueChanged="PickTo"
+                                           Min="ToMin" Max="ToMax" Align="OdsAlign.End" Full="false" />
+                        </div>
+                        <span class="odc-sr-only" aria-live="polite">@Period</span>
+                        <OdsIconButton Icon="@Icons.Material.Filled.ChevronRight" AriaLabel="@($"Later {StepLabel}")" Disabled="AtEnd" OnClick="Later" />
+                    </div>
+                }
             </div>
-        }
 
-        @switch (_phase)
-        {
-            case Phase.RateLimited:
-                @Box("hourglass_bottom", "Weather is resting for a moment", "Weather has been loaded many times in the last minute. Wait a moment, then try again.")
-                break;
-            case Phase.Error:
-                @Box("cloud_off", "Weather history couldn’t be loaded", "Something went wrong reaching Odyssey. The rest of this location is unaffected.")
-                break;
-            case Phase.Loading:
-                <OdsSkeleton Variant="OdsSkeletonVariant.Block" Class="wx-hist-skel" />
-                break;
-            default:
-                @if (Measured.Count == 0)
-                {
-                    <OdsEmptyLine Pad="OdsSize.Lg">Nothing was measured between @WeatherVisuals.Date(From) and @WeatherVisuals.Date(_end).@(AtStart ? "" : " Earlier days may have it.")</OdsEmptyLine>
-                }
-                else
-                {
-                    <WeatherHistoryChart Days="_response!.Days" From="From" To="_end" LocationName="@Location.Name" Measures="_measures"
-                                         Head="MeasurePicker" Facts="FactsRow" />
-                }
-                break;
-        }
+            @switch (_phase)
+            {
+                case Phase.RateLimited:
+                    @Box("hourglass_bottom", "Weather is resting for a moment", "Weather has been loaded many times in the last minute. Wait a moment, then try again.")
+                    break;
+                case Phase.Error:
+                    @Box("cloud_off", "Weather history couldn’t be loaded", "Something went wrong reaching Odyssey. The rest of this location is unaffected.")
+                    break;
+                case Phase.Loading:
+                    <OdsSkeleton Variant="OdsSkeletonVariant.Block" Class="wx-hist-skel" />
+                    break;
+                default:
+                    @if (Measured.Count == 0)
+                    {
+                        <OdsEmptyLine Pad="OdsSize.Lg">Nothing was measured between @WeatherVisuals.Date(_from) and @WeatherVisuals.Date(_to).@(AtStart ? "" : " Earlier days may have it.")</OdsEmptyLine>
+                    }
+                    else
+                    {
+                        <dl class="wx-facts wx-hist-facts">
+                            @foreach (var fact in ShownFacts)
+                            {
+                                <div><dt><OdsMIcon Name="@fact.Icon" Size="13" />@fact.Label</dt><dd><b>@fact.Value</b>@(fact.Date is { } on ? $" on {ShortDate(on)}" : fact.After)</dd></div>
+                            }
+                        </dl>
+                        <WeatherHistoryChart Days="_response!.Days" From="_from" To="_to" LocationName="@Location.Name" Measures="_measures" />
+                    }
+                    break;
+            }
+        </div>
 
         @* The attribution comes from the response, so it shows only once one has arrived. *@
         @if (_phase == Phase.Ready && _response is not null)
@@ -95,18 +108,6 @@ else
     private RenderFragment NotConfiguredText => CanSetUp && CanOpenSettings
         ? @<span>Historical weather service is not configured. See <a class="wx-link" href="/settings">system settings</a>.</span>
         : Text("Historical weather service is not configured.");
-
-    // The picker heads the chart's card in place of a title, as on the contract-terms chart. Choosing is
-    // client-side: one response carries every measure.
-    private RenderFragment MeasurePicker => @<OdsMultiSelect Label="Measures" Icon="insights" Quiet="true" Align="OdsAlign.Start"
-                                                             Values="_measures" ValuesChanged="PickMeasures" Options="MeasureOptions" />;
-
-    private RenderFragment FactsRow => @<dl class="wx-facts wx-hist-facts">
-        @foreach (var fact in ShownFacts)
-        {
-            <div><dt><OdsMIcon Name="@fact.Icon" Size="13" />@fact.Label</dt><dd><b>@fact.Value</b>@(fact.Date is { } on ? $" on {ShortDate(on)}" : fact.After)</dd></div>
-        }
-    </dl>;
 
     private RenderFragment Box(string icon, string title, string text) => @<div class="wx-empty">
         <span class="wx-empty-ic" aria-hidden="true"><OdsMIcon Name="@icon" Size="22" /></span>
